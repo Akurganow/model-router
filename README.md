@@ -18,17 +18,19 @@ The hook reads two values from the plugin's user configuration. They are
 `api_key`, which is sensitive and kept in secure storage, and `mode`. It reads
 nothing else from the machine.
 
-The hook makes one network call per routed dispatch, through Claude Code's own
-`$.http.fetch`. The call goes to one host, `api.typesafe.ai`, at
-`https://api.typesafe.ai/v1/systemone`. It is an HTTPS POST with the key as
-the bearer token. The body holds the condensed and redacted task text, the
-subagent's type and the caller's one-line description.
+On each routed dispatch the hook sends one request through Claude Code's own
+`$.http.fetch`. It sends the condensed and redacted task text, the subagent's
+type and the caller's one-line description to
+https://api.typesafe.ai/v1/systemone. The request is an HTTPS POST with the key
+as the bearer token.
 
 The hook runs no commands, spawns no processes and writes no files.
 
 `scripts/calibrate.ts` is a developer tool that you run by hand from the plugin
 folder. It asks for the key at a masked prompt and sends the labelled seed to
 the same host. Claude Code never runs it.
+
+[PRIVACY.md](PRIVACY.md) states the same in policy form.
 
 ## Requirements
 
