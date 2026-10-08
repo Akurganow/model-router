@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.3.0 - 2026-10-08
+#### Features
+- add the directory listing icon (a700bcc)
+#### Bug Fixes
+- verify the cog binary digest after the action installs it (ab52944)
+- pin cocogitto-action v4.2.0 and install only (b70800f)
+- write the Jev address at the call, install cocogitto through its pinned action (4d9fd75)
+#### Documentation
+- say what the hook changes, what it sends and where (e5ff1ab)
+
+- - -
+
+
 ## v0.2.0 - 2026-10-08
 #### Features
 - take the TypeSafe key from a sensitive userConfig option, add license and manifest fields (9393373)
