@@ -76,3 +76,23 @@ test('a malformed body is a skip', async () => {
   const e = await route(input('x'), async () => JSON.stringify({ answers: {} }))
   expect(e).toEqual({ skipped: 'malformed answer' })
 })
+
+test('a JSON-quoted or single-quoted secret name still masks its value', async () => {
+  const sent: Sent = { body: {} }
+  await route(input('{"API_KEY": "abc123"} and {\'API_KEY\': \'abc123\'}'), stubPost(sent))
+  expect(sent.body.state.task).toBe('{"API_KEY": ***} and {\'API_KEY\': ***}')
+})
+
+test('a quoted value with spaces is masked whole, closed or not', async () => {
+  const sent: Sent = { body: {} }
+  await route(input('export API_KEY="abc def ghi"'), stubPost(sent))
+  expect(sent.body.state.task).toBe('export API_KEY=***')
+  await route(input('export API_KEY="abc def'), stubPost(sent))
+  expect(sent.body.state.task).toBe('export API_KEY=***')
+})
+
+test('the Bearer scheme is matched in any case', async () => {
+  const sent: Sent = { body: {} }
+  await route(input('send with bearer abc123'), stubPost(sent))
+  expect(sent.body.state.task).toBe('send with Bearer ***')
+})

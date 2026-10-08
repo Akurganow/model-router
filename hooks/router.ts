@@ -12,9 +12,9 @@ const INSTRUCTIONS = 'How much judgment does completing `task` require from an a
 // The task text goes to a third party. A mod reads environment variables only
 // by literal name, so secrets are masked by shape, not by value.
 const REDACT_PATTERNS: readonly [RegExp, string][] = [
-  [/Bearer\s+[A-Za-z0-9._~+/=-]+/g, 'Bearer ***'],
+  [/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer ***'],
   [/\bsk-[A-Za-z0-9_-]{8,}/g, '***'],
-  [/\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET))(\s*[=:]\s*)["']?[^\s"']+["']?/g, '$1$2***'],
+  [/\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET))(["']?\s*[=:]\s*)(?:"[^"]*"?|'[^']*'?|[^\s"']+)/g, '$1$2***'],
 ]
 
 export type RouteInput = { role: string; description: string; prompt: string }
