@@ -1,10 +1,10 @@
 # model-router
 
-A Claude Code mod that picks the cheapest Claude model for each subagent before
-it starts. On every subagent dispatch the mod condenses and redacts the task
-text, asks [TypeSafe Jev](https://docs.typesafe.ai) one Score question, and
-sets the subagent's model: `haiku` for lookup or transcription, `sonnet` for
-bounded judgment, `opus` for open judgment.
+A Claude Code mod that picks the cheapest Claude model for each subagent
+before it starts. On every subagent dispatch the mod condenses and redacts the
+task text and asks [TypeSafe Jev](https://docs.typesafe.ai) one Score question.
+The mod sets the subagent's model: `haiku` for lookup or transcription,
+`sonnet` for bounded judgment, `opus` for open judgment.
 
 ## Requirements
 
@@ -47,11 +47,11 @@ The subagent's prompt goes to one endpoint:
 `https://api.typesafe.ai/v1/systemone`.
 It travels in an HTTPS POST with your TypeSafe API key as the bearer token.
 Two steps run on the prompt first. Fenced code blocks become a one-line size
-note. Token-shaped strings are masked (`Bearer …`, `sk-…` keys, assignments to
-names ending in `key`, `token`, `secret` or `password`). The subagent's type
-and the caller's one-line description go with it. Nothing else leaves the
-machine. Any failure, from a missing key to a timeout, leaves the dispatch
-unchanged.
+note. Token-shaped strings are masked (`Bearer …`, `sk-…` keys, assignments
+to names ending in `key`, `token`, `secret` or `password`). The subagent's
+type and the caller's one-line description go with it. Nothing else leaves
+the machine. Any failure, from a missing key to a timeout, leaves the
+dispatch unchanged.
 
 ## Calibration and tests
 
