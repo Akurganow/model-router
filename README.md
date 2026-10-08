@@ -24,14 +24,8 @@ Answer `y` to add the marketplace, then pick the user scope.
 ## Set the key later
 
 In a session, run `/plugin configure model-router@model-router` to open the
-install dialog again. From a shell, pass a JSON object on stdin:
-
-```
-echo '{"api_key": "<your TypeSafe API key>"}' | \
-  claude plugin configure model-router@model-router --values-stdin
-```
-
-A saved key takes effect after `/reload-plugins` or in the next session.
+install dialog again. A saved key takes effect after `/reload-plugins` or in the
+next session.
 
 ## Mode
 
@@ -65,9 +59,11 @@ From the plugin folder:
 
 ```
 claude plugin test .
-node scripts/calibrate.ts --key <your TypeSafe API key>
+node scripts/calibrate.ts
 ```
 
 The calibration script sends `calibration.jsonl`, twenty-one labelled briefs,
-to the same endpoint and exits 1 when agreement falls below 85%. A miss is
-fixed by rewording a tier text in `hooks/router.ts`, never by lowering the bar.
+to the same endpoint and exits 1 when agreement falls below 85%. It prompts for
+the key with masked input, or reads stdin when piped, so the key never appears
+in command lines or shell history. A miss is fixed by rewording a tier text in
+`hooks/router.ts`, never by lowering the bar.

@@ -6,10 +6,46 @@ const JEV_URL = 'https://api.typesafe.ai/v1/systemone'
 
 type Case = { role: string; description: string; text: string; expected: number }
 
-const keyFlag = process.argv.indexOf('--key')
-const key = keyFlag === -1 ? undefined : process.argv[keyFlag + 1]
+const readKey = async (): Promise<string> => {
+  const { stdin } = process
+  stdin.setEncoding('utf8')
+  if (!stdin.isTTY) {
+    let text = ''
+    for await (const chunk of stdin) text += chunk
+    return text.trim()
+  }
+  process.stderr.write('TypeSafe API key: ')
+  stdin.setRawMode(true)
+  stdin.resume()
+  return new Promise(resolve => {
+    let typed = ''
+    const finish = () => {
+      stdin.off('data', onData)
+      stdin.setRawMode(false)
+      stdin.pause()
+      process.stderr.write('\n')
+    }
+    const onData = (chunk: string) => {
+      for (const ch of chunk) {
+        if (ch === '\r' || ch === '\n') {
+          finish()
+          resolve(typed)
+          return
+        }
+        if (ch === '\x03') {
+          finish()
+          process.exit(130)
+        }
+        typed = ch === '\x7f' ? typed.slice(0, -1) : typed + ch
+      }
+    }
+    stdin.on('data', onData)
+  })
+}
+
+const key = await readKey()
 if (!key) {
-  console.error('usage: node scripts/calibrate.ts --key <TypeSafe API key>')
+  console.error('usage: node scripts/calibrate.ts  (enter the TypeSafe API key at the prompt, or pipe it on stdin)')
   process.exit(2)
 }
 

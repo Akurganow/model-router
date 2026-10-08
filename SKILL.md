@@ -29,6 +29,6 @@ Only a model passed in the Agent call is kept. In auto mode the hook also overri
 From the plugin folder:
 
 - `claude plugin test .` runs the tests, no network.
-- `node scripts/calibrate.ts --key <TypeSafe API key>` runs the labelled seed
-  against Jev and prints misses and agreement.
+- `node scripts/calibrate.ts` prompts for the TypeSafe API key (masked), runs
+  the labelled seed against Jev and prints misses and agreement.
 - `claude plugin validate .` lists the hooks and calls.
