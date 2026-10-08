@@ -6,13 +6,13 @@ const HTTP_TIMEOUT_MS = 8000
 
 export const register: Register = (on, options) => {
   const mode = options.mode === 'auto' ? 'auto' : 'suggest'
+  const apiKey = typeof options.api_key === 'string' && options.api_key !== '' ? options.api_key : undefined
 
   on('agent.spawn', async ($, e, next) => {
     if (e.fork || e.isTeammate || e.workflow !== undefined || e.model !== undefined) return next(e)
 
-    const key = await $.env.get('TYPESAFE_API_KEY')
     const post = async (body: string): Promise<string> => {
-      if (!key) throw new Error('TYPESAFE_API_KEY unset')
+      if (!apiKey) throw new Error('api_key unset')
       const stop = new AbortController()
       const timeout = $.clock.sleep(HTTP_TIMEOUT_MS, { signal: stop.signal })
         .then(() => { throw new Error(`no answer in ${HTTP_TIMEOUT_MS} ms`) })
@@ -20,7 +20,7 @@ export const register: Register = (on, options) => {
         const res = await Promise.race([
           $.http.fetch(JEV_URL, {
             method: 'POST',
-            headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+            headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
             body,
           }),
           timeout,

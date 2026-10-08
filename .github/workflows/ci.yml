@@ -1,0 +1,40 @@
+name: ci
+
+# Validates the plugin and runs its tests on every pull request and every push
+# to main. `claude plugin test` runs with no session and no sign-in, so the job
+# needs no secrets.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+    steps:
+      # Actions are pinned to a commit sha rather than a tag, because a tag
+      # can be moved to point at different code; the trailing comment records
+      # which release each sha is.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        # The job only reads the repository, so the token need not stay in the checkout.
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code@2.1.294
+
+      - name: Validate the plugin
+        run: claude plugin validate .
+
+      - name: Run the tests
+        run: claude plugin test .

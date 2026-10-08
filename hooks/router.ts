@@ -9,8 +9,7 @@ export const TIERS = [
 
 const INSTRUCTIONS = 'How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller\'s one-line summary of the task.'
 
-// The task text goes to a third party. A mod reads environment variables only
-// by literal name, so secrets are masked by shape, not by value.
+// The task text goes to a third party, and nothing marks which strings are secrets, so redaction matches shapes.
 const REDACT_PATTERNS: readonly [RegExp, string][] = [
   [/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer ***'],
   [/\bsk-[A-Za-z0-9_-]{8,}/g, '***'],

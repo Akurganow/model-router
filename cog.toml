@@ -1,0 +1,15 @@
+# cocogitto configuration (https://docs.cocogitto.io/reference/config).
+# The release workflow runs `cog bump --auto` on main.
+
+tag_prefix = "v"
+# Pull requests merge with merge commits; the commits inside them count.
+ignore_merge_commits = true
+# Releases are cut from main only; any other checkout refuses the bump.
+branch_whitelist = ["main"]
+# Runs before the version commit, so plugin.json carries the new version.
+pre_bump_hooks = ["node scripts/set-version.ts {{version}}"]
+
+[changelog]
+path = "CHANGELOG.md"
+# Names no commit author and carries no HTML.
+template = "tools/templates/changelog.tera"
