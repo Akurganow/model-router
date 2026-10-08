@@ -33,7 +33,7 @@ test('runs of blank lines collapse and the text is cut at the budget', async () 
 
 test('token-shaped strings are masked and ordinary text is kept', async () => {
   const sent: Sent = { body: {} }
-  const prompt = 'Use header Bearer abc.DEF-123 and key sk-abcdefghijklmnop; set API_KEY=hunter22 and DB_TOKEN: "t0k3n". Keep key=value pairs in config.'
+  const prompt = 'Use header Bearer abc.DEF-123 and key sk-abcdefghijklmnop; set API_KEY=hunter22 and DB_TOKEN: "t0k3n". Keep the config keys in order.'
   await route(input(prompt), stubPost(sent))
   const task: string = sent.body.state.task
   expect(task).toContain('Bearer ***')
@@ -42,7 +42,7 @@ test('token-shaped strings are masked and ordinary text is kept', async () => {
   expect(task).toContain('API_KEY=***')
   expect(task).not.toContain('hunter22')
   expect(task).toContain('DB_TOKEN: ***')
-  expect(task).toContain('Keep key=value pairs in config.')
+  expect(task).toContain('Keep the config keys in order.')
 })
 
 test('the request pins the model, names the state fields and carries one criterion per tier', async () => {
@@ -95,4 +95,14 @@ test('the Bearer scheme is matched in any case', async () => {
   const sent: Sent = { body: {} }
   await route(input('send with bearer abc123'), stubPost(sent))
   expect(sent.body.state.task).toBe('send with Bearer ***')
+})
+
+test('assignments to names ending in key, token, secret or password are masked in any case', async () => {
+  const sent: Sent = { body: {} }
+  await route(input('api_key=hunter22 and apiKey: "sw0rdf1sh" and password=letmein'), stubPost(sent))
+  const task: string = sent.body.state.task
+  expect(task).toContain('api_key=***')
+  expect(task).toContain('apiKey: ***')
+  expect(task).toContain('password=***')
+  for (const secret of ['hunter22', 'sw0rdf1sh', 'letmein']) expect(task).not.toContain(secret)
 })

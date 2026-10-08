@@ -22,7 +22,7 @@ Escalation follows superpowers:subagent-driven-development. One addition: the
 hook keeps a model the caller names, so an escalated re-dispatch passes
 `model` explicitly in the Agent call.
 
-An explicit model the user names always wins: pass it in the Agent call.
+Only a model passed in the Agent call is kept. In auto mode the hook also overrides a model pinned in an agent definition's frontmatter, because the hook cannot see it.
 
 ## Commands
 

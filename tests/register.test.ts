@@ -96,3 +96,18 @@ test('a slow Jev passes through after the timeout', { options: { mode: 'auto' } 
   expect(h.received.model).toBeUndefined()
   expect(h.logs).toEqual(['model-router: skipped, no answer in 8000 ms'])
 })
+
+test('the request goes to the systemone endpoint with the key and the pinned model', { options: { mode: 'auto' } }, async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'test-key' })
+  mock.clock(on)
+  let request: any
+  on('ui.log', () => ({ value: undefined }))
+  on('http.fetch', (_: unknown, e: any) => { request = e; return { value: { status: 200, ok: true, headers: {}, text: ANSWER(0.9, 0.1, 0) } } })
+  on('agent.spawn', (_: unknown, e: any) => ({ model: e.model ?? e.parentModel, agentId: 'a1' }))
+  await $.agent.spawn(spawn())
+  expect(request.url).toBe('https://api.typesafe.ai/v1/systemone')
+  expect(request.init.method).toBe('POST')
+  expect(request.init.headers.Authorization).toBe('Bearer test-key')
+  expect(request.init.headers['Content-Type']).toBe('application/json')
+  expect(JSON.parse(request.init.body).model).toBe('jev-1.13.0')
+})
