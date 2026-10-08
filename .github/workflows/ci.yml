@@ -1,8 +1,8 @@
 name: ci
 
-# Validates the plugin and runs its tests on every pull request and every push
-# to main. `claude plugin test` runs with no session and no sign-in, so the job
-# needs no secrets.
+# Validates the plugin and runs its tests on Ubuntu and macOS, on every pull
+# request and every push to main. `claude plugin test` runs with no session and
+# no sign-in, so the job needs no secrets.
 on:
   pull_request:
   push:
@@ -13,8 +13,13 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    name: check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     env:
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
     steps:
