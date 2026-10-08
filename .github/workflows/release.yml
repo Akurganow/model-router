@@ -84,6 +84,9 @@ jobs:
           echo "released=true" >> "$GITHUB_OUTPUT"
 
       # Atomic: the commit and the tag land together or not at all.
+      # The bot pushes HEAD:main as a fast-forward. That works only while main has
+      # no branch protection or ruleset that forbids it. A rule added later must
+      # allow this push.
       - name: Push the version commit and its tag
         if: steps.bump.outputs.released == 'true'
         env:

@@ -11,7 +11,5 @@ pre_bump_hooks = ["node scripts/set-version.ts {{version}}"]
 
 [changelog]
 path = "CHANGELOG.md"
-template = "remote"
-remote = "github.com"
-owner = "Akurganow"
-repository = "model-router"
+# Names no commit author and carries no HTML.
+template = "tools/templates/changelog.tera"
