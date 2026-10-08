@@ -6,6 +6,30 @@ task text and asks [TypeSafe Jev](https://docs.typesafe.ai) one Score question.
 The mod sets the subagent's model: `haiku` for lookup or transcription,
 `sonnet` for bounded judgment, `opus` for open judgment.
 
+## What the mod does
+
+The mod has one hook, on Claude Code's `agent.spawn` event. That event fires
+when a subagent is about to start.
+
+In `auto` mode the hook changes exactly one thing: the `model` field of that
+subagent. In `suggest` mode it changes nothing and writes one dim log line.
+
+The hook reads two values from the plugin's user configuration. They are
+`api_key`, which is sensitive and kept in secure storage, and `mode`. It reads
+nothing else from the machine.
+
+The hook makes one network call per routed dispatch, through Claude Code's own
+`$.http.fetch`. The call goes to one host, `api.typesafe.ai`, at
+`https://api.typesafe.ai/v1/systemone`. It is an HTTPS POST with the key as
+the bearer token. The body holds the condensed and redacted task text, the
+subagent's type and the caller's one-line description.
+
+The hook runs no commands, spawns no processes and writes no files.
+
+`scripts/calibrate.ts` is a developer tool that you run by hand from the plugin
+folder. It asks for the key at a masked prompt and sends the labelled seed to
+the same host. Claude Code never runs it.
+
 ## Requirements
 
 - Claude Code v2.1.287 or later (mods are on by default).
@@ -43,15 +67,12 @@ see it. Forks, agent-team teammates and workflow agents pass through untouched.
 
 ## What leaves the machine
 
-The subagent's prompt goes to one endpoint:
-`https://api.typesafe.ai/v1/systemone`.
-It travels in an HTTPS POST with your TypeSafe API key as the bearer token.
-Two steps run on the prompt first. Fenced code blocks become a one-line size
-note. Token-shaped strings are masked (`Bearer …`, `sk-…` keys, assignments
-to names ending in `key`, `token`, `secret` or `password`). The subagent's
-type and the caller's one-line description go with it. Nothing else leaves
-the machine. Any failure, from a missing key to a timeout, leaves the
-dispatch unchanged.
+[What the mod does](#what-the-mod-does) names the host and the request. Two
+steps run on the subagent's prompt before it leaves. Fenced code blocks become
+a one-line size note. Token-shaped strings are masked (`Bearer …`, `sk-…`
+keys, assignments to names ending in `key`, `token`, `secret` or `password`).
+Nothing else leaves the machine. Any failure, from a missing key to a timeout,
+leaves the dispatch unchanged.
 
 ## Calibration and tests
 
