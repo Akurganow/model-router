@@ -44,6 +44,16 @@ jobs:
         with:
           install-only: true
 
+      # The action downloads the release asset without a checksum. This digest is
+      # the sha256 of the cog binary inside cocogitto-7.0.0-x86_64-unknown-linux-musl.tar.gz,
+      # whose archive digest GitHub records as e03938ff2c4c86d71c00c0f3284dbbe95c5ca76fe34a51f33e945c23010d59bb.
+      - name: Verify the cog binary
+        env:
+          COG_SHA256: 43de087a44cb2f50bb4f8b3cc99e1c3c4fdaeb57fcd742124543a7c48a9bb6b2
+        run: |
+          printf '%s  %s\n' "$COG_SHA256" "$HOME/.local/bin/cog" | sha256sum -c -
+          cog --version | grep -F '7.0.0'
+
       # Without a tag, cocogitto reads the history from the first commit
       # (source: https://github.com/cocogitto/cocogitto/blob/055a9fa8db8ac8ce50074d50162b48b92e9d0c47/crates/cocogitto/src/conventional/bump.rs#L190-L194).
       # That would release a version no seed recorded, so a missing seed stops the run.
