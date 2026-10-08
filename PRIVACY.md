@@ -9,9 +9,9 @@ what the plugin sends, where it goes, and what the plugin keeps. Effective
 On every subagent dispatch it routes, the plugin sends one HTTPS POST to
 TypeSafe at https://api.typesafe.ai/v1/systemone. The request holds:
 
-- the subagent's task text, condensed and with token-shaped strings masked;
-- the subagent's type;
-- the caller's one-line description of the task;
+- the subagent's task text, condensed and with token-shaped strings masked
+- the subagent's type
+- the caller's one-line description of the task
 - your TypeSafe API key, as the bearer token.
 
 The task text holds whatever the caller put in it, which can include code. The
