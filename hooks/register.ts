@@ -1,3 +1,51 @@
 import type { Register } from 'claude-code'
+import { route } from './router.ts'
 
-export const register: Register = () => {}
+const JEV_URL = 'https://api.typesafe.ai/v1/systemone'
+const HTTP_TIMEOUT_MS = 8000
+
+export const register: Register = (on, options) => {
+  const mode = options.mode === 'auto' ? 'auto' : 'suggest'
+
+  on('agent.spawn', async ($, e, next) => {
+    if (e.fork || e.isTeammate || e.workflow !== undefined || e.model !== undefined) return next(e)
+
+    const key = await $.env.get('TYPESAFE_API_KEY')
+    const post = async (body: string): Promise<string> => {
+      if (!key) throw new Error('TYPESAFE_API_KEY unset')
+      const stop = new AbortController()
+      const timeout = $.clock.sleep(HTTP_TIMEOUT_MS, { signal: stop.signal })
+        .then(() => { throw new Error(`no answer in ${HTTP_TIMEOUT_MS} ms`) })
+      try {
+        const res = await Promise.race([
+          $.http.fetch(JEV_URL, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+            body,
+          }),
+          timeout,
+        ])
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.text
+      } finally {
+        stop.abort()
+      }
+    }
+
+    const decision = await route({ role: e.subagentType, description: e.description, prompt: e.prompt }, post)
+    if ('skipped' in decision) {
+      $.ui.log(`model-router: skipped, ${decision.skipped}`)
+      return next(e)
+    }
+    const top = decision.probabilities[String(decision.level)].toFixed(2)
+    const pick = `L${decision.level} ${decision.model} · p=${top}`
+    if (mode === 'suggest') {
+      const r = await next(e)
+      $.ui.log(`model-router would pick ${pick} · ran on ${'deny' in r && r.deny !== undefined ? 'nothing, denied' : r.model}`)
+      return r
+    }
+    const r = await next({ ...e, model: decision.model })
+    $.ui.log(`model-router: ${pick}`)
+    return r
+  }).catch(($, e, next) => next(e))
+}
