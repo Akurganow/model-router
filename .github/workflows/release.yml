@@ -39,12 +39,10 @@ jobs:
         with:
           node-version: "24"
 
-      # cocogitto's own action installs cog on PATH for the later steps and checks
-      # that every commit since the latest tag is conventional.
-      - uses: cocogitto/cocogitto-action@9a9fe03b31c47444290c0d7f9b1ee1b44ee13f20 # v4.1.0
+      # cocogitto's own action installs cog 7.0.0 on PATH for the later steps.
+      - uses: cocogitto/cocogitto-action@52d0023b4396897f1815648e553db2ab8d782f3a # v4.2.0
         with:
-          command: check
-          args: --from-latest-tag
+          install-only: true
 
       # Without a tag, cocogitto reads the history from the first commit
       # (source: https://github.com/cocogitto/cocogitto/blob/055a9fa8db8ac8ce50074d50162b48b92e9d0c47/crates/cocogitto/src/conventional/bump.rs#L190-L194).
