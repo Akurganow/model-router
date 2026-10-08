@@ -27,5 +27,5 @@ Only a model passed in the Agent call is kept. In auto mode the hook also overri
 ## Commands
 
 - `claude plugin test ~/.claude/skills/model-router` runs the tests, no network.
-- `node ~/.claude/skills/model-router/scripts/calibrate.ts` runs the labelled seed against Jev and prints misses and agreement.
+- `node ~/.claude/skills/model-router/scripts/calibrate.ts --key <TypeSafe API key>` runs the labelled seed against Jev and prints misses and agreement.
 - `claude plugin validate ~/.claude/skills/model-router` lists the hooks and calls.

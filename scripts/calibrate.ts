@@ -6,9 +6,10 @@ const JEV_URL = 'https://api.typesafe.ai/v1/systemone'
 
 type Case = { role: string; description: string; text: string; expected: number }
 
-const key = process.env.TYPESAFE_API_KEY
+const keyFlag = process.argv.indexOf('--key')
+const key = keyFlag === -1 ? undefined : process.argv[keyFlag + 1]
 if (!key) {
-  console.error('TYPESAFE_API_KEY unset')
+  console.error('usage: node scripts/calibrate.ts --key <TypeSafe API key>')
   process.exit(2)
 }
 
