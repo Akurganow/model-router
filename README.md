@@ -10,9 +10,8 @@ bounded judgment, `opus` for open judgment.
 
 - Claude Code v2.1.287 or later (mods are on by default).
 - A TypeSafe API key from https://console.typesafe.ai/keys. The install dialog
-  asks for it and keeps it in your system's secure storage. To set it later, run
-  `/plugin configure model-router@model-router` in a session.
-- Node 23.6 or later to run the calibration script.
+  in `/plugin` asks for it and keeps it in your system's secure storage.
+- Node 22.18 or 23.6 or later runs the calibration script.
 
 ## Install
 
@@ -21,6 +20,18 @@ bounded judgment, `opus` for open judgment.
 ```
 
 Answer `y` to add the marketplace, then pick the user scope.
+
+## Set the key later
+
+In a session, run `/plugin configure model-router@model-router` to open the
+install dialog again. From a shell, pass a JSON object on stdin:
+
+```
+echo '{"api_key": "<your TypeSafe API key>"}' | \
+  claude plugin configure model-router@model-router --values-stdin
+```
+
+A saved key takes effect after `/reload-plugins` or in the next session.
 
 ## Mode
 
@@ -38,13 +49,15 @@ see it. Forks, agent-team teammates and workflow agents pass through untouched.
 
 ## What leaves the machine
 
-The subagent's prompt goes to one endpoint, `https://api.typesafe.ai/v1/systemone`,
-in an HTTPS POST with your TypeSafe API key as the bearer token, after two steps: fenced code blocks are
-replaced by a one-line size note, and token-shaped strings are masked
-(`Bearer …`, `sk-…` keys, assignments to names ending in `key`, `token`,
-`secret` or `password`). The subagent's type and the caller's one-line
-description go with it. Nothing else is sent, fetched or run. Any failure,
-from a missing key to a timeout, leaves the dispatch unchanged.
+The subagent's prompt goes to one endpoint:
+`https://api.typesafe.ai/v1/systemone`.
+It travels in an HTTPS POST with your TypeSafe API key as the bearer token.
+Two steps run on the prompt first. Fenced code blocks become a one-line size
+note. Token-shaped strings are masked (`Bearer …`, `sk-…` keys, assignments to
+names ending in `key`, `token`, `secret` or `password`). The subagent's type
+and the caller's one-line description go with it. Nothing else leaves the
+machine. Any failure, from a missing key to a timeout, leaves the dispatch
+unchanged.
 
 ## Calibration and tests
 

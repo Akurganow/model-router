@@ -63,6 +63,14 @@ test('a missing key passes through and says so', { options: { mode: 'auto' } }, 
   expect(h.logs).toEqual(['model-router: skipped, api_key unset'])
 })
 
+test('an empty key passes through like a missing one', { options: { mode: 'auto', api_key: '' } }, async ($, on) => {
+  const h = harness(on)
+  await $.agent.spawn(spawn())
+  expect(h.received.model).toBeUndefined()
+  expect(h.fetched).toBe(0)
+  expect(h.logs).toEqual(['model-router: skipped, api_key unset'])
+})
+
 test('an HTTP error passes through and names the status', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   const h = harness(on, 'overloaded', 529)
   await $.agent.spawn(spawn())
