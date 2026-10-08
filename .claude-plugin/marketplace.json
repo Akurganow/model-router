@@ -1,0 +1,6 @@
+{
+  "name": "model-router",
+  "owner": { "name": "Akurganow" },
+  "description": "Routes each Claude Code subagent to the cheapest Claude model that can do its task, judged by TypeSafe Jev",
+  "plugins": [{ "name": "model-router", "source": "./" }]
+}
