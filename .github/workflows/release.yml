@@ -39,20 +39,12 @@ jobs:
         with:
           node-version: "24"
 
-      # cocogitto 7.0.0's release archive for this runner, pinned by sha256
-      # and checked before use. The digest matches GitHub's record of the upload.
-      - name: Install cocogitto
-        env:
-          COG_URL: https://github.com/cocogitto/cocogitto/releases/download/7.0.0/cocogitto-7.0.0-x86_64-unknown-linux-musl.tar.gz
-          COG_SHA256: e03938ff2c4c86d71c00c0f3284dbbe95c5ca76fe34a51f33e945c23010d59bb
-        run: |
-          cd "$RUNNER_TEMP"
-          curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors -o cocogitto.tar.gz "$COG_URL"
-          printf '%s  %s\n' "$COG_SHA256" cocogitto.tar.gz | sha256sum -c -
-          mkdir -p "$HOME/.local/bin"
-          tar -xzf cocogitto.tar.gz --strip-components=1 -C "$HOME/.local/bin" x86_64-unknown-linux-musl/cog
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          "$HOME/.local/bin/cog" --version | grep -F '7.0.0'
+      # cocogitto's own action installs cog on PATH for the later steps and checks
+      # that every commit since the latest tag is conventional.
+      - uses: cocogitto/cocogitto-action@9a9fe03b31c47444290c0d7f9b1ee1b44ee13f20 # v4.1.0
+        with:
+          command: check
+          args: --from-latest-tag
 
       # Without a tag, cocogitto reads the history from the first commit
       # (source: https://github.com/cocogitto/cocogitto/blob/055a9fa8db8ac8ce50074d50162b48b92e9d0c47/crates/cocogitto/src/conventional/bump.rs#L190-L194).
