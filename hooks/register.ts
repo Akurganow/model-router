@@ -1,7 +1,6 @@
 import type { Register } from 'claude-code'
 import { route } from './router.ts'
 
-const JEV_URL = 'https://api.typesafe.ai/v1/systemone'
 const HTTP_TIMEOUT_MS = 8000
 
 export const register: Register = (on, options) => {
@@ -18,7 +17,7 @@ export const register: Register = (on, options) => {
         .then(() => { throw new Error(`no answer in ${HTTP_TIMEOUT_MS} ms`) })
       try {
         const res = await Promise.race([
-          $.http.fetch(JEV_URL, {
+          $.http.fetch('https://api.typesafe.ai/v1/systemone', {
             method: 'POST',
             headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
             body,
