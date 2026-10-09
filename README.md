@@ -97,11 +97,12 @@ line reads `model-router: L0 haiku · p=0.91` and the subagent runs on `haiku`.
 
 ## Troubleshooting
 
-- No log line appears: the plugin is disabled or the key is not set. Run
-  `/plugin configure model-router@model-router`, enter the key, then
-  `/reload-plugins`.
+- No log line appears: the plugin is disabled, or the dispatch was not routed.
+  Forks, teammates, workflow agents and calls that name a model pass through
+  untouched. Enable the plugin in `/plugin`.
 - The line says `model-router: skipped, api_key unset`: the key is not set.
-  Same fix.
+  Run `/plugin configure model-router@model-router`, enter the key, then
+  `/reload-plugins`.
 - The line says `skipped, HTTP 401`: TypeSafe rejected the key. Check it at
   https://console.typesafe.ai/keys.
 - The line says `skipped, no answer in 8000 ms`: the request timed out. The
