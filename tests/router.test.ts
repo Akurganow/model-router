@@ -1,11 +1,13 @@
 import { expect, test } from 'claude-code/testing'
-import { BUDGET_CHARS, JEV_MODEL, TIERS, route } from '../hooks/router.ts'
+import { BUDGET_CHARS, JEV_MODEL, TIERS, WORK_LEVELS, route } from '../hooks/router.ts'
 
 type Sent = { body: Record<string, any> }
 
-const answer = (p: Record<string, number>, confidence = 0.9) => JSON.stringify({
+const score = (p: Record<string, number>) => ({ type: 'score', score: 0, confidence: 0.9, legend: {}, probabilities: p })
+
+const answer = (tier: Record<string, number>, work: Record<string, number> = { '0': 0.2, '1': 0.6, '2': 0.2 }) => JSON.stringify({
   model: JEV_MODEL,
-  answers: { tier: { type: 'score', score: 0, confidence, legend: {}, probabilities: p } },
+  answers: { tier: score(tier), work: score(work) },
   usage: { input_tokens: 1, output_tokens: 1 },
 })
 
@@ -45,7 +47,7 @@ test('token-shaped strings are masked and ordinary text is kept', async () => {
   expect(task).toContain('Keep the config keys in order.')
 })
 
-test('the request pins the model, names the state fields and carries one criterion per tier', async () => {
+test('the request pins the model, names the state fields and carries both questions', async () => {
   const sent: Sent = { body: {} }
   await route({ role: 'reviewer', description: 'review the diff', prompt: 'Review it.' }, stubPost(sent))
   expect(sent.body.model).toBe(JEV_MODEL)
@@ -57,12 +59,22 @@ test('the request pins the model, names the state fields and carries one criteri
   expect(tier.instructions).toContain('`role`')
   expect(tier.instructions).toContain('`description`')
   expect(tier.criteria).toEqual(TIERS.map(t => t.text))
+  const work = sent.body.questions.work
+  expect(work.type).toBe('score')
+  expect(work.instructions).toContain('`task`')
+  expect(work.criteria).toEqual(WORK_LEVELS)
 })
 
-test('the decision is the level with the highest probability', async () => {
+test('the decision names the tier, the work index and the effort from the ladder', async () => {
   const sent: Sent = { body: {} }
-  const d = await route(input('Fix the named defect.'), stubPost(sent, answer({ '0': 0.2, '1': 0.7, '2': 0.1 }, 0.6)))
-  expect(d).toEqual({ model: 'sonnet', level: 1, probabilities: { '0': 0.2, '1': 0.7, '2': 0.1 }, confidence: 0.6 })
+  const d = await route(input('Fix the named defect.'), stubPost(sent, answer({ '0': 0.2, '1': 0.7, '2': 0.1 }, { '0': 0.7, '1': 0.2, '2': 0.1 })))
+  expect(d).toEqual({
+    model: 'sonnet',
+    level: 1,
+    workIndex: 0,
+    effort: 'low',
+    probabilities: { tier: { '0': 0.2, '1': 0.7, '2': 0.1 }, work: { '0': 0.7, '1': 0.2, '2': 0.1 } },
+  })
 })
 
 test('a rejecting post is a skip with its reason', async () => {
@@ -105,4 +117,31 @@ test('assignments to names ending in key, token, secret or password are masked i
   expect(task).toContain('apiKey: ***')
   expect(task).toContain('password=***')
   for (const secret of ['hunter22', 'sw0rdf1sh', 'letmein']) expect(task).not.toContain(secret)
+})
+
+test('a near tie between the top two levels goes to the higher level', async () => {
+  const sent: Sent = { body: {} }
+  const close = await route(input('x'), stubPost(sent, answer({ '0': 0.2, '1': 0.42, '2': 0.38 })))
+  expect('level' in close && close.level).toBe(2)
+  const clear = await route(input('x'), stubPost(sent, answer({ '0': 0.1, '1': 0.6, '2': 0.3 })))
+  expect('level' in clear && clear.level).toBe(1)
+})
+
+test('the work index rests on the middle unless an end has more than twice its probability', async () => {
+  const sent: Sent = { body: {} }
+  const cases: [Record<string, number>, number][] = [
+    [{ '0': 0.4, '1': 0.35, '2': 0.25 }, 1],
+    [{ '0': 0.7, '1': 0.3, '2': 0 }, 0],
+    [{ '0': 0, '1': 0.3, '2': 0.7 }, 2],
+  ]
+  for (const [work, expected] of cases) {
+    const d = await route(input('x'), stubPost(sent, answer({ '0': 0, '1': 1, '2': 0 }, work)))
+    expect('workIndex' in d && d.workIndex).toBe(expected)
+  }
+})
+
+test('a malformed work answer is a skip', async () => {
+  const body = JSON.stringify({ model: JEV_MODEL, answers: { tier: score({ '0': 1, '1': 0, '2': 0 }) } })
+  const d = await route(input('x'), async () => body)
+  expect(d).toEqual({ skipped: 'malformed answer' })
 })
