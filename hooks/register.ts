@@ -8,6 +8,7 @@ export const register: Register = (on, options) => {
   // The key is the plugin's sensitive userConfig option and goes only to TypeSafe, which issued it.
   const apiKey = typeof options.api_key === 'string' && options.api_key !== '' ? options.api_key : undefined
   // Read by the turn.step hook below. Never emptied: a session spawns at most hundreds of agents.
+  // A reload starts it empty, so agents already running keep the engine's effort.
   const effortByAgent = new Map<string, Effort>()
 
   on('agent.spawn', async ($, e, next) => {
@@ -49,7 +50,7 @@ export const register: Register = (on, options) => {
     }
     const r = await next({ ...e, model })
     if (r.agentId !== undefined) effortByAgent.set(r.agentId, effort)
-    $.ui.log(pick)
+    $.ui.log('deny' in r && r.deny !== undefined ? `${pick} · denied` : pick)
     return r
   }).catch(($, e, next) => next(e))
 
