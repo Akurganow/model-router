@@ -11,6 +11,7 @@ export const register: Register = (on, options) => {
   // A reload starts it empty, so agents already running keep the engine's effort.
   const effortByAgent = new Map<string, Effort>()
   // The spawn event does not carry the Agent call's effort, so calls that name one are matched by tool_use_id.
+  // Ids of calls that never spawn stay, one short string each.
   const callerEffort = new Set<string>()
 
   on('tool.call', { tool: 'Agent' }, ($, e, next) => {

@@ -194,22 +194,24 @@ test('a denied spawn in auto mode says so and records no effort', { options: { m
 
 test('an Agent call that names an effort keeps it', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   const efforts = recordEfforts(on)
-  on('tool.call', () => TOOL_RESULT)
+  let calledId = ''
+  on('tool.call', (_: unknown, e: any) => { calledId = e.tool_use_id; return TOOL_RESULT })
   const h = harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
   await $.tool.call(agentCall({ effort: 'low' }))
-  await $.agent.spawn(spawn())
-  await drain($.turn.step(step({ agentId: 'a1' })))
-  expect(efforts).toEqual(['high'])
+  await $.agent.spawn(spawn({ tool_use_id: calledId }))
+  await drain($.turn.step(step({ agentId: 'a1', effort: 'low' })))
+  expect(efforts).toEqual(['low'])
   expect(h.received.model).toBe('sonnet')
   expect(h.logs).toEqual(['L1 sonnet · caller effort · p=0.80/0.60'])
 })
 
 test('an Agent call without an effort is routed as before', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   const efforts = recordEfforts(on)
-  on('tool.call', () => TOOL_RESULT)
+  let calledId = ''
+  on('tool.call', (_: unknown, e: any) => { calledId = e.tool_use_id; return TOOL_RESULT })
   const h = harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
   await $.tool.call(agentCall())
-  await $.agent.spawn(spawn())
+  await $.agent.spawn(spawn({ tool_use_id: calledId }))
   await drain($.turn.step(step({ agentId: 'a1' })))
   expect(efforts).toEqual(['medium'])
   expect(h.logs).toEqual(['L1 sonnet · medium · p=0.80/0.60'])
@@ -217,13 +219,27 @@ test('an Agent call without an effort is routed as before', { options: { mode: '
 
 test('a kept effort does not leak to the next call', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   const efforts = recordEfforts(on)
-  on('tool.call', () => TOOL_RESULT)
+  let calledId = ''
+  on('tool.call', (_: unknown, e: any) => { calledId = e.tool_use_id; return TOOL_RESULT })
   harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
   await $.tool.call(agentCall({ effort: 'low' }))
-  await $.agent.spawn(spawn({ tool_use_id: 'toolu_1' }))
-  await $.agent.spawn(spawn({ tool_use_id: 'toolu_1' }))
+  await $.agent.spawn(spawn({ tool_use_id: calledId }))
+  await drain($.turn.step(step({ agentId: 'a1' })))
+  await $.agent.spawn(spawn({ tool_use_id: calledId }))
   await $.agent.spawn(spawn({ tool_use_id: 'toolu_2' }))
   await drain($.turn.step(step({ agentId: 'a1' })))
   await drain($.turn.step(step({ agentId: 'a2' })))
-  expect(efforts).toEqual(['medium', 'medium'])
+  expect(efforts).toEqual(['high', 'medium', 'medium'])
+})
+
+test('a call that names both effort and model consumes its id', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  const efforts = recordEfforts(on)
+  let calledId = ''
+  on('tool.call', (_: unknown, e: any) => { calledId = e.tool_use_id; return TOOL_RESULT })
+  harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
+  await $.tool.call(agentCall({ effort: 'low', model: 'sonnet' }))
+  await $.agent.spawn(spawn({ tool_use_id: calledId, model: 'sonnet' }))
+  await $.agent.spawn(spawn({ tool_use_id: calledId }))
+  await drain($.turn.step(step({ agentId: 'a1' })))
+  expect(efforts).toEqual(['medium'])
 })
