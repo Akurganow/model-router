@@ -10,8 +10,16 @@ export const register: Register = (on, options) => {
   // Read by the turn.step hook below. Never emptied: a session spawns at most hundreds of agents.
   // A reload starts it empty, so agents already running keep the engine's effort.
   const effortByAgent = new Map<string, Effort>()
+  // The spawn event does not carry the Agent call's effort, so calls that name one are matched by tool_use_id.
+  const callerEffort = new Set<string>()
+
+  on('tool.call', { tool: 'Agent' }, ($, e, next) => {
+    if (e.effort !== undefined) callerEffort.add(e.tool_use_id)
+    return next(e)
+  })
 
   on('agent.spawn', async ($, e, next) => {
+    const keep = callerEffort.delete(e.tool_use_id)
     if (e.fork || e.isTeammate || e.workflow !== undefined || e.model !== undefined) return next(e)
 
     const post = async (body: string): Promise<string> => {
@@ -42,14 +50,14 @@ export const register: Register = (on, options) => {
     }
     const { level, model, workIndex, effort, probabilities } = decision
     const p = `${probabilities.tier[String(level)].toFixed(2)}/${probabilities.work[String(workIndex)].toFixed(2)}`
-    const pick = `L${level} ${model} · ${effort} · p=${p}`
+    const pick = `L${level} ${model} · ${keep ? 'caller effort' : effort} · p=${p}`
     if (mode === 'suggest') {
       const r = await next(e)
       $.ui.log(`would pick ${pick} · ran on ${'deny' in r && r.deny !== undefined ? 'nothing, denied' : r.model}`)
       return r
     }
     const r = await next({ ...e, model })
-    if (r.agentId !== undefined) effortByAgent.set(r.agentId, effort)
+    if (r.agentId !== undefined && !keep) effortByAgent.set(r.agentId, effort)
     $.ui.log('deny' in r && r.deny !== undefined ? `${pick} · denied` : pick)
     return r
   }).catch(($, e, next) => next(e))

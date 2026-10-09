@@ -23,11 +23,22 @@ const STEP_RESULT = { turnId: 't1', index: 0, answer: '', toolUses: [], stopReas
 
 const CHUNK = { kind: 'text', index: 0, text: 'hi' } as any
 
+const TOOL_RESULT = { result: 'ok' } as any
+
 const recordEfforts = (on: any) => {
   const efforts: unknown[] = []
   on('turn.step', async function* (_: unknown, e: any) { efforts.push(e.effort); return STEP_RESULT })
   return efforts
 }
+
+const agentCall = (over: Record<string, unknown> = {}) => ({
+  tool: 'Agent',
+  tool_use_id: 'toolu_1',
+  prompt: 'Create src/hello.ts with exactly this content and run the tests.',
+  description: 'write hello',
+  subagent_type: 'general-purpose',
+  ...over,
+}) as any
 
 const spawn = (over: Record<string, unknown> = {}) => ({
   tool_use_id: 'toolu_1',
@@ -48,7 +59,7 @@ const harness = (on: any, fetchText = ANSWER([0.9, 0.1, 0]), status = 200): Harn
   mock.clock(on)
   on('ui.log', (_: unknown, e: { text: string }) => { h.logs.push(e.text); return { value: undefined } })
   on('http.fetch', () => { h.fetched += 1; return { value: { status, ok: status < 300, headers: {}, text: fetchText } } })
-  on('agent.spawn', (_: unknown, e: any) => { h.received = e; return { model: e.model ?? e.parentModel, agentId: 'a1' } })
+  on('agent.spawn', (_: unknown, e: any) => { h.received = e; return { model: e.model ?? e.parentModel, agentId: e.tool_use_id === 'toolu_2' ? 'a2' : 'a1' } })
   return h
 }
 
@@ -179,4 +190,40 @@ test('a denied spawn in auto mode says so and records no effort', { options: { m
   on('agent.spawn', () => ({ deny: 'no' }))
   await $.agent.spawn(spawn())
   expect(logs).toEqual(['L0 haiku · high · p=0.90/0.60 · denied'])
+})
+
+test('an Agent call that names an effort keeps it', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  const efforts = recordEfforts(on)
+  on('tool.call', () => TOOL_RESULT)
+  const h = harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
+  await $.tool.call(agentCall({ effort: 'low' }))
+  await $.agent.spawn(spawn())
+  await drain($.turn.step(step({ agentId: 'a1' })))
+  expect(efforts).toEqual(['high'])
+  expect(h.received.model).toBe('sonnet')
+  expect(h.logs).toEqual(['L1 sonnet · caller effort · p=0.80/0.60'])
+})
+
+test('an Agent call without an effort is routed as before', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  const efforts = recordEfforts(on)
+  on('tool.call', () => TOOL_RESULT)
+  const h = harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
+  await $.tool.call(agentCall())
+  await $.agent.spawn(spawn())
+  await drain($.turn.step(step({ agentId: 'a1' })))
+  expect(efforts).toEqual(['medium'])
+  expect(h.logs).toEqual(['L1 sonnet · medium · p=0.80/0.60'])
+})
+
+test('a kept effort does not leak to the next call', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  const efforts = recordEfforts(on)
+  on('tool.call', () => TOOL_RESULT)
+  harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
+  await $.tool.call(agentCall({ effort: 'low' }))
+  await $.agent.spawn(spawn({ tool_use_id: 'toolu_1' }))
+  await $.agent.spawn(spawn({ tool_use_id: 'toolu_1' }))
+  await $.agent.spawn(spawn({ tool_use_id: 'toolu_2' }))
+  await drain($.turn.step(step({ agentId: 'a1' })))
+  await drain($.turn.step(step({ agentId: 'a2' })))
+  expect(efforts).toEqual(['medium', 'medium'])
 })
