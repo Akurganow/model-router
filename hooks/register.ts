@@ -5,6 +5,7 @@ const HTTP_TIMEOUT_MS = 8000
 
 export const register: Register = (on, options) => {
   const mode = options.mode === 'auto' ? 'auto' : 'suggest'
+  // The key is the plugin's sensitive userConfig option and goes only to TypeSafe, which issued it.
   const apiKey = typeof options.api_key === 'string' && options.api_key !== '' ? options.api_key : undefined
 
   on('agent.spawn', async ($, e, next) => {
