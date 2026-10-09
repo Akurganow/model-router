@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { BUDGET_CHARS, JEV_MODEL, TIERS, WORK_LEVELS, route } from '../hooks/router.ts'
+import { BUDGET_CHARS, EFFORT_LADDER, JEV_MODEL, TIERS, WORK_LEVELS, route } from '../hooks/router.ts'
 
 type Sent = { body: Record<string, any> }
 
@@ -72,12 +72,12 @@ test('the decision names the tier, the work index and the effort from the ladder
     model: 'sonnet',
     level: 1,
     workIndex: 0,
-    effort: 'low',
+    effort: EFFORT_LADDER.sonnet[0],
     probabilities: { tier: { '0': 0.2, '1': 0.7, '2': 0.1 }, work: { '0': 0.7, '1': 0.2, '2': 0.1 } },
   })
   const haiku = await route(input('Fix the named defect.'), stubPost(sent, answer({ '0': 1, '1': 0, '2': 0 }, { '0': 0.7, '1': 0.2, '2': 0.1 })))
   expect('model' in haiku && haiku.model).toBe('haiku')
-  expect('effort' in haiku && haiku.effort).toBe('medium')
+  expect('effort' in haiku && haiku.effort).toBe(EFFORT_LADDER.haiku[0])
 })
 
 test('a rejecting post is a skip with its reason', async () => {
@@ -129,10 +129,8 @@ test('a near tie goes to the highest level within the margin', async () => {
   const clear = await route(input('x'), stubPost(sent, answer({ '0': 0.1, '1': 0.6, '2': 0.3 })))
   expect('level' in clear && clear.level).toBe(1)
   const flat = await route(input('x'), stubPost(sent, answer({ '0': 0.34, '1': 0.33, '2': 0.33 })))
-  expect('level' in flat).toBe(true)
   expect('level' in flat && flat.level).toBe(2)
   const second = await route(input('x'), stubPost(sent, answer({ '0': 0.5, '1': 0.45, '2': 0.05 })))
-  expect('level' in second).toBe(true)
   expect('level' in second && second.level).toBe(1)
 })
 

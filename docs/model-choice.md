@@ -116,7 +116,7 @@ before the subagent's first request.
 >   re-dispatch on the same tier at higher effort.
 > - Otherwise re-dispatch one tier up with a new brief that states what
 >   failed.
-> - Level 0 escalates on its first failure.
+> - Level 0 goes one tier up on its first failure, skipped steps included.
 > - Above opus, re-dispatch opus at `high`, then at `xhigh`. Use fable only
 >   when the user opted in. Otherwise stop and report.
 
@@ -287,7 +287,7 @@ pages were read on 2026-10-10.
   <https://claude.com/blog/the-advisor-strategy> —
   2026-04-09. Sonnet and Haiku with an Opus advisor, measured on 4.x models.
 - **When to use multi-agent systems (and when not to)** —
-<https://claude.com/blog/building-multi-agent-systems-when-and-how-to-use-them>
+  <https://claude.com/blog/building-multi-agent-systems-when-and-how-to-use-them>
   — 2026-01-23. Verifier subagents that declare success after one or two
   tests.
 - **How we built our multi-agent research system** —

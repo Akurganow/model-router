@@ -2,7 +2,7 @@
 
 model-router is a Claude Code plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-10-09.
+2026-10-10.
 
 ## What the plugin sends
 

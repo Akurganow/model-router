@@ -182,7 +182,7 @@ test('turn.step forwards the chunks and the result', { options: { mode: 'auto', 
   expect(r.value).toEqual(STEP_RESULT)
 })
 
-test('a denied spawn in auto mode says so and records no effort', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+test('a denied spawn in auto mode says so', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   mock.clock(on)
   const logs: string[] = []
   on('ui.log', (_: unknown, e: { text: string }) => { logs.push(e.text); return { value: undefined } })
@@ -236,10 +236,22 @@ test('a call that names both effort and model consumes its id', { options: { mod
   const efforts = recordEfforts(on)
   let calledId = ''
   on('tool.call', (_: unknown, e: any) => { calledId = e.tool_use_id; return TOOL_RESULT })
-  harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
+  const h = harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
   await $.tool.call(agentCall({ effort: 'low', model: 'sonnet' }))
   await $.agent.spawn(spawn({ tool_use_id: calledId, model: 'sonnet' }))
+  expect(h.received.tool_use_id).toBe(calledId)
   await $.agent.spawn(spawn({ tool_use_id: calledId }))
   await drain($.turn.step(step({ agentId: 'a1' })))
   expect(efforts).toEqual(['medium'])
+})
+
+test('a substituted model keeps the engine\'s effort', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  const efforts = recordEfforts(on)
+  mock.clock(on)
+  on('ui.log', () => ({ value: undefined }))
+  on('http.fetch', () => ({ value: { status: 200, ok: true, headers: {}, text: ANSWER([0.9, 0.1, 0], [0.7, 0.2, 0.1]) } }))
+  on('agent.spawn', () => ({ model: 'claude-opus-5-5', agentId: 'a1' }))
+  await $.agent.spawn(spawn())
+  await drain($.turn.step(step({ agentId: 'a1' })))
+  expect(efforts).toEqual(['high'])
 })

@@ -58,7 +58,8 @@ export const register: Register = (on, options) => {
       return r
     }
     const r = await next({ ...e, model })
-    if (r.agentId !== undefined && !keep) effortByAgent.set(r.agentId, effort)
+    // A forced or substituted model (CLAUDE_CODE_SUBAGENT_MODEL_FORCE, availableModels) keeps the engine's effort.
+    if (r.agentId !== undefined && !keep && r.model.includes(model)) effortByAgent.set(r.agentId, effort)
     $.ui.log('deny' in r && r.deny !== undefined ? `${pick} · denied` : pick)
     return r
   }).catch(($, e, next) => next(e))

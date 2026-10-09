@@ -49,7 +49,7 @@ the same host. Claude Code never runs it.
 
 ## Requirements
 
-- Claude Code v2.1.287 or later (mods are on by default).
+- Claude Code v2.1.292 or later (mods are on by default).
 - A TypeSafe API key from https://console.typesafe.ai/keys. The install dialog
   in `/plugin` asks for it and keeps it in your system's secure storage.
 - Node 22.18 or 23.6 or later runs the calibration script.
@@ -72,16 +72,16 @@ next session.
 
 The `Routing mode` row in `/config` holds the mode:
 
-- `suggest` (default): log the model Jev would pick, change nothing. One dim
-  line per dispatch shows the pick beside the model that ran.
+- `suggest` (default): log the model and effort Jev would pick, change nothing.
+  One dim line per dispatch shows the pick beside the model that ran.
 - `auto`: set the model and the effort.
 
 To turn routing off, disable the plugin in `/plugin`.
 
 The spawn hook keeps a model passed in the Agent call. In `auto` mode it
-overrides a model pinned in an agent definition's frontmatter, because the
-hook cannot see it. Forks, agent-team teammates and workflow agents pass
-through untouched.
+overrides a model or an effort pinned in an agent definition's frontmatter,
+because the hook cannot see it. Forks, agent-team teammates and workflow
+agents pass through untouched.
 
 ## Effort
 
@@ -96,10 +96,10 @@ middle's probability. The index then maps to an effort per model:
 | 1, an ordinary task | high | medium | medium |
 | 2, a long or delicate task | xhigh | high | high |
 
-Haiku never runs below `medium`, because Anthropic measured early stops at
-`low`. `max` is never set. An effort named in the Agent call is kept, with or
-without a model: the mod sees the call and leaves that subagent's effort
-alone. A model named in the call keeps both the model and the effort.
+The router never sets Haiku below `medium`, because Anthropic measured early
+stops at `low`. `max` is never set. An effort named in the Agent call is kept,
+with or without a model: the mod sees the call and leaves that subagent's
+effort alone. A model named in the call keeps both the model and the effort.
 
 ## What leaves the machine
 
@@ -125,10 +125,12 @@ subagent. Three dispatches and what the mod does with them:
    judgment scores level 2, `opus`.
 
 In `suggest` mode each of these only logs the pick, for example
-`model-router would pick L0 haiku · medium · p=0.91/0.62 · ran on opus`. In
-`auto` mode the line reads `model-router L0 haiku · medium · p=0.91/0.62` and
-the subagent runs on `haiku`. The second number is the probability of the
-chosen work index.
+`model-router would pick L0 haiku · medium · p=0.91/0.62 · ran on
+claude-opus-5-5`. In `auto` mode the line reads
+`model-router L0 haiku · medium · p=0.91/0.62` and the subagent runs on
+`haiku`. The second number is the probability of the chosen work index.
+A kept caller effort shows as `caller effort` in place of the ladder label, and
+a denied spawn ends the line with `· denied`.
 
 ## Troubleshooting
 

@@ -9,12 +9,12 @@ description: >
 
 # model-router
 
-A mod in this folder hooks every subagent start. In `auto` mode it asks
-TypeSafe Jev how much judgment and work the task needs, and sets the
-subagent's model and effort. The model is `haiku` for lookup or transcription,
-`sonnet` for bounded judgment and `opus` for open judgment. In `suggest` mode
-it only logs the model and effort it would pick. One dim line per dispatch
-appears in the transcript.
+A mod in this folder hooks every subagent start. It asks TypeSafe Jev how much
+judgment and work the task needs. In `auto` mode it sets the subagent's model
+and effort. The model is `haiku` for lookup or transcription, `sonnet` for
+bounded judgment and `opus` for open judgment. In `suggest` mode it only logs
+the model and effort it would pick. One dim line per dispatch appears in the
+transcript.
 
 ## Mode
 
@@ -30,14 +30,14 @@ or two fix rounds in a row make no progress.
   re-dispatch on the same tier at higher effort.
 - Otherwise re-dispatch one tier up with a new brief that states what
   failed.
-- Level 0 escalates on its first failure.
+- Level 0 goes one tier up on its first failure, skipped steps included.
 - Above opus, re-dispatch opus at `high`, then at `xhigh`. Use fable only
   when the user opted in. Otherwise stop and report.
 
 A model or an effort named in the Agent call is kept, so an escalated
 re-dispatch passes `model` and `effort` explicitly in the Agent call. In
-auto mode the hook also overrides a model pinned in an agent definition's
-frontmatter, because the hook cannot see it.
+auto mode the hook also overrides a model or an effort pinned in an agent
+definition's frontmatter, because the hook cannot see it.
 
 ## Commands
 
