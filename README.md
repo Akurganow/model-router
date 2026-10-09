@@ -124,13 +124,19 @@ subagent. Three dispatches and what the mod does with them:
 3. "Review the whole branch for design problems and propose a split." Open
    judgment scores level 2, `opus`.
 
-In `suggest` mode each of these only logs the pick, for example
-`model-router would pick L0 haiku · medium · p=0.91/0.62 · ran on
-claude-opus-5-5`. In `auto` mode the line reads
-`model-router L0 haiku · medium · p=0.91/0.62` and the subagent runs on
-`haiku`. The second number is the probability of the chosen work index.
-A kept caller effort shows as `caller effort` in place of the ladder label, and
-a denied spawn ends the line with `· denied`.
+In `suggest` mode each of these only logs the pick. In `auto` mode the
+subagent runs on `haiku`. For the first dispatch the log shows these lines,
+`suggest` first:
+
+```
+model-router would pick L0 haiku · medium · p=0.91/0.62 · ran on claude-opus-5-5
+model-router L0 haiku · medium · p=0.91/0.62
+```
+
+The second number is the probability of the chosen work index. A kept caller
+effort shows as `caller effort` in place of the ladder label. In `auto` mode a
+denied spawn ends the line with `· denied`, in `suggest` mode with
+`ran on nothing, denied`.
 
 ## Troubleshooting
 
