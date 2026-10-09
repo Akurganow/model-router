@@ -1,7 +1,7 @@
 {
   "name": "model-router",
   "version": "0.3.3",
-  "description": "Routes each subagent to the cheapest Claude model that can do its task, judged by TypeSafe Jev",
+  "description": "Routes each subagent to the cheapest Claude model and effort that can do its task, judged by TypeSafe Jev",
   "author": {
     "name": "Akurganow",
     "url": "https://github.com/Akurganow"
