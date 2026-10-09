@@ -1,6 +1,6 @@
 {
   "name": "model-router",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Routes each subagent to the cheapest Claude model that can do its task, judged by TypeSafe Jev",
   "author": {
     "name": "Akurganow",

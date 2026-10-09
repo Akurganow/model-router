@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.3.1 - 2026-10-09
+#### Bug Fixes
+- add the privacy policy and the listing fields the directory asks for (c8dadd7)
+- strip generator metadata from the icon (1c95d29)
+#### Documentation
+- list the whole request in the privacy policy (5e99148)
+- drop semicolons from the privacy policy list (32ef952)
+#### Continuous Integration
+- run the checks on ubuntu and macos (247a83a)
+
+- - -
+
+
 ## v0.3.0 - 2026-10-08
 #### Features
 - add the directory listing icon (a700bcc)
