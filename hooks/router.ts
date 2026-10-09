@@ -20,8 +20,7 @@ export const WORK_LEVELS: readonly string[] = [
   'A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right.',
 ]
 
-// Effort is calibrated per model, so one work index lands on a different setting per model.
-// Haiku never runs below medium: at low it stops early on agentic prompts.
+// Effort is calibrated per model. Haiku's row sits one step higher: at low it stops early on agentic prompts.
 export const EFFORT_LADDER: Record<Model, readonly [Effort, Effort, Effort]> = {
   haiku: ['medium', 'high', 'xhigh'],
   sonnet: ['low', 'medium', 'high'],
@@ -96,7 +95,7 @@ function redact(text: string): string {
 
 function parseScore(answers: unknown, key: string, levels: number): Probabilities | undefined {
   const a = (answers as Record<string, any> | undefined)?.[key]
-  if (a?.type !== 'score' || typeof a.probabilities !== 'object') return undefined
+  if (a?.type !== 'score' || !a.probabilities || typeof a.probabilities !== 'object') return undefined
   const probabilities: Probabilities = {}
   for (let i = 0; i < levels; i++) {
     const p = a.probabilities[String(i)]
@@ -106,16 +105,17 @@ function parseScore(answers: unknown, key: string, levels: number): Probabilitie
   return probabilities
 }
 
-// A near tie goes to the higher level: when unsure, the larger model.
+// A near tie goes to the highest level within the margin: when unsure, the larger model.
 function pickTier(p: Probabilities): Level {
-  const [best, second] = ([0, 1, 2] as Level[]).sort((a, b) => p[String(b)] - p[String(a)])
-  return p[String(best)] - p[String(second)] < TIE_MARGIN ? (Math.max(best, second) as Level) : best
+  const best = ([0, 1, 2] as Level[]).reduce((a, b) => (p[String(b)] > p[String(a)] ? b : a))
+  for (const i of [2, 1] as Level[]) if (i > best && p[String(best)] - p[String(i)] < TIE_MARGIN) return i
+  return best
 }
 
-// The middle is the resting point: an end wins only with more than twice its probability.
+// The middle is the resting point: an end wins only with more than twice its probability. Equal ends go to the heavier one.
 function pickWork(p: Probabilities): Level {
   let best: Level = 1
-  for (const i of [0, 2] as Level[]) {
+  for (const i of [2, 0] as Level[]) {
     if (p[String(i)] * WORK_PRIOR[i] > p[String(best)] * WORK_PRIOR[best]) best = i
   }
   return best

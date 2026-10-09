@@ -75,6 +75,9 @@ test('the decision names the tier, the work index and the effort from the ladder
     effort: 'low',
     probabilities: { tier: { '0': 0.2, '1': 0.7, '2': 0.1 }, work: { '0': 0.7, '1': 0.2, '2': 0.1 } },
   })
+  const haiku = await route(input('Fix the named defect.'), stubPost(sent, answer({ '0': 1, '1': 0, '2': 0 }, { '0': 0.7, '1': 0.2, '2': 0.1 })))
+  expect('model' in haiku && haiku.model).toBe('haiku')
+  expect('effort' in haiku && haiku.effort).toBe('medium')
 })
 
 test('a rejecting post is a skip with its reason', async () => {
@@ -119,12 +122,18 @@ test('assignments to names ending in key, token, secret or password are masked i
   for (const secret of ['hunter22', 'sw0rdf1sh', 'letmein']) expect(task).not.toContain(secret)
 })
 
-test('a near tie between the top two levels goes to the higher level', async () => {
+test('a near tie goes to the highest level within the margin', async () => {
   const sent: Sent = { body: {} }
   const close = await route(input('x'), stubPost(sent, answer({ '0': 0.2, '1': 0.42, '2': 0.38 })))
   expect('level' in close && close.level).toBe(2)
   const clear = await route(input('x'), stubPost(sent, answer({ '0': 0.1, '1': 0.6, '2': 0.3 })))
   expect('level' in clear && clear.level).toBe(1)
+  const flat = await route(input('x'), stubPost(sent, answer({ '0': 0.34, '1': 0.33, '2': 0.33 })))
+  expect('level' in flat).toBe(true)
+  expect('level' in flat && flat.level).toBe(2)
+  const second = await route(input('x'), stubPost(sent, answer({ '0': 0.5, '1': 0.45, '2': 0.05 })))
+  expect('level' in second).toBe(true)
+  expect('level' in second && second.level).toBe(1)
 })
 
 test('the work index rests on the middle unless an end has more than twice its probability', async () => {
@@ -133,6 +142,8 @@ test('the work index rests on the middle unless an end has more than twice its p
     [{ '0': 0.4, '1': 0.35, '2': 0.25 }, 1],
     [{ '0': 0.7, '1': 0.3, '2': 0 }, 0],
     [{ '0': 0, '1': 0.3, '2': 0.7 }, 2],
+    [{ '0': 0.6, '1': 0.3, '2': 0.1 }, 1],
+    [{ '0': 0.45, '1': 0.1, '2': 0.45 }, 2],
   ]
   for (const [work, expected] of cases) {
     const d = await route(input('x'), stubPost(sent, answer({ '0': 0, '1': 1, '2': 0 }, work)))
@@ -142,6 +153,12 @@ test('the work index rests on the middle unless an end has more than twice its p
 
 test('a malformed work answer is a skip', async () => {
   const body = JSON.stringify({ model: JEV_MODEL, answers: { tier: score({ '0': 1, '1': 0, '2': 0 }) } })
+  const d = await route(input('x'), async () => body)
+  expect(d).toEqual({ skipped: 'malformed answer' })
+})
+
+test('a null work distribution is a skip', async () => {
+  const body = JSON.stringify({ model: JEV_MODEL, answers: { tier: score({ '0': 1, '1': 0, '2': 0 }), work: { type: 'score', probabilities: null } } })
   const d = await route(input('x'), async () => body)
   expect(d).toEqual({ skipped: 'malformed answer' })
 })
