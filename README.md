@@ -77,6 +77,49 @@ keys, assignments to names ending in `key`, `token`, `secret` or `password`).
 Nothing else leaves the machine. Any failure, from a missing key to a timeout,
 leaves the dispatch unchanged.
 
+## Examples
+
+The mod needs no prompt of its own. It acts whenever Claude Code starts a
+subagent. Three dispatches and what the mod does with them:
+
+1. "Copy this function into `utils.ts` exactly as given and run the tests."
+   The task holds the exact code, so Jev scores it level 0. The subagent runs
+   on `haiku`.
+2. "Check this diff against the five requirements in the spec and list what
+   is missing." Bounded judgment over given material scores level 1,
+   `sonnet`.
+3. "Review the whole branch for design problems and propose a split." Open
+   judgment scores level 2, `opus`.
+
+In `suggest` mode each of these only logs the pick, for example
+`model-router would pick L0 haiku · p=0.91 · ran on opus`. In `auto` mode the
+line reads `model-router: L0 haiku · p=0.91` and the subagent runs on `haiku`.
+
+## Troubleshooting
+
+- No log line appears: the plugin is disabled, or the dispatch was not routed.
+  Forks, teammates, workflow agents and calls that name a model pass through
+  untouched. Enable the plugin in `/plugin`.
+- The line says `model-router: skipped, api_key unset`: the key is not set.
+  Run `/plugin configure model-router@model-router`, enter the key, then
+  `/reload-plugins`.
+- The line says `skipped, HTTP 401`: TypeSafe rejected the key. Check it at
+  https://console.typesafe.ai/keys.
+- The line says `skipped, no answer in 8000 ms`: the request timed out. The
+  dispatch ran unchanged. Check the network and try again.
+- A subagent ran on a model you did not expect: in `auto` mode a model pinned
+  in an agent definition is overridden. Pass `model` in the Agent call to
+  keep it.
+- A kind of task lands on the wrong tier: add a labelled brief to
+  `calibration.jsonl` and reword a tier text in `hooks/router.ts`. Then run
+  the calibration script.
+
+## Support
+
+Questions and bug reports go to
+https://github.com/Akurganow/model-router/issues. The privacy policy is in
+[PRIVACY.md](PRIVACY.md).
+
 ## Calibration and tests
 
 From the plugin folder:
