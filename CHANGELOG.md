@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.3.2 - 2026-10-09
+#### Bug Fixes
+- write the example host without a scheme in the calibration seed (26eeff1)
+- ship the listing icon as a 512 px palette PNG (bc6a6c2)
+- drop the icon field, the directory finds the file by path (7b1ff6b)
+#### Documentation
+- say when the hook logs nothing (dd920c2)
+- add examples, troubleshooting and support to the README (ac4243e)
+
+- - -
+
+
 ## v0.3.1 - 2026-10-09
 #### Bug Fixes
 - add the privacy policy and the listing fields the directory asks for (c8dadd7)
