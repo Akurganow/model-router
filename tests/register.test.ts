@@ -33,14 +33,14 @@ test('auto sets the model Jev picked', { options: { mode: 'auto', api_key: 'test
   const h = harness(on)
   await $.agent.spawn(spawn())
   expect(h.received.model).toBe('haiku')
-  expect(h.logs).toEqual(['model-router: L0 haiku · p=0.90'])
+  expect(h.logs).toEqual(['L0 haiku · p=0.90'])
 })
 
 test('suggest leaves the model alone and logs both models', { options: { api_key: 'test-key' } }, async ($, on) => {
   const h = harness(on, ANSWER(0.1, 0.2, 0.7))
   await $.agent.spawn(spawn())
   expect(h.received.model).toBeUndefined()
-  expect(h.logs).toEqual(['model-router would pick L2 opus · p=0.70 · ran on claude-opus-5-5'])
+  expect(h.logs).toEqual(['would pick L2 opus · p=0.70 · ran on claude-opus-5-5'])
 })
 
 test('a fork, a teammate, a workflow agent and a caller-named model pass through without a fetch', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
@@ -60,7 +60,7 @@ test('a missing key passes through and says so', { options: { mode: 'auto' } }, 
   await $.agent.spawn(spawn())
   expect(h.received.model).toBeUndefined()
   expect(h.fetched).toBe(0)
-  expect(h.logs).toEqual(['model-router: skipped, api_key unset'])
+  expect(h.logs).toEqual(['skipped, api_key unset'])
 })
 
 test('an empty key passes through like a missing one', { options: { mode: 'auto', api_key: '' } }, async ($, on) => {
@@ -68,21 +68,21 @@ test('an empty key passes through like a missing one', { options: { mode: 'auto'
   await $.agent.spawn(spawn())
   expect(h.received.model).toBeUndefined()
   expect(h.fetched).toBe(0)
-  expect(h.logs).toEqual(['model-router: skipped, api_key unset'])
+  expect(h.logs).toEqual(['skipped, api_key unset'])
 })
 
 test('an HTTP error passes through and names the status', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   const h = harness(on, 'overloaded', 529)
   await $.agent.spawn(spawn())
   expect(h.received.model).toBeUndefined()
-  expect(h.logs).toEqual(['model-router: skipped, HTTP 529'])
+  expect(h.logs).toEqual(['skipped, HTTP 529'])
 })
 
 test('a malformed answer passes through', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   const h = harness(on, 'not json')
   await $.agent.spawn(spawn())
   expect(h.received.model).toBeUndefined()
-  expect(h.logs).toEqual(['model-router: skipped, malformed answer'])
+  expect(h.logs).toEqual(['skipped, malformed answer'])
 })
 
 test('a slow Jev passes through after the timeout', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
@@ -95,7 +95,7 @@ test('a slow Jev passes through after the timeout', { options: { mode: 'auto', a
   await clock.advance(8000)
   await pending
   expect(h.received.model).toBeUndefined()
-  expect(h.logs).toEqual(['model-router: skipped, no answer in 8000 ms'])
+  expect(h.logs).toEqual(['skipped, no answer in 8000 ms'])
 })
 
 test('the request goes to the systemone endpoint with the key and the pinned model', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
