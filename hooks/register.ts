@@ -1,5 +1,5 @@
 import type { Register } from 'claude-code'
-import { route } from './router.ts'
+import { route, type Effort } from './router.ts'
 
 const HTTP_TIMEOUT_MS = 8000
 
@@ -7,6 +7,8 @@ export const register: Register = (on, options) => {
   const mode = options.mode === 'auto' ? 'auto' : 'suggest'
   // The key is the plugin's sensitive userConfig option and goes only to TypeSafe, which issued it.
   const apiKey = typeof options.api_key === 'string' && options.api_key !== '' ? options.api_key : undefined
+  // Read by the turn.step hook below. Never emptied: a session spawns at most hundreds of agents.
+  const effortByAgent = new Map<string, Effort>()
 
   on('agent.spawn', async ($, e, next) => {
     if (e.fork || e.isTeammate || e.workflow !== undefined || e.model !== undefined) return next(e)
@@ -37,15 +39,22 @@ export const register: Register = (on, options) => {
       $.ui.log(`skipped, ${decision.skipped}`)
       return next(e)
     }
-    const top = decision.probabilities[String(decision.level)].toFixed(2)
-    const pick = `L${decision.level} ${decision.model} · p=${top}`
+    const { level, model, workIndex, effort, probabilities } = decision
+    const p = `${probabilities.tier[String(level)].toFixed(2)}/${probabilities.work[String(workIndex)].toFixed(2)}`
+    const pick = `L${level} ${model} · ${effort} · p=${p}`
     if (mode === 'suggest') {
       const r = await next(e)
       $.ui.log(`would pick ${pick} · ran on ${'deny' in r && r.deny !== undefined ? 'nothing, denied' : r.model}`)
       return r
     }
-    const r = await next({ ...e, model: decision.model })
-    $.ui.log(`${pick}`)
+    const r = await next({ ...e, model })
+    if (r.agentId !== undefined) effortByAgent.set(r.agentId, effort)
+    $.ui.log(pick)
     return r
   }).catch(($, e, next) => next(e))
+
+  on('turn.step', async function* ($, e, next) {
+    const effort = e.agentId === undefined ? undefined : effortByAgent.get(e.agentId)
+    return yield* next(effort === undefined ? e : { ...e, effort })
+  })
 }
