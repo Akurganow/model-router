@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.3.3 - 2026-10-09
+#### Bug Fixes
+- drop the plugin name from log lines, Claude Code adds it (b7e8d78)
+
+- - -
+
+
 ## v0.3.2 - 2026-10-09
 #### Bug Fixes
 - write the example host without a scheme in the calibration seed (26eeff1)
