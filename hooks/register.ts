@@ -34,18 +34,18 @@ export const register: Register = (on, options) => {
 
     const decision = await route({ role: e.subagentType, description: e.description, prompt: e.prompt }, post)
     if ('skipped' in decision) {
-      $.ui.log(`model-router: skipped, ${decision.skipped}`)
+      $.ui.log(`skipped, ${decision.skipped}`)
       return next(e)
     }
     const top = decision.probabilities[String(decision.level)].toFixed(2)
     const pick = `L${decision.level} ${decision.model} · p=${top}`
     if (mode === 'suggest') {
       const r = await next(e)
-      $.ui.log(`model-router would pick ${pick} · ran on ${'deny' in r && r.deny !== undefined ? 'nothing, denied' : r.model}`)
+      $.ui.log(`would pick ${pick} · ran on ${'deny' in r && r.deny !== undefined ? 'nothing, denied' : r.model}`)
       return r
     }
     const r = await next({ ...e, model: decision.model })
-    $.ui.log(`model-router: ${pick}`)
+    $.ui.log(`${pick}`)
     return r
   }).catch(($, e, next) => next(e))
 }

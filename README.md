@@ -93,14 +93,14 @@ subagent. Three dispatches and what the mod does with them:
 
 In `suggest` mode each of these only logs the pick, for example
 `model-router would pick L0 haiku · p=0.91 · ran on opus`. In `auto` mode the
-line reads `model-router: L0 haiku · p=0.91` and the subagent runs on `haiku`.
+line reads `model-router L0 haiku · p=0.91` and the subagent runs on `haiku`.
 
 ## Troubleshooting
 
 - No log line appears: the plugin is disabled, or the dispatch was not routed.
   Forks, teammates, workflow agents and calls that name a model pass through
   untouched. Enable the plugin in `/plugin`.
-- The line says `model-router: skipped, api_key unset`: the key is not set.
+- The line says `model-router skipped, api_key unset`: the key is not set.
   Run `/plugin configure model-router@model-router`, enter the key, then
   `/reload-plugins`.
 - The line says `skipped, HTTP 401`: TypeSafe rejected the key. Check it at
