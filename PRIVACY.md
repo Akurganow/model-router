@@ -12,12 +12,14 @@ TypeSafe at https://api.typesafe.ai/v1/systemone. The request holds:
 - the subagent's task text, condensed and with token-shaped strings masked
 - the subagent's type
 - the caller's one-line description of the task
+- the fixed model name `jev-1.13.0` and the fixed scoring question with its
+  three tier descriptions, text that ships with the plugin
 - your TypeSafe API key, as the bearer token.
 
 The task text holds whatever the caller put in it, which can include code. The
-request is sent in both modes, `suggest` and `auto`. Nothing else leaves your
-machine. The plugin sends no telemetry and no identifier of you or your
-machine.
+request is sent in both modes, `suggest` and `auto`. That list is the whole
+request. The key identifies your TypeSafe account to TypeSafe. The plugin sends
+no telemetry and no other identifier of you or your machine.
 
 ## What TypeSafe does with it
 
@@ -29,9 +31,10 @@ those requests.
 ## What the plugin stores
 
 The plugin stores nothing. Claude Code keeps your API key in your system's
-secure storage as a sensitive plugin option, and the plugin reads it only to
-sign the request. The routing mode lives in your Claude Code settings. The one
-line the plugin prints per dispatch goes to your own transcript.
+secure storage as a sensitive plugin option. The plugin reads it only to send it
+as the bearer token of that request. The routing mode lives in your Claude Code
+settings. The one line the plugin prints per dispatch goes to your own
+transcript.
 
 ## Your choices
 

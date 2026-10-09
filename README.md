@@ -22,7 +22,8 @@ On each routed dispatch the hook sends one request through Claude Code's own
 `$.http.fetch`. It sends the condensed and redacted task text, the subagent's
 type and the caller's one-line description to
 https://api.typesafe.ai/v1/systemone. The request is an HTTPS POST with the key
-as the bearer token.
+as the bearer token. The body also carries the fixed model name and scoring
+question that ship with the plugin.
 
 The hook runs no commands, spawns no processes and writes no files.
 
