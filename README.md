@@ -1,31 +1,45 @@
 # model-router
 
-A Claude Code mod that picks the cheapest Claude model for each subagent
-before it starts. On every subagent dispatch the mod condenses and redacts the
-task text and asks [TypeSafe Jev](https://docs.typesafe.ai) one Score question.
-The mod sets the subagent's model: `haiku` for lookup or transcription,
-`sonnet` for bounded judgment, `opus` for open judgment.
+A Claude Code mod that picks the cheapest Claude model and effort for each
+subagent before it starts. On every subagent dispatch the mod condenses and
+redacts the task text and asks [TypeSafe Jev](https://docs.typesafe.ai) two
+Score questions in one request. The mod sets the subagent's model: `haiku` for
+lookup or transcription, `sonnet` for bounded judgment, `opus` for open
+judgment. It also sets the subagent's effort, as [Effort](#effort) shows.
+
+[docs/model-choice.md](docs/model-choice.md) says why the tiers and the effort
+ladder are what they are, with Anthropic's sources.
 
 ## What the mod does
 
-The mod has one hook, on Claude Code's `agent.spawn` event. That event fires
-when a subagent is about to start.
+The mod has three hooks. The first is on Claude Code's `agent.spawn` event,
+which fires when a subagent is about to start.
 
-In `auto` mode the hook changes exactly one thing: the `model` field of that
+In `auto` mode that hook changes exactly one thing: the `model` field of that
 subagent. In `suggest` mode it changes nothing and writes one dim log line.
 
-The hook reads two values from the plugin's user configuration. They are
+A second hook, on `turn.step`, sets the `effort` of requests made by subagents
+the router routed in `auto` mode. It changes nothing else and never touches
+requests of the main session. The subagent's first request already carries the
+router's effort: the spawn hook learns the agent id before the first request
+is sent.
+
+A third hook, on `tool.call` for the Agent tool, only reads whether the call
+names an effort. It changes nothing.
+
+The mod reads two values from the plugin's user configuration. They are
 `api_key`, which is sensitive and kept in secure storage, and `mode`. It reads
 nothing else from the machine.
 
-On each routed dispatch the hook sends one request through Claude Code's own
-`$.http.fetch`. It sends the condensed and redacted task text, the subagent's
-type and the caller's one-line description to
+On each routed dispatch the spawn hook sends one request through Claude Code's
+own `$.http.fetch`. It sends the condensed and redacted task text, the
+subagent's type and the caller's one-line description to
 https://api.typesafe.ai/v1/systemone. The request is an HTTPS POST with the key
-as the bearer token. The body also carries the fixed model name and scoring
-question that ship with the plugin.
+as the bearer token. The body also carries the fixed model name and two scoring
+questions, one for the tier and one for the work level. Both ship with the
+plugin.
 
-The hook runs no commands, spawns no processes and writes no files.
+The hooks run no commands, spawn no processes and write no files.
 
 `scripts/calibrate.ts` is a developer tool that you run by hand from the plugin
 folder. It asks for the key at a masked prompt and sends the labelled seed to
@@ -35,7 +49,7 @@ the same host. Claude Code never runs it.
 
 ## Requirements
 
-- Claude Code v2.1.287 or later (mods are on by default).
+- Claude Code v2.1.293 or later (mods on by default, Haiku 5.5 supported).
 - A TypeSafe API key from https://console.typesafe.ai/keys. The install dialog
   in `/plugin` asks for it and keeps it in your system's secure storage.
 - Node 22.18 or 23.6 or later runs the calibration script.
@@ -58,15 +72,34 @@ next session.
 
 The `Routing mode` row in `/config` holds the mode:
 
-- `suggest` (default): log the model Jev would pick, change nothing. One dim
-  line per dispatch shows the pick beside the model that ran.
-- `auto`: set the model.
+- `suggest` (default): log the model and effort Jev would pick, change nothing.
+  One dim line per dispatch shows the pick beside the model that ran.
+- `auto`: set the model and the effort.
 
 To turn routing off, disable the plugin in `/plugin`.
 
-The hook keeps a model passed in the Agent call. In `auto` mode it overrides
-a model pinned in an agent definition's frontmatter, because the hook cannot
-see it. Forks, agent-team teammates and workflow agents pass through untouched.
+The spawn hook keeps a model passed in the Agent call. In `auto` mode it
+overrides a model or an effort pinned in an agent definition's frontmatter,
+because the hook cannot see it. Forks, agent-team teammates and workflow
+agents pass through untouched.
+
+## Effort
+
+Jev answers a second question: how much work the task takes once the
+judgment is settled, as an index from 0 to 2. The index rests on the middle
+and moves to an end only when Jev gives that end more than twice the
+middle's probability. The index then maps to an effort per model:
+
+| index | haiku | sonnet | opus |
+| --- | --- | --- | --- |
+| 0, a short task | medium | low | low |
+| 1, an ordinary task | high | medium | medium |
+| 2, a long or delicate task | xhigh | high | high |
+
+The router never sets Haiku below `medium`, because Anthropic measured early
+stops at `low`. `max` is never set. An effort named in the Agent call is kept,
+with or without a model: the mod sees the call and leaves that subagent's
+effort alone. A model named in the call keeps both the model and the effort.
 
 ## What leaves the machine
 
@@ -91,9 +124,19 @@ subagent. Three dispatches and what the mod does with them:
 3. "Review the whole branch for design problems and propose a split." Open
    judgment scores level 2, `opus`.
 
-In `suggest` mode each of these only logs the pick, for example
-`model-router would pick L0 haiku · p=0.91 · ran on opus`. In `auto` mode the
-line reads `model-router L0 haiku · p=0.91` and the subagent runs on `haiku`.
+In `suggest` mode each of these only logs the pick. In `auto` mode the
+subagent runs on `haiku`. For the first dispatch the log shows these lines,
+`suggest` first:
+
+```
+model-router would pick L0 haiku · medium · p=0.91/0.62 · ran on claude-opus-5-5
+model-router L0 haiku · medium · p=0.91/0.62
+```
+
+The second number is the probability of the chosen work index. A kept caller
+effort shows as `caller effort` in place of the ladder label. In `auto` mode a
+denied spawn ends the line with `· denied`, in `suggest` mode with
+`ran on nothing, denied`.
 
 ## Troubleshooting
 
@@ -110,6 +153,8 @@ line reads `model-router L0 haiku · p=0.91` and the subagent runs on `haiku`.
 - A subagent ran on a model you did not expect: in `auto` mode a model pinned
   in an agent definition is overridden. Pass `model` in the Agent call to
   keep it.
+- A subagent thinks harder or less than you expect: the effort ladder in
+  [Effort](#effort) set it. Name `effort` in the Agent call to keep your own.
 - A kind of task lands on the wrong tier: add a labelled brief to
   `calibration.jsonl` and reword a tier text in `hooks/router.ts`. Then run
   the calibration script.
@@ -130,7 +175,7 @@ node scripts/calibrate.ts
 ```
 
 The calibration script sends `calibration.jsonl`, twenty-one labelled briefs,
-to the same endpoint and exits 1 when agreement falls below 85%. It prompts for
-the key with masked input, or reads stdin when piped, so the key never appears
-in command lines or shell history. A miss is fixed by rewording a tier text in
-`hooks/router.ts`, never by lowering the bar.
+to the same endpoint and exits 1 when tier or work agreement falls below 85%.
+It prompts for the key with masked input, or reads stdin when piped, so the key
+never appears in command lines or shell history. A miss is fixed by rewording
+a tier or work-level text in `hooks/router.ts`, never by lowering the bar.

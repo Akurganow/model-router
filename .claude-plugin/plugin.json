@@ -1,7 +1,7 @@
 {
   "name": "model-router",
   "version": "0.3.3",
-  "description": "Routes each subagent to the cheapest Claude model that can do its task, judged by TypeSafe Jev",
+  "description": "Routes each subagent to the cheapest Claude model and effort that can do its task, judged by TypeSafe Jev",
   "author": {
     "name": "Akurganow",
     "url": "https://github.com/Akurganow"
@@ -28,7 +28,7 @@
     "mode": {
       "type": "string",
       "title": "Routing mode",
-      "description": "suggest: log the model Jev would pick, change nothing. auto: set the model; this also overrides a model pinned in an agent definition, only a model passed in the Agent call is kept.",
+      "description": "suggest: log the model and effort Jev would pick, change nothing. auto: set the model and the effort. Only a model or effort passed in the Agent call is kept. Auto also overrides a model or effort pinned in an agent definition.",
       "options": [
         "suggest",
         "auto"

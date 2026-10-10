@@ -4,7 +4,7 @@ import { route } from '../hooks/router.ts'
 const AGREEMENT_BAR = 0.85
 const JEV_URL = 'https://api.typesafe.ai/v1/systemone'
 
-type Case = { role: string; description: string; text: string; expected: number }
+type Case = { role: string; description: string; text: string; expected: number; work: number }
 
 const readKey = async (): Promise<string> => {
   const { stdin } = process
@@ -64,7 +64,8 @@ const cases: Case[] = readFileSync(new URL('../calibration.jsonl', import.meta.u
   .filter(line => line.trim() !== '')
   .map(line => JSON.parse(line))
 
-let hits = 0
+let tierHits = 0
+let workHits = 0
 for (const c of cases) {
   const d = await route({ role: c.role, description: c.description, prompt: c.text }, post)
   const head = c.text.slice(0, 60).replace(/\n/g, ' ')
@@ -72,10 +73,17 @@ for (const c of cases) {
     console.log(`skip  ${head}  ${d.skipped}`)
     continue
   }
-  if (d.level === c.expected) hits += 1
-  else console.log(`miss  expected ${c.expected}  got ${d.level}  p=${d.probabilities[String(d.level)].toFixed(2)}  ${head}`)
+  if (d.level === c.expected) tierHits += 1
+  else console.log(`miss tier  expected ${c.expected}  got ${d.level}  p=${d.probabilities.tier[String(d.level)].toFixed(2)}  ${head}`)
+  if (d.workIndex === c.work) workHits += 1
+  else console.log(`miss work  expected ${c.work}  got ${d.workIndex}  p=${d.probabilities.work[String(d.workIndex)].toFixed(2)}  ${head}`)
 }
 
-const agreement = hits / cases.length
-console.log(`agreement ${(agreement * 100).toFixed(0)}% (${hits}/${cases.length}), bar ${AGREEMENT_BAR * 100}%`)
-process.exit(agreement >= AGREEMENT_BAR ? 0 : 1)
+const agreement = (name: string, hits: number): number => {
+  const a = hits / cases.length
+  console.log(`${name} agreement ${(a * 100).toFixed(0)}% (${hits}/${cases.length}), bar ${AGREEMENT_BAR * 100}%`)
+  return a
+}
+const tierOk = agreement('tier', tierHits) >= AGREEMENT_BAR
+const workOk = agreement('work', workHits) >= AGREEMENT_BAR
+process.exit(tierOk && workOk ? 0 : 1)
