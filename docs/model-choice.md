@@ -25,9 +25,9 @@ Jev scores the task against the three tier texts in `TIERS` in
 <table>
 <tr><th>Level</th><th>Model</th><th>Tier text</th></tr>
 <tr><td>0</td><td><code>haiku</code></td><td>
-Lookup or transcription: the brief names the files to read and holds the exact
-code, config or prose to write, the commands to run and the check that proves
-the work done. No choice is left.
+Lookup or transcription: the brief names the exact files to read or string to
+find, or holds the exact code, config or prose to write. It gives the
+commands to run and the check that proves the work done. No choice is left.
 </td></tr>
 <tr><td>1</td><td><code>sonnet</code></td><td>
 Bounded judgment: the brief fixes the goal and a way to check the result.
@@ -72,9 +72,9 @@ attempt on top.
 Jev answers a second question in the same request: how much work the task
 takes once the judgment is settled. It scores the three `WORK_LEVELS` texts:
 
-- **0.** A short task: a handful of steps in one place, and the given check is
-  the whole verification.
-- **1.** An ordinary task: several steps or files, with edge cases to notice
+- **0.** A short task: one or two mechanical steps in one place, nothing to
+  diagnose, and the given command is the whole check.
+- **1.** An ordinary task: reading or diagnosing code, a few steps or files,
   and a result to verify.
 - **2.** A long or delicate task: many steps or files, hidden edge cases, or a
   wrong result that would look right.
