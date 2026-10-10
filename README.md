@@ -20,9 +20,10 @@ subagent. In `suggest` mode it changes nothing and writes one dim log line.
 
 A second hook, on `turn.step`, sets the `effort` of requests made by subagents
 the router routed in `auto` mode. It changes nothing else and never touches
-requests of the main session. The subagent's first request already carries the
-router's effort: the spawn hook learns the agent id before the first request
-is sent.
+requests of the main session. It reads one field of each request, the agent id,
+and sets the effort. It never reads the messages. The subagent's first request
+already carries the router's effort: the spawn hook learns the agent id before
+the first request is sent.
 
 A third hook, on `tool.call` for the Agent tool, only reads whether the call
 names an effort. It changes nothing.
@@ -42,8 +43,8 @@ plugin.
 The hooks run no commands, spawn no processes and write no files.
 
 `scripts/calibrate.ts` is a developer tool that you run by hand from the plugin
-folder. It asks for the key at a masked prompt and sends the labelled seed to
-the same host. Claude Code never runs it.
+folder. It takes the key from a masked prompt or from stdin and sends the
+labelled seed to the same host. Claude Code never runs it.
 
 [PRIVACY.md](PRIVACY.md) states the same in policy form.
 
@@ -172,10 +173,12 @@ From the plugin folder:
 ```
 claude plugin test .
 node scripts/calibrate.ts
+printf '%s' "$TYPESAFE_API_KEY" | node scripts/calibrate.ts
 ```
 
-The calibration script sends `calibration.jsonl`, twenty-one labelled briefs,
-to the same endpoint and exits 1 when tier or work agreement falls below 85%.
-It prompts for the key with masked input, or reads stdin when piped, so the key
-never appears in command lines or shell history. A miss is fixed by rewording
-a tier or work-level text in `hooks/router.ts`, never by lowering the bar.
+The calibration script sends `calibration.jsonl`, twenty-one labelled briefs, to
+the same endpoint and exits 1 when tier or work agreement falls below 85%. It
+prompts for the key with masked input, or reads stdin when piped, as the third
+line shows with a shell variable. The key never appears in command lines or
+shell history. A miss is fixed by rewording a tier or work-level text in
+`hooks/router.ts`, never by lowering the bar.

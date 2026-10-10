@@ -32,9 +32,10 @@ those requests.
 
 The plugin stores nothing. Claude Code keeps your API key in your system's
 secure storage as a sensitive plugin option. The plugin reads it only to send it
-as the bearer token of that request. The routing mode lives in your Claude Code
-settings. The one line the plugin prints per dispatch goes to your own
-transcript.
+as the bearer token of that request. The hook that sets a subagent's effort
+reads one field of each request, the agent id. It reads nothing of the content
+and sends nothing. The routing mode lives in your Claude Code settings. The one
+line the plugin prints per dispatch goes to your own transcript.
 
 ## Your choices
 
