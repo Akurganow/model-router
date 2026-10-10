@@ -3,6 +3,26 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.4.0 - 2026-10-10
+#### Features
+- label the calibration seed with work levels and score both questions (570b9a9)
+- keep an effort the caller names in the Agent call (6b10952)
+- set the effort of routed subagents through the turn.step hook (f78fbad)
+- ask Jev for the work level and map it to an effort per model (22558b8)
+#### Bug Fixes
+- align the texts with the code after the final review (d385c3c)
+- guard null probabilities and settle the tie rules (b17a73f)
+#### Documentation
+- raise the Claude Code floor to v2.1.293 for Haiku 5.5 (d2cff14)
+- show the log variants as a block (12a65cc)
+- explain the tiers, the effort ladder and the escalation rule with Anthropic's sources (c706b4e)
+#### Tests
+- pin the kept effort, the call id and the delete-before-pass-through (497a51a)
+- cover chunk forwarding, unrouted agents and a denied spawn (1b678a3)
+
+- - -
+
+
 ## v0.3.3 - 2026-10-09
 #### Bug Fixes
 - drop the plugin name from log lines, Claude Code adds it (b7e8d78)
