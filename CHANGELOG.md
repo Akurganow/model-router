@@ -3,6 +3,17 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.4.1 - 2026-10-10
+#### Bug Fixes
+- reword the lookup tier and the short and ordinary work levels (ffa5f42)
+#### Documentation
+- say when the effort hook changes a request (3a487dc)
+- say what the effort hook keeps in memory and passes on (b123e75)
+- state what the effort hook reads and how calibrate takes the key (cf240dd)
+
+- - -
+
+
 ## v0.4.0 - 2026-10-10
 #### Features
 - label the calibration seed with work levels and score both questions (570b9a9)
