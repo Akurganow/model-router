@@ -35,8 +35,9 @@ system's secure storage as a sensitive plugin option. The plugin reads it only
 to send it as the bearer token of that request. In memory, for the length of the
 session, the plugin keeps the effort it chose for each subagent it routed, keyed
 by the agent id. The hook that sets a subagent's effort looks at one field of
-each request, the agent id. It passes the request on with the effort set and
-never inspects the content. It sends nothing. The routing mode lives in your
+each request, the agent id. When the agent id has a stored choice, it passes the
+request on with that effort set. Otherwise it passes the request on unchanged.
+It never inspects the content and sends nothing. The routing mode lives in your
 Claude Code settings. The one line the plugin prints per dispatch goes to your
 own transcript.
 
