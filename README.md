@@ -20,8 +20,10 @@ subagent. In `suggest` mode it changes nothing and writes one dim log line.
 
 A second hook, on `turn.step`, sets the `effort` of requests made by subagents
 the router routed in `auto` mode. It changes nothing else and never touches
-requests of the main session. It reads one field of each request, the agent id,
-and sets the effort. It never reads the messages. The subagent's first request
+requests of the main session. It looks at one field of each request, the agent
+id, and passes the request on with the effort set. It never inspects the
+messages. The spawn hook keeps the chosen effort per agent id in memory for the
+session, and that is how the second hook finds it. The subagent's first request
 already carries the router's effort: the spawn hook learns the agent id before
 the first request is sent.
 
