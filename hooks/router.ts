@@ -9,14 +9,14 @@ export type Level = 0 | 1 | 2
 export type Probabilities = Record<string, number>
 
 export const TIERS: readonly { model: Model; text: string }[] = [
-  { model: 'haiku', text: 'Lookup or transcription: the brief names the files to read and holds the exact code, config or prose to write, the commands to run and the check that proves the work done. No choice is left.' },
+  { model: 'haiku', text: 'Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.' },
   { model: 'sonnet', text: 'Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.' },
   { model: 'opus', text: 'Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause.' },
 ]
 
 export const WORK_LEVELS: readonly string[] = [
-  'A short task: a handful of steps in one place, and the given check is the whole verification.',
-  'An ordinary task: several steps or files, with edge cases to notice and a result to verify.',
+  'A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.',
+  'An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.',
   'A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right.',
 ]
 

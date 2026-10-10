@@ -44,6 +44,7 @@ definition's frontmatter, because the hook cannot see it.
 From the plugin folder:
 
 - `claude plugin test .` runs the tests, no network.
-- `node scripts/calibrate.ts` prompts for the TypeSafe API key (masked), runs
-  the labelled seed against Jev and prints misses and agreement.
+- `node scripts/calibrate.ts` takes the TypeSafe API key from a masked prompt
+  or stdin, runs the labelled seed against Jev and prints misses and
+  agreement.
 - `claude plugin validate .` lists the hooks and calls.
