@@ -49,7 +49,7 @@ the same host. Claude Code never runs it.
 
 ## Requirements
 
-- Claude Code v2.1.292 or later (mods are on by default).
+- Claude Code v2.1.293 or later (mods on by default, Haiku 5.5 supported).
 - A TypeSafe API key from https://console.typesafe.ai/keys. The install dialog
   in `/plugin` asks for it and keeps it in your system's secure storage.
 - Node 22.18 or 23.6 or later runs the calibration script.
