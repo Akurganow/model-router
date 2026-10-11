@@ -241,8 +241,8 @@ pages were read on 2026-10-10.
   from v2.0.28, and the `Agent(model:opus)` rule arrived in v2.1.178.
 - **Mods reference** —
   <https://code.claude.com/docs/en/plugins/mods/reference> —
-  undated, read 2026-10-10. The `tool.call` and `agent.spawn` hooks, and how a
-  hook rewrites an event.
+  undated, read 2026-10-10. The `tool.call` hook and how a hook rewrites an
+  event.
 
 ### Model launch posts
 

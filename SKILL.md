@@ -9,12 +9,12 @@ description: >
 
 # model-router
 
-A mod in this folder hooks every Agent tool call. It asks TypeSafe Jev how much
-judgment and work the task needs. In `auto` mode it sets the subagent's model
-and effort. The model is `haiku` for lookup or transcription, `sonnet` for
-bounded judgment and `opus` for open judgment. In `suggest` mode it only logs
-the model and effort it would pick. One dim line per dispatch appears in the
-transcript.
+A mod in this folder hooks every Agent tool call. For each call it routes, it
+asks TypeSafe Jev how much judgment and work the task needs. In `auto` mode it
+sets the subagent's model and effort. The model is `haiku` for lookup or
+transcription, `sonnet` for bounded judgment and `opus` for open judgment. In
+`suggest` mode it only logs the model and effort it would pick. One dim line
+per routed call appears in the transcript.
 
 ## Mode
 
