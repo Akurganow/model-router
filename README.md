@@ -15,13 +15,15 @@ ladder are what they are, with Anthropic's sources.
 The mod has one hook, on Claude Code's `tool.call` event for the Agent tool,
 which fires when Claude is about to start a subagent.
 
-In `auto` mode that hook changes exactly two arguments of the call: `model`
-and `effort`. The subagent then starts as if the caller had named them. In
-`suggest` mode it changes nothing and writes one dim log line.
+In `auto` mode that hook changes at most two arguments of the call: `model`
+and `effort`. A caller-named effort is kept. The subagent then starts as if the
+caller had named them. In `suggest` mode it changes nothing and writes one dim
+log line.
 
-The hook reads three arguments of the call: the task, the one-line
-description and the agent type. It reads nothing else of the conversation and
-keeps nothing between calls.
+The hook reads the task, the one-line description and the agent type to route
+the call. It also looks at `model`, `effort` and `name` to decide whether to
+route at all. It reads nothing else of the conversation and keeps nothing
+between calls.
 
 The mod reads two values from the plugin's user configuration. They are
 `api_key`, which is sensitive and kept in secure storage, and `mode`. It reads
