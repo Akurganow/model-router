@@ -44,6 +44,7 @@ jobs:
           printf '{"plugins":[{"name":"model-router","source":{"url":"https://github.com/%s","sha":"%s"}}]}\n' "$REPO" "$SHA" > .scan/targets.json
 
       - uses: anthropics/claude-plugins-community/.github/actions/scan-plugins@f60f0454df3045f724c43c6346ec80bdcc3472b2 # main, 2026-10-11
+        id: scan
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           marketplace-path: .scan/targets.json
@@ -51,3 +52,15 @@ jobs:
           policy-prompt: .github/policy/prompt.md
           fail-on-findings: "true"
           claude-cli-version: 2.1.294
+
+      # The action warns and moves on when Claude returns no verdict. This
+      # step requires exactly one verdict, and a passing one.
+      - name: Require a passing verdict
+        env:
+          SCANNED: ${{ steps.scan.outputs.scanned }}
+        run: |
+          if ! printf '%s' "$SCANNED" | jq -e 'length == 1 and .[0].passes == true' > /dev/null; then
+            echo "::error::the policy scan produced no passing verdict"
+            printf '%s\n' "$SCANNED"
+            exit 1
+          fi
