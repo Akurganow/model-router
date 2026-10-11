@@ -12,37 +12,30 @@ ladder are what they are, with Anthropic's sources.
 
 ## What the mod does
 
-The mod has three hooks. The first is on Claude Code's `agent.spawn` event,
-which fires when a subagent is about to start.
+The mod has one hook, on Claude Code's `tool.call` event for the Agent tool,
+which fires when Claude is about to start a subagent.
 
-In `auto` mode that hook changes exactly one thing: the `model` field of that
-subagent. In `suggest` mode it changes nothing and writes one dim log line.
+In `auto` mode that hook changes exactly two arguments of the call: `model`
+and `effort`. The subagent then starts as if the caller had named them. In
+`suggest` mode it changes nothing and writes one dim log line.
 
-A second hook, on `turn.step`, sets the `effort` of requests made by subagents
-the router routed in `auto` mode. It changes nothing else and never touches
-requests of the main session. It looks at one field of each request, the agent
-id, and passes the request on with the effort set. It never inspects the
-messages. The spawn hook keeps the chosen effort per agent id in memory for the
-session, and that is how the second hook finds it. The subagent's first request
-already carries the router's effort: the spawn hook learns the agent id before
-the first request is sent.
-
-A third hook, on `tool.call` for the Agent tool, only reads whether the call
-names an effort. It changes nothing.
+The hook reads three arguments of the call: the task, the one-line
+description and the agent type. It reads nothing else of the conversation and
+keeps nothing between calls.
 
 The mod reads two values from the plugin's user configuration. They are
 `api_key`, which is sensitive and kept in secure storage, and `mode`. It reads
 nothing else from the machine.
 
-On each routed dispatch the spawn hook sends one request through Claude Code's
-own `$.http.fetch`. It sends the condensed and redacted task text, the
-subagent's type and the caller's one-line description to
+On each routed call the hook sends one request through Claude Code's own
+`$.http.fetch`. It sends the condensed and redacted task text, the agent type
+and the caller's one-line description to
 https://api.typesafe.ai/v1/systemone. The request is an HTTPS POST with the key
 as the bearer token. The body also carries the fixed model name and two scoring
 questions, one for the tier and one for the work level. Both ship with the
 plugin.
 
-The hooks run no commands, spawn no processes and write no files.
+The hook runs no commands, spawns no processes and writes no files.
 
 `scripts/calibrate.ts` is a developer tool that you run by hand from the plugin
 folder. It takes the key from a masked prompt or from stdin and sends the
@@ -76,15 +69,16 @@ next session.
 The `Routing mode` row in `/config` holds the mode:
 
 - `suggest` (default): log the model and effort Jev would pick, change nothing.
-  One dim line per dispatch shows the pick beside the model that ran.
+  One dim line per dispatch shows the pick.
 - `auto`: set the model and the effort.
 
 To turn routing off, disable the plugin in `/plugin`.
 
-The spawn hook keeps a model passed in the Agent call. In `auto` mode it
-overrides a model or an effort pinned in an agent definition's frontmatter,
-because the hook cannot see it. Forks, agent-team teammates and workflow
-agents pass through untouched.
+The hook keeps a model passed in the Agent call. In `auto` mode it overrides
+a model or an effort pinned in an agent definition's frontmatter, because the
+call does not carry them. Forks and named agents, which are teammates, pass
+through untouched. The mod sees Agent tool calls only, so agents that a
+workflow script or another plugin starts are not routed.
 
 ## Effort
 
@@ -132,20 +126,19 @@ subagent runs on `haiku`. For the first dispatch the log shows these lines,
 `suggest` first:
 
 ```
-model-router would pick L0 haiku · medium · p=0.91/0.62 · ran on claude-opus-5-5
+model-router would pick L0 haiku · medium · p=0.91/0.62
 model-router L0 haiku · medium · p=0.91/0.62
 ```
 
 The second number is the probability of the chosen work index. A kept caller
 effort shows as `caller effort` in place of the ladder label. In `auto` mode a
-denied spawn ends the line with `· denied`, in `suggest` mode with
-`ran on nothing, denied`.
+call that Claude Code refused ends the line with `· denied`.
 
 ## Troubleshooting
 
 - No log line appears: the plugin is disabled, or the dispatch was not routed.
-  Forks, teammates, workflow agents and calls that name a model pass through
-  untouched. Enable the plugin in `/plugin`.
+  Forks, named agents and calls that name a model pass through untouched.
+  Enable the plugin in `/plugin`.
 - The line says `model-router skipped, api_key unset`: the key is not set.
   Run `/plugin configure model-router@model-router`, enter the key, then
   `/reload-plugins`.
@@ -175,12 +168,10 @@ From the plugin folder:
 ```
 claude plugin test .
 node scripts/calibrate.ts
-printf '%s' "$TYPESAFE_API_KEY" | node scripts/calibrate.ts
 ```
 
 The calibration script sends `calibration.jsonl`, twenty-one labelled briefs, to
 the same endpoint and exits 1 when tier or work agreement falls below 85%. It
-prompts for the key with masked input, or reads stdin when piped, as the third
-line shows with a shell variable. The key never appears in command lines or
-shell history. A miss is fixed by rewording a tier or work-level text in
-`hooks/router.ts`, never by lowering the bar.
+prompts for the key with masked input, or reads stdin when piped, so the key
+never appears in command lines or shell history. A miss is fixed by rewording a
+tier or work-level text in `hooks/router.ts`, never by lowering the bar.

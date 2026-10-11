@@ -98,12 +98,9 @@ Sonnet attempt.
 cost and intelligence* measured Opus 5.5 at `xhigh` only 1.4 points above
 `high`. That step cost 2.5 times as much.
 
-An effort named in the Agent call is kept, with or without a model. The
-`tool.call` hook sees that the call names one, and the router leaves that
-subagent's effort alone. The subagent's first request already carries the
-router's effort: the spawn hook learns the agent id before the first request
-is sent. A probe on 2026-10-10 logged the agent id from the spawn hook one line
-before the subagent's first request.
+An effort named in the Agent call is kept, with or without a model. In `auto`
+mode the hook sets the call's `model` and `effort` arguments, so the subagent
+starts with both, as if the caller had named them.
 
 ## Escalation
 
