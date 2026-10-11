@@ -89,12 +89,13 @@ and assignments to names ending in `key`, `token`, `secret` or `password`.
 Nothing else leaves the machine.
 
 The request is sent in both modes, before Claude Code's permission check for
-the call. A call that your permission rules deny as Claude made it is never
-sent. A rule on the model the mod picks, a PreToolUse hook and the auto-mode
-classifier decide after the request left. A call that prompts you is sent
-before you answer. To read each request as it left, start Claude Code with
-`--debug`. The mod writes each request body to the debug log, in numbered
-pieces when it is long. The key is never written.
+the call. Before routing, the mod asks Claude Code's permission rules about
+the call's original arguments. If they deny the call, nothing is sent. A rule
+on the model the mod picks, a PreToolUse hook and the auto-mode classifier
+decide after the request left. A call that prompts you is sent before you
+answer. To read each request as it left, start Claude Code with `--debug`. The
+mod writes each request body to the debug log, in numbered pieces when it is
+long. The key is never written.
 
 Any failure, from a missing key to a timeout, leaves the call unchanged.
 

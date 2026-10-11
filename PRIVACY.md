@@ -18,14 +18,15 @@ TypeSafe at https://api.typesafe.ai/v1/systemone. The request holds:
 
 The task text holds whatever the caller put in it, which can include code. The
 request is sent in both modes, `suggest` and `auto`, before Claude Code
-decides whether the call may run. A call that your permission rules deny as
-Claude made it is not sent. A rule on the model the plugin picks, a PreToolUse
-hook and the auto-mode classifier decide after the request left. A call that
-prompts you for permission is sent before you answer. That list is the whole
-request. The key identifies your TypeSafe account to TypeSafe. The plugin
-sends no telemetry and no other identifier of you or your machine. With Claude
-Code's `--debug` flag, the plugin writes each request body to your debug log,
-in numbered pieces when it is long. The key is never written.
+decides whether the call may run. Before routing, the plugin asks Claude Code's
+permission rules about the call's original arguments. If they deny the call,
+the plugin does not send the request. A rule on the model the plugin picks, a
+PreToolUse hook and the auto-mode classifier decide after the request left. A
+call that prompts you for permission is sent before you answer. That list is
+the whole request. The key identifies your TypeSafe account to TypeSafe. The
+plugin sends no telemetry and no other identifier of you or your machine. With
+Claude Code's `--debug` flag, the plugin writes each request body to your debug
+log, in numbered pieces when it is long. The key is never written.
 
 ## What TypeSafe does with it
 
