@@ -146,5 +146,19 @@ test('a denied call in auto mode says so and returns the denial', { options: { m
   on('tool.call', () => ({ deny: 'no' }))
   const r: any = await $.tool.call(agentCall())
   expect(r.deny).toBe('no')
-  expect(logs).toEqual(['L0 haiku · high · p=0.90/0.60 · denied'])
+  expect(logs).toEqual(['L0 haiku · high · p=0.90/0.60', 'denied'])
+})
+
+test('a hook failure lets the call run unchanged', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  mock.clock(on)
+  let runs = 0
+  let received: any
+  on('ui.log', () => ({ value: undefined }))
+  on('http.fetch', () => ({ value: { status: 200, ok: true, headers: {}, text: ANSWER([0.9, 0.1, 0]) } }))
+  on('tool.call', (_: unknown, e: any) => { runs += 1; received = e; return TOOL_RESULT })
+  const r: any = await $.tool.call(agentCall({ prompt: 42 }))
+  expect(runs).toBe(1)
+  expect(received.model).toBeUndefined()
+  expect(received.prompt).toBe(42)
+  expect(r.result).toBe('ok')
 })

@@ -56,8 +56,9 @@ export const register: Register = (on, options) => {
       $.ui.log(`would pick ${pick}`)
       return next(e)
     }
+    $.ui.log(pick)
     const r = await next(keep ? { ...e, model } : { ...e, model, effort })
-    $.ui.log('deny' in r && r.deny !== undefined ? `${pick} · denied` : pick)
+    if ('deny' in r && r.deny !== undefined) $.ui.log('denied')
     return r
   }).catch(($, e, next) => next(e))
 }
