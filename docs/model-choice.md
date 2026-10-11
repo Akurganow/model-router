@@ -213,10 +213,9 @@ pages were read on 2026-10-10.
   and Fable billing, `opusplan`, and effort defaults and calibration.
 - **Create custom subagents** —
   <https://code.claude.com/docs/en/sub-agents> —
-  undated, read 2026-10-10. The order that picks a subagent's model, and the
-  precedence of the `agent.spawn` hook. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`,
-  `availableModels`, the built-in agents' models, and the `effort` field
-  and parameter.
+  undated, read 2026-10-10. The order that picks a subagent's model.
+  `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`, `availableModels`, the built-in agents'
+  models, and the `effort` field and parameter.
 - **Manage costs effectively** —
   <https://code.claude.com/docs/en/costs> —
   undated, read 2026-10-10. Sonnet for most coding, Opus for architecture,
@@ -242,7 +241,8 @@ pages were read on 2026-10-10.
   from v2.0.28, and the `Agent(model:opus)` rule arrived in v2.1.178.
 - **Mods reference** —
   <https://code.claude.com/docs/en/plugins/mods/reference> —
-  undated, read 2026-10-10. The `agent.spawn` hook and how it sets a model.
+  undated, read 2026-10-10. The `tool.call` and `agent.spawn` hooks, and how a
+  hook rewrites an event.
 
 ### Model launch posts
 

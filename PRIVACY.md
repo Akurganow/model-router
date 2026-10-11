@@ -6,8 +6,9 @@ what the plugin sends, where it goes, and what the plugin keeps. Effective
 
 ## What the plugin sends
 
-On every subagent dispatch it routes, the plugin sends one HTTPS POST to
-TypeSafe at https://api.typesafe.ai/v1/systemone. The request holds:
+On every Agent tool call it routes, the plugin sends one HTTPS POST to TypeSafe
+at https://api.typesafe.ai/v1/systemone. The request goes out before Claude
+Code decides whether the call may run. The request holds:
 
 - the subagent's task text, condensed and with token-shaped strings masked
 - the subagent's type
@@ -34,7 +35,7 @@ The plugin stores nothing, on disk or in memory beyond the request in
 flight. Claude Code keeps your API key in your system's secure storage as a
 sensitive plugin option. The plugin reads it only to send it as the bearer
 token of that request. The routing mode lives in your Claude Code settings.
-The one line the plugin prints per dispatch goes to your own transcript.
+The lines the plugin prints per dispatch go to your own transcript.
 
 ## Your choices
 
