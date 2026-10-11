@@ -25,7 +25,8 @@ asks six questions. The answers for this mod:
   task, the description and the agent type. It reads `model`, `name` and
   `effort` to decide whether to route and whether to keep the caller's effort.
   It asks Claude Code's permission verdict for the call through `$.tool.check`,
-  which opens no dialog and runs nothing. It keeps nothing between calls.
+  which opens no dialog and runs nothing. The verdict never leaves the machine.
+  It keeps nothing between calls.
 - **Changes your session?** In `auto` mode, two arguments of that Agent
   tool call: `model` and `effort`. Nothing in `suggest` mode.
 - **Acts without asking you?** No. It approves or denies nothing. Your
@@ -194,3 +195,8 @@ rewording a tier or work-level text in `hooks/router.ts`, never by lowering
 the bar. The masked prompt keeps the key out of command lines and shell
 history. Pipe it only from a source that does not put the key in the command
 line.
+
+CI runs the tests, `claude plugin validate`, a check that the mod's hooks and
+engine calls match `tools/surface.json`, and Anthropic's plugin policy scan
+with the prompt in `.github/policy/`. A pull request merges only when all of
+them pass.

@@ -4,9 +4,11 @@ name: release
 # main when a feat, fix or breaking commit follows the last tag. cog.toml has
 # the pre-bump hook that writes the version into .claude-plugin/plugin.json.
 #
-# Loop guard: a push made with GITHUB_TOKEN starts no new workflow run
-# (documentation: https://github.com/github/docs/blob/75ea7dd097a5564f27364a5b70eaa1979106eabd/data/reusables/actions/actions-do-not-trigger-workflows.md),
-# so the version commit and its tag cannot rerun this workflow.
+# The version commit and its tag are pushed with the release deploy key, the
+# actor the owner's ruleset on main admits for this push. A deploy-key push
+# starts workflow runs again: cog bump then finds no releasable commit and
+# this workflow stops, while ci and policy check the released commit once
+# more.
 on:
   push:
     branches: [main]
@@ -83,15 +85,24 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "released=true" >> "$GITHUB_OUTPUT"
 
-      # Atomic: the commit and the tag land together or not at all.
-      # The bot pushes HEAD:main as a fast-forward. That works only while main has
-      # no branch protection or ruleset that forbids it. A rule added later must
-      # allow this push.
+      # Atomic: the commit and the tag land together or not at all. The push
+      # goes over SSH with the release deploy key. The host key is GitHub's
+      # published ed25519 key (https://api.github.com/meta), pinned so the
+      # push refuses any other host.
       - name: Push the version commit and its tag
         if: steps.bump.outputs.released == 'true'
         env:
           TAG: ${{ steps.bump.outputs.tag }}
-        run: git push --atomic origin HEAD:main "refs/tags/$TAG"
+          RELEASE_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
+          GITHUB_HOST_KEY: github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+        run: |
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$RELEASE_DEPLOY_KEY" > "$HOME/.ssh/release"
+          chmod 600 "$HOME/.ssh/release"
+          printf '%s\n' "$GITHUB_HOST_KEY" > "$HOME/.ssh/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/release -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
+          git push --atomic "git@github.com:${GITHUB_REPOSITORY}.git" HEAD:main "refs/tags/$TAG"
+          rm -f "$HOME/.ssh/release"
 
       # The notes are cocogitto's changelog section for the tag.
       # It reads the tags on main's head and skips released ones, so re-running
