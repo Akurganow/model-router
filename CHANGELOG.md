@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.6.0 - 2026-10-11
+#### Features
+- skip calls that permission rules deny and log each request to the debug log (d8a7770)
+#### Documentation
+- name the pre-routing permission check precisely (c4a7bf5)
+- write the README and the privacy policy for the user (78fbf6c)
+#### Miscellaneous Chores
+- start the changelog at v0.5.0 (0e6ac7e)
+
+- - -
+
+
 ## v0.5.0 - 2026-10-11
 #### Features
 - route through the Agent tool call in one hook (30f076d)
