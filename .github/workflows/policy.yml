@@ -1,0 +1,53 @@
+name: policy
+
+# Anthropic's plugin policy scan, the one its own plugin repositories run on
+# every pull request. It reads the plugin at this commit against the prompt
+# in .github/policy/ and fails on a finding.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # The scan action skips without a key. This step keeps the check from
+      # passing for that reason.
+      - name: Require the API key
+        env:
+          KEY_SET: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          if [ "$KEY_SET" != "true" ]; then
+            echo "::error::ANTHROPIC_API_KEY is not set, so the policy scan cannot run"
+            exit 1
+          fi
+
+      # The action scans marketplace entries that name a repository and a
+      # commit. This file names this repository at the commit under test.
+      - name: Name the commit to scan
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p .scan
+          printf '{"plugins":[{"name":"model-router","source":{"url":"https://github.com/%s","sha":"%s"}}]}\n' "$REPO" "$SHA" > .scan/targets.json
+
+      - uses: anthropics/claude-plugins-community/.github/actions/scan-plugins@f60f0454df3045f724c43c6346ec80bdcc3472b2 # main, 2026-10-11
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          marketplace-path: .scan/targets.json
+          scan-all-external: "true"
+          policy-prompt: .github/policy/prompt.md
+          fail-on-findings: "true"
+          claude-cli-version: 2.1.294
