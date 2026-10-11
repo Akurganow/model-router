@@ -2,12 +2,13 @@
 
 model-router is a Claude Code plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-10-10.
+2026-10-11.
 
 ## What the plugin sends
 
-On every subagent dispatch it routes, the plugin sends one HTTPS POST to
-TypeSafe at https://api.typesafe.ai/v1/systemone. The request holds:
+On every Agent tool call it routes, the plugin sends one HTTPS POST to TypeSafe
+at https://api.typesafe.ai/v1/systemone. The request goes out before Claude
+Code decides whether the call may run. The request holds:
 
 - the subagent's task text, condensed and with token-shaped strings masked
 - the subagent's type
@@ -30,16 +31,12 @@ those requests.
 
 ## What the plugin stores
 
-The plugin stores nothing on disk. Claude Code keeps your API key in your
-system's secure storage as a sensitive plugin option. The plugin reads it only
-to send it as the bearer token of that request. In memory, for the length of the
-session, the plugin keeps the effort it chose for each subagent it routed, keyed
-by the agent id. The hook that sets a subagent's effort looks at one field of
-each request, the agent id. When the agent id has a stored choice, it passes the
-request on with that effort set. Otherwise it passes the request on unchanged.
-It never inspects the content and sends nothing. The routing mode lives in your
-Claude Code settings. The one line the plugin prints per dispatch goes to your
-own transcript.
+The plugin stores nothing on disk. In memory it holds the configured key while
+the hook is registered, and no routing state between calls. Claude Code keeps
+your API key in your system's secure storage as a sensitive plugin option. The
+plugin reads it only to send it as the bearer token of that request. The
+routing mode lives in your Claude Code settings. The lines the plugin prints
+per dispatch go to your own transcript.
 
 ## Your choices
 

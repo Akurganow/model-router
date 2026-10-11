@@ -9,7 +9,7 @@ description: >
 
 # model-router
 
-A mod in this folder hooks every subagent start. It asks TypeSafe Jev how much
+A mod in this folder hooks every Agent tool call. It asks TypeSafe Jev how much
 judgment and work the task needs. In `auto` mode it sets the subagent's model
 and effort. The model is `haiku` for lookup or transcription, `sonnet` for
 bounded judgment and `opus` for open judgment. In `suggest` mode it only logs
@@ -37,7 +37,7 @@ or two fix rounds in a row make no progress.
 A model or an effort named in the Agent call is kept, so an escalated
 re-dispatch passes `model` and `effort` explicitly in the Agent call. In
 auto mode the hook also overrides a model or an effort pinned in an agent
-definition's frontmatter, because the hook cannot see it.
+definition's frontmatter, because the call does not carry them.
 
 ## Commands
 

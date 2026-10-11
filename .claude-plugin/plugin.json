@@ -22,7 +22,7 @@
     "api_key": {
       "type": "string",
       "title": "TypeSafe API key",
-      "description": "Sent only to https://api.typesafe.ai/v1/systemone as the bearer token. Get one at https://console.typesafe.ai/keys.",
+      "description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request. The README says where to get one.",
       "sensitive": true
     },
     "mode": {

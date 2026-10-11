@@ -98,12 +98,9 @@ Sonnet attempt.
 cost and intelligence* measured Opus 5.5 at `xhigh` only 1.4 points above
 `high`. That step cost 2.5 times as much.
 
-An effort named in the Agent call is kept, with or without a model. The
-`tool.call` hook sees that the call names one, and the router leaves that
-subagent's effort alone. The subagent's first request already carries the
-router's effort: the spawn hook learns the agent id before the first request
-is sent. A probe on 2026-10-10 logged the agent id from the spawn hook one line
-before the subagent's first request.
+An effort named in the Agent call is kept, with or without a model. In `auto`
+mode the hook sets the call's `model` and `effort` arguments, so the subagent
+starts with both, as if the caller had named them.
 
 ## Escalation
 
@@ -216,10 +213,9 @@ pages were read on 2026-10-10.
   and Fable billing, `opusplan`, and effort defaults and calibration.
 - **Create custom subagents** —
   <https://code.claude.com/docs/en/sub-agents> —
-  undated, read 2026-10-10. The order that picks a subagent's model, and the
-  precedence of the `agent.spawn` hook. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`,
-  `availableModels`, the built-in agents' models, and the `effort` field
-  and parameter.
+  undated, read 2026-10-10. The order that picks a subagent's model.
+  `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`, `availableModels`, the built-in agents'
+  models, and the `effort` field and parameter.
 - **Manage costs effectively** —
   <https://code.claude.com/docs/en/costs> —
   undated, read 2026-10-10. Sonnet for most coding, Opus for architecture,
@@ -245,7 +241,8 @@ pages were read on 2026-10-10.
   from v2.0.28, and the `Agent(model:opus)` rule arrived in v2.1.178.
 - **Mods reference** —
   <https://code.claude.com/docs/en/plugins/mods/reference> —
-  undated, read 2026-10-10. The `agent.spawn` hook and how it sets a model.
+  undated, read 2026-10-10. The `tool.call` and `agent.spawn` hooks, and how a
+  hook rewrites an event.
 
 ### Model launch posts
 

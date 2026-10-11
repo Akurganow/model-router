@@ -8,28 +8,7 @@ const ANSWER = (tier: number[], work: number[] = [0.2, 0.6, 0.2]) => JSON.string
   usage: { input_tokens: 1, output_tokens: 1 },
 })
 
-const step = (over: Record<string, unknown> = {}) => ({
-  turnId: 't1',
-  index: 0,
-  model: 'claude-sonnet-5-5',
-  effort: 'high',
-  messageCount: 1,
-  ...over,
-}) as any
-
-const drain = async (stream: AsyncIterable<unknown>) => { for await (const _ of stream) { /* chunks are not under test */ } }
-
-const STEP_RESULT = { turnId: 't1', index: 0, answer: '', toolUses: [], stopReason: 'end_turn', usage: null } as any
-
-const CHUNK = { kind: 'text', index: 0, text: 'hi' } as any
-
 const TOOL_RESULT = { result: 'ok' } as any
-
-const recordEfforts = (on: any) => {
-  const efforts: unknown[] = []
-  on('turn.step', async function* (_: unknown, e: any) { efforts.push(e.effort); return STEP_RESULT })
-  return efforts
-}
 
 const agentCall = (over: Record<string, unknown> = {}) => ({
   tool: 'Agent',
@@ -40,18 +19,6 @@ const agentCall = (over: Record<string, unknown> = {}) => ({
   ...over,
 }) as any
 
-const spawn = (over: Record<string, unknown> = {}) => ({
-  tool_use_id: 'toolu_1',
-  prompt: 'Create src/hello.ts with exactly this content and run the tests.',
-  description: 'write hello',
-  subagentType: 'general-purpose',
-  provider: { plugin: 'engine', tier: 'core' },
-  parentModel: 'claude-opus-5-5',
-  background: false,
-  fork: false,
-  ...over,
-}) as any
-
 type Harness = { logs: string[]; fetched: number; received: any }
 
 const harness = (on: any, fetchText = ANSWER([0.9, 0.1, 0]), status = 200): Harness => {
@@ -59,53 +26,62 @@ const harness = (on: any, fetchText = ANSWER([0.9, 0.1, 0]), status = 200): Harn
   mock.clock(on)
   on('ui.log', (_: unknown, e: { text: string }) => { h.logs.push(e.text); return { value: undefined } })
   on('http.fetch', () => { h.fetched += 1; return { value: { status, ok: status < 300, headers: {}, text: fetchText } } })
-  on('agent.spawn', (_: unknown, e: any) => { h.received = e; return { model: e.model ?? e.parentModel, agentId: e.tool_use_id === 'toolu_2' ? 'a2' : 'a1' } })
+  on('tool.call', (_: unknown, e: any) => { h.received = e; return TOOL_RESULT })
   return h
 }
 
-test('auto sets the model Jev picked', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+test('auto sets the model and the effort on the Agent call', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   const h = harness(on)
-  await $.agent.spawn(spawn())
+  const r: any = await $.tool.call(agentCall())
   expect(h.received.model).toBe('haiku')
+  expect(h.received.effort).toBe('high')
+  expect(h.received.prompt).toBe(agentCall().prompt)
+  expect(r.result).toBe('ok')
   expect(h.logs).toEqual(['L0 haiku · high · p=0.90/0.60'])
 })
 
-test('suggest leaves the model alone and logs both models', { options: { api_key: 'test-key' } }, async ($, on) => {
+test('suggest leaves the call alone and logs the pick', { options: { api_key: 'test-key' } }, async ($, on) => {
   const h = harness(on, ANSWER([0.1, 0.2, 0.7]))
-  await $.agent.spawn(spawn())
+  await $.tool.call(agentCall())
   expect(h.received.model).toBeUndefined()
-  expect(h.logs).toEqual(['would pick L2 opus · medium · p=0.70/0.60 · ran on claude-opus-5-5'])
+  expect(h.received.effort).toBeUndefined()
+  expect(h.logs).toEqual(['would pick L2 opus · medium · p=0.70/0.60'])
 })
 
-test('a fork, a teammate, a workflow agent and a caller-named model pass through without a fetch', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
-  const efforts = recordEfforts(on)
+test('a fork, a named agent and a caller-named model pass through without a fetch', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   const h = harness(on)
-  await $.agent.spawn(spawn({ fork: true }))
-  await $.agent.spawn(spawn({ isTeammate: true, background: true }))
-  await $.agent.spawn(spawn({ workflow: { runId: 'run1', agentIndex: 1 } }))
+  await $.tool.call(agentCall({ subagent_type: 'fork' }))
   expect(h.received.model).toBeUndefined()
-  await $.agent.spawn(spawn({ model: 'sonnet' }))
+  await $.tool.call(agentCall({ name: 'scout' }))
+  expect(h.received.model).toBeUndefined()
+  await $.tool.call(agentCall({ model: 'sonnet' }))
   expect(h.received.model).toBe('sonnet')
+  expect(h.received.effort).toBeUndefined()
   expect(h.fetched).toBe(0)
   expect(h.logs).toEqual([])
-  await drain($.turn.step(step({ agentId: 'a1', effort: 'low' })))
-  expect(efforts).toEqual(['low'])
+})
+
+test('a call without an agent type is routed as general-purpose', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  mock.clock(on)
+  let request: any
+  on('ui.log', () => ({ value: undefined }))
+  on('http.fetch', (_: unknown, e: any) => { request = e; return { value: { status: 200, ok: true, headers: {}, text: ANSWER([0.9, 0.1, 0]) } } })
+  on('tool.call', () => TOOL_RESULT)
+  await $.tool.call(agentCall({ subagent_type: undefined }))
+  expect(JSON.parse(request.init.body).state.role).toBe('general-purpose')
 })
 
 test('a missing key passes through and says so', { options: { mode: 'auto' } }, async ($, on) => {
-  const efforts = recordEfforts(on)
   const h = harness(on)
-  await $.agent.spawn(spawn())
+  await $.tool.call(agentCall())
   expect(h.received.model).toBeUndefined()
   expect(h.fetched).toBe(0)
   expect(h.logs).toEqual(['skipped, api_key unset'])
-  await drain($.turn.step(step({ agentId: 'a1', effort: 'low' })))
-  expect(efforts).toEqual(['low'])
 })
 
 test('an empty key passes through like a missing one', { options: { mode: 'auto', api_key: '' } }, async ($, on) => {
   const h = harness(on)
-  await $.agent.spawn(spawn())
+  await $.tool.call(agentCall())
   expect(h.received.model).toBeUndefined()
   expect(h.fetched).toBe(0)
   expect(h.logs).toEqual(['skipped, api_key unset'])
@@ -113,14 +89,14 @@ test('an empty key passes through like a missing one', { options: { mode: 'auto'
 
 test('an HTTP error passes through and names the status', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   const h = harness(on, 'overloaded', 529)
-  await $.agent.spawn(spawn())
+  await $.tool.call(agentCall())
   expect(h.received.model).toBeUndefined()
   expect(h.logs).toEqual(['skipped, HTTP 529'])
 })
 
 test('a malformed answer passes through', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   const h = harness(on, 'not json')
-  await $.agent.spawn(spawn())
+  await $.tool.call(agentCall())
   expect(h.received.model).toBeUndefined()
   expect(h.logs).toEqual(['skipped, malformed answer'])
 })
@@ -130,8 +106,8 @@ test('a slow Jev passes through after the timeout', { options: { mode: 'auto', a
   const h: Harness = { logs: [], fetched: 0, received: undefined }
   on('ui.log', (_: unknown, e: { text: string }) => { h.logs.push(e.text); return { value: undefined } })
   on('http.fetch', async () => { await clock.sleep(60000); return { value: { status: 200, ok: true, headers: {}, text: ANSWER([1, 0, 0]) } } })
-  on('agent.spawn', (_: unknown, e: any) => { h.received = e; return { model: e.model ?? e.parentModel, agentId: 'a1' } })
-  const pending = $.agent.spawn(spawn())
+  on('tool.call', (_: unknown, e: any) => { h.received = e; return TOOL_RESULT })
+  const pending = $.tool.call(agentCall())
   await clock.advance(8000)
   await pending
   expect(h.received.model).toBeUndefined()
@@ -143,115 +119,46 @@ test('the request goes to the systemone endpoint with the key and the pinned mod
   let request: any
   on('ui.log', () => ({ value: undefined }))
   on('http.fetch', (_: unknown, e: any) => { request = e; return { value: { status: 200, ok: true, headers: {}, text: ANSWER([0.9, 0.1, 0]) } } })
-  on('agent.spawn', (_: unknown, e: any) => ({ model: e.model ?? e.parentModel, agentId: 'a1' }))
-  await $.agent.spawn(spawn())
+  on('tool.call', () => TOOL_RESULT)
+  await $.tool.call(agentCall())
   expect(request.url).toBe('https://api.typesafe.ai/v1/systemone')
   expect(request.init.method).toBe('POST')
   expect(request.init.headers.Authorization).toBe('Bearer test-key')
   expect(request.init.headers['Content-Type']).toBe('application/json')
-  expect(JSON.parse(request.init.body).model).toBe('jev-1.13.0')
+  const body = JSON.parse(request.init.body)
+  expect(body.model).toBe('jev-1.13.0')
+  expect(body.state.description).toBe('write hello')
 })
 
-test('auto sets the effort of the routed agent\'s requests and leaves other requests alone', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
-  harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
-  const efforts = recordEfforts(on)
-  await $.agent.spawn(spawn())
-  await drain($.turn.step(step({ agentId: 'a1' })))
-  await drain($.turn.step(step({ agentId: 'other' })))
-  await drain($.turn.step(step()))
-  expect(efforts).toEqual(['medium', 'high', 'high'])
+test('an Agent call that names an effort keeps it and gets the model', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  const h = harness(on, ANSWER([0.1, 0.8, 0.1]))
+  await $.tool.call(agentCall({ effort: 'low' }))
+  expect(h.received.model).toBe('sonnet')
+  expect(h.received.effort).toBe('low')
+  expect(h.logs).toEqual(['L1 sonnet · caller effort · p=0.80/0.60'])
 })
 
-test('suggest rewrites no request', { options: { api_key: 'test-key' } }, async ($, on) => {
-  harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
-  const efforts = recordEfforts(on)
-  await $.agent.spawn(spawn())
-  await drain($.turn.step(step({ agentId: 'a1' })))
-  expect(efforts).toEqual(['high'])
-})
-
-test('turn.step forwards the chunks and the result', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
-  harness(on)
-  on('turn.step', async function* () { yield CHUNK; return STEP_RESULT })
-  await $.agent.spawn(spawn())
-  const stream = $.turn.step(step({ agentId: 'a1' }))
-  const chunks: unknown[] = []
-  let r = await stream.next()
-  while (!r.done) { chunks.push(r.value); r = await stream.next() }
-  expect(chunks).toEqual([CHUNK])
-  expect(r.value).toEqual(STEP_RESULT)
-})
-
-test('a denied spawn in auto mode says so', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+test('a denied call in auto mode says so and returns the denial', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   mock.clock(on)
   const logs: string[] = []
   on('ui.log', (_: unknown, e: { text: string }) => { logs.push(e.text); return { value: undefined } })
   on('http.fetch', () => ({ value: { status: 200, ok: true, headers: {}, text: ANSWER([0.9, 0.1, 0]) } }))
-  on('agent.spawn', () => ({ deny: 'no' }))
-  await $.agent.spawn(spawn())
-  expect(logs).toEqual(['L0 haiku · high · p=0.90/0.60 · denied'])
+  on('tool.call', () => ({ deny: 'no' }))
+  const r: any = await $.tool.call(agentCall())
+  expect(r.deny).toBe('no')
+  expect(logs).toEqual(['L0 haiku · high · p=0.90/0.60', 'denied'])
 })
 
-test('an Agent call that names an effort keeps it', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
-  const efforts = recordEfforts(on)
-  let calledId = ''
-  on('tool.call', (_: unknown, e: any) => { calledId = e.tool_use_id; return TOOL_RESULT })
-  const h = harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
-  await $.tool.call(agentCall({ effort: 'low' }))
-  await $.agent.spawn(spawn({ tool_use_id: calledId }))
-  await drain($.turn.step(step({ agentId: 'a1', effort: 'low' })))
-  expect(efforts).toEqual(['low'])
-  expect(h.received.model).toBe('sonnet')
-  expect(h.logs).toEqual(['L1 sonnet · caller effort · p=0.80/0.60'])
-})
-
-test('an Agent call without an effort is routed as before', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
-  const efforts = recordEfforts(on)
-  let calledId = ''
-  on('tool.call', (_: unknown, e: any) => { calledId = e.tool_use_id; return TOOL_RESULT })
-  const h = harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
-  await $.tool.call(agentCall())
-  await $.agent.spawn(spawn({ tool_use_id: calledId }))
-  await drain($.turn.step(step({ agentId: 'a1' })))
-  expect(efforts).toEqual(['medium'])
-  expect(h.logs).toEqual(['L1 sonnet · medium · p=0.80/0.60'])
-})
-
-test('a kept effort does not leak to the next call', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
-  const efforts = recordEfforts(on)
-  let calledId = ''
-  on('tool.call', (_: unknown, e: any) => { calledId = e.tool_use_id; return TOOL_RESULT })
-  harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
-  await $.tool.call(agentCall({ effort: 'low' }))
-  await $.agent.spawn(spawn({ tool_use_id: calledId }))
-  await drain($.turn.step(step({ agentId: 'a1' })))
-  await $.agent.spawn(spawn({ tool_use_id: calledId }))
-  await $.agent.spawn(spawn({ tool_use_id: 'toolu_2' }))
-  await drain($.turn.step(step({ agentId: 'a1' })))
-  await drain($.turn.step(step({ agentId: 'a2' })))
-  expect(efforts).toEqual(['high', 'medium', 'medium'])
-})
-
-test('a call that names both effort and model consumes its id', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
-  const efforts = recordEfforts(on)
-  let calledId = ''
-  on('tool.call', (_: unknown, e: any) => { calledId = e.tool_use_id; return TOOL_RESULT })
-  const h = harness(on, ANSWER([0.1, 0.8, 0.1], [0.2, 0.6, 0.2]))
-  await $.tool.call(agentCall({ effort: 'low', model: 'sonnet' }))
-  await $.agent.spawn(spawn({ tool_use_id: calledId, model: 'sonnet' }))
-  expect(h.received.tool_use_id).toBe(calledId)
-  await $.agent.spawn(spawn({ tool_use_id: calledId }))
-  await drain($.turn.step(step({ agentId: 'a1' })))
-  expect(efforts).toEqual(['medium'])
-})
-
-test('a substituted model keeps the engine\'s effort', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
-  const efforts = recordEfforts(on)
+test('a hook failure lets the call run unchanged', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   mock.clock(on)
+  let runs = 0
+  let received: any
   on('ui.log', () => ({ value: undefined }))
-  on('http.fetch', () => ({ value: { status: 200, ok: true, headers: {}, text: ANSWER([0.9, 0.1, 0], [0.7, 0.2, 0.1]) } }))
-  on('agent.spawn', () => ({ model: 'claude-opus-5-5', agentId: 'a1' }))
-  await $.agent.spawn(spawn())
-  await drain($.turn.step(step({ agentId: 'a1' })))
-  expect(efforts).toEqual(['high'])
+  on('http.fetch', () => ({ value: { status: 200, ok: true, headers: {}, text: ANSWER([0.9, 0.1, 0]) } }))
+  on('tool.call', (_: unknown, e: any) => { runs += 1; received = e; return TOOL_RESULT })
+  const r: any = await $.tool.call(agentCall({ prompt: 42 }))
+  expect(runs).toBe(1)
+  expect(received.model).toBeUndefined()
+  expect(received.prompt).toBe(42)
+  expect(r.result).toBe('ok')
 })
