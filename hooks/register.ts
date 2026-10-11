@@ -1,27 +1,27 @@
 import type { Register } from 'claude-code'
-import { route, type Effort } from './router.ts'
+import { route } from './router.ts'
 
 const HTTP_TIMEOUT_MS = 8000
+
+type AgentCall = {
+  prompt: string
+  description: string
+  subagent_type?: string
+  model?: string
+  effort?: string
+  name?: string
+}
 
 export const register: Register = (on, options) => {
   const mode = options.mode === 'auto' ? 'auto' : 'suggest'
   // The key is the plugin's sensitive userConfig option and goes only to TypeSafe, which issued it.
   const apiKey = typeof options.api_key === 'string' && options.api_key !== '' ? options.api_key : undefined
-  // Read by the turn.step hook below. Never emptied: a session spawns at most hundreds of agents.
-  // A reload starts it empty, so agents already running keep the engine's effort.
-  const effortByAgent = new Map<string, Effort>()
-  // The spawn event does not carry the Agent call's effort, so calls that name one are matched by tool_use_id.
-  // Ids of calls that never spawn stay, one short string each.
-  const callerEffort = new Set<string>()
 
-  on('tool.call', { tool: 'Agent' }, ($, e, next) => {
-    if (e.effort !== undefined) callerEffort.add(e.tool_use_id)
-    return next(e)
-  })
-
-  on('agent.spawn', async ($, e, next) => {
-    const keep = callerEffort.delete(e.tool_use_id)
-    if (e.fork || e.isTeammate || e.workflow !== undefined || e.model !== undefined) return next(e)
+  on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
+    const call = e as typeof e & AgentCall
+    // A fork inherits its parent's model, a named agent is a teammate, and a caller-named model keeps its effort too.
+    if (call.subagent_type === 'fork' || call.name !== undefined || call.model !== undefined) return next(e)
+    const keep = call.effort !== undefined
 
     const post = async (body: string): Promise<string> => {
       if (!apiKey) throw new Error('api_key unset')
@@ -44,7 +44,7 @@ export const register: Register = (on, options) => {
       }
     }
 
-    const decision = await route({ role: e.subagentType, description: e.description, prompt: e.prompt }, post)
+    const decision = await route({ role: call.subagent_type ?? 'general-purpose', description: call.description, prompt: call.prompt }, post)
     if ('skipped' in decision) {
       $.ui.log(`skipped, ${decision.skipped}`)
       return next(e)
@@ -53,19 +53,11 @@ export const register: Register = (on, options) => {
     const p = `${probabilities.tier[String(level)].toFixed(2)}/${probabilities.work[String(workIndex)].toFixed(2)}`
     const pick = `L${level} ${model} · ${keep ? 'caller effort' : effort} · p=${p}`
     if (mode === 'suggest') {
-      const r = await next(e)
-      $.ui.log(`would pick ${pick} · ran on ${'deny' in r && r.deny !== undefined ? 'nothing, denied' : r.model}`)
-      return r
+      $.ui.log(`would pick ${pick}`)
+      return next(e)
     }
-    const r = await next({ ...e, model })
-    // A forced or substituted model (CLAUDE_CODE_SUBAGENT_MODEL_FORCE, availableModels) keeps the engine's effort.
-    if (r.agentId !== undefined && !keep && r.model.includes(model)) effortByAgent.set(r.agentId, effort)
+    const r = await next(keep ? { ...e, model } : { ...e, model, effort })
     $.ui.log('deny' in r && r.deny !== undefined ? `${pick} · denied` : pick)
     return r
   }).catch(($, e, next) => next(e))
-
-  on('turn.step', async function* ($, e, next) {
-    const effort = e.agentId === undefined ? undefined : effortByAgent.get(e.agentId)
-    return yield* next(effort === undefined ? e : { ...e, effort })
-  })
 }
