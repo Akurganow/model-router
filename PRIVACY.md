@@ -31,11 +31,12 @@ those requests.
 
 ## What the plugin stores
 
-The plugin stores nothing, on disk or in memory beyond the request in
-flight. Claude Code keeps your API key in your system's secure storage as a
-sensitive plugin option. The plugin reads it only to send it as the bearer
-token of that request. The routing mode lives in your Claude Code settings.
-The lines the plugin prints per dispatch go to your own transcript.
+The plugin stores nothing on disk. In memory it holds the configured key while
+the hook is registered, and no routing state between calls. Claude Code keeps
+your API key in your system's secure storage as a sensitive plugin option. The
+plugin reads it only to send it as the bearer token of that request. The
+routing mode lives in your Claude Code settings. The lines the plugin prints
+per dispatch go to your own transcript.
 
 ## Your choices
 

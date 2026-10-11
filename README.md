@@ -182,6 +182,7 @@ node scripts/calibrate.ts
 
 The calibration script sends `calibration.jsonl`, twenty-one labelled briefs, to
 the same endpoint and exits 1 when tier or work agreement falls below 85%. It
-prompts for the key with masked input, or reads stdin when piped, so the key
-never appears in command lines or shell history. A miss is fixed by rewording a
+prompts for the key with masked input, which keeps the key out of command lines
+and shell history. It also reads stdin when piped. Pipe it only from a source
+that does not put the key in the command line. A miss is fixed by rewording a
 tier or work-level text in `hooks/router.ts`, never by lowering the bar.
