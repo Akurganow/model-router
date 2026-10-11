@@ -2,6 +2,8 @@ import type { Register } from 'claude-code'
 import { route } from './router.ts'
 
 const HTTP_TIMEOUT_MS = 8000
+// The debug log keeps 10000 characters of a line, and a body can carry 12000 of task text.
+const DEBUG_PIECE_CHARS = 9000
 
 type AgentCall = {
   prompt: string
@@ -21,10 +23,16 @@ export const register: Register = (on, options) => {
     const call = e as typeof e & AgentCall
     // A fork inherits its parent's model, a named agent is a teammate, and a caller-named model keeps its effort too.
     if (call.subagent_type === 'fork' || call.name !== undefined || call.model !== undefined) return next(e)
+    // A call the user's rules deny as Claude made it never leaves the machine. The check opens no dialog.
+    const { tool: _tool, tool_use_id: _id, agentId: _agentId, requestMeta: _meta, ...input } = e as Record<string, unknown>
+    const check = await $.tool.check({ tool: 'Agent', input })
+    if (check.decision === 'deny') return next(e)
     const keep = call.effort !== undefined
 
     const post = async (body: string): Promise<string> => {
       if (!apiKey) throw new Error('api_key unset')
+      const pieces = Math.ceil(body.length / DEBUG_PIECE_CHARS)
+      for (let i = 0; i < pieces; i++) $.ui.log(`request ${i + 1}/${pieces} ${body.slice(i * DEBUG_PIECE_CHARS, (i + 1) * DEBUG_PIECE_CHARS)}`, { to: 'debug' })
       const stop = new AbortController()
       const timeout = $.clock.sleep(HTTP_TIMEOUT_MS, { signal: stop.signal })
         .then(() => { throw new Error(`no answer in ${HTTP_TIMEOUT_MS} ms`) })

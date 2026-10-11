@@ -19,13 +19,14 @@ const agentCall = (over: Record<string, unknown> = {}) => ({
   ...over,
 }) as any
 
-type Harness = { logs: string[]; fetched: number; received: any }
+type Harness = { logs: string[]; debug: string[]; fetched: number; received: any; checked: any; sent: any }
 
-const harness = (on: any, fetchText = ANSWER([0.9, 0.1, 0]), status = 200): Harness => {
-  const h: Harness = { logs: [], fetched: 0, received: undefined }
+const harness = (on: any, fetchText = ANSWER([0.9, 0.1, 0]), status = 200, decision: string = 'allow'): Harness => {
+  const h: Harness = { logs: [], debug: [], fetched: 0, received: undefined, checked: undefined, sent: undefined }
   mock.clock(on)
-  on('ui.log', (_: unknown, e: { text: string }) => { h.logs.push(e.text); return { value: undefined } })
-  on('http.fetch', () => { h.fetched += 1; return { value: { status, ok: status < 300, headers: {}, text: fetchText } } })
+  on('ui.log', (_: unknown, e: { text: string; to?: string }) => { (e.to === 'debug' ? h.debug : h.logs).push(e.text); return { value: undefined } })
+  on('http.fetch', (_: unknown, e: any) => { h.fetched += 1; h.sent = e.init.body; return { value: { status, ok: status < 300, headers: {}, text: fetchText } } })
+  on('tool.check', (_: unknown, e: any) => { h.checked = e; if (decision === 'throw') throw new Error('boom'); return { decision } })
   on('tool.call', (_: unknown, e: any) => { h.received = e; return TOOL_RESULT })
   return h
 }
@@ -66,6 +67,7 @@ test('a call without an agent type is routed as general-purpose', { options: { m
   let request: any
   on('ui.log', () => ({ value: undefined }))
   on('http.fetch', (_: unknown, e: any) => { request = e; return { value: { status: 200, ok: true, headers: {}, text: ANSWER([0.9, 0.1, 0]) } } })
+  on('tool.check', () => ({ decision: 'allow' }))
   on('tool.call', () => TOOL_RESULT)
   await $.tool.call(agentCall({ subagent_type: undefined }))
   expect(JSON.parse(request.init.body).state.role).toBe('general-purpose')
@@ -103,9 +105,10 @@ test('a malformed answer passes through', { options: { mode: 'auto', api_key: 't
 
 test('a slow Jev passes through after the timeout', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   const clock = mock.clock(on)
-  const h: Harness = { logs: [], fetched: 0, received: undefined }
-  on('ui.log', (_: unknown, e: { text: string }) => { h.logs.push(e.text); return { value: undefined } })
+  const h: Harness = { logs: [], debug: [], fetched: 0, received: undefined, checked: undefined, sent: undefined }
+  on('ui.log', (_: unknown, e: { text: string; to?: string }) => { if (e.to !== 'debug') h.logs.push(e.text); return { value: undefined } })
   on('http.fetch', async () => { await clock.sleep(60000); return { value: { status: 200, ok: true, headers: {}, text: ANSWER([1, 0, 0]) } } })
+  on('tool.check', () => ({ decision: 'allow' }))
   on('tool.call', (_: unknown, e: any) => { h.received = e; return TOOL_RESULT })
   const pending = $.tool.call(agentCall())
   await clock.advance(8000)
@@ -119,6 +122,7 @@ test('the request goes to the systemone endpoint with the key and the pinned mod
   let request: any
   on('ui.log', () => ({ value: undefined }))
   on('http.fetch', (_: unknown, e: any) => { request = e; return { value: { status: 200, ok: true, headers: {}, text: ANSWER([0.9, 0.1, 0]) } } })
+  on('tool.check', () => ({ decision: 'allow' }))
   on('tool.call', () => TOOL_RESULT)
   await $.tool.call(agentCall())
   expect(request.url).toBe('https://api.typesafe.ai/v1/systemone')
@@ -141,8 +145,9 @@ test('an Agent call that names an effort keeps it and gets the model', { options
 test('a denied call in auto mode says so and returns the denial', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
   mock.clock(on)
   const logs: string[] = []
-  on('ui.log', (_: unknown, e: { text: string }) => { logs.push(e.text); return { value: undefined } })
+  on('ui.log', (_: unknown, e: { text: string; to?: string }) => { if (e.to !== 'debug') logs.push(e.text); return { value: undefined } })
   on('http.fetch', () => ({ value: { status: 200, ok: true, headers: {}, text: ANSWER([0.9, 0.1, 0]) } }))
+  on('tool.check', () => ({ decision: 'allow' }))
   on('tool.call', () => ({ deny: 'no' }))
   const r: any = await $.tool.call(agentCall())
   expect(r.deny).toBe('no')
@@ -155,10 +160,64 @@ test('a hook failure lets the call run unchanged', { options: { mode: 'auto', ap
   let received: any
   on('ui.log', () => ({ value: undefined }))
   on('http.fetch', () => ({ value: { status: 200, ok: true, headers: {}, text: ANSWER([0.9, 0.1, 0]) } }))
+  on('tool.check', () => ({ decision: 'allow' }))
   on('tool.call', (_: unknown, e: any) => { runs += 1; received = e; return TOOL_RESULT })
   const r: any = await $.tool.call(agentCall({ prompt: 42 }))
   expect(runs).toBe(1)
   expect(received.model).toBeUndefined()
   expect(received.prompt).toBe(42)
   expect(r.result).toBe('ok')
+})
+
+test('a call that permission rules deny is not sent', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  const h = harness(on, undefined, 200, 'deny')
+  const r: any = await $.tool.call(agentCall())
+  expect(h.fetched).toBe(0)
+  expect(h.received.model).toBeUndefined()
+  expect(h.logs).toEqual([])
+  expect(h.debug).toEqual([])
+  expect(r.result).toBe('ok')
+})
+
+test('a call that would prompt is still routed', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  const h = harness(on, undefined, 200, 'ask')
+  await $.tool.call(agentCall())
+  expect(h.fetched).toBe(1)
+  expect(h.received.model).toBe('haiku')
+})
+
+test('each request body goes to the debug log without the key', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  const h = harness(on)
+  await $.tool.call(agentCall())
+  expect(h.debug.length).toBe(1)
+  expect(h.debug[0].startsWith('request 1/1 {')).toBe(true)
+  expect(h.debug[0]).toContain('"role":"general-purpose"')
+  expect(h.debug[0]).toContain('"description":"write hello"')
+  expect(h.debug[0]).not.toContain('test-key')
+})
+
+test('the permission check gets the call\'s arguments and nothing else', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  const h = harness(on)
+  await $.tool.call(agentCall())
+  expect(h.checked.tool).toBe('Agent')
+  expect(h.checked.input).toEqual({ prompt: agentCall().prompt, description: 'write hello', subagent_type: 'general-purpose' })
+})
+
+test('a permission check that throws lets the call run unchanged', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  const h = harness(on, undefined, 200, 'throw')
+  const r: any = await $.tool.call(agentCall())
+  expect(h.fetched).toBe(0)
+  expect(h.received.model).toBeUndefined()
+  expect(h.logs).toEqual([])
+  expect(r.result).toBe('ok')
+})
+
+test('a long request goes to the debug log in pieces that join back', { options: { mode: 'auto', api_key: 'test-key' } }, async ($, on) => {
+  const h = harness(on)
+  await $.tool.call(agentCall({ prompt: 'x'.repeat(12000) }))
+  expect(h.debug.length).toBe(2)
+  expect(h.debug[0].startsWith('request 1/2 ')).toBe(true)
+  expect(h.debug[1].startsWith('request 2/2 ')).toBe(true)
+  for (const line of h.debug) expect(line.length <= 9000 + 'request 2/2 '.length).toBe(true)
+  expect(h.debug.map(line => line.replace(/^request \d+\/\d+ /, '')).join('')).toBe(h.sent)
 })
