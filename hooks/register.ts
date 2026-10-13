@@ -52,7 +52,9 @@ export const register: Register = (on, options) => {
 				);
 			const stop = new AbortController();
 			const timeout = $.clock
-				.sleep(HTTP_TIMEOUT_MS, { signal: stop.signal })
+				.sleep(HTTP_TIMEOUT_MS, {
+					signal: AbortSignal.any([stop.signal, next.signal]),
+				})
 				.then(() => {
 					throw new Error(`no answer in ${HTTP_TIMEOUT_MS} ms`);
 				});
