@@ -51,8 +51,9 @@ jobs:
       - name: Lint and check the formatting
         run: npx biome ci --error-on-warnings .
 
+      # --strict fails on warnings too, as the publishing docs say to run it in CI.
       - name: Validate the plugin
-        run: claude plugin validate .
+        run: claude plugin validate --strict .
 
       # Every hook and engine call is a line in the directory's review and in
       # the README. A change here is a decision, not a side effect.
