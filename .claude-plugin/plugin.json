@@ -1,39 +1,36 @@
 {
-  "name": "model-router",
-  "version": "0.6.0",
-  "description": "Routes each subagent to the cheapest Claude model and effort that can do its task, judged by TypeSafe Jev",
-  "author": {
-    "name": "Akurganow",
-    "url": "https://github.com/Akurganow"
-  },
-  "license": "MIT",
-  "homepage": "https://github.com/Akurganow/model-router",
-  "repository": "https://github.com/Akurganow/model-router",
-  "privacyPolicyUrl": "https://github.com/Akurganow/model-router/blob/main/PRIVACY.md",
-  "keywords": [
-    "claude-code",
-    "mod",
-    "subagents",
-    "model-routing",
-    "typesafe",
-    "jev"
-  ],
-  "userConfig": {
-    "api_key": {
-      "type": "string",
-      "title": "TypeSafe API key",
-      "description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request. The README says where to get one.",
-      "sensitive": true
-    },
-    "mode": {
-      "type": "string",
-      "title": "Routing mode",
-      "description": "suggest: log the model and effort Jev would pick, change nothing. auto: set the model and the effort. Only a model or effort passed in the Agent call is kept. Auto also overrides a model or effort pinned in an agent definition.",
-      "options": [
-        "suggest",
-        "auto"
-      ],
-      "default": "suggest"
-    }
-  }
+	"name": "model-router",
+	"version": "0.6.0",
+	"description": "Routes each subagent to the cheapest Claude model and effort that can do its task, judged by TypeSafe Jev",
+	"author": {
+		"name": "Akurganow",
+		"url": "https://github.com/Akurganow"
+	},
+	"license": "MIT",
+	"homepage": "https://github.com/Akurganow/model-router",
+	"repository": "https://github.com/Akurganow/model-router",
+	"privacyPolicyUrl": "https://github.com/Akurganow/model-router/blob/main/PRIVACY.md",
+	"keywords": [
+		"claude-code",
+		"mod",
+		"subagents",
+		"model-routing",
+		"typesafe",
+		"jev"
+	],
+	"userConfig": {
+		"api_key": {
+			"type": "string",
+			"title": "TypeSafe API key",
+			"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request. The README says where to get one.",
+			"sensitive": true
+		},
+		"mode": {
+			"type": "string",
+			"title": "Routing mode",
+			"description": "suggest: log the model and effort Jev would pick, change nothing. auto: set the model and the effort. Only a model or effort passed in the Agent call is kept. Auto also overrides a model or effort pinned in an agent definition.",
+			"options": ["suggest", "auto"],
+			"default": "suggest"
+		}
+	}
 }

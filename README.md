@@ -182,12 +182,23 @@ https://github.com/Akurganow/model-router/issues. The privacy policy is in
 From the plugin folder:
 
 ```
+npm ci
 claude plugin test .
+npm run check
 node scripts/calibrate.ts
 ```
 
-`claude plugin test .` runs the tests, no network. `scripts/calibrate.ts` is
-a developer tool that needs Node 22.18 or 23.6 or later. Claude Code never
+`claude plugin test .` runs the tests, no network. `npm run check` type-checks
+`hooks/`, `tests/` and `scripts/` with `tsc` and runs Biome, lint and
+formatting. `npm run fix` formats and applies the safe lint fixes.
+
+The hooks and tests are checked against the declarations Claude Code writes
+into `.claude-plugin/types/` when it loads the mod. Run `claude --plugin-dir .`
+once in an interactive session and quit; `tsconfig.json` extends the tsconfig
+written there. No command writes the declarations without a session, so CI
+type-checks `scripts/` only.
+
+`scripts/calibrate.ts` is a developer tool that needs Node 22.18 or 23.6 or later. Claude Code never
 runs it. It takes the TypeSafe key from a masked prompt or stdin and sends
 `calibration.jsonl`, twenty-one labelled briefs, to the same endpoint. It
 exits 1 when tier or work agreement falls below 85%. A miss is fixed by
@@ -197,6 +208,6 @@ history. Pipe it only from a source that does not put the key in the command
 line.
 
 CI runs the tests, `claude plugin validate`, a check that the mod's hooks and
-engine calls match `tools/surface.json`, and Anthropic's plugin policy scan
-with the prompt in `.github/policy/`. A pull request merges only when all of
-them pass.
+engine calls match `tools/surface.json`, `tsc -p scripts`, `biome ci`, and
+Anthropic's plugin policy scan with the prompt in `.github/policy/`. A pull
+request merges only when all of them pass.

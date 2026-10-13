@@ -1,4 +1,4 @@
 {
-  "hooks": ["tool.call{tool=Agent}"],
-  "calls": ["$.clock.sleep", "$.http.fetch", "$.tool.check", "$.ui.log"]
+	"hooks": ["tool.call{tool=Agent}"],
+	"calls": ["$.clock.sleep", "$.http.fetch", "$.tool.check", "$.ui.log"]
 }

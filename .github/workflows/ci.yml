@@ -38,6 +38,19 @@ jobs:
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code@2.1.294
 
+      - name: Install the dev tools
+        run: npm ci
+
+      # The hooks are checked against the declarations Claude Code writes
+      # beside a loaded mod, and no command writes them without a session,
+      # so CI type-checks the scripts only. README's Development section has
+      # the local command.
+      - name: Type-check the scripts
+        run: npx tsc -p scripts
+
+      - name: Lint and check the formatting
+        run: npx biome ci --error-on-warnings .
+
       - name: Validate the plugin
         run: claude plugin validate .
 
