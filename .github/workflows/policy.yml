@@ -3,6 +3,14 @@ name: policy
 # Anthropic's plugin policy scan, the one its own plugin repositories run on
 # every pull request. It reads the plugin at this commit against the prompt
 # in .github/policy/ and fails on a finding.
+#
+# The verdict is a model's, so the same content can get a different verdict
+# on another run. As in anthropics/claude-plugins-official, each tree is
+# scanned at most once: the verdict is cached under the policy hash and the
+# tree hash, a cached verdict gates later runs, and a re-run or a force-push
+# of the same content never scans again. A cached fail still fails; the fix
+# is a commit that changes the content. A scan that returns no verdict is an
+# infrastructure error: it fails the job and caches nothing.
 on:
   pull_request:
   push:
@@ -34,17 +42,31 @@ jobs:
           fi
 
       # The action scans marketplace entries that name a repository and a
-      # commit. This file names this repository at the commit under test.
+      # commit. This file names this repository at the commit under test. The
+      # tree hash is the cache key: two commits with the same content share
+      # one verdict.
       - name: Name the commit to scan
+        id: target
         env:
           REPO: ${{ github.repository }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           mkdir -p .scan
           printf '{"plugins":[{"name":"model-router","source":{"url":"https://github.com/%s","sha":"%s"}}]}\n' "$REPO" "$SHA" > .scan/targets.json
+          echo "tree=$(git rev-parse "$SHA^{tree}")" >> "$GITHUB_OUTPUT"
 
+      - name: Restore the cached verdict
+        id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .scan/verdict.json
+          key: policy-verdict-${{ hashFiles('.github/policy/**') }}-${{ steps.target.outputs.tree }}
+
+      # The verdict, not the action's exit code, gates the job below.
       - uses: anthropics/claude-plugins-community/.github/actions/scan-plugins@f60f0454df3045f724c43c6346ec80bdcc3472b2 # main, 2026-10-11
+        if: steps.cache.outputs.cache-hit != 'true'
         id: scan
+        continue-on-error: true
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           marketplace-path: .scan/targets.json
@@ -54,13 +76,33 @@ jobs:
           claude-cli-version: 2.1.294
 
       # The action warns and moves on when Claude returns no verdict. This
-      # step requires exactly one verdict, and a passing one.
-      - name: Require a passing verdict
+      # step requires exactly one verdict and keeps it for the cache.
+      - name: Record the verdict
+        if: steps.cache.outputs.cache-hit != 'true'
         env:
           SCANNED: ${{ steps.scan.outputs.scanned }}
         run: |
-          if ! printf '%s' "$SCANNED" | jq -e 'length == 1 and .[0].passes == true' > /dev/null; then
-            echo "::error::the policy scan produced no passing verdict"
+          if ! printf '%s' "$SCANNED" | jq -e 'type == "array" and length == 1 and (.[0] | has("passes"))' > /dev/null; then
+            echo "::error::the policy scan produced no verdict"
             printf '%s\n' "$SCANNED"
+            exit 1
+          fi
+          printf '%s' "$SCANNED" | jq '.[0]' > .scan/verdict.json
+
+      - name: Cache the verdict
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .scan/verdict.json
+          key: policy-verdict-${{ hashFiles('.github/policy/**') }}-${{ steps.target.outputs.tree }}
+
+      - name: Require a passing verdict
+        env:
+          SOURCE: ${{ steps.cache.outputs.cache-hit == 'true' && 'cached' || 'fresh' }}
+        run: |
+          echo "verdict: $SOURCE"
+          jq '{passes, violations}' .scan/verdict.json
+          if ! jq -e '.passes == true' .scan/verdict.json > /dev/null; then
+            echo "::error::the policy scan failed this tree; a commit that changes the content gets a new verdict"
             exit 1
           fi
