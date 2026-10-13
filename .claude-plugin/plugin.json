@@ -1,6 +1,6 @@
 {
 	"name": "model-router",
-	"version": "0.6.0",
+	"version": "0.7.0",
 	"description": "Routes each subagent to the cheapest Claude model and effort that can do its task, judged by TypeSafe Jev. On every Agent call it sends the subagent's task text, condensed and with secrets masked, to api.typesafe.ai with your TypeSafe key, in suggest mode too.",
 	"author": {
 		"name": "Akurganow",

@@ -3,6 +3,24 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.7.0 - 2026-10-13
+#### Features
+- disclose the TypeSafe upload in the plugin description (a26f6ed)
+#### Documentation
+- say the verdict stays local and name the CI gates (2664723)
+#### Build system
+- type-check and lint with strict TypeScript and Biome (c01e935)
+#### Continuous Integration
+- scan each plugin tree once and gate on the cached verdict (76f90f3)
+- validate the plugin with --strict (e75b024)
+- push releases with the release deploy key (1248715)
+- fail the policy job when the scan returns no verdict (f661ad7)
+- run Anthropic's plugin policy scan on every pull request (35a80d4)
+- fail when the mod's hooks or engine calls change (434e33b)
+
+- - -
+
+
 ## v0.6.0 - 2026-10-11
 #### Features
 - skip calls that permission rules deny and log each request to the debug log (d8a7770)
