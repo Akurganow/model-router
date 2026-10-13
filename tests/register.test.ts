@@ -1,4 +1,5 @@
 import type { On, ToolCallArgs, ToolCheckDecision } from "claude-code";
+import type { MockClock } from "claude-code/testing";
 import { expect, mock, test } from "claude-code/testing";
 
 const score = (p: number[]) => ({
@@ -48,6 +49,7 @@ type Request = {
 };
 type Outcome = { result?: unknown; deny?: unknown };
 type Harness = {
+	clock: MockClock;
 	logs: string[];
 	debug: string[];
 	fetched: number;
@@ -61,8 +63,10 @@ const harness = (
 	fetchText = ANSWER([0.9, 0.1, 0]),
 	status = 200,
 	decision: ToolCheckDecision | "throw" = "allow",
+	fetchDelayMs = 0,
 ): Harness => {
 	const h: Harness = {
+		clock: mock.clock(on),
 		logs: [],
 		debug: [],
 		fetched: 0,
@@ -70,14 +74,14 @@ const harness = (
 		checked: {},
 		sent: undefined,
 	};
-	mock.clock(on);
 	on("ui.log", (_: unknown, e: { text: string; to?: string }) => {
 		(e.to === "debug" ? h.debug : h.logs).push(e.text);
 		return { value: undefined };
 	});
-	on("http.fetch", (_, e) => {
+	on("http.fetch", async (_, e) => {
 		h.fetched += 1;
 		h.sent = e.init?.body;
+		if (fetchDelayMs > 0) await h.clock.sleep(fetchDelayMs);
 		return {
 			value: { status, ok: status < 300, headers: {}, text: fetchText },
 		};
@@ -214,35 +218,40 @@ test(
 	"a slow Jev passes through after the timeout",
 	{ options: { mode: "auto", api_key: "test-key" } },
 	async ($, on) => {
-		const clock = mock.clock(on);
-		const h: Harness = {
-			logs: [],
-			debug: [],
-			fetched: 0,
-			received: {},
-			checked: {},
-			sent: undefined,
-		};
-		on("ui.log", (_: unknown, e: { text: string; to?: string }) => {
-			if (e.to !== "debug") h.logs.push(e.text);
-			return { value: undefined };
-		});
-		on("http.fetch", async () => {
-			await clock.sleep(60000);
-			return {
-				value: { status: 200, ok: true, headers: {}, text: ANSWER([1, 0, 0]) },
-			};
-		});
-		on("tool.check", () => ({ decision: "allow" }));
-		on("tool.call", (_, e) => {
-			h.received = e;
-			return TOOL_RESULT;
-		});
+		const h = harness(on, ANSWER([1, 0, 0]), 200, "allow", 60000);
 		const pending = $.tool.call(agentCall());
-		await clock.advance(8000);
+		await h.clock.advance(8000);
 		await pending;
 		expect(h.received.model).toBeUndefined();
 		expect(h.logs).toEqual(["skipped, no answer in 8000 ms"]);
+	},
+);
+
+// A hook above that settles first abandons the dispatch, as the user's interrupt does.
+const interrupter = {
+	name: "interrupter",
+	tier: "prepend" as const,
+	register(on: On) {
+		on("tool.call", { tool: "Agent" }, async ($, e, next) => {
+			next(e).catch(() => undefined);
+			await $.clock.sleep(100);
+			return { result: "interrupted" };
+		});
+	},
+};
+
+test(
+	"an abandoned call ends the Jev wait at once and passes through",
+	{ options: { mode: "auto", api_key: "test-key" }, plugins: [interrupter] },
+	async ($, on) => {
+		const h = harness(on, ANSWER([1, 0, 0]), 200, "allow", 60000);
+		const pending = $.tool.call(agentCall());
+		await h.clock.advance(100);
+		expect(await pending).toEqual({ result: "interrupted" });
+		expect(h.logs.length).toBe(1);
+		expect(h.logs[0]).toMatch(/^skipped, /);
+		expect(h.received.model).toBeUndefined();
+		expect(h.received.prompt).toBe(PROMPT);
 	},
 );
 
