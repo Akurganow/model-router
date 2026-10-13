@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.7.1 - 2026-10-13
+#### Bug Fixes
+- end the Jev wait when the dispatch is abandoned (347b93c)
+
+- - -
+
+
 ## v0.7.0 - 2026-10-13
 #### Features
 - disclose the TypeSafe upload in the plugin description (a26f6ed)
