@@ -41,6 +41,16 @@ jobs:
       - name: Install the dev tools
         run: npm ci
 
+      # Any open advisory against an installed package fails the job;
+      # Dependabot opens the pull request with the fix.
+      - name: Audit the dev tools
+        run: npm audit --audit-level=low
+
+      # Every installed package must carry a valid registry signature, and
+      # a provenance attestation where the package publishes one.
+      - name: Verify the registry signatures
+        run: npm audit signatures
+
       # The hooks are checked against the declarations Claude Code writes
       # beside a loaded mod, and no command writes them without a session,
       # so CI type-checks the scripts only. README's Development section has
