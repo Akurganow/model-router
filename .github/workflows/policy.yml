@@ -5,11 +5,14 @@ name: policy
 # in .github/policy/ and fails on a finding.
 #
 # The verdict is a model's, so the same content can get a different verdict
-# on another run. As in anthropics/claude-plugins-official, each tree is
-# scanned at most once: the verdict is cached under the policy hash and the
-# tree hash, a cached verdict gates later runs, and a re-run or a force-push
-# of the same content never scans again. A cached fail still fails; the fix
-# is a commit that changes the content. A scan that returns no verdict is an
+# on another run. As in anthropics/claude-plugins-official, each plugin tree
+# is scanned at most once: the verdict is cached under the policy hash and
+# the hash of the plugin folder's tree, a cached verdict gates later runs,
+# and a re-run, a force-push of the same content or a commit outside the
+# plugin folder never scans again. A pull request from Dependabot changes
+# the root only, so it reuses main's verdict and needs no API key, which a
+# Dependabot run would not have. A cached fail still fails; the fix is a
+# commit that changes the plugin. A scan that returns no verdict is an
 # infrastructure error: it fails the job and caches nothing.
 on:
   pull_request:
@@ -25,26 +28,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
 
-      # The scan action skips without a key. This step keeps the check from
-      # passing for that reason.
-      - name: Require the API key
-        env:
-          KEY_SET: ${{ secrets.ANTHROPIC_API_KEY != '' }}
-        run: |
-          if [ "$KEY_SET" != "true" ]; then
-            echo "::error::ANTHROPIC_API_KEY is not set, so the policy scan cannot run"
-            exit 1
-          fi
-
-      # The action scans marketplace entries that name a repository and a
-      # commit. This file names this repository at the commit under test. The
-      # tree hash is the cache key: two commits with the same content share
-      # one verdict.
+      # The action scans marketplace entries that name a repository, a commit
+      # and the plugin's folder in it. This file names this repository at the
+      # commit under test. The plugin folder's tree hash is the cache key:
+      # two commits with the same plugin content share one verdict.
       - name: Name the commit to scan
         id: target
         env:
@@ -52,8 +44,8 @@ jobs:
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           mkdir -p .scan
-          printf '{"plugins":[{"name":"model-router","source":{"url":"https://github.com/%s","sha":"%s"}}]}\n' "$REPO" "$SHA" > .scan/targets.json
-          echo "tree=$(git rev-parse "$SHA^{tree}")" >> "$GITHUB_OUTPUT"
+          printf '{"plugins":[{"name":"model-router","source":{"url":"https://github.com/%s","sha":"%s","path":"plugins/model-router"}}]}\n' "$REPO" "$SHA" > .scan/targets.json
+          echo "tree=$(git rev-parse "$SHA:plugins/model-router")" >> "$GITHUB_OUTPUT"
 
       - name: Restore the cached verdict
         id: cache
@@ -62,8 +54,20 @@ jobs:
           path: .scan/verdict.json
           key: policy-verdict-${{ hashFiles('.github/policy/**') }}-${{ steps.target.outputs.tree }}
 
+      # The scan action skips without a key. This step keeps the check from
+      # passing for that reason.
+      - name: Require the API key
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          KEY_SET: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          if [ "$KEY_SET" != "true" ]; then
+            echo "::error::ANTHROPIC_API_KEY is not set, so the policy scan cannot run"
+            exit 1
+          fi
+
       # The verdict, not the action's exit code, gates the job below.
-      - uses: anthropics/claude-plugins-community/.github/actions/scan-plugins@f60f0454df3045f724c43c6346ec80bdcc3472b2 # main, 2026-10-11
+      - uses: anthropics/claude-plugins-community/.github/actions/scan-plugins@06ec7b6a0a82bdc4bec44bd82d4368c42f20d7c1 # main, 2026-10-13
         if: steps.cache.outputs.cache-hit != 'true'
         id: scan
         continue-on-error: true

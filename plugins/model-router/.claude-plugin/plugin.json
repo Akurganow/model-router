@@ -9,7 +9,7 @@
 	"license": "MIT",
 	"homepage": "https://github.com/Akurganow/model-router",
 	"repository": "https://github.com/Akurganow/model-router",
-	"privacyPolicyUrl": "https://github.com/Akurganow/model-router/blob/main/PRIVACY.md",
+	"privacyPolicyUrl": "https://github.com/Akurganow/model-router/blob/main/plugins/model-router/PRIVACY.md",
 	"keywords": [
 		"claude-code",
 		"mod",

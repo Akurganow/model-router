@@ -1,0 +1,34 @@
+name: dependency-review
+
+# Diffs the dependencies a pull request adds or upgrades against the
+# GitHub Advisory Database and fails on any advisory, the action's default
+# threshold. Every dependency here is a dev tool, so the development scope
+# counts as well as the runtime one, and so does unknown, the scope of a
+# dependency GitHub cannot classify. Claude Code copies the lockfile's
+# packages onto each user's machine when it installs the plugin, so a
+# dependency is redistributed with the plugin: the license list is the
+# permissive licenses that allow that under this repository's MIT license,
+# and no copyleft license is on it. deny-licenses is deprecated, so the
+# policy is an allow list.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: dependency-review
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-scopes: runtime, development, unknown
+          allow-licenses: >-
+            MIT, MIT-0, ISC, 0BSD, BSD-2-Clause, BSD-3-Clause, Apache-2.0,
+            Unlicense, CC0-1.0, BlueOak-1.0.0, Zlib, Python-2.0

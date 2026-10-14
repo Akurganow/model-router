@@ -1,9 +1,9 @@
 {
 	"extends": [
-		"./.claude-plugin/types/tsconfig.json",
+		"./plugins/model-router/.claude-plugin/types/tsconfig.json",
 		"@tsconfig/strictest/tsconfig.json",
 		"@tsconfig/node-ts/tsconfig.json"
 	],
 	"compilerOptions": { "allowImportingTsExtensions": true },
-	"include": ["hooks", "tests"]
+	"include": ["plugins/model-router/hooks", "plugins/model-router/tests"]
 }

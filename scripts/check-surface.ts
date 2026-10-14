@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 // claude plugin validate --json lists, per module, one "hooks:" and one "calls:" note.
 type Surface = { hooks: string[]; calls: string[] };
@@ -8,8 +9,11 @@ type Report = { contents: { notes?: string[] }[] };
 const expected: Surface = JSON.parse(
 	readFileSync(new URL("../tools/surface.json", import.meta.url), "utf8"),
 );
+const plugin = fileURLToPath(
+	new URL("../plugins/model-router", import.meta.url),
+);
 const report: Report = JSON.parse(
-	execFileSync("claude", ["plugin", "validate", ".", "--json"], {
+	execFileSync("claude", ["plugin", "validate", plugin, "--json"], {
 		encoding: "utf8",
 	}),
 );

@@ -26,12 +26,12 @@ jobs:
       # Actions are pinned to a commit sha rather than a tag, because a tag
       # can be moved to point at different code; the trailing comment records
       # which release each sha is.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         # The job only reads the repository, so the token need not stay in the checkout.
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
 
@@ -40,6 +40,16 @@ jobs:
 
       - name: Install the dev tools
         run: npm ci
+
+      # npm's default audit level: any open advisory against an installed
+      # package fails the job. Dependabot opens the pull request with the fix.
+      - name: Audit the dev tools
+        run: npm audit
+
+      # Every installed package must carry a valid registry signature, and
+      # a provenance attestation where the package publishes one.
+      - name: Verify the registry signatures
+        run: npm audit signatures
 
       # The hooks are checked against the declarations Claude Code writes
       # beside a loaded mod, and no command writes them without a session,
@@ -53,7 +63,7 @@ jobs:
 
       # --strict fails on warnings too, as the publishing docs say to run it in CI.
       - name: Validate the plugin
-        run: claude plugin validate --strict .
+        run: claude plugin validate --strict plugins/model-router
 
       # Every hook and engine call is a line in the directory's review and in
       # the README. A change here is a decision, not a side effect.
@@ -61,4 +71,4 @@ jobs:
         run: node scripts/check-surface.ts
 
       - name: Run the tests
-        run: claude plugin test .
+        run: claude plugin test plugins/model-router
