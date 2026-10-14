@@ -34,7 +34,8 @@ the declarations without a session, so CI type-checks `scripts/` only.
 
 Dependencies are exact versions in `package.json` and `package-lock.json`.
 `.npmrc` installs a version 14 days after its release at the earliest and runs
-no install scripts. Dependabot proposes updates after the same 14 days, one
+no install scripts. That needs npm 11.10.0 or later, and `npm ci` refuses an
+older npm, which would ignore the window. Dependabot proposes updates after the same 14 days, one
 pull request a week per ecosystem, and security fixes at once. CI fails on an
 open advisory, on a package without a valid registry signature, and on a pull
 request that adds a vulnerable dependency or a license outside the permissive

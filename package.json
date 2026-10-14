@@ -1,6 +1,7 @@
 {
 	"private": true,
 	"type": "module",
+	"engines": { "npm": ">=11.10.0" },
 	"scripts": {
 		"check": "tsc -p . && tsc -p scripts && biome ci --error-on-warnings .",
 		"fix": "biome check --write ."
