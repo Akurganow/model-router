@@ -3,6 +3,22 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.7.2 - 2026-10-14
+#### Bug Fixes
+- install no dev tools onto users' machines (0642945)
+#### Build system
+- format package.json (4533970)
+- refuse an npm older than 11.10.0 (b4a3e1a)
+- pin the actions to their latest releases and widen the window to 14 days (dde86aa)
+- gate dependencies behind a 7-day window and audit them in CI (6c14e8e)
+#### Continuous Integration
+- cache the policy verdict by the plugin folder's tree (e00ba18)
+- reflow the dependency review comment (21dc0dc)
+- fail the dependency review on the unknown scope too (1902449)
+
+- - -
+
+
 ## v0.7.1 - 2026-10-13
 #### Bug Fixes
 - end the Jev wait when the dispatch is abandoned (347b93c)
