@@ -2,5 +2,5 @@
 	"name": "model-router",
 	"owner": { "name": "Akurganow" },
 	"description": "Routes each Claude Code subagent to the cheapest Claude model and effort that can do its task, judged by TypeSafe Jev. On every Agent call it sends the subagent's task text, condensed and with secrets masked, to api.typesafe.ai with your TypeSafe key, in suggest mode too.",
-	"plugins": [{ "name": "model-router", "source": "./" }]
+	"plugins": [{ "name": "model-router", "source": "./plugins/model-router" }]
 }

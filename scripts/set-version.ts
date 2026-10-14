@@ -7,11 +7,16 @@ if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
 }
 
 // Only the version line changes, so the file keeps the formatting biome ci checks.
-const path = new URL("../.claude-plugin/plugin.json", import.meta.url);
+const path = new URL(
+	"../plugins/model-router/.claude-plugin/plugin.json",
+	import.meta.url,
+);
 const manifest = readFileSync(path, "utf8");
 const line = /^\t"version": "\d+\.\d+\.\d+",$/m;
 if (!line.test(manifest)) {
-	console.error("no version line in .claude-plugin/plugin.json");
+	console.error(
+		"no version line in plugins/model-router/.claude-plugin/plugin.json",
+	);
 	process.exit(1);
 }
 writeFileSync(path, manifest.replace(line, `\t"version": "${version}",`));

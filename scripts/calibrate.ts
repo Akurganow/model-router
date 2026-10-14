@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { route } from "../hooks/router.ts";
+import { route } from "../plugins/model-router/hooks/router.ts";
 
 const AGREEMENT_BAR = 0.85;
 const JEV_URL = "https://api.typesafe.ai/v1/systemone";

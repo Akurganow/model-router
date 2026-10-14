@@ -41,10 +41,10 @@ jobs:
             exit 1
           fi
 
-      # The action scans marketplace entries that name a repository and a
-      # commit. This file names this repository at the commit under test. The
-      # tree hash is the cache key: two commits with the same content share
-      # one verdict.
+      # The action scans marketplace entries that name a repository, a commit
+      # and the plugin's folder in it. This file names this repository at the
+      # commit under test. The tree hash is the cache key: two commits with
+      # the same content share one verdict.
       - name: Name the commit to scan
         id: target
         env:
@@ -52,7 +52,7 @@ jobs:
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           mkdir -p .scan
-          printf '{"plugins":[{"name":"model-router","source":{"url":"https://github.com/%s","sha":"%s"}}]}\n' "$REPO" "$SHA" > .scan/targets.json
+          printf '{"plugins":[{"name":"model-router","source":{"url":"https://github.com/%s","sha":"%s","path":"plugins/model-router"}}]}\n' "$REPO" "$SHA" > .scan/targets.json
           echo "tree=$(git rev-parse "$SHA^{tree}")" >> "$GITHUB_OUTPUT"
 
       - name: Restore the cached verdict
