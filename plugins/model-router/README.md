@@ -40,21 +40,59 @@ asks six questions. The answers for this mod:
 
 ## Install
 
+The mod needs Claude Code v2.1.293 or later and a TypeSafe API key from
+https://console.typesafe.ai/keys. Claude Code keeps the key in your system's
+secure storage. The steps differ by where you run Claude Code.
+
+### Terminal
+
 ```
 /plugin install model-router --marketplace Akurganow/model-router
 ```
 
 Answer `y` to add the marketplace, then pick the user scope. The install
-dialog asks for a TypeSafe API key, from https://console.typesafe.ai/keys,
-and keeps it in your system's secure storage.
+dialog asks for the key.
 
-The mod needs Claude Code v2.1.293 or later.
+To set the key later, run `/plugin configure model-router@model-router` in a
+session. It opens the same dialog.
 
-## Set the key later
+### VS Code
 
-In a session, run `/plugin configure model-router@model-router` to open the
-install dialog again. A saved key takes effect after `/reload-plugins` or in
-the next session.
+Add the marketplace `Akurganow/model-router` on the **Marketplaces** tab of
+**Manage plugins**, then install `model-router` on the **Plugins** tab. A form
+asks for the key after the install. The gear icon on the plugin's row opens
+the form again. Requires Claude Code v2.1.285 or later.
+
+### Desktop app
+
+The desktop app has no dialog for a plugin's key: `/plugin configure` opens
+the plugin manager instead, and the plugin's page has no key field. See
+[anthropics/claude-code#89749](https://github.com/anthropics/claude-code/issues/89749).
+Until that is fixed, set the key from a terminal, the app's own Terminal
+panel or any other. One line installs the plugin and saves the key:
+
+```
+claude plugin install model-router --marketplace Akurganow/model-router --config api_key=YOUR_KEY
+```
+
+That line leaves the key in your shell history. If you would rather keep it
+out, use this line instead. It installs the plugin, then shows
+`TypeSafe key:` and reads the key you paste without showing it, then hands
+it to Claude Code, which saves it to secure storage. Only the line itself
+goes to the history, never the key. The line is for zsh, the default shell
+on macOS. In bash, write `read -rsp 'TypeSafe key: ' KEY` in its place.
+
+```
+claude plugin install model-router --marketplace Akurganow/model-router && read -rs 'KEY?TypeSafe key: ' && printf '{"api_key":"%s"}' "$KEY" | claude plugin configure model-router@model-router --values-stdin
+```
+
+The first line ends with `Successfully installed plugin`, the second with
+`Configuration saved. Restart Claude Code to apply it.`
+
+### Apply the key
+
+The mod reads the key when it loads. After the key is saved, run
+`/reload-plugins` in each open session, or start a new one.
 
 ## Mode
 
@@ -152,7 +190,7 @@ refuses adds a second line, `denied`.
   your permission rules deny the Agent call. Forks, named agents and calls
   that name a model pass through. Enable the plugin in `/plugin`.
 - The line says `model-router skipped, api_key unset`: the key is not set.
-  Run `/plugin configure model-router@model-router`, enter the key, then
+  Set it as [Install](#install) says for your app, then run
   `/reload-plugins`.
 - The line says `skipped, HTTP 401`: TypeSafe rejected the key. Check it at
   https://console.typesafe.ai/keys.
