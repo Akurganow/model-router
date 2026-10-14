@@ -75,8 +75,10 @@ panel or any other. One line installs the plugin and saves the key:
 claude plugin install model-router --marketplace Akurganow/model-router --config api_key=YOUR_KEY
 ```
 
-That line leaves the key in your shell history. If you would rather keep it
-out, use this line instead. It installs the plugin, then shows
+That line leaves the key in your shell history, and while the command runs
+the key is visible in the process list to anyone on the machine. On a shared
+or managed machine, or if you would rather keep it out of the history, use
+this line instead. It installs the plugin, then shows
 `TypeSafe key:` and reads the key you paste without showing it, then hands
 it to Claude Code, which saves it to secure storage. Only the line itself
 goes to the history, never the key. The line is for zsh, the default shell
