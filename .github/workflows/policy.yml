@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -63,7 +63,7 @@ jobs:
           key: policy-verdict-${{ hashFiles('.github/policy/**') }}-${{ steps.target.outputs.tree }}
 
       # The verdict, not the action's exit code, gates the job below.
-      - uses: anthropics/claude-plugins-community/.github/actions/scan-plugins@f60f0454df3045f724c43c6346ec80bdcc3472b2 # main, 2026-10-11
+      - uses: anthropics/claude-plugins-community/.github/actions/scan-plugins@06ec7b6a0a82bdc4bec44bd82d4368c42f20d7c1 # main, 2026-10-13
         if: steps.cache.outputs.cache-hit != 'true'
         id: scan
         continue-on-error: true

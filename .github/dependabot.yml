@@ -1,5 +1,5 @@
 # Dependabot keeps the dev tools and the actions current. A version is
-# proposed 7 days after it is published, the same window as .npmrc, and
+# proposed 14 days after it is published, the same window as .npmrc, and
 # the updates of a week arrive as one pull request per ecosystem.
 # Security updates ignore the window: a fix for an advisory comes at once.
 version: 2
@@ -9,7 +9,7 @@ updates:
     schedule:
       interval: weekly
     cooldown:
-      default-days: 7
+      default-days: 14
     groups:
       dev-tools:
         patterns: ["*"]
@@ -19,7 +19,7 @@ updates:
     schedule:
       interval: weekly
     cooldown:
-      default-days: 7
+      default-days: 14
     groups:
       actions:
         patterns: ["*"]
