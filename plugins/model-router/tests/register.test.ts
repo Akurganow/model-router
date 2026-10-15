@@ -12,7 +12,7 @@ const score = (p: number[]) => ({
 
 const ANSWER = (tier: number[], work: number[] = [0.2, 0.6, 0.2]) =>
 	JSON.stringify({
-		model: "jev-1.13.0",
+		model: "jev-1.14.0",
 		answers: { tier: score(tier), work: score(work) },
 		usage: { input_tokens: 1, output_tokens: 1 },
 	});
@@ -339,7 +339,7 @@ test(
 		expect(request.init?.headers?.Authorization).toBe("Bearer test-key");
 		expect(request.init?.headers?.["Content-Type"]).toBe("application/json");
 		const body = JSON.parse(request.init?.body ?? "");
-		expect(body.model).toBe("jev-1.13.0");
+		expect(body.model).toBe("jev-1.14.0");
 		expect(body.state.description).toBe("write hello");
 	},
 );
