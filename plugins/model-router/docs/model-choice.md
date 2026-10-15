@@ -98,9 +98,9 @@ Sonnet attempt.
 cost and intelligence* measured Opus 5.5 at `xhigh` only 1.4 points above
 `high`. That step cost 2.5 times as much.
 
-An effort named in the Agent call is kept, with or without a model. In `auto`
-mode the hook sets the call's `model` and `effort` arguments, so the subagent
-starts with both, as if the caller had named them.
+An effort named in the Agent call is kept, with or without a model. The hook
+sets the call's `model` and `effort` arguments, so the subagent starts with
+both, as if the caller had named them.
 
 ## Escalation
 

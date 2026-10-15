@@ -10,16 +10,11 @@ description: >
 # model-router
 
 A mod in this folder hooks every Agent tool call. For each call it routes, it
-asks TypeSafe Jev how much judgment and work the task needs. In `auto` mode it
-sets the subagent's model and effort. The model is `haiku` for lookup or
-transcription, `sonnet` for bounded judgment and `opus` for open judgment. In
-`suggest` mode it only logs the model and effort it would pick. One dim line
-per routed call appears in the transcript.
-
-## Mode
-
-The mode is the `Routing mode` row in `/config`. To turn routing off, disable
-the plugin in `/plugin`.
+asks TypeSafe Jev how much judgment and work the task needs and sets the
+subagent's model and effort. The model is `haiku` for lookup or transcription,
+`sonnet` for bounded judgment and `opus` for open judgment. One dim line per
+routed call appears in the transcript. To turn routing off, disable the
+plugin in `/plugin`.
 
 ## Escalation
 
@@ -35,9 +30,9 @@ or two fix rounds in a row make no progress.
   when the user opted in. Otherwise stop and report.
 
 A model or an effort named in the Agent call is kept, so an escalated
-re-dispatch passes `model` and `effort` explicitly in the Agent call. In
-auto mode the hook also overrides a model or an effort pinned in an agent
-definition's frontmatter, because the call does not carry them.
+re-dispatch passes `model` and `effort` explicitly in the Agent call. The
+hook also overrides a model or an effort pinned in an agent definition's
+frontmatter, because the call does not carry them.
 
 ## Commands
 

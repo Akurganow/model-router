@@ -13,7 +13,7 @@ the tiers and the ladder are what they are, with Anthropic's sources.
 
 The plugin is the folder [plugins/model-router](plugins/model-router). Its
 [README](plugins/model-router/README.md) says what the mod can reach, what
-leaves the machine, the modes, the effort ladder and the troubleshooting
+leaves the machine, the routing, the effort ladder and the troubleshooting
 steps. [PRIVACY.md](plugins/model-router/PRIVACY.md) is the privacy policy.
 
 ## Install
@@ -116,8 +116,8 @@ list in `.github/workflows/dependency-review.yml`.
 
 `scripts/calibrate.ts` is a developer tool that needs Node 22.18 or 23.6 or later. Claude Code never
 runs it. It takes the TypeSafe key from a masked prompt or stdin and sends
-`calibration.jsonl`, twenty-one labelled briefs, to the same endpoint. It
-exits 1 when tier or work agreement falls below 85%. A miss is fixed by
+`calibration.jsonl`, twenty-one labelled briefs, to the same endpoint. Its
+optional argument names the Jev model, `jev-latest` by default. It exits 1 when tier or work agreement falls below 85%. A miss is fixed by
 rewording a tier or work-level text in `plugins/model-router/hooks/router.ts`, never by lowering
 the bar. The masked prompt keeps the key out of command lines and shell
 history. Pipe it only from a source that does not put the key in the command

@@ -105,8 +105,8 @@ const harness = (
 };
 
 test(
-	"auto sets the model and the effort on the Agent call",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	"the hook sets the model and the effort on the Agent call",
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on);
 		const r: Outcome = await $.tool.call(agentCall());
@@ -119,20 +119,8 @@ test(
 );
 
 test(
-	"suggest leaves the call alone and logs the pick",
-	{ options: { api_key: "test-key" } },
-	async ($, on) => {
-		const h = harness(on, ANSWER([0.1, 0.2, 0.7]));
-		await $.tool.call(agentCall());
-		expect(h.received.model).toBeUndefined();
-		expect(h.received.effort).toBeUndefined();
-		expect(h.logs).toEqual(["would pick L2 opus · medium · p=0.70/0.60"]);
-	},
-);
-
-test(
 	"a fork, a named agent and a caller-named model pass through without a fetch",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on);
 		await $.tool.call(agentCall({ subagent_type: "fork" }));
@@ -149,7 +137,7 @@ test(
 
 test(
 	"a call without an agent type is routed as general-purpose",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		mock.clock(on);
 		let request: Request = {};
@@ -176,7 +164,7 @@ test(
 
 test(
 	"a missing key passes through and says so",
-	{ options: { mode: "auto" } },
+	{ options: {} },
 	async ($, on) => {
 		const h = harness(on);
 		await $.tool.call(agentCall());
@@ -188,7 +176,7 @@ test(
 
 test(
 	"an empty key passes through like a missing one",
-	{ options: { mode: "auto", api_key: "" } },
+	{ options: { api_key: "" } },
 	async ($, on) => {
 		const h = harness(on);
 		await $.tool.call(agentCall());
@@ -200,7 +188,7 @@ test(
 
 test(
 	"the option is the key when it is set",
-	{ options: { mode: "auto", api_key: "option-key" } },
+	{ options: { api_key: "option-key" } },
 	async ($, on) => {
 		const h = harness(on);
 		await $.tool.call(agentCall());
@@ -210,7 +198,7 @@ test(
 
 test(
 	"TYPESAFE_API_KEY is the key when the option is empty",
-	{ options: { mode: "auto", api_key: "" } },
+	{ options: { api_key: "" } },
 	async ($, on) => {
 		const h = harness(on, undefined, 200, "allow", 0, {
 			TYPESAFE_API_KEY: "typesafe-var-key",
@@ -226,7 +214,7 @@ test(
 
 test(
 	"the option wins over the variable",
-	{ options: { mode: "auto", api_key: "option-key" } },
+	{ options: { api_key: "option-key" } },
 	async ($, on) => {
 		const h = harness(on, undefined, 200, "allow", 0, {
 			TYPESAFE_API_KEY: "typesafe-var-key",
@@ -238,7 +226,7 @@ test(
 
 test(
 	"an empty option and an empty variable pass through as unset",
-	{ options: { mode: "auto", api_key: "" } },
+	{ options: { api_key: "" } },
 	async ($, on) => {
 		const h = harness(on, undefined, 200, "allow", 0, {
 			TYPESAFE_API_KEY: "",
@@ -252,7 +240,7 @@ test(
 
 test(
 	"an HTTP error passes through and names the status",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on, "overloaded", 529);
 		await $.tool.call(agentCall());
@@ -263,7 +251,7 @@ test(
 
 test(
 	"a malformed answer passes through",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on, "not json");
 		await $.tool.call(agentCall());
@@ -274,7 +262,7 @@ test(
 
 test(
 	"a slow Jev passes through after the timeout",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on, ANSWER([1, 0, 0]), 200, "allow", 60000);
 		const pending = $.tool.call(agentCall());
@@ -300,7 +288,7 @@ const interrupter = {
 
 test(
 	"an abandoned call ends the Jev wait at once and passes through",
-	{ options: { mode: "auto", api_key: "test-key" }, plugins: [interrupter] },
+	{ options: { api_key: "test-key" }, plugins: [interrupter] },
 	async ($, on) => {
 		const h = harness(on, ANSWER([1, 0, 0]), 200, "allow", 60000);
 		const pending = $.tool.call(agentCall());
@@ -315,7 +303,7 @@ test(
 
 test(
 	"the request goes to the systemone endpoint with the key and the pinned model",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		mock.clock(on);
 		let request: Request = {};
@@ -346,7 +334,7 @@ test(
 
 test(
 	"the model option picks the Jev alias",
-	{ options: { mode: "auto", api_key: "test-key", model: "jev-preview" } },
+	{ options: { api_key: "test-key", model: "jev-preview" } },
 	async ($, on) => {
 		const h = harness(on);
 		await $.tool.call(agentCall());
@@ -356,7 +344,7 @@ test(
 
 test(
 	"an unknown model option falls back to jev-latest",
-	{ options: { mode: "auto", api_key: "test-key", model: "jev-1.14.0" } },
+	{ options: { api_key: "test-key", model: "jev-1.14.0" } },
 	async ($, on) => {
 		const h = harness(on);
 		await $.tool.call(agentCall());
@@ -366,7 +354,7 @@ test(
 
 test(
 	"an Agent call that names an effort keeps it and gets the model",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on, ANSWER([0.1, 0.8, 0.1]));
 		await $.tool.call(agentCall({ effort: "low" }));
@@ -377,8 +365,8 @@ test(
 );
 
 test(
-	"a denied call in auto mode says so and returns the denial",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	"a denied call says so and returns the denial",
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		mock.clock(on);
 		const logs: string[] = [];
@@ -404,7 +392,7 @@ test(
 
 test(
 	"a hook failure lets the call run unchanged",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		mock.clock(on);
 		let runs = 0;
@@ -434,7 +422,7 @@ test(
 
 test(
 	"a call that permission rules deny is not sent",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on, undefined, 200, "deny");
 		const r: Outcome = await $.tool.call(agentCall());
@@ -448,7 +436,7 @@ test(
 
 test(
 	"a call that would prompt is still routed",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on, undefined, 200, "ask");
 		await $.tool.call(agentCall());
@@ -459,7 +447,7 @@ test(
 
 test(
 	"each request body goes to the debug log without the key",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on);
 		await $.tool.call(agentCall());
@@ -473,7 +461,7 @@ test(
 
 test(
 	"the permission check gets the call's arguments and nothing else",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on);
 		await $.tool.call(agentCall());
@@ -488,7 +476,7 @@ test(
 
 test(
 	"a permission check that throws lets the call run unchanged",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on, undefined, 200, "throw");
 		const r: Outcome = await $.tool.call(agentCall());
@@ -501,7 +489,7 @@ test(
 
 test(
 	"a long request goes to the debug log in pieces that join back",
-	{ options: { mode: "auto", api_key: "test-key" } },
+	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on);
 		await $.tool.call(agentCall({ prompt: "x".repeat(12000) }));
