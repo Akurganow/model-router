@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.10.0 - 2026-10-15
+#### Features
+- pick the Jev alias in /config (100df0d)
+
+- - -
+
+
 ## v0.9.0 - 2026-10-15
 #### Features
 - route with Jev 1.14.0 (5faef74)
