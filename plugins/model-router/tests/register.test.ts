@@ -339,8 +339,28 @@ test(
 		expect(request.init?.headers?.Authorization).toBe("Bearer test-key");
 		expect(request.init?.headers?.["Content-Type"]).toBe("application/json");
 		const body = JSON.parse(request.init?.body ?? "");
-		expect(body.model).toBe("jev-1.14.0");
+		expect(body.model).toBe("jev-latest");
 		expect(body.state.description).toBe("write hello");
+	},
+);
+
+test(
+	"the model option picks the Jev alias",
+	{ options: { mode: "auto", api_key: "test-key", model: "jev-preview" } },
+	async ($, on) => {
+		const h = harness(on);
+		await $.tool.call(agentCall());
+		expect(JSON.parse(h.sent ?? "").model).toBe("jev-preview");
+	},
+);
+
+test(
+	"an unknown model option falls back to jev-latest",
+	{ options: { mode: "auto", api_key: "test-key", model: "jev-1.14.0" } },
+	async ($, on) => {
+		const h = harness(on);
+		await $.tool.call(agentCall());
+		expect(JSON.parse(h.sent ?? "").model).toBe("jev-latest");
 	},
 );
 

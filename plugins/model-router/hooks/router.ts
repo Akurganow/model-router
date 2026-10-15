@@ -1,4 +1,3 @@
-export const JEV_MODEL = "jev-1.14.0";
 export const BUDGET_CHARS = 12000;
 export const TIE_MARGIN = 0.1;
 export const WORK_PRIOR = [0.5, 1, 0.5] as const;
@@ -51,7 +50,12 @@ const REDACT_PATTERNS: readonly [RegExp, string][] = [
 	],
 ];
 
-export type RouteInput = { role: string; description: string; prompt: string };
+export type RouteInput = {
+	role: string;
+	description: string;
+	prompt: string;
+	model: string;
+};
 export type Post = (body: string) => Promise<string>;
 export type Decision = {
 	model: Model;
@@ -68,7 +72,7 @@ export async function route(
 ): Promise<Decision | Skipped> {
 	const task = redact(condense(input.prompt));
 	const body = JSON.stringify({
-		model: JEV_MODEL,
+		model: input.model,
 		state: { role: input.role, description: input.description, task },
 		questions: {
 			tier: {

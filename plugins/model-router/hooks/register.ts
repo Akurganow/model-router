@@ -15,8 +15,9 @@ type AgentCall = {
 };
 
 export const register: Register = (on, options) => {
-	const { mode: modeOption, api_key: keyOption } = options;
+	const { mode: modeOption, api_key: keyOption, model: modelOption } = options;
 	const mode = modeOption === "auto" ? "auto" : "suggest";
+	const jev = modelOption === "jev-preview" ? "jev-preview" : "jev-latest";
 	const key = (v: unknown) =>
 		typeof v === "string" && v !== "" ? v : undefined;
 
@@ -84,6 +85,7 @@ export const register: Register = (on, options) => {
 				role: call.subagent_type ?? "general-purpose",
 				description: call.description,
 				prompt: call.prompt,
+				model: jev,
 			},
 			post,
 		);

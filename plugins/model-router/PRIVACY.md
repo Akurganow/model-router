@@ -12,8 +12,9 @@ TypeSafe at https://api.typesafe.ai/v1/systemone. The request holds:
 - the subagent's task text, condensed and with token-shaped strings masked
 - the subagent's type
 - the caller's one-line description of the task
-- the fixed model name `jev-1.14.0` and two fixed scoring questions with their
-  three descriptions each, text that ships with the plugin
+- the Jev alias you chose, `jev-latest` or `jev-preview`, and two fixed
+  scoring questions with their three descriptions each, text that ships with
+  the plugin
 - your TypeSafe API key, as the bearer token.
 
 The task text holds whatever the caller put in it, which can include code. The
