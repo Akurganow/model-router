@@ -39,7 +39,7 @@ session. It opens the same dialog.
 Add the marketplace `Akurganow/model-router` on the **Marketplaces** tab of
 **Manage plugins**, then install `model-router` on the **Plugins** tab. A form
 asks for the key after the install. The gear icon on the plugin's row opens
-the form again. Requires Claude Code v2.1.285 or later.
+the form again.
 
 ### Desktop app
 
