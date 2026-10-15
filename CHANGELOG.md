@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.9.0 - 2026-10-15
+#### Features
+- route with Jev 1.14.0 (5faef74)
+
+- - -
+
+
 ## v0.8.0 - 2026-10-15
 #### Features
 - read the TypeSafe key from the environment when the option is empty (bd780d1)
