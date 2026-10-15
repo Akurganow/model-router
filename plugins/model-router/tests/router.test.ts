@@ -2,7 +2,6 @@ import { expect, test } from "claude-code/testing";
 import {
 	BUDGET_CHARS,
 	EFFORT_LADDER,
-	JEV_MODEL,
 	route,
 	TIERS,
 	WORK_LEVELS,
@@ -33,7 +32,7 @@ const answer = (
 	work: Record<string, number> = { "0": 0.2, "1": 0.6, "2": 0.2 },
 ) =>
 	JSON.stringify({
-		model: JEV_MODEL,
+		model: "jev-1.14.0",
 		answers: { tier: score(tier), work: score(work) },
 		usage: { input_tokens: 1, output_tokens: 1 },
 	});
@@ -49,6 +48,7 @@ const input = (prompt: string) => ({
 	role: "general-purpose",
 	description: "task",
 	prompt,
+	model: "jev-latest",
 });
 
 test("a fenced block becomes a one-line size note", async () => {
@@ -87,13 +87,18 @@ test("token-shaped strings are masked and ordinary text is kept", async () => {
 	expect(task).toContain("Keep the config keys in order.");
 });
 
-test("the request pins the model, names the state fields and carries both questions", async () => {
+test("the request carries the given model, names the state fields and carries both questions", async () => {
 	const sent: Sent = { body: {} as Body };
 	await route(
-		{ role: "reviewer", description: "review the diff", prompt: "Review it." },
+		{
+			role: "reviewer",
+			description: "review the diff",
+			prompt: "Review it.",
+			model: "jev-preview",
+		},
 		stubPost(sent),
 	);
-	expect(sent.body.model).toBe(JEV_MODEL);
+	expect(sent.body.model).toBe("jev-preview");
 	expect(sent.body.state.role).toBe("reviewer");
 	expect(sent.body.state.description).toBe("review the diff");
 	const tier = sent.body.questions.tier;
@@ -238,7 +243,7 @@ test("the work index rests on the middle unless an end has more than twice its p
 
 test("a malformed work answer is a skip", async () => {
 	const body = JSON.stringify({
-		model: JEV_MODEL,
+		model: "jev-1.14.0",
 		answers: { tier: score({ "0": 1, "1": 0, "2": 0 }) },
 	});
 	const d = await route(input("x"), async () => body);
@@ -247,7 +252,7 @@ test("a malformed work answer is a skip", async () => {
 
 test("a null work distribution is a skip", async () => {
 	const body = JSON.stringify({
-		model: JEV_MODEL,
+		model: "jev-1.14.0",
 		answers: {
 			tier: score({ "0": 1, "1": 0, "2": 0 }),
 			work: { type: "score", probabilities: null },

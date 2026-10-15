@@ -44,7 +44,7 @@ definition's frontmatter, because the call does not carry them.
 From the plugin folder:
 
 - `claude plugin test .` runs the tests, no network.
-- `node scripts/calibrate.ts` takes the TypeSafe API key from a masked prompt
-  or stdin, runs the labelled seed against Jev and prints misses and
-  agreement.
+- `node scripts/calibrate.ts [model]` takes the TypeSafe API key from a masked
+  prompt or stdin, runs the labelled seed against Jev and prints misses and
+  agreement. The model defaults to `jev-latest`.
 - `claude plugin validate .` lists the hooks and calls.

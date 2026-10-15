@@ -3,6 +3,7 @@ import { route } from "../plugins/model-router/hooks/router.ts";
 
 const AGREEMENT_BAR = 0.85;
 const JEV_URL = "https://api.typesafe.ai/v1/systemone";
+const model = process.argv[2] ?? "jev-latest";
 
 type Case = {
 	role: string;
@@ -52,7 +53,7 @@ const readKey = async (): Promise<string> => {
 const key = await readKey();
 if (!key) {
 	console.error(
-		"usage: node scripts/calibrate.ts  (enter the TypeSafe API key at the prompt, or pipe it on stdin)",
+		"usage: node scripts/calibrate.ts [model]  (enter the TypeSafe API key at the prompt, or pipe it on stdin; model defaults to jev-latest)",
 	);
 	process.exit(2);
 }
@@ -82,7 +83,7 @@ let tierHits = 0;
 let workHits = 0;
 for (const c of cases) {
 	const d = await route(
-		{ role: c.role, description: c.description, prompt: c.text },
+		{ role: c.role, description: c.description, prompt: c.text, model },
 		post,
 	);
 	const head = c.text.slice(0, 60).replace(/\n/g, " ");

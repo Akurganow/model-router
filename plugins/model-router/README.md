@@ -44,6 +44,15 @@ The `Routing mode` row in `/config` holds the mode:
 
 To turn routing off, disable the plugin in `/plugin`.
 
+The `Jev model` row holds the TypeSafe alias the request names:
+
+- `jev-latest` (default): the most recent official Jev release.
+- `jev-preview`: the most recent release, official or not.
+
+Both aliases move when TypeSafe ships a release, so the picks can shift with
+no change to the plugin. TypeSafe's [Models](https://docs.typesafe.ai/models)
+page says which version each alias points to.
+
 The mod routes Agent tool calls only. A fork, a named agent and a call that
 names a model pass through untouched. So do agents that a workflow script
 starts, or that another plugin starts without the Agent tool. In `auto` mode
@@ -59,7 +68,7 @@ with your TypeSafe key as the bearer token. The body holds:
 
 - the task text, condensed and redacted as below
 - the agent type and the caller's one-line description
-- the fixed model name `jev-1.14.0` and two scoring questions with their
+- the Jev alias from the `Jev model` row and two scoring questions with their
   three texts each, which ship with the plugin
 
 Two steps run on the task text before it leaves. Fenced code blocks become a
