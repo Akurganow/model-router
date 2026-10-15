@@ -2,8 +2,8 @@
 
 The repository [README](../../README.md) says what this mod does and how to
 [install it](../../README.md#install). This file says what the mod can reach,
-what leaves the machine, the modes, the effort ladder and the troubleshooting
-steps.
+what leaves the machine, the routing, the effort ladder and the
+troubleshooting steps.
 
 ## What this mod can reach
 
@@ -53,8 +53,8 @@ The mod routes Agent tool calls only. A fork, a named agent and a call that
 names a model pass through untouched. So do agents that a workflow script
 starts, or that another plugin starts without the Agent tool. The mod
 overrides a model or an effort pinned in an agent definition's frontmatter,
-because the call does not carry them. Name `model` or `effort`
-in the Agent call to keep your own.
+because the call does not carry them. Name `model` or `effort` in the Agent
+call to keep your own.
 
 ## What leaves the machine
 
@@ -72,9 +72,9 @@ one-line size note. Token-shaped strings are masked: `Bearer …`, `sk-…` keys
 and assignments to names ending in `key`, `token`, `secret` or `password`.
 Nothing else leaves the machine.
 
-The request is sent in both modes, before Claude Code's permission check for
-the call. Before routing, the mod asks Claude Code's permission rules about
-the call's original arguments. If they deny the call, nothing is sent. A rule
+The request is sent before Claude Code's permission check for the call.
+Before routing, the mod asks Claude Code's permission rules about the call's
+original arguments. If they deny the call, nothing is sent. A rule
 on the model the mod picks, a PreToolUse hook and the auto-mode classifier
 decide after the request left. A call that prompts you is sent before you
 answer. To read each request as it left, start Claude Code with `--debug`. The
