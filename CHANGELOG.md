@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.11.0 - 2026-10-15
+#### Features
+- route every call, drop the suggest mode (c63084c)
+#### Documentation
+- drop the last mentions of the modes (8cdb0e4)
+
+- - -
+
+
 ## v0.10.0 - 2026-10-15
 #### Features
 - pick the Jev alias in /config (100df0d)
