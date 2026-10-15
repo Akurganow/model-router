@@ -1,4 +1,4 @@
-export const JEV_MODEL = "jev-1.13.0";
+export const JEV_MODEL = "jev-1.14.0";
 export const BUDGET_CHARS = 12000;
 export const TIE_MARGIN = 0.1;
 export const WORK_PRIOR = [0.5, 1, 0.5] as const;

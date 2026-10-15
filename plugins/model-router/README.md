@@ -59,7 +59,7 @@ with your TypeSafe key as the bearer token. The body holds:
 
 - the task text, condensed and redacted as below
 - the agent type and the caller's one-line description
-- the fixed model name `jev-1.13.0` and two scoring questions with their
+- the fixed model name `jev-1.14.0` and two scoring questions with their
   three texts each, which ship with the plugin
 
 Two steps run on the task text before it leaves. Fenced code blocks become a
