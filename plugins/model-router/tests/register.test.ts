@@ -56,6 +56,7 @@ type Harness = {
 	received: Loose;
 	checked: Loose;
 	sent: string | undefined;
+	auth: string | undefined;
 };
 
 const harness = (
@@ -64,7 +65,9 @@ const harness = (
 	status = 200,
 	decision: ToolCheckDecision | "throw" = "allow",
 	fetchDelayMs = 0,
+	env: Readonly<Record<string, string>> = {},
 ): Harness => {
+	mock.env(on, env);
 	const h: Harness = {
 		clock: mock.clock(on),
 		logs: [],
@@ -73,6 +76,7 @@ const harness = (
 		received: {},
 		checked: {},
 		sent: undefined,
+		auth: undefined,
 	};
 	on("ui.log", (_: unknown, e: { text: string; to?: string }) => {
 		(e.to === "debug" ? h.debug : h.logs).push(e.text);
@@ -81,6 +85,8 @@ const harness = (
 	on("http.fetch", async (_, e) => {
 		h.fetched += 1;
 		h.sent = e.init?.body;
+		const { Authorization } = e.init?.headers ?? {};
+		h.auth = Authorization;
 		if (fetchDelayMs > 0) await h.clock.sleep(fetchDelayMs);
 		return {
 			value: { status, ok: status < 300, headers: {}, text: fetchText },
@@ -185,6 +191,58 @@ test(
 	{ options: { mode: "auto", api_key: "" } },
 	async ($, on) => {
 		const h = harness(on);
+		await $.tool.call(agentCall());
+		expect(h.received.model).toBeUndefined();
+		expect(h.fetched).toBe(0);
+		expect(h.logs).toEqual(["skipped, api_key unset"]);
+	},
+);
+
+test(
+	"the option is the key when it is set",
+	{ options: { mode: "auto", api_key: "option-key" } },
+	async ($, on) => {
+		const h = harness(on);
+		await $.tool.call(agentCall());
+		expect(h.auth).toBe("Bearer option-key");
+	},
+);
+
+test(
+	"TYPESAFE_API_KEY is the key when the option is empty",
+	{ options: { mode: "auto", api_key: "" } },
+	async ($, on) => {
+		const h = harness(on, undefined, 200, "allow", 0, {
+			TYPESAFE_API_KEY: "typesafe-var-key",
+		});
+		await $.tool.call(agentCall());
+		expect(h.auth).toBe("Bearer typesafe-var-key");
+		expect(h.received.model).toBe("haiku");
+		expect([...h.logs, ...h.debug].join("\n")).not.toContain(
+			"typesafe-var-key",
+		);
+	},
+);
+
+test(
+	"the option wins over the variable",
+	{ options: { mode: "auto", api_key: "option-key" } },
+	async ($, on) => {
+		const h = harness(on, undefined, 200, "allow", 0, {
+			TYPESAFE_API_KEY: "typesafe-var-key",
+		});
+		await $.tool.call(agentCall());
+		expect(h.auth).toBe("Bearer option-key");
+	},
+);
+
+test(
+	"an empty option and an empty variable pass through as unset",
+	{ options: { mode: "auto", api_key: "" } },
+	async ($, on) => {
+		const h = harness(on, undefined, 200, "allow", 0, {
+			TYPESAFE_API_KEY: "",
+		});
 		await $.tool.call(agentCall());
 		expect(h.received.model).toBeUndefined();
 		expect(h.fetched).toBe(0);

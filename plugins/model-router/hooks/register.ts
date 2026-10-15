@@ -17,9 +17,8 @@ type AgentCall = {
 export const register: Register = (on, options) => {
 	const { mode: modeOption, api_key: keyOption } = options;
 	const mode = modeOption === "auto" ? "auto" : "suggest";
-	// The key is the plugin's sensitive userConfig option and goes only to TypeSafe, which issued it.
-	const apiKey =
-		typeof keyOption === "string" && keyOption !== "" ? keyOption : undefined;
+	const key = (v: unknown) =>
+		typeof v === "string" && v !== "" ? v : undefined;
 
 	on("tool.call", { tool: "Agent" }, async ($, e, next) => {
 		const call = e as typeof e & AgentCall;
@@ -41,6 +40,9 @@ export const register: Register = (on, options) => {
 		const check = await $.tool.check({ tool: "Agent", input });
 		if (check.decision === "deny") return next(e);
 		const keep = call.effort !== undefined;
+		// The key goes only to TypeSafe, which issued it. The sensitive option comes first. The desktop app
+		// reads it back empty after a restart, so the variable stands in when it is empty.
+		const apiKey = key(keyOption) ?? key(await $.env.get("TYPESAFE_API_KEY"));
 
 		const post = async (body: string): Promise<string> => {
 			if (!apiKey) throw new Error("api_key unset");
