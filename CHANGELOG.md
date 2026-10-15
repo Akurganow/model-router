@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.8.0 - 2026-10-15
+#### Features
+- read the TypeSafe key from the environment when the option is empty (bd780d1)
+#### Documentation
+- state the minimum Claude Code version once (3578fd8)
+- say the --config key is visible in the process list too (fb654aa)
+- say how to set the key in the terminal, VS Code and the desktop app (b5988fe)
+#### Build system
+- (**deps-dev**) Bump the dev-tools group with 2 updates (008e92d)
+
+- - -
+
+
 ## v0.7.2 - 2026-10-14
 #### Bug Fixes
 - install no dev tools onto users' machines (0642945)
