@@ -15,8 +15,7 @@ type AgentCall = {
 };
 
 export const register: Register = (on, options) => {
-	const { mode: modeOption, api_key: keyOption, model: modelOption } = options;
-	const mode = modeOption === "auto" ? "auto" : "suggest";
+	const { api_key: keyOption, model: modelOption } = options;
 	const jev = modelOption === "jev-preview" ? "jev-preview" : "jev-latest";
 	const key = (v: unknown) =>
 		typeof v === "string" && v !== "" ? v : undefined;
@@ -96,10 +95,6 @@ export const register: Register = (on, options) => {
 		const { level, model, workIndex, effort, probabilities } = decision;
 		const p = `${probabilities.tier[level].toFixed(2)}/${probabilities.work[workIndex].toFixed(2)}`;
 		const pick = `L${level} ${model} · ${keep ? "caller effort" : effort} · p=${p}`;
-		if (mode === "suggest") {
-			$.ui.log(`would pick ${pick}`);
-			return next(e);
-		}
 		$.ui.log(pick);
 		const r = await next(keep ? { ...e, model } : { ...e, model, effort });
 		if ("deny" in r && r.deny !== undefined) $.ui.log("denied");

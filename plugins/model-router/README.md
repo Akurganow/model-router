@@ -16,15 +16,15 @@ asks six questions. The answers for this mod:
   plugin's sensitive `api_key` option, which Claude Code hands it from secure
   storage. When that option is empty, the mod reads the key from the
   environment variable `TYPESAFE_API_KEY`. It reads no other environment
-  variable and no file. Its other option is `mode`.
+  variable and no file. Its other option is `model`, the Jev alias.
 - **Sees your session?** The arguments of each Agent tool call. It sends the
   task, the description and the agent type. It reads `model`, `name` and
   `effort` to decide whether to route and whether to keep the caller's effort.
   It asks Claude Code's permission verdict for the call through `$.tool.check`,
   which opens no dialog and runs nothing. The verdict never leaves the machine.
   It keeps nothing between calls.
-- **Changes your session?** In `auto` mode, two arguments of that Agent
-  tool call: `model` and `effort`. Nothing in `suggest` mode.
+- **Changes your session?** Two arguments of that Agent tool call: `model`
+  and `effort`.
 - **Acts without asking you?** No. It approves or denies nothing. Your
   permission rules and prompts decide every call.
 - **Spends your usage?** No model calls on your plan. One request per routed
@@ -34,15 +34,11 @@ asks six questions. The answers for this mod:
 `tool.call{tool=Agent}`, the calls `$.clock.sleep`, `$.env.get`, `$.http.fetch`,
 `$.tool.check` and `$.ui.log`, and the one variable it reads.
 
-## Mode
+## Routing
 
-The `Routing mode` row in `/config` holds the mode:
-
-- `suggest` (default): log the model and effort Jev would pick, change
-  nothing. One dim line per routed call shows the pick.
-- `auto`: set the model and the effort.
-
-To turn routing off, disable the plugin in `/plugin`.
+On each routed call the mod sets the model and the effort. One dim line per
+routed call shows the pick. To turn routing off, disable the plugin in
+`/plugin`.
 
 The `Jev model` row holds the TypeSafe alias the request names:
 
@@ -55,9 +51,9 @@ page says which version each alias points to.
 
 The mod routes Agent tool calls only. A fork, a named agent and a call that
 names a model pass through untouched. So do agents that a workflow script
-starts, or that another plugin starts without the Agent tool. In `auto` mode
-the mod overrides a model or an effort pinned in an agent definition's
-frontmatter, because the call does not carry them. Name `model` or `effort`
+starts, or that another plugin starts without the Agent tool. The mod
+overrides a model or an effort pinned in an agent definition's frontmatter,
+because the call does not carry them. Name `model` or `effort`
 in the Agent call to keep your own.
 
 ## What leaves the machine
@@ -120,18 +116,16 @@ tool. Three dispatches and what the mod does with them:
 3. "Review the whole branch for design problems and propose a split." Open
    judgment scores level 2, `opus`.
 
-In `suggest` mode each of these only logs the pick. In `auto` mode the first
-runs on `haiku`. For it the log shows one of these lines, `suggest` first:
+The first runs on `haiku`. For it the log shows:
 
 ```
-model-router would pick L0 haiku · medium · p=0.91/0.62
 model-router L0 haiku · medium · p=0.91/0.62
 ```
 
 The second number is the probability of the chosen work index. A kept caller
-effort shows as `caller effort` in place of the ladder label. In `auto` mode
-the pick is logged as the call starts, and a call that Claude Code then
-refuses adds a second line, `denied`.
+effort shows as `caller effort` in place of the ladder label. The pick is
+logged as the call starts, and a call that Claude Code then refuses adds a
+second line, `denied`.
 
 ## Troubleshooting
 
@@ -147,15 +141,13 @@ refuses adds a second line, `denied`.
   https://console.typesafe.ai/keys.
 - The line says `skipped, no answer in 8000 ms`: the request timed out. The
   call ran unchanged. Check the network and try again.
-- A subagent ran on a model you did not expect: in `auto` mode a model pinned
-  in an agent definition is overridden. Pass `model` in the Agent call to
-  keep it.
+- A subagent ran on a model you did not expect: a model pinned in an agent
+  definition is overridden. Pass `model` in the Agent call to keep it.
 - A subagent thinks harder or less than you expect: the effort ladder in
   [Effort](#effort) set it. Name `effort` in the Agent call to keep your own.
 - A subagent ran on a forced or substituted model at the router's effort:
   `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` or `availableModels` replaced the pick.
-  The effort stayed with the call. Name `effort` in the Agent call, or set the
-  mode to `suggest`.
+  The effort stayed with the call. Name `effort` in the Agent call.
 - A kind of task lands on the wrong tier: add a labelled brief to
   `calibration.jsonl` at the repository root and reword a tier text in
   `hooks/router.ts`. Then run the calibration script.

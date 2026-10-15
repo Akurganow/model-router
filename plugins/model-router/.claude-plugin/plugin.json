@@ -1,7 +1,7 @@
 {
 	"name": "model-router",
 	"version": "0.9.0",
-	"description": "Routes each subagent to the cheapest Claude model and effort that can do its task, judged by TypeSafe Jev. On every Agent call it sends the subagent's task text, condensed and with secrets masked, to api.typesafe.ai with your TypeSafe key, in suggest mode too.",
+	"description": "Routes each subagent to the cheapest Claude model and effort that can do its task, judged by TypeSafe Jev. On every Agent call it sends the subagent's task text, condensed and with secrets masked, to api.typesafe.ai with your TypeSafe key.",
 	"author": {
 		"name": "Akurganow",
 		"url": "https://github.com/Akurganow"
@@ -24,13 +24,6 @@
 			"title": "TypeSafe API key",
 			"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request. The README says where to get one.",
 			"sensitive": true
-		},
-		"mode": {
-			"type": "string",
-			"title": "Routing mode",
-			"description": "suggest: log the model and effort Jev would pick, change nothing. auto: set the model and the effort. Only a model or effort passed in the Agent call is kept. Auto also overrides a model or effort pinned in an agent definition.",
-			"options": ["suggest", "auto"],
-			"default": "suggest"
 		},
 		"model": {
 			"type": "string",
