@@ -13,7 +13,6 @@ contract_version: 1
 ## Departments
 
 - dependencies: judged by .github/workflows/dependency-review.yml
-- security: judged by .github/policy/prompt.md
 - privacy: judged by plugins/model-router/PRIVACY.md
 
 ## Fence
