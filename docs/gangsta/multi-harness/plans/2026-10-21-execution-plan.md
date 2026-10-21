@@ -240,7 +240,7 @@ The Codex territory waits for gate G1, the Don's probe report. Every other terri
 **Territory:** omp
 **Contract Clause:** FR-029, AC-13
 **Files:**
-- Create: `plugins/model-router-omp/skills/setup/SKILL.md`
+- Create: `plugins/model-router-omp/skills/model-router-setup/SKILL.md`
 **Acceptance Criteria:**
 1. The ten steps of FR-029 run in order, one question at a time, with consent before every write and before the detection spawn.
 2. The skill is dry-run once in a throwaway omp home, and its writes match.
@@ -311,7 +311,7 @@ The Codex territory waits for gate G1, the Don's probe report. Every other terri
 **Territory:** Codex
 **Contract Clause:** FR-038, FR-040, AC-13, AC-15
 **Files:**
-- Create: `plugins/model-router-codex/skills/setup/SKILL.md`, `plugins/model-router-codex/skills/model-router/SKILL.md`
+- Create: `plugins/model-router-codex/skills/model-router-setup/SKILL.md`, `plugins/model-router-codex/skills/model-router/SKILL.md`
 **Acceptance Criteria:**
 1. The setup skill runs the seven steps of FR-038 with consent.
 2. The setup skill is dry-run in a throwaway `CODEX_HOME`.
