@@ -2,6 +2,8 @@ import { get, isRecord, jsonLines } from "./stream.ts";
 import type { Adapter, Evidence, Tier } from "./types.ts";
 
 const SPAWN_TOOL = "task";
+// Background tasks, omp's default, let print mode exit before the subagent's answer arrives.
+const SETTINGS_OVERLAY = "omp-evals.yml";
 const ROUTER_AGENT = /^router_(?:light|mid|heavy)$/;
 // Without a UI the extension writes "model-router task <n>: L<tier> <agent> · <effort> · p=…" to stderr.
 const DECISION_ENTRY =
@@ -30,11 +32,32 @@ function spawnedAgents(stdout: string): (string | null)[] {
 	return agents;
 }
 
+function lastReply(stdout: string): string | null {
+	let reply: string | null = null;
+	for (const event of jsonLines(stdout)) {
+		const message = get(event, "message");
+		if (get(event, "type") !== "message_end" || !isRecord(message)) continue;
+		const content = get(message, "content");
+		if (get(message, "role") !== "assistant" || !Array.isArray(content))
+			continue;
+		const text = content
+			.map((b) =>
+				isRecord(b) && get(b, "type") === "text" ? get(b, "text") : "",
+			)
+			.join("");
+		if (text.trim() !== "") reply = text.trim();
+	}
+	return reply;
+}
+
 export const omp: Adapter = {
 	name: "omp",
+	files: { [SETTINGS_OVERLAY]: "async:\n  enabled: false\n" },
 	command: (prompt, model) => [
 		"omp",
 		"-p",
+		"--config",
+		SETTINGS_OVERLAY,
 		"--mode",
 		"json",
 		"--no-session",
@@ -63,6 +86,7 @@ export const omp: Adapter = {
 			tier: null,
 			effort: null,
 			target: first,
+			reply: lastReply(stdout),
 		};
 		for (const text of stderr.split("\n")) {
 			const match = DECISION_ENTRY.exec(text);

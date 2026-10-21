@@ -80,6 +80,8 @@ export function runCase(c: Case, copiesDir: string): CaseResult {
 				join(workDir, name),
 				`${JSON.stringify(content, null, 2)}\n`,
 			);
+		for (const [name, text] of Object.entries(ADAPTERS[c.client]?.files ?? {}))
+			writeFileSync(join(workDir, name), text);
 		const env = clientEnv(process.env, [c.keyEnv]);
 		const started = Date.now();
 		const { adapter, run, version } = runClient(c, workDir, env);

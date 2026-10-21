@@ -3,7 +3,7 @@ import { ADAPTERS } from "./adapters.ts";
 import { get, isRecord } from "./stream.ts";
 import type { Evidence } from "./types.ts";
 
-const ASSERTIONS = ["spawned", "routed", "line"] as const;
+const ASSERTIONS = ["spawned", "routed", "line", "answered"] as const;
 const RECORDS = ["tier", "effort", "drift"] as const;
 const DRIFT_CLIENT = "omp";
 export type Assertion = (typeof ASSERTIONS)[number];
@@ -14,19 +14,25 @@ export type Case = {
 	model: string;
 	keyEnv: string;
 	prompt: string;
+	// The text the parent's final reply must contain, for the answered assertion.
+	answer?: string;
 	files: Record<string, unknown>;
 	assert: Assertion[];
 	record: string[];
 };
 
-const FAILURES: Record<Assertion, (e: Evidence) => string | null> = {
+const FAILURES: Record<Assertion, (e: Evidence, c: Case) => string | null> = {
 	spawned: (e) => (e.spawns >= 1 ? null : "no subagent was spawned"),
 	routed: (e) => (e.routed ? null : "the first spawn was not routed"),
 	line: (e) => (e.line !== null ? null : "no decision line"),
+	answered: (e, c) =>
+		c.answer && e.reply?.includes(c.answer)
+			? null
+			: "the reply lacks the subagent's answer",
 };
 
 export function check(c: Case, evidence: Evidence): string[] {
-	return c.assert.flatMap((name) => FAILURES[name](evidence) ?? []);
+	return c.assert.flatMap((name) => FAILURES[name](evidence, c) ?? []);
 }
 
 const isText = (v: unknown): v is string => typeof v === "string" && v !== "";
@@ -35,7 +41,7 @@ const isNames = (v: unknown): v is string[] =>
 
 function caseProblems(c: unknown, at: string): string[] {
 	if (!isRecord(c)) return [`${at}: expected an object`];
-	const { client, files, assert: asserts, record } = c;
+	const { client, files, assert: asserts, record, answer } = c;
 	const problems: string[] = [];
 	for (const field of ["id", "client", "model", "keyEnv", "prompt"])
 		if (!isText(c[field]))
@@ -49,6 +55,8 @@ function caseProblems(c: unknown, at: string): string[] {
 		for (const name of asserts)
 			if (!(ASSERTIONS as readonly string[]).includes(name))
 				problems.push(`${at}: unknown assertion ${name}`);
+		if (asserts.includes("answered") && !isText(answer))
+			problems.push(`${at}: answered needs a non-empty answer`);
 	}
 	if (!isNames(record)) return [...problems, `${at}: record must be a list`];
 	for (const name of record) {

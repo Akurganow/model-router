@@ -8,6 +8,7 @@ export type Evidence = {
 	tier: Tier | null;
 	effort: string | null;
 	target: string | null;
+	reply: string | null;
 };
 
 export type Captured = { stdout: string; stderr: string };
@@ -16,5 +17,7 @@ export type Captured = { stdout: string; stderr: string };
 export type Adapter = {
 	name: string;
 	command: (prompt: string, model: string) => string[];
+	// Files the command reads from its working directory.
+	files?: Record<string, string>;
 	parse: (out: Captured) => Evidence;
 };

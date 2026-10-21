@@ -15,6 +15,7 @@ const emptyEvidence = (): Evidence => ({
 	tier: null,
 	effort: null,
 	target: null,
+	reply: null,
 });
 
 function countSpawns(event: Record<string, unknown>): number {
@@ -49,6 +50,9 @@ export const claude: Adapter = {
 		const evidence = emptyEvidence();
 		for (const event of jsonLines(stdout)) {
 			evidence.spawns += countSpawns(event);
+			const result = get(event, "result");
+			if (get(event, "type") === "result" && typeof result === "string")
+				evidence.reply = result;
 			if (evidence.line !== null) continue;
 			const text = get(event, "text");
 			if (get(event, "subtype") !== LOG_SUBTYPE || typeof text !== "string")

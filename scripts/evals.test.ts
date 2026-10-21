@@ -41,7 +41,13 @@ test("claude: a ui_log decision line after an Agent call is routed evidence", ()
 		tier: 1,
 		effort: "medium",
 		target: "sonnet",
+		reply: null,
 	});
+});
+
+test("claude: the result event is the reply", () => {
+	const stdout = jsonl({ type: "result", result: "eval-subject" });
+	assert.equal(claude.parse({ stdout, stderr: "" }).reply, "eval-subject");
 });
 
 test("claude: no ui_log line means a spawn that was not routed", () => {
@@ -101,6 +107,24 @@ test("omp: a skipped entry is no decision line, and no spawn means no routing", 
 	assert.equal(evidence.spawns, 0);
 	assert.equal(evidence.routed, false);
 	assert.equal(evidence.line, null);
+});
+
+test("omp: the last assistant text is the reply", () => {
+	const said = (...texts: string[]) => ({
+		type: "message_end",
+		message: {
+			role: "assistant",
+			content: texts.map((text) => ({ type: "text", text })),
+		},
+	});
+	const stdout = jsonl(said("Spawning."), said(" ", "eval-subject"), said());
+	assert.equal(omp.parse({ stdout, stderr: "" }).reply, "eval-subject");
+});
+
+test("omp: the command loads an overlay that turns background tasks off", () => {
+	const argv = omp.command("do it", "prov/model");
+	const overlay = argv[argv.indexOf("--config") + 1] ?? "";
+	assert.match(omp.files?.[overlay] ?? "", /^async:\n {2}enabled: false\n$/);
 });
 
 test("omp: the command runs print mode with json output and the case model", () => {
@@ -187,12 +211,40 @@ test("check lists one failure per broken assertion", () => {
 		tier: null,
 		effort: null,
 		target: null,
+		reply: null,
 	};
 	assert.equal(check(base, evidence).length, 3);
 	assert.deepEqual(
 		check({ ...base, assert: ["spawned"] }, { ...evidence, spawns: 1 }),
 		[],
 	);
+});
+
+test("answered needs the case's answer in the reply", () => {
+	const answered: Case = {
+		...base,
+		assert: ["answered"],
+		answer: "eval-subject",
+	};
+	assert.deepEqual(validateCases({ cases: [answered] }), []);
+	assert.ok(
+		validateCases({ cases: [{ ...answered, answer: undefined }] }).some((p) =>
+			p.includes("answered needs a non-empty answer"),
+		),
+	);
+	const evidence = {
+		spawns: 1,
+		routed: true,
+		line: "x",
+		tier: null,
+		effort: null,
+		target: null,
+		reply: "The name is eval-subject.",
+	};
+	assert.deepEqual(check(answered, evidence), []);
+	assert.deepEqual(check(answered, { ...evidence, reply: null }), [
+		"the reply lacks the subagent's answer",
+	]);
 });
 
 test("drift compares bodies after the front matter, ignoring edge blank lines", () => {
