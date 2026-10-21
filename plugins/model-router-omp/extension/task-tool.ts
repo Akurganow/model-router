@@ -6,7 +6,7 @@ export type TaskTool = { effortEnabled: boolean; customTaskAgent: boolean };
 // under the `task` heading means the user's own agent replaced it.
 const BUNDLED_TASK_DESCRIPTION =
 	"General-purpose subagent with full capabilities for delegated multi-step tasks";
-const TASK_HEADING = /^### task\b.*\n(.*)$/m;
+const TASK_HEADING = /^### task(?=[ \t]|$).*\n(.*)$/m;
 
 type JsonObject = {
 	properties?: Record<string, JsonObject>;

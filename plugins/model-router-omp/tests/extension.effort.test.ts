@@ -175,6 +175,17 @@ describe("readTaskTool", () => {
 			customTaskAgent: true,
 		});
 	});
+	test("an agent whose name starts with task- is not the task agent", () => {
+		const tool = taskToolInfo({
+			effortEnabled: false,
+			taskDescription: BUNDLED_TASK_DESCRIPTION,
+		});
+		const planner = {
+			...tool,
+			description: `### task-planner\nPlans.\n${tool.description}`,
+		};
+		assert.equal(readTaskTool(piWith([planner])).customTaskAgent, false);
+	});
 	test("no task tool, or no tool list at all, reads as neither", () => {
 		const neither = { effortEnabled: false, customTaskAgent: false };
 		assert.deepEqual(readTaskTool(piWith([])), neither);
