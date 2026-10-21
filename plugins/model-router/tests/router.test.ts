@@ -6,6 +6,7 @@ import {
 	TIERS,
 	WORK_LEVELS,
 } from "../hooks/router.ts";
+import { answer, score } from "./harness.ts";
 
 type Question = {
 	type: string;
@@ -18,24 +19,6 @@ type Body = {
 	questions: { tier: Question; work: Question };
 };
 type Sent = { body: Body };
-
-const score = (p: Record<string, number>) => ({
-	type: "score",
-	score: 0,
-	confidence: 0.9,
-	legend: {},
-	probabilities: p,
-});
-
-const answer = (
-	tier: Record<string, number>,
-	work: Record<string, number> = { "0": 0.2, "1": 0.6, "2": 0.2 },
-) =>
-	JSON.stringify({
-		model: "jev-1.14.0",
-		answers: { tier: score(tier), work: score(work) },
-		usage: { input_tokens: 1, output_tokens: 1 },
-	});
 
 const stubPost =
 	(sent: Sent, text = answer({ "0": 1, "1": 0, "2": 0 })) =>
@@ -241,23 +224,18 @@ test("the work index rests on the middle unless an end has more than twice its p
 	}
 });
 
-test("a malformed work answer is a skip", async () => {
-	const body = JSON.stringify({
-		model: "jev-1.14.0",
-		answers: { tier: score({ "0": 1, "1": 0, "2": 0 }) },
+for (const [name, work] of [
+	["a malformed work answer is a skip", undefined],
+	[
+		"a null work distribution is a skip",
+		{ type: "score", probabilities: null },
+	],
+] as const)
+	test(name, async () => {
+		const body = JSON.stringify({
+			model: "jev-1.14.0",
+			answers: { tier: score({ "0": 1, "1": 0, "2": 0 }), work },
+		});
+		const d = await route(input("x"), async () => body);
+		expect(d).toEqual({ skipped: "malformed answer" });
 	});
-	const d = await route(input("x"), async () => body);
-	expect(d).toEqual({ skipped: "malformed answer" });
-});
-
-test("a null work distribution is a skip", async () => {
-	const body = JSON.stringify({
-		model: "jev-1.14.0",
-		answers: {
-			tier: score({ "0": 1, "1": 0, "2": 0 }),
-			work: { type: "score", probabilities: null },
-		},
-	});
-	const d = await route(input("x"), async () => body);
-	expect(d).toEqual({ skipped: "malformed answer" });
-});

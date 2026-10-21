@@ -9,8 +9,8 @@ artifacts:
   - docs/gangsta/multi-harness/plans/2026-10-21-execution-plan.md
   - docs/gangsta/multi-harness/recon/2026-10-21-recon-dossier.md
 technical-debt-audit:
-  copy-paste: 6 clusters fixed; 2 documented exceptions
-  long-files: PASS; 1 documented (register.test.ts)
+  copy-paste: 13 clusters fixed; 1 documented exception
+  long-files: PASS; register.test.ts split by theme
   test-coverage: 94.93% to 97.55% lines (node coverage over shared, scripts and omp, tests excluded)
   clean-architecture: no formal layers
   clean-code: 1 long function fixed (register.ts handler)
@@ -32,15 +32,14 @@ technical-debt-audit:
 
 | Sub-check | Result | Details |
 |-----------|--------|---------|
-| Copy/Paste (jscpd 4.0.5, 5 lines, 35 tokens) | 6 clusters fixed | A shared temp-folder test helper, a jev failure helper and merged omp effort cases. The synced copies of `shared/` are excluded by design. |
-| Long Files | PASS, 1 documented | Longest source file 255 lines. `register.test.ts` has 481 source lines, from 471 before the heist. |
+| Copy/Paste (jscpd 4.0.5, 5 lines, 35 tokens) | 13 clusters fixed | A shared temp-folder test helper, a jev failure helper and merged omp effort cases. The Claude mod's tests share one harness and table-driven cases. The synced copies of `shared/` are excluded by design. |
+| Long Files | PASS | Longest source file 255 lines. `register.test.ts`, 481 source lines, is split into `register`, `keys` and `failures` tests over a shared `harness.ts`. The longest is 109 lines. The mod's 40 tests are unchanged in number. |
 | Test Coverage | 94.93% to 97.55% lines, 89.6% branches | New tests for drift recording, missing keys, the settings fallback and the review fixes. The Claude mod has no coverage tool. |
 | Clean Architecture | no formal layers | Imports run from the entry points to routing to the pure core. The core has no I/O. |
 | Clean Code | 1 fixed | The Agent handler moved the Jev request and the deadline race into helpers. Engine calls stay in the handler, so the surface is unchanged. |
 
 ### Documented Exceptions
 
-- `plugins/model-router/tests/register.test.ts` — copy/paste, 7 clusters, and length, 481 lines. All 7 clusters exist on main. The heist changed only the decision-line strings and the 529 test, which the contract limits. [Don acknowledged: pending]
 - `plugins/model-router-omp/tests/helpers.ts:1` and `scripts/temp-root.ts:1` — copy/paste, a 10-line import list. The omp plugin's tests must not import from the repository's scripts. [Don acknowledged: pending]
 - `.github/workflows/evals.yml` — supply chain. `bun install -g` resolves omp's transitive dependencies unpinned, in the step that holds the eval keys. [Don acknowledged: pending]
 
