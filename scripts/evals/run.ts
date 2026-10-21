@@ -69,7 +69,7 @@ function runClient(c: Case, workDir: string, env: Record<string, string>) {
 		encoding: "utf8",
 		timeout: VERSION_TIMEOUT_MS,
 	});
-	return { adapter, run, version: version.stdout.trim() };
+	return { adapter, run, version: (version.stdout ?? "").trim() };
 }
 
 export function runCase(c: Case, copiesDir: string): CaseResult {

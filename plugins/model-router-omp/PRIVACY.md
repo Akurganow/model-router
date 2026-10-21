@@ -46,10 +46,17 @@ The plugin stores nothing on disk and keeps no routing state between calls.
 It holds the key in memory only while it sends a request. It reads the key from
 omp's own TypeSafe credential, and when that is empty, from the environment
 variable `TYPESAFE_API_KEY`. It sends the key only to the endpoint above, as
-the bearer token. It reads the environment variable `MODEL_ROUTER_JEV` for the
-Jev alias and nothing else from the environment. It checks whether a
-`task.md` file exists in your user agent folder and in the nearest project
-agent folder, and it reads no file content.
+the bearer token. From the environment it reads only `MODEL_ROUTER_JEV`, for
+the Jev alias, and `PI_CODING_AGENT_DIR`, the omp agent folder that omp sets
+for a profile. Without that variable it uses `.omp/agent` in your home folder.
+It checks whether a `task.md` file exists in the `agents` folder there and in
+the nearest project agent folder, and it reads no file content.
+
+Once per batch, the plugin runs the omp program it runs in, twice:
+`omp config get task.enableEffort --json` and
+`omp config get task.maxEffort --json`. It uses the two answers to decide
+whether to set effort and to show the level omp applies. Nothing from them
+leaves your machine.
 
 The lines the plugin prints per batch go to your omp notifications, or to
 standard error when omp has no UI. The setup skill writes only the

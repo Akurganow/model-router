@@ -19,15 +19,16 @@ export function setVersion(
 	version: string,
 	manifests: readonly string[] = MANIFESTS,
 ): string[] {
-	const written: string[] = [];
-	for (const path of manifests) {
-		if (!existsSync(join(root, path))) continue;
-		const text = readFileSync(join(root, path), "utf8");
-		if (!line.test(text)) throw new Error(`no version line in ${path}`);
-		writeFileSync(join(root, path), text.replace(line, `$1${version}$2`));
-		written.push(path);
-	}
-	return written;
+	// Every manifest is checked before any is written, so a failed bump leaves the tree as it was.
+	const pending = manifests
+		.filter((path) => existsSync(join(root, path)))
+		.map((path) => {
+			const text = readFileSync(join(root, path), "utf8");
+			if (!line.test(text)) throw new Error(`no version line in ${path}`);
+			return [path, text.replace(line, `$1${version}$2`)] as const;
+		});
+	for (const [path, text] of pending) writeFileSync(join(root, path), text);
+	return pending.map(([path]) => path);
 }
 
 if (import.meta.main) {

@@ -129,3 +129,9 @@ test("the command refuses a version that is not X.Y.Z with exit code 2", () => {
 	assert.equal(run.status, 2);
 	assert.match(run.stderr, /usage: node scripts\/set-version\.ts X\.Y\.Z/);
 });
+
+test("a bad manifest later in the list leaves the earlier ones unwritten", () => {
+	put(omp, '{\n\t"name": "model-router-omp"\n}\n');
+	assert.throws(() => setVersion(root, "1.2.3", [claude, omp]));
+	assert.equal(read(claude), claudeText);
+});

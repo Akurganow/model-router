@@ -14,6 +14,7 @@ import { claude } from "./evals/claude.ts";
 import { bodyOf, sameBody } from "./evals/drift.ts";
 import { hygieneProblems } from "./evals/hygiene.ts";
 import { omp } from "./evals/omp.ts";
+import { runCase } from "./evals/run.ts";
 import { clientEnv, normalisePaths, scrub } from "./evals/scrub.ts";
 import { selftest } from "./evals/selftest.ts";
 
@@ -258,4 +259,20 @@ test("selftest rejects a synthetic fixture once synthetic ones are disallowed", 
 		allowSynthetic: false,
 	});
 	assert.ok(problems.some((p) => p.includes("synthetic")));
+});
+
+const PATH_VAR = "PATH";
+test("a client binary that is missing is a recorded failure, not a crash", () => {
+	const path = process.env[PATH_VAR];
+	process.env[PATH_VAR] = mkdtempSync(join(tmpdir(), "evals-empty-path-"));
+	try {
+		const result = runCase(base, tmpdir());
+		assert.equal(result.passed, false);
+		assert.ok(
+			result.failures.some((f) => f.startsWith("client failed to run")),
+		);
+		assert.equal(result.clientVersion, "");
+	} finally {
+		process.env[PATH_VAR] = path;
+	}
 });
