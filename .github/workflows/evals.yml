@@ -10,11 +10,9 @@ name: evals
 #
 # Secrets are named, never inherited. A client job sees only its own model
 # key and the TypeSafe key, and only in the step that runs the cases.
-#   ANTHROPIC_API_KEY     key for Claude Code
-#   OMP_PROVIDER_API_KEY  key for the model provider that omp uses. The job
-#                         exports it as the variable that the omp case names
-#                         in "keyEnv" in evals/cases.json.
-#   TYPESAFE_API_KEY      key for the TypeSafe scoring endpoint
+#   ANTHROPIC_API_KEY   key for Claude Code
+#   OPENROUTER_API_KEY  key for OpenRouter, which serves the omp case's model
+#   TYPESAFE_API_KEY    key for the TypeSafe scoring endpoint
 on:
   workflow_dispatch:
     inputs:
@@ -41,7 +39,7 @@ on:
     secrets:
       ANTHROPIC_API_KEY:
         required: true
-      OMP_PROVIDER_API_KEY:
+      OPENROUTER_API_KEY:
         required: true
       TYPESAFE_API_KEY:
         required: true
@@ -148,11 +146,10 @@ jobs:
           omp plugin marketplace add "$PWD"
           omp plugin install model-router@model-router
 
-      # The case file names OPENROUTER_API_KEY as the variable that the
-      # model provider of the omp case reads. Change both together.
+      # The omp case names OPENROUTER_API_KEY in "keyEnv" in evals/cases.json.
       - name: Run the cases
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OMP_PROVIDER_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
         run: node scripts/evals.ts run --client omp --out "$RUNNER_TEMP/results"
 

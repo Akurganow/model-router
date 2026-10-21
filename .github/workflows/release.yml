@@ -139,5 +139,5 @@ jobs:
       ref: ${{ needs.release.outputs.tag }}
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      OMP_PROVIDER_API_KEY: ${{ secrets.OMP_PROVIDER_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
