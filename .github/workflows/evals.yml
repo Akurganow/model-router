@@ -4,9 +4,8 @@ name: evals
 # repository, once per shipped client, and asserts that the first subagent
 # spawn was routed. The cases are in evals/cases.json.
 #
-# It runs on manual dispatch and from release.yml after a release is
-# published. It never runs on a pull request. A failure here leaves the
-# release as it is.
+# It runs on manual dispatch only, because every run costs model usage. It
+# never runs on a pull request or after a release.
 #
 # Secrets are named, never inherited. A client job sees only its own model
 # key and the TypeSafe key, and only in the step that runs the cases.
@@ -26,23 +25,6 @@ on:
         type: string
         required: false
         default: ""
-  workflow_call:
-    inputs:
-      clients:
-        type: string
-        required: false
-        default: ""
-      ref:
-        type: string
-        required: false
-        default: ""
-    secrets:
-      ANTHROPIC_API_KEY:
-        required: true
-      OPENROUTER_API_KEY:
-        required: true
-      TYPESAFE_API_KEY:
-        required: true
 
 permissions:
   contents: read
