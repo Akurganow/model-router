@@ -9,10 +9,9 @@ name: policy
 # is scanned at most once: the verdict is cached under the policy hash and
 # the hash of the plugin folder's tree, a cached verdict gates later runs,
 # and a re-run, a force-push of the same content or a commit outside the
-# plugin folder never scans again. A pull request from Dependabot changes
-# the root only, so it reuses main's verdict and needs no API key, which a
-# Dependabot run would not have. A cached fail still fails; the fix is a
-# commit that changes the plugin. A scan that returns no verdict is an
+# plugin folder never scans again. A pull request from Renovate changes
+# the root only, so it reuses main's verdict and runs no scan. A cached
+# fail still fails; the fix is a commit that changes the plugin. A scan that returns no verdict is an
 # infrastructure error: it fails the job and caches nothing.
 on:
   pull_request:

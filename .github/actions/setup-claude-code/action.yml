@@ -1,7 +1,7 @@
 name: Set up Claude Code
 description: >
   Installs the Claude Code version that package.json in this folder pins and
-  package-lock.json locks by digest, and puts `claude` on the PATH. Dependabot
+  package-lock.json locks by digest, and puts `claude` on the PATH. Renovate
   proposes new versions. The stream-json event that carries the mod's decision
   line is verified in the pinned version.
 runs:

@@ -41,7 +41,7 @@ jobs:
         run: npm ci
 
       # npm's default audit level: any open advisory against an installed
-      # package fails the job. Dependabot opens the pull request with the fix.
+      # package fails the job. Renovate opens the pull request with the fix.
       - name: Audit the dev tools
         run: npm audit
 
