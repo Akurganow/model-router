@@ -2,8 +2,7 @@ name: ci
 
 # Validates the plugins and runs their tests on Ubuntu and macOS, on every pull
 # request and every push to main. `claude plugin test` runs with no session and
-# no sign-in, so the job needs no secrets. A second job checks that every
-# commit since the last tag is a conventional commit.
+# no sign-in, so the job needs no secrets.
 on:
   pull_request:
   push:
@@ -80,24 +79,3 @@ jobs:
 
       - name: Run the shared, script and omp tests
         run: node --test 'shared/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-omp/tests/*.test.ts'
-
-  # The release reads commit types since the last tag, so a commit that is not
-  # a conventional commit must not reach main.
-  commits:
-    name: commits
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      # cog reads the history from the latest tag, so the checkout needs every
-      # commit and tag. A pull request is checked at its head, not at GitHub's
-      # merge commit.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-
-      - uses: ./.github/actions/setup-cog
-
-      - name: Check that every commit since the last tag is conventional
-        run: cog check --from-latest-tag

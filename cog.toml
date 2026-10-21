@@ -10,7 +10,7 @@ branch_whitelist = ["main"]
 pre_bump_hooks = ["node scripts/set-version.ts {{version}}"]
 
 # `cog install-hook commit-msg` installs this hook into a clone. It refuses a
-# commit message that is not a conventional commit, which CI would reject.
+# commit message that is not a conventional commit.
 [git_hooks.commit-msg]
 script = """#!/bin/sh
 set -e
