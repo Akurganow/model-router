@@ -11,9 +11,8 @@ name: release
 # this workflow stops, while ci and policy check the released commit once
 # more.
 #
-# Once the release is published, the evals job runs the real clients against
-# the released tag. It comes after the release job, so a failure there leaves
-# the published release as it is.
+# A release runs no evals. They cost model usage, so they run only on manual
+# dispatch of evals.yml.
 on:
   push:
     branches: [main]
@@ -32,9 +31,6 @@ jobs:
     # Pushing the commit and the tag and creating the release need contents: write.
     permissions:
       contents: write
-    outputs:
-      released: ${{ steps.bump.outputs.released }}
-      tag: ${{ steps.bump.outputs.tag }}
     steps:
       # Pinned to a commit sha; the comment records the release. ref: main
       # takes the newest main; fetch-depth: 0 brings the history and the tags.
@@ -126,18 +122,3 @@ jobs:
             [ -s "$notes" ] || { echo "::error::no changelog section for $tag"; exit 1; }
             gh release create "$tag" --verify-tag --title "$tag" --notes-file "$notes"
           done
-
-  # A reusable workflow call takes no continue-on-error. The release job has
-  # finished by now, so a failed call cannot undo or block the release.
-  evals:
-    needs: release
-    if: ${{ needs.release.outputs.released == 'true' }}
-    permissions:
-      contents: read
-    uses: ./.github/workflows/evals.yml
-    with:
-      ref: ${{ needs.release.outputs.tag }}
-    secrets:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
