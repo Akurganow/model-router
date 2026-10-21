@@ -6,7 +6,7 @@ tag_prefix = "v"
 ignore_merge_commits = true
 # Releases are cut from main only; any other checkout refuses the bump.
 branch_whitelist = ["main"]
-# Runs before the version commit, so plugin.json carries the new version.
+# Runs before the version commit, so every plugin manifest carries the new version.
 pre_bump_hooks = ["node scripts/set-version.ts {{version}}"]
 
 [changelog]
