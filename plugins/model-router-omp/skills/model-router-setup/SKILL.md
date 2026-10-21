@@ -71,11 +71,14 @@ An unset `smol` or `slow` inherits `default`. An unset `task` uses the session m
 2. Note the current `smol`, `task` and `slow` values.
 3. Run `omp models --json`.
 4. Keep the rows whose `kind` is `chat`.
-5. Show them with `selector`, `thinking` levels and `cost.input`, grouped by provider.
-6. For a long list, show only the cheapest and the strongest per provider.
-7. Propose one `selector` per role, starting from the current `smol`, `task` and `slow`.
-8. Use a plain selector with no `:level` suffix. The effort setting handles levels.
-9. Ask the user to accept or change each of the three picks.
+5. Group the rows into model families by name, such as Claude Haiku or Gemini Flash.
+6. Keep only the newest version of each family, judged by the version in its name.
+7. Drop `:batch` variants and moving aliases such as `~…-latest`.
+8. Show the kept rows with `selector`, `thinking` levels and `cost.input`, grouped by provider.
+9. Propose one `selector` per role, starting from the current `smol`, `task` and `slow`.
+10. Never propose an older version of a family unless the user asks for it.
+11. Use a plain selector with no `:level` suffix. The effort setting handles levels.
+12. Ask the user to accept or change each of the three picks.
 
 The roles map to work like this:
 

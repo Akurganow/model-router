@@ -16,7 +16,8 @@ item's agent and effort.
 - The agent is `router_light` for lookup or transcription, `router_mid` for
   bounded judgment and `router_heavy` for open judgment. Each runs the model
   of its own role.
-- The effort is `lo`, `med` or `hi`. `router_light` never starts below `med`.
+- The effort is `lo`, `med` or `hi`. `router_light` never runs at its model's
+  lowest level.
 - The router writes an effort only when `task.enableEffort` is on. omp's
   `auto` thinking sets the level otherwise, and the line shows `auto`.
 

@@ -82,8 +82,11 @@ Jev's second answer, the work index, maps to an effort:
 | 1, an ordinary task | `med` | `med` |
 | 2, a long or delicate task | `hi` | `hi` |
 
-The light tier never gets `lo`, because a small model at its lowest level
-stops early. An `effort` the caller set is kept, and the line says
+The light tier never runs at the model's lowest level, because a small model
+there stops early. omp maps `med` to the middle level, the lower one of two on
+a model with an even count, so on a short list `med` can land on the lowest
+level. The router then asks for `hi` instead. When your cap pins `hi` there
+too, the request stays as it was. An `effort` the caller set is kept, and the line says
 `caller effort`. The plugin never sets `max`.
 
 omp decides what happens to the effort. The setup asks you to pick one of two
@@ -102,7 +105,8 @@ maps the router's `hi` to the model's highest level, which can be `max`, and
 the line shows it. The setup always sets both settings together. Set them
 together by hand too.
 
-On a model that lists only `low`, `high` and `max`, omp maps `med` to `low`.
+On a model that lists only `low`, `high` and `max`, omp maps `med` to `low`
+for the mid and heavy tiers.
 When the cap sits below the model's lowest level, omp would fail the spawn,
 so the plugin writes no effort for that item and the line shows `auto`.
 

@@ -119,9 +119,10 @@ The ladder is the Claude Code ladder above, carried onto omp's coarse scale,
 and it rests on the same sources:
 
 - `med` is the resting point, as `medium` is in Claude Code. omp maps `med` to
-  the middle level of the role's model, and *Model configuration* gives
-  `medium` as the default effort.
-- The light tier never gets `lo`, as Haiku never gets `low`. *Prompting Claude
+  the middle level of the role's model, the lower one of two on a model with
+  an even count. *Model configuration* gives `medium` as the default effort.
+- The light tier never runs at the model's lowest level, as Haiku never gets
+  `low`. When `med` lands there, the router asks for `hi`. *Prompting Claude
   Haiku 5.5* warns that a small model at its lowest level is more likely to
   skip a check or stop early.
 - The ladder stops at `high`. omp maps `hi` to the model's highest level, so
