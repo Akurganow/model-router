@@ -139,15 +139,6 @@ describe("the light tier never runs at the model's lowest level", () => {
 	});
 });
 
-test("an item name reaches Jev masked and cut", async () => {
-	await world.run({
-		tasks: [{ task: "Do it", name: `API_KEY=hunter22 ${"n".repeat(500)}` }],
-	});
-	const description = world.calls[0]?.body.state.description ?? "";
-	assert.ok(!description.includes("hunter22"));
-	assert.ok(description.length <= 200);
-});
-
 describe("readTaskTool", () => {
 	const piWith = (tools: unknown[]) =>
 		({ on() {}, getAllTools: () => tools }) as never;

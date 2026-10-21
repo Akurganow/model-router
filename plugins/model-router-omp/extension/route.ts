@@ -1,7 +1,6 @@
 import {
 	DEADLINE_MS,
 	decisionSuffix,
-	prepareBrief,
 	score,
 	TIER_TEXTS,
 	TransportError,
@@ -28,8 +27,6 @@ export type Run = {
 };
 
 const ROLE = "general-purpose";
-// A batch item's name is a short label; a longer one is cut, and secrets in it are masked.
-const NAME_CHARS = 200;
 const AGENTS = ["router_light", "router_mid", "router_heavy"] as const;
 export type Agent = (typeof AGENTS)[number];
 // The model selectors in each agent's frontmatter, tried in order.
@@ -80,8 +77,7 @@ export async function routeItem(
 			raw = await postJev(fetch, run.key, body, run.signal);
 			return raw;
 		};
-		const description =
-			typeof item.name === "string" ? prepareBrief(item.name, NAME_CHARS) : "";
+		const description = typeof item.name === "string" ? item.name : "";
 		const scored = await score(
 			{
 				role: ROLE,
