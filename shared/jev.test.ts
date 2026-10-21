@@ -47,7 +47,6 @@ test("the request goes to the fixed endpoint, verbatim", async () => {
 				},
 				body: '{"a":1}',
 				signal,
-				redirect: "error",
 			},
 		},
 	]);
