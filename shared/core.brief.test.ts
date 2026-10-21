@@ -77,3 +77,28 @@ test("a secret inside a code block is redacted before the block collapses", () =
 	const out = prepareBrief("```\nAPI_KEY=Zq9fK2mTvv\n```");
 	assert.doesNotMatch(out, /Zq/);
 });
+
+const SMALL_BUDGET = 600;
+const SMALL_HEAD_CHARS = 379;
+const SMALL_TAIL_CHARS = 190;
+
+test("a smaller budget cuts to exactly that length with the marker counted", () => {
+	const text = `${"h".repeat(BUDGET_CHARS)}${"t".repeat(BUDGET_CHARS)}`;
+	const out = prepareBrief(text, SMALL_BUDGET);
+	const [head, tail] = out.split(OMISSION_MARKER);
+	assert.equal(out.length, SMALL_BUDGET);
+	assert.equal(head, "h".repeat(SMALL_HEAD_CHARS));
+	assert.equal(tail, "t".repeat(SMALL_TAIL_CHARS));
+});
+
+test("a text within a smaller budget comes back unchanged", () => {
+	const text = "x".repeat(SMALL_BUDGET);
+	assert.equal(prepareBrief(text, SMALL_BUDGET), text);
+});
+
+test("a smaller budget still redacts before it cuts", () => {
+	for (let shift = 0; shift < SWEEP; shift++) {
+		const text = `${"x".repeat(SMALL_HEAD_CHARS - shift)} API_KEY=Zq9fK2mTvv ${"y".repeat(BUDGET_CHARS)}`;
+		assert.doesNotMatch(prepareBrief(text, SMALL_BUDGET), SECRET_PIECES);
+	}
+});

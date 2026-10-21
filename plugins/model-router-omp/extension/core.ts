@@ -156,10 +156,10 @@ export const OMISSION_MARKER = "\n[middle of the brief omitted]\n";
 const HEAD_SHARE = 2 / 3;
 
 // Redaction runs on the full text, so a cut can never split a secret into an unmasked piece.
-export function prepareBrief(text: string): string {
+export function prepareBrief(text: string, budget = BUDGET_CHARS): string {
 	const condensed = condense(redact(text));
-	if (condensed.length <= BUDGET_CHARS) return condensed;
-	const kept = BUDGET_CHARS - OMISSION_MARKER.length;
+	if (condensed.length <= budget) return condensed;
+	const kept = budget - OMISSION_MARKER.length;
 	const head = Math.floor(kept * HEAD_SHARE);
 	const tail = kept - head;
 	return `${condensed.slice(0, head)}${OMISSION_MARKER}${condensed.slice(condensed.length - tail)}`;

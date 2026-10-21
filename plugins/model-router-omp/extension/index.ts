@@ -1,5 +1,5 @@
 import { hasCustomTaskAgent } from "./agents.ts";
-import { prepareContext } from "./prompt.ts";
+import { contextText } from "./prompt.ts";
 import type { Outcome, Task } from "./route.ts";
 import { batchDeadline, mapLimit, routeItem, skipEntry } from "./route.ts";
 import type { Context, Pi, ToolCallEvent, ToolCallResult } from "./types.ts";
@@ -68,7 +68,7 @@ async function route(
 			: {
 					key,
 					model: jevAlias(),
-					context: prepareContext(context),
+					context: contextText(context),
 					signal: batchDeadline(),
 				};
 	const skip = custom ? SKIP_CUSTOM_AGENT : SKIP_NO_KEY;
