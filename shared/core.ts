@@ -1,6 +1,6 @@
 export const BUDGET_CHARS = 12000;
-export const TIE_MARGIN = 0.1;
-export const WORK_PRIOR = [0.5, 1, 0.5] as const;
+const TIE_MARGIN = 0.1;
+const WORK_PRIOR = [0.5, 1, 0.5] as const;
 
 export type Level = 0 | 1 | 2;
 export type Probabilities = Record<`${Level}`, number>;
@@ -40,7 +40,7 @@ export type ScoreInput = {
 	model: string;
 };
 export type Post = (body: string) => Promise<string>;
-export type Sleep = (ms: number) => Promise<void>;
+type Sleep = (ms: number) => Promise<void>;
 export type ScoreOptions = { sleep?: Sleep };
 export type Scored = {
 	level: Level;

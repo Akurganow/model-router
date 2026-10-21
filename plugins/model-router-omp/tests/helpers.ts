@@ -28,8 +28,8 @@ export type Call = {
 		state: { role: string; description: string; task: string };
 	};
 };
-export type Responder = (call: Call, n: number) => Promise<Reply> | Reply;
-export type KeyLookup = () => Promise<string | undefined>;
+type Responder = (call: Call, n: number) => Promise<Reply> | Reply;
+type KeyLookup = () => Promise<string | undefined>;
 
 export const reply = (text: string, status = 200): Reply => ({
 	ok: status >= 200 && status < 300,

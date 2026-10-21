@@ -7,7 +7,7 @@ import { get, jsonLines } from "./stream.ts";
 import type { Captured } from "./types.ts";
 
 // The first change that lands recorded fixtures sets this to false, so a synthetic one fails from then on.
-export const SYNTHETIC_ALLOWED = true;
+const SYNTHETIC_ALLOWED = true;
 
 // Any decision line of either client: the Claude one inside a ui_log event, the omp one on stderr.
 const DECISION_SHAPE = /L[012] \S+ · [^·]+ · p=\d/;

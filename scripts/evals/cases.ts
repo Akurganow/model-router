@@ -6,7 +6,7 @@ import type { Evidence } from "./types.ts";
 const ASSERTIONS = ["spawned", "routed", "line", "answered"] as const;
 const RECORDS = ["tier", "effort", "drift"] as const;
 const DRIFT_CLIENT = "omp";
-export type Assertion = (typeof ASSERTIONS)[number];
+type Assertion = (typeof ASSERTIONS)[number];
 
 export type Case = {
 	id: string;

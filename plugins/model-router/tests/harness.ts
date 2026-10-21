@@ -59,7 +59,7 @@ type Request = {
 		body?: string;
 	};
 };
-export type Outcome = { result?: unknown; deny?: unknown };
+type Outcome = { result?: unknown; deny?: unknown };
 type Harness = {
 	clock: MockClock;
 	logs: string[];

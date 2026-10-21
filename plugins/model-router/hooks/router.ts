@@ -1,5 +1,4 @@
 import {
-	BUDGET_CHARS,
 	type Level,
 	type Post,
 	type Probabilities,
@@ -7,20 +6,16 @@ import {
 	type ScoreOptions,
 	type Skipped,
 	score,
-	TIE_MARGIN,
 	TIER_TEXTS,
-	WORK_PRIOR,
-	WORK_TEXTS,
 } from "./core.ts";
 
-export type { Level, Post, Probabilities, Skipped };
-export { BUDGET_CHARS, TIE_MARGIN, WORK_PRIOR, WORK_TEXTS as WORK_LEVELS };
+export type { Post, Skipped };
 
 export type Model = "haiku" | "sonnet" | "opus";
 export type Effort = "low" | "medium" | "high" | "xhigh";
 export type RouteInput = ScoreInput;
 
-export const TIERS = [
+const TIERS = [
 	{ model: "haiku", text: TIER_TEXTS[0] },
 	{ model: "sonnet", text: TIER_TEXTS[1] },
 	{ model: "opus", text: TIER_TEXTS[2] },
