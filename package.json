@@ -5,7 +5,8 @@
 		"npm": ">=11.10.0"
 	},
 	"scripts": {
-		"check": "tsc -p . && tsc -p scripts && biome ci --error-on-warnings .",
+		"check": "tsc -p . && tsc -p scripts && node scripts/sync.ts --check && node --test 'shared/*.test.ts' 'scripts/*.test.ts' && biome ci --error-on-warnings .",
+		"sync": "node scripts/sync.ts",
 		"fix": "biome check --write ."
 	},
 	"devDependencies": {
