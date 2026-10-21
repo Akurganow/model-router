@@ -41,17 +41,18 @@ jobs:
         env:
           REPO: ${{ github.repository }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          POLICY_HASH: ${{ hashFiles('.github/policy/**') }}
         run: |
           mkdir -p .scan
           printf '{"plugins":[{"name":"model-router","source":{"url":"https://github.com/%s","sha":"%s","path":"plugins/model-router"}}]}\n' "$REPO" "$SHA" > .scan/targets.json
-          echo "tree=$(git rev-parse "$SHA:plugins/model-router")" >> "$GITHUB_OUTPUT"
+          echo "cache-key=policy-verdict-$POLICY_HASH-$(git rev-parse "$SHA:plugins/model-router")" >> "$GITHUB_OUTPUT"
 
       - name: Restore the cached verdict
         id: cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .scan/verdict.json
-          key: policy-verdict-${{ hashFiles('.github/policy/**') }}-${{ steps.target.outputs.tree }}
+          key: ${{ steps.target.outputs.cache-key }}
 
       # The scan action skips without a key. This step keeps the check from
       # passing for that reason.
@@ -104,7 +105,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .scan/verdict.json
-          key: policy-verdict-${{ hashFiles('.github/policy/**') }}-${{ steps.target.outputs.tree }}
+          key: ${{ steps.target.outputs.cache-key }}
 
       - name: Require a passing verdict
         env:
