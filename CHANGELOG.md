@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.12.1 - 2026-10-21
+#### Bug Fixes
+- (**omp**) match only the task heading when looking for the user's task agent (dd967c0)
+#### Documentation
+- remove the heist working files (e11e956)
+- keep the multi-harness heist open until the recorded fixtures land (a8cd654)
+#### Miscellaneous Chores
+- ignore the working files of the Gangsta and Superpowers plugins (571c3b4)
+
+- - -
+
+
 ## v0.12.0 - 2026-10-21
 #### Features
 - (**calibrate**) print the Jev model that answered (8509d97)
