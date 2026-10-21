@@ -50,3 +50,32 @@ export function chooseLightEffort(
 		? higher
 		: choice;
 }
+
+type Chooser = (
+	effort: TaskEffort,
+	model: ModelLike | undefined,
+	maxEffort?: string,
+) => Choice | undefined;
+
+// The router never asks for a level above high (docs/model-choice.md), whatever cap omp holds, so a
+// request that would land higher steps down. With nothing at or below high, it writes no effort.
+const ROUTER_CEILING = "high";
+const STEPS_DOWN: Record<TaskEffort, readonly TaskEffort[]> = {
+	hi: ["hi", "med", "lo"],
+	med: ["med", "lo"],
+	lo: ["lo"],
+};
+
+export function chooseWithinCeiling(
+	choose: Chooser,
+	effort: TaskEffort,
+	model: ModelLike | undefined,
+	maxEffort?: string,
+): Choice | undefined {
+	for (const step of STEPS_DOWN[effort]) {
+		const choice = choose(step, model, maxEffort);
+		if (choice?.applied === undefined) return choice;
+		if (rank(choice.applied) <= rank(ROUTER_CEILING)) return choice;
+	}
+	return undefined;
+}

@@ -13,8 +13,8 @@ TypeSafe at https://api.typesafe.ai/v1/systemone. The request holds:
 - a capped part of the batch `context`, at most 3000 characters, prepared the
   same way and placed after the task text
 - the role, always `general-purpose`
-- the item's `name` as the description, or an empty description when it has
-  none
+- the item's `name` as the description, with secrets masked the same way and
+  cut to 200 characters, or an empty description when it has none
 - the Jev alias you chose, `jev-latest` or `jev-preview`, and two fixed
   scoring questions with their three descriptions each, text that ships with
   the plugin

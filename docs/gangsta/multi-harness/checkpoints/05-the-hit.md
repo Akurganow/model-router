@@ -9,7 +9,7 @@ pending-wps: [WP-30]
 lapsed-wps: [WP-01 item 5, WP-17..WP-22, WP-23 Codex catalog, the Node 22.18 CI step and the Codex docs parts]
 failed-wps: []
 notes:
-  - G1 (codex-cli 0.163.0): v1 passed, with gpt-5.6-luna as the only visible v1 parent. v2 failed: message reaches the hook encrypted, and v2 spawns fork by default, where Codex ignores a rewritten model. The probe also showed that ~/.codex/.env does not reach hooks, plugin hooks are off by default, and only the interactive CLI shows the hook's system message. The Don deferred Codex for this release despite the v1 pass; contract amendment A1 records the override. The "If G1 fails" path applies, and issue 33 records the findings and the revisit condition.
+  - G1: v1 passed. v2 failed: message reaches the hook encrypted, and v2 spawns fork by default, where Codex ignores a rewritten model. The probe also showed that ~/.codex/.env does not reach hooks, plugin hooks are off by default, and only the interactive CLI shows the hook's system message. The Don deferred Codex for this release despite the v1 pass; contract amendment A1 records the override. The "If G1 fails" path applies, and issue 33 records the findings and the revisit condition.
   - prepareBrief gained a budget; omp context uses it (no duplicated cut).
   - The omp catalog carries the plugin version; set-version and the sync check cover it.
   - The sync check now fails on a missing copy or manifest.

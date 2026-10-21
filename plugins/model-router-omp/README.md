@@ -99,11 +99,11 @@ The setup turns on `task.enableEffort` and caps it with `task.maxEffort` at
 passing `high`. The cap applies in this mode only.
 
 The extension reads both settings once per batch and writes an effort only
-when `task.enableEffort` is on. It leaves your cap as it is. If you turn on
-`task.enableEffort` by hand and leave `task.maxEffort` at its default, omp
-maps the router's `hi` to the model's highest level, which can be `max`, and
-the line shows it. The setup always sets both settings together. Set them
-together by hand too.
+when `task.enableEffort` is on. It leaves your cap as it is, and it never asks
+for a level above `high` itself. omp maps `hi` to the model's highest level, so
+when that is above `high` and your cap allows it, the router asks for `med`
+instead. With nothing at or below `high`, it writes no effort and the line
+shows `auto`.
 
 On a model that lists only `low`, `high` and `max`, omp maps `med` to `low`
 for the mid and heavy tiers.
@@ -158,7 +158,10 @@ mode, the line goes to standard error.
 - **A custom `task` agent.** A `task.md` file in the `agents` folder of your
   omp agent directory or in the nearest project `.omp/agents` replaces omp's bundled `task` agent. The
   router would swap your agent out, so it skips the whole batch and says so
-  in the line. Remove the file or disable the plugin.
+  in the line. Remove the file or disable the plugin. The check looks for that
+  file name only. A `task` agent under another file name, or one that another
+  plugin ships, is not detected, and the router would swap it out. Name your
+  own `task` agent `task.md`, or disable the plugin.
 - **Other extensions that rewrite task items.** omp runs every `tool_call`
   handler against the original input. When two handlers return `input`, the
   last one wins, and the other rewrite is lost. Disable the other extension,

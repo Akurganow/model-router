@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { chooseEffort, chooseLightEffort } from "../extension/effort.ts";
+import extension from "../extension/index.ts";
 import { ompCommand, readTaskSettings } from "../extension/settings.ts";
-import { jevAnswer, reply, tasksOf, useWorld } from "./helpers.ts";
+import { jevAnswer, reply, taskEvent, tasksOf, useWorld } from "./helpers.ts";
 
 const world = useWorld();
 
@@ -53,7 +54,7 @@ describe("the line shows the level omp applies", () => {
 			{ tasks: [{ task: "Do it" }] },
 			{ models: { "@slow": FOUR } },
 		);
-		assert.match(lastLine(), /L2 router_heavy · hi→xhigh · /);
+		assert.match(lastLine(), /L2 router_heavy · med→medium · /);
 	});
 
 	test("task.maxEffort caps the applied level", async () => {
@@ -158,6 +159,9 @@ describe("ompCommand", () => {
 			["/opt/omp/bin/omp"],
 		);
 	});
+	test("any other program gets no command, so Node never runs a project's config.js", () => {
+		assert.equal(ompCommand("/usr/local/bin/node", "/work/test.ts"), undefined);
+	});
 	test("omp under Bun runs Bun with the CLI entry", () => {
 		assert.deepEqual(ompCommand("/usr/local/bin/bun", "/lib/omp/cli.js"), [
 			"/usr/local/bin/bun",
@@ -206,4 +210,86 @@ describe("the light tier never runs at the model's lowest level", () => {
 		);
 		assert.match(lastLine(), /L1 router_mid · med→low · /);
 	});
+});
+
+describe("the router never asks for a level above high", () => {
+	const upToMax = {
+		reasoning: true,
+		thinking: { efforts: ["low", "medium", "high", "max"] },
+	};
+	test("hi that would land on max steps down to med", async () => {
+		world.fetchWith(() => reply(jevAnswer(2, 2)));
+		const result = await world.run(
+			{ tasks: [{ task: "Do it" }] },
+			{ models: { "@router_heavy": upToMax } },
+		);
+		assert.deepEqual(tasksOf(result), [
+			{ task: "Do it", agent: "router_heavy", effort: "med" },
+		]);
+		assert.match(lastLine(), / · med→medium · /);
+	});
+	test("with a high cap, hi stays and omp clamps it to high", async () => {
+		world.settings = { enableEffort: true, maxEffort: "high" };
+		world.fetchWith(() => reply(jevAnswer(2, 2)));
+		await world.run(
+			{ tasks: [{ task: "Do it" }] },
+			{ models: { "@router_heavy": upToMax } },
+		);
+		assert.match(lastLine(), / · hi→high · /);
+	});
+	test("a model with nothing at or below high gets no effort", async () => {
+		world.fetchWith(() => reply(jevAnswer(2, 2)));
+		const result = await world.run(
+			{ tasks: [{ task: "Do it" }] },
+			{
+				models: {
+					"@router_heavy": {
+						reasoning: true,
+						thinking: { efforts: ["xhigh", "max"] },
+					},
+				},
+			},
+		);
+		assert.deepEqual(tasksOf(result), [
+			{ task: "Do it", agent: "router_heavy" },
+		]);
+		assert.match(lastLine(), / · auto · /);
+	});
+});
+
+describe("settings reads", () => {
+	test("a settings read that throws counts as omp's auto", async () => {
+		const handlers: Parameters<Parameters<typeof extension>[0]["on"]>[1][] = [];
+		extension({ on: (_e, h) => void handlers.push(h) }, async () => {
+			throw new Error("broken");
+		});
+		const result = await handlers[0]?.(
+			taskEvent({ tasks: [{ task: "Do it" }] }),
+			world.makeCtx(),
+		);
+		assert.deepEqual(tasksOf(result), ROUTED_ONLY);
+		assert.match(lastLine(), / · auto · /);
+	});
+	test("without a key the settings are not read", async () => {
+		let reads = 0;
+		const handlers: Parameters<Parameters<typeof extension>[0]["on"]>[1][] = [];
+		extension({ on: (_e, h) => void handlers.push(h) }, async () => {
+			reads += 1;
+			return {};
+		});
+		await handlers[0]?.(
+			taskEvent({ tasks: [{ task: "Do it" }] }),
+			world.makeCtx({ key: async () => undefined }),
+		);
+		assert.equal(reads, 0);
+	});
+});
+
+test("an item name reaches Jev masked and cut", async () => {
+	await world.run({
+		tasks: [{ task: "Do it", name: `API_KEY=hunter22 ${"n".repeat(500)}` }],
+	});
+	const description = world.calls[0]?.body.state.description ?? "";
+	assert.ok(!description.includes("hunter22"));
+	assert.ok(description.length <= 200);
 });

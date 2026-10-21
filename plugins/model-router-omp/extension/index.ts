@@ -8,7 +8,11 @@ import {
 	SELECTORS,
 	skipEntry,
 } from "./route.ts";
-import { type ReadSettings, readTaskSettings } from "./settings.ts";
+import {
+	type ReadSettings,
+	readTaskSettings,
+	type TaskSettings,
+} from "./settings.ts";
 import type { Context, Pi, ToolCallEvent, ToolCallResult } from "./types.ts";
 
 const LINE_PREFIX = "model-router ";
@@ -67,12 +71,15 @@ const agentModel = (ctx: Context) => (agent: Agent) => {
 	return undefined;
 };
 
-// The user's choice in task.enableEffort decides whether the router sets effort at all.
+// The user's choice in task.enableEffort decides whether the router sets effort at all. Settings that
+// cannot be read count as omp's auto.
 async function effortRun(
 	ctx: Context,
 	readSettings: ReadSettings,
 ): Promise<Run["effort"]> {
-	const { enableEffort, maxEffort } = await readSettings(ctx.cwd);
+	const { enableEffort, maxEffort } = await readSettings(ctx.cwd).catch(
+		() => ({}) as TaskSettings,
+	);
 	if (enableEffort !== true) return undefined;
 	return maxEffort === undefined
 		? { model: agentModel(ctx) }
@@ -93,9 +100,9 @@ async function route(
 	if (eligible.length === 0) return undefined;
 
 	const custom = hasCustomTaskAgent(ctx.cwd);
-	const [key, effort] = custom
-		? []
-		: await Promise.all([findKey(ctx), effortRun(ctx, readSettings)]);
+	const key = custom ? undefined : await findKey(ctx);
+	const effort =
+		key === undefined ? undefined : await effortRun(ctx, readSettings);
 	const run: Run | undefined =
 		key === undefined
 			? undefined

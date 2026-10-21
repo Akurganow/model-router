@@ -1,11 +1,17 @@
 import {
 	DEADLINE_MS,
 	decisionSuffix,
+	prepareBrief,
 	score,
 	TIER_TEXTS,
 	TransportError,
 } from "./core.ts";
-import { chooseEffort, chooseLightEffort, type TaskEffort } from "./effort.ts";
+import {
+	chooseEffort,
+	chooseLightEffort,
+	chooseWithinCeiling,
+	type TaskEffort,
+} from "./effort.ts";
 import { postJev } from "./jev.ts";
 import { buildPrompt } from "./prompt.ts";
 import type { ModelLike } from "./types.ts";
@@ -27,6 +33,8 @@ export type Run = {
 };
 
 const ROLE = "general-purpose";
+// A batch item's name is a short label; a longer one is cut, and secrets in it are masked.
+const NAME_CHARS = 200;
 const AGENTS = ["router_light", "router_mid", "router_heavy"] as const;
 export type Agent = (typeof AGENTS)[number];
 // The model selectors in each agent's frontmatter, tried in order.
@@ -77,7 +85,8 @@ export async function routeItem(
 			raw = await postJev(fetch, run.key, body, run.signal);
 			return raw;
 		};
-		const description = typeof item.name === "string" ? item.name : "";
+		const description =
+			typeof item.name === "string" ? prepareBrief(item.name, NAME_CHARS) : "";
 		const scored = await score(
 			{
 				role: ROLE,
@@ -96,7 +105,8 @@ export async function routeItem(
 		const choice =
 			keep || run.effort === undefined
 				? undefined
-				: (level === 0 ? chooseLightEffort : chooseEffort)(
+				: chooseWithinCeiling(
+						level === 0 ? chooseLightEffort : chooseEffort,
 						EFFORTS[level][workIndex],
 						run.effort.model(agent),
 						run.effort.max,

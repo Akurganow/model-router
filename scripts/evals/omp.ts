@@ -40,6 +40,9 @@ export const omp: Adapter = {
 		"--no-session",
 		"--no-title",
 		"--auto-approve",
+		// The case needs only the spawn and a file read, so no shell can read the keys in the environment.
+		"--tools",
+		"task,read",
 		"--thinking",
 		"low",
 		"--model",

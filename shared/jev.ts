@@ -11,6 +11,7 @@ export type FetchLike = (
 		headers: Record<string, string>;
 		body: string;
 		signal: AbortSignal;
+		redirect: "error";
 	},
 ) => Promise<Reply>;
 
@@ -33,6 +34,8 @@ export async function postJev(
 			},
 			body,
 			signal,
+			// The bearer key must never follow a redirect to another host.
+			redirect: "error",
 		});
 	} catch {
 		throw failed();

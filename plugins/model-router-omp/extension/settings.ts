@@ -9,18 +9,22 @@ const ASK_TIMEOUT_MS = 2000;
 
 // The extension runs inside omp: either its compiled binary, or Bun with the CLI entry as the first
 // argument. A compiled binary also fills that argument, with a path inside its embedded file system.
+// Any other program gets no command: under Node, `node config` would run a project's config.js.
 export const ompCommand = (
 	execPath = process.execPath,
 	entry = process.argv[1],
-): string[] =>
-	basename(execPath).startsWith("bun") && entry
-		? [execPath, entry]
-		: [execPath];
+): string[] | undefined => {
+	const name = basename(execPath);
+	if (name.startsWith("bun")) return entry ? [execPath, entry] : undefined;
+	return name.startsWith("omp") ? [execPath] : undefined;
+};
 
 // The child inherits the profile from the environment and the project from the working directory.
 const askOmp: AskOmp = (cwd, key) =>
 	new Promise((resolve) => {
-		const [file = process.execPath, ...prefix] = ompCommand();
+		const command = ompCommand();
+		if (command === undefined) return resolve(undefined);
+		const [file = "", ...prefix] = command;
 		execFile(
 			file,
 			[...prefix, "config", "get", key, "--json"],
