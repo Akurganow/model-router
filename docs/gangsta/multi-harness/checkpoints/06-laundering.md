@@ -1,9 +1,9 @@
 ---
 heist: multi-harness
 phase: laundering
-status: awaiting-don
+status: completed
 timestamp: 2026-10-21T00:00:00Z
-next-action: Don signs the exceptions and the Ledger question, then merge. The heist closes after the recorded-fixtures pull request.
+next-action: Heist complete. Merge pull request 39. The recorded-fixtures pull request follows the first dispatched eval run on the release.
 artifacts:
   - docs/gangsta/multi-harness/specs/2026-10-21-contract.md
   - docs/gangsta/multi-harness/plans/2026-10-21-execution-plan.md
@@ -45,6 +45,10 @@ None. The evals workflow installed omp's dependencies unpinned. `evals/omp/bun.l
 ## Final review
 
 The inspector's verdict was APPROVE WITH CONCERNS: 1 high, 2 medium and 7 low findings. All were fixed except the medium finding on `max`. The supply-chain risk was fixed in Laundering by a lockfile. The high finding was owner-setup facts in this folder. They are removed here and from issue 33. Amendment A5 records that the omp extension reads no command, file or variable but the TypeSafe key. A ceiling at `high` that the review asked for was reverted by the Don: a level's name means a different point on a five-level scale than on a three-level one.
+
+## Don's verdict
+
+The Don declared the heist complete on 2026-10-21 and asked for the merge.
 
 ## Open
 
