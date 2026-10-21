@@ -40,4 +40,14 @@ export type ToolCallHandler = (
 	ctx: Context,
 ) => Promise<ToolCallResult | undefined>;
 
-export type Pi = { on(event: "tool_call", handler: ToolCallHandler): void };
+// Tool metadata from omp's getAllTools: the schema is an omptype schema or plain JSON Schema.
+export type ToolInfo = {
+	name: string;
+	description: string;
+	parameters: unknown;
+};
+
+export type Pi = {
+	on(event: "tool_call", handler: ToolCallHandler): void;
+	getAllTools?(): ToolInfo[];
+};

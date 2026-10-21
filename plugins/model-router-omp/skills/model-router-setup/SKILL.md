@@ -2,7 +2,7 @@
 name: model-router-setup
 description: >
   Use when the user wants to set up or change model-router in Oh My Pi (omp):
-  its model roles, effort mode, Jev alias, or a check that routing works.
+  its model roles, effort mode, or a check that routing works.
 ---
 
 # model-router setup for Oh My Pi
@@ -21,11 +21,10 @@ interview points those roles at the user's models and picks who decides effort.
 - Skip a step the user declines. Name the skipped steps in the closing summary.
 - Keep each message short. Show command output only when the user needs it.
 
-The interview writes three things and nothing else:
+The interview writes two things and nothing else:
 
 - the three router roles, in the store that `modelRoleStorage` names;
-- `task.enableEffort` and `task.maxEffort`, only in router-effort mode;
-- `MODEL_ROUTER_JEV`, in omp's agent `.env` file.
+- `task.enableEffort` and `task.maxEffort`, only in router-effort mode.
 
 ## Step 1. Check the TypeSafe key
 
@@ -125,20 +124,7 @@ Never leave `task.enableEffort` true while `task.maxEffort` is not `high`.
 
 In omp-auto mode, run `omp config get task.enableEffort` instead. If it is true, someone enabled it, possibly without the cap. Offer to set `task.maxEffort` to `high` or to turn the setting off.
 
-## Step 8. Choose the Jev alias
-
-1. Run `test -n "$MODEL_ROUTER_JEV" && echo set || echo unset`. A shell value wins over every `.env` file.
-2. Ask: "Which Jev alias should the router use, `jev-latest` or `jev-preview`? The default is `jev-latest`."
-3. Run `omp config path`. The agent `.env` file is `.env` in that folder.
-4. Show the line `MODEL_ROUTER_JEV=<alias>` and the target file.
-5. If the file already sets `MODEL_ROUTER_JEV`, show that line and offer to replace it.
-6. Keep every other line of the file.
-7. Ask for consent, then write or append the line.
-8. If step 1 printed `set`, warn that the shell value overrides the file.
-9. Warn that a `.env` in the working directory also overrides the agent file.
-10. Tell the user that omp reads the file at start, so a restart applies the change.
-
-## Step 9. Check for conflicts
+## Step 8. Check for conflicts
 
 A conflict makes the extension skip the batch or blocks its rewrite.
 
@@ -158,18 +144,18 @@ If any check found a conflict:
 
 1. Name the conflict and its file or setting.
 2. Say that routing must stay off while the conflict stands.
-3. Skip step 10.
+3. Skip step 9.
 4. Tell the user to remove the conflict, or to disable the plugin with `omp plugin disable <id>`.
 5. Offer to run the disable command, and run it only after a yes.
 
-## Step 10. Smoke test
+## Step 9. Smoke test
 
 1. Ask: "To confirm routing I will spawn one small subagent. It spends a little model usage. May I?"
 2. If this session changed anything, ask the user to restart omp and request the smoke test again.
 3. Spawn one `task` with one item, no `agent`, and the text "Reply with the single word ok."
 4. Read the notification. It is one line that starts with `model-router`.
 5. Check that each entry starts with the item's position and names a tier and an effort.
-6. If an entry names a skip reason, stop and report it. `api_key unset` points to step 1, a custom agent to step 9.
+6. If an entry names a skip reason, stop and report it. `api_key unset` points to step 1, a custom agent to step 8.
 7. Run `find "$(omp config path)/sessions" -path '*/sessions/*/*/*.jsonl' -mmin -10`.
 8. Pick the newest file in the output.
 9. Read its `model_change` line. The `model` should match the role of the tier on the batch line.

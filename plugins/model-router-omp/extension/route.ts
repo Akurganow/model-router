@@ -24,7 +24,7 @@ export type Run = {
 	context: string;
 	signal: AbortSignal;
 	// Present only when the user chose the router's effort over omp's own.
-	effort?: { model(agent: Agent): ModelLike | undefined; max?: string };
+	effort?: { model(agent: Agent): ModelLike | undefined };
 };
 
 const ROLE = "general-purpose";
@@ -103,7 +103,6 @@ export async function routeItem(
 				: (level === 0 ? chooseLightEffort : chooseEffort)(
 						EFFORTS[level][workIndex],
 						run.effort.model(agent),
-						run.effort.max,
 					);
 		const shown = keep ? "caller effort" : (choice?.shown ?? "auto");
 		const p = `${probabilities.tier[level].toFixed(2)}/${probabilities.work[workIndex].toFixed(2)}`;

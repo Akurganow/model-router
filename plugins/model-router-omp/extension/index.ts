@@ -1,4 +1,3 @@
-import { hasCustomTaskAgent } from "./agents.ts";
 import { contextText } from "./prompt.ts";
 import type { Agent, Outcome, Run, Task } from "./route.ts";
 import {
@@ -8,11 +7,7 @@ import {
 	SELECTORS,
 	skipEntry,
 } from "./route.ts";
-import {
-	type ReadSettings,
-	readTaskSettings,
-	type TaskSettings,
-} from "./settings.ts";
+import { readTaskTool } from "./task-tool.ts";
 import type { Context, Pi, ToolCallEvent, ToolCallResult } from "./types.ts";
 
 const LINE_PREFIX = "model-router ";
@@ -44,10 +39,8 @@ async function findKey(ctx: Context): Promise<string | undefined> {
 	return TYPESAFE_API_KEY || undefined;
 }
 
-const jevAlias = (): string => {
-	const { MODEL_ROUTER_JEV } = process.env;
-	return MODEL_ROUTER_JEV === "jev-preview" ? "jev-preview" : "jev-latest";
-};
+// The omp plugin has no setting for the alias, so it always asks the latest official Jev release.
+const JEV_ALIAS = "jev-latest";
 
 function report(ctx: Context, outcomes: readonly Outcome[]): void {
 	const line = LINE_PREFIX + outcomes.map((o) => o.entry).join(ENTRY_SEPARATOR);
@@ -71,25 +64,10 @@ const agentModel = (ctx: Context) => (agent: Agent) => {
 	return undefined;
 };
 
-// The user's choice in task.enableEffort decides whether the router sets effort at all. Settings that
-// cannot be read count as omp's auto.
-async function effortRun(
-	ctx: Context,
-	readSettings: ReadSettings,
-): Promise<Run["effort"]> {
-	const { enableEffort, maxEffort } = await readSettings(ctx.cwd).catch(
-		() => ({}) as TaskSettings,
-	);
-	if (enableEffort !== true) return undefined;
-	return maxEffort === undefined
-		? { model: agentModel(ctx) }
-		: { model: agentModel(ctx), max: maxEffort };
-}
-
 async function route(
 	event: ToolCallEvent,
 	ctx: Context,
-	readSettings: ReadSettings,
+	pi: Pi,
 ): Promise<ToolCallResult | undefined> {
 	const { input } = event;
 	const { tasks, context } = input;
@@ -99,16 +77,16 @@ async function route(
 	);
 	if (eligible.length === 0) return undefined;
 
-	const custom = hasCustomTaskAgent(ctx.cwd);
+	const { effortEnabled, customTaskAgent: custom } = readTaskTool(pi);
 	const key = custom ? undefined : await findKey(ctx);
-	const effort =
-		key === undefined ? undefined : await effortRun(ctx, readSettings);
+	// The user's choice in task.enableEffort decides whether the router sets effort at all.
+	const effort = effortEnabled ? { model: agentModel(ctx) } : undefined;
 	const run: Run | undefined =
 		key === undefined
 			? undefined
 			: {
 					key,
-					model: jevAlias(),
+					model: JEV_ALIAS,
 					context: contextText(context),
 					signal: batchDeadline(),
 					...(effort ? { effort } : {}),
@@ -131,13 +109,10 @@ async function route(
 		: undefined;
 }
 
-export default function extension(
-	pi: Pi,
-	readSettings: ReadSettings = readTaskSettings,
-): void {
+export default function extension(pi: Pi): void {
 	pi.on("tool_call", async (event, ctx) => {
 		try {
-			return await route(event, ctx, readSettings);
+			return await route(event, ctx, pi);
 		} catch {
 			return undefined;
 		}

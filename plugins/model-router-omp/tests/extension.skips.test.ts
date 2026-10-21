@@ -1,19 +1,14 @@
 import assert from "node:assert/strict";
-import { join } from "node:path";
 import { describe, test } from "node:test";
 import { jevAnswer, reply, setEnv, tasksOf, useWorld } from "./helpers.ts";
 
 const world = useWorld();
 
-const AGENT = "---\nname: task\n---\nMy own task agent.\n";
-const userAgents = () => join(world.home, ".omp", "agent", "agents");
-const projectAgents = (root: string) => join(root, ".omp", "agents");
-
 describe("a custom task agent skips the batch", () => {
 	const batch = { tasks: [{ task: "a" }, { task: "b" }] };
 
-	test("in the user agent folder", async () => {
-		world.put(join(userAgents(), "task.md"), AGENT);
+	test("when the task tool lists the user's own task agent", async () => {
+		world.taskTool.taskDescription = "My own task agent.";
 		assert.equal(await world.run(batch), undefined);
 		assert.equal(world.calls.length, 0);
 		assert.equal(
@@ -22,40 +17,7 @@ describe("a custom task agent skips the batch", () => {
 		);
 	});
 
-	test("in the agent folder of an omp profile", async () => {
-		const profileDir = join(world.home, ".omp", "profiles", "work", "agent");
-		setEnv("PI_CODING_AGENT_DIR", profileDir);
-		world.put(join(profileDir, "agents", "task.md"), AGENT);
-		assert.equal(await world.run(batch), undefined);
-		assert.equal(world.calls.length, 0);
-	});
-
-	test("in the project agent folder", async () => {
-		world.put(join(projectAgents(world.project), "task.md"), AGENT);
-		assert.equal(await world.run(batch), undefined);
-		assert.equal(world.calls.length, 0);
-		assert.match(world.notes[0] ?? "", /skipped, custom task agent/);
-	});
-
-	test("in the nearest project agent folder above the working directory", async () => {
-		world.put(join(projectAgents(world.project), "task.md"), AGENT);
-		const nested = join(world.project, "src", "deep");
-		world.put(join(nested, "keep"), "");
-		assert.equal(await world.run(batch, { cwd: nested }), undefined);
-		assert.equal(world.calls.length, 0);
-	});
-
-	test("but not in a farther project agent folder", async () => {
-		world.put(join(projectAgents(world.project), "task.md"), AGENT);
-		const nested = join(world.project, "src");
-		world.put(join(projectAgents(nested), "other.md"), AGENT);
-		const result = await world.run(batch, { cwd: nested });
-		assert.equal(tasksOf(result).length, 2);
-		assert.equal(world.calls.length, 2);
-	});
-
-	test("an agent file with another name does not skip", async () => {
-		world.put(join(userAgents(), "reviewer.md"), AGENT);
+	test("omp's bundled task agent does not skip", async () => {
 		const result = await world.run(batch);
 		assert.equal(tasksOf(result).length, 2);
 		assert.equal(world.calls.length, 2);

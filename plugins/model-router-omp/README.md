@@ -98,8 +98,10 @@ The setup turns on `task.enableEffort` and caps it with `task.maxEffort` at
 `high`. omp applies the router's effort, and the cap keeps it from
 passing `high`. The cap applies in this mode only.
 
-The extension reads both settings once per batch and writes an effort only
-when `task.enableEffort` is on. It leaves your cap as it is. If you turn on
+The extension writes an effort only when `task.enableEffort` is on. omp gives
+extensions no settings API, so it tells the mode from the task tool itself:
+omp adds the `effort` field to the tool only while the setting is on. It cannot
+see `task.maxEffort`. If you turn on
 `task.enableEffort` by hand and leave `task.maxEffort` at its default, omp
 maps the router's `hi` to the model's highest level, which can be `max`, and
 the line shows it. The setup always sets both settings together. Set them
@@ -131,8 +133,9 @@ model-router task 1: L0 router_light · med→medium · p=0.91/0.62 · jev jev-1
 An entry reads `L<tier> <agent> · <effort> · p=<tier>/<work>`. The effort
 part is one of these:
 
-- `<request>→<level>`: the router's `lo`, `med` or `hi`, and the level omp
-  applies on the model of the agent's role, after `task.maxEffort`;
+- `<request>→<level>`: the router's `lo`, `med` or `hi`, and the level it maps
+  to on the model of the agent's role. `task.maxEffort` may lower it further;
+  the line does not show that;
 - `<request>` alone: the role's model is unknown or has no effort levels;
 - `auto`: the router wrote no effort, and omp's `auto` decides;
 - `caller effort`: the item already had an effort, and it stays.
@@ -155,13 +158,11 @@ mode, the line goes to standard error.
 
 ## Conflicts
 
-- **A custom `task` agent.** A `task.md` file in the `agents` folder of your
-  omp agent directory or in the nearest project `.omp/agents` replaces omp's bundled `task` agent. The
-  router would swap your agent out, so it skips the whole batch and says so
-  in the line. Remove the file or disable the plugin. The check looks for that
-  file name only. A `task` agent under another file name, or one that another
-  plugin ships, is not detected, and the router would swap it out. Name your
-  own `task` agent `task.md`, or disable the plugin.
+- **A custom `task` agent.** Your own agent named `task` replaces omp's
+  bundled one. The router would swap your agent out, so it skips the whole
+  batch and says so in the line. It recognises your agent by its description
+  in the task tool's agent list: any description other than the bundled one
+  counts. Give your agent a description of its own, or disable the plugin.
 - **Other extensions that rewrite task items.** omp runs every `tool_call`
   handler against the original input. When two handlers return `input`, the
   last one wins, and the other rewrite is lost. Disable the other extension,
@@ -173,31 +174,13 @@ mode, the line goes to standard error.
 
 ## What the plugin reads
 
-Files, one check per batch:
-
-- `agents/task.md` in the omp agent directory: the folder that
-  `PI_CODING_AGENT_DIR` names, which omp sets for a profile, or else
-  `~/.omp/agent`
-- `.omp/agents/task.md` in the nearest project folder that has `.omp/agents`
-
-The plugin checks these paths for existence and reads no content.
-
-Settings, once per batch: `task.enableEffort` and `task.maxEffort`. omp gives
-extensions no settings API, so the extension runs
-`omp config get <key> --json` with the omp it runs in, in the working
-directory. The answer covers your global and project settings and your
-profile. A run-time `--config` overlay is not visible to it.
-
-Variables:
-
-- `TYPESAFE_API_KEY`, the key when omp's own TypeSafe credential is empty
-- `PI_CODING_AGENT_DIR`, the omp agent directory, set by omp for a profile
-- `MODEL_ROUTER_JEV`, the Jev alias. `jev-preview` selects the preview. Any
-  other value, or none, selects `jev-latest`
+- The task tool's schema and description, once per batch, through omp's
+  extension API. The schema shows whether `task.enableEffort` is on. The
+  description shows whether your own `task` agent replaced the bundled one.
+- `TYPESAFE_API_KEY`, the key when omp's own TypeSafe credential is empty.
 
 The plugin also asks omp for its stored TypeSafe credential, and it reads
-nothing else. The setup stores `MODEL_ROUTER_JEV` in omp's agent `.env` file,
-which omp loads at start.
+nothing else. It always asks Jev's `jev-latest` alias.
 
 ## What leaves the machine
 

@@ -128,15 +128,9 @@ describe("request", () => {
 		);
 	});
 
-	test("the alias is jev-latest unless MODEL_ROUTER_JEV is jev-preview", async () => {
-		const aliases: string[] = [];
-		for (const value of [undefined, "jev-preview", "something-else"]) {
-			setEnv("MODEL_ROUTER_JEV", value);
-			world.calls.length = 0;
-			await world.run({ tasks: [{ task: "a" }] });
-			aliases.push(world.calls[0]?.body.model ?? "");
-		}
-		assert.deepEqual(aliases, ["jev-latest", "jev-preview", "jev-latest"]);
+	test("the alias is always jev-latest", async () => {
+		await world.run({ tasks: [{ task: "a" }] });
+		assert.equal(world.calls[0]?.body.model, "jev-latest");
 	});
 
 	test("the key comes from omp's credential first", async () => {

@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { chooseEffort, chooseLightEffort } from "../extension/effort.ts";
-import extension from "../extension/index.ts";
-import { ompCommand, readTaskSettings } from "../extension/settings.ts";
-import { jevAnswer, reply, taskEvent, tasksOf, useWorld } from "./helpers.ts";
+import { readTaskTool } from "../extension/task-tool.ts";
+import {
+	BUNDLED_TASK_DESCRIPTION,
+	jevAnswer,
+	reply,
+	tasksOf,
+	taskToolInfo,
+	useWorld,
+} from "./helpers.ts";
 
 const world = useWorld();
 
@@ -14,21 +20,16 @@ const FOUR = {
 const lastLine = () => world.notes.at(-1) ?? "";
 const ROUTED_ONLY = [{ task: "Do it", agent: "router_light" }];
 
-describe("effort mode follows omp's settings", () => {
-	const autoCases = [
-		["with task.enableEffort off", { enableEffort: false, maxEffort: "max" }],
-		["with unreadable settings", {}],
-	] as const;
-	for (const [name, settings] of autoCases)
-		test(`${name} the router sets the agent and leaves effort to omp`, async () => {
-			world.settings = settings;
-			const result = await world.run({ tasks: [{ task: "Do it" }] });
-			assert.deepEqual(tasksOf(result), ROUTED_ONLY);
-			assert.match(lastLine(), /L0 router_light · auto · p=/);
-		});
+describe("effort mode follows omp's task tool", () => {
+	test("when the task tool offers no effort, the router sets the agent and leaves effort to omp", async () => {
+		world.taskTool.effortEnabled = false;
+		const result = await world.run({ tasks: [{ task: "Do it" }] });
+		assert.deepEqual(tasksOf(result), ROUTED_ONLY);
+		assert.match(lastLine(), /L0 router_light · auto · p=/);
+	});
 
 	test("a caller's effort stays in either mode", async () => {
-		world.settings = { enableEffort: false };
+		world.taskTool.effortEnabled = false;
 		const result = await world.run({
 			tasks: [{ task: "Do it", effort: "hi" }],
 		});
@@ -55,26 +56,6 @@ describe("the line shows the level omp applies", () => {
 			{ models: { "@slow": FOUR } },
 		);
 		assert.match(lastLine(), /L2 router_heavy · hi→xhigh · /);
-	});
-
-	test("task.maxEffort caps the applied level", async () => {
-		world.settings = { enableEffort: true, maxEffort: "high" };
-		world.fetchWith(() => reply(jevAnswer(2, 2)));
-		await world.run(
-			{ tasks: [{ task: "Do it" }] },
-			{ models: { "@router_heavy": FOUR } },
-		);
-		assert.match(lastLine(), / · hi→high · /);
-	});
-
-	test("a cap below the model's lowest level leaves effort unset, where omp would fail the spawn", async () => {
-		world.settings = { enableEffort: true, maxEffort: "minimal" };
-		const result = await world.run(
-			{ tasks: [{ task: "Do it" }] },
-			{ models: { "@router_light": FOUR } },
-		);
-		assert.deepEqual(tasksOf(result), ROUTED_ONLY);
-		assert.match(lastLine(), / · auto · /);
 	});
 });
 
@@ -123,53 +104,6 @@ describe("chooseEffort mirrors omp's mapping", () => {
 	});
 });
 
-describe("readTaskSettings", () => {
-	const answers: Record<string, string> = {
-		"task.enableEffort": '{"key":"task.enableEffort","value":true}',
-		"task.maxEffort": '{"key":"task.maxEffort","value":"high"}',
-	};
-	test("asks omp for both settings in the working directory", async () => {
-		const asked: string[] = [];
-		const settings = await readTaskSettings("/work", async (cwd, key) => {
-			asked.push(`${cwd} ${key}`);
-			return answers[key];
-		});
-		assert.deepEqual(settings, { enableEffort: true, maxEffort: "high" });
-		assert.deepEqual(asked.sort(), [
-			"/work task.enableEffort",
-			"/work task.maxEffort",
-		]);
-	});
-	test("an omp that does not answer leaves both settings unknown", async () => {
-		assert.deepEqual(await readTaskSettings(world.project), {});
-	});
-
-	test("a failed or malformed answer leaves that setting unknown", async () => {
-		const settings = await readTaskSettings("/work", async (_cwd, key) =>
-			key === "task.enableEffort" ? "not json" : undefined,
-		);
-		assert.deepEqual(settings, {});
-	});
-});
-
-describe("ompCommand", () => {
-	test("a compiled omp runs itself, ignoring its embedded entry path", () => {
-		assert.deepEqual(
-			ompCommand("/opt/omp/bin/omp", "/$bunfs/root/omp-darwin-arm64"),
-			["/opt/omp/bin/omp"],
-		);
-	});
-	test("any other program gets no command, so Node never runs a project's config.js", () => {
-		assert.equal(ompCommand("/usr/local/bin/node", "/work/test.ts"), undefined);
-	});
-	test("omp under Bun runs Bun with the CLI entry", () => {
-		assert.deepEqual(ompCommand("/usr/local/bin/bun", "/lib/omp/cli.js"), [
-			"/usr/local/bin/bun",
-			"/lib/omp/cli.js",
-		]);
-	});
-});
-
 describe("the light tier never runs at the model's lowest level", () => {
 	const two = { reasoning: true, thinking: { efforts: ["low", "high"] } };
 	const haiku = {
@@ -190,13 +124,6 @@ describe("the light tier never runs at the model's lowest level", () => {
 			applied: "low",
 		});
 	});
-	test("a cap that pins hi to the lowest level keeps the request as it is", () => {
-		assert.deepEqual(chooseLightEffort("med", two, "low"), {
-			effort: "med",
-			shown: "med→low",
-			applied: "low",
-		});
-	});
 	test("the router applies it to router_light only", async () => {
 		await world.run(
 			{ tasks: [{ task: "Do it" }] },
@@ -212,34 +139,6 @@ describe("the light tier never runs at the model's lowest level", () => {
 	});
 });
 
-describe("settings reads", () => {
-	test("a settings read that throws counts as omp's auto", async () => {
-		const handlers: Parameters<Parameters<typeof extension>[0]["on"]>[1][] = [];
-		extension({ on: (_e, h) => void handlers.push(h) }, async () => {
-			throw new Error("broken");
-		});
-		const result = await handlers[0]?.(
-			taskEvent({ tasks: [{ task: "Do it" }] }),
-			world.makeCtx(),
-		);
-		assert.deepEqual(tasksOf(result), ROUTED_ONLY);
-		assert.match(lastLine(), / · auto · /);
-	});
-	test("without a key the settings are not read", async () => {
-		let reads = 0;
-		const handlers: Parameters<Parameters<typeof extension>[0]["on"]>[1][] = [];
-		extension({ on: (_e, h) => void handlers.push(h) }, async () => {
-			reads += 1;
-			return {};
-		});
-		await handlers[0]?.(
-			taskEvent({ tasks: [{ task: "Do it" }] }),
-			world.makeCtx({ key: async () => undefined }),
-		);
-		assert.equal(reads, 0);
-	});
-});
-
 test("an item name reaches Jev masked and cut", async () => {
 	await world.run({
 		tasks: [{ task: "Do it", name: `API_KEY=hunter22 ${"n".repeat(500)}` }],
@@ -247,4 +146,59 @@ test("an item name reaches Jev masked and cut", async () => {
 	const description = world.calls[0]?.body.state.description ?? "";
 	assert.ok(!description.includes("hunter22"));
 	assert.ok(description.length <= 200);
+});
+
+describe("readTaskTool", () => {
+	const piWith = (tools: unknown[]) =>
+		({ on() {}, getAllTools: () => tools }) as never;
+	test("reads the effort field from an omptype schema", () => {
+		const tool = taskToolInfo({
+			effortEnabled: true,
+			taskDescription: BUNDLED_TASK_DESCRIPTION,
+		});
+		assert.deepEqual(readTaskTool(piWith([tool])), {
+			effortEnabled: true,
+			customTaskAgent: false,
+		});
+	});
+	test("reads the effort field from plain JSON Schema", () => {
+		const tool = taskToolInfo({
+			effortEnabled: true,
+			taskDescription: BUNDLED_TASK_DESCRIPTION,
+		});
+		const plain = {
+			...tool,
+			parameters: (
+				tool.parameters as { toJsonSchema(): unknown }
+			).toJsonSchema(),
+		};
+		assert.equal(readTaskTool(piWith([plain])).effortEnabled, true);
+	});
+	test("a different description under the task heading marks the user's own agent", () => {
+		const tool = taskToolInfo({
+			effortEnabled: false,
+			taskDescription: "My own task agent.",
+		});
+		assert.deepEqual(readTaskTool(piWith([tool])), {
+			effortEnabled: false,
+			customTaskAgent: true,
+		});
+	});
+	test("no task tool, or no tool list at all, reads as neither", () => {
+		const neither = { effortEnabled: false, customTaskAgent: false };
+		assert.deepEqual(readTaskTool(piWith([])), neither);
+		assert.deepEqual(readTaskTool({ on() {} } as never), neither);
+	});
+	test("a tool list that throws reads as neither", () => {
+		const broken = {
+			on() {},
+			getAllTools: () => {
+				throw new Error("x");
+			},
+		} as never;
+		assert.deepEqual(readTaskTool(broken), {
+			effortEnabled: false,
+			customTaskAgent: false,
+		});
+	});
 });

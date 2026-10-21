@@ -15,7 +15,7 @@ TypeSafe at https://api.typesafe.ai/v1/systemone. The request holds:
 - the role, always `general-purpose`
 - the item's `name` as the description, with secrets masked the same way and
   cut to 200 characters, or an empty description when it has none
-- the Jev alias you chose, `jev-latest` or `jev-preview`, and two fixed
+- the Jev alias `jev-latest`, and two fixed
   scoring questions with their three descriptions each, text that ships with
   the plugin
 - your TypeSafe API key, as the bearer token.
@@ -46,22 +46,15 @@ The plugin stores nothing on disk and keeps no routing state between calls.
 It holds the key in memory only while it sends a request. It reads the key from
 omp's own TypeSafe credential, and when that is empty, from the environment
 variable `TYPESAFE_API_KEY`. It sends the key only to the endpoint above, as
-the bearer token. From the environment it reads only `MODEL_ROUTER_JEV`, for
-the Jev alias, and `PI_CODING_AGENT_DIR`, the omp agent folder that omp sets
-for a profile. Without that variable it uses `.omp/agent` in your home folder.
-It checks whether a `task.md` file exists in the `agents` folder there and in
-the nearest project agent folder, and it reads no file content.
-
-Once per batch, the plugin runs the omp program it runs in, twice:
-`omp config get task.enableEffort --json` and
-`omp config get task.maxEffort --json`. It uses the two answers to decide
-whether to set effort and to show the level omp applies. Nothing from them
+the bearer token. It reads no other environment variable and no file, and it
+runs no program. Once per batch it reads the task tool's schema and description
+through omp's extension API, to see whether `task.enableEffort` is on and
+whether your own `task` agent replaced the bundled one. Nothing from them
 leaves your machine.
 
 The lines the plugin prints per batch go to your omp notifications, or to
 standard error when omp has no UI. The setup skill writes only the
-configuration you approve: the router model roles, the effort settings and
-`MODEL_ROUTER_JEV` in omp's agent `.env` file.
+configuration you approve: the router model roles and the effort settings.
 
 ## Your choices
 

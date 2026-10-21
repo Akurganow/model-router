@@ -9,7 +9,6 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, mock } from "node:test";
 import extension from "../extension/index.ts";
-import type { TaskSettings } from "../extension/settings.ts";
 import type {
 	Context,
 	ModelLike,
@@ -21,13 +20,7 @@ export const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 export const REGISTRY_KEY = "registry-key-0001";
 export const ENV_KEY = "env-key-0002";
 
-const ENV_NAMES = [
-	"HOME",
-	"TYPESAFE_API_KEY",
-	"TYPESAFE_BASE_URL",
-	"MODEL_ROUTER_JEV",
-	"PI_CODING_AGENT_DIR",
-] as const;
+const ENV_NAMES = ["HOME", "TYPESAFE_API_KEY", "TYPESAFE_BASE_URL"] as const;
 
 type Reply = { ok: boolean; status: number; text(): Promise<string> };
 export type Call = {
@@ -90,7 +83,8 @@ export type World = {
 	notes: string[];
 	stderr: string[];
 	calls: Call[];
-	settings: TaskSettings;
+	// What omp's task tool shows: whether its schema offers `effort`, and the `task` agent's description.
+	taskTool: { effortEnabled: boolean; taskDescription: string };
 	put(path: string, text: string): void;
 	fetchWith(responder: Responder): void;
 	makeCtx(options?: {
@@ -123,7 +117,10 @@ export function useWorld(): World {
 		world.notes = [];
 		world.stderr = [];
 		world.calls = [];
-		world.settings = { enableEffort: true, maxEffort: "max" };
+		world.taskTool = {
+			effortEnabled: true,
+			taskDescription: BUNDLED_TASK_DESCRIPTION,
+		};
 		mock.method(process.stderr, "write", (text: string) => {
 			world.stderr.push(text);
 			return true;
@@ -163,16 +160,43 @@ export function useWorld(): World {
 	});
 	world.run = (input, options) => {
 		const handlers: Parameters<Parameters<typeof extension>[0]["on"]>[1][] = [];
-		extension(
-			{ on: (_event, handler) => void handlers.push(handler) },
-			async () => world.settings,
-		);
+		extension({
+			on: (_event, handler) => void handlers.push(handler),
+			getAllTools: () => [taskToolInfo(world.taskTool)],
+		});
 		return handlers[0]?.(taskEvent(input), world.makeCtx(options)) as Promise<
 			ToolCallResult | undefined
 		>;
 	};
 	return world;
 }
+
+export const BUNDLED_TASK_DESCRIPTION =
+	"General-purpose subagent with full capabilities for delegated multi-step tasks";
+
+// Shaped like omp's task tool: an omptype schema with toJsonSchema() and the rendered agent list.
+export const taskToolInfo = ({
+	effortEnabled,
+	taskDescription,
+}: World["taskTool"]) => {
+	const item = {
+		agent: { type: "string" },
+		task: { type: "string" },
+		...(effortEnabled ? { effort: { enum: ["lo", "med", "hi"] } } : {}),
+	};
+	const json = {
+		type: "object",
+		properties: {
+			context: { type: "string" },
+			tasks: { type: "array", items: { type: "object", properties: item } },
+		},
+	};
+	return {
+		name: "task",
+		description: `Run subagents.\n### task\n${taskDescription}\n### scout (READ-ONLY)\nFast read-only scout.`,
+		parameters: Object.assign(() => true, { toJsonSchema: () => json }),
+	};
+};
 
 export const setEnv = (name: string, value: string | undefined): void => {
 	if (value === undefined) delete process.env[name];

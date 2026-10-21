@@ -46,7 +46,7 @@ technical-debt-audit:
 
 ## Final review
 
-The inspector's verdict was APPROVE WITH CONCERNS: 1 high, 2 medium and 7 low findings. All were fixed except the supply-chain risk above and the medium finding on `max`. The high finding was owner-setup facts in this folder. They are removed here and from issue 33. Amendment A5 records the omp settings reads. A ceiling at `high` that the review asked for was reverted by the Don: a level's name means a different point on a five-level scale than on a three-level one.
+The inspector's verdict was APPROVE WITH CONCERNS: 1 high, 2 medium and 7 low findings. All were fixed except the supply-chain risk above and the medium finding on `max`. The high finding was owner-setup facts in this folder. They are removed here and from issue 33. Amendment A5 records that the omp extension reads no command, file or variable but the TypeSafe key. A ceiling at `high` that the review asked for was reverted by the Don: a level's name means a different point on a five-level scale than on a three-level one.
 
 ## Open
 
