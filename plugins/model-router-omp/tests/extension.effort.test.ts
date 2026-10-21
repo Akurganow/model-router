@@ -54,7 +54,7 @@ describe("the line shows the level omp applies", () => {
 			{ tasks: [{ task: "Do it" }] },
 			{ models: { "@slow": FOUR } },
 		);
-		assert.match(lastLine(), /L2 router_heavy · med→medium · /);
+		assert.match(lastLine(), /L2 router_heavy · hi→xhigh · /);
 	});
 
 	test("task.maxEffort caps the applied level", async () => {
@@ -209,51 +209,6 @@ describe("the light tier never runs at the model's lowest level", () => {
 			{ models: { "@router_mid": two } },
 		);
 		assert.match(lastLine(), /L1 router_mid · med→low · /);
-	});
-});
-
-describe("the router never asks for a level above high", () => {
-	const upToMax = {
-		reasoning: true,
-		thinking: { efforts: ["low", "medium", "high", "max"] },
-	};
-	test("hi that would land on max steps down to med", async () => {
-		world.fetchWith(() => reply(jevAnswer(2, 2)));
-		const result = await world.run(
-			{ tasks: [{ task: "Do it" }] },
-			{ models: { "@router_heavy": upToMax } },
-		);
-		assert.deepEqual(tasksOf(result), [
-			{ task: "Do it", agent: "router_heavy", effort: "med" },
-		]);
-		assert.match(lastLine(), / · med→medium · /);
-	});
-	test("with a high cap, hi stays and omp clamps it to high", async () => {
-		world.settings = { enableEffort: true, maxEffort: "high" };
-		world.fetchWith(() => reply(jevAnswer(2, 2)));
-		await world.run(
-			{ tasks: [{ task: "Do it" }] },
-			{ models: { "@router_heavy": upToMax } },
-		);
-		assert.match(lastLine(), / · hi→high · /);
-	});
-	test("a model with nothing at or below high gets no effort", async () => {
-		world.fetchWith(() => reply(jevAnswer(2, 2)));
-		const result = await world.run(
-			{ tasks: [{ task: "Do it" }] },
-			{
-				models: {
-					"@router_heavy": {
-						reasoning: true,
-						thinking: { efforts: ["xhigh", "max"] },
-					},
-				},
-			},
-		);
-		assert.deepEqual(tasksOf(result), [
-			{ task: "Do it", agent: "router_heavy" },
-		]);
-		assert.match(lastLine(), / · auto · /);
 	});
 });
 

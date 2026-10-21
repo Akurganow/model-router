@@ -126,8 +126,7 @@ and it rests on the same sources:
   Haiku 5.5* warns that a small model at its lowest level is more likely to
   skip a check or stop early.
 - The ladder stops at `high`. omp maps `hi` to the model's highest level, so
-  the setup caps it with `task.maxEffort` at `high`, and the router steps `hi`
-  down to `med` when it would still land above `high`. *Optimizing for cost and
+  the setup caps it with `task.maxEffort` at `high`. *Optimizing for cost and
   intelligence* measured Opus 5.5 at `xhigh` only 1.4 points above `high`, for
   2.5 times the cost.
 

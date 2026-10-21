@@ -99,11 +99,11 @@ The setup turns on `task.enableEffort` and caps it with `task.maxEffort` at
 passing `high`. The cap applies in this mode only.
 
 The extension reads both settings once per batch and writes an effort only
-when `task.enableEffort` is on. It leaves your cap as it is, and it never asks
-for a level above `high` itself. omp maps `hi` to the model's highest level, so
-when that is above `high` and your cap allows it, the router asks for `med`
-instead. With nothing at or below `high`, it writes no effort and the line
-shows `auto`.
+when `task.enableEffort` is on. It leaves your cap as it is. If you turn on
+`task.enableEffort` by hand and leave `task.maxEffort` at its default, omp
+maps the router's `hi` to the model's highest level, which can be `max`, and
+the line shows it. The setup always sets both settings together. Set them
+together by hand too.
 
 On a model that lists only `low`, `high` and `max`, omp maps `med` to `low`
 for the mid and heavy tiers.

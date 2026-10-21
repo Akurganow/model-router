@@ -6,12 +6,7 @@ import {
 	TIER_TEXTS,
 	TransportError,
 } from "./core.ts";
-import {
-	chooseEffort,
-	chooseLightEffort,
-	chooseWithinCeiling,
-	type TaskEffort,
-} from "./effort.ts";
+import { chooseEffort, chooseLightEffort, type TaskEffort } from "./effort.ts";
 import { postJev } from "./jev.ts";
 import { buildPrompt } from "./prompt.ts";
 import type { ModelLike } from "./types.ts";
@@ -105,8 +100,7 @@ export async function routeItem(
 		const choice =
 			keep || run.effort === undefined
 				? undefined
-				: chooseWithinCeiling(
-						level === 0 ? chooseLightEffort : chooseEffort,
+				: (level === 0 ? chooseLightEffort : chooseEffort)(
 						EFFORTS[level][workIndex],
 						run.effort.model(agent),
 						run.effort.max,
