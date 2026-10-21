@@ -1,7 +1,0 @@
-{"type":"fixture","synthetic":true,"client":"claude","origin":"hand-written from the stream-json event shapes of Claude Code and the decision line format of the mod, not recorded from a run","date":"2026-10-21"}
-{"type":"system","subtype":"init","model":"claude-sonnet-5-5","plugins":[{"name":"model-router","path":"<plugin-dir>","source":"model-router@model-router","version":"0.11.0"}]}
-{"type":"assistant","message":{"content":[{"type":"tool_use","id":"toolu_synthetic_0001","name":"Agent","input":{"description":"Read the package name","prompt":"Read package.json in the current directory and report the value of its name field.","subagent_type":"general-purpose"},"caller":{"type":"direct"}}]}}
-{"type":"system","subtype":"ui_log","plugin":"model-router@model-router","text":"L0 haiku · medium · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok","uuid":"00000000-0000-4000-8000-000000000001","session_id":"00000000-0000-4000-8000-000000000002"}
-{"type":"assistant","parent_tool_use_id":"toolu_synthetic_0001","message":{"content":[{"type":"tool_use","id":"toolu_synthetic_0002","name":"Read","input":{"file_path":"<work>/package.json"}}]}}
-{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_synthetic_0001","content":"eval-subject"}]}}
-{"type":"result","subtype":"success","is_error":false,"result":"eval-subject","total_cost_usd":0.01,"num_turns":3}

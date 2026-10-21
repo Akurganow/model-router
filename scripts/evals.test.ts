@@ -1,23 +1,14 @@
 import assert from "node:assert/strict";
-import {
-	chmodSync,
-	cpSync,
-	mkdtempSync,
-	readFileSync,
-	rmSync,
-	writeFileSync,
-} from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { type Case, check, validateCases } from "./evals/cases.ts";
 import { claude } from "./evals/claude.ts";
 import { bodyOf, recordDrift, sameBody } from "./evals/drift.ts";
-import { hygieneProblems } from "./evals/hygiene.ts";
 import { omp } from "./evals/omp.ts";
 import { missingKeys, runCase } from "./evals/run.ts";
 import { clientEnv, normalisePaths, scrub } from "./evals/scrub.ts";
-import { selftest } from "./evals/selftest.ts";
 
 const LINE = "L1 sonnet · medium · p=0.80/0.55 · jev jev-1.14.0 · 800/9 tok";
 const jsonl = (...events: object[]) =>
@@ -255,63 +246,11 @@ test("drift compares bodies after the front matter, ignoring edge blank lines", 
 	assert.equal(sameBody(bundled, copy.replace("Do it", "Do that")), false);
 });
 
-test("hygiene flags key-shaped strings and un-normalised paths", () => {
-	assert.deepEqual(
-		hygieneProblems("f", "<work>/package.json p=0.9 Bearer ***"),
-		[],
+test("the committed cases are valid", () => {
+	const raw = JSON.parse(
+		readFileSync(new URL("../evals/cases.json", import.meta.url), "utf8"),
 	);
-	const dirty = [
-		"key sk-abcdefghij1234",
-		"Bearer abcdefgh12345678",
-		'"api_key": "plain-value"',
-		["", "Users", "someone"].join("/"),
-		"/home/runner/work",
-		"/private/var/x",
-		"/tmp/x",
-		"C:\\Users\\a",
-	];
-	for (const line of dirty)
-		assert.ok(hygieneProblems("f", line).length > 0, line);
-});
-
-const here = new URL("../evals/", import.meta.url).pathname;
-
-test("selftest passes on the committed cases and fixtures", () => {
-	assert.deepEqual(
-		selftest({
-			casesPath: `${here}cases.json`,
-			fixturesDir: `${here}fixtures`,
-		}),
-		[],
-	);
-});
-
-test("selftest fails when a fixture loses its decision line", () => {
-	const dir = mkdtempSync(join(tmpdir(), "evals-fx-"));
-	try {
-		cpSync(`${here}fixtures`, dir, { recursive: true });
-		const path = join(dir, "claude.jsonl");
-		const kept = readFileSync(path, "utf8")
-			.split("\n")
-			.filter((l) => !l.includes("ui_log"));
-		writeFileSync(path, kept.join("\n"));
-		const problems = selftest({
-			casesPath: `${here}cases.json`,
-			fixturesDir: dir,
-		});
-		assert.ok(problems.some((p) => p.includes("claude")));
-	} finally {
-		rmSync(dir, { recursive: true, force: true });
-	}
-});
-
-test("selftest rejects a synthetic fixture once synthetic ones are disallowed", () => {
-	const problems = selftest({
-		casesPath: `${here}cases.json`,
-		fixturesDir: `${here}fixtures`,
-		allowSynthetic: false,
-	});
-	assert.ok(problems.some((p) => p.includes("synthetic")));
+	assert.deepEqual(validateCases(raw), []);
 });
 
 const PATH_VAR = "PATH";

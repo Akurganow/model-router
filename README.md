@@ -129,7 +129,7 @@ node scripts/calibrate.ts
 `npm run check` type-checks the plugin's `hooks/` and `tests/` and the
 repository's `scripts/` with `tsc`, checks that the shared copies and the
 plugin versions agree, runs the tests of `shared/`, `scripts/` and the omp
-plugin and the evals selftest, and runs Biome, lint and formatting.
+plugin, and runs Biome, lint and formatting.
 `npm run fix` formats and applies the safe lint fixes.
 
 The hooks and tests are checked against the declarations Claude Code writes
