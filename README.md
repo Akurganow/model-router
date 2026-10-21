@@ -133,10 +133,9 @@ plugin, and runs Biome, lint and formatting.
 `npm run fix` formats and applies the safe lint fixes.
 
 Every commit is a [conventional commit](https://www.conventionalcommits.org),
-because the release reads the commit types since the last tag. CI runs
-`cog check --from-latest-tag` on every pull request. `cog install-hook
-commit-msg` installs a hook from `cog.toml` that refuses a non-conforming
-message at commit time.
+because the release reads the commit types since the last tag. Run
+`cog install-hook commit-msg` once in a clone: the hook from `cog.toml` then
+refuses a non-conforming message at commit time.
 
 The hooks and tests are checked against the declarations Claude Code writes
 into `plugins/model-router/.claude-plugin/types/` when it loads the mod. Run
