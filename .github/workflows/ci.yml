@@ -35,8 +35,7 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code@2.1.294
+      - uses: ./.github/actions/setup-claude-code
 
       - name: Install the dev tools
         run: npm ci

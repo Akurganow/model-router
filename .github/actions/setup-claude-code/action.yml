@@ -1,0 +1,21 @@
+name: Set up Claude Code
+description: >
+  Installs the Claude Code version that package.json in this folder pins and
+  package-lock.json locks by digest, and puts `claude` on the PATH. Dependabot
+  proposes new versions. The stream-json event that carries the mod's decision
+  line is verified in the pinned version.
+runs:
+  using: composite
+  steps:
+    # npm refuses a tarball whose digest differs from the lockfile. Only Claude
+    # Code's own install script runs: it links the native binary of the locked
+    # platform package and downloads nothing.
+    - name: Install Claude Code
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        npm ci --ignore-scripts
+        node node_modules/@anthropic-ai/claude-code/install.cjs
+        echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+        version=$(node -p 'require("./package.json").dependencies["@anthropic-ai/claude-code"]')
+        node_modules/.bin/claude --version | grep -F "$version"

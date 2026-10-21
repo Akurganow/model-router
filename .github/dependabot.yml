@@ -5,8 +5,9 @@
 # Security updates ignore the window: a fix for an advisory comes at once.
 version: 2
 updates:
+  # The dev tools, and the Claude Code version that CI and the evals install.
   - package-ecosystem: npm
-    directory: /
+    directories: [/, /.github/actions/setup-claude-code]
     schedule:
       interval: weekly
     cooldown:

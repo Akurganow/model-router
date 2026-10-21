@@ -69,21 +69,7 @@ jobs:
         with:
           node-version: "24"
 
-      # The stream-json event that carries the decision line is verified in
-      # this version, which is newer than the pin in ci.yml. The install runs
-      # outside the checkout, so the repository's .npmrc does not apply to a
-      # tool that is no dependency. The registry digest must equal the pinned
-      # one before npm installs, and npm checks the tarball against it.
-      - name: Install Claude Code
-        working-directory: ${{ runner.temp }}
-        env:
-          VERSION: 2.1.296
-          INTEGRITY: sha512-OX/k/rpcthMqnFKOWcpNcbiLsMKtAjLOpQNJHlYiDCFUznWCIwdRTyl/p9SdHVrsrzZuPMCNqZjnpakIni6upw==
-        run: |
-          actual=$(npm view "@anthropic-ai/claude-code@$VERSION" dist.integrity)
-          [ "$actual" = "$INTEGRITY" ] || { echo "::error::registry digest of claude-code $VERSION changed"; exit 1; }
-          npm install -g "@anthropic-ai/claude-code@$VERSION"
-          claude --version | grep -F "$VERSION"
+      - uses: ./.github/actions/setup-claude-code
 
       - name: Install the plugin from the checkout
         run: |
