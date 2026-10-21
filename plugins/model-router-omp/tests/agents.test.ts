@@ -76,8 +76,9 @@ describe("router agents", () => {
 			const agent = parseAgent(`${name}.md`);
 
 			test("has its name and model selector", () => {
-				assert.equal(agent.fields.name, name);
-				assert.equal(agent.fields.model, model);
+				const { name: agentName, model: agentModel } = agent.fields;
+				assert.equal(agentName, name);
+				assert.equal(agentModel, model);
 			});
 
 			test("runs at thinking level auto", () => {
@@ -85,8 +86,9 @@ describe("router agents", () => {
 			});
 
 			test("keeps the bundled spawn policy and all tools", () => {
-				assert.equal(agent.fields.spawns, BUNDLED_SPAWNS);
-				assert.equal(agent.fields.tools, undefined);
+				const { spawns, tools } = agent.fields;
+				assert.equal(spawns, BUNDLED_SPAWNS);
+				assert.equal(tools, undefined);
 			});
 
 			test("describes itself as a routed tier", () => {

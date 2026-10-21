@@ -7,10 +7,13 @@ type Target = { from: string; to: string };
 // A plugin folder runs on its own, so each one that uses a shared file carries a byte-identical copy.
 export const TARGETS: readonly Target[] = [
 	{ from: "shared/core.ts", to: "plugins/model-router/hooks/core.ts" },
+	{ from: "shared/core.ts", to: "plugins/model-router-omp/extension/core.ts" },
+	{ from: "shared/jev.ts", to: "plugins/model-router-omp/extension/jev.ts" },
 ];
 // Every harness ships from one release, so their manifests must name one version.
 export const MANIFESTS: readonly string[] = [
 	"plugins/model-router/.claude-plugin/plugin.json",
+	"plugins/model-router-omp/package.json",
 ];
 
 export function syncTargets(root: string, targets: readonly Target[]): void {
