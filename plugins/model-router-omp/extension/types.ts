@@ -19,6 +19,12 @@ export type ToolCallResult = {
 	input?: TaskInput;
 };
 
+// Only the fields omp's effort mapping reads (packages/catalog/src/model-thinking.ts).
+export type ModelLike = {
+	reasoning?: boolean;
+	thinking?: { efforts?: readonly string[] };
+};
+
 export type Context = {
 	hasUI: boolean;
 	cwd: string;
@@ -26,6 +32,7 @@ export type Context = {
 	modelRegistry: {
 		getApiKeyForProvider(provider: string): Promise<string | undefined>;
 	};
+	models?: { resolve(spec: string): ModelLike | undefined };
 };
 
 export type ToolCallHandler = (

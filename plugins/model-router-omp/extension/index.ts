@@ -1,7 +1,14 @@
 import { hasCustomTaskAgent } from "./agents.ts";
 import { contextText } from "./prompt.ts";
-import type { Outcome, Task } from "./route.ts";
-import { batchDeadline, mapLimit, routeItem, skipEntry } from "./route.ts";
+import type { Agent, Outcome, Run, Task } from "./route.ts";
+import {
+	batchDeadline,
+	mapLimit,
+	routeItem,
+	SELECTORS,
+	skipEntry,
+} from "./route.ts";
+import { type ReadSettings, readTaskSettings } from "./settings.ts";
 import type { Context, Pi, ToolCallEvent, ToolCallResult } from "./types.ts";
 
 const LINE_PREFIX = "model-router ";
@@ -48,9 +55,34 @@ function report(ctx: Context, outcomes: readonly Outcome[]): void {
 	}
 }
 
+const agentModel = (ctx: Context) => (agent: Agent) => {
+	for (const selector of SELECTORS[agent]) {
+		try {
+			const model = ctx.models?.resolve(selector);
+			if (model) return model;
+		} catch {
+			// An unresolvable selector falls through to the next, as in omp.
+		}
+	}
+	return undefined;
+};
+
+// The user's choice in task.enableEffort decides whether the router sets effort at all.
+async function effortRun(
+	ctx: Context,
+	readSettings: ReadSettings,
+): Promise<Run["effort"]> {
+	const { enableEffort, maxEffort } = await readSettings(ctx.cwd);
+	if (enableEffort !== true) return undefined;
+	return maxEffort === undefined
+		? { model: agentModel(ctx) }
+		: { model: agentModel(ctx), max: maxEffort };
+}
+
 async function route(
 	event: ToolCallEvent,
 	ctx: Context,
+	readSettings: ReadSettings,
 ): Promise<ToolCallResult | undefined> {
 	const { input } = event;
 	const { tasks, context } = input;
@@ -61,8 +93,10 @@ async function route(
 	if (eligible.length === 0) return undefined;
 
 	const custom = hasCustomTaskAgent(ctx.cwd);
-	const key = custom ? undefined : await findKey(ctx);
-	const run =
+	const [key, effort] = custom
+		? []
+		: await Promise.all([findKey(ctx), effortRun(ctx, readSettings)]);
+	const run: Run | undefined =
 		key === undefined
 			? undefined
 			: {
@@ -70,6 +104,7 @@ async function route(
 					model: jevAlias(),
 					context: contextText(context),
 					signal: batchDeadline(),
+					...(effort ? { effort } : {}),
 				};
 	const skip = custom ? SKIP_CUSTOM_AGENT : SKIP_NO_KEY;
 	const outcomes = run
@@ -89,10 +124,13 @@ async function route(
 		: undefined;
 }
 
-export default function extension(pi: Pi): void {
+export default function extension(
+	pi: Pi,
+	readSettings: ReadSettings = readTaskSettings,
+): void {
 	pi.on("tool_call", async (event, ctx) => {
 		try {
-			return await route(event, ctx);
+			return await route(event, ctx, readSettings);
 		} catch {
 			return undefined;
 		}

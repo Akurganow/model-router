@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, test } from "node:test";
+import { SELECTORS } from "../extension/route.ts";
 
 const PLUGIN_DIR = join(import.meta.dirname, "..");
 const CLAUDE_MANIFEST = join(
@@ -111,6 +112,11 @@ describe("router agents", () => {
 			});
 		});
 	}
+
+	test("the extension tries each agent's model selectors in the same order", () => {
+		for (const { name, model } of TIERS)
+			assert.equal(SELECTORS[name].join(","), model);
+	});
 
 	test("bodies are identical across tiers", () => {
 		const bodies = new Set(

@@ -5,8 +5,10 @@ import {
 	TIER_TEXTS,
 	TransportError,
 } from "./core.ts";
+import { chooseEffort, type TaskEffort } from "./effort.ts";
 import { postJev } from "./jev.ts";
 import { buildPrompt } from "./prompt.ts";
+import type { ModelLike } from "./types.ts";
 
 export type Task = {
 	task: string;
@@ -20,11 +22,20 @@ export type Run = {
 	model: string;
 	context: string;
 	signal: AbortSignal;
+	// Present only when the user chose the router's effort over omp's own.
+	effort?: { model(agent: Agent): ModelLike | undefined; max?: string };
 };
 
 const ROLE = "general-purpose";
 const AGENTS = ["router_light", "router_mid", "router_heavy"] as const;
-type Efforts = readonly ["lo" | "med", "med", "hi"];
+export type Agent = (typeof AGENTS)[number];
+// The model selectors in each agent's frontmatter, tried in order.
+export const SELECTORS: Record<Agent, readonly string[]> = {
+	router_light: ["@router_light", "@smol"],
+	router_mid: ["@router_mid", "@task"],
+	router_heavy: ["@router_heavy", "@slow"],
+};
+type Efforts = readonly [TaskEffort, TaskEffort, TaskEffort];
 // A small model at its lowest level stops early, so the light tier starts at med.
 const EFFORTS: readonly [Efforts, Efforts, Efforts] = [
 	["med", "med", "hi"],
@@ -81,12 +92,20 @@ export async function routeItem(
 		if ("skipped" in scored) return skipEntry(position, scored.skipped);
 		const { level, workIndex, probabilities } = scored;
 		const keep = item.effort !== undefined;
-		const effort = EFFORTS[level][workIndex];
 		const agent = AGENTS[level];
+		const choice =
+			keep || run.effort === undefined
+				? undefined
+				: chooseEffort(
+						EFFORTS[level][workIndex],
+						run.effort.model(agent),
+						run.effort.max,
+					);
+		const shown = keep ? "caller effort" : (choice?.shown ?? "auto");
 		const p = `${probabilities.tier[level].toFixed(2)}/${probabilities.work[workIndex].toFixed(2)}`;
 		return {
-			entry: `task ${position}: L${level} ${agent} · ${keep ? "caller effort" : effort} · p=${p}${decisionSuffix(raw)}`,
-			item: { ...item, agent, ...(keep ? {} : { effort }) },
+			entry: `task ${position}: L${level} ${agent} · ${shown} · p=${p}${decisionSuffix(raw)}`,
+			item: { ...item, agent, ...(choice ? { effort: choice.effort } : {}) },
 		};
 	} catch (err) {
 		return skipEntry(position, failure(err));

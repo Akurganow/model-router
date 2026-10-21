@@ -9,8 +9,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, mock } from "node:test";
 import extension from "../extension/index.ts";
+import type { TaskSettings } from "../extension/settings.ts";
 import type {
 	Context,
+	ModelLike,
 	ToolCallEvent,
 	ToolCallResult,
 } from "../extension/types.ts";
@@ -24,6 +26,7 @@ const ENV_NAMES = [
 	"TYPESAFE_API_KEY",
 	"TYPESAFE_BASE_URL",
 	"MODEL_ROUTER_JEV",
+	"PI_CODING_AGENT_DIR",
 ] as const;
 
 type Reply = { ok: boolean; status: number; text(): Promise<string> };
@@ -87,6 +90,7 @@ export type World = {
 	notes: string[];
 	stderr: string[];
 	calls: Call[];
+	settings: TaskSettings;
 	put(path: string, text: string): void;
 	fetchWith(responder: Responder): void;
 	makeCtx(options?: {
@@ -94,6 +98,7 @@ export type World = {
 		cwd?: string;
 		key?: KeyLookup;
 		notify?: (message: string) => void;
+		models?: Record<string, ModelLike>;
 	}): Context;
 	run(
 		input: Record<string, unknown>,
@@ -118,6 +123,7 @@ export function useWorld(): World {
 		world.notes = [];
 		world.stderr = [];
 		world.calls = [];
+		world.settings = { enableEffort: true, maxEffort: "max" };
 		mock.method(process.stderr, "write", (text: string) => {
 			world.stderr.push(text);
 			return true;
@@ -146,8 +152,9 @@ export function useWorld(): World {
 			return responder(call, world.calls.length - 1);
 		}) as unknown as typeof fetch;
 	};
-	world.makeCtx = ({ hasUI = true, cwd, key, notify } = {}) => ({
+	world.makeCtx = ({ hasUI = true, cwd, key, notify, models } = {}) => ({
 		hasUI,
+		...(models ? { models: { resolve: (spec: string) => models[spec] } } : {}),
 		cwd: cwd ?? world.project,
 		ui: { notify: notify ?? ((message) => void world.notes.push(message)) },
 		modelRegistry: {
@@ -156,7 +163,10 @@ export function useWorld(): World {
 	});
 	world.run = (input, options) => {
 		const handlers: Parameters<Parameters<typeof extension>[0]["on"]>[1][] = [];
-		extension({ on: (_event, handler) => void handlers.push(handler) });
+		extension(
+			{ on: (_event, handler) => void handlers.push(handler) },
+			async () => world.settings,
+		);
 		return handlers[0]?.(taskEvent(input), world.makeCtx(options)) as Promise<
 			ToolCallResult | undefined
 		>;

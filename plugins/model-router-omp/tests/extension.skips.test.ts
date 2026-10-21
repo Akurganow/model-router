@@ -22,6 +22,14 @@ describe("a custom task agent skips the batch", () => {
 		);
 	});
 
+	test("in the agent folder of an omp profile", async () => {
+		const profileDir = join(world.home, ".omp", "profiles", "work", "agent");
+		setEnv("PI_CODING_AGENT_DIR", profileDir);
+		world.put(join(profileDir, "agents", "task.md"), AGENT);
+		assert.equal(await world.run(batch), undefined);
+		assert.equal(world.calls.length, 0);
+	});
+
 	test("in the project agent folder", async () => {
 		world.put(join(projectAgents(world.project), "task.md"), AGENT);
 		assert.equal(await world.run(batch), undefined);
