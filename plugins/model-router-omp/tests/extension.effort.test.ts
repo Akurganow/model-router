@@ -11,25 +11,20 @@ const FOUR = {
 	thinking: { efforts: ["low", "medium", "high", "xhigh"] },
 };
 const lastLine = () => world.notes.at(-1) ?? "";
+const ROUTED_ONLY = [{ task: "Do it", agent: "router_light" }];
 
 describe("effort mode follows omp's settings", () => {
-	test("with task.enableEffort off the router sets the agent and leaves effort to omp", async () => {
-		world.settings = { enableEffort: false, maxEffort: "max" };
-		const result = await world.run({ tasks: [{ task: "Do it" }] });
-		assert.deepEqual(tasksOf(result), [
-			{ task: "Do it", agent: "router_light" },
-		]);
-		assert.match(lastLine(), /L0 router_light · auto · p=/);
-	});
-
-	test("unreadable settings leave effort to omp", async () => {
-		world.settings = {};
-		const result = await world.run({ tasks: [{ task: "Do it" }] });
-		assert.deepEqual(tasksOf(result), [
-			{ task: "Do it", agent: "router_light" },
-		]);
-		assert.match(lastLine(), / · auto · /);
-	});
+	const autoCases = [
+		["with task.enableEffort off", { enableEffort: false, maxEffort: "max" }],
+		["with unreadable settings", {}],
+	] as const;
+	for (const [name, settings] of autoCases)
+		test(`${name} the router sets the agent and leaves effort to omp`, async () => {
+			world.settings = settings;
+			const result = await world.run({ tasks: [{ task: "Do it" }] });
+			assert.deepEqual(tasksOf(result), ROUTED_ONLY);
+			assert.match(lastLine(), /L0 router_light · auto · p=/);
+		});
 
 	test("a caller's effort stays in either mode", async () => {
 		world.settings = { enableEffort: false };
@@ -77,9 +72,7 @@ describe("the line shows the level omp applies", () => {
 			{ tasks: [{ task: "Do it" }] },
 			{ models: { "@router_light": FOUR } },
 		);
-		assert.deepEqual(tasksOf(result), [
-			{ task: "Do it", agent: "router_light" },
-		]);
+		assert.deepEqual(tasksOf(result), ROUTED_ONLY);
 		assert.match(lastLine(), / · auto · /);
 	});
 });
@@ -146,6 +139,10 @@ describe("readTaskSettings", () => {
 			"/work task.maxEffort",
 		]);
 	});
+	test("an omp that does not answer leaves both settings unknown", async () => {
+		assert.deepEqual(await readTaskSettings(world.project), {});
+	});
+
 	test("a failed or malformed answer leaves that setting unknown", async () => {
 		const settings = await readTaskSettings("/work", async (_cwd, key) =>
 			key === "task.enableEffort" ? "not json" : undefined,

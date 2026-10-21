@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+	chmodSync,
 	cpSync,
 	mkdtempSync,
 	readFileSync,
@@ -11,10 +12,10 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { type Case, check, validateCases } from "./evals/cases.ts";
 import { claude } from "./evals/claude.ts";
-import { bodyOf, sameBody } from "./evals/drift.ts";
+import { bodyOf, recordDrift, sameBody } from "./evals/drift.ts";
 import { hygieneProblems } from "./evals/hygiene.ts";
 import { omp } from "./evals/omp.ts";
-import { runCase } from "./evals/run.ts";
+import { missingKeys, runCase } from "./evals/run.ts";
 import { clientEnv, normalisePaths, scrub } from "./evals/scrub.ts";
 import { selftest } from "./evals/selftest.ts";
 
@@ -275,4 +276,65 @@ test("a client binary that is missing is a recorded failure, not a crash", () =>
 	} finally {
 		process.env[PATH_VAR] = path;
 	}
+});
+
+const AGENT_BODY = "---\nname: task\n---\nWorker agent.\n";
+
+// A stand-in omp whose `agents unpack --dir <dir>` writes one bundled task agent.
+function fakeOmpPath(): string {
+	const bin = mkdtempSync(join(tmpdir(), "evals-fake-omp-"));
+	writeFileSync(
+		join(bin, "omp"),
+		`#!/bin/sh\ncat > "$4/task.md" <<'BODY'\n${AGENT_BODY}BODY\n`,
+	);
+	chmodSync(join(bin, "omp"), 0o755);
+	return bin;
+}
+
+function copiesWith(body: string): string {
+	const dir = mkdtempSync(join(tmpdir(), "evals-copies-"));
+	for (const name of ["router_light", "router_mid", "router_heavy"])
+		writeFileSync(join(dir, `${name}.md`), `---\nname: ${name}\n---\n${body}`);
+	return dir;
+}
+
+test("drift: copies with the bundled body read as the same", () => {
+	const drift = recordDrift(
+		{ PATH: `${fakeOmpPath()}:/bin:/usr/bin` },
+		copiesWith("Worker agent.\n"),
+	);
+	assert.deepEqual(drift, {
+		agents: { router_light: "same", router_mid: "same", router_heavy: "same" },
+	});
+});
+
+test("drift: a changed copy reads as drifted", () => {
+	const drift = recordDrift(
+		{ PATH: `${fakeOmpPath()}:/bin:/usr/bin` },
+		copiesWith("Another body.\n"),
+	);
+	assert.deepEqual(drift, {
+		agents: {
+			router_light: "drifted",
+			router_mid: "drifted",
+			router_heavy: "drifted",
+		},
+	});
+});
+
+test("drift: an omp that cannot run is an error, not a throw", () => {
+	const empty = mkdtempSync(join(tmpdir(), "evals-empty-path-"));
+	const drift = recordDrift({ PATH: empty }, copiesWith("Worker agent.\n"));
+	assert.ok("error" in drift);
+});
+
+test("missingKeys names the client key and the TypeSafe key that are unset", () => {
+	assert.deepEqual(missingKeys(base, {}), [
+		"ANTHROPIC_API_KEY",
+		"TYPESAFE_API_KEY",
+	]);
+	assert.deepEqual(
+		missingKeys(base, { ANTHROPIC_API_KEY: "a", TYPESAFE_API_KEY: "t" }),
+		[],
+	);
 });

@@ -28,6 +28,8 @@ const failure = async (promise: Promise<string>) =>
 			return err;
 		},
 	);
+const failWith = (fetchFn: FetchLike) =>
+	failure(postJev(fetchFn, "k", "{}", new AbortController().signal));
 
 test("the request goes to the fixed endpoint, verbatim", async () => {
 	const { calls, fetchFn } = recording(reply(200, '{"answers":{}}'));
@@ -55,9 +57,7 @@ test("a rejected fetch is a network error", async () => {
 	const fetchFn: FetchLike = async () => {
 		throw new TypeError("fetch failed");
 	};
-	const err = await failure(
-		postJev(fetchFn, "k", "{}", new AbortController().signal),
-	);
+	const err = await failWith(fetchFn);
 	assert.equal(err.kind, "network");
 	assert.equal(err.message, "network error");
 });
@@ -92,9 +92,7 @@ test("a body that fails mid-read is a network error, or a timeout after the abor
 		text: () => Promise.reject(new Error("reset")),
 	};
 	const fetchFn: FetchLike = async () => broken;
-	const err = await failure(
-		postJev(fetchFn, "k", "{}", new AbortController().signal),
-	);
+	const err = await failWith(fetchFn);
 	assert.equal(err.kind, "network");
 	const stop = new AbortController();
 	stop.abort();
