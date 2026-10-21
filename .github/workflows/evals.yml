@@ -130,8 +130,8 @@ jobs:
       # evals/omp/bun.lock pins omp and every package it pulls in by digest.
       # Bun refuses a lockfile that no longer matches the manifest, and a
       # tarball whose digest differs. No package runs code at install time.
-      # The version in evals/omp/package.json is the tag that the router
-      # agents were copied from.
+      # Dependabot proposes new omp versions, and the case records any drift
+      # of the bundled task agent from the router agents' copies.
       - name: Install omp
         working-directory: evals/omp
         run: |
