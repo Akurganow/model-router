@@ -30,6 +30,7 @@ const read = (path: string) => readFileSync(join(root, path), "utf8");
 beforeEach(() => {
 	root = mkdtempSync(join(tmpdir(), "sync-"));
 	put("shared/core.ts", "export const a = 1;\n");
+	put(catalog, catalogWith("0.11.0"));
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
@@ -44,14 +45,16 @@ test("sync replaces a stale copy", () => {
 	assert.equal(read("plugins/a/hooks/core.ts"), "export const a = 1;\n");
 });
 
-test("check passes when every existing target equals the source", () => {
+test("check passes when every target equals the source", () => {
 	syncTargets(root, targets);
 	assert.deepEqual(checkTargets(root, targets, []), []);
 });
 
-test("check skips a target that does not exist yet", () => {
+test("check fails on a missing target, naming it", () => {
 	put("plugins/a/hooks/core.ts", "export const a = 1;\n");
-	assert.deepEqual(checkTargets(root, targets, []), []);
+	const problems = checkTargets(root, targets, []);
+	assert.equal(problems.length, 1);
+	assert.match(problems[0] ?? "", /plugins\/b\/extension\/core\.ts is missing/);
 });
 
 test("check fails on any byte difference, naming the target", () => {
@@ -77,13 +80,17 @@ test("check fails when manifest versions differ", () => {
 	assert.match(problems[0] ?? "", /0\.12\.0/);
 });
 
-test("check skips a manifest that does not exist yet", () => {
+test("check fails on a missing manifest, naming it", () => {
 	put("plugins/a/plugin.json", '{"version": "0.11.0"}');
-	assert.deepEqual(checkTargets(root, [], manifests), []);
+	const problems = checkTargets(root, [], manifests);
+	assert.ok(
+		problems.some((p) => /plugins\/b\/package\.json is missing/.test(p)),
+	);
 });
 
 test("check fails on a manifest with no version", () => {
 	put("plugins/a/plugin.json", '{"name": "a"}');
+	put("plugins/b/package.json", '{"version": "0.11.0"}');
 	const problems = checkTargets(root, [], manifests);
 	assert.equal(problems.length, 1);
 	assert.match(problems[0] ?? "", /plugins\/a\/plugin\.json/);
@@ -92,13 +99,13 @@ test("check fails on a manifest with no version", () => {
 test("check passes when the omp catalog matches the manifests", () => {
 	put("plugins/a/plugin.json", '{"version": "0.11.0"}');
 	put(catalog, catalogWith("0.11.0"));
-	assert.deepEqual(checkTargets(root, [], manifests), []);
+	assert.deepEqual(checkTargets(root, [], ["plugins/a/plugin.json"]), []);
 });
 
 test("check fails when the omp catalog version differs, naming the catalog", () => {
 	put("plugins/a/plugin.json", '{"version": "0.11.0"}');
 	put(catalog, catalogWith("0.10.0"));
-	const problems = checkTargets(root, [], manifests);
+	const problems = checkTargets(root, [], ["plugins/a/plugin.json"]);
 	assert.equal(problems.length, 1);
 	assert.match(problems[0] ?? "", /\.omp-plugin\/marketplace\.json/);
 	assert.match(problems[0] ?? "", /0\.10\.0/);
@@ -107,5 +114,5 @@ test("check fails when the omp catalog version differs, naming the catalog", () 
 test("check fails when the omp catalog entry has no version", () => {
 	put("plugins/a/plugin.json", '{"version": "0.11.0"}');
 	put(catalog, '{"plugins": [{"name": "a"}]}');
-	assert.equal(checkTargets(root, [], manifests).length, 1);
+	assert.equal(checkTargets(root, [], ["plugins/a/plugin.json"]).length, 1);
 });

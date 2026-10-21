@@ -26,7 +26,6 @@ export function syncTargets(root: string, targets: readonly Target[]): void {
 	}
 }
 
-// A target or manifest that does not exist yet is skipped: its package adds it.
 export function checkTargets(
 	root: string,
 	targets: readonly Target[],
@@ -35,13 +34,19 @@ export function checkTargets(
 ): string[] {
 	const problems: string[] = [];
 	for (const { from, to } of targets) {
-		if (!existsSync(join(root, to))) continue;
+		if (!existsSync(join(root, to))) {
+			problems.push(`${to} is missing; run npm run sync`);
+			continue;
+		}
 		if (!readFileSync(join(root, from)).equals(readFileSync(join(root, to))))
 			problems.push(`${to} differs from ${from}; run npm run sync`);
 	}
 	const versions = new Map<string, string[]>();
 	for (const path of [...manifests, catalog]) {
-		if (!existsSync(join(root, path))) continue;
+		if (!existsSync(join(root, path))) {
+			problems.push(`${path} is missing`);
+			continue;
+		}
 		const json = JSON.parse(readFileSync(join(root, path), "utf8"));
 		const version =
 			path === catalog ? json.plugins?.[0]?.version : json.version;
