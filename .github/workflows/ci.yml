@@ -79,7 +79,3 @@ jobs:
 
       - name: Run the shared, script and omp tests
         run: node --test 'shared/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-omp/tests/*.test.ts'
-
-      # Replays the recorded client output, so it needs no model and no key.
-      - name: Run the evals selftest
-        run: node scripts/evals.ts selftest

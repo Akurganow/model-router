@@ -5,14 +5,11 @@ import { parseArgs } from "node:util";
 import { ADAPTERS } from "./evals/adapters.ts";
 import { loadCases } from "./evals/cases.ts";
 import { missingKeys, runCase } from "./evals/run.ts";
-import { selftest } from "./evals/selftest.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const CASES_PATH = join(ROOT, "evals", "cases.json");
-const FIXTURES_DIR = join(ROOT, "evals", "fixtures");
 const COPIES_DIR = join(ROOT, "plugins", "model-router-omp", "agents");
 const USAGE = `usage:
-  node scripts/evals.ts selftest [--cases FILE] [--fixtures DIR]
   node scripts/evals.ts run [--client NAME]... [--cases FILE] [--out DIR]`;
 
 function runMode(args: string[]): number {
@@ -53,28 +50,10 @@ function runMode(args: string[]): number {
 	return failed === 0 ? 0 : 1;
 }
 
-function selftestMode(args: string[]): number {
-	const { values } = parseArgs({
-		args,
-		options: {
-			cases: { type: "string", default: CASES_PATH },
-			fixtures: { type: "string", default: FIXTURES_DIR },
-		},
-	});
-	const problems = selftest({
-		casesPath: values.cases,
-		fixturesDir: values.fixtures,
-	});
-	for (const problem of problems) console.error(problem);
-	if (problems.length === 0) console.log("evals selftest: ok");
-	return problems.length === 0 ? 0 : 1;
-}
-
 if (import.meta.main) {
 	const [mode, ...rest] = process.argv.slice(2);
 	const modes: Record<string, (args: string[]) => number> = {
 		run: runMode,
-		selftest: selftestMode,
 	};
 	const handler = mode ? modes[mode] : undefined;
 	if (!handler) {

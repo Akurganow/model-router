@@ -11,7 +11,7 @@ export type Evidence = {
 	reply: string | null;
 };
 
-export type Captured = { stdout: string; stderr: string };
+type Captured = { stdout: string; stderr: string };
 
 // A client joins the runner with one adapter: the headless command and the parser.
 export type Adapter = {
