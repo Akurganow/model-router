@@ -27,7 +27,6 @@ export type ModelLike = {
 
 export type Context = {
 	hasUI: boolean;
-	cwd: string;
 	ui: { notify(message: string, type?: "info" | "warning" | "error"): void };
 	modelRegistry: {
 		getApiKeyForProvider(provider: string): Promise<string | undefined>;

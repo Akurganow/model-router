@@ -1,12 +1,5 @@
-import {
-	mkdirSync,
-	mkdtempSync,
-	readFileSync,
-	rmSync,
-	writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, mock } from "node:test";
 import extension from "../extension/index.ts";
 import type {
@@ -20,7 +13,7 @@ export const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 export const REGISTRY_KEY = "registry-key-0001";
 export const ENV_KEY = "env-key-0002";
 
-const ENV_NAMES = ["HOME", "TYPESAFE_API_KEY", "TYPESAFE_BASE_URL"] as const;
+const ENV_NAMES = ["TYPESAFE_API_KEY", "TYPESAFE_BASE_URL"] as const;
 
 type Reply = { ok: boolean; status: number; text(): Promise<string> };
 export type Call = {
@@ -77,19 +70,14 @@ export const taskEvent = (input: Record<string, unknown>): ToolCallEvent => ({
 });
 
 export type World = {
-	root: string;
-	home: string;
-	project: string;
 	notes: string[];
 	stderr: string[];
 	calls: Call[];
 	// What omp's task tool shows: whether its schema offers `effort`, and the `task` agent's description.
 	taskTool: { effortEnabled: boolean; taskDescription: string };
-	put(path: string, text: string): void;
 	fetchWith(responder: Responder): void;
 	makeCtx(options?: {
 		hasUI?: boolean;
-		cwd?: string;
 		key?: KeyLookup;
 		notify?: (message: string) => void;
 		models?: Record<string, ModelLike>;
@@ -107,13 +95,7 @@ export function useWorld(): World {
 
 	beforeEach(() => {
 		for (const name of ENV_NAMES) saved.set(name, process.env[name]);
-		world.root = mkdtempSync(join(tmpdir(), "omp-ext-"));
-		world.home = join(world.root, "home");
-		world.project = join(world.root, "project");
-		mkdirSync(world.home);
-		mkdirSync(world.project);
 		for (const name of ENV_NAMES) setEnv(name, undefined);
-		setEnv("HOME", world.home);
 		world.notes = [];
 		world.stderr = [];
 		world.calls = [];
@@ -132,13 +114,8 @@ export function useWorld(): World {
 		mock.restoreAll();
 		globalThis.fetch = realFetch;
 		for (const [name, value] of saved) setEnv(name, value);
-		rmSync(world.root, { recursive: true, force: true });
 	});
 
-	world.put = (path, text) => {
-		mkdirSync(dirname(path), { recursive: true });
-		writeFileSync(path, text);
-	};
 	world.fetchWith = (responder) => {
 		globalThis.fetch = (async (
 			url: string,
@@ -149,10 +126,9 @@ export function useWorld(): World {
 			return responder(call, world.calls.length - 1);
 		}) as unknown as typeof fetch;
 	};
-	world.makeCtx = ({ hasUI = true, cwd, key, notify, models } = {}) => ({
+	world.makeCtx = ({ hasUI = true, key, notify, models } = {}) => ({
 		hasUI,
 		...(models ? { models: { resolve: (spec: string) => models[spec] } } : {}),
-		cwd: cwd ?? world.project,
 		ui: { notify: notify ?? ((message) => void world.notes.push(message)) },
 		modelRegistry: {
 			getApiKeyForProvider: key ?? (async () => REGISTRY_KEY),
