@@ -16,6 +16,9 @@ const targets = [
 	{ from: "shared/core.ts", to: "plugins/b/extension/core.ts" },
 ];
 const manifests = ["plugins/a/plugin.json", "plugins/b/package.json"];
+const catalog = ".omp-plugin/marketplace.json";
+const catalogWith = (version: string) =>
+	JSON.stringify({ plugins: [{ name: "a", version }] });
 
 let root = "";
 const put = (path: string, text: string) => {
@@ -84,4 +87,25 @@ test("check fails on a manifest with no version", () => {
 	const problems = checkTargets(root, [], manifests);
 	assert.equal(problems.length, 1);
 	assert.match(problems[0] ?? "", /plugins\/a\/plugin\.json/);
+});
+
+test("check passes when the omp catalog matches the manifests", () => {
+	put("plugins/a/plugin.json", '{"version": "0.11.0"}');
+	put(catalog, catalogWith("0.11.0"));
+	assert.deepEqual(checkTargets(root, [], manifests), []);
+});
+
+test("check fails when the omp catalog version differs, naming the catalog", () => {
+	put("plugins/a/plugin.json", '{"version": "0.11.0"}');
+	put(catalog, catalogWith("0.10.0"));
+	const problems = checkTargets(root, [], manifests);
+	assert.equal(problems.length, 1);
+	assert.match(problems[0] ?? "", /\.omp-plugin\/marketplace\.json/);
+	assert.match(problems[0] ?? "", /0\.10\.0/);
+});
+
+test("check fails when the omp catalog entry has no version", () => {
+	put("plugins/a/plugin.json", '{"version": "0.11.0"}');
+	put(catalog, '{"plugins": [{"name": "a"}]}');
+	assert.equal(checkTargets(root, [], manifests).length, 1);
 });

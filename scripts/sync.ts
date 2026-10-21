@@ -16,6 +16,9 @@ export const MANIFESTS: readonly string[] = [
 	"plugins/model-router-omp/package.json",
 ];
 
+// The omp catalog entry declares a version so omp offers upgrades; it must equal the plugin version.
+export const CATALOG = ".omp-plugin/marketplace.json";
+
 export function syncTargets(root: string, targets: readonly Target[]): void {
 	for (const { from, to } of targets) {
 		mkdirSync(dirname(join(root, to)), { recursive: true });
@@ -28,6 +31,7 @@ export function checkTargets(
 	root: string,
 	targets: readonly Target[],
 	manifests: readonly string[],
+	catalog: string = CATALOG,
 ): string[] {
 	const problems: string[] = [];
 	for (const { from, to } of targets) {
@@ -36,9 +40,11 @@ export function checkTargets(
 			problems.push(`${to} differs from ${from}; run npm run sync`);
 	}
 	const versions = new Map<string, string[]>();
-	for (const path of manifests) {
+	for (const path of [...manifests, catalog]) {
 		if (!existsSync(join(root, path))) continue;
-		const { version } = JSON.parse(readFileSync(join(root, path), "utf8"));
+		const json = JSON.parse(readFileSync(join(root, path), "utf8"));
+		const version =
+			path === catalog ? json.plugins?.[0]?.version : json.version;
 		const key = typeof version === "string" ? version : "none";
 		versions.set(key, [...(versions.get(key) ?? []), path]);
 	}

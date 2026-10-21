@@ -8,10 +8,12 @@ export const MANIFESTS: readonly string[] = [
 	"plugins/model-router/.claude-plugin/plugin.json",
 	"plugins/model-router-omp/package.json",
 	"plugins/model-router-codex/.codex-plugin/plugin.json",
+	".omp-plugin/marketplace.json",
 ];
 
 // Only the version line changes, so each file keeps the formatting biome ci checks.
-const line = /^(\t"version": ")\d+\.\d+\.\d+(",?)$/m;
+// Any tab depth matches: the omp catalog nests its version inside plugins[0].
+const line = /^(\t+"version": ")\d+\.\d+\.\d+(",?)$/m;
 
 export function setVersion(
 	root: string,

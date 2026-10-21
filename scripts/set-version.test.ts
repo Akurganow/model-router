@@ -16,6 +16,7 @@ import { MANIFESTS, setVersion } from "./set-version.ts";
 const claude = "plugins/model-router/.claude-plugin/plugin.json";
 const omp = "plugins/model-router-omp/package.json";
 const codex = "plugins/model-router-codex/.codex-plugin/plugin.json";
+const catalog = ".omp-plugin/marketplace.json";
 
 const claudeText = `{
 	"name": "model-router",
@@ -40,6 +41,19 @@ const codexText = `{
 	"name": "model-router-codex",
 	"version": "0.11.0",
 	"skills": "./skills/"
+}
+`;
+
+const catalogText = `{
+	"name": "model-router",
+	"plugins": [
+		{
+			"name": "model-router",
+			"source": "./plugins/model-router-omp",
+			"version": "0.11.0",
+			"homepage": "https://example.com"
+		}
+	]
 }
 `;
 
@@ -92,9 +106,19 @@ test("a manifest without a version line stops the bump and names the file", () =
 	});
 });
 
-test("the default list names the Claude Code and omp manifests", () => {
+test("a nested catalog version is rewritten and nothing else changes", () => {
+	put(catalog, catalogText);
+	assert.deepEqual(setVersion(root, "1.2.3", [claude, catalog]), [
+		claude,
+		catalog,
+	]);
+	assert.equal(read(catalog), catalogText.replace("0.11.0", "1.2.3"));
+});
+
+test("the default list names the Claude Code and omp manifests and the omp catalog", () => {
 	assert.ok(MANIFESTS.includes(claude));
 	assert.ok(MANIFESTS.includes(omp));
+	assert.ok(MANIFESTS.includes(catalog));
 });
 
 test("the command refuses a version that is not X.Y.Z with exit code 2", () => {
