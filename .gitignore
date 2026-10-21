@@ -1,2 +1,5 @@
 node_modules/
 plugins/model-router/.claude-plugin/types/
+# Working files of the Gangsta and Superpowers plugins never enter the repository.
+docs/gangsta/
+docs/superpowers/
