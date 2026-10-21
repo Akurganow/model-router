@@ -149,7 +149,7 @@ Before each run, write the run's mode into `mode.txt`.
 
 | Run | mode.txt and changes | What it answers |
 |---|---|---|
-| B1 | `pass`, matcher `.*` | Which `tool_name` does the spawn carry? Which keys does `tool_input` have? Is `message` readable (`messageIsTask` true) or opaque? Is `fork_turns` or `fork_context` set when the prompt does not ask for one? After this run, change the matcher to `^(?:spawn_agent|collaborationspawn_agent)$`. |
+| B1 | `pass`, matcher `.*` | Which `tool_name` does the spawn carry? Which keys does `tool_input` have? Is `message` readable (`messageIsTask` true) or opaque? Is `fork_turns` or `fork_context` set when the prompt does not ask for one? After this run, change the matcher to `^(?:spawn_agent\|collaborationspawn_agent)$`. |
 | B2 | `rewrite` | Does the subagent actually run on `T` at effort `E`? Did it still receive its task and answer OK? Where does `model-router probe line` appear: in the `--json` events, in the final output, or nowhere? |
 | B3 | `bad-model` | Is a rewritten model validated? What error, and does the parent see it? |
 | B4 | `exit1` | Does a failing hook block the spawn or let it run unchanged? |
@@ -188,7 +188,7 @@ Reply with exactly this Markdown, filled in. Truncate any message text to 80 cha
 - node --version / path:
 - bun:
 - features (hooks, multi_agent, multi_agent_v2, plugin):
-- hooks.json schema used (paste the file):
+- hooks.json schema used (paste the file with every path shortened to ~):
 
 ## Models
 | slug | visibility | supported_reasoning_levels | default | multi_agent_version |
