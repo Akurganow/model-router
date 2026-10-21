@@ -1,0 +1,14 @@
+{
+	"name": "model-router",
+	"owner": { "name": "Akurganow" },
+	"description": "Routes each Oh My Pi task subagent to the cheapest model and effort that can do its task, judged by TypeSafe Jev. On every routed task it sends the task text, condensed and with secrets masked, to api.typesafe.ai with your TypeSafe key.",
+	"plugins": [
+		{
+			"name": "model-router",
+			"source": "./plugins/model-router-omp",
+			"version": "0.11.0",
+			"homepage": "https://github.com/Akurganow/model-router",
+			"privacyPolicyUrl": "https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/PRIVACY.md"
+		}
+	]
+}
