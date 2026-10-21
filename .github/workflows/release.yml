@@ -1,14 +1,19 @@
 name: release
 
-# Releases the plugin with cocogitto (https://docs.cocogitto.io) straight on
+# Releases the plugins with cocogitto (https://docs.cocogitto.io) straight on
 # main when a feat, fix or breaking commit follows the last tag. cog.toml has
-# the pre-bump hook that writes the version into .claude-plugin/plugin.json.
+# the pre-bump hook that runs scripts/set-version.ts, which writes the version
+# into every plugin manifest.
 #
 # The version commit and its tag are pushed with the release deploy key, the
 # actor the owner's ruleset on main admits for this push. A deploy-key push
 # starts workflow runs again: cog bump then finds no releasable commit and
 # this workflow stops, while ci and policy check the released commit once
 # more.
+#
+# Once the release is published, the evals job runs the real clients against
+# the released tag. It comes after the release job, so a failure there leaves
+# the published release as it is.
 on:
   push:
     branches: [main]
@@ -27,6 +32,9 @@ jobs:
     # Pushing the commit and the tag and creating the release need contents: write.
     permissions:
       contents: write
+    outputs:
+      released: ${{ steps.bump.outputs.released }}
+      tag: ${{ steps.bump.outputs.tag }}
     steps:
       # Pinned to a commit sha; the comment records the release. ref: main
       # takes the newest main; fetch-depth: 0 brings the history and the tags.
@@ -118,3 +126,18 @@ jobs:
             [ -s "$notes" ] || { echo "::error::no changelog section for $tag"; exit 1; }
             gh release create "$tag" --verify-tag --title "$tag" --notes-file "$notes"
           done
+
+  # A reusable workflow call takes no continue-on-error. The release job has
+  # finished by now, so a failed call cannot undo or block the release.
+  evals:
+    needs: release
+    if: ${{ needs.release.outputs.released == 'true' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/evals.yml
+    with:
+      ref: ${{ needs.release.outputs.tag }}
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}

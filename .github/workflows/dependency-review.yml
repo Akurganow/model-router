@@ -9,7 +9,9 @@ name: dependency-review
 # dependency is redistributed with the plugin: the license list is the
 # permissive licenses that allow that under this repository's MIT license,
 # and no copyleft license is on it. deny-licenses is deprecated, so the
-# policy is an allow list.
+# policy is an allow list. Claude Code and its platform packages are exempt
+# by name: .github/actions/setup-claude-code installs them in CI only, and
+# no plugin carries them.
 on:
   pull_request:
 
@@ -32,3 +34,13 @@ jobs:
           allow-licenses: >-
             MIT, MIT-0, ISC, 0BSD, BSD-2-Clause, BSD-3-Clause, Apache-2.0,
             Unlicense, CC0-1.0, BlueOak-1.0.0, Zlib, Python-2.0
+          allow-dependencies-licenses: >-
+            pkg:npm/@anthropic-ai/claude-code,
+            pkg:npm/@anthropic-ai/claude-code-darwin-arm64,
+            pkg:npm/@anthropic-ai/claude-code-darwin-x64,
+            pkg:npm/@anthropic-ai/claude-code-linux-arm64,
+            pkg:npm/@anthropic-ai/claude-code-linux-arm64-musl,
+            pkg:npm/@anthropic-ai/claude-code-linux-x64,
+            pkg:npm/@anthropic-ai/claude-code-linux-x64-musl,
+            pkg:npm/@anthropic-ai/claude-code-win32-arm64,
+            pkg:npm/@anthropic-ai/claude-code-win32-x64

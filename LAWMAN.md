@@ -9,11 +9,13 @@ contract_version: 1
 - README.md
 - plugins/model-router/README.md
 - plugins/model-router/docs/model-choice.md
+- plugins/model-router-omp/README.md
 
 ## Departments
 
 - dependencies: judged by .github/workflows/dependency-review.yml
 - privacy: judged by plugins/model-router/PRIVACY.md
+- privacy: judged by plugins/model-router-omp/PRIVACY.md
 
 ## Fence
 
@@ -31,6 +33,7 @@ contract_version: 1
 
 - package-lock.json
 - .claude-plugin/marketplace.json
+- .omp-plugin/marketplace.json
 
 ## Execution
 

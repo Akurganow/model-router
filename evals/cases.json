@@ -1,0 +1,29 @@
+{
+	"cases": [
+		{
+			"id": "claude-first-spawn-routed",
+			"client": "claude",
+			"model": "sonnet",
+			"keyEnv": "ANTHROPIC_API_KEY",
+			"prompt": "Use the Agent tool to spawn exactly one subagent. Ask it to read package.json in the current directory and report the value of its name field. Do not read the file yourself. When the subagent answers, reply with that name.",
+			"files": {
+				"package.json": { "name": "eval-subject", "version": "1.0.0" }
+			},
+			"assert": ["spawned", "routed", "line"],
+			"record": ["tier", "effort"]
+		},
+		{
+			"id": "omp-first-spawn-routed",
+			"client": "omp",
+			"model": "openrouter/z-ai/glm-5.3-flash",
+			"keyEnv": "OPENROUTER_API_KEY",
+			"prompt": "Use the task tool exactly once with one task item whose agent is \"task\". Ask it to read package.json in the current directory and report the value of its name field. Do not read the file yourself. When the subagent answers, reply with that name.",
+			"answer": "eval-subject",
+			"files": {
+				"package.json": { "name": "eval-subject", "version": "1.0.0" }
+			},
+			"assert": ["spawned", "routed", "line", "answered"],
+			"record": ["tier", "effort", "drift"]
+		}
+	]
+}

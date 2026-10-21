@@ -9,10 +9,9 @@ name: policy
 # is scanned at most once: the verdict is cached under the policy hash and
 # the hash of the plugin folder's tree, a cached verdict gates later runs,
 # and a re-run, a force-push of the same content or a commit outside the
-# plugin folder never scans again. A pull request from Dependabot changes
-# the root only, so it reuses main's verdict and needs no API key, which a
-# Dependabot run would not have. A cached fail still fails; the fix is a
-# commit that changes the plugin. A scan that returns no verdict is an
+# plugin folder never scans again. A pull request from Renovate changes
+# the root only, so it reuses main's verdict and runs no scan. A cached
+# fail still fails; the fix is a commit that changes the plugin. A scan that returns no verdict is an
 # infrastructure error: it fails the job and caches nothing.
 on:
   pull_request:
@@ -66,6 +65,13 @@ jobs:
             exit 1
           fi
 
+      # The scan installs Claude Code itself, at the version that
+      # .github/actions/setup-claude-code pins for CI and the evals.
+      - name: Read the Claude Code version
+        if: steps.cache.outputs.cache-hit != 'true'
+        id: claude
+        run: echo "version=$(node -p 'require("./.github/actions/setup-claude-code/package.json").dependencies["@anthropic-ai/claude-code"]')" >> "$GITHUB_OUTPUT"
+
       # The verdict, not the action's exit code, gates the job below.
       - uses: anthropics/claude-plugins-community/.github/actions/scan-plugins@06ec7b6a0a82bdc4bec44bd82d4368c42f20d7c1 # main, 2026-10-13
         if: steps.cache.outputs.cache-hit != 'true'
@@ -77,7 +83,7 @@ jobs:
           scan-all-external: "true"
           policy-prompt: .github/policy/prompt.md
           fail-on-findings: "true"
-          claude-cli-version: 2.1.294
+          claude-cli-version: ${{ steps.claude.outputs.version }}
 
       # The action warns and moves on when Claude returns no verdict. This
       # step requires exactly one verdict and keeps it for the cache.

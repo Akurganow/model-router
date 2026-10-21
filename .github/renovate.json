@@ -1,0 +1,17 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+	"schedule": ["before 6am on monday"],
+	"minimumReleaseAge": "14 days",
+	"internalChecksFilter": "strict",
+	"rangeStrategy": "pin",
+	"vulnerabilityAlerts": {
+		"minimumReleaseAge": null,
+		"schedule": ["at any time"]
+	},
+	"packageRules": [
+		{ "matchManagers": ["npm"], "groupName": "npm tools" },
+		{ "matchManagers": ["bun"], "groupName": "omp" },
+		{ "matchManagers": ["github-actions"], "groupName": "actions" }
+	]
+}

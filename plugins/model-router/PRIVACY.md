@@ -6,10 +6,11 @@ what the plugin sends, where it goes, and what the plugin keeps. Effective
 
 ## What the plugin sends
 
-On every Agent tool call it routes, the plugin sends one HTTPS POST to
+On every Agent tool call it routes, the plugin sends an HTTPS POST to
 TypeSafe at https://api.typesafe.ai/v1/systemone. The request holds:
 
-- the subagent's task text, condensed and with token-shaped strings masked
+- the subagent's task text, condensed and with token-shaped strings masked.
+  A text over 12,000 characters keeps its start and its end
 - the subagent's type
 - the caller's one-line description of the task
 - the Jev alias you chose, `jev-latest` or `jev-preview`, and two fixed
@@ -28,6 +29,13 @@ key identifies your TypeSafe account to TypeSafe. The plugin sends no
 telemetry and no other identifier of you or your machine. With Claude Code's
 `--debug` flag, the plugin writes each request body to your debug log, in
 numbered pieces when it is long. The key is never written.
+
+A routed call sends up to two requests. When the first fails on the network,
+or TypeSafe answers 408, 429 or a 5xx status, the plugin sends the same request
+once more after 300 ms. A timeout and any other status are not retried. The
+first request can reach TypeSafe even when its answer never returns, so a
+retried network failure may be billed twice. The retry sends nothing that the
+first request did not.
 
 ## What TypeSafe does with it
 

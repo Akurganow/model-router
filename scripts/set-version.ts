@@ -1,22 +1,46 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const version = process.argv[2];
-if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
-	console.error("usage: node scripts/set-version.ts X.Y.Z");
-	process.exit(2);
+// Every harness ships from one release. A missing manifest is skipped here;
+// scripts/sync.ts --check fails on it.
+export const MANIFESTS: readonly string[] = [
+	"plugins/model-router/.claude-plugin/plugin.json",
+	"plugins/model-router-omp/package.json",
+	".omp-plugin/marketplace.json",
+];
+
+// Only the version line changes, so each file keeps the formatting biome ci checks.
+// Any tab depth matches: the omp catalog nests its version inside plugins[0].
+const line = /^(\t+"version": ")\d+\.\d+\.\d+(",?)$/m;
+
+export function setVersion(
+	root: string,
+	version: string,
+	manifests: readonly string[] = MANIFESTS,
+): string[] {
+	// Every manifest is checked before any is written, so a failed bump leaves the tree as it was.
+	const pending = manifests
+		.filter((path) => existsSync(join(root, path)))
+		.map((path) => {
+			const text = readFileSync(join(root, path), "utf8");
+			if (!line.test(text)) throw new Error(`no version line in ${path}`);
+			return [path, text.replace(line, `$1${version}$2`)] as const;
+		});
+	for (const [path, text] of pending) writeFileSync(join(root, path), text);
+	return pending.map(([path]) => path);
 }
 
-// Only the version line changes, so the file keeps the formatting biome ci checks.
-const path = new URL(
-	"../plugins/model-router/.claude-plugin/plugin.json",
-	import.meta.url,
-);
-const manifest = readFileSync(path, "utf8");
-const line = /^\t"version": "\d+\.\d+\.\d+",$/m;
-if (!line.test(manifest)) {
-	console.error(
-		"no version line in plugins/model-router/.claude-plugin/plugin.json",
-	);
-	process.exit(1);
+if (import.meta.main) {
+	const version = process.argv[2];
+	if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
+		console.error("usage: node scripts/set-version.ts X.Y.Z");
+		process.exit(2);
+	}
+	try {
+		setVersion(fileURLToPath(new URL("../", import.meta.url)), version);
+	} catch (error) {
+		console.error(error instanceof Error ? error.message : error);
+		process.exit(1);
+	}
 }
-writeFileSync(path, manifest.replace(line, `\t"version": "${version}",`));

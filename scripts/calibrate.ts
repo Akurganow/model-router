@@ -58,6 +58,8 @@ if (!key) {
 	process.exit(2);
 }
 
+// The alias resolves on the server, so the run records which model answered.
+const answeredBy = new Set<string>();
 const post = async (body: string): Promise<string> => {
 	const res = await fetch(JEV_URL, {
 		method: "POST",
@@ -68,7 +70,12 @@ const post = async (body: string): Promise<string> => {
 		body,
 	});
 	if (!res.ok) throw new Error(`HTTP ${res.status}`);
-	return res.text();
+	const text = await res.text();
+	try {
+		const { model } = JSON.parse(text);
+		if (typeof model === "string") answeredBy.add(model);
+	} catch {}
+	return text;
 };
 
 const cases: Case[] = readFileSync(
@@ -110,6 +117,7 @@ const agreement = (name: string, hits: number): number => {
 	);
 	return a;
 };
+console.log(`${model} answered as ${[...answeredBy].join(", ") || "unknown"}`);
 const tierOk = agreement("tier", tierHits) >= AGREEMENT_BAR;
 const workOk = agreement("work", workHits) >= AGREEMENT_BAR;
 process.exit(tierOk && workOk ? 0 : 1);
