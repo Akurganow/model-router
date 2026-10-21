@@ -1,0 +1,22 @@
+name: Set up cocogitto
+description: >
+  Installs cog 7.0.0 with cocogitto's own action and checks the binary
+  against a pinned sha256, because the action downloads the release asset
+  without a checksum.
+runs:
+  using: composite
+  steps:
+    - uses: cocogitto/cocogitto-action@52d0023b4396897f1815648e553db2ab8d782f3a # v4.2.0
+      with:
+        install-only: true
+
+    # The digest is the sha256 of the cog binary inside
+    # cocogitto-7.0.0-x86_64-unknown-linux-musl.tar.gz, whose archive digest
+    # GitHub records as e03938ff2c4c86d71c00c0f3284dbbe95c5ca76fe34a51f33e945c23010d59bb.
+    - name: Verify the cog binary
+      shell: bash
+      env:
+        COG_SHA256: 43de087a44cb2f50bb4f8b3cc99e1c3c4fdaeb57fcd742124543a7c48a9bb6b2
+      run: |
+        printf '%s  %s\n' "$COG_SHA256" "$HOME/.local/bin/cog" | sha256sum -c -
+        cog --version | grep -F '7.0.0'

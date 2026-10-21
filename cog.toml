@@ -9,6 +9,14 @@ branch_whitelist = ["main"]
 # Runs before the version commit, so every plugin manifest carries the new version.
 pre_bump_hooks = ["node scripts/set-version.ts {{version}}"]
 
+# `cog install-hook commit-msg` installs this hook into a clone. It refuses a
+# commit message that is not a conventional commit, which CI would reject.
+[git_hooks.commit-msg]
+script = """#!/bin/sh
+set -e
+cog verify --file "$1"
+"""
+
 [changelog]
 path = "CHANGELOG.md"
 # Names no commit author and carries no HTML.
