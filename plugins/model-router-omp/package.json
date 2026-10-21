@@ -1,6 +1,6 @@
 {
 	"name": "model-router-omp",
-	"version": "0.11.0",
+	"version": "0.12.0",
 	"private": true,
 	"type": "module",
 	"description": "Routes each task subagent in Oh My Pi to the cheapest model and effort that can do its task, judged by TypeSafe Jev.",

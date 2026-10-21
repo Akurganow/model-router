@@ -3,6 +3,58 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.12.0 - 2026-10-21
+#### Features
+- (**calibrate**) print the Jev model that answered (8509d97)
+- (**evals**) run real clients against the plugins (11167db)
+- (**omp**) keep the light tier off its model's lowest level (0d4a283)
+- (**omp**) follow omp's effort settings and show the applied level (40946ef)
+- (**omp**) add the Oh My Pi catalog (bd2d07d)
+- (**omp**) route generic task spawns through the extension (0d80300)
+- (**omp**) add the setup interview and escalation skills (2ce5405)
+- (**omp**) add the Oh My Pi package and its three router agents (345c27c)
+- route Claude Code through the shared core (93a44b4)
+- add the shared routing core and its network helper (7f61a49)
+#### Bug Fixes
+- (**evals**) ask the omp case for the task agent (064187f)
+- (**omp**) name the setup skill folder after the skill (0e1ab8a)
+- (**sync**) fail the check on a missing copy or manifest (481c718)
+- address the final review (6b7bb56)
+- address the review of the scripts and the omp privacy policy (6bdb326)
+#### Revert
+- (**jev**) follow redirects again (a7960ca)
+- (**omp**) send the item name as it is (8e78b66)
+- (**omp**) drop the router's own high ceiling (1b4a6b7)
+#### Documentation
+- (**gangsta**) record the laundering checkpoint (c183d4b)
+- (**gangsta**) record the omp setup dry run and the light-tier rule (4687ea0)
+- (**gangsta**) record the Don's amendments and fix the review points (9150944)
+- (**gangsta**) record the omp effort work and the no-override rule (e9e2983)
+- (**gangsta**) record calibration and the omp end-to-end run (ecca6e3)
+- (**gangsta**) record the CI, docs and evals packages (92468d4)
+- (**omp**) describe what the skills do, not which commands to run (d89d8c0)
+- (**omp**) propose the newest model of each family in the setup (919e3b0)
+- (**omp**) describe effort modes, agent choice and the ladder sources (9d300c2)
+- describe the omp plugin and the shared core (0c50a4e)
+- record the heist progress checkpoint (1d4ad53)
+- follow the setup skill folder name in the plan (fc61857)
+- add the multi-harness heist dossier, contract and plan (9b9eb21)
+#### Build system
+- keep the omp catalog version in step with the plugins (f00e98a)
+- bump every plugin manifest in one version step (fc8d61a)
+#### Continuous Integration
+- (**evals**) name the omp case's key OPENROUTER_API_KEY (7314fd6)
+- check the shared copies and run the new tests (f453d5d)
+#### Refactoring
+- (**omp**) read the effort mode and a custom task agent from the task tool (6980b72)
+- split the Agent handler and remove duplicated test setup (8ae37c0)
+- let prepareBrief take a budget and use it for omp context (ff2e523)
+#### Miscellaneous Chores
+- drop the Codex manifest from the version bump (e9b21cd)
+
+- - -
+
+
 ## v0.11.0 - 2026-10-15
 #### Features
 - route every call, drop the suggest mode (c63084c)
