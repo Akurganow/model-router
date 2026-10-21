@@ -1,6 +1,6 @@
 name: ci
 
-# Validates the plugin and runs its tests on Ubuntu and macOS, on every pull
+# Validates the plugins and runs their tests on Ubuntu and macOS, on every pull
 # request and every push to main. `claude plugin test` runs with no session and
 # no sign-in, so the job needs no secrets.
 on:
@@ -72,3 +72,15 @@ jobs:
 
       - name: Run the tests
         run: claude plugin test plugins/model-router
+
+      # shared/ is copied byte for byte into the plugin folders, and every
+      # manifest carries the same version.
+      - name: Check the shared copies and versions
+        run: node scripts/sync.ts --check
+
+      - name: Run the shared, script and omp tests
+        run: node --test 'shared/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-omp/tests/*.test.ts'
+
+      # Replays the recorded client output, so it needs no model and no key.
+      - name: Run the evals selftest
+        run: node scripts/evals.ts selftest
