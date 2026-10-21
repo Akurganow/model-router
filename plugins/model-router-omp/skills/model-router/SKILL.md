@@ -68,8 +68,8 @@ goes one tier up and keeps the previous effort.
 }
 ```
 
-The `effort` field exists only when `task.enableEffort` is on. Run
-`omp config get task.enableEffort` if the field is missing. When it is off:
+The `effort` field exists only when `task.enableEffort` is on, so a missing
+field means effort is off. Then:
 
 - Re-dispatch on the same agent for skipped steps, with a brief that lists
   them.
@@ -78,13 +78,7 @@ The `effort` field exists only when `task.enableEffort` is on. Run
 
 ## Turn routing off
 
-Disable the plugin.
+Disable the model-router plugin in omp, then restart omp. Extension modules
+load at start. To turn routing back on, enable the plugin and restart.
 
-1. Run `omp plugin list` to find the model-router id.
-2. Run `omp plugin disable <id>`.
-3. Restart omp. Extension modules load at start.
-
-To turn it back on, run `omp plugin enable <id>` and restart.
-
-To change roles, the effort mode or the Jev alias, run the `model-router-setup`
-skill.
+To change roles or the effort mode, run the `model-router-setup` skill.

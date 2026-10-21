@@ -14,42 +14,35 @@ interview points those roles at the user's models and picks who decides effort.
 ## Rules
 
 - Ask one question at a time. Wait for the answer before the next step.
-- Write nothing without consent. Show the target file and the exact content, ask, and wait for a yes.
-- Never ask for the TypeSafe key in chat. Never print it.
-- Never run `omp token`. It prints credentials.
-- Run only the commands this skill names.
+- Write nothing without consent. Show the target and the exact change, ask, and wait for a yes.
+- Never ask for the TypeSafe key in chat. Never display it or any other credential.
+- Use omp's own settings and documentation to read and change settings. This skill names what to check and change, not how.
 - Skip a step the user declines. Name the skipped steps in the closing summary.
-- Keep each message short. Show command output only when the user needs it.
+- Keep each message short. Show raw output only when the user needs it.
 
-The interview writes two things and nothing else:
+The interview changes two things and nothing else:
 
-- the three router roles, in the store that `modelRoleStorage` names;
-- `task.enableEffort` and `task.maxEffort`, only in router-effort mode.
+- the three router roles in omp's model roles, where `modelRoleStorage` says roles are stored;
+- the settings `task.enableEffort` and `task.maxEffort`, only in router-effort mode.
 
 ## Step 1. Check the TypeSafe key
 
-1. Run `omp models --kind judge --json`.
-2. Look for rows whose `provider` is `typesafe`. Read no other field.
-3. If such rows exist, say that omp holds a TypeSafe credential. Go to step 2.
-4. Otherwise, run `test -n "$TYPESAFE_API_KEY" && echo set || echo unset`. It prints no value.
-5. If both checks fail, tell the user to run `/login typesafe` in omp.
-6. Offer the other route: the user adds `TYPESAFE_API_KEY` to the agent `.env` file themselves.
-7. Say that routing skips every batch until a key exists.
-8. Say that a failed network call can also hide the rows.
-9. Ask the user to say when the key is in place, then repeat the checks.
+1. Find out whether omp holds a TypeSafe credential. With one, omp lists TypeSafe judge models.
+2. If it does not, find out whether `TYPESAFE_API_KEY` is set, without reading its value.
+3. If neither holds, tell the user to log in to TypeSafe in omp.
+4. Offer the other route: the user sets `TYPESAFE_API_KEY` where omp reads it.
+5. Say that routing skips every batch until a key exists.
+6. Ask the user to say when the key is in place, then check again.
 
 ## Step 2. Detect omp auto thinking
 
-omp's `auto` thinking level asks a judge model, Jev by default, for an effort on each turn. The result informs step 3.
+omp's `auto` thinking level asks its judge model, Jev by default, for an effort. The result informs step 3.
 
 1. Ask: "To test auto thinking I will spawn one small subagent. It spends a little model usage. May I?"
 2. On a no, record "auto thinking: unknown" and go to step 3.
-3. Spawn one `task` with one item and no `agent`.
-4. Use the task text "Reply with the single word ok."
-5. Run `find "$(omp config path)/sessions" -path '*/sessions/*/*/*.jsonl' -mmin -10 -exec grep -l '"purpose":"auto-thinking"' {} +`.
-6. If a file is listed, it holds a `model_usage` record with that purpose. Record "auto thinking: runs for spawns".
-7. If nothing is listed, record "auto thinking: no record found".
-8. Mention that `--session-dir` moves the session files.
+3. Spawn one `task` with one item, no `agent`, and the text "Reply with the single word ok."
+4. Find out from omp's record of the session whether an auto-thinking judgment ran for that spawn.
+5. Record "auto thinking: runs for spawns" or "auto thinking: no record found".
 
 ## Step 3. Choose who decides effort
 
@@ -64,20 +57,18 @@ Ask: "Should the router decide effort, or omp's auto?" Record the answer.
 
 ## Step 4. Propose a model for each role
 
-An unset `smol` or `slow` inherits `default`. An unset `task` uses the session model.
+An unset `smol` or `slow` role inherits `default`. An unset `task` role uses the session model.
 
-1. Run `omp config get modelRoles --json`.
-2. Note the current `smol`, `task` and `slow` values.
-3. Run `omp models --json`.
-4. Keep the rows whose `kind` is `chat`.
-5. Group the rows into model families by name, such as Claude Haiku or Gemini Flash.
-6. Keep only the newest version of each family, judged by the version in its name.
-7. Drop `:batch` variants and moving aliases such as `~…-latest`.
-8. Show the kept rows with `selector`, `thinking` levels and `cost.input`, grouped by provider.
-9. Propose one `selector` per role, starting from the current `smol`, `task` and `slow`.
-10. Never propose an older version of a family unless the user asks for it.
-11. Use a plain selector with no `:level` suffix. The effort setting handles levels.
-12. Ask the user to accept or change each of the three picks.
+1. Read the current model roles, and note `smol`, `task` and `slow`.
+2. List the chat models omp can use.
+3. Group them into model families by name, such as Claude Haiku or Gemini Flash.
+4. Keep only the newest version of each family, judged by the version in its name.
+5. Drop batch variants and moving aliases that point at whatever is latest.
+6. Show the kept models with their thinking levels and input cost, grouped by provider.
+7. Propose one model per role, starting from the current `smol`, `task` and `slow`.
+8. Never propose an older version of a family unless the user asks for it.
+9. Propose a plain model with no thinking level attached. The effort setting handles levels.
+10. Ask the user to accept or change each of the three picks.
 
 The roles map to work like this:
 
@@ -89,64 +80,48 @@ The flagship model never goes into a role unless the user asks for it.
 
 ## Step 5. Warn about a single model
 
-1. Compare the three chosen selectors.
+1. Compare the three chosen models.
 2. If all three match, warn: "All three roles use one model. Routing then changes only effort."
 3. Ask whether to keep going or to pick different models.
 4. On a change, return to step 4.
 
 ## Step 6. Write the roles
 
-1. Run `omp config get modelRoleStorage`. The value is `global` or `project`.
-2. If the value is `global`, run `omp config get modelRoles --json` and read `value`.
-3. Merge `router_light`, `router_mid` and `router_heavy` into that object.
-4. Keep every other role unchanged.
-5. Show the merged JSON and the target, the global `config.yml` in the folder `omp config path` prints.
-6. Warn that `get` returns effective roles, so project roles also land in the global file.
-7. Ask for consent.
-8. After a yes, run `omp config set modelRoles '<merged JSON>'`. The command replaces the whole record.
-9. If the value is `project`, show the three lines to add under `modelRoles:` in `.omp/config.yml` in the working directory.
-10. Keep the existing roles in that file. Create the file if it is missing.
-11. Ask for consent, then edit the file.
-12. Run `omp config get modelRoles --json` and confirm the three roles appear.
+1. Find out where omp stores model roles: `modelRoleStorage` is `global` or `project`.
+2. Show the three roles to add and the place they go. Every other role stays as it is.
+3. Ask for consent.
+4. After a yes, set the three roles there.
+5. Read the model roles back and confirm the three roles appear.
 
 ## Step 7. Set the effort cap
 
 Run this step only in router-effort mode. In omp-auto mode, skip to the note below.
 
-1. Run `omp config get task.enableEffort` and `omp config get task.maxEffort`.
-2. Tell the user that both settings go together, because `enableEffort` alone leaves the ceiling at `max`.
-3. Ask for consent to set both in the global `config.yml`.
-4. Run `omp config set task.maxEffort high`.
-5. Run `omp config set task.enableEffort true`.
-6. Read both values back.
+1. Read `task.enableEffort` and `task.maxEffort`.
+2. Tell the user that both settings go together, because `task.enableEffort` alone leaves the ceiling at `max`.
+3. Ask for consent to set `task.maxEffort` to `high` and `task.enableEffort` to on.
+4. After a yes, set both, then read them back.
 
-Never leave `task.enableEffort` true while `task.maxEffort` is not `high`.
+Never leave `task.enableEffort` on while `task.maxEffort` is not `high`.
 
-In omp-auto mode, run `omp config get task.enableEffort` instead. If it is true, someone enabled it, possibly without the cap. Offer to set `task.maxEffort` to `high` or to turn the setting off.
+In omp-auto mode, read `task.enableEffort` instead. If it is on, someone enabled it, possibly without the cap. Offer to set `task.maxEffort` to `high` or to turn the setting off.
 
 ## Step 8. Check for conflicts
 
-A conflict makes the extension skip the batch or blocks its rewrite.
+A conflict makes the extension skip the batch or blocks its rewrite. Check:
 
-1. Run `test -e "$(omp config path)/agents/task.md" && echo found || echo none`.
-2. Run `d="$PWD"; while [ ! -d "$d/.omp/agents" ] && [ "$d" != / ]; do d="$(dirname "$d")"; done; test -e "$d/.omp/agents/task.md" && echo found || echo none`.
-3. Run `omp config get task.disabledAgents --json`.
-4. Run `omp config get task.batch`.
-5. Run `omp plugin list` and find the model-router entry.
+- whether the task tool lists an agent named `task` whose description differs from omp's bundled one. The user's own `task` agent makes the router skip every batch;
+- whether `task.disabledAgents` names `task`, `router_light`, `router_mid` or `router_heavy`. That blocks the rewrite;
+- whether `task.batch` is off. That removes the `tasks` list the router reads;
+- whether the model-router plugin is installed and enabled.
 
-Read the results:
+If a check found a conflict:
 
-- A custom `task.md` in the user folder or the nearest project folder makes the router skip every batch. `omp agents unpack` creates the user file.
-- A `task.disabledAgents` entry named `task`, `router_light`, `router_mid` or `router_heavy` blocks the rewrite.
-- A `false` value for `task.batch` removes the `tasks` list that the router reads.
-
-If any check found a conflict:
-
-1. Name the conflict and its file or setting.
+1. Name the conflict and its agent or setting.
 2. Say that routing must stay off while the conflict stands.
 3. Skip step 9.
-4. Tell the user to remove the conflict, or to disable the plugin with `omp plugin disable <id>`.
-5. Offer to run the disable command, and run it only after a yes.
+4. Tell the user to remove the conflict, or to disable the plugin.
+5. Offer to disable it, and do so only after a yes.
 
 ## Step 9. Smoke test
 
@@ -156,16 +131,13 @@ If any check found a conflict:
 4. Read the notification. It is one line that starts with `model-router`.
 5. Check that each entry starts with the item's position and names a tier and an effort.
 6. If an entry names a skip reason, stop and report it. `api_key unset` points to step 1, a custom agent to step 8.
-7. Run `find "$(omp config path)/sessions" -path '*/sessions/*/*/*.jsonl' -mmin -10`.
-8. Pick the newest file in the output.
-9. Read its `model_change` line. The `model` should match the role of the tier on the batch line.
-10. Read its `thinking_level_change` line.
-11. In router-effort mode, check that `thinkingLevel` is `minimal`, `low`, `medium` or `high`.
-12. If it is `xhigh` or `max`, stop and report it.
-13. Offer to set `task.enableEffort` to `false` until the cause is clear.
+7. Find out which model and thinking level the spawned subagent ran on.
+8. Check that the model matches the role of the tier on the line.
+9. In router-effort mode, check that the level is at most `high`.
+10. If it is above `high`, stop, report it, and offer to turn `task.enableEffort` off until the cause is clear.
 
 In omp-auto mode, report the level without a pass or fail. A level above `high` comes from omp's classifier, not from the router.
 
 ## Closing summary
 
-List what the interview wrote, with the target file for each item. List the skipped steps. Include no key value and no home-directory path.
+List what the interview changed, with where each change went. List the skipped steps. Include no key value and no home-directory path.
