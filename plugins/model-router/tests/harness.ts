@@ -4,7 +4,7 @@ import { mock } from "claude-code/testing";
 
 type Levels = Record<string, number>;
 
-export const score = (p: Levels) => ({
+const score = (p: Levels) => ({
 	type: "score",
 	score: 0,
 	confidence: 0.9,

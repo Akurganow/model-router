@@ -102,3 +102,32 @@ test("a smaller budget still redacts before it cuts", () => {
 		assert.doesNotMatch(prepareBrief(text, SMALL_BUDGET), SECRET_PIECES);
 	}
 });
+
+test("a JSON-quoted or single-quoted secret name still masks its value", () => {
+	assert.equal(
+		prepareBrief("{\"API_KEY\": \"abc123\"} and {'API_KEY': 'abc123'}"),
+		"{\"API_KEY\": ***} and {'API_KEY': ***}",
+	);
+});
+
+test("a quoted value with spaces is masked whole, closed or not", () => {
+	assert.equal(
+		prepareBrief('export API_KEY="abc def ghi"'),
+		"export API_KEY=***",
+	);
+	assert.equal(prepareBrief('export API_KEY="abc def'), "export API_KEY=***");
+});
+
+test("the Bearer scheme is matched in any case", () => {
+	assert.equal(prepareBrief("send with bearer abc123"), "send with Bearer ***");
+});
+
+test("assignments to names ending in key, token, secret or password are masked in any case", () => {
+	const task = prepareBrief(
+		'api_key=hunter22 and apiKey: "sw0rdf1sh" and password=letmein',
+	);
+	for (const masked of ["api_key=***", "apiKey: ***", "password=***"])
+		assert.ok(task.includes(masked));
+	for (const secret of ["hunter22", "sw0rdf1sh", "letmein"])
+		assert.ok(!task.includes(secret));
+});

@@ -9,11 +9,11 @@ artifacts:
   - docs/gangsta/multi-harness/plans/2026-10-21-execution-plan.md
   - docs/gangsta/multi-harness/recon/2026-10-21-recon-dossier.md
 technical-debt-audit:
-  copy-paste: 15 clusters fixed; 1 documented exception
+  copy-paste: 18 clusters fixed; 0 left in source
   long-files: PASS; register.test.ts split by theme
-  test-coverage: 94.93% to 97.55% lines (node coverage over shared, scripts and omp, tests excluded)
+  test-coverage: 94.93% to 97.49% lines (node coverage over shared, scripts and omp, tests excluded)
   clean-architecture: no formal layers
-  clean-code: 1 long function fixed (register.ts handler)
+  clean-code: 2 fixed (register.ts handler, dead omp test scaffolding)
   documented-exceptions: see below
 ---
 
@@ -21,8 +21,8 @@ technical-debt-audit:
 
 ## Verification
 
-- `npm run check`: tsc, sync check, evals selftest, 195 node tests, biome. Pass.
-- `claude plugin test plugins/model-router`: 40 pass.
+- `npm run check`: tsc, sync check, evals selftest, 199 node tests, biome. Pass.
+- `claude plugin test plugins/model-router`: 26 pass.
 - `claude plugin validate --strict plugins/model-router`: pass.
 - `node scripts/check-surface.ts`: the mod's surface matches `tools/surface.json`.
 - Identifier scan outside `docs/gangsta/`: no matches.
@@ -32,9 +32,9 @@ technical-debt-audit:
 
 | Sub-check | Result | Details |
 |-----------|--------|---------|
-| Copy/Paste (jscpd 4.0.5, 5 lines, 35 tokens) | 15 clusters fixed | A shared temp-folder test helper, a jev failure helper and merged omp effort cases. The Claude mod's tests share one harness and table-driven cases. The synced copies of `shared/` are excluded by design. |
-| Long Files | PASS | Longest source file 255 lines. `register.test.ts`, 481 source lines, is split into `register`, `keys` and `failures` tests over a shared `harness.ts`. The longest is 109 lines. The mod's 40 tests are unchanged in number. |
-| Test Coverage | 94.93% to 97.55% lines, 89.6% branches | New tests for drift recording, missing keys, the settings fallback and the review fixes. The Claude mod has no coverage tool. |
+| Copy/Paste (jscpd 4.0.5, 5 lines, 35 tokens) | 18 clusters fixed, 0 left | A shared temp-folder test helper, a jev failure helper and merged omp effort cases. The Claude mod's tests share one harness and table-driven cases. Its router tests keep only the effort ladder, because `shared/core*.test.ts` covers the scoring on the byte-identical copy. Four masking cases moved there. The scan covers `plugins`, `scripts` and `shared`. The synced copies of `shared/` are excluded by design. |
+| Long Files | PASS | Longest source file 255 lines. `register.test.ts`, 481 source lines, is split into `register`, `keys` and `failures` tests over a shared `harness.ts`. The longest is 109 lines. |
+| Test Coverage | 94.93% to 97.49% lines, 89.2% branches | New tests for drift recording, missing keys, the settings fallback and the review fixes. The Claude mod has no coverage tool. |
 | Clean Architecture | no formal layers | Imports run from the entry points to routing to the pure core. The core has no I/O. |
 | Clean Code | 2 fixed | The Agent handler moved the Jev request and the deadline race into helpers. Engine calls stay in the handler, so the surface is unchanged. The omp test world lost a temp folder, a HOME override and a cwd that no code read since the extension stopped reading files. |
 
