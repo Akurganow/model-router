@@ -57,7 +57,7 @@ omp's `auto` thinking level asks a judge model, Jev by default, for an effort on
 Explain both modes in plain words, then ask which one decides.
 
 - **Router's effort.** The router writes `lo`, `med` or `hi` for each item from Jev's work score. The setup turns on `task.enableEffort` and caps it with `task.maxEffort` at `high`.
-- **omp's auto.** Leave `task.enableEffort` off. omp drops the router's effort. Each router agent runs at its `auto` level, which omp's own classifier picks.
+- **omp's auto.** Leave `task.enableEffort` off. The router then writes no effort. Each router agent runs at its `auto` level, which omp's own classifier picks.
 
 Add the step 2 result. If auto thinking runs for spawns, omp already pays for one judge call per spawn.
 

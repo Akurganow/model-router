@@ -115,26 +115,19 @@ on omp's own scale:
 | 1, an ordinary task | `med` | `med` |
 | 2, a long or delicate task | `hi` | `hi` |
 
-Two parts have a source:
+The ladder is the Claude Code ladder above, carried onto omp's coarse scale,
+and it rests on the same sources:
 
-- The light tier never gets `lo`. *Prompting Claude Haiku 5.5* warns that at
-  `low`, in long agent prompts, Haiku is more likely to skip a check or stop
-  early. The light tier is the small-model tier.
-- The ladder stops at `hi`, and `max` is never set. *Optimizing for cost and
+- `med` is the resting point, as `medium` is in Claude Code. omp maps `med` to
+  the middle level of the role's model, and *Model configuration* gives
+  `medium` as the default effort.
+- The light tier never gets `lo`, as Haiku never gets `low`. *Prompting Claude
+  Haiku 5.5* warns that a small model at its lowest level is more likely to
+  skip a check or stop early.
+- The ladder stops at `high`. omp maps `hi` to the model's highest level, so
+  the setup caps it with `task.maxEffort` at `high`. *Optimizing for cost and
   intelligence* measured Opus 5.5 at `xhigh` only 1.4 points above `high`, for
   2.5 times the cost.
-
-Two parts are provisional:
-
-- The mid and heavy rows copy the Sonnet and Opus rows of the Claude Code
-  ladder. Nothing measures them on the models a user assigns to the omp roles.
-- The light row copies the Haiku lesson to every small model. Anthropic
-  measured it on Haiku 5.5 only.
-
-omp may run other providers' models in these roles. The router's texts were
-calibrated on the Claude Code tiers, and their transfer to omp's model pools
-is unmeasured. Treat the omp ladder as provisional until a labelled set from
-omp exists.
 
 ## Escalation
 

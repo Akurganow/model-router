@@ -17,10 +17,11 @@ item's agent and effort.
   bounded judgment and `router_heavy` for open judgment. Each runs the model
   of its own role.
 - The effort is `lo`, `med` or `hi`. `router_light` never starts below `med`.
-- Effort applies only when `task.enableEffort` is on. omp's `auto` thinking
-  sets the level otherwise.
+- The router writes an effort only when `task.enableEffort` is on. omp's
+  `auto` thinking sets the level otherwise, and the line shows `auto`.
 
 The extension routes an item only when its `agent` is absent or `task`. It
+never overrides an agent, model or effort that you, omp or the user chose. It
 shows one line per batch, starting with `model-router`, with one entry per
 item. The line also gives the reason when the batch ran unrouted.
 

@@ -64,6 +64,11 @@ text is a non-empty string. It leaves every other item alone: named
 agents, items with no task text, calls with no `tasks` list or an empty one.
 It handles the `task` tool only.
 
+The plugin never overrides a choice that omp, the orchestrator or you made. An
+item that names another agent, such as `scout`, keeps that agent with its own
+model, prompt and tools. omp sets no model per item, so the only way to route
+an item is to swap the generic `task` agent for a router agent.
+
 A subagent runs its own copy of the plugin. A `task` call that a subagent
 makes gets routed too.
 
@@ -90,20 +95,24 @@ The setup turns on `task.enableEffort` and caps it with `task.maxEffort` at
 `high`. omp applies the router's effort, and the cap keeps it from
 passing `high`. The cap applies in this mode only.
 
-The extension cannot read these two settings. If you turn on
+The extension reads both settings once per batch and writes an effort only
+when `task.enableEffort` is on. It leaves your cap as it is. If you turn on
 `task.enableEffort` by hand and leave `task.maxEffort` at its default, omp
-maps the router's `hi` to the model's highest level, which can be `max`. That
-case stays open: the setting is outside the plugin's control. The setup always
-sets both settings together. Set them together by hand too.
+maps the router's `hi` to the model's highest level, which can be `max`, and
+the line shows it. The setup always sets both settings together. Set them
+together by hand too.
 
 On a model that lists only `low`, `high` and `max`, omp maps `med` to `low`.
+When the cap sits below the model's lowest level, omp would fail the spawn,
+so the plugin writes no effort for that item and the line shows `auto`.
 
 ### omp's auto
 
-`task.enableEffort` stays off. omp drops the `effort` field the router writes.
-Each router agent runs at thinking level `auto`, and omp's own classifier
-picks the level. That classifier may choose `xhigh`. The `high` ceiling does
-not apply here. The line still shows the effort the router asked for.
+`task.enableEffort` stays off, and the router writes no effort. Each router
+agent runs at thinking level `auto`, and omp's own classifier picks the level.
+That classifier may choose `xhigh`. The `high` ceiling does not apply here.
+The line shows `auto`. The plugin also treats settings it cannot read as this
+mode.
 
 ## The line
 
@@ -112,11 +121,19 @@ The plugin shows one notification per batch. It is one line that starts with
 starts with the item's position in the batch:
 
 ```
-model-router task 1: L0 router_light · med · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok | task 2: L2 router_heavy · caller effort · p=0.84/0.71 · jev jev-1.14.0 · 806/9 tok
+model-router task 1: L0 router_light · med→medium · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok | task 2: L2 router_heavy · caller effort · p=0.84/0.71 · jev jev-1.14.0 · 806/9 tok
 ```
 
-An entry reads `L<tier> <agent> · <effort> · p=<tier>/<work>`. The two
-numbers are the probabilities of the chosen tier and the chosen work index.
+An entry reads `L<tier> <agent> · <effort> · p=<tier>/<work>`. The effort
+part is one of these:
+
+- `<request>→<level>`: the router's `lo`, `med` or `hi`, and the level omp
+  applies on the model of the agent's role, after `task.maxEffort`;
+- `<request>` alone: the role's model is unknown or has no effort levels;
+- `auto`: the router wrote no effort, and omp's `auto` decides;
+- `caller effort`: the item already had an effort, and it stays.
+
+The two numbers are the probabilities of the chosen tier and the chosen work index.
 The suffix names the Jev model that answered and its token counts, when the
 answer carries them.
 
@@ -134,8 +151,8 @@ mode, the line goes to standard error.
 
 ## Conflicts
 
-- **A custom `task` agent.** A `task.md` file in `~/.omp/agent/agents` or in
-  the nearest project `.omp/agents` replaces omp's bundled `task` agent. The
+- **A custom `task` agent.** A `task.md` file in the `agents` folder of your
+  omp agent directory or in the nearest project `.omp/agents` replaces omp's bundled `task` agent. The
   router would swap your agent out, so it skips the whole batch and says so
   in the line. Remove the file or disable the plugin.
 - **Other extensions that rewrite task items.** omp runs every `tool_call`
@@ -151,15 +168,23 @@ mode, the line goes to standard error.
 
 Files, one check per batch:
 
-- `~/.omp/agent/agents/task.md`
+- `agents/task.md` in the omp agent directory: the folder that
+  `PI_CODING_AGENT_DIR` names, which omp sets for a profile, or else
+  `~/.omp/agent`
 - `.omp/agents/task.md` in the nearest project folder that has `.omp/agents`
 
-The plugin checks these paths for existence and reads no content. It does not
-see a custom config directory or an omp profile.
+The plugin checks these paths for existence and reads no content.
+
+Settings, once per batch: `task.enableEffort` and `task.maxEffort`. omp gives
+extensions no settings API, so the extension runs
+`omp config get <key> --json` with the omp it runs in, in the working
+directory. The answer covers your global and project settings and your
+profile. A run-time `--config` overlay is not visible to it.
 
 Variables:
 
 - `TYPESAFE_API_KEY`, the key when omp's own TypeSafe credential is empty
+- `PI_CODING_AGENT_DIR`, the omp agent directory, set by omp for a profile
 - `MODEL_ROUTER_JEV`, the Jev alias. `jev-preview` selects the preview. Any
   other value, or none, selects `jev-latest`
 
