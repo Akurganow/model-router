@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { chooseEffort } from "../extension/effort.ts";
+import { chooseEffort, chooseLightEffort } from "../extension/effort.ts";
 import { ompCommand, readTaskSettings } from "../extension/settings.ts";
 import { jevAnswer, reply, tasksOf, useWorld } from "./helpers.ts";
 
@@ -97,20 +97,24 @@ describe("chooseEffort mirrors omp's mapping", () => {
 		assert.deepEqual(chooseEffort("lo", odd), {
 			effort: "lo",
 			shown: "lo→low",
+			applied: "low",
 		});
 		assert.deepEqual(chooseEffort("med", odd), {
 			effort: "med",
 			shown: "med→medium",
+			applied: "medium",
 		});
 		assert.deepEqual(chooseEffort("hi", odd), {
 			effort: "hi",
 			shown: "hi→high",
+			applied: "high",
 		});
 	});
 	test("med on an even range takes the lower middle", () => {
 		assert.deepEqual(chooseEffort("med", even), {
 			effort: "med",
 			shown: "med→medium",
+			applied: "medium",
 		});
 	});
 	test("an unknown or non-reasoning model shows the request only", () => {
@@ -162,5 +166,47 @@ describe("ompCommand", () => {
 			"/usr/local/bin/bun",
 			"/lib/omp/cli.js",
 		]);
+	});
+});
+
+describe("the light tier never runs at the model's lowest level", () => {
+	const two = { reasoning: true, thinking: { efforts: ["low", "high"] } };
+	const haiku = {
+		reasoning: true,
+		thinking: { efforts: ["minimal", "low", "medium", "high"] },
+	};
+	test("med that lands on the lowest level moves up to hi", () => {
+		assert.deepEqual(chooseLightEffort("med", two), {
+			effort: "hi",
+			shown: "hi→high",
+			applied: "high",
+		});
+	});
+	test("med above the lowest level stays", () => {
+		assert.deepEqual(chooseLightEffort("med", haiku), {
+			effort: "med",
+			shown: "med→low",
+			applied: "low",
+		});
+	});
+	test("a cap that pins hi to the lowest level keeps the request as it is", () => {
+		assert.deepEqual(chooseLightEffort("med", two, "low"), {
+			effort: "med",
+			shown: "med→low",
+			applied: "low",
+		});
+	});
+	test("the router applies it to router_light only", async () => {
+		await world.run(
+			{ tasks: [{ task: "Do it" }] },
+			{ models: { "@router_light": two } },
+		);
+		assert.match(lastLine(), /L0 router_light · hi→high · /);
+		world.fetchWith(() => reply(jevAnswer(1, 1)));
+		await world.run(
+			{ tasks: [{ task: "Do it" }] },
+			{ models: { "@router_mid": two } },
+		);
+		assert.match(lastLine(), /L1 router_mid · med→low · /);
 	});
 });
