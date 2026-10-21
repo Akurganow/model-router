@@ -21,7 +21,7 @@ technical-debt-audit:
 
 ## Verification
 
-- `npm run check`: tsc, sync check, evals selftest, 206 node tests, biome. Pass.
+- `npm run check`: tsc, sync check, evals selftest, 195 node tests, biome. Pass.
 - `claude plugin test plugins/model-router`: 40 pass.
 - `claude plugin validate --strict plugins/model-router`: pass.
 - `node scripts/check-surface.ts`: the mod's surface matches `tools/surface.json`.
