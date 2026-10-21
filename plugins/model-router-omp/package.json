@@ -1,0 +1,15 @@
+{
+	"name": "model-router-omp",
+	"version": "0.11.0",
+	"private": true,
+	"type": "module",
+	"description": "Routes each task subagent in Oh My Pi to the cheapest model and effort that can do its task, judged by TypeSafe Jev.",
+	"license": "MIT",
+	"homepage": "https://github.com/Akurganow/model-router",
+	"repository": "https://github.com/Akurganow/model-router",
+	"omp": {
+		"extensions": [
+			"./extension/index.ts"
+		]
+	}
+}
