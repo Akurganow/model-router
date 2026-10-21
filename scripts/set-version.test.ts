@@ -15,7 +15,7 @@ import { MANIFESTS, setVersion } from "./set-version.ts";
 
 const claude = "plugins/model-router/.claude-plugin/plugin.json";
 const omp = "plugins/model-router-omp/package.json";
-const codex = "plugins/model-router-codex/.codex-plugin/plugin.json";
+const extra = "plugins/model-router-extra/plugin.json";
 const catalog = ".omp-plugin/marketplace.json";
 
 const claudeText = `{
@@ -37,8 +37,8 @@ const ompText = `{
 	}
 }
 `;
-const codexText = `{
-	"name": "model-router-codex",
+const extraText = `{
+	"name": "model-router-extra",
 	"version": "0.11.0",
 	"skills": "./skills/"
 }
@@ -72,7 +72,7 @@ beforeEach(() => {
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
 test("one call writes the version into every manifest that exists", () => {
-	assert.deepEqual(setVersion(root, "1.2.3", [claude, omp, codex]), [
+	assert.deepEqual(setVersion(root, "1.2.3", [claude, omp, extra]), [
 		claude,
 		omp,
 	]);
@@ -87,16 +87,16 @@ test("only the version line changes, so tabs, key order and the final newline st
 });
 
 test("a manifest added to the list gets the version when its file exists", () => {
-	put(codex, codexText);
-	assert.equal(setVersion(root, "2.0.0", [claude, omp, codex]).length, 3);
-	assert.equal(read(codex), codexText.replace("0.11.0", "2.0.0"));
+	put(extra, extraText);
+	assert.equal(setVersion(root, "2.0.0", [claude, omp, extra]).length, 3);
+	assert.equal(read(extra), extraText.replace("0.11.0", "2.0.0"));
 });
 
 test("a version that is the last key keeps its missing comma", () => {
 	const text = '{\n\t"name": "x",\n\t"version": "0.11.0"\n}\n';
-	put(codex, text);
-	setVersion(root, "3.0.0", [codex]);
-	assert.equal(read(codex), text.replace("0.11.0", "3.0.0"));
+	put(extra, text);
+	setVersion(root, "3.0.0", [extra]);
+	assert.equal(read(extra), text.replace("0.11.0", "3.0.0"));
 });
 
 test("a manifest without a version line stops the bump and names the file", () => {

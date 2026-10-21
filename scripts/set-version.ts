@@ -2,12 +2,11 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Every harness ships from one release. A manifest that is not on disk yet is
-// skipped, so the package that adds it also adds its line here.
+// Every harness ships from one release. A missing manifest is skipped here;
+// scripts/sync.ts --check fails on it.
 export const MANIFESTS: readonly string[] = [
 	"plugins/model-router/.claude-plugin/plugin.json",
 	"plugins/model-router-omp/package.json",
-	"plugins/model-router-codex/.codex-plugin/plugin.json",
 	".omp-plugin/marketplace.json",
 ];
 

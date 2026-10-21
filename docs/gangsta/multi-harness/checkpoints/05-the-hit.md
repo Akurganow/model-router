@@ -4,10 +4,12 @@ phase: the-hit
 status: in-progress
 timestamp: 2026-10-21T00:00:00Z
 next-action: Continue Hit
-completed-wps: [WP-01 (items 1-4), WP-02, WP-03, WP-04, WP-10 (G2 passed), WP-05, WP-06, WP-07, WP-08, WP-09, WP-11, WP-12, WP-13, WP-14 (dry run pending), WP-15, WP-16, WP-23 (omp catalog), WP-24, WP-25 (Claude and omp; Node 22.18 step waits for G1), WP-26 (Claude and omp; Codex parts wait for G1), WP-27, WP-28]
-pending-wps: [WP-01 item 5 (G1), WP-17..WP-22 (G1), WP-23 Codex catalog (G1), WP-29, WP-30]
+completed-wps: [WP-01 (items 1-4), WP-02, WP-03, WP-04, WP-10 (G2 passed), WP-05, WP-06, WP-07, WP-08, WP-09, WP-11, WP-12, WP-13, WP-14 (dry run pending), WP-15, WP-16, WP-23 (omp catalog), WP-24, WP-25, WP-26, WP-27, WP-28]
+pending-wps: [WP-29, WP-30]
+lapsed-wps: [WP-01 item 5, WP-17..WP-22, WP-23 Codex catalog, the Node 22.18 CI step and the Codex docs parts]
 failed-wps: []
 notes:
+  - G1 (codex-cli 0.163.0): v1 passed, with gpt-5.6-luna as the only visible v1 parent. v2 failed: message reaches the hook encrypted, and v2 spawns fork by default, where Codex ignores a rewritten model. The probe also showed that ~/.codex/.env does not reach hooks, plugin hooks are off by default, and only the interactive CLI shows the hook's system message. The Don deferred Codex for this release despite the v1 pass. The "If G1 fails" path applies, and issue 33 records the findings and the revisit condition.
   - prepareBrief gained a budget; omp context uses it (no duplicated cut).
   - The omp catalog carries the plugin version; set-version and the sync check cover it.
   - The sync check now fails on a missing copy or manifest.
