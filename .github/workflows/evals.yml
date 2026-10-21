@@ -126,20 +126,19 @@ jobs:
           bun-version: "1.4.2"
 
       # The omp package is signed and carries a provenance attestation on npm.
-      # No release asset with a checksum is published for it, so the pin is the
-      # registry digest of the exact version. The digest must match before Bun
-      # installs, and Bun checks the tarball against the registry's digest. The
-      # version is the tag that the router agents were copied from.
+      # No release asset with a checksum is published for it, so
+      # evals/omp/bun.lock pins omp and every package it pulls in by digest.
+      # Bun refuses a lockfile that no longer matches the manifest, and a
+      # tarball whose digest differs. No package runs code at install time.
+      # The version in evals/omp/package.json is the tag that the router
+      # agents were copied from.
       - name: Install omp
-        env:
-          VERSION: 18.2.8
-          INTEGRITY: sha512-I8JXVNLJb8PfGS6mRGSKNq73+EX+R/GoaRBoMj8HTtOiwF112QXH72UP2klTwoCiR2gTsACbAIWjD0JdrR3A3g==
-        working-directory: ${{ runner.temp }}
+        working-directory: evals/omp
         run: |
-          actual=$(npm view "@oh-my-pi/pi-coding-agent@$VERSION" dist.integrity)
-          [ "$actual" = "$INTEGRITY" ] || { echo "::error::registry digest of omp $VERSION changed"; exit 1; }
-          bun install -g "@oh-my-pi/pi-coding-agent@$VERSION"
-          omp --version | grep -F "$VERSION"
+          bun install --frozen-lockfile --ignore-scripts
+          echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+          version=$(node -p 'require("./package.json").dependencies["@oh-my-pi/pi-coding-agent"]')
+          node_modules/.bin/omp --version | grep -F "$version"
 
       - name: Install the plugin from the checkout
         run: |

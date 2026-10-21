@@ -14,7 +14,7 @@ technical-debt-audit:
   test-coverage: 94.93% to 97.49% lines (node coverage over shared, scripts and omp, tests excluded)
   clean-architecture: no formal layers
   clean-code: 2 fixed (register.ts handler, dead omp test scaffolding)
-  documented-exceptions: see below
+  documented-exceptions: none
 ---
 
 # Laundering
@@ -40,11 +40,11 @@ technical-debt-audit:
 
 ### Documented Exceptions
 
-- `.github/workflows/evals.yml` — supply chain. `bun install -g` resolves omp's transitive dependencies unpinned, in the step that holds the eval keys. [Don acknowledged: pending]
+None. The evals workflow installed omp's dependencies unpinned. `evals/omp/bun.lock` now pins omp and every package it pulls in by digest, and the install runs no package scripts. The Don kept the pinned client versions that the contract requires.
 
 ## Final review
 
-The inspector's verdict was APPROVE WITH CONCERNS: 1 high, 2 medium and 7 low findings. All were fixed except the supply-chain risk above and the medium finding on `max`. The high finding was owner-setup facts in this folder. They are removed here and from issue 33. Amendment A5 records that the omp extension reads no command, file or variable but the TypeSafe key. A ceiling at `high` that the review asked for was reverted by the Don: a level's name means a different point on a five-level scale than on a three-level one.
+The inspector's verdict was APPROVE WITH CONCERNS: 1 high, 2 medium and 7 low findings. All were fixed except the medium finding on `max`. The supply-chain risk was fixed in Laundering by a lockfile. The high finding was owner-setup facts in this folder. They are removed here and from issue 33. Amendment A5 records that the omp extension reads no command, file or variable but the TypeSafe key. A ceiling at `high` that the review asked for was reverted by the Don: a level's name means a different point on a five-level scale than on a three-level one.
 
 ## Open
 
