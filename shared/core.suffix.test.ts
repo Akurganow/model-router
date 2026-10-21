@@ -5,7 +5,7 @@ import { decisionSuffix } from "./core.ts";
 const reply = (fields: Record<string, unknown>) => JSON.stringify(fields);
 const usage = { input_tokens: 812, output_tokens: 9 };
 
-test("a model and both counts give the contract example", () => {
+test("a model and both counts give the full suffix", () => {
 	const suffix = decisionSuffix(reply({ model: "jev-1.14.0", usage }));
 	assert.equal(
 		`L1 sonnet · medium · p=0.80/0.60${suffix}`,
