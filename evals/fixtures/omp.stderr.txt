@@ -1,0 +1,2 @@
+# synthetic fixture, written by hand on 2026-10-21 from the stderr line format of the extension
+model-router task 1: L0 router_light · med · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok

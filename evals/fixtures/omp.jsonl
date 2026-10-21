@@ -1,0 +1,6 @@
+{"type":"fixture","synthetic":true,"client":"omp","origin":"hand-written from the json-mode event shapes of omp and the task input the extension writes, not recorded from a run","date":"2026-10-21"}
+{"type":"session","version":3,"id":"00000000-0000-4000-8000-000000000003","timestamp":"2026-10-21T00:00:00.000Z","cwd":"<work>"}
+{"type":"message_end","message":{"role":"assistant","content":[],"provider":"openrouter","model":"z-ai/glm-5.3-flash","stopReason":"toolUse"}}
+{"type":"tool_execution_start","toolCallId":"call_synthetic_0001","toolName":"task","args":{"context":"Read package.json and report its name field.","tasks":[{"name":"ReadName","agent":"router_light","task":"Read package.json in the current directory and report the value of its name field."}]}}
+{"type":"tool_execution_end","toolCallId":"call_synthetic_0001","toolName":"task","isError":false}
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"eval-subject"}],"provider":"openrouter","model":"z-ai/glm-5.3-flash","stopReason":"stop"}}
