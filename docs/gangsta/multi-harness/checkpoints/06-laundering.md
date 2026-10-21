@@ -9,7 +9,7 @@ artifacts:
   - docs/gangsta/multi-harness/plans/2026-10-21-execution-plan.md
   - docs/gangsta/multi-harness/recon/2026-10-21-recon-dossier.md
 technical-debt-audit:
-  copy-paste: 13 clusters fixed; 1 documented exception
+  copy-paste: 14 clusters fixed; 1 documented exception
   long-files: PASS; register.test.ts split by theme
   test-coverage: 94.93% to 97.55% lines (node coverage over shared, scripts and omp, tests excluded)
   clean-architecture: no formal layers
@@ -32,7 +32,7 @@ technical-debt-audit:
 
 | Sub-check | Result | Details |
 |-----------|--------|---------|
-| Copy/Paste (jscpd 4.0.5, 5 lines, 35 tokens) | 13 clusters fixed | A shared temp-folder test helper, a jev failure helper and merged omp effort cases. The Claude mod's tests share one harness and table-driven cases. The synced copies of `shared/` are excluded by design. |
+| Copy/Paste (jscpd 4.0.5, 5 lines, 35 tokens) | 14 clusters fixed | A shared temp-folder test helper, a jev failure helper and merged omp effort cases. The Claude mod's tests share one harness and table-driven cases. The synced copies of `shared/` are excluded by design. |
 | Long Files | PASS | Longest source file 255 lines. `register.test.ts`, 481 source lines, is split into `register`, `keys` and `failures` tests over a shared `harness.ts`. The longest is 109 lines. The mod's 40 tests are unchanged in number. |
 | Test Coverage | 94.93% to 97.55% lines, 89.6% branches | New tests for drift recording, missing keys, the settings fallback and the review fixes. The Claude mod has no coverage tool. |
 | Clean Architecture | no formal layers | Imports run from the entry points to routing to the pure core. The core has no I/O. |
