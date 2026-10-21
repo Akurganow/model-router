@@ -1,5 +1,10 @@
 # model-router
 
+A router that picks the cheapest model and effort for each subagent. It ships
+for two harnesses, [Claude Code](#claude-code) and [Oh My Pi](#oh-my-pi) (omp).
+
+## Claude Code
+
 A Claude Code mod that picks the cheapest Claude model and effort for each
 subagent. On every Agent tool call it routes, the mod asks
 [TypeSafe Jev](https://docs.typesafe.ai) two questions: how much judgment and
@@ -16,7 +21,20 @@ The plugin is the folder [plugins/model-router](plugins/model-router). Its
 leaves the machine, the routing, the effort ladder and the troubleshooting
 steps. [PRIVACY.md](plugins/model-router/PRIVACY.md) is the privacy policy.
 
-## Install
+## Oh My Pi
+
+The omp plugin routes each `task` batch item to one of three router agents,
+`router_light`, `router_mid` and `router_heavy`, and sets the item's effort.
+Jev answers the same two questions as in Claude Code. The agents run on model
+roles you point at your own models.
+
+The plugin is the folder [plugins/model-router-omp](plugins/model-router-omp).
+Its [README](plugins/model-router-omp/README.md) covers the install, the setup
+skill, the effort modes, conflicts with other extensions and what leaves the
+machine. [PRIVACY.md](plugins/model-router-omp/PRIVACY.md) is the privacy
+policy. The same TypeSafe key is needed.
+
+## Install Claude Code
 
 The mod needs Claude Code v2.1.293 or later and a TypeSafe API key from
 https://console.typesafe.ai/keys. Claude Code keeps the key in your system's
@@ -78,10 +96,23 @@ The mod reads the key when it loads. After the key is saved, run
 
 ## Repository layout
 
-The plugin folder is what Claude Code installs, so it holds no `package.json`.
-The development tools live at the repository root: Claude Code installs the
-packages of a lockfile in a plugin's root onto every user's machine, and
-Anthropic's directory holds such a plugin for a reviewer.
+- `shared/` holds the routing core, `core.ts`, and the Jev client, `jev.ts`.
+  It holds the tier and work texts, `TIER_TEXTS` and `WORK_TEXTS`, with their
+  tests.
+- `plugins/model-router` is the Claude Code plugin.
+- `plugins/model-router-omp` is the omp plugin.
+- `.claude-plugin/marketplace.json` is the Claude Code catalog.
+- `.omp-plugin/marketplace.json` is the omp catalog. Each harness reads only
+  its own catalog.
+- `scripts/sync.ts` copies the shared files into the plugin folders, because
+  each plugin must run on its own. `npm run sync` writes the copies, and
+  `npm run check` fails when a copy differs or the plugin versions differ.
+- `evals/` and `scripts/evals.ts` run real clients against the plugins.
+
+The Claude Code plugin folder is what Claude Code installs, so it holds no
+`package.json`. The development tools live at the repository root: Claude Code
+installs the packages of a lockfile in a plugin's root onto every user's
+machine, and Anthropic's directory holds such a plugin for a reviewer.
 
 ## Development
 
@@ -96,7 +127,9 @@ node scripts/calibrate.ts
 
 `claude plugin test plugins/model-router` runs the tests, no network.
 `npm run check` type-checks the plugin's `hooks/` and `tests/` and the
-repository's `scripts/` with `tsc` and runs Biome, lint and formatting.
+repository's `scripts/` with `tsc`, checks that the shared copies and the
+plugin versions agree, runs the tests of `shared/`, `scripts/` and the omp
+plugin and the evals selftest, and runs Biome, lint and formatting.
 `npm run fix` formats and applies the safe lint fixes.
 
 The hooks and tests are checked against the declarations Claude Code writes
@@ -118,7 +151,7 @@ list in `.github/workflows/dependency-review.yml`.
 runs it. It takes the TypeSafe key from a masked prompt or stdin and sends
 `calibration.jsonl`, twenty-one labelled briefs, to the same endpoint. Its
 optional argument names the Jev model, `jev-latest` by default. It exits 1 when tier or work agreement falls below 85%. A miss is fixed by
-rewording a tier or work-level text in `plugins/model-router/hooks/router.ts`, never by lowering
+rewording a tier or work-level text in `shared/core.ts`, then running `npm run sync`, never by lowering
 the bar. The masked prompt keeps the key out of command lines and shell
 history. Pipe it only from a source that does not put the key in the command
 line.

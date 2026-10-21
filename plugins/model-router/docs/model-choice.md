@@ -19,8 +19,8 @@ work.
 
 ## The three tiers
 
-Jev scores the task against the three tier texts in `TIERS` in
-`hooks/router.ts`:
+Jev scores the task against the three tier texts in `TIER_TEXTS` in
+`shared/core.ts`:
 
 <table>
 <tr><th>Level</th><th>Model</th><th>Tier text</th></tr>
@@ -70,7 +70,8 @@ attempt on top.
 ## The work question and the arch
 
 Jev answers a second question in the same request: how much work the task
-takes once the judgment is settled. It scores the three `WORK_LEVELS` texts:
+takes once the judgment is settled. It scores the three `WORK_TEXTS` texts
+in `shared/core.ts`:
 
 - **0.** A short task: one or two mechanical steps in one place, nothing to
   diagnose, and the given command is the whole check.
@@ -101,6 +102,39 @@ cost and intelligence* measured Opus 5.5 at `xhigh` only 1.4 points above
 An effort named in the Agent call is kept, with or without a model. The hook
 sets the call's `model` and `effort` arguments, so the subagent starts with
 both, as if the caller had named them.
+
+## Effort on Oh My Pi
+
+The Oh My Pi plugin asks Jev the same two questions with the same texts. It
+names three agents instead of three models. Its work index maps to an effort
+on omp's own scale:
+
+| Work index | `router_light` | `router_mid`, `router_heavy` |
+| --- | --- | --- |
+| 0, a short task | `med` | `lo` |
+| 1, an ordinary task | `med` | `med` |
+| 2, a long or delicate task | `hi` | `hi` |
+
+Two parts have a source:
+
+- The light tier never gets `lo`. *Prompting Claude Haiku 5.5* warns that at
+  `low`, in long agent prompts, Haiku is more likely to skip a check or stop
+  early. The light tier is the small-model tier.
+- The ladder stops at `hi`, and `max` is never set. *Optimizing for cost and
+  intelligence* measured Opus 5.5 at `xhigh` only 1.4 points above `high`, for
+  2.5 times the cost.
+
+Two parts are provisional:
+
+- The mid and heavy rows copy the Sonnet and Opus rows of the Claude Code
+  ladder. Nothing measures them on the models a user assigns to the omp roles.
+- The light row copies the Haiku lesson to every small model. Anthropic
+  measured it on Haiku 5.5 only.
+
+omp may run other providers' models in these roles. The router's texts were
+calibrated on the Claude Code tiers, and their transfer to omp's model pools
+is unmeasured. Treat the omp ladder as provisional until a labelled set from
+omp exists.
 
 ## Escalation
 
