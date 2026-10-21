@@ -1,9 +1,9 @@
 ---
 heist: multi-harness
 phase: laundering
-status: completed
+status: awaiting-fixtures
 timestamp: 2026-10-21T00:00:00Z
-next-action: Heist complete. Merge pull request 39. The recorded-fixtures pull request follows the first dispatched eval run on the release.
+next-action: Dispatch the evals workflow once on the release, then land the recorded-fixtures pull request. AC-07 closes the heist with that pull request.
 artifacts:
   - docs/gangsta/multi-harness/specs/2026-10-21-contract.md
   - docs/gangsta/multi-harness/plans/2026-10-21-execution-plan.md
@@ -48,7 +48,7 @@ The inspector's verdict was APPROVE WITH CONCERNS: 1 high, 2 medium and 7 low fi
 
 ## Don's verdict
 
-The Don declared the heist complete on 2026-10-21 and asked for the merge.
+The Don approved the merge of pull request 39 on 2026-10-21. The heist stays open until the recorded-fixtures pull request lands, as AC-07 requires.
 
 ## Open
 
