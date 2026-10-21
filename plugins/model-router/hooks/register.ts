@@ -1,7 +1,7 @@
 import type { Register } from "claude-code";
-import { route } from "./router.ts";
+import { DEADLINE_MS, decisionSuffix, TransportError } from "./core.ts";
+import { type Decision, route, type Skipped } from "./router.ts";
 
-const HTTP_TIMEOUT_MS = 8000;
 // The debug log keeps 10000 characters of a line, and a body can carry 12000 of task text.
 const DEBUG_PIECE_CHARS = 9000;
 
@@ -44,6 +44,11 @@ export const register: Register = (on, options) => {
 		// reads it back empty after a restart, so the variable stands in when it is empty.
 		const apiKey = key(keyOption) ?? key(await $.env.get("TYPESAFE_API_KEY"));
 
+		// The deadline covers the whole call, retry included. Stopping aborts the retry wait, so no request follows a skip.
+		const stop = new AbortController();
+		const signal = AbortSignal.any([stop.signal, next.signal]);
+		let raw = "";
+
 		const post = async (body: string): Promise<string> => {
 			if (!apiKey) throw new Error("api_key unset");
 			const pieces = Math.ceil(body.length / DEBUG_PIECE_CHARS);
@@ -52,49 +57,55 @@ export const register: Register = (on, options) => {
 					`request ${i + 1}/${pieces} ${body.slice(i * DEBUG_PIECE_CHARS, (i + 1) * DEBUG_PIECE_CHARS)}`,
 					{ to: "debug" },
 				);
-			const stop = new AbortController();
-			const timeout = $.clock
-				.sleep(HTTP_TIMEOUT_MS, {
-					signal: AbortSignal.any([stop.signal, next.signal]),
+			const res = await $.http
+				.fetch("https://api.typesafe.ai/v1/systemone", {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${apiKey}`,
+						"Content-Type": "application/json",
+					},
+					body,
 				})
-				.then(() => {
-					throw new Error(`no answer in ${HTTP_TIMEOUT_MS} ms`);
+				.catch(() => {
+					throw new TransportError("network");
 				});
-			try {
-				const res = await Promise.race([
-					$.http.fetch("https://api.typesafe.ai/v1/systemone", {
-						method: "POST",
-						headers: {
-							Authorization: `Bearer ${apiKey}`,
-							"Content-Type": "application/json",
-						},
-						body,
-					}),
-					timeout,
-				]);
-				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-				return res.text;
-			} finally {
-				stop.abort();
-			}
+			if (!res.ok) throw new TransportError("http", { status: res.status });
+			raw = res.text;
+			return res.text;
 		};
 
-		const decision = await route(
-			{
-				role: call.subagent_type ?? "general-purpose",
-				description: call.description,
-				prompt: call.prompt,
-				model: jev,
-			},
-			post,
-		);
+		const deadline = $.clock
+			.sleep(DEADLINE_MS, { signal })
+			.then(
+				(): Skipped => ({ skipped: new TransportError("timeout").message }),
+			);
+		let decision: Decision | Skipped;
+		try {
+			decision = await Promise.race([
+				route(
+					{
+						role: call.subagent_type ?? "general-purpose",
+						description: call.description,
+						prompt: call.prompt,
+						model: jev,
+					},
+					post,
+					{ sleep: (ms) => $.clock.sleep(ms, { signal }) },
+				),
+				deadline,
+			]);
+		} catch (err) {
+			decision = { skipped: err instanceof Error ? err.message : String(err) };
+		} finally {
+			stop.abort();
+		}
 		if ("skipped" in decision) {
 			$.ui.log(`skipped, ${decision.skipped}`);
 			return next(e);
 		}
 		const { level, model, workIndex, effort, probabilities } = decision;
 		const p = `${probabilities.tier[level].toFixed(2)}/${probabilities.work[workIndex].toFixed(2)}`;
-		const pick = `L${level} ${model} · ${keep ? "caller effort" : effort} · p=${p}`;
+		const pick = `L${level} ${model} · ${keep ? "caller effort" : effort} · p=${p}${decisionSuffix(raw)}`;
 		$.ui.log(pick);
 		const r = await next(keep ? { ...e, model } : { ...e, model, effort });
 		if ("deny" in r && r.deny !== undefined) $.ui.log("denied");

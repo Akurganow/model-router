@@ -114,7 +114,9 @@ test(
 		expect(h.received.effort).toBe("high");
 		expect(h.received.prompt).toBe(PROMPT);
 		expect(r.result).toBe("ok");
-		expect(h.logs).toEqual(["L0 haiku · high · p=0.90/0.60"]);
+		expect(h.logs).toEqual([
+			"L0 haiku · high · p=0.90/0.60 · jev jev-1.14.0 · 1/1 tok",
+		]);
 	},
 );
 
@@ -243,7 +245,10 @@ test(
 	{ options: { api_key: "test-key" } },
 	async ($, on) => {
 		const h = harness(on, "overloaded", 529);
-		await $.tool.call(agentCall());
+		const pending = $.tool.call(agentCall());
+		await h.clock.advance(300);
+		await pending;
+		expect(h.fetched).toBe(2);
 		expect(h.received.model).toBeUndefined();
 		expect(h.logs).toEqual(["skipped, HTTP 529"]);
 	},
@@ -360,7 +365,9 @@ test(
 		await $.tool.call(agentCall({ effort: "low" }));
 		expect(h.received.model).toBe("sonnet");
 		expect(h.received.effort).toBe("low");
-		expect(h.logs).toEqual(["L1 sonnet · caller effort · p=0.80/0.60"]);
+		expect(h.logs).toEqual([
+			"L1 sonnet · caller effort · p=0.80/0.60 · jev jev-1.14.0 · 1/1 tok",
+		]);
 	},
 );
 
@@ -386,7 +393,10 @@ test(
 		on("tool.call", () => ({ deny: "no" }));
 		const r: Outcome = await $.tool.call(agentCall());
 		expect(r.deny).toBe("no");
-		expect(logs).toEqual(["L0 haiku · high · p=0.90/0.60", "denied"]);
+		expect(logs).toEqual([
+			"L0 haiku · high · p=0.90/0.60 · jev jev-1.14.0 · 1/1 tok",
+			"denied",
+		]);
 	},
 );
 

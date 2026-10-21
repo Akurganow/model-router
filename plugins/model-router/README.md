@@ -27,8 +27,8 @@ asks six questions. The answers for this mod:
   and `effort`.
 - **Acts without asking you?** No. It approves or denies nothing. Your
   permission rules and prompts decide every call.
-- **Spends your usage?** No model calls on your plan. One request per routed
-  call goes to TypeSafe on your TypeSafe key.
+- **Spends your usage?** No model calls on your plan. Up to two requests per
+  routed call go to TypeSafe on your TypeSafe key.
 
 `claude plugin validate plugins/model-router` lists the same from the code: one hook,
 `tool.call{tool=Agent}`, the calls `$.clock.sleep`, `$.env.get`, `$.http.fetch`,
@@ -58,7 +58,7 @@ call to keep your own.
 
 ## What leaves the machine
 
-On each routed call the mod sends one HTTPS POST to
+On each routed call the mod sends an HTTPS POST to
 https://api.typesafe.ai/v1/systemone through Claude Code's own `$.http.fetch`,
 with your TypeSafe key as the bearer token. The body holds:
 
@@ -69,8 +69,16 @@ with your TypeSafe key as the bearer token. The body holds:
 
 Two steps run on the task text before it leaves. Fenced code blocks become a
 one-line size note. Token-shaped strings are masked: `Bearer …`, `sk-…` keys,
-and assignments to names ending in `key`, `token`, `secret` or `password`.
-Nothing else leaves the machine.
+and assignments to names ending in `key`, `token`, `secret` or `password`. A
+text over 12,000 characters keeps its start and its end, joined by a marker
+that says the middle is omitted. Nothing else leaves the machine.
+
+A routed call sends up to two requests. When the first fails on the network,
+or TypeSafe answers 408, 429 or a 5xx status, the mod sends the same request
+once more after 300 ms. A timeout and any other status are not retried. Both
+requests share one 8 s deadline. The first request can reach TypeSafe even
+when its answer never returns, so a retried network failure may be billed
+twice.
 
 The request is sent before Claude Code's permission check for the call.
 Before routing, the mod asks Claude Code's permission rules about the call's
@@ -119,13 +127,14 @@ tool. Three dispatches and what the mod does with them:
 The first runs on `haiku`. For it the log shows:
 
 ```
-model-router L0 haiku · medium · p=0.91/0.62
+model-router L0 haiku · medium · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok
 ```
 
-The second number is the probability of the chosen work index. A kept caller
-effort shows as `caller effort` in place of the ladder label. The pick is
-logged as the call starts, and a call that Claude Code then refuses adds a
-second line, `denied`.
+The second number is the probability of the chosen work index. The tail names
+the Jev model that answered and its input and output tokens. A part the answer
+lacks is left out. A kept caller effort shows as `caller effort` in place of
+the ladder label. The pick is logged as the call starts, and a call that
+Claude Code then refuses adds a second line, `denied`.
 
 ## Troubleshooting
 
@@ -139,8 +148,14 @@ second line, `denied`.
   `~/.claude/settings.json` instead.
 - The line says `skipped, HTTP 401`: TypeSafe rejected the key. Check it at
   https://console.typesafe.ai/keys.
-- The line says `skipped, no answer in 8000 ms`: the request timed out. The
-  call ran unchanged. Check the network and try again.
+- The line says `skipped, HTTP 429` or `skipped, HTTP 503`: TypeSafe refused
+  or failed twice, because the mod retried once. The call ran unchanged. Try
+  again later.
+- The line says `skipped, network error`: both requests failed before an
+  answer came. The call ran unchanged. Check the network and try again.
+- The line says `skipped, no answer in 8000 ms`: the request, with its retry,
+  got no answer in 8 s. The call ran unchanged. Check the network and try
+  again.
 - A subagent ran on a model you did not expect: a model pinned in an agent
   definition is overridden. Pass `model` in the Agent call to keep it.
 - A subagent thinks harder or less than you expect: the effort ladder in
@@ -150,7 +165,7 @@ second line, `denied`.
   The effort stayed with the call. Name `effort` in the Agent call.
 - A kind of task lands on the wrong tier: add a labelled brief to
   `calibration.jsonl` at the repository root and reword a tier text in
-  `hooks/router.ts`. Then run the calibration script.
+  `shared/core.ts`. Then run the calibration script.
 
 ## Support
 
