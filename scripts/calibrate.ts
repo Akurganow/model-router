@@ -1,17 +1,51 @@
 import { readFileSync } from "node:fs";
-import { route } from "../plugins/model-router/hooks/router.ts";
+import type { Fetch } from "@typesafe-ai/sdk";
+import { prepareBrief } from "../src/brief.ts";
+import {
+	type Decision,
+	LIMIT_REACHED,
+	ROUTING_LIMIT_MS,
+	route,
+	type Skipped,
+} from "../src/compose.ts";
+import { work } from "../src/effort.ts";
+import { tier } from "../src/model.ts";
 
 const AGREEMENT_BAR = 0.85;
-const JEV_URL = "https://api.typesafe.ai/v1/systemone";
-const model = process.argv[2] ?? "jev-latest";
 
-type Case = {
+export type Case = {
 	role: string;
 	description: string;
 	text: string;
 	expected: number;
 	work: number;
 };
+
+export async function runCase(
+	c: Case,
+	model: string,
+	apiKey: string,
+	fetchFn: Fetch,
+): Promise<Decision | Skipped> {
+	const limit = new AbortController();
+	const timer = setTimeout(() => limit.abort(LIMIT_REACHED), ROUTING_LIMIT_MS);
+	try {
+		return await route({
+			parts: [tier, work],
+			state: {
+				role: c.role,
+				description: c.description,
+				task: prepareBrief(c.text),
+			},
+			model,
+			apiKey,
+			fetchFn,
+			signal: limit.signal,
+		});
+	} finally {
+		clearTimeout(timer);
+	}
+}
 
 const readKey = async (): Promise<string> => {
 	const { stdin } = process;
@@ -50,74 +84,67 @@ const readKey = async (): Promise<string> => {
 	});
 };
 
-const key = await readKey();
-if (!key) {
-	console.error(
-		"usage: node scripts/calibrate.ts [model]  (enter the TypeSafe API key at the prompt, or pipe it on stdin; model defaults to jev-latest)",
-	);
-	process.exit(2);
-}
-
-// The alias resolves on the server, so the run records which model answered.
-const answeredBy = new Set<string>();
-const post = async (body: string): Promise<string> => {
-	const res = await fetch(JEV_URL, {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${key}`,
-			"Content-Type": "application/json",
-		},
-		body,
-	});
-	if (!res.ok) throw new Error(`HTTP ${res.status}`);
-	const text = await res.text();
-	try {
-		const { model } = JSON.parse(text);
-		if (typeof model === "string") answeredBy.add(model);
-	} catch {}
-	return text;
-};
-
-const cases: Case[] = readFileSync(
-	new URL("../calibration.jsonl", import.meta.url),
-	"utf8",
-)
-	.split("\n")
-	.filter((line) => line.trim() !== "")
-	.map((line) => JSON.parse(line));
-
-let tierHits = 0;
-let workHits = 0;
-for (const c of cases) {
-	const d = await route(
-		{ role: c.role, description: c.description, prompt: c.text, model },
-		post,
-	);
-	const head = c.text.slice(0, 60).replace(/\n/g, " ");
-	if ("skipped" in d) {
-		console.log(`skip  ${head}  ${d.skipped}`);
-		continue;
-	}
-	if (d.level === c.expected) tierHits += 1;
-	else
-		console.log(
-			`miss tier  expected ${c.expected}  got ${d.level}  p=${d.probabilities.tier[d.level].toFixed(2)}  ${head}`,
-		);
-	if (d.workIndex === c.work) workHits += 1;
-	else
-		console.log(
-			`miss work  expected ${c.work}  got ${d.workIndex}  p=${d.probabilities.work[d.workIndex].toFixed(2)}  ${head}`,
-		);
-}
-
-const agreement = (name: string, hits: number): number => {
-	const a = hits / cases.length;
+function hit(
+	name: string,
+	part: Decision["parts"][string] | undefined,
+	expected: number,
+	head: string,
+): boolean {
+	if (part?.level === expected) return true;
+	const p = part ? part.probabilities[part.level].toFixed(2) : "none";
 	console.log(
-		`${name} agreement ${(a * 100).toFixed(0)}% (${hits}/${cases.length}), bar ${AGREEMENT_BAR * 100}%`,
+		`miss ${name}  expected ${expected}  got ${part?.level}  p=${p}  ${head}`,
 	);
-	return a;
-};
-console.log(`${model} answered as ${[...answeredBy].join(", ") || "unknown"}`);
-const tierOk = agreement("tier", tierHits) >= AGREEMENT_BAR;
-const workOk = agreement("work", workHits) >= AGREEMENT_BAR;
-process.exit(tierOk && workOk ? 0 : 1);
+	return false;
+}
+
+async function main(): Promise<number> {
+	const model = process.argv[2] ?? "jev-latest";
+	const key = await readKey();
+	if (!key) {
+		console.error(
+			"usage: node scripts/calibrate.ts [model]  (enter the TypeSafe API key at the prompt, or pipe it on stdin; model defaults to jev-latest)",
+		);
+		return 2;
+	}
+	const cases: Case[] = readFileSync(
+		new URL("../calibration.jsonl", import.meta.url),
+		"utf8",
+	)
+		.split("\n")
+		.filter((line) => line.trim() !== "")
+		.map((line) => JSON.parse(line));
+
+	// The alias resolves on the server, so the run records which model answered.
+	const answeredBy = new Set<string>();
+	let tierHits = 0;
+	let workHits = 0;
+	for (const c of cases) {
+		const d = await runCase(c, model, key, fetch);
+		const head = c.text.slice(0, 60).replace(/\n/g, " ");
+		if ("skipped" in d) {
+			console.log(`skip  ${head}  ${d.skipped}`);
+			continue;
+		}
+		if (d.model) answeredBy.add(d.model);
+		const { tier: tierPart, work: workPart } = d.parts;
+		if (hit("tier", tierPart, c.expected, head)) tierHits += 1;
+		if (hit("work", workPart, c.work, head)) workHits += 1;
+	}
+
+	const agreement = (name: string, hits: number): number => {
+		const a = hits / cases.length;
+		console.log(
+			`${name} agreement ${(a * 100).toFixed(0)}% (${hits}/${cases.length}), bar ${AGREEMENT_BAR * 100}%`,
+		);
+		return a;
+	};
+	console.log(
+		`${model} answered as ${[...answeredBy].join(", ") || "unknown"}`,
+	);
+	const tierOk = agreement("tier", tierHits) >= AGREEMENT_BAR;
+	const workOk = agreement("work", workHits) >= AGREEMENT_BAR;
+	return tierOk && workOk ? 0 : 1;
+}
+
+if (import.meta.main) process.exit(await main());
