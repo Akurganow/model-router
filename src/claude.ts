@@ -99,6 +99,7 @@ const offered = new Map<string, string>();
 
 export function register(on: On, options: Options): void {
 	const jev = options.model === "jev-preview" ? "jev-preview" : "jev-latest";
+	offered.clear();
 	on("agent.offer", (_, e, next) => {
 		offered.set(e.agent, e.source);
 		return next(e);

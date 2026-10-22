@@ -1112,6 +1112,7 @@ var DEBUG_PIECE_CHARS = 9e3;
 var offered = /* @__PURE__ */ new Map();
 function register(on, options) {
   const jev = options.model === "jev-preview" ? "jev-preview" : "jev-latest";
+  offered.clear();
   on("agent.offer", (_, e, next) => {
     offered.set(e.agent, e.source);
     return next(e);
