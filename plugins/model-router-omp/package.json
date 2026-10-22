@@ -9,7 +9,7 @@
 	"repository": "https://github.com/Akurganow/model-router",
 	"omp": {
 		"extensions": [
-			"./extension/index.ts"
+			"./extension/index.js"
 		]
 	}
 }
