@@ -53,6 +53,12 @@ jobs:
 
       - uses: ./.github/actions/setup-claude-code
 
+      # The plugin runs the bundle, so the cases use a fresh build of src/ at this ref.
+      - name: Build the plugin bundles
+        run: |
+          npm ci
+          node scripts/build.ts
+
       - name: Install the plugin from the checkout
         run: |
           claude plugin marketplace add "$PWD"
@@ -107,6 +113,12 @@ jobs:
           echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
           version=$(node -p 'require("./package.json").dependencies["@oh-my-pi/pi-coding-agent"]')
           node_modules/.bin/omp --version | grep -F "$version"
+
+      # The plugin runs the bundle, so the cases use a fresh build of src/ at this ref.
+      - name: Build the plugin bundles
+        run: |
+          npm ci
+          node scripts/build.ts
 
       - name: Install the plugin from the checkout
         run: |
