@@ -12,14 +12,7 @@ An [Oh My Pi](https://github.com/can1357/oh-my-pi) (omp) plugin that picks a mod
 
 ## Install
 
-You need omp and a TypeSafe API key.
-
-```
-omp plugin marketplace add Akurganow/model-router
-omp plugin install model-router@model-router
-```
-
-Restart omp. It loads extension modules at startup.
+The [repository README](../../README.md#oh-my-pi) gives the install steps.
 
 The catalog is `.omp-plugin/marketplace.json` at the repository root. It lists this plugin only.
 
@@ -64,7 +57,7 @@ At spawn, the plugin returns the role for the item's level. It returns nothing w
 
 The plugin prints one line per batch. The line starts with `model-router`. It goes to omp's notice area, or to standard error when omp has no UI. Each eligible item adds one entry, numbered by its position in the call.
 
-```
+```text
 model-router task 1: L0 @smol · p=0.91 | task 2: L1 no change · p=0.62 | task 3: skipped, timeout
 ```
 
@@ -138,17 +131,9 @@ A failed request leaves the call unchanged. The item skips with its reason, and 
 
 ## Turn it off
 
-Disable the plugin, then restart omp. Nothing is sent while the plugin is disabled.
+[Turn off and uninstall](../../README.md#turn-off-and-uninstall) in the repository README gives the steps.
 
-```
-omp plugin disable model-router@model-router
-```
-
-Removing the key also stops routing. Every batch then reports `key unset`. To remove the plugin, run `omp plugin uninstall model-router@model-router`.
-
-## Development
-
-The extension is a bundle. `extension/index.js` is built from `src/` with `node scripts/build.ts`. omp loads only that file.
+Removing the key also stops routing. Every batch then reports `key unset`.
 
 ## Support
 

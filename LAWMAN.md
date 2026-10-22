@@ -7,6 +7,7 @@ contract_version: 1
 ## Read first
 
 - README.md
+- CONTRIBUTING.md
 - plugins/model-router/README.md
 - plugins/model-router/docs/model-choice.md
 - plugins/model-router-omp/README.md
