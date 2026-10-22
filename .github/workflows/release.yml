@@ -2,8 +2,9 @@ name: release
 
 # Releases the plugins with cocogitto (https://docs.cocogitto.io) straight on
 # main when a feat, fix or breaking commit follows the last tag. cog.toml has
-# the pre-bump hook that runs scripts/set-version.ts, which writes the version
-# into every plugin manifest.
+# the pre-bump hooks: scripts/set-version.ts writes the version into every
+# plugin manifest, and scripts/build.ts rebuilds the plugin bundles, so the
+# version commit carries both.
 #
 # The version commit and its tag are pushed with the release deploy key, the
 # actor the owner's ruleset on main admits for this push. A deploy-key push
@@ -38,12 +39,19 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          # The push goes over SSH with the deploy key, so the build steps
+          # never run beside a stored token.
+          persist-credentials: false
 
-      # The pre-bump hook runs scripts/set-version.ts, a TypeScript file that
-      # Node runs directly.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "24"
+      # The pre-bump hooks run scripts/set-version.ts and scripts/build.ts,
+      # TypeScript files that Node runs directly.
+      - uses: ./.github/actions/setup-node
+
+      # The build needs esbuild and the TypeSafe SDK from the lockfile.
+      - name: Install the dev tools
+        run: |
+          npm ci
+          npm audit signatures
 
       # Installs the pinned, checksum-verified cog on PATH for the later steps.
       - uses: ./.github/actions/setup-cog

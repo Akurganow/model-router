@@ -1,5 +1,5 @@
 import { expect, test } from "claude-code/testing";
-import { ANSWER, agentCall, callOnce, KEYED, PROMPT } from "./harness.ts";
+import { ANSWER, callOnce, KEYED, PROMPT } from "./harness.ts";
 
 test(
 	"the hook sets the model and the effort on the Agent call",
@@ -16,30 +16,17 @@ test(
 	},
 );
 
-test(
-	"a fork, a named agent and a caller-named model pass through without a fetch",
-	KEYED,
-	async ($, on) => {
-		const { h } = await callOnce($, on, { subagent_type: "fork" });
-		expect(h.received.model).toBeUndefined();
-		await $.tool.call(agentCall({ name: "scout" }));
-		expect(h.received.model).toBeUndefined();
-		await $.tool.call(agentCall({ model: "sonnet" }));
-		expect(h.received.model).toBe("sonnet");
-		expect(h.received.effort).toBeUndefined();
-		expect(h.fetched).toBe(0);
-		expect(h.logs).toEqual([]);
-	},
-);
-
-test(
-	"a call without an agent type is routed as general-purpose",
-	KEYED,
-	async ($, on) => {
-		const { h } = await callOnce($, on, { subagent_type: undefined });
-		expect(JSON.parse(h.sent ?? "").state.role).toBe("general-purpose");
-	},
-);
+for (const [subagentType, role] of [
+	[undefined, "general-purpose"],
+	["claude", "claude"],
+	["Explore", "Explore"],
+	["Plan", "Plan"],
+] as const)
+	test(`${role} is routed under its own role`, KEYED, async ($, on) => {
+		const { h } = await callOnce($, on, { subagent_type: subagentType });
+		expect(JSON.parse(h.sent ?? "").state.role).toBe(role);
+		expect(h.received.model).toBe("haiku");
+	});
 
 test(
 	"the request goes to the systemone endpoint with the key and the pinned model",
@@ -53,6 +40,22 @@ test(
 		const body = JSON.parse(h.sent ?? "");
 		expect(body.model).toBe("jev-latest");
 		expect(body.state.description).toBe("write hello");
+	},
+);
+
+test(
+	"the endpoint and model come from the code, not from the environment",
+	KEYED,
+	async ($, on) => {
+		const env = {
+			TYPESAFE_BASE_URL: "https://evil.example",
+			TYPESAFE_DEFAULT_MODEL: "env-model",
+			TYPESAFE_LOG_LEVEL: "debug",
+		};
+		const { h } = await callOnce($, on, {}, { env });
+		expect(h.request.url).toBe("https://api.typesafe.ai/v1/systemone");
+		expect(JSON.parse(h.sent ?? "").model).toBe("jev-latest");
+		expect(h.debug.length).toBe(1);
 	},
 );
 

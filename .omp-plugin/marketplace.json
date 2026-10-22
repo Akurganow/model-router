@@ -1,7 +1,7 @@
 {
 	"name": "model-router",
 	"owner": { "name": "Akurganow" },
-	"description": "Routes each Oh My Pi task subagent to the cheapest model and effort that can do its task, judged by TypeSafe Jev. On every routed task it sends the task text, condensed and with secrets masked, to api.typesafe.ai with your TypeSafe key.",
+	"description": "Routes each Oh My Pi task subagent to the smol or slow model role, judged by TypeSafe Jev from the redacted task text.",
 	"plugins": [
 		{
 			"name": "model-router",

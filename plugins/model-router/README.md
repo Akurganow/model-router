@@ -2,8 +2,8 @@
 
 The repository [README](../../README.md) says what this mod does and how to
 [install it](../../README.md#install). This file says what the mod can reach,
-what leaves the machine, the routing, the effort ladder and the
-troubleshooting steps.
+what leaves the machine, the routing, the effort ladder, the
+troubleshooting steps and the development commands.
 
 ## What this mod can reach
 
@@ -20,25 +20,41 @@ asks six questions. The answers for this mod:
 - **Sees your session?** The arguments of each Agent tool call. It sends the
   task, the description and the agent type. It reads `model`, `name` and
   `effort` to decide whether to route and whether to keep the caller's effort.
-  It asks Claude Code's permission verdict for the call through `$.tool.check`,
-  which opens no dialog and runs nothing. The verdict never leaves the machine.
-  It keeps nothing between calls.
+  It also sees the name and source of each agent Claude Code offers, to tell a
+  built-in from a user or plugin agent. It asks Claude Code's permission
+  verdict for the call through `$.tool.check`, which opens no dialog and runs
+  nothing. The verdict never leaves the machine. Between calls it keeps only
+  the latest source of each agent name, in memory.
 - **Changes your session?** Two arguments of that Agent tool call: `model`
-  and `effort`.
+  and `effort`. It sets `effort` only when the call names none.
 - **Acts without asking you?** No. It approves or denies nothing. Your
   permission rules and prompts decide every call.
-- **Spends your usage?** No model calls on your plan. Up to two requests per
-  routed call go to TypeSafe on your TypeSafe key.
+- **Spends your usage?** No model calls on your plan. Up to three requests per
+  routed call go to TypeSafe on your TypeSafe key: one request and up to two
+  retries.
 
-`claude plugin validate plugins/model-router` lists the same from the code: one hook,
-`tool.call{tool=Agent}`, the calls `$.clock.sleep`, `$.env.get`, `$.http.fetch`,
-`$.tool.check` and `$.ui.log`, and the one variable it reads.
+`claude plugin validate plugins/model-router` lists the same from the code.
+This is the whole surface:
+
+| Kind | Name | Why the mod has it |
+| --- | --- | --- |
+| hook | `agent.offer` | Records which agents Claude Code offers and from where. It passes each offer on unchanged. |
+| hook | `tool.call{tool=Agent}` | Routes the Agent call. |
+| call | `$.clock.after` | The TypeSafe SDK's timers run on it, for example its retry wait. |
+| call | `$.clock.sleep` | Times the 8 s limit. |
+| call | `$.env.get` | Reads `TYPESAFE_API_KEY`, the one variable the mod reads. |
+| call | `$.http.fetch` | Sends the request to TypeSafe. |
+| call | `$.tool.check` | Asks for the permission verdict of the call. |
+| call | `$.ui.log` | Writes the log line, and the request body to the debug log. |
+
+`tools/surface.json` in the repository lists the same names, and CI compares
+them with the validate output.
 
 ## Routing
 
-On each routed call the mod sets the model and the effort. One dim line per
-routed call shows the pick. To turn routing off, disable the plugin in
-`/plugin`.
+On each routed call the mod sets the model and, unless the call names one,
+the effort. One dim line per routed call shows the pick. To turn routing off,
+disable the plugin in `/plugin`.
 
 The `Jev model` row holds the TypeSafe alias the request names:
 
@@ -49,12 +65,41 @@ Both aliases move when TypeSafe ships a release, so the picks can shift with
 no change to the plugin. TypeSafe's [Models](https://docs.typesafe.ai/models)
 page says which version each alias points to.
 
-The mod routes Agent tool calls only. A fork, a named agent and a call that
-names a model pass through untouched. So do agents that a workflow script
-starts, or that another plugin starts without the Agent tool. The mod
-overrides a model or an effort pinned in an agent definition's frontmatter,
-because the call does not carry them. Name `model` or `effort` in the Agent
-call to keep your own.
+### Which calls are routed
+
+The mod routes a call to one of the built-in agents `general-purpose`,
+`claude`, `Explore` and `Plan`, as Claude Code ships them. A call with no
+`subagent_type` counts as `general-purpose`. The call must also set no
+`model`, must not be a fork and must have no `name`.
+
+Every other call passes through untouched:
+
+- A fork inherits its parent's model.
+- `statusline-setup` and `claude-code-guide` have a model of their own.
+- A user, project or plugin agent keeps its own choices. That holds for one
+  that takes the name of a built-in too: the mod routes a name only while the
+  latest offer for it comes from Claude Code itself.
+- A name Claude Code has not offered yet is not routed.
+- A call that sets a `model` or a `name` keeps what it set.
+
+Agents that a workflow script starts, or that another plugin starts without
+the Agent tool, pass through as well.
+
+### Precedence
+
+The mod sets the Agent call's `model`, the per-invocation parameter. Claude
+Code ranks that parameter first, above an agent definition's `model` and above
+`CLAUDE_CODE_SUBAGENT_MODEL`. So a routed call's model outranks
+`CLAUDE_CODE_SUBAGENT_MODEL`.
+
+Two settings outrank the mod:
+
+- `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` makes Claude Code ignore the model a call
+  passes, so the forced model wins.
+- `CLAUDE_CODE_EFFORT_LEVEL` takes precedence over the call's `effort`.
+
+An organization's `availableModels` list can also replace a blocked pick with
+another model.
 
 ## What leaves the machine
 
@@ -73,12 +118,17 @@ and assignments to names ending in `key`, `token`, `secret` or `password`. A
 text over 12,000 characters keeps its start and its end, joined by a marker
 that says the middle is omitted. Nothing else leaves the machine.
 
-A routed call sends up to two requests. When the first fails on the network,
-or TypeSafe answers 408, 429 or a 5xx status, the mod sends the same request
-once more after 300 ms. A timeout and any other status are not retried. Both
-requests share one 8 s deadline. The first request can reach TypeSafe even
-when its answer never returns, so a retried network failure may be billed
-twice.
+A routed call sends one request and up to two retries. The mod uses the
+official TypeSafe SDK. It retries a connection error, and a 408, 429 or 5xx
+status, up to three attempts in all. It waits for a `Retry-After` header when
+one comes, within the limit, and otherwise backs off for a short time. Any
+other status is not retried.
+
+One fixed 8 s limit covers the whole call, retries included. A 429 with a long
+`Retry-After` can hold a task for up to 8 s. The call then runs unchanged. The
+mod stops waiting at the limit, but it cannot recall a request in flight. A
+request can reach TypeSafe even when its answer never returns, so a retry after
+a network failure may be billed more than once.
 
 The request is sent before Claude Code's permission check for the call.
 Before routing, the mod asks Claude Code's permission rules about the call's
@@ -89,7 +139,9 @@ answer. To read each request as it left, start Claude Code with `--debug`. The
 mod writes each request body to the debug log, in numbered pieces when it is
 long. The key is never written.
 
-Any failure, from a missing key to a timeout, leaves the call unchanged.
+Any failure, from a missing key to a timeout, leaves the call unchanged. The
+log line then says `skipped` and names the cause, as
+[Troubleshooting](#troubleshooting) lists.
 
 [PRIVACY.md](PRIVACY.md) states the same in policy form.
 
@@ -107,8 +159,11 @@ middle's probability. The index then maps to an effort per model:
 | 2, a long or delicate task | xhigh | high | high |
 
 The router never sets Haiku below `medium`, because Anthropic measured early
-stops at `low`. `max` is never set. An effort named in the Agent call is kept,
-with or without a model. A model named in the call keeps both.
+stops at `low`. `max` is never set. A call that names an effort gets a model
+and keeps its effort. A call that names a model is not routed, so it keeps
+both. `CLAUDE_CODE_EFFORT_LEVEL` outranks either, as
+[Precedence](#precedence) says. Claude Code reads the per-invocation effort
+from v2.1.292.
 
 ## Examples
 
@@ -139,33 +194,63 @@ Claude Code then refuses adds a second line, `denied`.
 ## Troubleshooting
 
 - No log line appears: the plugin is disabled, the call passed through, or
-  your permission rules deny the Agent call. Forks, named agents and calls
-  that name a model pass through. Enable the plugin in `/plugin`.
-- The line says `model-router skipped, api_key unset`: the key is not set.
-  Set it as [Install](../../README.md#install) says for your app, then run
-  `/reload-plugins`. In the desktop app a saved key can read back as empty
-  after a restart, so set `TYPESAFE_API_KEY` in the `env` block of
-  `~/.claude/settings.json` instead.
-- The line says `skipped, HTTP 401`: TypeSafe rejected the key. Check it at
-  https://console.typesafe.ai/keys.
-- The line says `skipped, HTTP 429` or `skipped, HTTP 503`: TypeSafe refused
-  or failed twice, because the mod retried once. The call ran unchanged. Try
-  again later.
-- The line says `skipped, network error`: both requests failed before an
-  answer came. The call ran unchanged. Check the network and try again.
-- The line says `skipped, no answer in 8000 ms`: the request, with its retry,
-  got no answer in 8 s. The call ran unchanged. Check the network and try
-  again.
-- A subagent ran on a model you did not expect: a model pinned in an agent
-  definition is overridden. Pass `model` in the Agent call to keep it.
+  your permission rules deny the Agent call. Forks, named agents, calls that
+  name a model and agents other than the four built-ins pass through, as
+  [Routing](#which-calls-are-routed) lists. Enable the plugin in `/plugin`.
+- A routed call logs `skipped, <cause>` and runs unchanged. The causes are:
+  - `key unset`: neither the `api_key` option nor `TYPESAFE_API_KEY` holds a
+    key. Set one as [Install](../../README.md#install) says for your app, then
+    run `/reload-plugins`. In the desktop app a saved key can read back as
+    empty after a restart, so set `TYPESAFE_API_KEY` in the `env` block of
+    `~/.claude/settings.json` instead.
+  - `bad reply`: TypeSafe answered, but the answer lacks a valid score for
+    one of the two questions.
+  - `timeout`: no decision in 8 s. Check the network and try again.
+  - `cancelled`: Claude Code abandoned the call before the answer came, for
+    example because you interrupted it.
+  - `network error`: every attempt failed before an answer came. Check the
+    network and try again.
+  - `HTTP <status>`: TypeSafe answered with that status, after the retries for
+    a status that is retried. `HTTP 401` means TypeSafe rejected the key.
+    Check it at https://console.typesafe.ai/keys. `HTTP 429` and `HTTP 503`
+    mean TypeSafe refused or failed on every attempt. Try again later.
+  - `rejected request`: the SDK refused the request itself.
+  - `failed`: any other error.
+- A subagent ran on a model you did not expect: the mod did not route the
+  call, or `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` forced a model. Pass `model` in
+  the Agent call to choose one, unless the force is on.
 - A subagent thinks harder or less than you expect: the effort ladder in
-  [Effort](#effort) set it. Name `effort` in the Agent call to keep your own.
-- A subagent ran on a forced or substituted model at the router's effort:
-  `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` or `availableModels` replaced the pick.
-  The effort stayed with the call. Name `effort` in the Agent call.
+  [Effort](#effort) set it, or `CLAUDE_CODE_EFFORT_LEVEL` did. Name `effort`
+  in the Agent call to keep your own.
+- A subagent ran on a substituted model at the router's effort: your
+  organization's `availableModels` replaced the pick. The effort stayed with
+  the call. Name `effort` in the Agent call.
 - A kind of task lands on the wrong tier: add a labelled brief to
   `calibration.jsonl` at the repository root and reword a tier text in
-  `shared/core.ts`. Then run the calibration script.
+  `src/model.ts`. Then run the calibration script.
+
+## Development
+
+The hooks module, `hooks/register.js`, is a bundle. `node scripts/build.ts`
+builds it from `src/claude.ts` and checks its shape. The plugin loads the
+bundle, so build before you validate or test. Run from the repository root:
+
+```
+npm ci
+node scripts/build.ts
+claude plugin validate plugins/model-router
+claude plugin test plugins/model-router
+npx tsc -p src
+npx tsc -p .
+```
+
+- `claude plugin validate` lists the hooks and calls. CI adds `--strict`, and
+  `node scripts/check-surface.ts` compares the list with `tools/surface.json`.
+- `claude plugin test` runs the tests in `tests/`, with no network.
+- `tsc -p src` type-checks the sources. They declare the few mod types they
+  use, so they need nothing else.
+- `tsc -p .` type-checks the plugin tests. They need the declarations that
+  Claude Code writes beside a loaded mod, in `.claude-plugin/types`.
 
 ## Support
 

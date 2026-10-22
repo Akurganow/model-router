@@ -4,7 +4,6 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { ADAPTERS } from "./adapters.ts";
 import { type Case, check } from "./cases.ts";
-import { type Drift, recordDrift } from "./drift.ts";
 import { clientEnv, normalisePaths, scrub, TYPESAFE_KEY } from "./scrub.ts";
 import type { Evidence } from "./types.ts";
 
@@ -12,8 +11,9 @@ const CASE_TIMEOUT_MS = 600_000;
 const VERSION_TIMEOUT_MS = 30_000;
 const MAX_OUTPUT_BYTES = 64 * 1024 * 1024;
 const MS_PER_SECOND = 1000;
+export const JSON_INDENT = 2;
 
-export type CaseResult = {
+type CaseResult = {
 	case: string;
 	client: string;
 	clientVersion: string;
@@ -24,7 +24,6 @@ export type CaseResult = {
 	evidence: Evidence;
 	failures: string[];
 	passed: boolean;
-	drift?: Drift;
 	stdout: string;
 	stderr: string;
 };
@@ -72,13 +71,13 @@ function runClient(c: Case, workDir: string, env: Record<string, string>) {
 	return { adapter, run, version: (version.stdout ?? "").trim() };
 }
 
-export function runCase(c: Case, copiesDir: string): CaseResult {
+export function runCase(c: Case): CaseResult {
 	const workDir = mkdtempSync(join(tmpdir(), "evals-work-"));
 	try {
 		for (const [name, content] of Object.entries(c.files))
 			writeFileSync(
 				join(workDir, name),
-				`${JSON.stringify(content, null, 2)}\n`,
+				`${JSON.stringify(content, null, JSON_INDENT)}\n`,
 			);
 		for (const [name, text] of Object.entries(ADAPTERS[c.client]?.files ?? {}))
 			writeFileSync(join(workDir, name), text);
@@ -108,7 +107,6 @@ export function runCase(c: Case, copiesDir: string): CaseResult {
 			stdout: clean(stdout),
 			stderr: clean(stderr),
 		};
-		if (c.record.includes("drift")) result.drift = recordDrift(env, copiesDir);
 		return JSON.parse(clean(JSON.stringify(result))) as CaseResult;
 	} finally {
 		rmSync(workDir, { recursive: true, force: true });

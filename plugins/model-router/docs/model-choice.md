@@ -20,7 +20,7 @@ work.
 ## The three tiers
 
 Jev scores the task against the three tier texts in `TIER_TEXTS` in
-`shared/core.ts`:
+`src/model.ts`:
 
 <table>
 <tr><th>Level</th><th>Model</th><th>Tier text</th></tr>
@@ -60,7 +60,7 @@ when unsure. Tier 2 takes the tasks whose brief leaves the approach open.
 
 ## The tie margin
 
-`TIE_MARGIN = 0.1`. Jev returns a probability for each tier. When a higher tier
+`TIE_MARGIN = 0.1`, in `src/model.ts`. Jev returns a probability for each tier. When a higher tier
 comes within 0.1 of the most probable one, the router picks the highest such
 tier. A near tie therefore goes up, to the larger model. This matches
 *Choosing the right model*, where most workloads start with Opus 5.5. A tier
@@ -71,7 +71,7 @@ attempt on top.
 
 Jev answers a second question in the same request: how much work the task
 takes once the judgment is settled. It scores the three `WORK_TEXTS` texts
-in `shared/core.ts`:
+in `src/effort.ts`:
 
 - **0.** A short task: one or two mechanical steps in one place, nothing to
   diagnose, and the given command is the whole check.
@@ -80,7 +80,7 @@ in `shared/core.ts`:
 - **2.** A long or delicate task: many steps or files, hidden edge cases, or a
   wrong result that would look right.
 
-`WORK_PRIOR = [0.5, 1, 0.5]` weights the three answers. An end wins only when
+`WORK_PRIOR = [0.5, 1, 0.5]`, also in `src/effort.ts`, weights the three answers. An end wins only when
 Jev gives it more than twice the middle's probability. When both ends pass,
 the more probable end wins, and equal ends go to index 2.
 
@@ -99,36 +99,15 @@ Sonnet attempt.
 cost and intelligence* measured Opus 5.5 at `xhigh` only 1.4 points above
 `high`. That step cost 2.5 times as much.
 
-An effort named in the Agent call is kept, with or without a model. The hook
-sets the call's `model` and `effort` arguments, so the subagent starts with
-both, as if the caller had named them.
+The hook sets the call's `model` and `effort` arguments, so the subagent starts
+with both, as if the caller had named them. A call that names an effort gets a
+model and keeps its effort. A call that names a model is not routed.
 
-## Effort on Oh My Pi
-
-The Oh My Pi plugin asks Jev the same two questions with the same texts. It
-names three agents instead of three models. Its work index maps to an effort
-on omp's own scale:
-
-| Work index | `router_light` | `router_mid`, `router_heavy` |
-| --- | --- | --- |
-| 0, a short task | `med` | `lo` |
-| 1, an ordinary task | `med` | `med` |
-| 2, a long or delicate task | `hi` | `hi` |
-
-The ladder is the Claude Code ladder above, carried onto omp's coarse scale,
-and it rests on the same sources:
-
-- `med` is the resting point, as `medium` is in Claude Code. omp maps `med` to
-  the middle level of the role's model, the lower one of two on a model with
-  an even count. *Model configuration* gives `medium` as the default effort.
-- The light tier never runs at the model's lowest level, as Haiku never gets
-  `low`. When `med` lands there, the router asks for `hi`. *Prompting Claude
-  Haiku 5.5* warns that a small model at its lowest level is more likely to
-  skip a check or stop early.
-- The ladder stops at `high`. omp maps `hi` to the model's highest level, so
-  the setup caps it with `task.maxEffort` at `high`. *Optimizing for cost and
-  intelligence* measured Opus 5.5 at `xhigh` only 1.4 points above `high`, for
-  2.5 times the cost.
+Claude Code resolves a subagent's model from the call's `model` first, then
+the agent definition, then `CLAUDE_CODE_SUBAGENT_MODEL`. The routed model sits
+in the first place, so it outranks the variable.
+`CLAUDE_CODE_SUBAGENT_MODEL_FORCE` and `CLAUDE_CODE_EFFORT_LEVEL` outrank the
+plugin.
 
 ## Escalation
 

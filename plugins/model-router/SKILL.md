@@ -9,12 +9,17 @@ description: >
 
 # model-router
 
-A mod in this folder hooks every Agent tool call. For each call it routes, it
+A mod in this folder hooks the Agent tool call. For each call it routes, it
 asks TypeSafe Jev how much judgment and work the task needs and sets the
 subagent's model and effort. The model is `haiku` for lookup or transcription,
 `sonnet` for bounded judgment and `opus` for open judgment. One dim line per
 routed call appears in the transcript. To turn routing off, disable the
 plugin in `/plugin`.
+
+The mod routes only the built-in agents `general-purpose`, `claude`, `Explore`
+and `Plan`, and calls with no `subagent_type`. A call that sets a `model`, is a
+fork or has a `name` passes through, and so does a user, project or plugin
+agent.
 
 ## Escalation
 
@@ -29,17 +34,21 @@ or two fix rounds in a row make no progress.
 - Above opus, re-dispatch opus at `high`, then at `xhigh`. Use fable only
   when the user opted in. Otherwise stop and report.
 
-A model or an effort named in the Agent call is kept, so an escalated
-re-dispatch passes `model` and `effort` explicitly in the Agent call. The
-hook also overrides a model or an effort pinned in an agent definition's
-frontmatter, because the call does not carry them.
+An escalated re-dispatch passes `model` and `effort` explicitly in the Agent
+call. A call that names a model is not routed. A call that names only an effort
+gets a model and keeps its effort. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` and
+`CLAUDE_CODE_EFFORT_LEVEL` outrank the plugin.
 
 ## Commands
 
-From the plugin folder:
+From the repository root:
 
-- `claude plugin test .` runs the tests, no network.
+- `node scripts/build.ts` builds `hooks/register.js` from `src/`.
+- `claude plugin test plugins/model-router` runs the tests, no network.
+- `claude plugin validate plugins/model-router` lists the hooks and calls.
+- `npx tsc -p src` type-checks the sources. `npx tsc -p .` type-checks the
+  plugin tests, which need the declarations Claude Code writes beside a
+  loaded mod.
 - `node scripts/calibrate.ts [model]` takes the TypeSafe API key from a masked
   prompt or stdin, runs the labelled seed against Jev and prints misses and
   agreement. The model defaults to `jev-latest`.
-- `claude plugin validate .` lists the hooks and calls.

@@ -4,8 +4,6 @@ import { get, isRecord } from "./stream.ts";
 import type { Evidence } from "./types.ts";
 
 const ASSERTIONS = ["spawned", "routed", "line", "answered"] as const;
-const RECORDS = ["tier", "effort", "drift"] as const;
-const DRIFT_CLIENT = "omp";
 type Assertion = (typeof ASSERTIONS)[number];
 
 export type Case = {
@@ -18,7 +16,6 @@ export type Case = {
 	answer?: string;
 	files: Record<string, unknown>;
 	assert: Assertion[];
-	record: string[];
 };
 
 const FAILURES: Record<Assertion, (e: Evidence, c: Case) => string | null> = {
@@ -41,7 +38,7 @@ const isNames = (v: unknown): v is string[] =>
 
 function caseProblems(c: unknown, at: string): string[] {
 	if (!isRecord(c)) return [`${at}: expected an object`];
-	const { client, files, assert: asserts, record, answer } = c;
+	const { client, files, assert: asserts, answer } = c;
 	const problems: string[] = [];
 	for (const field of ["id", "client", "model", "keyEnv", "prompt"])
 		if (!isText(c[field]))
@@ -57,13 +54,6 @@ function caseProblems(c: unknown, at: string): string[] {
 				problems.push(`${at}: unknown assertion ${name}`);
 		if (asserts.includes("answered") && !isText(answer))
 			problems.push(`${at}: answered needs a non-empty answer`);
-	}
-	if (!isNames(record)) return [...problems, `${at}: record must be a list`];
-	for (const name of record) {
-		if (!(RECORDS as readonly string[]).includes(name))
-			problems.push(`${at}: unknown record ${name}`);
-		if (name === "drift" && client !== DRIFT_CLIENT)
-			problems.push(`${at}: drift is recorded for ${DRIFT_CLIENT} only`);
 	}
 	return problems;
 }

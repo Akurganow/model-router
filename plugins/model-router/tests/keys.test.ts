@@ -37,7 +37,7 @@ for (const [name, options, env, key] of [
 		if (key === null) {
 			expect(h.received.model).toBeUndefined();
 			expect(h.fetched).toBe(0);
-			expect(h.logs).toEqual(["skipped, api_key unset"]);
+			expect(h.logs).toEqual(["skipped, key unset"]);
 			return;
 		}
 		expect(h.auth).toBe(`Bearer ${key}`);

@@ -1,17 +1,21 @@
+import type { Level } from "../../src/part.ts";
 import { get, isRecord, jsonLines } from "./stream.ts";
-import type { Adapter, Evidence, Tier } from "./types.ts";
+import type { Adapter, Evidence } from "./types.ts";
 
 const SPAWN_TOOL = "task";
 // Background tasks, omp's default, let print mode exit before the subagent's answer arrives.
 const SETTINGS_OVERLAY = "omp-evals.yml";
-const ROUTER_AGENT = /^router_(?:light|mid|heavy)$/;
-// Without a UI the extension writes "model-router task <n>: L<tier> <agent> · <effort> · p=…" to stderr.
-const DECISION_ENTRY =
-	/^model-router (task \d+: L([012]) (router_\w+) · (caller effort|[^\s·]+) · p=\d+(?:\.\d+)?\/\d+(?:\.\d+)?.*)$/;
+// The extension prints "model-router task <n>: L<level> <role> · p=…" to stderr when omp has no UI.
+// A batch is one line of entries joined by " | ". The role is "no change" when the task keeps its model.
+const LINE_PREFIX = "model-router ";
+const ENTRY_SEPARATOR = " | ";
+const NO_CHANGE = "no change";
+const DECISION_ENTRY = new RegExp(
+	`^task \\d+: L(?<tier>[012]) (?<target>@\\w+|${NO_CHANGE}) · p=\\d+(?:\\.\\d+)?`,
+);
 
-// The extension rewrites the task input before the start event, so the event carries the routed agent.
-function spawnedAgents(stdout: string): (string | null)[] {
-	const agents: (string | null)[] = [];
+function spawnCount(stdout: string): number {
+	let count = 0;
 	for (const event of jsonLines(stdout)) {
 		if (
 			get(event, "type") !== "tool_execution_start" ||
@@ -20,16 +24,9 @@ function spawnedAgents(stdout: string): (string | null)[] {
 			continue;
 		const args = get(event, "args");
 		const tasks = isRecord(args) ? get(args, "tasks") : undefined;
-		if (!Array.isArray(tasks)) {
-			agents.push(null);
-			continue;
-		}
-		for (const item of tasks) {
-			const agent = isRecord(item) ? get(item, "agent") : undefined;
-			agents.push(typeof agent === "string" ? agent : null);
-		}
+		count += Array.isArray(tasks) ? tasks.length : 1;
 	}
-	return agents;
+	return count;
 }
 
 function lastReply(stdout: string): string | null {
@@ -51,7 +48,6 @@ function lastReply(stdout: string): string | null {
 }
 
 export const omp: Adapter = {
-	name: "omp",
 	files: { [SETTINGS_OVERLAY]: "async:\n  enabled: false\n" },
 	command: (prompt, model) => [
 		"omp",
@@ -77,24 +73,29 @@ export const omp: Adapter = {
 		prompt,
 	],
 	parse({ stdout, stderr }) {
-		const agents = spawnedAgents(stdout);
-		const first = agents[0] ?? null;
 		const evidence: Evidence = {
-			spawns: agents.length,
-			routed: first !== null && ROUTER_AGENT.test(first),
+			spawns: spawnCount(stdout),
+			routed: false,
 			line: null,
 			tier: null,
 			effort: null,
-			target: first,
+			target: null,
 			reply: lastReply(stdout),
 		};
 		for (const text of stderr.split("\n")) {
-			const match = DECISION_ENTRY.exec(text);
-			if (!match) continue;
-			evidence.line = match[1] ?? null;
-			evidence.tier = Number(match[2]) as Tier;
-			evidence.effort = match[4] ?? null;
-			break;
+			if (!text.startsWith(LINE_PREFIX)) continue;
+			for (const entry of text
+				.slice(LINE_PREFIX.length)
+				.split(ENTRY_SEPARATOR)) {
+				const groups = DECISION_ENTRY.exec(entry)?.groups;
+				if (!groups) continue;
+				evidence.routed = true;
+				evidence.line = entry;
+				const { tier, target } = groups;
+				evidence.tier = Number(tier) as Level;
+				evidence.target = target === NO_CHANGE ? null : (target ?? null);
+				return evidence;
+			}
 		}
 		return evidence;
 	},

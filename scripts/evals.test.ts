@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { type Case, check, validateCases } from "./evals/cases.ts";
 import { claude } from "./evals/claude.ts";
-import { bodyOf, recordDrift, sameBody } from "./evals/drift.ts";
 import { omp } from "./evals/omp.ts";
 import { missingKeys, runCase } from "./evals/run.ts";
 import { clientEnv, normalisePaths, scrub } from "./evals/scrub.ts";
@@ -14,11 +13,12 @@ const LINE = "L1 sonnet · medium · p=0.80/0.55 · jev jev-1.14.0 · 800/9 tok"
 const jsonl = (...events: object[]) =>
 	events.map((e) => JSON.stringify(e)).join("\n");
 const spawn = { type: "tool_use", name: "Agent", input: { prompt: "x" } };
-const ompTask = (agent: string) => ({
+const ompTask = {
 	type: "tool_execution_start",
 	toolName: "task",
-	args: { tasks: [{ agent, task: "read it" }] },
-});
+	args: { tasks: [{ agent: "task", task: "read it" }] },
+};
+const OMP_LINE = "task 1: L0 @smol · p=0.91 · jev jev-1.14.0 · 812/9 tok";
 
 test("claude: a ui_log decision line after an Agent call is routed evidence", () => {
 	const stdout = jsonl(
@@ -56,7 +56,12 @@ test("claude: a skipped line is not a decision line, and caller effort is read",
 		subtype: "ui_log",
 		text: "skipped, HTTP 401",
 	};
-	assert.equal(claude.parse({ stdout: jsonl(skipped), stderr: "" }).line, null);
+	for (const reason of ["key unset", "bad reply", "timeout", "HTTP 401"]) {
+		const stdout = jsonl({ ...skipped, text: `skipped, ${reason}` });
+		const evidence = claude.parse({ stdout, stderr: "" });
+		assert.equal(evidence.line, null);
+		assert.equal(evidence.routed, false);
+	}
 	const kept = { ...skipped, text: "L2 opus · caller effort · p=0.9/0.6" };
 	assert.equal(
 		claude.parse({ stdout: jsonl(kept), stderr: "" }).effort,
@@ -71,33 +76,55 @@ test("claude: the command asks for stream-json with Agent allowed", () => {
 	assert.ok(argv.includes("Agent"));
 });
 
-test("omp: a router agent in the task args and the stderr line are evidence", () => {
-	const stderr = `model-router task 1: L0 router_light · med · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok\n`;
+test("omp: the decision line on stderr is the routing evidence", () => {
 	const evidence = omp.parse({
-		stdout: jsonl(ompTask("router_light")),
-		stderr,
+		stdout: jsonl(ompTask),
+		stderr: `model-router ${OMP_LINE}\n`,
 	});
-	assert.equal(evidence.spawns, 1);
+	assert.deepEqual(evidence, {
+		spawns: 1,
+		routed: true,
+		line: OMP_LINE,
+		tier: 0,
+		effort: null,
+		target: "@smol",
+		reply: null,
+	});
+});
+
+test("omp: a batch line gives the first decision entry, and no change has no target", () => {
+	const stderr = `model-router task 1: skipped, HTTP 401 | task 2: L1 no change · p=0.80 | task 3: L2 @slow · p=0.90\n`;
+	const evidence = omp.parse({ stdout: jsonl(ompTask), stderr });
+	assert.equal(evidence.line, "task 2: L1 no change · p=0.80");
+	assert.equal(evidence.tier, 1);
+	assert.equal(evidence.target, null);
 	assert.equal(evidence.routed, true);
-	assert.equal(evidence.tier, 0);
-	assert.equal(evidence.effort, "med");
-	assert.equal(evidence.target, "router_light");
-	assert.match(evidence.line ?? "", /^task 1: L0 router_light/);
 });
 
-test("omp: the plain task agent is a spawn that was not routed", () => {
-	const evidence = omp.parse({ stdout: jsonl(ompTask("task")), stderr: "" });
+test("omp: a spawn with no decision line was not routed", () => {
+	const evidence = omp.parse({ stdout: jsonl(ompTask), stderr: "" });
 	assert.equal(evidence.spawns, 1);
 	assert.equal(evidence.routed, false);
 	assert.equal(evidence.line, null);
+	assert.equal(evidence.target, null);
 });
 
-test("omp: a skipped entry is no decision line, and no spawn means no routing", () => {
-	const stderr = "model-router task 1: skipped, api_key unset\n";
-	const evidence = omp.parse({ stdout: "", stderr });
-	assert.equal(evidence.spawns, 0);
-	assert.equal(evidence.routed, false);
-	assert.equal(evidence.line, null);
+test("omp: a skipped entry is no decision line, whatever the reason", () => {
+	for (const reason of ["key unset", "bad reply", "no @smol or @slow model"]) {
+		const stderr = `model-router task 1: skipped, ${reason}\n`;
+		const evidence = omp.parse({ stdout: "", stderr });
+		assert.equal(evidence.spawns, 0);
+		assert.equal(evidence.routed, false);
+		assert.equal(evidence.line, null);
+	}
+});
+
+test("omp: the agent name is no evidence of routing", () => {
+	const stdout = jsonl({
+		...ompTask,
+		args: { tasks: [{ agent: "router_light", task: "x" }] },
+	});
+	assert.equal(omp.parse({ stdout, stderr: "" }).routed, false);
 });
 
 test("omp: the last assistant text is the reply", () => {
@@ -170,7 +197,6 @@ const base: Case = {
 	prompt: "p",
 	files: { "package.json": { name: "n" } },
 	assert: ["spawned", "routed", "line"],
-	record: ["tier", "effort"],
 };
 
 test("validateCases accepts a good case and names each defect", () => {
@@ -183,15 +209,6 @@ test("validateCases accepts a good case and names each defect", () => {
 	assert.ok(problems.some((p) => p.includes("unknown client nope")));
 	assert.ok(problems.some((p) => p.includes("unknown assertion magic")));
 	assert.ok(problems.some((p) => p.includes("duplicate id c")));
-});
-
-test("validateCases allows the drift record for omp only", () => {
-	const withDrift = { ...base, record: ["drift"] };
-	assert.ok(
-		validateCases({ cases: [withDrift] }).some((p) => p.includes("drift")),
-	);
-	const ompCase = { ...withDrift, client: "omp", keyEnv: "OPENROUTER_API_KEY" };
-	assert.deepEqual(validateCases({ cases: [ompCase] }), []);
 });
 
 test("check lists one failure per broken assertion", () => {
@@ -238,14 +255,6 @@ test("answered needs the case's answer in the reply", () => {
 	]);
 });
 
-test("drift compares bodies after the front matter, ignoring edge blank lines", () => {
-	const bundled = "---\nname: task\n---\n\nWorker.\nDo it.\n";
-	const copy = "---\n# note\nname: router_light\n---\nWorker.\nDo it.\n\n";
-	assert.equal(bodyOf(bundled), "Worker.\nDo it.");
-	assert.equal(sameBody(bundled, copy), true);
-	assert.equal(sameBody(bundled, copy.replace("Do it", "Do that")), false);
-});
-
 test("the committed cases are valid", () => {
 	const raw = JSON.parse(
 		readFileSync(new URL("../evals/cases.json", import.meta.url), "utf8"),
@@ -258,7 +267,7 @@ test("a client binary that is missing is a recorded failure, not a crash", () =>
 	const path = process.env[PATH_VAR];
 	process.env[PATH_VAR] = mkdtempSync(join(tmpdir(), "evals-empty-path-"));
 	try {
-		const result = runCase(base, tmpdir());
+		const result = runCase(base);
 		assert.equal(result.passed, false);
 		assert.ok(
 			result.failures.some((f) => f.startsWith("client failed to run")),
@@ -267,56 +276,6 @@ test("a client binary that is missing is a recorded failure, not a crash", () =>
 	} finally {
 		process.env[PATH_VAR] = path;
 	}
-});
-
-const AGENT_BODY = "---\nname: task\n---\nWorker agent.\n";
-
-// A stand-in omp whose `agents unpack --dir <dir>` writes one bundled task agent.
-function fakeOmpPath(): string {
-	const bin = mkdtempSync(join(tmpdir(), "evals-fake-omp-"));
-	writeFileSync(
-		join(bin, "omp"),
-		`#!/bin/sh\ncat > "$4/task.md" <<'BODY'\n${AGENT_BODY}BODY\n`,
-	);
-	chmodSync(join(bin, "omp"), 0o755);
-	return bin;
-}
-
-function copiesWith(body: string): string {
-	const dir = mkdtempSync(join(tmpdir(), "evals-copies-"));
-	for (const name of ["router_light", "router_mid", "router_heavy"])
-		writeFileSync(join(dir, `${name}.md`), `---\nname: ${name}\n---\n${body}`);
-	return dir;
-}
-
-test("drift: copies with the bundled body read as the same", () => {
-	const drift = recordDrift(
-		{ PATH: `${fakeOmpPath()}:/bin:/usr/bin` },
-		copiesWith("Worker agent.\n"),
-	);
-	assert.deepEqual(drift, {
-		agents: { router_light: "same", router_mid: "same", router_heavy: "same" },
-	});
-});
-
-test("drift: a changed copy reads as drifted", () => {
-	const drift = recordDrift(
-		{ PATH: `${fakeOmpPath()}:/bin:/usr/bin` },
-		copiesWith("Another body.\n"),
-	);
-	assert.deepEqual(drift, {
-		agents: {
-			router_light: "drifted",
-			router_mid: "drifted",
-			router_heavy: "drifted",
-		},
-	});
-});
-
-test("drift: an omp that cannot run is an error, not a throw", () => {
-	const empty = mkdtempSync(join(tmpdir(), "evals-empty-path-"));
-	const drift = recordDrift({ PATH: empty }, copiesWith("Worker agent.\n"));
-	assert.ok("error" in drift);
 });
 
 test("missingKeys names the client key and the TypeSafe key that are unset", () => {

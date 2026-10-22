@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // claude plugin validate --json lists, per module, one "hooks:" and one "calls:" note.
+// A call made through a helper carries a "(via helper)" suffix. The helper names are internal, so the check drops them.
 type Surface = { hooks: string[]; calls: string[] };
 type Report = { contents: { notes?: string[] }[] };
 
@@ -25,7 +26,8 @@ const listed = (kind: keyof Surface): string[] =>
 			(note) =>
 				note
 					.match(new RegExp(`^\\S+ ${kind}: (.+)$`))?.[1]
-					?.split(",")
+					?.replace(/ \(via [^)]*\)/g, "")
+					.split(",")
 					.map((s) => s.trim()) ?? [],
 		)
 		.sort();
