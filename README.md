@@ -19,9 +19,10 @@ Picks a model for each subagent, judged by TypeSafe Jev. For Claude Code and Oh 
 
 ## How it works
 
-**Claude Code.** On each Agent tool call it routes, the plugin asks
-[TypeSafe Jev](https://docs.typesafe.ai) two questions: how much judgment and
-how much work the task needs. Then it sets the call's `model` and `effort`.
+**Claude Code.** On each Agent tool call it routes
+([which calls](plugins/model-router/README.md#which-calls-are-routed)), the
+plugin asks [TypeSafe Jev](https://docs.typesafe.ai) two questions: how much
+judgment and how much work the task needs. Then it sets the call's `model` and `effort`.
 The model is `haiku` for lookup or transcription, `sonnet` for bounded
 judgment and `opus` for open judgment.
 [Effort](plugins/model-router/README.md#effort) shows the effort ladder.
