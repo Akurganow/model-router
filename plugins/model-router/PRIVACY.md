@@ -69,8 +69,9 @@ those requests.
 
 The plugin stores nothing on disk itself. With `--debug`, Claude Code writes
 each request body to its debug log file. In memory the plugin holds the
-configured key while the hook is registered, and no routing state between
-calls. Claude Code keeps your API key in your system's secure storage as a
+configured key while the hook is registered. It also holds the latest source
+of each agent name Claude Code offers, such as `built-in`. Claude Code keeps
+your API key in your system's secure storage as a
 sensitive plugin option. The plugin reads it only to send it as the bearer
 token of that request. When that option is empty, the plugin reads the key
 from the environment variable `TYPESAFE_API_KEY`. It reads nothing else from

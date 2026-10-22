@@ -63,7 +63,10 @@ those requests.
 
 ## What the plugin stores
 
-The plugin stores nothing on disk and keeps no routing state between calls.
+The plugin stores nothing on disk. In memory it holds up to 64 routing
+decisions, each a model role and its log line. A decision leaves when its
+subagent spawns, when its task call ends before omp reports the subagent's id,
+or when newer decisions push it out.
 It holds the key in memory only while it sends a request. It reads the key from
 omp's own TypeSafe credential, and when that is empty, from the environment
 variable `TYPESAFE_API_KEY`. It sends the key only to the endpoint above, as

@@ -109,33 +109,6 @@ in the first place, so it outranks the variable.
 `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` and `CLAUDE_CODE_EFFORT_LEVEL` outrank the
 plugin.
 
-## Effort on Oh My Pi
-
-The Oh My Pi plugin asks Jev the same two questions with the same texts. It
-names three agents instead of three models. Its work index maps to an effort
-on omp's own scale:
-
-| Work index | `router_light` | `router_mid`, `router_heavy` |
-| --- | --- | --- |
-| 0, a short task | `med` | `lo` |
-| 1, an ordinary task | `med` | `med` |
-| 2, a long or delicate task | `hi` | `hi` |
-
-The ladder is the Claude Code ladder above, carried onto omp's coarse scale,
-and it rests on the same sources:
-
-- `med` is the resting point, as `medium` is in Claude Code. omp maps `med` to
-  the middle level of the role's model, the lower one of two on a model with
-  an even count. *Model configuration* gives `medium` as the default effort.
-- The light tier never runs at the model's lowest level, as Haiku never gets
-  `low`. When `med` lands there, the router asks for `hi`. *Prompting Claude
-  Haiku 5.5* warns that a small model at its lowest level is more likely to
-  skip a check or stop early.
-- The ladder stops at `high`. omp maps `hi` to the model's highest level, so
-  the setup caps it with `task.maxEffort` at `high`. *Optimizing for cost and
-  intelligence* measured Opus 5.5 at `xhigh` only 1.4 points above `high`, for
-  2.5 times the cost.
-
 ## Escalation
 
 `SKILL.md` gives the rule:
