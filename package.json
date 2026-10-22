@@ -5,8 +5,7 @@
 		"npm": ">=11.10.0"
 	},
 	"scripts": {
-		"check": "tsc -p . && tsc -p src && tsc -p scripts && node scripts/sync.ts --check && node --test 'src/*.test.ts' 'shared/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-omp/tests/*.test.ts' && biome ci --error-on-warnings .",
-		"sync": "node scripts/sync.ts",
+		"check": "tsc -p . && tsc -p src && tsc -p scripts && node scripts/set-version.ts --check && node --test 'src/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-omp/tests/*.test.ts' && biome ci --error-on-warnings .",
 		"fix": "biome check --write ."
 	},
 	"devDependencies": {

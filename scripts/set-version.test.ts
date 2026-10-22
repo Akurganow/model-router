@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { MANIFESTS, setVersion } from "./set-version.ts";
+import { checkVersions, MANIFESTS } from "./manifests.ts";
+import { setVersion } from "./set-version.ts";
 import { useTempRoot } from "./temp-root.ts";
 
 const claude = "plugins/model-router/.claude-plugin/plugin.json";
@@ -99,10 +101,27 @@ test("a nested catalog version is rewritten and nothing else changes", () => {
 	assert.equal(read(catalog), catalogText.replace("0.11.0", "1.2.3"));
 });
 
-test("the default list names the Claude Code and omp manifests and the omp catalog", () => {
-	assert.ok(MANIFESTS.includes(claude));
-	assert.ok(MANIFESTS.includes(omp));
-	assert.ok(MANIFESTS.includes(catalog));
+test("the writer writes every manifest in the list, the catalog included, and the check agrees", () => {
+	for (const { path, versionPath } of MANIFESTS) {
+		const json = versionPath.reduceRight<unknown>(
+			(inner, key) => (typeof key === "number" ? [inner] : { [key]: inner }),
+			"0.11.0",
+		);
+		put(path, `${JSON.stringify(json, null, "\t")}\n`);
+	}
+	assert.deepEqual(
+		setVersion(box.root, "1.2.3"),
+		MANIFESTS.map((manifest) => manifest.path),
+	);
+	assert.deepEqual(checkVersions(box.root), []);
+	assert.equal(JSON.parse(read(catalog)).plugins[0].version, "1.2.3");
+});
+
+test("the writer and the check import no esbuild", () => {
+	for (const file of ["./set-version.ts", "./manifests.ts"]) {
+		const source = readFileSync(new URL(file, import.meta.url), "utf8");
+		assert.doesNotMatch(source, /esbuild/);
+	}
 });
 
 test("the command refuses a version that is not X.Y.Z with exit code 2", () => {

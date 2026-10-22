@@ -50,7 +50,8 @@ jobs:
       - name: Verify the registry signatures
         run: npm audit signatures
 
-      # The plugin runs the bundle, so validation and tests check a fresh build of src/.
+      # Each plugin runs a bundle, so validation and tests check a fresh build of
+      # src/. The step builds the Claude Code and the omp bundle.
       - name: Build the plugin bundles
         run: node scripts/build.ts
 
@@ -76,10 +77,9 @@ jobs:
       - name: Run the tests
         run: claude plugin test plugins/model-router
 
-      # shared/ is copied byte for byte into the plugin folders, and every
-      # manifest carries the same version.
-      - name: Check the shared copies and versions
-        run: node scripts/sync.ts --check
+      # Every manifest, the omp catalog included, carries the same version.
+      - name: Check the versions
+        run: node scripts/set-version.ts --check
 
-      - name: Run the shared, script and omp tests
-        run: node --test 'shared/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-omp/tests/*.test.ts'
+      - name: Run the source, script and omp tests
+        run: node --test 'src/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-omp/tests/*.test.ts'

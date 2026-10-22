@@ -1,14 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-
-// Every harness ships from one release. A missing manifest is skipped here;
-// scripts/sync.ts --check fails on it.
-export const MANIFESTS: readonly string[] = [
-	"plugins/model-router/.claude-plugin/plugin.json",
-	"plugins/model-router-omp/package.json",
-	".omp-plugin/marketplace.json",
-];
+import { checkVersions, MANIFESTS } from "./manifests.ts";
 
 // Only the version line changes, so each file keeps the formatting biome ci checks.
 // Any tab depth matches: the omp catalog nests its version inside plugins[0].
@@ -17,7 +10,7 @@ const line = /^(\t+"version": ")\d+\.\d+\.\d+(",?)$/m;
 export function setVersion(
 	root: string,
 	version: string,
-	manifests: readonly string[] = MANIFESTS,
+	manifests: readonly string[] = MANIFESTS.map(({ path }) => path),
 ): string[] {
 	// Every manifest is checked before any is written, so a failed bump leaves the tree as it was.
 	const pending = manifests
@@ -32,13 +25,19 @@ export function setVersion(
 }
 
 if (import.meta.main) {
+	const root = fileURLToPath(new URL("../", import.meta.url));
 	const version = process.argv[2];
+	if (version === "--check") {
+		const problems = checkVersions(root);
+		for (const problem of problems) console.error(problem);
+		process.exit(problems.length === 0 ? 0 : 1);
+	}
 	if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
-		console.error("usage: node scripts/set-version.ts X.Y.Z");
+		console.error("usage: node scripts/set-version.ts X.Y.Z | --check");
 		process.exit(2);
 	}
 	try {
-		setVersion(fileURLToPath(new URL("../", import.meta.url)), version);
+		setVersion(root, version);
 	} catch (error) {
 		console.error(error instanceof Error ? error.message : error);
 		process.exit(1);
