@@ -17,8 +17,7 @@ body holds:
 - the caller's one-line description of the task
 - the Jev alias you chose, `jev-latest` or `jev-preview`, and two fixed
   scoring questions, `tier` and `work`, with their three descriptions each,
-  text that ships with the plugin
-- your TypeSafe API key, as the bearer token.
+  text that ships with the plugin.
 
 The request headers hold:
 
