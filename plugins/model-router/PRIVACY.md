@@ -7,16 +7,29 @@ what the plugin sends, where it goes, and what the plugin keeps. Effective
 ## What the plugin sends
 
 On every Agent tool call it routes, the plugin sends an HTTPS POST to
-TypeSafe at https://api.typesafe.ai/v1/systemone. The request holds:
+TypeSafe at https://api.typesafe.ai/v1/systemone. The plugin bundles the
+official TypeSafe SDK, `@typesafe-ai/sdk`, which builds the request. The JSON
+body holds:
 
 - the subagent's task text, condensed and with token-shaped strings masked.
   A text over 12,000 characters keeps its start and its end
 - the subagent's type
 - the caller's one-line description of the task
 - the Jev alias you chose, `jev-latest` or `jev-preview`, and two fixed
-  scoring questions with their three descriptions each, text that ships with
-  the plugin
+  scoring questions, `tier` and `work`, with their three descriptions each,
+  text that ships with the plugin
 - your TypeSafe API key, as the bearer token.
+
+The request headers hold:
+
+- `authorization`, with the key
+- `accept` and `content-type`, both `application/json`
+- `user-agent` and `x-typesafe-sdk`, both naming the SDK and its version,
+  `typesafe-sdk/0.7.0`
+- `x-typesafe-runtime`, which reads `unknown` under Claude Code
+- `x-typesafe-retry-count`, `1` or `2`, on a retry only.
+
+Claude Code adds the transport headers, such as `host` and `content-length`.
 
 The task text holds whatever the caller put in it, which can include code. The
 request is sent before Claude Code decides whether the call may run. Before
@@ -26,16 +39,24 @@ request. A rule on the model the plugin picks, a PreToolUse hook and the
 auto-mode classifier decide after the request left. A call that prompts you
 for permission is sent before you answer. That list is the whole request. The
 key identifies your TypeSafe account to TypeSafe. The plugin sends no
-telemetry and no other identifier of you or your machine. With Claude Code's
+telemetry and no identifier of you or your machine. With Claude Code's
 `--debug` flag, the plugin writes each request body to your debug log, in
 numbered pieces when it is long. The key is never written.
 
-A routed call sends up to two requests. When the first fails on the network,
-or TypeSafe answers 408, 429 or a 5xx status, the plugin sends the same request
-once more after 300 ms. A timeout and any other status are not retried. The
-first request can reach TypeSafe even when its answer never returns, so a
-retried network failure may be billed twice. The retry sends nothing that the
-first request did not.
+The key goes only to https://api.typesafe.ai/v1/systemone. No environment
+variable moves it to another host.
+
+## Requests and billing
+
+A routed call sends one request and up to two retries, three attempts in all.
+The SDK retries a connection error and an HTTP status 408, 429 or 5xx. It
+waits for a `Retry-After` header when one comes, within the limit. It retries
+no other status. The retries send the same body as the first request.
+
+One fixed 8 s limit covers the whole call, retries included. The plugin
+stops waiting at the limit, but it cannot recall a request in flight. A
+request can reach TypeSafe even when its answer never returns, so a retry
+after a network failure may be billed more than once.
 
 ## What TypeSafe does with it
 

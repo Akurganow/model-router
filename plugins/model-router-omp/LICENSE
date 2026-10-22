@@ -24,15 +24,12 @@ SOFTWARE.
 
 Third-party notice
 
-The agent definitions in agents/ copy the body, tools and spawn policy of the
-bundled `task` agent of Oh My Pi (https://github.com/can1357/oh-my-pi), tag
-v18.2.8. Oh My Pi is distributed under this licence:
+`extension/index.js` bundles the package `@typesafe-ai/sdk`, the TypeSafe SDK. It is
+distributed under this licence:
 
 MIT License
 
-Copyright (c) 2025 Mario Zechner
-Copyright (c) 2025-2026 Can Bölük
-Copyright (c) 2026 Stencil Labs, Inc.
+Copyright (c) 2026 TypeSafe
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

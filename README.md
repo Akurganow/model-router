@@ -1,7 +1,7 @@
 # model-router
 
-A router that picks the cheapest model and effort for each subagent. It ships
-for two harnesses, [Claude Code](#claude-code) and [Oh My Pi](#oh-my-pi) (omp).
+A router that picks a cheaper model for each subagent. It ships for two
+harnesses, [Claude Code](#claude-code) and [Oh My Pi](#oh-my-pi) (omp).
 
 ## Claude Code
 
@@ -23,20 +23,24 @@ steps. [PRIVACY.md](plugins/model-router/PRIVACY.md) is the privacy policy.
 
 ## Oh My Pi
 
-The omp plugin routes each `task` batch item to one of three router agents,
-`router_light`, `router_mid` and `router_heavy`, and sets the item's effort.
-Jev answers the same two questions as in Claude Code. The agents run on model
-roles you point at your own models.
+The omp plugin scores each `task` batch item with Jev, which answers one
+question: how much judgment the task needs. For lookup work it gives omp's
+bundled `task` agent the `smol` role at spawn. For open judgment it gives the
+`slow` role. For bounded judgment it changes nothing. It sets no effort and
+never changes the tool input. A named agent keeps its own model. The roles run
+on the models you point `smol` and `slow` at.
 
 The plugin is the folder [plugins/model-router-omp](plugins/model-router-omp).
 Its [README](plugins/model-router-omp/README.md) covers the install, the setup
-skill, the effort modes, conflicts with other extensions and what leaves the
-machine. [PRIVACY.md](plugins/model-router-omp/PRIVACY.md) is the privacy
+skill, the gate and skip reasons, conflicts with other settings and what leaves
+the machine. [PRIVACY.md](plugins/model-router-omp/PRIVACY.md) is the privacy
 policy. The same TypeSafe key is needed.
 
-## Install Claude Code
+## Install
 
-The mod needs Claude Code v2.1.293 or later and a TypeSafe API key from
+The omp install steps are in the
+[omp README](plugins/model-router-omp/README.md#install). The Claude Code mod
+needs Claude Code v2.1.293 or later and a TypeSafe API key from
 https://console.typesafe.ai/keys. Claude Code keeps the key in your system's
 secure storage. The steps differ by where you run Claude Code.
 
@@ -96,17 +100,20 @@ The mod reads the key when it loads. After the key is saved, run
 
 ## Repository layout
 
-- `shared/` holds the routing core, `core.ts`, and the Jev client, `jev.ts`.
-  It holds the tier and work texts, `TIER_TEXTS` and `WORK_TEXTS`, with their
-  tests.
+- `src/` holds the parts, the composer, the client, the brief and the two
+  adapters. `src/model.ts` holds the tier texts and `src/effort.ts` holds the
+  work texts. The tests sit beside the sources as `src/*.test.ts`.
 - `plugins/model-router` is the Claude Code plugin.
 - `plugins/model-router-omp` is the omp plugin.
 - `.claude-plugin/marketplace.json` is the Claude Code catalog.
 - `.omp-plugin/marketplace.json` is the omp catalog. Each harness reads only
   its own catalog.
-- `scripts/sync.ts` copies the shared files into the plugin folders, because
-  each plugin must run on its own. `npm run sync` writes the copies, and
-  `npm run check` fails when a copy differs or the plugin versions differ.
+- `scripts/build.ts` builds `plugins/model-router/hooks/register.js` and
+  `plugins/model-router-omp/extension/index.js` from `src/`. The TypeSafe SDK
+  is inlined in both bundles, so each plugin runs on its own.
+- `scripts/manifests.ts` lists the files that carry the plugin version.
+  `node scripts/set-version.ts <version>` writes the version to them, and
+  `node scripts/set-version.ts --check` fails when they differ.
 - `evals/` and `scripts/evals.ts` run real clients against the plugins.
 
 The Claude Code plugin folder is what Claude Code installs, so it holds no
@@ -120,17 +127,19 @@ From the repository root:
 
 ```
 npm ci
+node scripts/build.ts
 claude plugin test plugins/model-router
 npm run check
 node scripts/calibrate.ts
 ```
 
+`node scripts/build.ts` writes both bundles. Build before you test or
+validate, because the plugins load the bundles.
 `claude plugin test plugins/model-router` runs the tests, no network.
-`npm run check` type-checks the plugin's `hooks/` and `tests/` and the
-repository's `scripts/` with `tsc`, checks that the shared copies and the
-plugin versions agree, runs the tests of `shared/`, `scripts/` and the omp
-plugin, and runs Biome, lint and formatting.
-`npm run fix` formats and applies the safe lint fixes.
+`npm run check` type-checks the plugin tests, `src/` and `scripts/` with `tsc`,
+checks that the plugin versions agree, runs the tests of `src/`, `scripts/` and
+the omp plugin, and runs Biome with warnings as errors. `npm run fix` formats
+and applies the safe lint fixes.
 
 Every commit is a [conventional commit](https://www.conventionalcommits.org),
 because the release reads the commit types since the last tag. Run
@@ -144,7 +153,8 @@ The hooks and tests are checked against the declarations Claude Code writes
 into `plugins/model-router/.claude-plugin/types/` when it loads the mod. Run
 `claude --plugin-dir plugins/model-router` once in an interactive session and
 quit; `tsconfig.json` extends the tsconfig written there. No command writes
-the declarations without a session, so CI type-checks `scripts/` only.
+the declarations without a session, so CI type-checks `src/` and `scripts/`
+only.
 
 Dependencies are exact versions in `package.json` and `package-lock.json`.
 `.npmrc` installs a version 14 days after its release at the earliest and runs
@@ -157,16 +167,18 @@ open advisory, on a package without a valid registry signature, and on a pull
 request that adds a vulnerable dependency or a license outside the permissive
 list in `.github/workflows/dependency-review.yml`.
 
-`scripts/calibrate.ts` is a developer tool that needs Node 22.18 or 23.6 or later. Claude Code never
-runs it. It takes the TypeSafe key from a masked prompt or stdin and sends
-`calibration.jsonl`, twenty-one labelled briefs, to the same endpoint. Its
-optional argument names the Jev model, `jev-latest` by default. It exits 1 when tier or work agreement falls below 85%. A miss is fixed by
-rewording a tier or work-level text in `shared/core.ts`, then running `npm run sync`, never by lowering
-the bar. The masked prompt keeps the key out of command lines and shell
-history. Pipe it only from a source that does not put the key in the command
-line.
+`scripts/calibrate.ts` is a developer tool that needs Node 22.18 or 23.6 or
+later. Claude Code never runs it. It takes the TypeSafe key from a masked
+prompt or stdin and sends `calibration.jsonl`, twenty-one labelled briefs, to
+the same endpoint. Its optional argument names the Jev model, `jev-latest` by
+default. It exits 1 when tier or work agreement falls below 85%. A miss is
+fixed by rewording a tier text in `src/model.ts` or a work-level text in
+`src/effort.ts`, then rebuilding with `node scripts/build.ts`, never by
+lowering the bar. The masked prompt keeps the key out of command lines and
+shell history. Pipe it only from a source that does not put the key in the
+command line.
 
 CI runs the tests, `claude plugin validate`, a check that the mod's hooks and
-engine calls match `tools/surface.json`, `tsc -p scripts`, `biome ci`, and
-Anthropic's plugin policy scan with the prompt in `.github/policy/`. A pull
-request merges only when all of them pass.
+engine calls match `tools/surface.json`, `tsc -p src`, `tsc -p scripts`,
+`biome ci`, and Anthropic's plugin policy scan with the prompt in
+`.github/policy/`. A pull request merges only when all of them pass.
