@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type Case, runCase } from "./calibrate.ts";
+import { type Case, caseHead, runCase } from "./calibrate.ts";
 
 const CASE: Case = {
 	role: "coder",
@@ -39,4 +39,9 @@ test("runCase sends the brief through the client and returns the decision", asyn
 	);
 	assert.ok(!seen[0]?.body.includes("abc.def.ghi"), "the brief is redacted");
 	assert.ok(seen[0]?.signal instanceof AbortSignal);
+});
+
+test("the printed head of a case is redacted like the request", () => {
+	const head = caseHead("Bearer abc.def-123 then\nthe task");
+	assert.equal(head, "Bearer *** then the task");
 });

@@ -12,6 +12,7 @@ import { work } from "../src/effort.ts";
 import { tier } from "../src/model.ts";
 
 const AGREEMENT_BAR = 0.85;
+const CASE_HEAD_CHARS = 60;
 
 export type Case = {
 	role: string;
@@ -20,6 +21,10 @@ export type Case = {
 	expected: number;
 	work: number;
 };
+
+// The printed head comes from the prepared brief, so the output shows only what TypeSafe received.
+export const caseHead = (text: string): string =>
+	prepareBrief(text).slice(0, CASE_HEAD_CHARS).replace(/\n/g, " ");
 
 export async function runCase(
 	c: Case,
@@ -121,7 +126,7 @@ async function main(): Promise<number> {
 	let workHits = 0;
 	for (const c of cases) {
 		const d = await runCase(c, model, key, fetch);
-		const head = c.text.slice(0, 60).replace(/\n/g, " ");
+		const head = caseHead(c.text);
 		if ("skipped" in d) {
 			console.log(`skip  ${head}  ${d.skipped}`);
 			continue;
