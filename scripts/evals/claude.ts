@@ -7,7 +7,7 @@ const SPAWN_TOOL = "Agent";
 const LOG_SUBTYPE = "ui_log";
 // The mod writes "L<tier> <model> · <effort> · p=<tier>/<work>"; the host may prefix its name.
 const DECISION_LINE =
-	/^(?:model-router )?L([012]) (\S+) · (caller effort|[^\s·]+) · p=\d+(?:\.\d+)?\/\d+(?:\.\d+)?/;
+	/^(?:model-router )?L(?<tier>[012]) (?<target>\S+) · (?<effort>caller effort|[^\s·]+) · p=\d+(?:\.\d+)?\/\d+(?:\.\d+)?/;
 
 const emptyEvidence = (): Evidence => ({
 	spawns: 0,
@@ -57,13 +57,14 @@ export const claude: Adapter = {
 			const text = get(event, "text");
 			if (get(event, "subtype") !== LOG_SUBTYPE || typeof text !== "string")
 				continue;
-			const match = DECISION_LINE.exec(text);
-			if (!match) continue;
+			const groups = DECISION_LINE.exec(text)?.groups;
+			if (!groups) continue;
 			evidence.line = text;
 			evidence.routed = true;
-			evidence.tier = Number(match[1]) as Level;
-			evidence.target = match[2] ?? null;
-			evidence.effort = match[3] ?? null;
+			const { tier, target, effort } = groups;
+			evidence.tier = Number(tier) as Level;
+			evidence.target = target ?? null;
+			evidence.effort = effort ?? null;
 		}
 		return evidence;
 	},

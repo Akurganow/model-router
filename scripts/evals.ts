@@ -4,14 +4,17 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { ADAPTERS } from "./evals/adapters.ts";
 import { loadCases } from "./evals/cases.ts";
-import { missingKeys, runCase } from "./evals/run.ts";
+import { JSON_INDENT, missingKeys, runCase } from "./evals/run.ts";
+import { EXIT_USAGE } from "./exit-codes.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const CASES_PATH = join(ROOT, "evals", "cases.json");
 const USAGE = `usage:
   node scripts/evals.ts run [--client NAME]... [--cases FILE] [--out DIR]`;
 
-function runMode(args: string[]): number {
+type Run = typeof runCase;
+
+function runMode(args: string[], run: Run): number {
 	const { values } = parseArgs({
 		args,
 		options: {
@@ -26,20 +29,20 @@ function runMode(args: string[]): number {
 	);
 	if (cases.length === 0) {
 		console.error(`no case for ${wanted.join(", ")}`);
-		return 2;
+		return EXIT_USAGE;
 	}
 	const missing = cases.flatMap((c) => missingKeys(c, process.env));
 	if (missing.length > 0) {
 		console.error(`unset: ${[...new Set(missing)].join(", ")}`);
-		return 2;
+		return EXIT_USAGE;
 	}
 	mkdirSync(values.out, { recursive: true });
 	let failed = 0;
 	for (const c of cases) {
-		const result = runCase(c);
+		const result = run(c);
 		writeFileSync(
 			join(values.out, `${c.id}.json`),
-			`${JSON.stringify(result, null, 2)}\n`,
+			`${JSON.stringify(result, null, JSON_INDENT)}\n`,
 		);
 		console.log(
 			`${c.id}: ${result.passed ? "pass" : `FAIL ${result.failures.join("; ")}`}`,
@@ -49,15 +52,13 @@ function runMode(args: string[]): number {
 	return failed === 0 ? 0 : 1;
 }
 
-if (import.meta.main) {
-	const [mode, ...rest] = process.argv.slice(2);
-	const modes: Record<string, (args: string[]) => number> = {
-		run: runMode,
-	};
-	const handler = mode ? modes[mode] : undefined;
-	if (!handler) {
+export function main(argv: string[], run: Run = runCase): number {
+	const [mode, ...rest] = argv;
+	if (mode !== "run") {
 		console.error(USAGE);
-		process.exit(2);
+		return EXIT_USAGE;
 	}
-	process.exit(handler(rest));
+	return runMode(rest, run);
 }
+
+if (import.meta.main) process.exit(main(process.argv.slice(2)));

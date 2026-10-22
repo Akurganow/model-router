@@ -7,7 +7,7 @@ const KEY_PROVIDER = "typesafe";
 const TASK = "task";
 const BUNDLED = "bundled";
 
-export type Gates = { readonly key: string } | { readonly closed: string };
+type Gates = { readonly key: string } | { readonly closed: string };
 
 // The task agent and the user's own routing decide first. Each gate fails closed, and the key is the cheapest check.
 export async function checkGates(

@@ -11,8 +11,9 @@ const CASE_TIMEOUT_MS = 600_000;
 const VERSION_TIMEOUT_MS = 30_000;
 const MAX_OUTPUT_BYTES = 64 * 1024 * 1024;
 const MS_PER_SECOND = 1000;
+export const JSON_INDENT = 2;
 
-export type CaseResult = {
+type CaseResult = {
 	case: string;
 	client: string;
 	clientVersion: string;
@@ -76,7 +77,7 @@ export function runCase(c: Case): CaseResult {
 		for (const [name, content] of Object.entries(c.files))
 			writeFileSync(
 				join(workDir, name),
-				`${JSON.stringify(content, null, 2)}\n`,
+				`${JSON.stringify(content, null, JSON_INDENT)}\n`,
 			);
 		for (const [name, text] of Object.entries(ADAPTERS[c.client]?.files ?? {}))
 			writeFileSync(join(workDir, name), text);

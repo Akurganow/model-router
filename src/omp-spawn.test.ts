@@ -6,13 +6,13 @@ import { STORE_MAX } from "./omp-store.ts";
 
 const world = useWorld();
 const install = () => createExtension(world.lookup)(world.pi);
+const twoTasks = () =>
+	world.toolCall("c", { tasks: [{ task: "level0 a" }, { task: "level2 b" }] });
 const LINE = "L2 @slow · p=0.90 · jev jev-1.14.0 · 812/9 tok";
 
 test("sync mode: an unnamed item is found by its call and index", async () => {
 	install();
-	await world.toolCall("c", {
-		tasks: [{ task: "level0 a" }, { task: "level2 b" }],
-	});
+	await twoTasks();
 	assert.equal((await world.spawn("c:0"))?.model, "@smol");
 	const second = await world.spawn("c:1");
 	assert.deepEqual(second, { model: "@slow", note: `model-router ${LINE}` });
@@ -151,9 +151,7 @@ test("level 1 returns nothing", async () => {
 
 test("a role that does not resolve is not returned", async () => {
 	install();
-	await world.toolCall("c", {
-		tasks: [{ task: "level0 a" }, { task: "level2 b" }],
-	});
+	await twoTasks();
 	world.resolvable.delete("@slow");
 	assert.equal(await world.spawn("c:1"), undefined);
 	assert.equal((await world.spawn("c:0"))?.model, "@smol");

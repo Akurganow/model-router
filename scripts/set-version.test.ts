@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { test } from "node:test";
+import { mock, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { checkVersions, MANIFESTS } from "./manifests.ts";
-import { setVersion } from "./set-version.ts";
+import { main, setVersion } from "./set-version.ts";
 import { useTempRoot } from "./temp-root.ts";
 
 const claude = "plugins/model-router/.claude-plugin/plugin.json";
@@ -57,6 +57,16 @@ const box = useTempRoot("set-version-", (put) => {
 });
 const { put, read } = box;
 
+function seedAll(version: string) {
+	for (const { path, versionPath } of MANIFESTS) {
+		const json = versionPath.reduceRight<unknown>(
+			(inner, key) => (typeof key === "number" ? [inner] : { [key]: inner }),
+			version,
+		);
+		put(path, `${JSON.stringify(json, null, "\t")}\n`);
+	}
+}
+
 test("one call writes the version into every manifest that exists", () => {
 	assert.deepEqual(setVersion(box.root, "1.2.3", [claude, omp, extra]), [
 		claude,
@@ -102,13 +112,7 @@ test("a nested catalog version is rewritten and nothing else changes", () => {
 });
 
 test("the writer writes every manifest in the list, the catalog included, and the check agrees", () => {
-	for (const { path, versionPath } of MANIFESTS) {
-		const json = versionPath.reduceRight<unknown>(
-			(inner, key) => (typeof key === "number" ? [inner] : { [key]: inner }),
-			"0.11.0",
-		);
-		put(path, `${JSON.stringify(json, null, "\t")}\n`);
-	}
+	seedAll("0.11.0");
 	assert.deepEqual(
 		setVersion(box.root, "1.2.3"),
 		MANIFESTS.map((manifest) => manifest.path),
@@ -131,6 +135,54 @@ test("the command refuses a version that is not X.Y.Z with exit code 2", () => {
 	});
 	assert.equal(run.status, 2);
 	assert.match(run.stderr, /usage: node scripts\/set-version\.ts X\.Y\.Z/);
+});
+
+const USAGE = /usage: node scripts\/set-version\.ts X\.Y\.Z/;
+
+function quietly(args: string[]) {
+	const errors: string[] = [];
+	mock.method(console, "error", (text: unknown) => void errors.push(`${text}`));
+	try {
+		return { status: main(args, box.root), errors };
+	} finally {
+		mock.restoreAll();
+	}
+}
+
+test("main with no version prints the usage and exits 2", () => {
+	const { status, errors } = quietly([]);
+	assert.equal(status, 2);
+	assert.match(errors.join("\n"), USAGE);
+});
+
+test("main with a malformed version exits 2 and writes nothing", () => {
+	put(claude, claudeText);
+	assert.equal(quietly(["1.2"]).status, 2);
+	assert.equal(read(claude), claudeText);
+});
+
+test("main bumps every manifest and exits 0", () => {
+	seedAll("0.11.0");
+	const { status, errors } = quietly(["1.2.3"]);
+	assert.equal(status, 0);
+	assert.deepEqual(errors, []);
+	assert.equal(JSON.parse(read(claude)).version, "1.2.3");
+});
+
+test("main reports a manifest without a version line and exits 1", () => {
+	put(claude, '{\n\t"name": "x"\n}\n');
+	const { status, errors } = quietly(["1.2.3"]);
+	assert.equal(status, 1);
+	assert.match(errors.join("\n"), /no version line in/);
+});
+
+test("main --check exits 0 when the versions agree and 1 when they differ", () => {
+	seedAll("0.11.0");
+	assert.equal(quietly(["--check"]).status, 0);
+	put(claude, claudeText.replace("0.11.0", "0.12.0"));
+	const { status, errors } = quietly(["--check"]);
+	assert.equal(status, 1);
+	assert.match(errors.join("\n"), /plugin versions are not one/);
 });
 
 test("a bad manifest later in the list leaves the earlier ones unwritten", () => {

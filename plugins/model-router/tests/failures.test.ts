@@ -8,17 +8,14 @@ import {
 	KEYED,
 	offerAll,
 	PROMPT,
+	retried,
 } from "./harness.ts";
 
 test(
 	"an HTTP error passes through after the SDK retries and names the status",
 	KEYED,
 	async ($, on) => {
-		const h = harness(on, { text: "overloaded", status: 529 });
-		await offerAll($);
-		const pending = $.tool.call(agentCall());
-		await h.clock.advance(1500);
-		await pending;
+		const h = await retried($, on, { text: "overloaded", status: 529 });
 		expect(h.fetched).toBe(3);
 		expect(h.received.model).toBeUndefined();
 		expect(h.logs).toEqual(["skipped, HTTP 529"]);
@@ -29,11 +26,7 @@ test(
 	"a failing network passes through after the SDK retries",
 	KEYED,
 	async ($, on) => {
-		const h = harness(on, { offline: true });
-		await offerAll($);
-		const pending = $.tool.call(agentCall());
-		await h.clock.advance(1500);
-		await pending;
+		const h = await retried($, on, { offline: true });
 		expect(h.fetched).toBe(3);
 		expect(h.logs).toEqual(["skipped, network error"]);
 	},

@@ -974,6 +974,8 @@ function createClient(apiKey, model, fetchFn) {
 }
 
 // src/model.ts
+var PROBABILITY_DIGITS = 2;
+var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 var LEVELS = [0, 1, 2];
 var TIE_MARGIN = 0.1;
 var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
@@ -1177,7 +1179,7 @@ function pick(decision) {
     model,
     effort: EFFORT_LADDER[model][worked.level],
     level: tiered.level,
-    probabilities: `${tiered.probabilities[tiered.level].toFixed(2)}/${worked.probabilities[worked.level].toFixed(2)}`,
+    probabilities: `${formatProbability(tiered.probabilities[tiered.level])}/${formatProbability(worked.probabilities[worked.level])}`,
     suffix: decisionSuffix(decision)
   };
 }

@@ -9,10 +9,12 @@ import {
 	type Skipped,
 } from "../src/compose.ts";
 import { work } from "../src/effort.ts";
-import { tier } from "../src/model.ts";
+import { formatProbability, tier } from "../src/model.ts";
+import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";
 
 const AGREEMENT_BAR = 0.85;
 const CASE_HEAD_CHARS = 60;
+const PERCENT = 100;
 
 export type Case = {
 	role: string;
@@ -52,14 +54,19 @@ export async function runCase(
 	}
 }
 
-const readKey = async (): Promise<string> => {
-	const { stdin } = process;
-	stdin.setEncoding("utf8");
-	if (!stdin.isTTY) {
-		let text = "";
-		for await (const chunk of stdin) text += chunk;
-		return text.trim();
-	}
+const ENTER = ["\r", "\n"];
+const CTRL_C = "\x03";
+const BACKSPACE = "\x7f";
+
+type Keystroke = { typed: string; end?: "enter" | "interrupt" };
+
+function keystroke(typed: string, ch: string): Keystroke {
+	if (ENTER.includes(ch)) return { typed, end: "enter" };
+	if (ch === CTRL_C) return { typed, end: "interrupt" };
+	return { typed: ch === BACKSPACE ? typed.slice(0, -1) : typed + ch };
+}
+
+function typeKey(stdin: NodeJS.ReadStream): Promise<string> {
 	process.stderr.write("TypeSafe API key: ");
 	stdin.setRawMode(true);
 	stdin.resume();
@@ -73,21 +80,25 @@ const readKey = async (): Promise<string> => {
 		};
 		const onData = (chunk: string) => {
 			for (const ch of chunk) {
-				if (ch === "\r" || ch === "\n") {
-					finish();
-					resolve(typed);
-					return;
-				}
-				if (ch === "\x03") {
-					finish();
-					process.exit(130);
-				}
-				typed = ch === "\x7f" ? typed.slice(0, -1) : typed + ch;
+				const next = keystroke(typed, ch);
+				typed = next.typed;
+				if (!next.end) continue;
+				finish();
+				if (next.end === "interrupt") process.exit(EXIT_INTERRUPTED);
+				return resolve(typed);
 			}
 		};
 		stdin.on("data", onData);
 	});
-};
+}
+
+export async function readKey(stdin: NodeJS.ReadStream): Promise<string> {
+	stdin.setEncoding("utf8");
+	if (stdin.isTTY) return typeKey(stdin);
+	let text = "";
+	for await (const chunk of stdin) text += chunk;
+	return text.trim();
+}
 
 function hit(
 	name: string,
@@ -96,21 +107,24 @@ function hit(
 	head: string,
 ): boolean {
 	if (part?.level === expected) return true;
-	const p = part ? part.probabilities[part.level].toFixed(2) : "none";
+	const p = part ? formatProbability(part.probabilities[part.level]) : "none";
 	console.log(
 		`miss ${name}  expected ${expected}  got ${part?.level}  p=${p}  ${head}`,
 	);
 	return false;
 }
 
-async function main(): Promise<number> {
-	const model = process.argv[2] ?? "jev-latest";
-	const key = await readKey();
+export async function main(
+	model: string,
+	stdin: NodeJS.ReadStream,
+	fetchFn: Fetch,
+): Promise<number> {
+	const key = await readKey(stdin);
 	if (!key) {
 		console.error(
 			"usage: node scripts/calibrate.ts [model]  (enter the TypeSafe API key at the prompt, or pipe it on stdin; model defaults to jev-latest)",
 		);
-		return 2;
+		return EXIT_USAGE;
 	}
 	const cases: Case[] = readFileSync(
 		new URL("../calibration.jsonl", import.meta.url),
@@ -125,7 +139,7 @@ async function main(): Promise<number> {
 	let tierHits = 0;
 	let workHits = 0;
 	for (const c of cases) {
-		const d = await runCase(c, model, key, fetch);
+		const d = await runCase(c, model, key, fetchFn);
 		const head = caseHead(c.text);
 		if ("skipped" in d) {
 			console.log(`skip  ${head}  ${d.skipped}`);
@@ -140,7 +154,7 @@ async function main(): Promise<number> {
 	const agreement = (name: string, hits: number): number => {
 		const a = hits / cases.length;
 		console.log(
-			`${name} agreement ${(a * 100).toFixed(0)}% (${hits}/${cases.length}), bar ${AGREEMENT_BAR * 100}%`,
+			`${name} agreement ${(a * PERCENT).toFixed(0)}% (${hits}/${cases.length}), bar ${AGREEMENT_BAR * PERCENT}%`,
 		);
 		return a;
 	};
@@ -152,4 +166,7 @@ async function main(): Promise<number> {
 	return tierOk && workOk ? 0 : 1;
 }
 
-if (import.meta.main) process.exit(await main());
+if (import.meta.main)
+	process.exit(
+		await main(process.argv[2] ?? "jev-latest", process.stdin, fetch),
+	);

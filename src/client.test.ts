@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import { noul } from "@typesafe-ai/sdk";
 import { createClient } from "./client.ts";
+import { streamed } from "./omp-fakes.ts";
 
 const KEY = "test-key";
 const MODEL = "jev-test";
@@ -22,18 +23,7 @@ function stubFetch() {
 			headers: new Headers(init?.headers),
 			body: String(init?.body),
 		});
-		const bytes = new TextEncoder().encode(
-			JSON.stringify({ answers: { q: { noul: 0.5 } } }),
-		);
-		const body = new ReadableStream<Uint8Array>({
-			start(controller) {
-				controller.enqueue(bytes);
-				controller.close();
-			},
-		});
-		return new Response(body, {
-			headers: { "content-type": "application/json" },
-		});
+		return streamed(200, { answers: { q: { noul: 0.5 } } });
 	};
 	return { seen, fetchFn };
 }

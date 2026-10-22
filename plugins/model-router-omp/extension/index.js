@@ -50,6 +50,8 @@ function contextText(context) {
 }
 
 // src/model.ts
+var PROBABILITY_DIGITS = 2;
+var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 var LEVELS = [0, 1, 2];
 var TIE_MARGIN = 0.1;
 var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
@@ -1131,22 +1133,20 @@ var ROLE_BY_LEVEL = {
   1: void 0,
   2: ROLES.large
 };
+var oneChunk = (bytes) => new ReadableStream({
+  start(controller) {
+    controller.enqueue(bytes);
+    controller.close();
+  }
+});
 var streamedFetch = async (url, init) => {
   const reply = await globalThis.fetch(url, init);
   const bytes = new TextEncoder().encode(await reply.text());
-  return new Response(
-    new ReadableStream({
-      start(controller) {
-        controller.enqueue(bytes);
-        controller.close();
-      }
-    }),
-    {
-      status: reply.status,
-      statusText: reply.statusText,
-      headers: reply.headers
-    }
-  );
+  return new Response(oneChunk(bytes), {
+    status: reply.status,
+    statusText: reply.statusText,
+    headers: reply.headers
+  });
 };
 async function scoreItems(items, context, apiKey) {
   const limit = new AbortController();
@@ -1182,7 +1182,7 @@ async function scoreItem(item, context, apiKey, signal) {
   const part = decision.parts[tier.key];
   if (!part) return skip("bad reply");
   const role = ROLE_BY_LEVEL[part.level];
-  const p = part.probabilities[part.level].toFixed(2);
+  const p = formatProbability(part.probabilities[part.level]);
   return {
     role,
     line: `L${part.level} ${role ?? "no change"} \xB7 p=${p}${decisionSuffix(decision)}`
@@ -1202,42 +1202,44 @@ async function mapLimit(items, limit, fn) {
 
 // src/omp-store.ts
 var STORE_MAX = 64;
+function link({ byKey }, entry2, key) {
+  entry2.keys.add(key);
+  byKey.set(key, (byKey.get(key) ?? /* @__PURE__ */ new Set()).add(entry2));
+}
+function unlink({ byKey }, entry2) {
+  for (const key of entry2.keys) {
+    const holders = byKey.get(key);
+    holders?.delete(entry2);
+    if (holders?.size === 0) byKey.delete(key);
+  }
+  entry2.keys.clear();
+}
+function markLearned({ awaitingId }, entry2) {
+  const mine = awaitingId.get(entry2.call);
+  mine?.delete(entry2);
+  if (mine?.size === 0) awaitingId.delete(entry2.call);
+}
+function remove(c, entry2) {
+  unlink(c, entry2);
+  markLearned(c, entry2);
+  c.entries.delete(entry2);
+}
 function createStore() {
-  const entries = /* @__PURE__ */ new Set();
-  const byKey = /* @__PURE__ */ new Map();
-  const open = /* @__PURE__ */ new Map();
-  const link = (entry2, key) => {
-    entry2.keys.add(key);
-    byKey.set(key, (byKey.get(key) ?? /* @__PURE__ */ new Set()).add(entry2));
-  };
-  const unlink = (entry2) => {
-    for (const key of entry2.keys) {
-      const holders = byKey.get(key);
-      holders?.delete(entry2);
-      if (holders?.size === 0) byKey.delete(key);
-    }
-    entry2.keys.clear();
-  };
-  const close = (entry2) => {
-    const mine = open.get(entry2.call);
-    mine?.delete(entry2);
-    if (mine?.size === 0) open.delete(entry2.call);
-  };
-  const remove = (entry2) => {
-    unlink(entry2);
-    close(entry2);
-    entries.delete(entry2);
+  const c = {
+    entries: /* @__PURE__ */ new Set(),
+    byKey: /* @__PURE__ */ new Map(),
+    awaitingId: /* @__PURE__ */ new Map()
   };
   return {
     // The index is the item's position in the call's task list, which progress reports as `index`.
     add(call, index, name, stored) {
-      const oldest = entries.values().next();
-      if (entries.size >= STORE_MAX && !oldest.done) remove(oldest.value);
+      const oldest = c.entries.values().next();
+      if (c.entries.size >= STORE_MAX && !oldest.done) remove(c, oldest.value);
       const entry2 = { stored, call, index, keys: /* @__PURE__ */ new Set() };
-      entries.add(entry2);
-      open.set(call, (open.get(call) ?? /* @__PURE__ */ new Set()).add(entry2));
-      link(entry2, `${call}:${index}`);
-      if (typeof name === "string" && name.trim() !== "") link(entry2, name);
+      c.entries.add(entry2);
+      c.awaitingId.set(call, (c.awaitingId.get(call) ?? /* @__PURE__ */ new Set()).add(entry2));
+      link(c, entry2, `${call}:${index}`);
+      if (typeof name === "string" && name.trim() !== "") link(c, entry2, name);
     },
     // Progress names each running child. Its id is the spawn key in async mode, so it replaces the guesses.
     learn(call, progress) {
@@ -1245,25 +1247,25 @@ function createStore() {
       for (const item of progress) {
         const { index, id } = isRecord(item) ? item : {};
         if (typeof id !== "string" || id === "") continue;
-        const entry2 = [...open.get(call) ?? []].find(
+        const entry2 = [...c.awaitingId.get(call) ?? []].find(
           (e) => e.index === index
         );
         if (!entry2) continue;
-        unlink(entry2);
-        close(entry2);
-        link(entry2, id);
+        unlink(c, entry2);
+        markLearned(c, entry2);
+        link(c, entry2, id);
       }
     },
     // The ids stay: an async call ends before its children spawn.
     end(call) {
-      for (const entry2 of [...open.get(call) ?? []]) remove(entry2);
+      for (const entry2 of [...c.awaitingId.get(call) ?? []]) remove(c, entry2);
     },
     // More than one match is ambiguous, and an ambiguous key takes nothing.
     take(key) {
-      const holders = key === void 0 ? void 0 : byKey.get(key);
+      const holders = key === void 0 ? void 0 : c.byKey.get(key);
       const [entry2] = holders?.size === 1 ? holders : [];
       if (!entry2) return void 0;
-      remove(entry2);
+      remove(c, entry2);
       return entry2.stored;
     }
   };
@@ -1295,64 +1297,68 @@ function report(ctx, entries) {
   }
 }
 var entry = (index, line) => `task ${index + 1}: ${line}`;
+var eligibleItems = (tasks) => tasks.flatMap((item, index) => isEligible(item) ? [{ index, item }] : []);
+function createRouter(lookup2, pi) {
+  const store = createStore();
+  async function onToolCall(event, ctx) {
+    const { input } = event;
+    if (event.toolName !== TASK2 || !isRecord(input)) return;
+    const { tasks, context } = input;
+    if (!Array.isArray(tasks)) return;
+    const items = eligibleItems(tasks);
+    if (items.length === 0) return;
+    const gates = await checkGates(lookup2, pi, ctx);
+    if ("closed" in gates) {
+      const line = `skipped, ${gates.closed}`;
+      return report(
+        ctx,
+        items.map(({ index }) => entry(index, line))
+      );
+    }
+    const scored = await scoreItems(items, contextText(context), gates.key);
+    for (const { index, item, stored } of scored)
+      store.add(event.toolCallId, index, item.name, stored);
+    report(
+      ctx,
+      scored.map(({ index, stored }) => entry(index, stored.line))
+    );
+  }
+  async function onSpawn(event, ctx) {
+    if (event.agent !== TASK2 || event.invocationKind !== TASK2) return;
+    const stored = store.take(event.spawnKey);
+    if (!stored?.role || event.modelRole) return;
+    if ("closed" in await checkGates(lookup2, pi, ctx)) return;
+    if (!resolves(ctx, stored.role)) return;
+    return { model: stored.role, note: LINE_PREFIX + stored.line };
+  }
+  function learn({ toolName, toolCallId }, result) {
+    if (toolName !== TASK2) return;
+    const { details } = isRecord(result) ? result : {};
+    const { progress } = isRecord(details) ? details : {};
+    store.learn(toolCallId, progress);
+  }
+  function onToolEnd(event) {
+    learn(event, event.result);
+    if (event.toolName === TASK2) store.end(event.toolCallId);
+  }
+  return { onToolCall, onSpawn, learn, onToolEnd };
+}
 function createExtension(lookup2) {
   return (pi) => {
-    const store = createStore();
-    async function onToolCall(event, ctx) {
-      const { input } = event;
-      if (event.toolName !== TASK2 || !isRecord(input)) return;
-      const { tasks, context } = input;
-      if (!Array.isArray(tasks)) return;
-      const items = tasks.flatMap(
-        (item, index) => isEligible(item) ? [{ index, item }] : []
-      );
-      if (items.length === 0) return;
-      const gates = await checkGates(lookup2, pi, ctx);
-      if ("closed" in gates) {
-        const line = `skipped, ${gates.closed}`;
-        return report(
-          ctx,
-          items.map(({ index }) => entry(index, line))
-        );
-      }
-      const scored = await scoreItems(items, contextText(context), gates.key);
-      for (const { index, item, stored } of scored)
-        store.add(event.toolCallId, index, item.name, stored);
-      report(
-        ctx,
-        scored.map(({ index, stored }) => entry(index, stored.line))
-      );
-    }
-    async function onSpawn(event, ctx) {
-      if (event.agent !== TASK2 || event.invocationKind !== TASK2) return;
-      const stored = store.take(event.spawnKey);
-      if (!stored?.role || event.modelRole) return;
-      if ("closed" in await checkGates(lookup2, pi, ctx)) return;
-      if (!resolves(ctx, stored.role)) return;
-      return { model: stored.role, note: LINE_PREFIX + stored.line };
-    }
-    function learn({ toolName, toolCallId }, result) {
-      if (toolName !== TASK2) return;
-      const { details } = isRecord(result) ? result : {};
-      const { progress } = isRecord(details) ? details : {};
-      store.learn(toolCallId, progress);
-    }
+    const router = createRouter(lookup2, pi);
     pi.on("tool_call", async (event, ctx) => {
-      await attempt(() => onToolCall(event, ctx));
+      await attempt(() => router.onToolCall(event, ctx));
       return void 0;
     });
     pi.on("tool_execution_update", async (event) => {
-      await attempt(async () => learn(event, event.partialResult));
+      await attempt(async () => router.learn(event, event.partialResult));
     });
     pi.on("tool_execution_end", async (event) => {
-      await attempt(async () => {
-        learn(event, event.result);
-        if (event.toolName === TASK2) store.end(event.toolCallId);
-      });
+      await attempt(async () => router.onToolEnd(event));
     });
     pi.on(
       "before_subagent_spawn",
-      (event, ctx) => attempt(() => onSpawn(event, ctx))
+      (event, ctx) => attempt(() => router.onSpawn(event, ctx))
     );
   };
 }

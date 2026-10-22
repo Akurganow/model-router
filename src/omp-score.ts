@@ -6,12 +6,12 @@ import {
 	ROUTING_LIMIT_MS,
 	route,
 } from "./compose.ts";
-import { type Level, tier } from "./model.ts";
+import { formatProbability, type Level, tier } from "./model.ts";
 import { ROLES } from "./omp-gates.ts";
 import type { Stored } from "./omp-store.ts";
 
 export type TaskItem = { readonly task: string; readonly name?: unknown };
-export type Scored = {
+type Scored = {
 	readonly index: number;
 	readonly item: TaskItem;
 	readonly stored: Stored;
@@ -27,23 +27,23 @@ const ROLE_BY_LEVEL: Record<Level, string | undefined> = {
 	2: ROLES.large,
 };
 
+export const oneChunk = (bytes: Uint8Array) =>
+	new ReadableStream<Uint8Array>({
+		start(controller) {
+			controller.enqueue(bytes);
+			controller.close();
+		},
+	});
+
 // Bun gives the SDK a buffered reply whose body reads as already used. A stream-bodied copy reads fine.
 export const streamedFetch: Fetch = async (url, init) => {
 	const reply = await globalThis.fetch(url, init);
 	const bytes = new TextEncoder().encode(await reply.text());
-	return new Response(
-		new ReadableStream<Uint8Array>({
-			start(controller) {
-				controller.enqueue(bytes);
-				controller.close();
-			},
-		}),
-		{
-			status: reply.status,
-			statusText: reply.statusText,
-			headers: reply.headers,
-		},
-	);
+	return new Response(oneChunk(bytes), {
+		status: reply.status,
+		statusText: reply.statusText,
+		headers: reply.headers,
+	});
 };
 
 // One limit covers the batch. Aborting also ends the SDK's retry wait, so no request follows a skip.
@@ -91,7 +91,7 @@ async function scoreItem(
 	const part = decision.parts[tier.key];
 	if (!part) return skip("bad reply");
 	const role = ROLE_BY_LEVEL[part.level];
-	const p = part.probabilities[part.level].toFixed(2);
+	const p = formatProbability(part.probabilities[part.level]);
 	return {
 		role,
 		line: `L${part.level} ${role ?? "no change"} · p=${p}${decisionSuffix(decision)}`,

@@ -10,6 +10,11 @@ export type Part = {
 	readonly pick: (probabilities: Probabilities) => Level;
 };
 
+const PROBABILITY_DIGITS = 2;
+
+export const formatProbability = (p: number): string =>
+	p.toFixed(PROBABILITY_DIGITS);
+
 const LEVELS: readonly Level[] = [0, 1, 2];
 const TIE_MARGIN = 0.1;
 

@@ -11,7 +11,7 @@ const LINE_PREFIX = "model-router ";
 const ENTRY_SEPARATOR = " | ";
 const NO_CHANGE = "no change";
 const DECISION_ENTRY = new RegExp(
-	`^task \\d+: L([012]) (@\\w+|${NO_CHANGE}) · p=\\d+(?:\\.\\d+)?`,
+	`^task \\d+: L(?<tier>[012]) (?<target>@\\w+|${NO_CHANGE}) · p=\\d+(?:\\.\\d+)?`,
 );
 
 function spawnCount(stdout: string): number {
@@ -87,12 +87,13 @@ export const omp: Adapter = {
 			for (const entry of text
 				.slice(LINE_PREFIX.length)
 				.split(ENTRY_SEPARATOR)) {
-				const match = DECISION_ENTRY.exec(entry);
-				if (!match) continue;
+				const groups = DECISION_ENTRY.exec(entry)?.groups;
+				if (!groups) continue;
 				evidence.routed = true;
 				evidence.line = entry;
-				evidence.tier = Number(match[1]) as Level;
-				evidence.target = match[2] === NO_CHANGE ? null : (match[2] ?? null);
+				const { tier, target } = groups;
+				evidence.tier = Number(tier) as Level;
+				evidence.target = target === NO_CHANGE ? null : (target ?? null);
 				return evidence;
 			}
 		}

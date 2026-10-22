@@ -21,7 +21,7 @@ export const LIMIT_REACHED = Symbol("routing limit reached");
 
 const MODEL_CHARS_MAX = 40;
 
-export type RoutingState = {
+type RoutingState = {
 	readonly role: string;
 	readonly description: string;
 	readonly task: string;

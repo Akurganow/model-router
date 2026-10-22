@@ -13,47 +13,57 @@ type Entry = {
 	readonly keys: Set<string>;
 };
 
+type Index = Map<string, Set<Entry>>;
+type Collections = {
+	readonly entries: Set<Entry>;
+	readonly byKey: Index;
+	readonly awaitingId: Index;
+};
+
+function link({ byKey }: Collections, entry: Entry, key: string): void {
+	entry.keys.add(key);
+	byKey.set(key, (byKey.get(key) ?? new Set()).add(entry));
+}
+
+function unlink({ byKey }: Collections, entry: Entry): void {
+	for (const key of entry.keys) {
+		const holders = byKey.get(key);
+		holders?.delete(entry);
+		if (holders?.size === 0) byKey.delete(key);
+	}
+	entry.keys.clear();
+}
+
+function markLearned({ awaitingId }: Collections, entry: Entry): void {
+	const mine = awaitingId.get(entry.call);
+	mine?.delete(entry);
+	if (mine?.size === 0) awaitingId.delete(entry.call);
+}
+
+function remove(c: Collections, entry: Entry): void {
+	unlink(c, entry);
+	markLearned(c, entry);
+	c.entries.delete(entry);
+}
+
 // A decision waits here for the spawn that omp makes later. Every key is bound to its call, so a
 // key left by a call whose spawn never came cannot reach the next call that reuses a name.
 export function createStore() {
-	const entries = new Set<Entry>();
-	const byKey = new Map<string, Set<Entry>>();
-	// Entries that have not learned their id yet.
-	const open = new Map<string, Set<Entry>>();
-
-	const link = (entry: Entry, key: string) => {
-		entry.keys.add(key);
-		byKey.set(key, (byKey.get(key) ?? new Set()).add(entry));
+	const c: Collections = {
+		entries: new Set(),
+		byKey: new Map(),
+		awaitingId: new Map(),
 	};
-	const unlink = (entry: Entry) => {
-		for (const key of entry.keys) {
-			const holders = byKey.get(key);
-			holders?.delete(entry);
-			if (holders?.size === 0) byKey.delete(key);
-		}
-		entry.keys.clear();
-	};
-	const close = (entry: Entry) => {
-		const mine = open.get(entry.call);
-		mine?.delete(entry);
-		if (mine?.size === 0) open.delete(entry.call);
-	};
-	const remove = (entry: Entry) => {
-		unlink(entry);
-		close(entry);
-		entries.delete(entry);
-	};
-
 	return {
 		// The index is the item's position in the call's task list, which progress reports as `index`.
 		add(call: string, index: number, name: unknown, stored: Stored): void {
-			const oldest = entries.values().next();
-			if (entries.size >= STORE_MAX && !oldest.done) remove(oldest.value);
+			const oldest = c.entries.values().next();
+			if (c.entries.size >= STORE_MAX && !oldest.done) remove(c, oldest.value);
 			const entry: Entry = { stored, call, index, keys: new Set() };
-			entries.add(entry);
-			open.set(call, (open.get(call) ?? new Set()).add(entry));
-			link(entry, `${call}:${index}`);
-			if (typeof name === "string" && name.trim() !== "") link(entry, name);
+			c.entries.add(entry);
+			c.awaitingId.set(call, (c.awaitingId.get(call) ?? new Set()).add(entry));
+			link(c, entry, `${call}:${index}`);
+			if (typeof name === "string" && name.trim() !== "") link(c, entry, name);
 		},
 
 		// Progress names each running child. Its id is the spawn key in async mode, so it replaces the guesses.
@@ -62,27 +72,27 @@ export function createStore() {
 			for (const item of progress) {
 				const { index, id } = isRecord(item) ? item : {};
 				if (typeof id !== "string" || id === "") continue;
-				const entry = [...(open.get(call) ?? [])].find(
+				const entry = [...(c.awaitingId.get(call) ?? [])].find(
 					(e) => e.index === index,
 				);
 				if (!entry) continue;
-				unlink(entry);
-				close(entry);
-				link(entry, id);
+				unlink(c, entry);
+				markLearned(c, entry);
+				link(c, entry, id);
 			}
 		},
 
 		// The ids stay: an async call ends before its children spawn.
 		end(call: string): void {
-			for (const entry of [...(open.get(call) ?? [])]) remove(entry);
+			for (const entry of [...(c.awaitingId.get(call) ?? [])]) remove(c, entry);
 		},
 
 		// More than one match is ambiguous, and an ambiguous key takes nothing.
 		take(key: string | undefined): Stored | undefined {
-			const holders = key === undefined ? undefined : byKey.get(key);
+			const holders = key === undefined ? undefined : c.byKey.get(key);
 			const [entry] = holders?.size === 1 ? holders : [];
 			if (!entry) return undefined;
-			remove(entry);
+			remove(c, entry);
 			return entry.stored;
 		},
 	};

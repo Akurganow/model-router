@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { EXIT_USAGE } from "./exit-codes.ts";
 import { checkVersions, MANIFESTS } from "./manifests.ts";
 
 // Only the version line changes, so each file keeps the formatting biome ci checks.
@@ -24,22 +25,28 @@ export function setVersion(
 	return pending.map(([path]) => path);
 }
 
-if (import.meta.main) {
-	const root = fileURLToPath(new URL("../", import.meta.url));
-	const version = process.argv[2];
+const ROOT = fileURLToPath(new URL("../", import.meta.url));
+const VERSION = /^\d+\.\d+\.\d+$/;
+const USAGE = "usage: node scripts/set-version.ts X.Y.Z | --check";
+
+export function main(args: string[], root: string): number {
+	const [version] = args;
 	if (version === "--check") {
 		const problems = checkVersions(root);
 		for (const problem of problems) console.error(problem);
-		process.exit(problems.length === 0 ? 0 : 1);
+		return problems.length === 0 ? 0 : 1;
 	}
-	if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
-		console.error("usage: node scripts/set-version.ts X.Y.Z | --check");
-		process.exit(2);
+	if (!version || !VERSION.test(version)) {
+		console.error(USAGE);
+		return EXIT_USAGE;
 	}
 	try {
 		setVersion(root, version);
+		return 0;
 	} catch (error) {
 		console.error(error instanceof Error ? error.message : error);
-		process.exit(1);
+		return 1;
 	}
 }
+
+if (import.meta.main) process.exit(main(process.argv.slice(2), ROOT));

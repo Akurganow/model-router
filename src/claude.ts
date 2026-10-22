@@ -10,7 +10,7 @@ import {
 	type Skipped,
 } from "./compose.ts";
 import { work } from "./effort.ts";
-import { type Level, tier } from "./model.ts";
+import { formatProbability, type Level, tier } from "./model.ts";
 import { installTimers } from "./timers.ts";
 
 // The mods API and hook types this adapter uses. The bundle must not depend on the generated declarations.
@@ -196,7 +196,7 @@ function pick(decision: Decision | Skipped): Picked | Skipped {
 		model,
 		effort: EFFORT_LADDER[model][worked.level],
 		level: tiered.level,
-		probabilities: `${tiered.probabilities[tiered.level].toFixed(2)}/${worked.probabilities[worked.level].toFixed(2)}`,
+		probabilities: `${formatProbability(tiered.probabilities[tiered.level])}/${formatProbability(worked.probabilities[worked.level])}`,
 		suffix: decisionSuffix(decision),
 	};
 }

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export type Manifest = {
+type Manifest = {
 	path: string;
 	versionPath: readonly (string | number)[];
 };

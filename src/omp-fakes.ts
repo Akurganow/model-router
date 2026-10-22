@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, mock } from "node:test";
+import { oneChunk } from "./omp-score.ts";
 import type {
 	Context,
 	Lookup,
@@ -19,7 +20,7 @@ export function setEnv(name: string, value: string | undefined): void {
 	else process.env[name] = value;
 }
 
-export type Sent = { url: string; body: unknown; authorization: string };
+type Sent = { url: string; body: unknown; authorization: string };
 type Answer = (
 	sent: Sent,
 	count: number,
@@ -27,25 +28,24 @@ type Answer = (
 ) => Promise<Response>;
 
 // The fake settings hold the three values the gates read. Setting a key to undefined makes it unreadable.
-export type Config = {
+type Config = {
 	modelRoles: unknown;
 	"task.agentModelOverrides": unknown;
 	"task.disabledAgents": unknown;
 };
 
-export function streamed(status: number, body: unknown): Response {
+export function streamed(
+	status: number,
+	body: unknown,
+	headers: Record<string, string> = {},
+): Response {
 	const bytes = new TextEncoder().encode(
 		typeof body === "string" ? body : JSON.stringify(body),
 	);
-	return new Response(
-		new ReadableStream<Uint8Array>({
-			start(controller) {
-				controller.enqueue(bytes);
-				controller.close();
-			},
-		}),
-		{ status, headers: { "content-type": "application/json" } },
-	);
+	return new Response(oneChunk(bytes), {
+		status,
+		headers: { "content-type": "application/json", ...headers },
+	});
 }
 
 const spread = (level: number) => ({
@@ -61,101 +61,88 @@ export const jevAnswer = (level: number) => ({
 });
 
 // A task text holding `level0`, `level1` or `level2` gets that level from the fake Jev. Others get level 1.
-export const answerByTask: Answer = async ({ body }) => {
+const answerByTask: Answer = async ({ body }) => {
 	const { task } = (body as { state: { task: string } }).state;
 	return streamed(200, jevAnswer(Number(/level([012])/.exec(task)?.[1] ?? 1)));
 };
 
-export type World = ReturnType<typeof useWorld>;
+const newState = () => ({
+	notes: [] as string[],
+	stderr: [] as string[],
+	sent: [] as Sent[],
+	config: {} as Config,
+	agents: [] as { name: string; source: string }[],
+	resolvable: new Set<string>(),
+	credential: (async () => KEY) as () => Promise<string | undefined>,
+	answer: answerByTask as Answer,
+	hasUI: true,
+	handlers: {} as Record<string, (...args: never[]) => unknown>,
+});
+type State = ReturnType<typeof newState>;
 
-export function useWorld() {
-	const state = {
-		notes: [] as string[],
-		stderr: [] as string[],
-		sent: [] as Sent[],
-		config: {} as Config,
-		agents: [] as { name: string; source: string }[],
-		resolvable: new Set<string>(),
-		credential: (async () => KEY) as () => Promise<string | undefined>,
-		answer: answerByTask as Answer,
-		hasUI: true,
-		handlers: {} as Record<string, (...args: never[]) => unknown>,
+const freshConfig = (): Config => ({
+	modelRoles: {},
+	"task.agentModelOverrides": {},
+	"task.disabledAgents": [],
+});
+
+function reset(state: State): void {
+	Object.assign(state, newState(), {
+		config: freshConfig(),
+		agents: [{ name: "task", source: "bundled" }],
+		resolvable: new Set(["@smol", "@slow"]),
+	});
+}
+
+const fakeFetch = (state: State) => async (url: string, init: RequestInit) => {
+	// Like the real fetch, an aborted signal fails before anything is sent.
+	init.signal?.throwIfAborted();
+	const sent: Sent = {
+		url,
+		body: JSON.parse(String(init.body)),
+		authorization: new Headers(init.headers).get("authorization") ?? "",
 	};
+	state.sent.push(sent);
+	return state.answer(sent, state.sent.length, init.signal as AbortSignal);
+};
 
-	let savedKey: string | undefined;
-	beforeEach(() => {
-		savedKey = process.env[KEY_VARIABLE];
-		setEnv(KEY_VARIABLE, undefined);
-		state.notes = [];
-		state.stderr = [];
-		state.sent = [];
-		state.config = {
-			modelRoles: {},
-			"task.agentModelOverrides": {},
-			"task.disabledAgents": [],
-		};
-		state.agents = [{ name: "task", source: "bundled" }];
-		state.resolvable = new Set(["@smol", "@slow"]);
-		state.credential = async () => KEY;
-		state.answer = answerByTask;
-		state.hasUI = true;
-		state.handlers = {};
-		mock.method(process.stderr, "write", (text: string) => {
-			state.stderr.push(text);
-			return true;
-		});
-		mock.method(globalThis, "fetch", async (url: string, init: RequestInit) => {
-			// Like the real fetch, an aborted signal fails before anything is sent.
-			init.signal?.throwIfAborted();
-			const headers = new Headers(init.headers);
-			const sent: Sent = {
-				url,
-				body: JSON.parse(String(init.body)),
-				authorization: headers.get("authorization") ?? "",
-			};
-			state.sent.push(sent);
-			return state.answer(sent, state.sent.length, init.signal as AbortSignal);
-		});
-	});
-	afterEach(() => {
-		mock.restoreAll();
-		setEnv(KEY_VARIABLE, savedKey);
-	});
-
-	const lookup: Lookup = (id) => {
+const buildLookup =
+	(state: State): Lookup =>
+	(id) => {
 		const value = (state.config as Record<string, unknown>)[id];
 		return value === undefined ? undefined : { get: () => value };
 	};
-	const pi: Pi = {
-		on: (event, handler) => {
-			state.handlers[event] = handler as never;
-		},
-		pi: {
-			settings: {},
-			discoverAgents: async () => ({ agents: state.agents }),
-		},
-	};
-	const ctx = (): Context => ({
-		cwd: "/work",
-		hasUI: state.hasUI,
-		ui: { notify: (message) => void state.notes.push(message) },
-		modelRegistry: { getApiKeyForProvider: () => state.credential() },
-		models: {
-			resolve: (spec) => (state.resolvable.has(spec) ? {} : undefined),
-		},
-	});
+
+const buildPi = (state: State): Pi => ({
+	on: (event, handler) => {
+		state.handlers[event] = handler as never;
+	},
+	pi: {
+		settings: {},
+		discoverAgents: async () => ({ agents: state.agents }),
+	},
+});
+
+const buildCtx = (state: State) => (): Context => ({
+	cwd: "/work",
+	hasUI: state.hasUI,
+	ui: { notify: (message) => void state.notes.push(message) },
+	modelRegistry: { getApiKeyForProvider: () => state.credential() },
+	models: {
+		resolve: (spec) => (state.resolvable.has(spec) ? {} : undefined),
+	},
+});
+
+const buildEvents = (state: State) => {
+	const ctx = buildCtx(state);
 	const call = <T>(name: string, ...args: unknown[]) =>
 		(state.handlers[name] as (...a: unknown[]) => T)(...args);
-	// The handler as omp would call it, with whatever arguments the test hands it.
-	const handler =
-		(name: string) =>
-		(...args: unknown[]) =>
-			call<Promise<unknown>>(name, ...args);
-
-	return Object.assign(state, {
-		handler,
-		lookup,
-		pi,
+	return {
+		// The handler as omp would call it, with whatever arguments the test hands it.
+		handler:
+			(name: string) =>
+			(...args: unknown[]) =>
+				call<Promise<unknown>>(name, ...args),
 		toolCall: (id: string, input: unknown, toolName = "task") =>
 			call<Promise<undefined>>(
 				"tool_call",
@@ -189,5 +176,29 @@ export function useWorld() {
 				} satisfies SpawnEvent,
 				ctx(),
 			),
+	};
+};
+
+export function useWorld() {
+	const state = newState();
+	let savedKey: string | undefined;
+	beforeEach(() => {
+		savedKey = process.env[KEY_VARIABLE];
+		setEnv(KEY_VARIABLE, undefined);
+		reset(state);
+		mock.method(process.stderr, "write", (text: string) => {
+			state.stderr.push(text);
+			return true;
+		});
+		mock.method(globalThis, "fetch", fakeFetch(state));
+	});
+	afterEach(() => {
+		mock.restoreAll();
+		setEnv(KEY_VARIABLE, savedKey);
+	});
+
+	return Object.assign(state, buildEvents(state), {
+		lookup: buildLookup(state),
+		pi: buildPi(state),
 	});
 }

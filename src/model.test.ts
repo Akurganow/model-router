@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseProbabilities, TIER_TEXTS, tier } from "./model.ts";
+import {
+	formatProbability,
+	parseProbabilities,
+	TIER_TEXTS,
+	tier,
+} from "./model.ts";
 
 const dist = (p: Record<string, unknown>) => ({
 	type: "score",
@@ -80,4 +85,10 @@ test("a non-numeric probability has no probabilities", () => {
 		{ "0": "a", "1": 0, "2": 0 },
 	);
 	assert.equal(parseProbabilities(text, "work"), undefined);
+});
+
+test("a probability prints with two decimals", () => {
+	assert.equal(formatProbability(0.9), "0.90");
+	assert.equal(formatProbability(0.126), "0.13");
+	assert.equal(formatProbability(1), "1.00");
 });

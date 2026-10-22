@@ -10,6 +10,7 @@ import {
 } from "./compose.ts";
 import { work } from "./effort.ts";
 import { tier } from "./model.ts";
+import { streamed } from "./omp-fakes.ts";
 
 const KEY = "test-key";
 const MODEL = "jev-test";
@@ -26,22 +27,6 @@ const VALID = {
 	usage: { input_tokens: 120, output_tokens: 8 },
 	answers: { tier: PROBS(0.1, 0.2, 0.7), work: PROBS(0.1, 0.8, 0.1) },
 };
-
-function streamed(status: number, body: unknown, headers = {}): Response {
-	const bytes = new TextEncoder().encode(
-		typeof body === "string" ? body : JSON.stringify(body),
-	);
-	const stream = new ReadableStream<Uint8Array>({
-		start(controller) {
-			controller.enqueue(bytes);
-			controller.close();
-		},
-	});
-	return new Response(stream, {
-		status,
-		headers: { "content-type": "application/json", ...headers },
-	});
-}
 
 type Respond = (init: RequestInit, count: number) => Promise<Response>;
 

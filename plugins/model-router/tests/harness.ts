@@ -92,36 +92,35 @@ type Setup = {
 	result?: { result: string } | { deny: string };
 };
 
-export const harness = (on: On, setup: Setup = {}): Harness => {
-	const {
-		text = ANSWER([0.9, 0.1, 0]),
-		status = 200,
-		replies = [],
-		offline = false,
-		decision = "allow",
-		delayMs = 0,
-		env = {},
-		result = { result: "ok" },
-	} = setup;
-	mock.env(on, env);
-	const h: Harness = {
-		clock: mock.clock(on),
-		logs: [],
-		debug: [],
-		fetched: 0,
-		calls: 0,
-		request: {},
-		received: {},
-		seen: [],
-		checks: [],
-		sent: undefined,
-		auth: undefined,
-	};
-	on("ui.log", (_: unknown, e: { text: string; to?: string }) => {
+const newHarness = (clock: MockClock): Harness => ({
+	clock,
+	logs: [],
+	debug: [],
+	fetched: 0,
+	calls: 0,
+	request: {},
+	received: {},
+	seen: [],
+	checks: [],
+	sent: undefined,
+	auth: undefined,
+});
+
+const logHandler =
+	(h: Harness) => (_: unknown, e: { text: string; to?: string }) => {
 		(e.to === "debug" ? h.debug : h.logs).push(e.text);
 		return { value: undefined };
-	});
-	on("http.fetch", async (_, e) => {
+	};
+
+const fetchHandler =
+	(h: Harness, setup: Setup) => async (_: unknown, e: Request) => {
+		const {
+			text = ANSWER([0.9, 0.1, 0]),
+			status = 200,
+			replies = [],
+			offline = false,
+			delayMs = 0,
+		} = setup;
 		h.fetched += 1;
 		h.request = e;
 		const sent = e.init?.body ?? "";
@@ -141,25 +140,40 @@ export const harness = (on: On, setup: Setup = {}): Harness => {
 				text: body,
 			},
 		};
-	});
-	on("agent.offer", () => ({ isOffered: true }));
-	on("tool.check", (_, e) => {
+	};
+
+const checkHandler =
+	(h: Harness, decision: ToolCheckDecision | "throw") =>
+	(_: unknown, e: Loose) => {
 		h.checks.push(e);
 		if (decision === "throw") throw new Error("boom");
 		return { decision };
-	});
-	on("tool.call", (_, e) => {
+	};
+
+const callHandler =
+	(h: Harness, result: NonNullable<Setup["result"]>) =>
+	(_: unknown, e: Loose) => {
 		h.calls += 1;
 		h.received = e;
 		h.seen.push(e);
 		return result;
-	});
+	};
+
+export const harness = (on: On, setup: Setup = {}): Harness => {
+	const { decision = "allow", env = {}, result = { result: "ok" } } = setup;
+	mock.env(on, env);
+	const h = newHarness(mock.clock(on));
+	on("ui.log", logHandler(h));
+	on("http.fetch", fetchHandler(h, setup));
+	on("agent.offer", () => ({ isOffered: true }));
+	on("tool.check", checkHandler(h, decision));
+	on("tool.call", callHandler(h, result));
 	return h;
 };
 
 const BUILT_IN = "built-in";
 // The agents Claude Code ships, as it offers them.
-export const BUILT_IN_OFFERS: Readonly<Record<string, string>> = {
+const BUILT_IN_OFFERS: Readonly<Record<string, string>> = {
 	"general-purpose": BUILT_IN,
 	claude: BUILT_IN,
 	Explore: BUILT_IN,
@@ -191,4 +205,14 @@ export const callOnce = async (
 	await offerAll($, setup.offers);
 	const outcome: Outcome = await $.tool.call(agentCall(over));
 	return { h, outcome };
+};
+
+// Runs a call to the end of the SDK's retries: three fetches inside 1500 ms.
+export const retried = async ($: Engine, on: On, setup: Setup) => {
+	const h = harness(on, setup);
+	await offerAll($);
+	const pending = $.tool.call(agentCall());
+	await h.clock.advance(1500);
+	await pending;
+	return h;
 };
