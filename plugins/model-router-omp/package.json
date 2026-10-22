@@ -1,6 +1,6 @@
 {
 	"name": "model-router-omp",
-	"version": "0.12.1",
+	"version": "0.13.0",
 	"private": true,
 	"type": "module",
 	"description": "Routes each task subagent in Oh My Pi to the smol or slow model role, judged by TypeSafe Jev.",

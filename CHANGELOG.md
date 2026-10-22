@@ -3,6 +3,51 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.13.0 - 2026-10-22
+#### Features
+- BREAKING: route omp's bundled task agent by model role, not agent copies (eda2d57)
+- BREAKING: route only built-in agents in Claude Code through the TypeSafe SDK (ba1fa86)
+- send one TypeSafe request per task with the parts an adapter asks for (00dacf3)
+- create the TypeSafe SDK client per routing call (d3773cf)
+#### Bug Fixes
+- (**calibrate**) print the redacted head of a case (4757e96)
+- forget earlier agent offers when Claude Code registers the hook again (acdb571)
+#### Documentation
+- (**omp**) describe role routing, the gates and the setup checks; move to omp 18.12.6 (f47edbb)
+- keep the API key out of the request body list (304feb3)
+- state the Claude Code version the mod needs and drop an unreachable omp skip reason (a3c29fb)
+- drop the omp effort ladder and state the in-memory routing state (33c18bc)
+- state what the SDK sends and credit the bundled SDK (842a398)
+- describe built-in routing, precedence and the SDK in Claude Code (d5a0928)
+#### Tests
+- (**evals**) prove omp routing by its decision line and drop the drift record (cf168b1)
+- name the full decision suffix case without the old contract (9a225c4)
+#### Build system
+- (**deps**) add the TypeSafe SDK and esbuild as dev dependencies (f7d4b8b)
+- keep one manifest list for the version writer and check (eaa6604)
+- bundle each plugin with esbuild and the TypeSafe SDK inlined (bc0035c)
+#### Continuous Integration
+- (**evals**) drop the comment on the removed agent drift record (d2c9895)
+- (**evals**) build the plugin bundles before installing the plugin (94ca356)
+- (**release**) rebuild the plugin bundles in the version commit (5dc7eb5)
+- (**renovate**) label TypeSafe SDK updates as fixes (f612d31)
+- set up Node through one local action and alias the evals checkout (8839772)
+- build the bundles before checks and move to Claude Code 2.1.308 (73244fe)
+- compute the policy verdict cache key once (892e94a)
+- drop the commit-message job and keep the commit-msg hook (55198e9)
+- check that every commit since the last tag is conventional (052684d)
+- drop the evals selftest and its hand-written fixtures (d12e5fb)
+- run the evals on manual dispatch only (23253ae)
+#### Refactoring
+- (**calibrate**) score cases through the parts and the SDK composer (73edbf2)
+- give both parts one neutral base so neither imports the other (27d7a17)
+- clear the Laundering findings in src, scripts and tests (685ed9a)
+- split scoring into a model part and an effort part (6a00581)
+- move brief preparation into its own module (699f840)
+
+- - -
+
+
 ## v0.12.1 - 2026-10-21
 #### Bug Fixes
 - (**omp**) match only the task heading when looking for the user's task agent (dd967c0)

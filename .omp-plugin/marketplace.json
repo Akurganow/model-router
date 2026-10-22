@@ -6,7 +6,7 @@
 		{
 			"name": "model-router",
 			"source": "./plugins/model-router-omp",
-			"version": "0.12.1",
+			"version": "0.13.0",
 			"homepage": "https://github.com/Akurganow/model-router",
 			"privacyPolicyUrl": "https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/PRIVACY.md"
 		}
