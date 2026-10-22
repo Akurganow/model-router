@@ -50,12 +50,16 @@ jobs:
       - name: Verify the registry signatures
         run: npm audit signatures
 
-      # The hooks are checked against the declarations Claude Code writes
-      # beside a loaded mod, and no command writes them without a session,
-      # so CI type-checks the scripts only. README's Development section has
-      # the local command.
-      - name: Type-check the scripts
-        run: npx tsc -p scripts
+      # The plugin runs the bundle, so validation and tests check a fresh build of src/.
+      - name: Build the plugin bundles
+        run: node scripts/build.ts
+
+      # src/ declares the few mod types it uses, so it type-checks without the
+      # declarations Claude Code writes beside a loaded mod. The plugin tests
+      # need those declarations; README's Development section has the local
+      # command.
+      - name: Type-check the sources and scripts
+        run: npx tsc -p src && npx tsc -p scripts
 
       - name: Lint and check the formatting
         run: npx biome ci --error-on-warnings .
