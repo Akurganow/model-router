@@ -1,5 +1,6 @@
+import type { Level } from "../../src/model.ts";
 import { get, isRecord, jsonLines } from "./stream.ts";
-import type { Adapter, Evidence, Tier } from "./types.ts";
+import type { Adapter, Evidence } from "./types.ts";
 
 const SPAWN_TOOL = "Agent";
 // `$.ui.log` reaches a stream-json host as a system event of this subtype.
@@ -32,7 +33,6 @@ function countSpawns(event: Record<string, unknown>): number {
 }
 
 export const claude: Adapter = {
-	name: "claude",
 	command: (prompt, model) => [
 		"claude",
 		"-p",
@@ -61,7 +61,7 @@ export const claude: Adapter = {
 			if (!match) continue;
 			evidence.line = text;
 			evidence.routed = true;
-			evidence.tier = Number(match[1]) as Tier;
+			evidence.tier = Number(match[1]) as Level;
 			evidence.target = match[2] ?? null;
 			evidence.effort = match[3] ?? null;
 		}

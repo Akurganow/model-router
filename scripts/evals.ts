@@ -8,7 +8,6 @@ import { missingKeys, runCase } from "./evals/run.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const CASES_PATH = join(ROOT, "evals", "cases.json");
-const COPIES_DIR = join(ROOT, "plugins", "model-router-omp", "agents");
 const USAGE = `usage:
   node scripts/evals.ts run [--client NAME]... [--cases FILE] [--out DIR]`;
 
@@ -37,7 +36,7 @@ function runMode(args: string[]): number {
 	mkdirSync(values.out, { recursive: true });
 	let failed = 0;
 	for (const c of cases) {
-		const result = runCase(c, COPIES_DIR);
+		const result = runCase(c);
 		writeFileSync(
 			join(values.out, `${c.id}.json`),
 			`${JSON.stringify(result, null, 2)}\n`,

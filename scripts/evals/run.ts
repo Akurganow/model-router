@@ -4,7 +4,6 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { ADAPTERS } from "./adapters.ts";
 import { type Case, check } from "./cases.ts";
-import { type Drift, recordDrift } from "./drift.ts";
 import { clientEnv, normalisePaths, scrub, TYPESAFE_KEY } from "./scrub.ts";
 import type { Evidence } from "./types.ts";
 
@@ -24,7 +23,6 @@ export type CaseResult = {
 	evidence: Evidence;
 	failures: string[];
 	passed: boolean;
-	drift?: Drift;
 	stdout: string;
 	stderr: string;
 };
@@ -72,7 +70,7 @@ function runClient(c: Case, workDir: string, env: Record<string, string>) {
 	return { adapter, run, version: (version.stdout ?? "").trim() };
 }
 
-export function runCase(c: Case, copiesDir: string): CaseResult {
+export function runCase(c: Case): CaseResult {
 	const workDir = mkdtempSync(join(tmpdir(), "evals-work-"));
 	try {
 		for (const [name, content] of Object.entries(c.files))
@@ -108,7 +106,6 @@ export function runCase(c: Case, copiesDir: string): CaseResult {
 			stdout: clean(stdout),
 			stderr: clean(stderr),
 		};
-		if (c.record.includes("drift")) result.drift = recordDrift(env, copiesDir);
 		return JSON.parse(clean(JSON.stringify(result))) as CaseResult;
 	} finally {
 		rmSync(workDir, { recursive: true, force: true });

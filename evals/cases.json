@@ -9,8 +9,7 @@
 			"files": {
 				"package.json": { "name": "eval-subject", "version": "1.0.0" }
 			},
-			"assert": ["spawned", "routed", "line"],
-			"record": ["tier", "effort"]
+			"assert": ["spawned", "routed", "line"]
 		},
 		{
 			"id": "omp-first-spawn-routed",
@@ -22,8 +21,7 @@
 			"files": {
 				"package.json": { "name": "eval-subject", "version": "1.0.0" }
 			},
-			"assert": ["spawned", "routed", "line", "answered"],
-			"record": ["tier", "effort", "drift"]
+			"assert": ["spawned", "routed", "line", "answered"]
 		}
 	]
 }
