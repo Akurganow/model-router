@@ -51,6 +51,11 @@ type Loose = {
 	prompt?: unknown;
 	input?: unknown;
 };
+type Reply = {
+	status?: number;
+	headers?: Record<string, string>;
+	text?: string;
+};
 type Request = {
 	url?: string;
 	init?: {
@@ -68,15 +73,19 @@ type Harness = {
 	calls: number;
 	request: Request;
 	received: Loose;
-	checked: Loose;
+	seen: Loose[];
+	checks: Loose[];
 	sent: string | undefined;
 	auth: string | undefined;
 };
 export const KEYED = { options: { api_key: "test-key" } };
 
 type Setup = {
-	text?: string;
+	text?: string | ((body: string) => string);
 	status?: number;
+	replies?: readonly Reply[];
+	offline?: boolean;
+	offers?: Readonly<Record<string, string>>;
 	decision?: ToolCheckDecision | "throw";
 	delayMs?: number;
 	env?: Readonly<Record<string, string>>;
@@ -87,6 +96,8 @@ export const harness = (on: On, setup: Setup = {}): Harness => {
 	const {
 		text = ANSWER([0.9, 0.1, 0]),
 		status = 200,
+		replies = [],
+		offline = false,
 		decision = "allow",
 		delayMs = 0,
 		env = {},
@@ -101,7 +112,8 @@ export const harness = (on: On, setup: Setup = {}): Harness => {
 		calls: 0,
 		request: {},
 		received: {},
-		checked: {},
+		seen: [],
+		checks: [],
 		sent: undefined,
 		auth: undefined,
 	};
@@ -112,23 +124,61 @@ export const harness = (on: On, setup: Setup = {}): Harness => {
 	on("http.fetch", async (_, e) => {
 		h.fetched += 1;
 		h.request = e;
-		h.sent = e.init?.body;
+		const sent = e.init?.body ?? "";
+		h.sent = sent;
 		const { Authorization } = e.init?.headers ?? {};
 		h.auth = Authorization;
 		if (delayMs > 0) await h.clock.sleep(delayMs);
-		return { value: { status, ok: status < 300, headers: {}, text } };
+		if (offline) return { deny: "offline" };
+		const reply = replies[Math.min(h.fetched, replies.length) - 1] ?? {};
+		const code = reply.status ?? status;
+		const body = reply.text ?? (typeof text === "function" ? text(sent) : text);
+		return {
+			value: {
+				status: code,
+				ok: code < 300,
+				headers: reply.headers ?? {},
+				text: body,
+			},
+		};
 	});
+	on("agent.offer", () => ({ isOffered: true }));
 	on("tool.check", (_, e) => {
-		h.checked = e;
+		h.checks.push(e);
 		if (decision === "throw") throw new Error("boom");
 		return { decision };
 	});
 	on("tool.call", (_, e) => {
 		h.calls += 1;
 		h.received = e;
+		h.seen.push(e);
 		return result;
 	});
 	return h;
+};
+
+const BUILT_IN = "built-in";
+// The agents Claude Code ships, as it offers them.
+export const BUILT_IN_OFFERS: Readonly<Record<string, string>> = {
+	"general-purpose": BUILT_IN,
+	claude: BUILT_IN,
+	Explore: BUILT_IN,
+	Plan: BUILT_IN,
+	"statusline-setup": BUILT_IN,
+	"claude-code-guide": BUILT_IN,
+};
+
+export const offer = ($: Engine, agent: string, source = BUILT_IN) =>
+	$.agent.offer({
+		agent,
+		description: "",
+		source,
+		provider: { plugin: "engine", tier: "core" },
+	});
+
+export const offerAll = async ($: Engine, offers = BUILT_IN_OFFERS) => {
+	for (const [agent, source] of Object.entries(offers))
+		await offer($, agent, source);
 };
 
 export const callOnce = async (
@@ -138,6 +188,7 @@ export const callOnce = async (
 	setup: Setup = {},
 ) => {
 	const h = harness(on, setup);
+	await offerAll($, setup.offers);
 	const outcome: Outcome = await $.tool.call(agentCall(over));
 	return { h, outcome };
 };

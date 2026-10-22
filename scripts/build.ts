@@ -59,18 +59,11 @@ export function checkClaudeBundle(code: string): string[] {
 }
 
 if (import.meta.main) {
-	const problems = [
-		...(await buildBundle(
-			"claude",
-			"src/claude.ts",
-			"plugins/model-router/hooks/register.js",
-		)),
-		...(await buildBundle(
-			"omp",
-			"src/omp.ts",
-			"plugins/model-router-omp/extension/index.js",
-		)),
-	];
+	const problems = await buildBundle(
+		"claude",
+		"src/claude.ts",
+		"plugins/model-router/hooks/register.js",
+	);
 	for (const problem of problems) console.error(problem);
 	process.exitCode = problems.length === 0 ? 0 : 1;
 }

@@ -1,6 +1,7 @@
 {
-	"hooks": ["tool.call{tool=Agent}"],
+	"hooks": ["agent.offer", "tool.call{tool=Agent}"],
 	"calls": [
+		"$.clock.after",
 		"$.clock.sleep",
 		"$.env.get",
 		"$.http.fetch",
