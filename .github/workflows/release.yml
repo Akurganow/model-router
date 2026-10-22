@@ -45,9 +45,7 @@ jobs:
 
       # The pre-bump hooks run scripts/set-version.ts and scripts/build.ts,
       # TypeScript files that Node runs directly.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "24"
+      - uses: ./.github/actions/setup-node
 
       # The build needs esbuild and the TypeSafe SDK from the lockfile.
       - name: Install the dev tools
