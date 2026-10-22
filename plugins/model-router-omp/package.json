@@ -3,7 +3,7 @@
 	"version": "0.12.1",
 	"private": true,
 	"type": "module",
-	"description": "Routes each task subagent in Oh My Pi to the cheapest model and effort that can do its task, judged by TypeSafe Jev.",
+	"description": "Routes each task subagent in Oh My Pi to the smol or slow model role, judged by TypeSafe Jev.",
 	"license": "MIT",
 	"homepage": "https://github.com/Akurganow/model-router",
 	"repository": "https://github.com/Akurganow/model-router",
