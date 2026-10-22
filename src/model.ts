@@ -22,7 +22,7 @@ export const TIER_TEXTS = [
 	"Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause.",
 ] as const;
 
-const isRecord = (v: unknown): v is Record<string, unknown> =>
+export const isRecord = (v: unknown): v is Record<string, unknown> =>
 	typeof v === "object" && v !== null;
 
 // Validation lives here, with the types it produces, so every part reads answers the same way.
