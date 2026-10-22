@@ -11,6 +11,11 @@
 	},
 	"packageRules": [
 		{ "matchManagers": ["npm"], "groupName": "npm tools" },
+		{
+			"matchPackageNames": ["@typesafe-ai/sdk"],
+			"groupName": "typesafe sdk",
+			"semanticCommitType": "fix"
+		},
 		{ "matchManagers": ["bun"], "groupName": "omp" },
 		{ "matchManagers": ["github-actions"], "groupName": "actions" }
 	]
