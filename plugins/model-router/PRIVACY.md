@@ -74,7 +74,9 @@ your API key in your system's secure storage as a
 sensitive plugin option. The plugin reads it only to send it as the bearer
 token of that request. When that option is empty, the plugin reads the key
 from the environment variable `TYPESAFE_API_KEY`. It reads nothing else from
-the environment. The Jev model choice lives in your Claude Code settings.
+the environment. A key in `TYPESAFE_API_KEY` stays wherever you set it, for
+example in plaintext in a settings file. The Jev model choice lives in your
+Claude Code settings.
 The lines the plugin prints per call go to your own transcript and, with
 `--debug`, to your debug log.
 

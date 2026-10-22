@@ -1,9 +1,16 @@
 # model-router
 
-The repository [README](../../README.md) says what this mod does and how to
-[install it](../../README.md#install). This file says what the mod can reach,
-what leaves the machine, the routing, the effort ladder, the
-troubleshooting steps and the development commands.
+The repository [README](https://github.com/Akurganow/model-router) says what
+this mod does and how to
+[install it](https://github.com/Akurganow/model-router#install). This file
+says what the mod can reach, what leaves the machine, the routing, the effort
+ladder and the troubleshooting steps.
+
+To install, run this line in a Claude Code session:
+
+```text
+/plugin install model-router --marketplace Akurganow/model-router
+```
 
 ## What this mod can reach
 
@@ -181,7 +188,7 @@ tool. Three dispatches and what the mod does with them:
 
 The first runs on `haiku`. For it the log shows:
 
-```
+```text
 model-router L0 haiku · medium · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok
 ```
 
@@ -199,8 +206,9 @@ Claude Code then refuses adds a second line, `denied`.
   [Routing](#which-calls-are-routed) lists. Enable the plugin in `/plugin`.
 - A routed call logs `skipped, <cause>` and runs unchanged. The causes are:
   - `key unset`: neither the `api_key` option nor `TYPESAFE_API_KEY` holds a
-    key. Set one as [Install](../../README.md#install) says for your app, then
-    run `/reload-plugins`. In the desktop app a saved key can read back as
+    key. Set one as
+    [Install](https://github.com/Akurganow/model-router#install) says for
+    your app, then run `/reload-plugins`. In the desktop app a saved key can read back as
     empty after a restart, so set `TYPESAFE_API_KEY` in the `env` block of
     `~/.claude/settings.json` instead.
   - `bad reply`: TypeSafe answered, but the answer lacks a valid score for
@@ -228,29 +236,6 @@ Claude Code then refuses adds a second line, `denied`.
 - A kind of task lands on the wrong tier: add a labelled brief to
   `calibration.jsonl` at the repository root and reword a tier text in
   `src/model.ts`. Then run the calibration script.
-
-## Development
-
-The hooks module, `hooks/register.js`, is a bundle. `node scripts/build.ts`
-builds it from `src/claude.ts` and checks its shape. The plugin loads the
-bundle, so build before you validate or test. Run from the repository root:
-
-```
-npm ci
-node scripts/build.ts
-claude plugin validate plugins/model-router
-claude plugin test plugins/model-router
-npx tsc -p src
-npx tsc -p .
-```
-
-- `claude plugin validate` lists the hooks and calls. CI adds `--strict`, and
-  `node scripts/check-surface.ts` compares the list with `tools/surface.json`.
-- `claude plugin test` runs the tests in `tests/`, with no network.
-- `tsc -p src` type-checks the sources. They declare the few mod types they
-  use, so they need nothing else.
-- `tsc -p .` type-checks the plugin tests. They need the declarations that
-  Claude Code writes beside a loaded mod, in `.claude-plugin/types`.
 
 ## Support
 
