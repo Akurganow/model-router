@@ -1,4 +1,4 @@
-import { isRecord } from "./model.ts";
+import { isRecord } from "./part.ts";
 
 export const STORE_MAX = 64;
 

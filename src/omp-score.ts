@@ -6,9 +6,10 @@ import {
 	ROUTING_LIMIT_MS,
 	route,
 } from "./compose.ts";
-import { formatProbability, type Level, tier } from "./model.ts";
+import { tier } from "./model.ts";
 import { ROLES } from "./omp-gates.ts";
 import type { Stored } from "./omp-store.ts";
+import { formatProbability, type Level } from "./part.ts";
 
 export type TaskItem = { readonly task: string; readonly name?: unknown };
 type Scored = {

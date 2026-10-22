@@ -1,4 +1,4 @@
-import type { Level, Part, Probabilities } from "./model.ts";
+import type { Level, Part, Probabilities } from "./part.ts";
 
 const WORK_PRIOR = [0.5, 1, 0.5] as const;
 const WORK_INSTRUCTIONS =

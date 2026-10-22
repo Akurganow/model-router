@@ -1,5 +1,4 @@
 import { contextText } from "./brief.ts";
-import { isRecord } from "./model.ts";
 import { checkGates, resolves } from "./omp-gates.ts";
 import { scoreItems, type TaskItem } from "./omp-score.ts";
 import { createStore } from "./omp-store.ts";
@@ -12,6 +11,7 @@ import type {
 	ToolCallEvent,
 	ToolProgressEvent,
 } from "./omp-types.ts";
+import { isRecord } from "./part.ts";
 
 const LINE_PREFIX = "model-router ";
 const ENTRY_SEPARATOR = " | ";

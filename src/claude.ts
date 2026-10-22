@@ -10,7 +10,8 @@ import {
 	type Skipped,
 } from "./compose.ts";
 import { work } from "./effort.ts";
-import { formatProbability, type Level, tier } from "./model.ts";
+import { tier } from "./model.ts";
+import { formatProbability, type Level } from "./part.ts";
 import { installTimers } from "./timers.ts";
 
 // The mods API and hook types this adapter uses. The bundle must not depend on the generated declarations.

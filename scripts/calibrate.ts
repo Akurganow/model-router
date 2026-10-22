@@ -9,7 +9,8 @@ import {
 	type Skipped,
 } from "../src/compose.ts";
 import { work } from "../src/effort.ts";
-import { formatProbability, tier } from "../src/model.ts";
+import { tier } from "../src/model.ts";
+import { formatProbability } from "../src/part.ts";
 import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";
 
 const AGREEMENT_BAR = 0.85;

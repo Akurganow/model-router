@@ -1,21 +1,5 @@
-export type Level = 0 | 1 | 2;
-export type Probabilities = Record<`${Level}`, number>;
-export type Part = {
-	readonly key: string;
-	readonly question: {
-		readonly type: "score";
-		readonly instructions: string;
-		readonly criteria: readonly [string, string, string];
-	};
-	readonly pick: (probabilities: Probabilities) => Level;
-};
+import { LEVELS, type Level, type Part, type Probabilities } from "./part.ts";
 
-const PROBABILITY_DIGITS = 2;
-
-export const formatProbability = (p: number): string =>
-	p.toFixed(PROBABILITY_DIGITS);
-
-const LEVELS: readonly Level[] = [0, 1, 2];
 const TIE_MARGIN = 0.1;
 
 const TIER_INSTRUCTIONS =
@@ -26,29 +10,6 @@ export const TIER_TEXTS = [
 	"Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
 	"Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause.",
 ] as const;
-
-export const isRecord = (v: unknown): v is Record<string, unknown> =>
-	typeof v === "object" && v !== null;
-
-// Validation lives here, with the types it produces, so every part reads answers the same way.
-export function parseProbabilities(
-	answers: unknown,
-	key: string,
-): Probabilities | undefined {
-	const a = isRecord(answers) ? answers[key] : undefined;
-	if (!isRecord(a)) return undefined;
-	const { type, probabilities } = a;
-	if (type !== "score" || !isRecord(probabilities)) return undefined;
-	if (Object.keys(probabilities).length !== LEVELS.length) return undefined;
-	const { 0: p0, 1: p1, 2: p2 } = probabilities;
-	if (
-		typeof p0 !== "number" ||
-		typeof p1 !== "number" ||
-		typeof p2 !== "number"
-	)
-		return undefined;
-	return { 0: p0, 1: p1, 2: p2 };
-}
 
 // A near tie goes to the highest level within the margin: when unsure, the larger model.
 function pickTier(p: Probabilities): Level {

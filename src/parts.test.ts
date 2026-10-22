@@ -16,7 +16,6 @@ type Import = { from: string; typeOnly: boolean; names: string[] };
 const IMPORT =
 	/^import\s+(?:(type\s+)?([^;"']*?)\s*from\s+)?["']([^"']+)["']/gm;
 const CLIENT_FILE = /claude|omp|client|compose/i;
-const VALIDATION_HELPERS = ["parseProbabilities"];
 
 function importsOf(source: string): Import[] {
 	return [...source.matchAll(IMPORT)].map(
@@ -39,24 +38,11 @@ test("neither part imports a client file", () => {
 			assert.doesNotMatch(from, CLIENT_FILE);
 });
 
-test("model.ts does not import effort.ts", () => {
+test("neither part imports the other", () => {
 	for (const { from } of importsOf(SOURCE.model))
 		assert.doesNotMatch(from, /effort/);
-});
-
-test("effort.ts imports from model.ts only types and the validation helper", () => {
-	const fromModel = importsOf(SOURCE.effort).filter(
-		({ from }) => from === "./model.ts",
-	);
-	assert.ok(fromModel.length > 0);
-	for (const { typeOnly, names } of fromModel) {
-		if (typeOnly) continue;
-		for (const name of names)
-			assert.ok(
-				name.startsWith("type ") || VALIDATION_HELPERS.includes(name),
-				`value import ${name} is neither a type nor a validation helper`,
-			);
-	}
+	for (const { from } of importsOf(SOURCE.effort))
+		assert.doesNotMatch(from, /model/);
 });
 
 test("both parts share one shape: a key, a score question and a pick function", () => {

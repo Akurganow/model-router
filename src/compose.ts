@@ -13,7 +13,7 @@ import {
 	type Part,
 	type Probabilities,
 	parseProbabilities,
-} from "./model.ts";
+} from "./part.ts";
 
 export const ROUTING_LIMIT_MS = 8000;
 // Adapters abort their signal with this reason when the limit runs out, so a timeout differs from a cancel.

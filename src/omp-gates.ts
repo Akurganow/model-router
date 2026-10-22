@@ -1,5 +1,5 @@
-import { isRecord } from "./model.ts";
 import type { Context, Lookup, Pi } from "./omp-types.ts";
+import { isRecord } from "./part.ts";
 
 export const ROLES = { small: "@smol", large: "@slow" } as const;
 

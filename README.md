@@ -102,7 +102,9 @@ The mod reads the key when it loads. After the key is saved, run
 
 - `src/` holds the parts, the composer, the client, the brief and the two
   adapters. `src/model.ts` holds the tier texts and `src/effort.ts` holds the
-  work texts. The tests sit beside the sources as `src/*.test.ts`.
+  work texts. Neither imports the other: both build on `src/part.ts`, which
+  holds the shared types and the answer check. The tests sit beside the
+  sources as `src/*.test.ts`.
 - `plugins/model-router` is the Claude Code plugin.
 - `plugins/model-router-omp` is the omp plugin.
 - `.claude-plugin/marketplace.json` is the Claude Code catalog.

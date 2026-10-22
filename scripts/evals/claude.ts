@@ -1,4 +1,4 @@
-import type { Level } from "../../src/model.ts";
+import type { Level } from "../../src/part.ts";
 import { get, isRecord, jsonLines } from "./stream.ts";
 import type { Adapter, Evidence } from "./types.ts";
 
