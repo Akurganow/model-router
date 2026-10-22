@@ -5,5 +5,5 @@
 		"@tsconfig/node-ts/tsconfig.json"
 	],
 	"compilerOptions": { "allowImportingTsExtensions": true },
-	"include": ["plugins/model-router/hooks", "plugins/model-router/tests"]
+	"include": ["plugins/model-router/hooks", "plugins/model-router/tests", "src"]
 }
