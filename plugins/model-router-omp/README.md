@@ -91,7 +91,6 @@ A closed gate skips every eligible item with the same reason. The gates run in t
 After the gates pass, one item can still skip:
 
 - `timeout`: the 8 s scoring limit ran out. Items still waiting skip too.
-- `cancelled`: omp cancelled the call.
 - `HTTP <status>`: TypeSafe returned an error status, after any retries. For example, `HTTP 401` means TypeSafe refused the key.
 - `network error`: the request could not connect, after any retries.
 - `rejected request`: the SDK raised a TypeSafe error that is neither an HTTP error nor a network error.

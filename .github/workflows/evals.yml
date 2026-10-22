@@ -21,7 +21,7 @@ on:
         required: false
         default: ""
       ref:
-        description: Tag or branch to install the plugin from, or empty for the ref of this run
+        description: Tag or branch to install the plugin from, or empty for the ref of this run. It must hold scripts/build.ts and .github/actions/setup-node
         type: string
         required: false
         default: ""

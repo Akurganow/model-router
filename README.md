@@ -40,7 +40,7 @@ policy. The same TypeSafe key is needed.
 
 The omp install steps are in the
 [omp README](plugins/model-router-omp/README.md#install). The Claude Code mod
-needs Claude Code v2.1.293 or later and a TypeSafe API key from
+needs Claude Code v2.1.308 or later and a TypeSafe API key from
 https://console.typesafe.ai/keys. Claude Code keeps the key in your system's
 secure storage. The steps differ by where you run Claude Code.
 
