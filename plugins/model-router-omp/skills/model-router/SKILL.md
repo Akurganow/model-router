@@ -9,7 +9,7 @@ description: >
 
 # model-router
 
-model-router scores each eligible `task` item through TypeSafe Jev. At spawn, it gives omp's bundled `task` agent the `smol` role for level 0, or the `slow` role for level 2. Level 1 changes nothing. The plugin sets no effort and changes no setting.
+model-router scores each eligible `task` item through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it gives omp's bundled `task` agent the `smol` role for level 0, or the `slow` role for level 2. Level 1 changes nothing. The plugin sets no effort and changes no setting.
 
 - The batch line starts with `model-router`. It shows each decision, or the reason an item ran unrouted.
 - A named agent is never routed. It runs on its own model.

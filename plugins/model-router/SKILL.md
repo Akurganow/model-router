@@ -10,8 +10,9 @@ description: >
 # model-router
 
 A mod in this folder hooks the Agent tool call. For each call it routes, it
-asks TypeSafe Jev how much judgment and work the task needs and sets the
-subagent's model and effort. The model is `haiku` for lookup or transcription,
+asks Jev, on TypeSafe or OpenRouter as the `provider` option allows, how much
+judgment and work the task needs. It then sets the subagent's model and
+effort. The model is `haiku` for lookup or transcription,
 `sonnet` for bounded judgment and `opus` for open judgment. One dim line per
 routed call appears in the transcript. To turn routing off, disable the
 plugin in `/plugin`.
@@ -49,6 +50,7 @@ From the repository root:
 - `npx tsc -p src` type-checks the sources. `npx tsc -p .` type-checks the
   plugin tests, which need the declarations Claude Code writes beside a
   loaded mod.
-- `node scripts/calibrate.ts [model]` takes the TypeSafe API key from a masked
-  prompt or stdin, runs the labelled seed against Jev and prints misses and
-  agreement. The model defaults to `jev-latest`.
+- `node scripts/calibrate.ts <typesafe|openrouter> [model]` takes that
+  provider's API key from a masked prompt or stdin, runs the labelled seed
+  against Jev and prints misses and agreement. The model defaults to
+  `jev-latest`.
