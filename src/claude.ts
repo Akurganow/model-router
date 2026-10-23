@@ -98,7 +98,6 @@ const EFFORT_LADDER = {
 	opus: ["low", "medium", "high"],
 } as const;
 
-const COMMAND = "model-router:provider";
 const PROVIDER_ROW = "model-router.provider";
 
 const BUILT_IN = "built-in";
@@ -131,7 +130,8 @@ export function register(on: On, options: Options): void {
 	on("tool.call", { tool: "Agent" }, ($, e, next) =>
 		routeAgentCall($, e, next, options),
 	).catch(passOn);
-	on("command.run", { command: COMMAND }, ($, e) =>
+	// The surface check reads the matcher, so the command name stays a literal here.
+	on("command.run", { command: "model-router:provider" }, ($, e) =>
 		providerCommand($, e.args.trim(), options.provider),
 	);
 }

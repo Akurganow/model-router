@@ -1192,7 +1192,6 @@ var EFFORT_LADDER = {
   sonnet: ["low", "medium", "high"],
   opus: ["low", "medium", "high"]
 };
-var COMMAND = "model-router:provider";
 var PROVIDER_ROW = "model-router.provider";
 var BUILT_IN = "built-in";
 var DEFAULT_AGENT = "general-purpose";
@@ -1221,7 +1220,7 @@ function register(on, options) {
   ).catch(passOn);
   on(
     "command.run",
-    { command: COMMAND },
+    { command: "model-router:provider" },
     ($, e) => providerCommand($, e.args.trim(), options.provider)
   );
 }
