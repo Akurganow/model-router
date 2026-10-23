@@ -114,11 +114,21 @@ const ROUTED_AGENTS: ReadonlySet<string> = new Set([
 const DEBUG_PIECE_CHARS = 9000;
 
 // The sensitive option comes first. The desktop app reads it back empty after a restart, so the variable stands in.
+// plugin validate requires a literal name in every $.env.get call, so each reader names its variable.
 const KEY_SOURCES: Readonly<
-	Record<Provider, { option: keyof Options; variable: string }>
+	Record<
+		Provider,
+		{ option: keyof Options; variable: ($: Engine) => Promise<unknown> }
+	>
 > = {
-	typesafe: { option: "api_key", variable: "TYPESAFE_API_KEY" },
-	openrouter: { option: "openrouter_api_key", variable: "OPENROUTER_API_KEY" },
+	typesafe: {
+		option: "api_key",
+		variable: ($) => $.env.get("TYPESAFE_API_KEY"),
+	},
+	openrouter: {
+		option: "openrouter_api_key",
+		variable: ($) => $.env.get("OPENROUTER_API_KEY"),
+	},
 };
 
 // The latest source of each offered agent name. A user or plugin agent can take a built-in's name.
@@ -240,8 +250,7 @@ async function readKeys($: Engine, options: Options): Promise<Keys> {
 	const keys: Keys = {};
 	for (const provider of order(options.provider)) {
 		const { option, variable } = KEY_SOURCES[provider];
-		const key =
-			nonEmpty(options[option]) ?? nonEmpty(await $.env.get(variable));
+		const key = nonEmpty(options[option]) ?? nonEmpty(await variable($));
 		if (key !== undefined) keys[provider] = key;
 	}
 	return keys;

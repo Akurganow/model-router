@@ -1204,8 +1204,14 @@ var ROUTED_AGENTS = /* @__PURE__ */ new Set([
 ]);
 var DEBUG_PIECE_CHARS = 9e3;
 var KEY_SOURCES = {
-  typesafe: { option: "api_key", variable: "TYPESAFE_API_KEY" },
-  openrouter: { option: "openrouter_api_key", variable: "OPENROUTER_API_KEY" }
+  typesafe: {
+    option: "api_key",
+    variable: ($) => $.env.get("TYPESAFE_API_KEY")
+  },
+  openrouter: {
+    option: "openrouter_api_key",
+    variable: ($) => $.env.get("OPENROUTER_API_KEY")
+  }
 };
 var offered = /* @__PURE__ */ new Map();
 function register(on, options) {
@@ -1297,7 +1303,7 @@ async function readKeys($, options) {
   const keys = {};
   for (const provider of order(options.provider)) {
     const { option, variable } = KEY_SOURCES[provider];
-    const key = nonEmpty(options[option]) ?? nonEmpty(await $.env.get(variable));
+    const key = nonEmpty(options[option]) ?? nonEmpty(await variable($));
     if (key !== void 0) keys[provider] = key;
   }
   return keys;
