@@ -4,7 +4,7 @@
 [![CI](https://github.com/Akurganow/model-router/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Akurganow/model-router/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/Akurganow/model-router)](LICENSE)
 
-Picks a model for each subagent, judged by TypeSafe Jev. For Claude Code and Oh My Pi.
+Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For Claude Code and Oh My Pi.
 
 | | Claude Code | Oh My Pi |
 | --- | --- | --- |
@@ -22,7 +22,7 @@ Picks a model for each subagent, judged by TypeSafe Jev. For Claude Code and Oh 
 
 **Claude Code.** On each Agent tool call it routes
 ([which calls](plugins/model-router/README.md#which-calls-are-routed)), the
-plugin asks [TypeSafe Jev](https://docs.typesafe.ai) two questions: how much
+plugin asks [Jev](https://docs.typesafe.ai) two questions: how much
 judgment and how much work the task needs. Then it sets the call's `model` and `effort`.
 The model is `haiku` for lookup or transcription, `sonnet` for bounded
 judgment and `opus` for open judgment.

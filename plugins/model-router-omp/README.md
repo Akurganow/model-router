@@ -1,10 +1,10 @@
 # model-router for Oh My Pi
 
-An [Oh My Pi](https://github.com/can1357/oh-my-pi) (omp) plugin that picks a model role for each `task` subagent. It asks [TypeSafe Jev](https://docs.typesafe.ai) how much judgment the task needs. It then gives omp's bundled `task` agent the `smol` or `slow` role for that spawn.
+An [Oh My Pi](https://github.com/can1357/oh-my-pi) (omp) plugin that picks a model role for each `task` subagent. It asks [Jev](https://docs.typesafe.ai), on TypeSafe or OpenRouter, how much judgment the task needs. It then gives omp's bundled `task` agent the `smol` or `slow` role for that spawn.
 
 ## What it does
 
-- It scores each eligible `task` item through TypeSafe Jev, using the `jev-latest` alias. Jev answers one question: how much judgment the task needs. Jev does not score effort.
+- It scores each eligible `task` item through Jev, using the `jev-latest` alias. Jev answers one question: how much judgment the task needs. Jev does not score effort.
 - At spawn, it returns `@smol` for level 0 and `@slow` for level 2 to omp's bundled `task` agent. Level 1 changes nothing.
 - The bundled `task` agent runs with thinking set to `auto`, so omp picks the effort for each prompt. The plugin sets no effort and changes no setting.
 - It never changes the tool input. A named agent, such as `scout`, keeps its own model.
