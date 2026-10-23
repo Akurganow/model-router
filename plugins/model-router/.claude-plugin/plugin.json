@@ -1,7 +1,7 @@
 {
 	"name": "model-router",
 	"version": "0.13.0",
-	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by TypeSafe Jev. On every Agent call it sends the subagent's task text, condensed and with secrets masked, to api.typesafe.ai with your TypeSafe key.",
+	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev. On every Agent call it sends the subagent's task text, condensed and with secrets masked, to api.typesafe.ai, openrouter.ai or both, as its provider option allows, each with its own key.",
 	"author": {
 		"name": "Akurganow",
 		"url": "https://github.com/Akurganow"
@@ -18,19 +18,33 @@
 		"typesafe",
 		"jev"
 	],
+	"skills": ["."],
+	"commands": {
+		"provider": {
+			"description": "Shows or changes which providers score subagent calls: auto, openrouter-first, typesafe or openrouter.",
+			"argumentHint": "[auto|openrouter-first|typesafe|openrouter]",
+			"content": "The model-router plugin did not answer this command, so its provider was not shown or changed. Tell the user to open /config, find the model-router plugin, and set its provider option there."
+		}
+	},
 	"userConfig": {
 		"api_key": {
 			"type": "string",
 			"title": "TypeSafe API key",
-			"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request. The README says where to get one.",
+			"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider option allows TypeSafe. The README says where to get one.",
 			"sensitive": true
 		},
-		"model": {
+		"openrouter_api_key": {
 			"type": "string",
-			"title": "Jev model",
-			"description": "jev-latest: the most recent official Jev release. jev-preview: the most recent release, official or not. Both are TypeSafe aliases that move when a new release ships.",
-			"options": ["jev-latest", "jev-preview"],
-			"default": "jev-latest"
+			"title": "OpenRouter API key",
+			"description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the provider option allows OpenRouter.",
+			"sensitive": true
+		},
+		"provider": {
+			"type": "string",
+			"title": "Jev provider",
+			"description": "Which providers may score a subagent call, and in which order. typesafe: TypeSafe only. openrouter: OpenRouter only. auto: TypeSafe, then OpenRouter if TypeSafe fails. openrouter-first: OpenRouter, then TypeSafe. With auto or openrouter-first and both keys set, one call may reach both companies.",
+			"options": ["auto", "openrouter-first", "typesafe", "openrouter"],
+			"default": "typesafe"
 		}
 	}
 }

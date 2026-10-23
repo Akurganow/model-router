@@ -1,27 +1,96 @@
-import type { Context, Lookup, Pi } from "./omp-types.ts";
+import { readFile } from "node:fs/promises";
+import type { RouteInput } from "./compose.ts";
+import type { Context, Lookup, OmpImports, Pi } from "./omp-types.ts";
 import { isRecord } from "./part.ts";
+import { narrow, order, type Provider, plan } from "./provider.ts";
 
 export const ROLES = { small: "@smol", large: "@slow" } as const;
 
-const KEY_PROVIDER = "typesafe";
 const TASK = "task";
 const BUNDLED = "bundled";
+const UNREADABLE = "settings unreadable";
+// omp keys plugin settings by the package name.
+const PLUGIN = "model-router-omp";
+const SETTING = "provider";
+const KEY_VARIABLES: Readonly<Record<Provider, string>> = {
+	typesafe: "TYPESAFE_API_KEY",
+	openrouter: "OPENROUTER_API_KEY",
+};
 
-type Gates = { readonly key: string } | { readonly closed: string };
+export type Routing = Pick<RouteInput, "attempts" | "keys">;
+type Gates = Routing | { readonly closed: string };
 
-// The task agent and the user's own routing decide first. Each gate fails closed, and the key is the cheapest check.
+// The task agent and the user's own routing decide first. Each gate fails closed, and the keys are the cheapest check.
 export async function checkGates(
-	lookup: Lookup,
+	omp: OmpImports,
 	pi: Pi,
 	ctx: Context,
 ): Promise<Gates> {
-	const key = await findKey(ctx);
-	if (key === undefined) return { closed: "key unset" };
+	let value: string;
+	try {
+		value = await readProvider(omp, ctx.cwd);
+	} catch {
+		return { closed: UNREADABLE };
+	}
+	const routing = await findKeys(ctx, value);
+	if (routing.attempts.length === 0) return { closed: "key unset" };
 	const closed =
-		settingsGate(lookup, pi.pi.settings) ??
+		settingsGate(omp.lookup, pi.pi.settings) ??
 		(await agentGate(pi, ctx)) ??
 		modelsGate(ctx);
-	return closed === undefined ? { key } : { closed };
+	return closed === undefined ? routing : { closed };
+}
+
+// The effective settings hold the project's value when it sets one and the global value otherwise.
+async function readProvider(omp: OmpImports, cwd: string): Promise<string> {
+	const [global, effective] = await Promise.all([
+		readGlobal(omp.getPluginsLockfile()),
+		omp.getPluginSettings(PLUGIN, cwd),
+	]);
+	return narrow(global, effective[SETTING]);
+}
+
+// omp reads a missing lockfile as empty, and so does this.
+async function readGlobal(path: string): Promise<unknown> {
+	let text: string;
+	try {
+		text = await readFile(path, "utf8");
+	} catch (err) {
+		const { code } = isRecord(err) ? err : {};
+		if (code === "ENOENT") return undefined;
+		throw err;
+	}
+	const lock: unknown = JSON.parse(text);
+	const { settings } = isRecord(lock) ? lock : {};
+	const mine = isRecord(settings) ? settings[PLUGIN] : undefined;
+	return isRecord(mine) ? mine[SETTING] : undefined;
+}
+
+// Only the providers the value allows are read. omp's own credential comes first, then the variable.
+async function findKeys(ctx: Context, value: string): Promise<Routing> {
+	const keys: Partial<Record<Provider, string>> = {};
+	for (const provider of order(value)) {
+		const key = await findKey(ctx, provider);
+		if (key !== undefined) keys[provider] = key;
+	}
+	const present = {
+		typesafe: keys.typesafe !== undefined,
+		openrouter: keys.openrouter !== undefined,
+	};
+	return { attempts: plan(value, present), keys };
+}
+
+async function findKey(
+	ctx: Context,
+	provider: Provider,
+): Promise<string | undefined> {
+	try {
+		const key = await ctx.modelRegistry.getApiKeyForProvider(provider);
+		if (typeof key === "string" && key !== "") return key;
+	} catch {
+		// A broken credential store falls through to the variable.
+	}
+	return process.env[KEY_VARIABLES[provider]] || undefined;
 }
 
 export function resolves(ctx: Context, role: string): boolean {
@@ -30,18 +99,6 @@ export function resolves(ctx: Context, role: string): boolean {
 	} catch {
 		return false;
 	}
-}
-
-// The key goes only to TypeSafe. omp's own credential comes first, then the variable.
-async function findKey(ctx: Context): Promise<string | undefined> {
-	try {
-		const key = await ctx.modelRegistry.getApiKeyForProvider(KEY_PROVIDER);
-		if (typeof key === "string" && key !== "") return key;
-	} catch {
-		// A broken credential store falls through to the variable.
-	}
-	const { TYPESAFE_API_KEY } = process.env;
-	return TYPESAFE_API_KEY || undefined;
 }
 
 function read(lookup: Lookup, id: string, settings: unknown): unknown {
@@ -60,7 +117,7 @@ function settingsGate(lookup: Lookup, settings: unknown): string | undefined {
 	const overrides = read(lookup, "task.agentModelOverrides", settings);
 	const disabled = read(lookup, "task.disabledAgents", settings);
 	if (!isRecord(roles) || !isRecord(overrides) || !Array.isArray(disabled))
-		return "settings unreadable";
+		return UNREADABLE;
 	if (!isEmpty(roles[TASK])) return "task model role set";
 	if (!isEmpty(overrides[TASK])) return "task model override set";
 	if (disabled.includes(TASK)) return "task agent disabled";

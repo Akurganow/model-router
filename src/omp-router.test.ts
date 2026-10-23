@@ -6,6 +6,9 @@ import {
 	ENDPOINT,
 	jevAnswer,
 	KEY,
+	lockfileWith,
+	OR_ENDPOINT,
+	OR_KEY,
 	setEnv,
 	streamed,
 	useWorld,
@@ -14,7 +17,7 @@ import { createExtension } from "./omp-router.ts";
 
 const world = useWorld();
 afterEach(() => mock.timers.reset());
-const install = () => createExtension(world.lookup)(world.pi);
+const install = () => createExtension(world.imports)(world.pi);
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const PREFIX = "model-router ";
 const SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
@@ -70,6 +73,29 @@ test("the environment cannot move the request", async () => {
 	assert.deepEqual(
 		world.sent.map((s) => s.url),
 		[ENDPOINT],
+	);
+});
+
+test("a project narrowing auto sends the request to its provider with that provider's key", async () => {
+	install();
+	world.lockfile = lockfileWith("auto");
+	world.project = { provider: "openrouter" };
+	await world.toolCall("c", { tasks: [{ task: "level0 a" }] });
+	assert.deepEqual(
+		world.sent.map((s) => [s.url, s.authorization]),
+		[[OR_ENDPOINT, `Bearer ${OR_KEY}`]],
+	);
+	assert.equal(world.notes[0], `${PREFIX}task 1: L0 @smol · p=0.90${SUFFIX}`);
+});
+
+test("the setting is read for each batch, so a change needs no reload", async () => {
+	install();
+	await world.toolCall("c", { tasks: [{ task: "a" }] });
+	world.lockfile = lockfileWith("openrouter");
+	await world.toolCall("d", { tasks: [{ task: "a" }] });
+	assert.deepEqual(
+		world.sent.map((s) => s.url),
+		[ENDPOINT, OR_ENDPOINT],
 	);
 });
 
@@ -131,6 +157,7 @@ test("other tools, other shapes and nothing eligible send and say nothing", asyn
 
 const closed: [string, string, () => void][] = [
 	["key unset", "key", () => (world.credential = async () => undefined)],
+	["settings unreadable", "settings", () => (world.lockfile = "{")],
 	[
 		"task model role set",
 		"role",
@@ -253,6 +280,79 @@ test("at most four items are scored at once", async () => {
 	assert.equal(world.notes.length, 1);
 });
 
+const VIA = " · via openrouter (typesafe HTTP 503)";
+const entriesOf = (note: string | undefined) =>
+	(note ?? "").slice(PREFIX.length).split(" | ");
+const count = (url: string) => world.sent.filter((s) => s.url === url).length;
+
+test("in an outage, items that start later in the batch pass over the failed provider", async () => {
+	install();
+	world.lockfile = lockfileWith("auto");
+	world.answer = async ({ url }) =>
+		url === ENDPOINT
+			? streamed(503, { error: "down" })
+			: streamed(200, jevAnswer(1));
+	const tasks = Array.from({ length: 6 }, (_, i) => ({ task: `task ${i}` }));
+	await world.toolCall("c", { tasks });
+	assert.equal(count(ENDPOINT), 4);
+	assert.equal(count(OR_ENDPOINT), 6);
+	const line = `L1 no change · p=0.90${SUFFIX}`;
+	assert.deepEqual(entriesOf(world.notes[0]), [
+		...[1, 2, 3, 4].map((n) => `task ${n}: ${line}${VIA}`),
+		`task 5: ${line}`,
+		`task 6: ${line}`,
+	]);
+	await world.toolCall("d", { tasks: [{ task: "a" }] });
+	assert.equal(count(ENDPOINT), 5);
+});
+
+test("an item that starts while another waits on its fallback already passes over the failed provider", async () => {
+	install();
+	world.lockfile = lockfileWith("auto");
+	let fellBack = () => {};
+	const fallbackSent = new Promise<void>((resolve) => {
+		fellBack = resolve;
+	});
+	let lastStarted = () => {};
+	const lastSent = new Promise<void>((resolve) => {
+		lastStarted = resolve;
+	});
+	world.answer = async ({ url, body }) => {
+		const { task } = (body as { state: { task: string } }).state;
+		if (task.startsWith("task 4")) lastStarted();
+		if (task.startsWith("task 0")) {
+			if (url === ENDPOINT) return streamed(503, { error: "down" });
+			fellBack();
+			await lastSent;
+		} else if (url === ENDPOINT) await fallbackSent;
+		return streamed(200, jevAnswer(1));
+	};
+	const tasks = Array.from({ length: 5 }, (_, i) => ({ task: `task ${i}` }));
+	await world.toolCall("c", { tasks });
+	assert.equal(count(ENDPOINT), 4);
+	assert.equal(count(OR_ENDPOINT), 2);
+	const line = `L1 no change · p=0.90${SUFFIX}`;
+	assert.deepEqual(entriesOf(world.notes[0]), [
+		`task 1: ${line}${VIA}`,
+		...[2, 3, 4, 5].map((n) => `task ${n}: ${line}`),
+	]);
+});
+
+test("a skip after two attempts names both providers, a later one-attempt skip does not", async () => {
+	install();
+	world.lockfile = lockfileWith("auto");
+	world.answer = async ({ url }) =>
+		streamed(url === ENDPOINT ? 503 : 401, { error: "no" });
+	const tasks = Array.from({ length: 5 }, (_, i) => ({ task: `task ${i}` }));
+	await world.toolCall("c", { tasks });
+	assert.deepEqual(entriesOf(world.notes[0]), [
+		...[1, 2, 3, 4].map(
+			(n) => `task ${n}: skipped, typesafe HTTP 503, openrouter HTTP 401`,
+		),
+		"task 5: skipped, HTTP 401",
+	]);
+});
+
 test("one 8 s limit covers the batch: running and queued items are skipped as timeout", async () => {
 	install();
 	mock.timers.enable({ apis: ["setTimeout"] });
@@ -262,7 +362,9 @@ test("one 8 s limit covers the batch: running and queued items are skipped as ti
 		);
 	const tasks = Array.from({ length: 6 }, (_, i) => ({ task: `task ${i}` }));
 	const pending = world.toolCall("c", { tasks });
-	await new Promise((resolve) => setImmediate(resolve));
+	// The settings read is real file I/O, so the limit starts once the first requests are out.
+	while (world.sent.length < 4)
+		await new Promise((resolve) => setImmediate(resolve));
 	mock.timers.tick(7999);
 	await new Promise((resolve) => setImmediate(resolve));
 	assert.equal(world.notes.length, 0);

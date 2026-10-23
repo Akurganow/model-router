@@ -1,16 +1,22 @@
 import { type Fetch, TypeSafeClient } from "@typesafe-ai/sdk";
+import { HOSTS, type Provider } from "./provider.ts";
 
-// The SDK appends /v1/systemone. The key goes only to this host.
-export const TYPESAFE_BASE_URL = "https://api.typesafe.ai";
-
+// The SDK reads TYPESAFE_BASE_URL and TYPESAFE_API_KEY when it gets no host or key, so both are always passed.
 export function createClient(
-	apiKey: string,
+	provider: Provider,
+	apiKey: string | undefined,
 	model: string,
 	fetchFn: Fetch,
 ): TypeSafeClient {
+	if (!Object.hasOwn(HOSTS, provider))
+		throw new Error(`createClient: no host for ${provider}`);
+	if (!apiKey)
+		throw new Error(
+			`createClient: no ${provider} key. Pass a non-empty key for ${provider}.`,
+		);
 	return new TypeSafeClient({
 		apiKey,
-		baseURL: TYPESAFE_BASE_URL,
+		baseURL: HOSTS[provider],
 		logLevel: "off",
 		defaultModel: model,
 		compression: false,

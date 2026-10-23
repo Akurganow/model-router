@@ -5,7 +5,7 @@ import { createExtension } from "./omp-router.ts";
 import { STORE_MAX } from "./omp-store.ts";
 
 const world = useWorld();
-const install = () => createExtension(world.lookup)(world.pi);
+const install = () => createExtension(world.imports)(world.pi);
 const twoTasks = () =>
 	world.toolCall("c", { tasks: [{ task: "level0 a" }, { task: "level2 b" }] });
 const LINE = "L2 @slow · p=0.90 · jev jev-1.14.0 · 812/9 tok";

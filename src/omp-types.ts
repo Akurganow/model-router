@@ -1,8 +1,18 @@
 // The parts of omp's extension API this adapter uses, from extensibility/extensions/types.ts at omp 18.12.6.
-// Nothing here imports omp: the bundle leaves only the registry subpath external.
+// Nothing here imports omp: only the entry imports omp's modules, and the bundle leaves them external.
 export type Lookup = (
 	id: string,
 ) => { get(scope: unknown): unknown } | undefined;
+
+// The omp functions the entry imports. Tests hand in fakes.
+export type OmpImports = {
+	lookup: Lookup;
+	getPluginsLockfile: () => string;
+	getPluginSettings: (
+		pluginName: string,
+		cwd: string,
+	) => Promise<Record<string, unknown>>;
+};
 
 export type Context = {
 	cwd: string;

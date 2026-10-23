@@ -3,13 +3,26 @@
 	"version": "0.13.0",
 	"private": true,
 	"type": "module",
-	"description": "Routes each task subagent in Oh My Pi to the smol or slow model role, judged by TypeSafe Jev.",
+	"description": "Routes each task subagent in Oh My Pi to the smol or slow model role, judged by Jev from the redacted task text, which it sends to api.typesafe.ai, openrouter.ai or both, as its provider setting allows.",
 	"license": "MIT",
 	"homepage": "https://github.com/Akurganow/model-router",
 	"repository": "https://github.com/Akurganow/model-router",
 	"omp": {
 		"extensions": [
 			"./extension/index.js"
-		]
+		],
+		"settings": {
+			"provider": {
+				"type": "enum",
+				"description": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe.",
+				"values": [
+					"auto",
+					"openrouter-first",
+					"typesafe",
+					"openrouter"
+				],
+				"default": "typesafe"
+			}
+		}
 	}
 }

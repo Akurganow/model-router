@@ -11,11 +11,17 @@ import {
 import { work } from "../src/effort.ts";
 import { tier } from "../src/model.ts";
 import { formatProbability } from "../src/part.ts";
+import { type Attempt, HOSTS, type Provider, plan } from "../src/provider.ts";
 import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";
 
 const AGREEMENT_BAR = 0.85;
 const CASE_HEAD_CHARS = 60;
 const PERCENT = 100;
+const NAMES: Readonly<Record<Provider, string>> = {
+	typesafe: "TypeSafe",
+	openrouter: "OpenRouter",
+};
+const USAGE = `usage: node scripts/calibrate.ts <typesafe|openrouter> [model]  (typesafe sends the cases to ${HOSTS.typesafe}, openrouter to ${HOSTS.openrouter}; enter that host's API key at the prompt, or pipe it on stdin; model defaults to jev-latest)`;
 
 export type Case = {
 	role: string;
@@ -31,8 +37,8 @@ export const caseHead = (text: string): string =>
 
 export async function runCase(
 	c: Case,
-	model: string,
-	apiKey: string,
+	attempts: readonly Attempt[],
+	keys: Readonly<Partial<Record<Provider, string>>>,
 	fetchFn: Fetch,
 ): Promise<Decision | Skipped> {
 	const limit = new AbortController();
@@ -45,8 +51,8 @@ export async function runCase(
 				description: c.description,
 				task: prepareBrief(c.text),
 			},
-			model,
-			apiKey,
+			attempts,
+			keys,
 			fetchFn,
 			signal: limit.signal,
 		});
@@ -67,8 +73,11 @@ function keystroke(typed: string, ch: string): Keystroke {
 	return { typed: ch === BACKSPACE ? typed.slice(0, -1) : typed + ch };
 }
 
-function typeKey(stdin: NodeJS.ReadStream): Promise<string> {
-	process.stderr.write("TypeSafe API key: ");
+function typeKey(
+	stdin: NodeJS.ReadStream,
+	provider: Provider,
+): Promise<string> {
+	process.stderr.write(`${NAMES[provider]} API key for ${HOSTS[provider]}: `);
 	stdin.setRawMode(true);
 	stdin.resume();
 	return new Promise((resolve) => {
@@ -93,9 +102,12 @@ function typeKey(stdin: NodeJS.ReadStream): Promise<string> {
 	});
 }
 
-export async function readKey(stdin: NodeJS.ReadStream): Promise<string> {
+export async function readKey(
+	stdin: NodeJS.ReadStream,
+	provider: Provider,
+): Promise<string> {
 	stdin.setEncoding("utf8");
-	if (stdin.isTTY) return typeKey(stdin);
+	if (stdin.isTTY) return typeKey(stdin, provider);
 	let text = "";
 	for await (const chunk of stdin) text += chunk;
 	return text.trim();
@@ -116,17 +128,27 @@ function hit(
 }
 
 export async function main(
-	model: string,
+	args: readonly string[],
 	stdin: NodeJS.ReadStream,
 	fetchFn: Fetch,
 ): Promise<number> {
-	const key = await readKey(stdin);
-	if (!key) {
-		console.error(
-			"usage: node scripts/calibrate.ts [model]  (enter the TypeSafe API key at the prompt, or pipe it on stdin; model defaults to jev-latest)",
-		);
+	const [provider, model, ...surplus] = args;
+	if (
+		(provider !== "typesafe" && provider !== "openrouter") ||
+		surplus.length > 0
+	) {
+		console.error(USAGE);
 		return EXIT_USAGE;
 	}
+	const key = await readKey(stdin, provider);
+	if (!key) {
+		console.error(USAGE);
+		return EXIT_USAGE;
+	}
+	const attempts = plan(provider, {
+		typesafe: provider === "typesafe",
+		openrouter: provider === "openrouter",
+	}).map((a) => ({ ...a, model: model ?? a.model }));
 	const cases: Case[] = readFileSync(
 		new URL("../calibration.jsonl", import.meta.url),
 		"utf8",
@@ -140,7 +162,7 @@ export async function main(
 	let tierHits = 0;
 	let workHits = 0;
 	for (const c of cases) {
-		const d = await runCase(c, model, key, fetchFn);
+		const d = await runCase(c, attempts, { [provider]: key }, fetchFn);
 		const head = caseHead(c.text);
 		if ("skipped" in d) {
 			console.log(`skip  ${head}  ${d.skipped}`);
@@ -160,7 +182,7 @@ export async function main(
 		return a;
 	};
 	console.log(
-		`${model} answered as ${[...answeredBy].join(", ") || "unknown"}`,
+		`${attempts[0]?.model} answered as ${[...answeredBy].join(", ") || "unknown"}`,
 	);
 	const tierOk = agreement("tier", tierHits) >= AGREEMENT_BAR;
 	const workOk = agreement("work", workHits) >= AGREEMENT_BAR;
@@ -168,6 +190,4 @@ export async function main(
 }
 
 if (import.meta.main)
-	process.exit(
-		await main(process.argv[2] ?? "jev-latest", process.stdin, fetch),
-	);
+	process.exit(await main(process.argv.slice(2), process.stdin, fetch));

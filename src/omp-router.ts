@@ -4,7 +4,7 @@ import { scoreItems, type TaskItem } from "./omp-score.ts";
 import { createStore } from "./omp-store.ts";
 import type {
 	Context,
-	Lookup,
+	OmpImports,
 	Pi,
 	SpawnEvent,
 	SpawnResult,
@@ -51,7 +51,7 @@ const entry = (index: number, line: string) => `task ${index + 1}: ${line}`;
 const eligibleItems = (tasks: unknown[]) =>
 	tasks.flatMap((item, index) => (isEligible(item) ? [{ index, item }] : []));
 
-function createRouter(lookup: Lookup, pi: Pi) {
+function createRouter(omp: OmpImports, pi: Pi) {
 	const store = createStore();
 
 	async function onToolCall(event: ToolCallEvent, ctx: Context) {
@@ -61,7 +61,7 @@ function createRouter(lookup: Lookup, pi: Pi) {
 		if (!Array.isArray(tasks)) return;
 		const items = eligibleItems(tasks);
 		if (items.length === 0) return;
-		const gates = await checkGates(lookup, pi, ctx);
+		const gates = await checkGates(omp, pi, ctx);
 		if ("closed" in gates) {
 			const line = `skipped, ${gates.closed}`;
 			return report(
@@ -69,7 +69,7 @@ function createRouter(lookup: Lookup, pi: Pi) {
 				items.map(({ index }) => entry(index, line)),
 			);
 		}
-		const scored = await scoreItems(items, contextText(context), gates.key);
+		const scored = await scoreItems(items, contextText(context), gates);
 		for (const { index, item, stored } of scored)
 			store.add(event.toolCallId, index, item.name, stored);
 		report(
@@ -85,7 +85,7 @@ function createRouter(lookup: Lookup, pi: Pi) {
 		if (event.agent !== TASK || event.invocationKind !== TASK) return;
 		const stored = store.take(event.spawnKey);
 		if (!stored?.role || event.modelRole) return;
-		if ("closed" in (await checkGates(lookup, pi, ctx))) return;
+		if ("closed" in (await checkGates(omp, pi, ctx))) return;
 		if (!resolves(ctx, stored.role)) return;
 		return { model: stored.role, note: LINE_PREFIX + stored.line };
 	}
@@ -106,9 +106,9 @@ function createRouter(lookup: Lookup, pi: Pi) {
 }
 
 // The adapter only picks the model. Effort stays with omp, and the tool input is never changed.
-export function createExtension(lookup: Lookup): (pi: Pi) => void {
+export function createExtension(omp: OmpImports): (pi: Pi) => void {
 	return (pi) => {
-		const router = createRouter(lookup, pi);
+		const router = createRouter(omp, pi);
 		pi.on("tool_call", async (event, ctx) => {
 			await attempt(() => router.onToolCall(event, ctx));
 			return undefined;
