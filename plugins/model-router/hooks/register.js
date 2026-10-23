@@ -1203,15 +1203,9 @@ var ROUTED_AGENTS = /* @__PURE__ */ new Set([
   "Plan"
 ]);
 var DEBUG_PIECE_CHARS = 9e3;
-var KEY_SOURCES = {
-  typesafe: {
-    option: "api_key",
-    variable: ($) => $.env.get("TYPESAFE_API_KEY")
-  },
-  openrouter: {
-    option: "openrouter_api_key",
-    variable: ($) => $.env.get("OPENROUTER_API_KEY")
-  }
+var KEY_OPTIONS = {
+  typesafe: "api_key",
+  openrouter: "openrouter_api_key"
 };
 var offered = /* @__PURE__ */ new Map();
 function register(on, options) {
@@ -1302,11 +1296,13 @@ async function routeAgentCall($, call, next, options) {
 async function readKeys($, options) {
   const keys = {};
   for (const provider of order(options.provider)) {
-    const { option, variable } = KEY_SOURCES[provider];
-    const key = nonEmpty(options[option]) ?? nonEmpty(await variable($));
+    const key = nonEmpty(options[KEY_OPTIONS[provider]]) ?? nonEmpty(await keyVariable($, provider));
     if (key !== void 0) keys[provider] = key;
   }
   return keys;
+}
+function keyVariable($, provider) {
+  return provider === "typesafe" ? $.env.get("TYPESAFE_API_KEY") : $.env.get("OPENROUTER_API_KEY");
 }
 function pick(decision) {
   if ("skipped" in decision) return decision;
