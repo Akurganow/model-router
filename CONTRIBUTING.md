@@ -88,14 +88,17 @@ type-checks only `src/` and `scripts/`.
 ## Calibration
 
 ```sh
-node scripts/calibrate.ts
+node scripts/calibrate.ts <typesafe|openrouter> [model]
 ```
 
 `scripts/calibrate.ts` is a developer tool, and Claude Code never runs it. It
-needs Node 22.18 or 23.6 or later. It reads the TypeSafe key from a masked
-prompt or from stdin. It sends `calibration.jsonl`, twenty-one labelled
-briefs, to the TypeSafe endpoint that the plugins use. Its optional argument
-names the Jev model and defaults to `jev-latest`. It exits 1 when tier or work
+needs Node 22.18 or 23.6 or later. Its first argument names the provider. It
+reads that provider's key from a masked prompt or from stdin. The prompt names
+the host that gets the key, for example
+`OpenRouter API key for https://openrouter.ai/api:`. The script sends
+`calibration.jsonl`, twenty-one labelled briefs, to the endpoint that the
+plugins use for that provider. Its optional second argument names the Jev
+model and defaults to `jev-latest`. It exits 1 when tier or work
 agreement falls below 85%.
 
 Fix a miss by rewording a tier text in `src/model.ts` or a work-level text in

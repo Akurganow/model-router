@@ -19,11 +19,12 @@ asks six questions. The answers for this mod:
 
 - **Acts on your machine as you?** No. It reads no files, writes none and
   starts no program.
-- **Reads your secrets?** Only its own TypeSafe key. It comes from the
-  plugin's sensitive `api_key` option, which Claude Code hands it from secure
-  storage. When that option is empty, the mod reads the key from the
-  environment variable `TYPESAFE_API_KEY`. It reads no other environment
-  variable and no file. Its other option is `model`, the Jev alias.
+- **Reads your secrets?** Only its own TypeSafe and OpenRouter keys. Claude
+  Code hands it the plugin's sensitive `api_key` and `openrouter_api_key`
+  options from secure storage. When an option is empty, the mod reads the key
+  from `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY`. It reads a key only for a
+  provider the `provider` option allows. It reads no other environment
+  variable and no file.
 - **Sees your session?** The arguments of each Agent tool call. It sends the
   task, the description and the agent type. It reads `model`, `name` and
   `effort` to decide whether to route and whether to keep the caller's effort.
@@ -33,12 +34,16 @@ asks six questions. The answers for this mod:
   nothing. The verdict never leaves the machine. Between calls it keeps only
   the latest source of each agent name, in memory.
 - **Changes your session?** Two arguments of that Agent tool call: `model`
-  and `effort`. It sets `effort` only when the call names none.
+  and `effort`. It sets `effort` only when the call names none. Given a value,
+  the `/model-router:provider` command writes one plugin option: its own
+  `provider`.
 - **Acts without asking you?** No. It approves or denies nothing. Your
   permission rules and prompts decide every call.
-- **Spends your usage?** No model calls on your plan. Up to three requests per
-  routed call go to TypeSafe on your TypeSafe key: one request and up to two
-  retries.
+- **Spends your usage?** No model calls on your plan. Up to four requests per
+  routed call go to TypeSafe or OpenRouter, each on its own key, as
+  [What leaves the machine](#what-leaves-the-machine) counts them. An
+  OpenRouter key may also pay for your chat models, and the scoring requests
+  spend the same credit.
 
 `claude plugin validate plugins/model-router` lists the same from the code.
 This is the whole surface:
@@ -46,11 +51,13 @@ This is the whole surface:
 | Kind | Name | Why the mod has it |
 | --- | --- | --- |
 | hook | `agent.offer` | Records which agents Claude Code offers and from where. It passes each offer on unchanged. |
+| hook | `command.run{command=model-router:provider}` | Answers the `/model-router:provider` command. |
 | hook | `tool.call{tool=Agent}` | Routes the Agent call. |
 | call | `$.clock.after` | The TypeSafe SDK's timers run on it, for example its retry wait. |
 | call | `$.clock.sleep` | Times the 8 s limit. |
-| call | `$.env.get` | Reads `TYPESAFE_API_KEY`, the one variable the mod reads. |
-| call | `$.http.fetch` | Sends the request to TypeSafe. |
+| call | `$.config.set` | Writes the `provider` option when `/model-router:provider` gets a value. |
+| call | `$.env.get` | Reads `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY`, the only variables the mod reads. |
+| call | `$.http.fetch` | Sends the request to TypeSafe or OpenRouter. |
 | call | `$.tool.check` | Asks for the permission verdict of the call. |
 | call | `$.ui.log` | Writes the log line, and the request body to the debug log. |
 
@@ -63,14 +70,51 @@ On each routed call the mod sets the model and, unless the call names one,
 the effort. One dim line per routed call shows the pick. To turn routing off,
 disable the plugin in `/plugin`.
 
-The `Jev model` row holds the TypeSafe alias the request names:
+### Options
 
-- `jev-latest` (default): the most recent official Jev release.
-- `jev-preview`: the most recent release, official or not.
+The plugin has three options. Set them in the install dialog or in `/config`:
 
-Both aliases move when TypeSafe ships a release, so the picks can shift with
-no change to the plugin. TypeSafe's [Models](https://docs.typesafe.ai/models)
-page says which version each alias points to.
+- `provider`: which providers may score a call, and in which order.
+  - `typesafe` (default): TypeSafe only.
+  - `openrouter`: OpenRouter only.
+  - `auto`: TypeSafe, then OpenRouter when TypeSafe fails.
+  - `openrouter-first`: OpenRouter, then TypeSafe when OpenRouter fails.
+- `api_key`: your TypeSafe key, a sensitive value.
+- `openrouter_api_key`: your OpenRouter key, a sensitive value.
+
+With `auto` or `openrouter-first` and only one key set, that key's provider
+scores alone. [PRIVACY.md](PRIVACY.md) says which company receives the task
+under each value.
+
+Every request names the alias `jev-latest`. TypeSafe points it at the most
+recent official Jev release. OpenRouter routes it to its own alias for the
+newest Jev release. The alias moves when a release ships, so the picks can
+shift with no change to the plugin. TypeSafe's
+[Models](https://docs.typesafe.ai/models) page says which version it points
+to, and the log line names the model that answered.
+
+An install updated from an earlier version follows two rules:
+
+- The removed `model` option is ignored, a stored `jev-preview` included. The
+  mod sends `jev-latest`.
+- A stored `provider` outside the four values counts as `typesafe`.
+
+[PRIVACY.md](PRIVACY.md) says what a project's settings can and cannot change.
+
+### Switch the provider
+
+Run `/model-router:provider` with no value to print the current value and its
+order, for example `provider: auto (typesafe, then openrouter)`. Run it with
+one of the four values, for example `/model-router:provider auto`, to write
+the `provider` option. It prints the new value, or
+`provider unchanged: <reason>` when Claude Code refuses the change. `/config`
+changes the same option.
+
+To be guided through the choice, ask Claude to run the `model-router-setup`
+skill. It shows the current provider and asks which one you want. It checks
+which key variables are set without reading their values, and changes the
+provider through this command or `/config`. The skill lives in
+[skills/model-router-setup/](skills/model-router-setup/).
 
 ### Which calls are routed
 
@@ -110,13 +154,20 @@ another model.
 
 ## What leaves the machine
 
-On each routed call the mod sends an HTTPS POST to
-https://api.typesafe.ai/v1/systemone through Claude Code's own `$.http.fetch`,
-with your TypeSafe key as the bearer token. The body holds:
+On each routed call the mod sends an HTTPS POST through Claude Code's own
+`$.http.fetch` to the first provider in the `provider` order:
+
+- TypeSafe: https://api.typesafe.ai/v1/systemone, with your TypeSafe key as
+  the bearer token.
+- OpenRouter: https://openrouter.ai/api/v1/systemone, with your OpenRouter key
+  as the bearer token.
+
+The second provider in the order gets a request only after the first fails,
+as below. Each key goes only to its own provider. The body holds:
 
 - the task text, condensed and redacted as below
 - the agent type and the caller's one-line description
-- the Jev alias from the `Jev model` row and two scoring questions with their
+- the Jev alias `jev-latest` and two scoring questions with their
   three texts each, which ship with the plugin
 
 Two steps run on the task text before it leaves. Fenced code blocks become a
@@ -125,17 +176,24 @@ and assignments to names ending in `key`, `token`, `secret` or `password`. A
 text over 12,000 characters keeps its start and its end, joined by a marker
 that says the middle is omitted. Nothing else leaves the machine.
 
-A routed call sends one request and up to two retries. The mod uses the
-official TypeSafe SDK. It retries a connection error, and a 408, 429 or 5xx
-status, up to three attempts in all. It waits for a `Retry-After` header when
-one comes, within the limit, and otherwise backs off for a short time. Any
-other status is not retried.
+With one provider, a routed call sends one request and up to two retries.
+The mod uses the official TypeSafe SDK. It retries a connection error, and a
+408, 429 or 5xx status, up to three attempts in all. It waits for a
+`Retry-After` header when one comes, within the limit, and otherwise backs off
+for a short time. Any other status is not retried.
 
-One fixed 8 s limit covers the whole call, retries included. A 429 with a long
-`Retry-After` can hold a task for up to 8 s. The call then runs unchanged. The
-mod stops waiting at the limit, but it cannot recall a request in flight. A
-request can reach TypeSafe even when its answer never returns, so a retry after
-a network failure may be billed more than once.
+With two providers, the first gets one attempt of 2 s and no retries. The mod
+moves to the second after a connection error, a timeout, or HTTP 401, 402,
+403, 404, 408, 429 or 5xx. It never moves after HTTP 400 or 422, a cancel, the
+8 s limit or a reply it cannot read. The second provider gets the rest of the
+8 s and the retries above. One call therefore sends at most four requests.
+
+One fixed 8 s limit covers the whole call, retries and the second provider
+included. A 429 with a long `Retry-After` can hold a task for up to 8 s. The
+call then runs unchanged. The mod stops waiting at the limit, but it cannot
+recall a request in flight. A request can reach a provider even when its
+answer never returns. So a retry after a network failure may be billed more
+than once, and an abandoned first attempt may still be billed.
 
 The request is sent before Claude Code's permission check for the call.
 Before routing, the mod asks Claude Code's permission rules about the call's
@@ -194,8 +252,10 @@ model-router L0 haiku · medium · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok
 
 The second number is the probability of the chosen work index. The tail names
 the Jev model that answered and its input and output tokens. A part the answer
-lacks is left out. A kept caller effort shows as `caller effort` in place of
-the ladder label. The pick is logged as the call starts, and a call that
+lacks is left out. After a fallback the line ends with the provider that
+answered and why the first one failed, for example
+` · via openrouter (typesafe HTTP 503)`. A kept caller effort shows as
+`caller effort` in place of the ladder label. The pick is logged as the call starts, and a call that
 Claude Code then refuses adds a second line, `denied`.
 
 ## Troubleshooting
@@ -204,24 +264,31 @@ Claude Code then refuses adds a second line, `denied`.
   your permission rules deny the Agent call. Forks, named agents, calls that
   name a model and agents other than the four built-ins pass through, as
   [Routing](#which-calls-are-routed) lists. Enable the plugin in `/plugin`.
-- A routed call logs `skipped, <cause>` and runs unchanged. The causes are:
-  - `key unset`: neither the `api_key` option nor `TYPESAFE_API_KEY` holds a
-    key. Set one as
+- A routed call logs `skipped, <cause>` and runs unchanged. After two
+  attempts the line names each provider with its cause, in attempt order, for
+  example `skipped, typesafe HTTP 503, openrouter timeout`. The causes are:
+  - `key unset`: no provider the `provider` option allows has a key. The
+    TypeSafe key comes from `api_key` or `TYPESAFE_API_KEY`, the OpenRouter
+    key from `openrouter_api_key` or `OPENROUTER_API_KEY`. Set one as
     [Install](https://github.com/Akurganow/model-router#install) says for
     your app, then run `/reload-plugins`. In the desktop app a saved key can read back as
-    empty after a restart, so set `TYPESAFE_API_KEY` in the `env` block of
+    empty after a restart, so set the variable in the `env` block of
     `~/.claude/settings.json` instead.
-  - `bad reply`: TypeSafe answered, but the answer lacks a valid score for
-    one of the two questions.
-  - `timeout`: no decision in 8 s. Check the network and try again.
+  - `bad reply`: the provider answered, but the answer lacks a valid score
+    for one of the two questions.
+  - `timeout`: a first attempt got no answer in 2 s, or the call got no
+    decision in the 8 s limit. Check the network and try again.
   - `cancelled`: Claude Code abandoned the call before the answer came, for
     example because you interrupted it.
-  - `network error`: every attempt failed before an answer came. Check the
-    network and try again.
-  - `HTTP <status>`: TypeSafe answered with that status, after the retries for
-    a status that is retried. `HTTP 401` means TypeSafe rejected the key.
-    Check it at https://console.typesafe.ai/keys. `HTTP 429` and `HTTP 503`
-    mean TypeSafe refused or failed on every attempt. Try again later.
+  - `network error`: every attempt failed before an answer came. An
+    organization fetch policy that refuses openrouter.ai shows as this too.
+    Check the network and try again.
+  - `HTTP <status>`: the provider answered with that status, after the
+    retries for a status that is retried. `HTTP 401` means the provider
+    rejected the key. Check a TypeSafe key at https://console.typesafe.ai/keys
+    and an OpenRouter key in your OpenRouter account. `HTTP 429` and
+    `HTTP 503` mean the provider refused or failed on every attempt. Try
+    again later.
   - `rejected request`: the SDK refused the request itself.
   - `failed`: any other error.
 - A subagent ran on a model you did not expect: the mod did not route the

@@ -12,7 +12,8 @@ Picks a model for each subagent, judged by TypeSafe Jev. For Claude Code and Oh 
 | Sets | `model` and `effort` | the `smol` or `slow` role |
 | Asks Jev | two questions | one question |
 | Needs | Claude Code v2.1.308 or later | Oh My Pi v18.12.6 or later |
-| Key lives in | the system's secure storage, or `TYPESAFE_API_KEY` | omp's TypeSafe credential, or `TYPESAFE_API_KEY` |
+| Keys live in | the system's secure storage, or `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY` | omp's TypeSafe and OpenRouter credentials, or `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY` |
+| Provider is set in | the install dialog, `/config` or `/model-router:provider` | `/settings` → Plugins |
 | Reference | [plugin README](plugins/model-router/README.md) | [plugin README](plugins/model-router-omp/README.md) |
 
 [Install](#install) · [Verify](#verify) · [Update](#update) · [Turn off and uninstall](#turn-off-and-uninstall) · [What leaves the machine](#what-leaves-the-machine)
@@ -41,9 +42,17 @@ on the models you point `smol` and `slow` at.
 You need:
 
 - Claude Code v2.1.308 or later, or Oh My Pi v18.12.6 or later.
-- A TypeSafe API key from https://console.typesafe.ai/keys.
+- A TypeSafe API key from https://console.typesafe.ai/keys, an OpenRouter API
+  key from https://openrouter.ai/settings/keys, or both.
 - For Claude Code, the `claude` command-line tool. Every `claude plugin` line
   on this page runs in a shell, whichever app you use.
+
+The `provider` option picks who scores each task: `typesafe` (the default),
+`openrouter`, `auto` (TypeSafe, then OpenRouter) or `openrouter-first`
+(OpenRouter, then TypeSafe). With one key, `auto` and `openrouter-first` use
+that key's provider alone. The [Claude Code](plugins/model-router/README.md)
+and [Oh My Pi](plugins/model-router-omp/README.md) READMEs say when the second
+provider takes over.
 
 ### Claude Code
 
@@ -57,24 +66,31 @@ You need:
 
 2. Answer `y` to add the marketplace.
 3. Pick the user scope.
-4. Paste your TypeSafe key into the dialog.
-5. Run `/reload-plugins`, or start a new session.
+4. Pick a `provider` in the dialog.
+5. Paste your TypeSafe key, your OpenRouter key or both into the dialog.
+6. Run `/reload-plugins`, or start a new session.
+7. Ask Claude to run the `model-router-setup` skill to check the provider and
+   the keys.
 
-To reopen the key dialog later, run
-`/plugin configure model-router@model-router`. Claude Code keeps the key in
-the system's secure storage.
+To reopen the dialog later, run
+`/plugin configure model-router@model-router`. `/config` and
+`/model-router:provider` also change the provider. Claude Code keeps the keys
+in the system's secure storage.
 
-**Install from a shell.** This line installs the plugin and saves the key. It
-shows `TypeSafe key:` and reads the key you paste without showing it. Only the
-line goes to the shell history, never the key. The line is for zsh, the
-default shell on macOS.
+**Install from a shell.** This line installs the plugin, sets `provider` to
+`auto` and saves the keys. It shows `TypeSafe key:`, then `OpenRouter key:`.
+It reads each key you paste without showing it. Press Enter at a prompt to
+skip a key you do not have. Only the line goes to the shell history, never a
+key. The line is for zsh, the default shell on macOS.
 
 ```sh
-claude plugin install model-router --marketplace Akurganow/model-router && read -rs 'KEY?TypeSafe key: ' && printf '{"api_key":"%s"}' "$KEY" | claude plugin configure model-router@model-router --values-stdin
+claude plugin install model-router --marketplace Akurganow/model-router && read -rs 'TS_KEY?TypeSafe key: ' && echo && read -rs 'OR_KEY?OpenRouter key: ' && echo && printf '{"provider":"auto","api_key":"%s","openrouter_api_key":"%s"}' "$TS_KEY" "$OR_KEY" | claude plugin configure model-router@model-router --values-stdin
 ```
 
-In bash, replace `read -rs 'KEY?TypeSafe key: '` with
-`read -rsp 'TypeSafe key: ' KEY`. Look for these two lines in the output:
+To pick another provider, replace `auto` in the line. In bash, replace
+`read -rs 'TS_KEY?TypeSafe key: '` with `read -rsp 'TypeSafe key: ' TS_KEY`.
+Replace `read -rs 'OR_KEY?OpenRouter key: '` with
+`read -rsp 'OpenRouter key: ' OR_KEY`. Look for these two lines in the output:
 
 ```text
 Successfully installed plugin
@@ -90,11 +106,13 @@ plugin reads the key when it loads.
 Run this line in place of the one above:
 
 ```sh
-claude plugin install model-router --marketplace Akurganow/model-router --config api_key=YOUR_KEY
+claude plugin install model-router --marketplace Akurganow/model-router --config provider=auto --config api_key=YOUR_KEY --config openrouter_api_key=YOUR_OPENROUTER_KEY
 ```
 
-`YOUR_KEY` stands for your TypeSafe key. The line leaves the key in your shell
-history and shows it in the process list while it runs.
+`YOUR_KEY` stands for your TypeSafe key and `YOUR_OPENROUTER_KEY` for your
+OpenRouter key. Drop the `--config` pair of a key you do not have. The line
+leaves the keys in your shell history and shows them in the process list
+while it runs.
 
 </details>
 
@@ -103,8 +121,9 @@ history and shows it in the process list while it runs.
 1. Run `/plugins` to open **Manage plugins**.
 2. Add `Akurganow/model-router` on the **Marketplaces** tab.
 3. Install `model-router` on the **Plugins** tab.
-4. Enter your TypeSafe key in the form that opens.
-5. Start a new session.
+4. Pick a `provider` in the form that opens.
+5. Enter your TypeSafe key, your OpenRouter key or both.
+6. Start a new session.
 
 The gear icon on the plugin's row opens the form again. If the form does not
 open, set the key as [Desktop app](#desktop-app) describes.
@@ -125,21 +144,24 @@ open, set the key as [Desktop app](#desktop-app) describes.
 Until the bug is fixed, set the key in Claude Code's settings file:
 
 1. Open `~/.claude/settings.json`.
-2. Add `TYPESAFE_API_KEY` to the `env` block, with your TypeSafe key in place
-   of `YOUR_KEY`:
+2. Add `TYPESAFE_API_KEY`, `OPENROUTER_API_KEY` or both to the `env` block,
+   with your keys in place of `YOUR_KEY` and `YOUR_OPENROUTER_KEY`:
 
    ```json
    {
      "env": {
-       "TYPESAFE_API_KEY": "YOUR_KEY"
+       "TYPESAFE_API_KEY": "YOUR_KEY",
+       "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY"
      }
    }
    ```
 
 3. Start a new session.
-4. Delete that line once the bug is fixed.
+4. If you set `OPENROUTER_API_KEY`, run `/model-router:provider auto` in the
+   session.
+5. Delete those lines once the bug is fixed.
 
-The key sits there in plaintext, and commands the session runs can see it.
+The keys sit there in plaintext, and commands the session runs can see them.
 
 ### Oh My Pi
 
@@ -157,11 +179,14 @@ The key sits there in plaintext, and commands the session runs can see it.
    ```
 
 4. Restart omp, because omp loads extension modules at startup.
-5. Run `/login typesafe` in omp to store your TypeSafe key.
-6. Ask omp to run the `model-router-setup` skill.
+5. Run `/login typesafe`, `/login openrouter` or both in omp to store your
+   keys.
+6. Ask omp to run the `model-router-setup` skill to pick a provider.
 
-Instead of `/login typesafe`, you can run `omp login typesafe` outside a
-session or set `TYPESAFE_API_KEY`.
+Instead of `/login`, you can run `omp login typesafe` or
+`omp login openrouter` outside a session. You can also set `TYPESAFE_API_KEY`
+or `OPENROUTER_API_KEY`. To switch the provider later, open `/settings` →
+Plugins.
 [Set up](plugins/model-router-omp/README.md#set-up) says what the skill checks.
 
 ## Verify
@@ -227,8 +252,8 @@ shell:
 claude plugin uninstall model-router@model-router
 ```
 
-If you added `TYPESAFE_API_KEY` to the `env` block of
-`~/.claude/settings.json`, delete that line too.
+If you added `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` to the `env` block of
+`~/.claude/settings.json`, delete those lines too.
 
 **Oh My Pi.** To turn routing off, run this line in a shell:
 
@@ -247,7 +272,16 @@ omp plugin uninstall model-router@model-router
 
 > [!IMPORTANT]
 > Each call or batch item the plugin scores sends the condensed, redacted task
-> text with your TypeSafe key to `https://api.typesafe.ai/v1/systemone`.
+> text to the host that `provider` picks, with that host's key:
+>
+> - `https://api.typesafe.ai/v1/systemone` gets your TypeSafe key under
+>   `typesafe`, and first under `auto`.
+> - `https://openrouter.ai/api/v1/systemone` gets your OpenRouter key under
+>   `openrouter`, and first under `openrouter-first`.
+>
+> With both keys, `auto` and `openrouter-first` send the same text to the
+> second host when the first fails. The default, `typesafe`, never contacts
+> OpenRouter.
 
 Each plugin README lists the full request, and each privacy policy states the
 same in policy form:
@@ -276,7 +310,8 @@ requests.
 ## Contributing
 
 [CONTRIBUTING.md](CONTRIBUTING.md) covers the repository layout, the build,
-the checks and the commit rules.
+the checks, the commit rules and calibration against either provider, with
+`node scripts/calibrate.ts <typesafe|openrouter> [model]`.
 
 ## Support
 
