@@ -1169,7 +1169,7 @@ async function route(input) {
   const { parts, attempts, signal } = input;
   if (attempts.length === 0) return { skipped: "key unset" };
   const failed = [];
-  for (const attempt2 of attempts) {
+  for (const [i, attempt2] of attempts.entries()) {
     let result;
     try {
       result = await ask(input, attempt2);
@@ -1178,8 +1178,9 @@ async function route(input) {
         provider: attempt2.provider,
         reason: skipCategory(err, signal)
       });
-      if (fallsBack(err)) continue;
-      break;
+      if (!fallsBack(err)) break;
+      if (i < attempts.length - 1) input.onFallback?.(attempt2.provider);
+      continue;
     }
     const decision = decide(parts, result);
     if ("skipped" in decision) {
@@ -1193,7 +1194,7 @@ async function route(input) {
       first: first.provider,
       reason: first.reason
     };
-    return { ...decision, via, passedOver: first.provider };
+    return { ...decision, via };
   }
   return skip(failed);
 }
@@ -1214,8 +1215,7 @@ function skip(failed) {
   if (!first || rest.length === 0)
     return { skipped: first?.reason ?? "failed" };
   return {
-    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", "),
-    passedOver: first.provider
+    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
   };
 }
 function decide(parts, result) {
@@ -1297,10 +1297,10 @@ async function scoreItems(items, context, { attempts, keys }) {
     return await mapLimit(items, MAX_PARALLEL, async ({ index, item }) => {
       const routing = {
         attempts: attempts.filter((a) => !passedOver.has(a.provider)),
-        keys
+        keys,
+        onFallback: (p) => void passedOver.add(p)
       };
       const decision = await scoreItem(item, context, routing, limit.signal);
-      if (decision.passedOver) passedOver.add(decision.passedOver);
       return { index, item, stored: toStored(decision) };
     });
   } finally {

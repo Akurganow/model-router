@@ -41,13 +41,8 @@ export type Decision = {
 	readonly model: string;
 	readonly usage: Usage | undefined;
 	readonly via?: Via;
-	// Set only when a second attempt ran: the provider whose first attempt failed.
-	readonly passedOver?: Provider;
 };
-export type Skipped = {
-	readonly skipped: string;
-	readonly passedOver?: Provider;
-};
+export type Skipped = { readonly skipped: string };
 export type RouteInput = {
 	readonly parts: readonly Part[];
 	readonly state: RoutingState;
@@ -55,6 +50,7 @@ export type RouteInput = {
 	readonly keys: Readonly<Partial<Record<Provider, string>>>;
 	readonly fetchFn: Fetch;
 	readonly signal: AbortSignal;
+	readonly onFallback?: (provider: Provider) => void;
 };
 
 const isCount = (v: unknown): v is number =>
@@ -76,7 +72,7 @@ export async function route(input: RouteInput): Promise<Decision | Skipped> {
 	const { parts, attempts, signal } = input;
 	if (attempts.length === 0) return { skipped: "key unset" };
 	const failed: Failure[] = [];
-	for (const attempt of attempts) {
+	for (const [i, attempt] of attempts.entries()) {
 		let result: unknown;
 		try {
 			result = await ask(input, attempt);
@@ -85,8 +81,9 @@ export async function route(input: RouteInput): Promise<Decision | Skipped> {
 				provider: attempt.provider,
 				reason: skipCategory(err, signal),
 			});
-			if (fallsBack(err)) continue;
-			break;
+			if (!fallsBack(err)) break;
+			if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
+			continue;
 		}
 		const decision = decide(parts, result);
 		if ("skipped" in decision) {
@@ -100,7 +97,7 @@ export async function route(input: RouteInput): Promise<Decision | Skipped> {
 			first: first.provider,
 			reason: first.reason,
 		};
-		return { ...decision, via, passedOver: first.provider };
+		return { ...decision, via };
 	}
 	return skip(failed);
 }
@@ -125,7 +122,6 @@ function skip(failed: readonly Failure[]): Skipped {
 		return { skipped: first?.reason ?? "failed" };
 	return {
 		skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", "),
-		passedOver: first.provider,
 	};
 }
 

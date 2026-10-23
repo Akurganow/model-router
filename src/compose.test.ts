@@ -296,7 +296,27 @@ test("a 503 falls back once to the next provider with its own host and key", asy
 		first: "typesafe",
 		reason: "HTTP 503",
 	});
-	assert.equal(decision.passedOver, "typesafe");
+});
+
+test("a fallback reports the failed provider before the next attempt's request", async () => {
+	const log: string[] = [];
+	const { fetchFn } = stub(async (_init, count) => {
+		log.push(`request ${count}`);
+		return count === 1 ? streamed(503, "down", NO_WAIT) : streamed(200, VALID);
+	});
+	const onFallback = (provider: string) => void log.push(provider);
+	asDecision(await run(fetchFn, { attempts: BOTH, onFallback }));
+	assert.deepEqual(log, ["request 1", "typesafe", "request 2"]);
+});
+
+test("no fallback, no report: a 400, or a 503 with no attempt left", async () => {
+	const fallbacks: string[] = [];
+	const onFallback = (provider: string) => void fallbacks.push(provider);
+	const bad = stub(async () => streamed(400, "bad"));
+	await run(bad.fetchFn, { attempts: BOTH, onFallback });
+	const down = stub(async () => streamed(503, "down", NO_WAIT));
+	await run(down.fetchFn, { onFallback });
+	assert.deepEqual(fallbacks, []);
 });
 
 test("openrouter-first asks OpenRouter first and falls back after a network error", async () => {
@@ -380,7 +400,6 @@ test("one routing limit covers both attempts", async () => {
 	});
 	assert.deepEqual(routed, {
 		skipped: "typesafe HTTP 503, openrouter timeout",
-		passedOver: "typesafe",
 	});
 	assert.equal(bodies.length, 2);
 });
@@ -389,7 +408,6 @@ test("two failed attempts send at most four requests and name both providers", a
 	const { bodies, fetchFn } = stub(async () => streamed(503, "down", NO_WAIT));
 	assert.deepEqual(await run(fetchFn, { attempts: BOTH }), {
 		skipped: "typesafe HTTP 503, openrouter HTTP 503",
-		passedOver: "typesafe",
 	});
 	assert.equal(bodies.length, 4);
 });
@@ -400,7 +418,6 @@ test("a bad reply after a fallback names both providers", async () => {
 	);
 	assert.deepEqual(await run(fetchFn, { attempts: BOTH }), {
 		skipped: "typesafe HTTP 429, openrouter bad reply",
-		passedOver: "typesafe",
 	});
 });
 

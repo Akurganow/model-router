@@ -1063,7 +1063,7 @@ async function route(input) {
   const { parts, attempts, signal } = input;
   if (attempts.length === 0) return { skipped: "key unset" };
   const failed = [];
-  for (const attempt of attempts) {
+  for (const [i, attempt] of attempts.entries()) {
     let result;
     try {
       result = await ask(input, attempt);
@@ -1072,8 +1072,9 @@ async function route(input) {
         provider: attempt.provider,
         reason: skipCategory(err, signal)
       });
-      if (fallsBack(err)) continue;
-      break;
+      if (!fallsBack(err)) break;
+      if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
+      continue;
     }
     const decision = decide(parts, result);
     if ("skipped" in decision) {
@@ -1087,7 +1088,7 @@ async function route(input) {
       first: first.provider,
       reason: first.reason
     };
-    return { ...decision, via, passedOver: first.provider };
+    return { ...decision, via };
   }
   return skip(failed);
 }
@@ -1108,8 +1109,7 @@ function skip(failed) {
   if (!first || rest.length === 0)
     return { skipped: first?.reason ?? "failed" };
   return {
-    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", "),
-    passedOver: first.provider
+    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
   };
 }
 function decide(parts, result) {

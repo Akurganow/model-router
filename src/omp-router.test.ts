@@ -306,6 +306,38 @@ test("in an outage, items that start later in the batch pass over the failed pro
 	assert.equal(count(ENDPOINT), 5);
 });
 
+test("an item that starts while another waits on its fallback already passes over the failed provider", async () => {
+	install();
+	world.lockfile = lockfileWith("auto");
+	let fellBack = () => {};
+	const fallbackSent = new Promise<void>((resolve) => {
+		fellBack = resolve;
+	});
+	let lastStarted = () => {};
+	const lastSent = new Promise<void>((resolve) => {
+		lastStarted = resolve;
+	});
+	world.answer = async ({ url, body }) => {
+		const { task } = (body as { state: { task: string } }).state;
+		if (task.startsWith("task 4")) lastStarted();
+		if (task.startsWith("task 0")) {
+			if (url === ENDPOINT) return streamed(503, { error: "down" });
+			fellBack();
+			await lastSent;
+		} else if (url === ENDPOINT) await fallbackSent;
+		return streamed(200, jevAnswer(1));
+	};
+	const tasks = Array.from({ length: 5 }, (_, i) => ({ task: `task ${i}` }));
+	await world.toolCall("c", { tasks });
+	assert.equal(count(ENDPOINT), 4);
+	assert.equal(count(OR_ENDPOINT), 2);
+	const line = `L1 no change · p=0.90${SUFFIX}`;
+	assert.deepEqual(entriesOf(world.notes[0]), [
+		`task 1: ${line}${VIA}`,
+		...[2, 3, 4, 5].map((n) => `task ${n}: ${line}`),
+	]);
+});
+
 test("a skip after two attempts names both providers, a later one-attempt skip does not", async () => {
 	install();
 	world.lockfile = lockfileWith("auto");

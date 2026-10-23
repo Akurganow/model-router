@@ -5,6 +5,7 @@ import {
 	decisionSuffix,
 	LIMIT_REACHED,
 	ROUTING_LIMIT_MS,
+	type RouteInput,
 	route,
 	type Skipped,
 } from "./compose.ts";
@@ -63,9 +64,9 @@ export async function scoreItems(
 			const routing = {
 				attempts: attempts.filter((a) => !passedOver.has(a.provider)),
 				keys,
+				onFallback: (p: Provider) => void passedOver.add(p),
 			};
 			const decision = await scoreItem(item, context, routing, limit.signal);
-			if (decision.passedOver) passedOver.add(decision.passedOver);
 			return { index, item, stored: toStored(decision) };
 		});
 	} finally {
@@ -76,7 +77,7 @@ export async function scoreItems(
 function scoreItem(
 	item: TaskItem,
 	context: string,
-	routing: Routing,
+	routing: Pick<RouteInput, "attempts" | "keys" | "onFallback">,
 	signal: AbortSignal,
 ): Promise<Decision | Skipped> {
 	return route({
