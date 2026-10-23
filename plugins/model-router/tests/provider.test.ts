@@ -154,14 +154,12 @@ test("a refused change prints the reason", async ($, on) => {
 	);
 });
 
+// The engine skips a config.set hook that throws, so the test leaves config.set unanswered: the test kit then throws.
 test("a change that throws prints the error", async ($, on) => {
 	harness(on);
-	config(on, () => {
-		throw new Error("no such row");
-	});
 	const text = await provider($, "auto");
 	expect(text?.startsWith("provider unchanged: ")).toBe(true);
-	expect(text).toContain("no such row");
+	expect(text).toContain("config.set");
 });
 
 test("any other argument lists the four values", async ($, on) => {
