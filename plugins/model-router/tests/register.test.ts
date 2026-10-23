@@ -59,18 +59,14 @@ test(
 	},
 );
 
-for (const [name, model, alias] of [
-	["the model option picks the Jev alias", "jev-preview", "jev-preview"],
-	[
-		"an unknown model option falls back to jev-latest",
-		"jev-1.14.0",
-		"jev-latest",
-	],
-] as const)
-	test(name, { options: { api_key: "test-key", model } }, async ($, on) => {
+test(
+	"a stored model option is ignored and jev-latest is sent",
+	{ options: { api_key: "test-key", model: "jev-preview" } },
+	async ($, on) => {
 		const { h } = await callOnce($, on);
-		expect(JSON.parse(h.sent ?? "").model).toBe(alias);
-	});
+		expect(JSON.parse(h.sent ?? "").model).toBe("jev-latest");
+	},
+);
 
 test(
 	"an Agent call that names an effort keeps it and gets the model",

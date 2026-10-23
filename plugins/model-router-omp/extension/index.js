@@ -1,5 +1,7 @@
 // src/omp.ts
 import { lookup } from "@oh-my-pi/pi-coding-agent/config/registry";
+import { getPluginSettings } from "@oh-my-pi/pi-coding-agent/extensibility/plugins/loader";
+import { getPluginsLockfile } from "@oh-my-pi/pi-utils";
 
 // src/brief.ts
 var BUDGET_CHARS = 12e3;
@@ -49,6 +51,9 @@ function contextText(context) {
   return typeof context === "string" && context.trim() !== "" ? context : "";
 }
 
+// src/omp-gates.ts
+import { readFile } from "node:fs/promises";
+
 // src/part.ts
 var LEVELS = [0, 1, 2];
 var PROBABILITY_DIGITS = 2;
@@ -66,66 +71,6 @@ function parseProbabilities(answers, key) {
   return { 0: p0, 1: p1, 2: p2 };
 }
 
-// src/omp-gates.ts
-var ROLES = { small: "@smol", large: "@slow" };
-var KEY_PROVIDER = "typesafe";
-var TASK = "task";
-var BUNDLED = "bundled";
-async function checkGates(lookup2, pi, ctx) {
-  const key = await findKey(ctx);
-  if (key === void 0) return { closed: "key unset" };
-  const closed = settingsGate(lookup2, pi.pi.settings) ?? await agentGate(pi, ctx) ?? modelsGate(ctx);
-  return closed === void 0 ? { key } : { closed };
-}
-function resolves(ctx, role) {
-  try {
-    return ctx.models.resolve(role) !== void 0;
-  } catch {
-    return false;
-  }
-}
-async function findKey(ctx) {
-  try {
-    const key = await ctx.modelRegistry.getApiKeyForProvider(KEY_PROVIDER);
-    if (typeof key === "string" && key !== "") return key;
-  } catch {
-  }
-  const { TYPESAFE_API_KEY } = process.env;
-  return TYPESAFE_API_KEY || void 0;
-}
-function read(lookup2, id, settings) {
-  try {
-    return lookup2(id)?.get(settings);
-  } catch {
-    return void 0;
-  }
-}
-var isEmpty = (v) => v === void 0 || v === null || typeof v === "string" && v.trim() === "";
-function settingsGate(lookup2, settings) {
-  const roles = read(lookup2, "modelRoles", settings);
-  const overrides = read(lookup2, "task.agentModelOverrides", settings);
-  const disabled = read(lookup2, "task.disabledAgents", settings);
-  if (!isRecord(roles) || !isRecord(overrides) || !Array.isArray(disabled))
-    return "settings unreadable";
-  if (!isEmpty(roles[TASK])) return "task model role set";
-  if (!isEmpty(overrides[TASK])) return "task model override set";
-  if (disabled.includes(TASK)) return "task agent disabled";
-  return void 0;
-}
-var CUSTOM_AGENT = "custom task agent";
-async function agentGate(pi, ctx) {
-  try {
-    const { agents } = await pi.pi.discoverAgents(ctx.cwd);
-    const found = agents.find((agent) => agent.name === TASK);
-    return found?.source === BUNDLED ? void 0 : CUSTOM_AGENT;
-  } catch {
-    return CUSTOM_AGENT;
-  }
-}
-function modelsGate(ctx) {
-  return Object.values(ROLES).some((role) => resolves(ctx, role)) ? void 0 : `no ${ROLES.small} or ${ROLES.large} model`;
-}
-
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
 var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
 var APIPromise = class APIPromise2 extends Promise {
@@ -133,7 +78,7 @@ var APIPromise = class APIPromise2 extends Promise {
   #parseResponse;
   #parsed;
   constructor(responsePromise, parseResponse) {
-    super((resolve) => resolve(void 0));
+    super((resolve2) => resolve2(void 0));
     this.#responsePromise = responsePromise;
     this.#parseResponse = parseResponse;
   }
@@ -210,7 +155,7 @@ var retryDelayMs = (attempt2, headers, policy = DEFAULT_RETRY_POLICY, random = M
   const exponential = Math.min(policy.backoffInitialMs * 2 ** attempt2, policy.backoffMaxMs);
   return Math.round(exponential * (1 - random() * policy.backoffJitter));
 };
-var sleep = (ms, signal) => new Promise((resolve, reject) => {
+var sleep = (ms, signal) => new Promise((resolve2, reject) => {
   if (signal?.aborted) return reject(signal.reason);
   const onAbort = () => {
     clearTimeout(timer);
@@ -218,7 +163,7 @@ var sleep = (ms, signal) => new Promise((resolve, reject) => {
   };
   const timer = setTimeout(() => {
     signal?.removeEventListener("abort", onAbort);
-    resolve();
+    resolve2();
   }, ms);
   signal?.addEventListener("abort", onAbort, { once: true });
 });
@@ -550,8 +495,8 @@ var resolveCompression = (compression) => {
 };
 var zstd = async (body) => {
   const data = new Uint8Array(await body.arrayBuffer());
-  const compressed = await new Promise((resolve, reject) => {
-    zlib()?.zstdCompress?.(data, (err, result) => err ? reject(err) : resolve(result));
+  const compressed = await new Promise((resolve2, reject) => {
+    zlib()?.zstdCompress?.(data, (err, result) => err ? reject(err) : resolve2(result));
   });
   return new Uint8Array(compressed);
 };
@@ -760,13 +705,13 @@ var bufferResponse = async (response, signal) => {
 };
 var untilAborted = (start, signal) => {
   if (signal === void 0) return start();
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve2, reject) => {
     if (signal.aborted) return reject(signal.reason);
     const onAbort = () => reject(signal.reason);
     signal.addEventListener("abort", onAbort, { once: true });
     start().then((value) => {
       signal.removeEventListener("abort", onAbort);
-      resolve(value);
+      resolve2(value);
     }, (err) => {
       signal.removeEventListener("abort", onAbort);
       reject(err);
@@ -1035,12 +980,170 @@ var parseBody = async (res) => {
   }
 };
 
+// src/provider.ts
+var HOSTS = {
+  typesafe: "https://api.typesafe.ai",
+  openrouter: "https://openrouter.ai/api"
+};
+var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
+var MODEL = "jev-latest";
+var DEFAULT_VALUE = "typesafe";
+var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
+  401,
+  402,
+  403,
+  404,
+  408,
+  429
+]);
+var SERVER_ERRORS = { min: 500, max: 599 };
+var ORDER = {
+  auto: ["typesafe", "openrouter"],
+  "openrouter-first": ["openrouter", "typesafe"],
+  typesafe: ["typesafe"],
+  openrouter: ["openrouter"]
+};
+var NARROWABLE = ["auto", "openrouter-first"];
+var resolve = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : DEFAULT_VALUE;
+var order = (value) => ORDER[resolve(value)];
+function plan(value, present) {
+  const providers = order(value).filter((p) => present[p]);
+  return providers.map(
+    (provider, i) => i < providers.length - 1 ? {
+      provider,
+      model: MODEL,
+      timeout: FIRST_ATTEMPT_TIMEOUT_MS,
+      retry: { maxRetries: 0 }
+    } : { provider, model: MODEL }
+  );
+}
+function fallsBack(err) {
+  if (err instanceof APIUserAbortError) return false;
+  if (err instanceof APIConnectionError) return true;
+  if (!(err instanceof APIError)) return false;
+  const { status } = err;
+  return FALLBACK_STATUSES.has(status) || status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
+}
+function narrow(global, project) {
+  const value = resolve(global);
+  return NARROWABLE.includes(value) && (project === "typesafe" || project === "openrouter") ? project : value;
+}
+
+// src/omp-gates.ts
+var ROLES = { small: "@smol", large: "@slow" };
+var TASK = "task";
+var BUNDLED = "bundled";
+var UNREADABLE = "settings unreadable";
+var PLUGIN = "model-router-omp";
+var SETTING = "provider";
+var KEY_VARIABLES = {
+  typesafe: "TYPESAFE_API_KEY",
+  openrouter: "OPENROUTER_API_KEY"
+};
+async function checkGates(omp, pi, ctx) {
+  let value;
+  try {
+    value = await readProvider(omp, ctx.cwd);
+  } catch {
+    return { closed: UNREADABLE };
+  }
+  const routing = await findKeys(ctx, value);
+  if (routing.attempts.length === 0) return { closed: "key unset" };
+  const closed = settingsGate(omp.lookup, pi.pi.settings) ?? await agentGate(pi, ctx) ?? modelsGate(ctx);
+  return closed === void 0 ? routing : { closed };
+}
+async function readProvider(omp, cwd) {
+  const [global, effective] = await Promise.all([
+    readGlobal(omp.getPluginsLockfile()),
+    omp.getPluginSettings(PLUGIN, cwd)
+  ]);
+  return narrow(global, effective[SETTING]);
+}
+async function readGlobal(path) {
+  let text;
+  try {
+    text = await readFile(path, "utf8");
+  } catch (err) {
+    const { code } = isRecord(err) ? err : {};
+    if (code === "ENOENT") return void 0;
+    throw err;
+  }
+  const lock = JSON.parse(text);
+  const { settings } = isRecord(lock) ? lock : {};
+  const mine = isRecord(settings) ? settings[PLUGIN] : void 0;
+  return isRecord(mine) ? mine[SETTING] : void 0;
+}
+async function findKeys(ctx, value) {
+  const keys = {};
+  for (const provider of order(value)) {
+    const key = await findKey(ctx, provider);
+    if (key !== void 0) keys[provider] = key;
+  }
+  const present = {
+    typesafe: keys.typesafe !== void 0,
+    openrouter: keys.openrouter !== void 0
+  };
+  return { attempts: plan(value, present), keys };
+}
+async function findKey(ctx, provider) {
+  try {
+    const key = await ctx.modelRegistry.getApiKeyForProvider(provider);
+    if (typeof key === "string" && key !== "") return key;
+  } catch {
+  }
+  return process.env[KEY_VARIABLES[provider]] || void 0;
+}
+function resolves(ctx, role) {
+  try {
+    return ctx.models.resolve(role) !== void 0;
+  } catch {
+    return false;
+  }
+}
+function read(lookup2, id, settings) {
+  try {
+    return lookup2(id)?.get(settings);
+  } catch {
+    return void 0;
+  }
+}
+var isEmpty = (v) => v === void 0 || v === null || typeof v === "string" && v.trim() === "";
+function settingsGate(lookup2, settings) {
+  const roles = read(lookup2, "modelRoles", settings);
+  const overrides = read(lookup2, "task.agentModelOverrides", settings);
+  const disabled = read(lookup2, "task.disabledAgents", settings);
+  if (!isRecord(roles) || !isRecord(overrides) || !Array.isArray(disabled))
+    return UNREADABLE;
+  if (!isEmpty(roles[TASK])) return "task model role set";
+  if (!isEmpty(overrides[TASK])) return "task model override set";
+  if (disabled.includes(TASK)) return "task agent disabled";
+  return void 0;
+}
+var CUSTOM_AGENT = "custom task agent";
+async function agentGate(pi, ctx) {
+  try {
+    const { agents } = await pi.pi.discoverAgents(ctx.cwd);
+    const found = agents.find((agent) => agent.name === TASK);
+    return found?.source === BUNDLED ? void 0 : CUSTOM_AGENT;
+  } catch {
+    return CUSTOM_AGENT;
+  }
+}
+function modelsGate(ctx) {
+  return Object.values(ROLES).some((role) => resolves(ctx, role)) ? void 0 : `no ${ROLES.small} or ${ROLES.large} model`;
+}
+
 // src/client.ts
-var TYPESAFE_BASE_URL = "https://api.typesafe.ai";
-function createClient(apiKey, model, fetchFn) {
+function createClient(provider, apiKey, model, fetchFn) {
+  if (!Object.hasOwn(HOSTS, provider))
+    throw new Error(`createClient: no host for ${provider}`);
+  if (!apiKey)
+    throw new Error(
+      `createClient: no ${provider} key. Pass a non-empty key for ${provider}.`
+    );
   return new TypeSafeClient({
     apiKey,
-    baseURL: TYPESAFE_BASE_URL,
+    baseURL: HOSTS[provider],
     logLevel: "off",
     defaultModel: model,
     compression: false,
@@ -1057,27 +1160,63 @@ function skipCategory(err, signal) {
   if (err instanceof APIUserAbortError)
     return signal.reason === LIMIT_REACHED ? "timeout" : "cancelled";
   if (err instanceof APIError) return `HTTP ${err.status}`;
+  if (err instanceof APITimeoutError) return "timeout";
   if (err instanceof APIConnectionError) return "network error";
   if (err instanceof TypeSafeError) return "rejected request";
   return "failed";
 }
 async function route(input) {
-  const { parts, state, model, apiKey, fetchFn, signal } = input;
-  if (!apiKey) return { skipped: "key unset" };
-  let result;
-  try {
-    result = await createClient(apiKey, model, fetchFn).systemOne(
-      {
-        state,
-        model,
-        questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
-      },
-      { signal }
-    );
-  } catch (err) {
-    return { skipped: skipCategory(err, signal) };
+  const { parts, attempts, signal } = input;
+  if (attempts.length === 0) return { skipped: "key unset" };
+  const failed = [];
+  for (const attempt2 of attempts) {
+    let result;
+    try {
+      result = await ask(input, attempt2);
+    } catch (err) {
+      failed.push({
+        provider: attempt2.provider,
+        reason: skipCategory(err, signal)
+      });
+      if (fallsBack(err)) continue;
+      break;
+    }
+    const decision = decide(parts, result);
+    if ("skipped" in decision) {
+      failed.push({ provider: attempt2.provider, reason: decision.skipped });
+      break;
+    }
+    const [first] = failed;
+    if (!first) return decision;
+    const via = {
+      provider: attempt2.provider,
+      first: first.provider,
+      reason: first.reason
+    };
+    return { ...decision, via, passedOver: first.provider };
   }
-  return decide(parts, result);
+  return skip(failed);
+}
+function ask(input, attempt2) {
+  const { parts, state, keys, fetchFn, signal } = input;
+  const { provider, model, ...overrides } = attempt2;
+  return createClient(provider, keys[provider], model, fetchFn).systemOne(
+    {
+      state,
+      model,
+      questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
+    },
+    { ...overrides, signal }
+  );
+}
+function skip(failed) {
+  const [first, ...rest] = failed;
+  if (!first || rest.length === 0)
+    return { skipped: first?.reason ?? "failed" };
+  return {
+    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", "),
+    passedOver: first.provider
+  };
 }
 function decide(parts, result) {
   const { answers, model, usage } = isRecord(result) ? result : {};
@@ -1089,17 +1228,18 @@ function decide(parts, result) {
   }
   return {
     parts: decided,
-    model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
+    model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
     usage: isRecord(usage) ? usage : void 0
   };
 }
 function decisionSuffix({
   model,
-  usage
+  usage,
+  via
 }) {
   const input = usage?.input_tokens;
   const output = usage?.output_tokens;
-  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "");
+  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
 }
 
 // src/model.ts
@@ -1128,7 +1268,6 @@ var tier = {
 
 // src/omp-score.ts
 var MAX_PARALLEL = 4;
-var JEV_ALIAS = "jev-latest";
 var ROLE = "general-purpose";
 var ROLE_BY_LEVEL = {
   0: ROLES.small,
@@ -1150,39 +1289,45 @@ var streamedFetch = async (url, init) => {
     headers: reply.headers
   });
 };
-async function scoreItems(items, context, apiKey) {
+async function scoreItems(items, context, { attempts, keys }) {
   const limit = new AbortController();
   const timer = setTimeout(() => limit.abort(LIMIT_REACHED), ROUTING_LIMIT_MS);
+  const passedOver = /* @__PURE__ */ new Set();
   try {
-    return await mapLimit(items, MAX_PARALLEL, async ({ index, item }) => ({
-      index,
-      item,
-      stored: await scoreItem(item, context, apiKey, limit.signal)
-    }));
+    return await mapLimit(items, MAX_PARALLEL, async ({ index, item }) => {
+      const routing = {
+        attempts: attempts.filter((a) => !passedOver.has(a.provider)),
+        keys
+      };
+      const decision = await scoreItem(item, context, routing, limit.signal);
+      if (decision.passedOver) passedOver.add(decision.passedOver);
+      return { index, item, stored: toStored(decision) };
+    });
   } finally {
     clearTimeout(timer);
   }
 }
-async function scoreItem(item, context, apiKey, signal) {
-  const decision = await route({
+function scoreItem(item, context, routing, signal) {
+  return route({
     parts: [tier],
     state: {
       role: ROLE,
       description: typeof item.name === "string" ? item.name : "",
       task: buildPrompt(item.task, context)
     },
-    model: JEV_ALIAS,
-    apiKey,
+    ...routing,
     fetchFn: streamedFetch,
     signal
   });
-  const skip = (reason) => ({
+}
+function toStored(decision) {
+  const skip2 = (reason) => ({
     role: void 0,
     line: `skipped, ${reason}`
   });
-  if ("skipped" in decision) return skip(decision.skipped);
+  if ("skipped" in decision) return skip2(decision.skipped);
   const part = decision.parts[tier.key];
-  if (!part) return skip("bad reply");
+  if (!part) return skip2("bad reply");
   const role = ROLE_BY_LEVEL[part.level];
   const p = formatProbability(part.probabilities[part.level]);
   return {
@@ -1300,7 +1445,7 @@ function report(ctx, entries) {
 }
 var entry = (index, line) => `task ${index + 1}: ${line}`;
 var eligibleItems = (tasks) => tasks.flatMap((item, index) => isEligible(item) ? [{ index, item }] : []);
-function createRouter(lookup2, pi) {
+function createRouter(omp, pi) {
   const store = createStore();
   async function onToolCall(event, ctx) {
     const { input } = event;
@@ -1309,7 +1454,7 @@ function createRouter(lookup2, pi) {
     if (!Array.isArray(tasks)) return;
     const items = eligibleItems(tasks);
     if (items.length === 0) return;
-    const gates = await checkGates(lookup2, pi, ctx);
+    const gates = await checkGates(omp, pi, ctx);
     if ("closed" in gates) {
       const line = `skipped, ${gates.closed}`;
       return report(
@@ -1317,7 +1462,7 @@ function createRouter(lookup2, pi) {
         items.map(({ index }) => entry(index, line))
       );
     }
-    const scored = await scoreItems(items, contextText(context), gates.key);
+    const scored = await scoreItems(items, contextText(context), gates);
     for (const { index, item, stored } of scored)
       store.add(event.toolCallId, index, item.name, stored);
     report(
@@ -1329,7 +1474,7 @@ function createRouter(lookup2, pi) {
     if (event.agent !== TASK2 || event.invocationKind !== TASK2) return;
     const stored = store.take(event.spawnKey);
     if (!stored?.role || event.modelRole) return;
-    if ("closed" in await checkGates(lookup2, pi, ctx)) return;
+    if ("closed" in await checkGates(omp, pi, ctx)) return;
     if (!resolves(ctx, stored.role)) return;
     return { model: stored.role, note: LINE_PREFIX + stored.line };
   }
@@ -1345,9 +1490,9 @@ function createRouter(lookup2, pi) {
   }
   return { onToolCall, onSpawn, learn, onToolEnd };
 }
-function createExtension(lookup2) {
+function createExtension(omp) {
   return (pi) => {
-    const router = createRouter(lookup2, pi);
+    const router = createRouter(omp, pi);
     pi.on("tool_call", async (event, ctx) => {
       await attempt(() => router.onToolCall(event, ctx));
       return void 0;
@@ -1366,7 +1511,11 @@ function createExtension(lookup2) {
 }
 
 // src/omp.ts
-var omp_default = createExtension(lookup);
+var omp_default = createExtension({
+  lookup,
+  getPluginsLockfile,
+  getPluginSettings
+});
 export {
   omp_default as default
 };

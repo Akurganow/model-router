@@ -58,7 +58,7 @@ var APIPromise = class APIPromise2 extends Promise {
   #parseResponse;
   #parsed;
   constructor(responsePromise, parseResponse) {
-    super((resolve) => resolve(void 0));
+    super((resolve2) => resolve2(void 0));
     this.#responsePromise = responsePromise;
     this.#parseResponse = parseResponse;
   }
@@ -135,7 +135,7 @@ var retryDelayMs = (attempt, headers, policy = DEFAULT_RETRY_POLICY, random = Ma
   const exponential = Math.min(policy.backoffInitialMs * 2 ** attempt, policy.backoffMaxMs);
   return Math.round(exponential * (1 - random() * policy.backoffJitter));
 };
-var sleep = (ms, signal) => new Promise((resolve, reject) => {
+var sleep = (ms, signal) => new Promise((resolve2, reject) => {
   if (signal?.aborted) return reject(signal.reason);
   const onAbort = () => {
     clearTimeout(timer);
@@ -143,7 +143,7 @@ var sleep = (ms, signal) => new Promise((resolve, reject) => {
   };
   const timer = setTimeout(() => {
     signal?.removeEventListener("abort", onAbort);
-    resolve();
+    resolve2();
   }, ms);
   signal?.addEventListener("abort", onAbort, { once: true });
 });
@@ -475,8 +475,8 @@ var resolveCompression = (compression) => {
 };
 var zstd = async (body) => {
   const data = new Uint8Array(await body.arrayBuffer());
-  const compressed = await new Promise((resolve, reject) => {
-    zlib()?.zstdCompress?.(data, (err, result) => err ? reject(err) : resolve(result));
+  const compressed = await new Promise((resolve2, reject) => {
+    zlib()?.zstdCompress?.(data, (err, result) => err ? reject(err) : resolve2(result));
   });
   return new Uint8Array(compressed);
 };
@@ -685,13 +685,13 @@ var bufferResponse = async (response, signal) => {
 };
 var untilAborted = (start, signal) => {
   if (signal === void 0) return start();
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve2, reject) => {
     if (signal.aborted) return reject(signal.reason);
     const onAbort = () => reject(signal.reason);
     signal.addEventListener("abort", onAbort, { once: true });
     start().then((value) => {
       signal.removeEventListener("abort", onAbort);
-      resolve(value);
+      resolve2(value);
     }, (err) => {
       signal.removeEventListener("abort", onAbort);
       reject(err);
@@ -960,12 +960,67 @@ var parseBody = async (res) => {
   }
 };
 
+// src/provider.ts
+var PROVIDER_VALUES = [
+  "auto",
+  "openrouter-first",
+  "typesafe",
+  "openrouter"
+];
+var HOSTS = {
+  typesafe: "https://api.typesafe.ai",
+  openrouter: "https://openrouter.ai/api"
+};
+var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
+var MODEL = "jev-latest";
+var DEFAULT_VALUE = "typesafe";
+var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
+  401,
+  402,
+  403,
+  404,
+  408,
+  429
+]);
+var SERVER_ERRORS = { min: 500, max: 599 };
+var ORDER = {
+  auto: ["typesafe", "openrouter"],
+  "openrouter-first": ["openrouter", "typesafe"],
+  typesafe: ["typesafe"],
+  openrouter: ["openrouter"]
+};
+var resolve = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : DEFAULT_VALUE;
+var order = (value) => ORDER[resolve(value)];
+function plan(value, present) {
+  const providers = order(value).filter((p) => present[p]);
+  return providers.map(
+    (provider, i) => i < providers.length - 1 ? {
+      provider,
+      model: MODEL,
+      timeout: FIRST_ATTEMPT_TIMEOUT_MS,
+      retry: { maxRetries: 0 }
+    } : { provider, model: MODEL }
+  );
+}
+function fallsBack(err) {
+  if (err instanceof APIUserAbortError) return false;
+  if (err instanceof APIConnectionError) return true;
+  if (!(err instanceof APIError)) return false;
+  const { status } = err;
+  return FALLBACK_STATUSES.has(status) || status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
+}
+
 // src/client.ts
-var TYPESAFE_BASE_URL = "https://api.typesafe.ai";
-function createClient(apiKey, model, fetchFn) {
+function createClient(provider, apiKey, model, fetchFn) {
+  if (!Object.hasOwn(HOSTS, provider))
+    throw new Error(`createClient: no host for ${provider}`);
+  if (!apiKey)
+    throw new Error(
+      `createClient: no ${provider} key. Pass a non-empty key for ${provider}.`
+    );
   return new TypeSafeClient({
     apiKey,
-    baseURL: TYPESAFE_BASE_URL,
+    baseURL: HOSTS[provider],
     logLevel: "off",
     defaultModel: model,
     compression: false,
@@ -999,27 +1054,63 @@ function skipCategory(err, signal) {
   if (err instanceof APIUserAbortError)
     return signal.reason === LIMIT_REACHED ? "timeout" : "cancelled";
   if (err instanceof APIError) return `HTTP ${err.status}`;
+  if (err instanceof APITimeoutError) return "timeout";
   if (err instanceof APIConnectionError) return "network error";
   if (err instanceof TypeSafeError) return "rejected request";
   return "failed";
 }
 async function route(input) {
-  const { parts, state, model, apiKey, fetchFn, signal } = input;
-  if (!apiKey) return { skipped: "key unset" };
-  let result;
-  try {
-    result = await createClient(apiKey, model, fetchFn).systemOne(
-      {
-        state,
-        model,
-        questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
-      },
-      { signal }
-    );
-  } catch (err) {
-    return { skipped: skipCategory(err, signal) };
+  const { parts, attempts, signal } = input;
+  if (attempts.length === 0) return { skipped: "key unset" };
+  const failed = [];
+  for (const attempt of attempts) {
+    let result;
+    try {
+      result = await ask(input, attempt);
+    } catch (err) {
+      failed.push({
+        provider: attempt.provider,
+        reason: skipCategory(err, signal)
+      });
+      if (fallsBack(err)) continue;
+      break;
+    }
+    const decision = decide(parts, result);
+    if ("skipped" in decision) {
+      failed.push({ provider: attempt.provider, reason: decision.skipped });
+      break;
+    }
+    const [first] = failed;
+    if (!first) return decision;
+    const via = {
+      provider: attempt.provider,
+      first: first.provider,
+      reason: first.reason
+    };
+    return { ...decision, via, passedOver: first.provider };
   }
-  return decide(parts, result);
+  return skip(failed);
+}
+function ask(input, attempt) {
+  const { parts, state, keys, fetchFn, signal } = input;
+  const { provider, model, ...overrides } = attempt;
+  return createClient(provider, keys[provider], model, fetchFn).systemOne(
+    {
+      state,
+      model,
+      questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
+    },
+    { ...overrides, signal }
+  );
+}
+function skip(failed) {
+  const [first, ...rest] = failed;
+  if (!first || rest.length === 0)
+    return { skipped: first?.reason ?? "failed" };
+  return {
+    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", "),
+    passedOver: first.provider
+  };
 }
 function decide(parts, result) {
   const { answers, model, usage } = isRecord2(result) ? result : {};
@@ -1031,17 +1122,18 @@ function decide(parts, result) {
   }
   return {
     parts: decided,
-    model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
+    model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
     usage: isRecord2(usage) ? usage : void 0
   };
 }
 function decisionSuffix({
   model,
-  usage
+  usage,
+  via
 }) {
   const input = usage?.input_tokens;
   const output = usage?.output_tokens;
-  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "");
+  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
 }
 
 // src/effort.ts
@@ -1100,6 +1192,8 @@ var EFFORT_LADDER = {
   sonnet: ["low", "medium", "high"],
   opus: ["low", "medium", "high"]
 };
+var COMMAND = "model-router:provider";
+var PROVIDER_ROW = "model-router.provider";
 var BUILT_IN = "built-in";
 var DEFAULT_AGENT = "general-purpose";
 var ROUTED_AGENTS = /* @__PURE__ */ new Set([
@@ -1109,9 +1203,12 @@ var ROUTED_AGENTS = /* @__PURE__ */ new Set([
   "Plan"
 ]);
 var DEBUG_PIECE_CHARS = 9e3;
+var KEY_SOURCES = {
+  typesafe: { option: "api_key", variable: "TYPESAFE_API_KEY" },
+  openrouter: { option: "openrouter_api_key", variable: "OPENROUTER_API_KEY" }
+};
 var offered = /* @__PURE__ */ new Map();
 function register(on, options) {
-  const jev = options.model === "jev-preview" ? "jev-preview" : "jev-latest";
   offered.clear();
   on("agent.offer", (_, e, next) => {
     offered.set(e.agent, e.source);
@@ -1120,8 +1217,29 @@ function register(on, options) {
   on(
     "tool.call",
     { tool: "Agent" },
-    ($, e, next) => routeAgentCall($, e, next, { jev, keyOption: options.api_key })
+    ($, e, next) => routeAgentCall($, e, next, options)
   ).catch(passOn);
+  on(
+    "command.run",
+    { command: COMMAND },
+    ($, e) => providerCommand($, e.args.trim(), options.provider)
+  );
+}
+var describeProvider = (value) => `provider: ${value} (${order(value).join(", then ")})`;
+async function providerCommand($, args, current) {
+  if (args === "") return { text: describeProvider(current) };
+  if (!PROVIDER_VALUES.some((value) => value === args))
+    return { text: `provider: use one of ${PROVIDER_VALUES.join(", ")}` };
+  try {
+    const { deny } = await $.config.set({ key: PROVIDER_ROW, value: args });
+    return {
+      text: deny === void 0 ? describeProvider(args) : `provider unchanged: ${deny}`
+    };
+  } catch (err) {
+    return {
+      text: `provider unchanged: ${err instanceof Error ? err.message : String(err)}`
+    };
+  }
 }
 function passOn(_, e, next) {
   return next(e);
@@ -1144,7 +1262,7 @@ async function denied($, call) {
   } = call;
   return (await $.tool.check({ tool: "Agent", input })).decision === "deny";
 }
-async function routeAgentCall($, call, next, settings) {
+async function routeAgentCall($, call, next, options) {
   useClockTimers($);
   if (!routable(call) || await denied($, call)) return next(call);
   const state = {
@@ -1152,11 +1270,14 @@ async function routeAgentCall($, call, next, settings) {
     description: call.description,
     task: prepareBrief(call.prompt)
   };
-  const apiKey = nonEmpty(settings.keyOption) ?? nonEmpty(await $.env.get("TYPESAFE_API_KEY"));
+  const keys = await readKeys($, options);
   const decision = await scored($, next.signal, {
     state,
-    model: settings.jev,
-    apiKey
+    attempts: plan(options.provider, {
+      typesafe: keys.typesafe !== void 0,
+      openrouter: keys.openrouter !== void 0
+    }),
+    keys
   });
   const picked = pick(decision);
   if ("skipped" in picked) {
@@ -1171,6 +1292,15 @@ async function routeAgentCall($, call, next, settings) {
   );
   if (outcome.deny !== void 0) await $.ui.log("denied");
   return outcome;
+}
+async function readKeys($, options) {
+  const keys = {};
+  for (const provider of order(options.provider)) {
+    const { option, variable } = KEY_SOURCES[provider];
+    const key = nonEmpty(options[option]) ?? nonEmpty(await $.env.get(variable));
+    if (key !== void 0) keys[provider] = key;
+  }
+  return keys;
 }
 function pick(decision) {
   if ("skipped" in decision) return decision;
@@ -1223,11 +1353,11 @@ function engineFetch($) {
 }
 function abortable(start, signal) {
   if (!signal) return start();
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve2, reject) => {
     if (signal.aborted) return reject(signal.reason);
     const onAbort = () => reject(signal.reason);
     signal.addEventListener("abort", onAbort, { once: true });
-    start().then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
+    start().then(resolve2, reject).finally(() => signal.removeEventListener("abort", onAbort));
   });
 }
 async function logRequest($, body) {

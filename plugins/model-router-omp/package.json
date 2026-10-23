@@ -10,6 +10,19 @@
 	"omp": {
 		"extensions": [
 			"./extension/index.js"
-		]
+		],
+		"settings": {
+			"provider": {
+				"type": "enum",
+				"description": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe.",
+				"values": [
+					"auto",
+					"openrouter-first",
+					"typesafe",
+					"openrouter"
+				],
+				"default": "typesafe"
+			}
+		}
 	}
 }

@@ -11,8 +11,12 @@ import {
 import { work } from "./effort.ts";
 import { tier } from "./model.ts";
 import { streamed } from "./omp-fakes.ts";
+import { type Attempt, plan } from "./provider.ts";
 
 const KEY = "test-key";
+const OR_KEY = "test-openrouter-key";
+const KEYS = { typesafe: KEY, openrouter: OR_KEY };
+const BOTH = plan("auto", { typesafe: true, openrouter: true });
 const MODEL = "jev-test";
 const STATE = { role: "coder", description: "Fix it", task: "Fix the bug." };
 const SECRET = "sk-live-0123456789abcdef";
@@ -32,12 +36,19 @@ type Respond = (init: RequestInit, count: number) => Promise<Response>;
 
 function stub(respond: Respond) {
 	const bodies: string[] = [];
-	const fetchFn = (_url: string, init: RequestInit = {}) => {
+	const sent: string[] = [];
+	const fetchFn = (url: string, init: RequestInit = {}) => {
 		bodies.push(String(init.body));
+		sent.push(`${url} ${new Headers(init.headers).get("authorization")}`);
 		return respond(init, bodies.length);
 	};
-	return { bodies, fetchFn };
+	return { bodies, sent, fetchFn };
 }
+
+const hang: Respond = (init) =>
+	new Promise((_, reject) => {
+		init.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+	});
 
 const answering = (body: unknown) => stub(async () => streamed(200, body));
 
@@ -50,8 +61,8 @@ function run(
 	return route({
 		parts: [tier, work],
 		state: STATE,
-		model: MODEL,
-		apiKey: KEY,
+		attempts: [{ provider: "typesafe", model: MODEL }],
+		keys: KEYS,
 		fetchFn,
 		signal: new AbortController().signal,
 		...extra,
@@ -134,14 +145,7 @@ test("a valid reply gives each part its level, probabilities, model and usage", 
 });
 
 test("a limit abort is a timeout", async () => {
-	const { bodies, fetchFn } = stub(
-		(init) =>
-			new Promise((_, reject) => {
-				init.signal?.addEventListener("abort", () =>
-					reject(init.signal?.reason),
-				);
-			}),
-	);
+	const { bodies, fetchFn } = stub(hang);
 	const controller = new AbortController();
 	const routed = run(fetchFn, { signal: controller.signal });
 	setImmediate(() => controller.abort(LIMIT_REACHED));
@@ -205,11 +209,11 @@ test("a request the SDK rejects locally is a rejected request with no fetch", as
 	assert.equal(bodies.length, 0);
 });
 
-test("no key is key unset and makes no request", async () => {
+test("no attempt is key unset and makes no request", async () => {
 	const { bodies, fetchFn } = answering(VALID);
-	for (const apiKey of [undefined, ""]) {
-		assert.deepEqual(await run(fetchFn, { apiKey }), { skipped: "key unset" });
-	}
+	assert.deepEqual(await run(fetchFn, { attempts: [] }), {
+		skipped: "key unset",
+	});
 	assert.equal(bodies.length, 0);
 });
 
@@ -242,11 +246,11 @@ test("a skip holds neither the response body, the task nor the key", async () =>
 		assert.ok(!text.includes(leak), `leaked ${leak}`);
 });
 
-test("the suffix keeps safe characters, caps the model at 40 and prints usage", async () => {
-	const model = `jev 1.14/<b>${"x".repeat(60)}`;
+test("the suffix keeps safe characters and /, caps the model at 40 and prints usage", async () => {
+	const model = `typesafe/jev 1.14<b>${"x".repeat(60)}`;
 	const { fetchFn } = answering({ ...VALID, model });
 	const decision = asDecision(await run(fetchFn));
-	assert.equal(decision.model, `jev1.14b${"x".repeat(32)}`);
+	assert.equal(decision.model, `typesafe/jev1.14b${"x".repeat(23)}`);
 	assert.equal(
 		decisionSuffix(decision),
 		` · jev ${decision.model} · 120/8 tok`,
@@ -265,4 +269,143 @@ test("the suffix leaves out null, missing or unsafe usage", () => {
 		" · jev jev-1",
 	);
 	assert.equal(decisionSuffix({ model: "", usage: undefined }), "");
+});
+
+test("the suffix names the answering provider after a fallback", () => {
+	assert.equal(
+		decisionSuffix({
+			model: "jev-1",
+			usage: { input_tokens: 120, output_tokens: 8 },
+			via: { provider: "openrouter", first: "typesafe", reason: "HTTP 503" },
+		}),
+		" · jev jev-1 · 120/8 tok · via openrouter (typesafe HTTP 503)",
+	);
+});
+
+test("a 503 falls back once to the next provider with its own host and key", async () => {
+	const { sent, fetchFn } = stub(async (_init, count) =>
+		count === 1 ? streamed(503, "down", NO_WAIT) : streamed(200, VALID),
+	);
+	const decision = asDecision(await run(fetchFn, { attempts: BOTH }));
+	assert.deepEqual(sent, [
+		`https://api.typesafe.ai/v1/systemone Bearer ${KEY}`,
+		`https://openrouter.ai/api/v1/systemone Bearer ${OR_KEY}`,
+	]);
+	assert.deepEqual(decision.via, {
+		provider: "openrouter",
+		first: "typesafe",
+		reason: "HTTP 503",
+	});
+	assert.equal(decision.passedOver, "typesafe");
+});
+
+test("openrouter-first asks OpenRouter first and falls back after a network error", async () => {
+	const { sent, fetchFn } = stub(async (_init, count) => {
+		if (count === 1) throw new TypeError("fetch failed");
+		return streamed(200, VALID);
+	});
+	const attempts = plan("openrouter-first", {
+		typesafe: true,
+		openrouter: true,
+	});
+	const decision = asDecision(await run(fetchFn, { attempts }));
+	assert.equal(sent.length, 2);
+	assert.match(sent[0] ?? "", /^https:\/\/openrouter\.ai\//);
+	assert.deepEqual(decision.via, {
+		provider: "typesafe",
+		first: "openrouter",
+		reason: "network error",
+	});
+});
+
+test("a per-attempt timeout falls back and reports timeout", async () => {
+	const attempts: Attempt[] = [
+		{
+			provider: "typesafe",
+			model: MODEL,
+			timeout: 20,
+			retry: { maxRetries: 0 },
+		},
+		{ provider: "openrouter", model: MODEL },
+	];
+	const { bodies, fetchFn } = stub((init, count) =>
+		count === 1 ? hang(init, count) : Promise.resolve(streamed(200, VALID)),
+	);
+	const decision = asDecision(await run(fetchFn, { attempts }));
+	assert.equal(bodies.length, 2);
+	assert.equal(decision.via?.reason, "timeout");
+});
+
+test("a 400, a 422 or a bad reply ends the call with today's one-attempt reason", async () => {
+	const cases: [Respond, string][] = [
+		[async () => streamed(400, "bad"), "HTTP 400"],
+		[async () => streamed(422, "bad"), "HTTP 422"],
+		[async () => streamed(200, "not json"), "bad reply"],
+	];
+	for (const [respond, skipped] of cases) {
+		const { bodies, fetchFn } = stub(respond);
+		assert.deepEqual(await run(fetchFn, { attempts: BOTH }), { skipped });
+		assert.equal(bodies.length, 1);
+	}
+});
+
+test("a cancel during the first attempt does not fall back", async () => {
+	const { bodies, fetchFn } = stub(hang);
+	const controller = new AbortController();
+	const routed = run(fetchFn, { attempts: BOTH, signal: controller.signal });
+	setImmediate(() => controller.abort());
+	assert.deepEqual(await routed, { skipped: "cancelled" });
+	assert.equal(bodies.length, 1);
+});
+
+test("the routing limit during the first attempt does not fall back", async () => {
+	const { bodies, fetchFn } = stub(hang);
+	const controller = new AbortController();
+	const routed = run(fetchFn, { attempts: BOTH, signal: controller.signal });
+	setImmediate(() => controller.abort(LIMIT_REACHED));
+	assert.deepEqual(await routed, { skipped: "timeout" });
+	assert.equal(bodies.length, 1);
+});
+
+test("one routing limit covers both attempts", async () => {
+	const controller = new AbortController();
+	const { bodies, fetchFn } = stub((init, count) => {
+		if (count === 1) return Promise.resolve(streamed(503, "down", NO_WAIT));
+		setImmediate(() => controller.abort(LIMIT_REACHED));
+		return hang(init, count);
+	});
+	const routed = await run(fetchFn, {
+		attempts: BOTH,
+		signal: controller.signal,
+	});
+	assert.deepEqual(routed, {
+		skipped: "typesafe HTTP 503, openrouter timeout",
+		passedOver: "typesafe",
+	});
+	assert.equal(bodies.length, 2);
+});
+
+test("two failed attempts send at most four requests and name both providers", async () => {
+	const { bodies, fetchFn } = stub(async () => streamed(503, "down", NO_WAIT));
+	assert.deepEqual(await run(fetchFn, { attempts: BOTH }), {
+		skipped: "typesafe HTTP 503, openrouter HTTP 503",
+		passedOver: "typesafe",
+	});
+	assert.equal(bodies.length, 4);
+});
+
+test("a bad reply after a fallback names both providers", async () => {
+	const { fetchFn } = stub(async (_init, count) =>
+		count === 1 ? streamed(429, "slow", NO_WAIT) : streamed(200, "not json"),
+	);
+	assert.deepEqual(await run(fetchFn, { attempts: BOTH }), {
+		skipped: "typesafe HTTP 429, openrouter bad reply",
+		passedOver: "typesafe",
+	});
+});
+
+test("a single-provider failure that allows fallback keeps today's text", async () => {
+	const { bodies, fetchFn } = stub(async () => streamed(503, "down", NO_WAIT));
+	assert.deepEqual(await run(fetchFn), { skipped: "HTTP 503" });
+	assert.equal(bodies.length, 3);
 });

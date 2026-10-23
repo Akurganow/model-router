@@ -1,8 +1,13 @@
 {
-	"hooks": ["agent.offer", "tool.call{tool=Agent}"],
+	"hooks": [
+		"agent.offer",
+		"command.run{command=model-router:provider}",
+		"tool.call{tool=Agent}"
+	],
 	"calls": [
 		"$.clock.after",
 		"$.clock.sleep",
+		"$.config.set",
 		"$.env.get",
 		"$.http.fetch",
 		"$.tool.check",

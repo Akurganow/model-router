@@ -12,6 +12,7 @@ import {
 import { work } from "./effort.ts";
 import { tier } from "./model.ts";
 import { formatProbability, type Level } from "./part.ts";
+import { order, PROVIDER_VALUES, type Provider, plan } from "./provider.ts";
 import { installTimers } from "./timers.ts";
 
 // The mods API and hook types this adapter uses. The bundle must not depend on the generated declarations.
@@ -33,6 +34,9 @@ type Engine = {
 		sleep(ms: number, options: { signal: AbortSignal }): Promise<void>;
 	};
 	env: { get(name: string): Promise<string | undefined> };
+	config: {
+		set(row: { key: string; value: string }): Promise<{ deny?: string }>;
+	};
 	http: { fetch(url: string, init?: HttpInit): Promise<HttpReply> };
 	tool: {
 		check(call: {
@@ -47,7 +51,9 @@ type Next = {
 	(e: unknown): Promise<Outcome>;
 	readonly signal: AbortSignal;
 };
-type Hook<E> = ($: Engine, e: E, next: Next) => Promise<Outcome>;
+type Hook<E, R = Outcome> = ($: Engine, e: E, next: Next) => Promise<R>;
+type CommandRun = { command: string; args: string };
+type CommandOutput = { text: string };
 type AgentOffer = { agent: string; source: string };
 type AgentCall = {
 	tool: "Agent";
@@ -71,8 +77,18 @@ type On = {
 		matcher: { tool: "Agent" },
 		hook: Hook<AgentCall>,
 	): { catch(handler: Hook<unknown>): unknown };
+	(
+		event: "command.run",
+		matcher: { command: string },
+		hook: Hook<CommandRun, CommandOutput>,
+	): { catch(handler: Hook<unknown>): unknown };
 };
-type Options = { readonly api_key?: unknown; readonly model?: unknown };
+type Options = {
+	readonly api_key?: unknown;
+	readonly openrouter_api_key?: unknown;
+	readonly provider?: unknown;
+};
+type Keys = Partial<Record<Provider, string>>;
 
 const MODELS = ["haiku", "sonnet", "opus"] as const;
 // Effort is calibrated per model. Haiku's row sits one step higher: at low it stops early on agentic prompts.
@@ -81,6 +97,9 @@ const EFFORT_LADDER = {
 	sonnet: ["low", "medium", "high"],
 	opus: ["low", "medium", "high"],
 } as const;
+
+const COMMAND = "model-router:provider";
+const PROVIDER_ROW = "model-router.provider";
 
 const BUILT_IN = "built-in";
 const DEFAULT_AGENT = "general-purpose";
@@ -94,19 +113,56 @@ const ROUTED_AGENTS: ReadonlySet<string> = new Set([
 // The debug log keeps 10000 characters of a line, and a body can carry 12000 of task text.
 const DEBUG_PIECE_CHARS = 9000;
 
+// The sensitive option comes first. The desktop app reads it back empty after a restart, so the variable stands in.
+const KEY_SOURCES: Readonly<
+	Record<Provider, { option: keyof Options; variable: string }>
+> = {
+	typesafe: { option: "api_key", variable: "TYPESAFE_API_KEY" },
+	openrouter: { option: "openrouter_api_key", variable: "OPENROUTER_API_KEY" },
+};
+
 // The latest source of each offered agent name. A user or plugin agent can take a built-in's name.
 const offered = new Map<string, string>();
 
 export function register(on: On, options: Options): void {
-	const jev = options.model === "jev-preview" ? "jev-preview" : "jev-latest";
 	offered.clear();
 	on("agent.offer", (_, e, next) => {
 		offered.set(e.agent, e.source);
 		return next(e);
 	}).catch(passOn);
 	on("tool.call", { tool: "Agent" }, ($, e, next) =>
-		routeAgentCall($, e, next, { jev, keyOption: options.api_key }),
+		routeAgentCall($, e, next, options),
 	).catch(passOn);
+	on("command.run", { command: COMMAND }, ($, e) =>
+		providerCommand($, e.args.trim(), options.provider),
+	);
+}
+
+const describeProvider = (value: unknown) =>
+	`provider: ${value} (${order(value).join(", then ")})`;
+
+// The hook answers in the command's place, so the command's markdown body runs only when the hook is missing.
+async function providerCommand(
+	$: Engine,
+	args: string,
+	current: unknown,
+): Promise<CommandOutput> {
+	if (args === "") return { text: describeProvider(current) };
+	if (!PROVIDER_VALUES.some((value) => value === args))
+		return { text: `provider: use one of ${PROVIDER_VALUES.join(", ")}` };
+	try {
+		const { deny } = await $.config.set({ key: PROVIDER_ROW, value: args });
+		return {
+			text:
+				deny === undefined
+					? describeProvider(args)
+					: `provider unchanged: ${deny}`,
+		};
+	} catch (err) {
+		return {
+			text: `provider unchanged: ${err instanceof Error ? err.message : String(err)}`,
+		};
+	}
 }
 
 function passOn(_: Engine, e: unknown, next: Next): Promise<Outcome> {
@@ -146,7 +202,7 @@ async function routeAgentCall(
 	$: Engine,
 	call: AgentCall,
 	next: Next,
-	settings: { jev: string; keyOption: unknown },
+	options: Options,
 ): Promise<Outcome> {
 	useClockTimers($);
 	if (!routable(call) || (await denied($, call))) return next(call);
@@ -155,15 +211,14 @@ async function routeAgentCall(
 		description: call.description,
 		task: prepareBrief(call.prompt),
 	};
-	// The key goes only to TypeSafe, which issued it. The sensitive option comes first. The desktop app
-	// reads it back empty after a restart, so the variable stands in when it is empty.
-	const apiKey =
-		nonEmpty(settings.keyOption) ??
-		nonEmpty(await $.env.get("TYPESAFE_API_KEY"));
+	const keys = await readKeys($, options);
 	const decision = await scored($, next.signal, {
 		state,
-		model: settings.jev,
-		apiKey,
+		attempts: plan(options.provider, {
+			typesafe: keys.typesafe !== undefined,
+			openrouter: keys.openrouter !== undefined,
+		}),
+		keys,
 	});
 	const picked = pick(decision);
 	if ("skipped" in picked) {
@@ -178,6 +233,18 @@ async function routeAgentCall(
 	);
 	if (outcome.deny !== undefined) await $.ui.log("denied");
 	return outcome;
+}
+
+// Each key goes only to its own provider. The key of a provider the value leaves out is never read.
+async function readKeys($: Engine, options: Options): Promise<Keys> {
+	const keys: Keys = {};
+	for (const provider of order(options.provider)) {
+		const { option, variable } = KEY_SOURCES[provider];
+		const key =
+			nonEmpty(options[option]) ?? nonEmpty(await $.env.get(variable));
+		if (key !== undefined) keys[provider] = key;
+	}
+	return keys;
 }
 
 type Picked = {
@@ -212,7 +279,7 @@ function decisionLine(picked: Picked, keepEffort: boolean): string {
 async function scored(
 	$: Engine,
 	cancel: AbortSignal,
-	input: Pick<RouteInput, "state" | "model" | "apiKey">,
+	input: Pick<RouteInput, "state" | "attempts" | "keys">,
 ) {
 	const stop = new AbortController();
 	$.clock.sleep(ROUTING_LIMIT_MS, { signal: stop.signal }).then(

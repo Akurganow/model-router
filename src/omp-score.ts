@@ -1,15 +1,18 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { buildPrompt } from "./brief.ts";
 import {
+	type Decision,
 	decisionSuffix,
 	LIMIT_REACHED,
 	ROUTING_LIMIT_MS,
 	route,
+	type Skipped,
 } from "./compose.ts";
 import { tier } from "./model.ts";
-import { ROLES } from "./omp-gates.ts";
+import { ROLES, type Routing } from "./omp-gates.ts";
 import type { Stored } from "./omp-store.ts";
 import { formatProbability, type Level } from "./part.ts";
+import type { Provider } from "./provider.ts";
 
 export type TaskItem = { readonly task: string; readonly name?: unknown };
 type Scored = {
@@ -19,8 +22,6 @@ type Scored = {
 };
 
 const MAX_PARALLEL = 4;
-// The task tool has no setting for the alias, so the router always asks the latest official Jev release.
-const JEV_ALIAS = "jev-latest";
 const ROLE = "general-purpose";
 const ROLE_BY_LEVEL: Record<Level, string | undefined> = {
 	0: ROLES.small,
@@ -48,42 +49,50 @@ export const streamedFetch: Fetch = async (url, init) => {
 };
 
 // One limit covers the batch. Aborting also ends the SDK's retry wait, so no request follows a skip.
+// A provider passed over once is dropped for items that start later, and only within this batch.
 export async function scoreItems(
 	items: readonly { index: number; item: TaskItem }[],
 	context: string,
-	apiKey: string,
+	{ attempts, keys }: Routing,
 ): Promise<Scored[]> {
 	const limit = new AbortController();
 	const timer = setTimeout(() => limit.abort(LIMIT_REACHED), ROUTING_LIMIT_MS);
+	const passedOver = new Set<Provider>();
 	try {
-		return await mapLimit(items, MAX_PARALLEL, async ({ index, item }) => ({
-			index,
-			item,
-			stored: await scoreItem(item, context, apiKey, limit.signal),
-		}));
+		return await mapLimit(items, MAX_PARALLEL, async ({ index, item }) => {
+			const routing = {
+				attempts: attempts.filter((a) => !passedOver.has(a.provider)),
+				keys,
+			};
+			const decision = await scoreItem(item, context, routing, limit.signal);
+			if (decision.passedOver) passedOver.add(decision.passedOver);
+			return { index, item, stored: toStored(decision) };
+		});
 	} finally {
 		clearTimeout(timer);
 	}
 }
 
-async function scoreItem(
+function scoreItem(
 	item: TaskItem,
 	context: string,
-	apiKey: string,
+	routing: Routing,
 	signal: AbortSignal,
-): Promise<Stored> {
-	const decision = await route({
+): Promise<Decision | Skipped> {
+	return route({
 		parts: [tier],
 		state: {
 			role: ROLE,
 			description: typeof item.name === "string" ? item.name : "",
 			task: buildPrompt(item.task, context),
 		},
-		model: JEV_ALIAS,
-		apiKey,
+		...routing,
 		fetchFn: streamedFetch,
 		signal,
 	});
+}
+
+function toStored(decision: Decision | Skipped): Stored {
 	const skip = (reason: string): Stored => ({
 		role: undefined,
 		line: `skipped, ${reason}`,

@@ -71,12 +71,14 @@ type Harness = {
 	debug: string[];
 	fetched: number;
 	calls: number;
+	requests: Request[];
 	request: Request;
 	received: Loose;
 	seen: Loose[];
 	checks: Loose[];
 	sent: string | undefined;
 	auth: string | undefined;
+	envReads: string[];
 };
 export const KEYED = { options: { api_key: "test-key" } };
 
@@ -98,12 +100,14 @@ const newHarness = (clock: MockClock): Harness => ({
 	debug: [],
 	fetched: 0,
 	calls: 0,
+	requests: [],
 	request: {},
 	received: {},
 	seen: [],
 	checks: [],
 	sent: undefined,
 	auth: undefined,
+	envReads: [],
 });
 
 const logHandler =
@@ -122,6 +126,7 @@ const fetchHandler =
 			delayMs = 0,
 		} = setup;
 		h.fetched += 1;
+		h.requests.push(e);
 		h.request = e;
 		const sent = e.init?.body ?? "";
 		h.sent = sent;
@@ -140,6 +145,14 @@ const fetchHandler =
 				text: body,
 			},
 		};
+	};
+
+// Records each variable read, so a test can show a variable was never read.
+const envHandler =
+	(h: Harness, env: Readonly<Record<string, string>>) =>
+	(_: unknown, e: { name: string }) => {
+		h.envReads.push(e.name);
+		return { value: env[e.name] };
 	};
 
 const checkHandler =
@@ -161,8 +174,8 @@ const callHandler =
 
 export const harness = (on: On, setup: Setup = {}): Harness => {
 	const { decision = "allow", env = {}, result = { result: "ok" } } = setup;
-	mock.env(on, env);
 	const h = newHarness(mock.clock(on));
+	on("env.get", envHandler(h, env));
 	on("ui.log", logHandler(h));
 	on("http.fetch", fetchHandler(h, setup));
 	on("agent.offer", () => ({ isOffered: true }));

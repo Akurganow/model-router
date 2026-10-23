@@ -1,6 +1,7 @@
 import {
 	APIConnectionError,
 	APIError,
+	APITimeoutError,
 	APIUserAbortError,
 	type Fetch,
 	TypeSafeError,
@@ -14,6 +15,7 @@ import {
 	type Probabilities,
 	parseProbabilities,
 } from "./part.ts";
+import { type Attempt, fallsBack, type Provider } from "./provider.ts";
 
 export const ROUTING_LIMIT_MS = 8000;
 // Adapters abort their signal with this reason when the limit runs out, so a timeout differs from a cancel.
@@ -26,19 +28,31 @@ type RoutingState = {
 	readonly description: string;
 	readonly task: string;
 };
+type Failure = { readonly provider: Provider; readonly reason: string };
+export type Via = {
+	readonly provider: Provider;
+	readonly first: Provider;
+	readonly reason: string;
+};
 export type Decision = {
 	readonly parts: Readonly<
 		Record<string, { level: Level; probabilities: Probabilities }>
 	>;
 	readonly model: string;
 	readonly usage: Usage | undefined;
+	readonly via?: Via;
+	// Set only when a second attempt ran: the provider whose first attempt failed.
+	readonly passedOver?: Provider;
 };
-export type Skipped = { readonly skipped: string };
+export type Skipped = {
+	readonly skipped: string;
+	readonly passedOver?: Provider;
+};
 export type RouteInput = {
 	readonly parts: readonly Part[];
 	readonly state: RoutingState;
-	readonly model: string;
-	readonly apiKey: string | undefined;
+	readonly attempts: readonly Attempt[];
+	readonly keys: Readonly<Partial<Record<Provider, string>>>;
 	readonly fetchFn: Fetch;
 	readonly signal: AbortSignal;
 };
@@ -51,28 +65,68 @@ function skipCategory(err: unknown, signal: AbortSignal): string {
 	if (err instanceof APIUserAbortError)
 		return signal.reason === LIMIT_REACHED ? "timeout" : "cancelled";
 	if (err instanceof APIError) return `HTTP ${err.status}`;
+	if (err instanceof APITimeoutError) return "timeout";
 	if (err instanceof APIConnectionError) return "network error";
 	if (err instanceof TypeSafeError) return "rejected request";
 	return "failed";
 }
 
+// One signal covers every attempt, so the routing limit also ends a fallback.
 export async function route(input: RouteInput): Promise<Decision | Skipped> {
-	const { parts, state, model, apiKey, fetchFn, signal } = input;
-	if (!apiKey) return { skipped: "key unset" };
-	let result: unknown;
-	try {
-		result = await createClient(apiKey, model, fetchFn).systemOne(
-			{
-				state,
-				model,
-				questions: Object.fromEntries(parts.map((p) => [p.key, p.question])),
-			},
-			{ signal },
-		);
-	} catch (err) {
-		return { skipped: skipCategory(err, signal) };
+	const { parts, attempts, signal } = input;
+	if (attempts.length === 0) return { skipped: "key unset" };
+	const failed: Failure[] = [];
+	for (const attempt of attempts) {
+		let result: unknown;
+		try {
+			result = await ask(input, attempt);
+		} catch (err) {
+			failed.push({
+				provider: attempt.provider,
+				reason: skipCategory(err, signal),
+			});
+			if (fallsBack(err)) continue;
+			break;
+		}
+		const decision = decide(parts, result);
+		if ("skipped" in decision) {
+			failed.push({ provider: attempt.provider, reason: decision.skipped });
+			break;
+		}
+		const [first] = failed;
+		if (!first) return decision;
+		const via = {
+			provider: attempt.provider,
+			first: first.provider,
+			reason: first.reason,
+		};
+		return { ...decision, via, passedOver: first.provider };
 	}
-	return decide(parts, result);
+	return skip(failed);
+}
+
+function ask(input: RouteInput, attempt: Attempt): Promise<unknown> {
+	const { parts, state, keys, fetchFn, signal } = input;
+	const { provider, model, ...overrides } = attempt;
+	return createClient(provider, keys[provider], model, fetchFn).systemOne(
+		{
+			state,
+			model,
+			questions: Object.fromEntries(parts.map((p) => [p.key, p.question])),
+		},
+		{ ...overrides, signal },
+	);
+}
+
+// A one-attempt skip keeps the bare reason; two attempts name each provider in order.
+function skip(failed: readonly Failure[]): Skipped {
+	const [first, ...rest] = failed;
+	if (!first || rest.length === 0)
+		return { skipped: first?.reason ?? "failed" };
+	return {
+		skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", "),
+		passedOver: first.provider,
+	};
 }
 
 function decide(parts: readonly Part[], result: unknown): Decision | Skipped {
@@ -92,7 +146,7 @@ function decide(parts: readonly Part[], result: unknown): Decision | Skipped {
 		parts: decided,
 		model:
 			typeof model === "string"
-				? model.replace(/[^A-Za-z0-9._-]/g, "").slice(0, MODEL_CHARS_MAX)
+				? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX)
 				: "",
 		usage: isRecord(usage) ? (usage as unknown as Usage) : undefined,
 	};
@@ -102,11 +156,13 @@ function decide(parts: readonly Part[], result: unknown): Decision | Skipped {
 export function decisionSuffix({
 	model,
 	usage,
-}: Pick<Decision, "model" | "usage">): string {
+	via,
+}: Pick<Decision, "model" | "usage" | "via">): string {
 	const input = usage?.input_tokens;
 	const output = usage?.output_tokens;
 	return (
 		(model ? ` · jev ${model}` : "") +
-		(isCount(input) && isCount(output) ? ` · ${input}/${output} tok` : "")
+		(isCount(input) && isCount(output) ? ` · ${input}/${output} tok` : "") +
+		(via ? ` · via ${via.provider} (${via.first} ${via.reason})` : "")
 	);
 }
