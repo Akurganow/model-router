@@ -76,8 +76,10 @@ sends no telemetry and no other data about you or your machine.
 
 ## Requests and billing
 
-The plugin scores each routed item on its own. A batch of five items sends at
-least five requests.
+The plugin scores each routed item on its own. An item a closed gate stops is
+not routed and sends nothing. An item that starts after the batch's 8 s limit
+has passed sends nothing either, so a batch can send fewer requests than it
+has routed items.
 
 With one provider, the SDK retries a connection error and an HTTP status 408,
 429 or 5xx, up to three attempts in all. It waits for a `Retry-After` header
