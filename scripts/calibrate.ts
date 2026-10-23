@@ -128,11 +128,15 @@ function hit(
 }
 
 export async function main(
-	[provider, model]: readonly string[],
+	args: readonly string[],
 	stdin: NodeJS.ReadStream,
 	fetchFn: Fetch,
 ): Promise<number> {
-	if (provider !== "typesafe" && provider !== "openrouter") {
+	const [provider, model, ...surplus] = args;
+	if (
+		(provider !== "typesafe" && provider !== "openrouter") ||
+		surplus.length > 0
+	) {
 		console.error(USAGE);
 		return EXIT_USAGE;
 	}

@@ -127,7 +127,12 @@ test("main without a key prints the usage and exits 2 before any request", async
 	assert.equal(requests, 0);
 });
 
-for (const args of [[], ["jev-latest"], ["TypeSafe"]])
+for (const args of [
+	[],
+	["jev-latest"],
+	["TypeSafe"],
+	["openrouter", "jev-latest", "extra"],
+])
 	test(`main with arguments ${JSON.stringify(args)} prints the usage and exits 2 before the key`, async () => {
 		const out = recorded();
 		const stdin = piped("test-key\n");
