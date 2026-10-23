@@ -3,6 +3,29 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.14.0 - 2026-10-23
+#### Features
+- add a model-router-setup skill to Claude Code and a provider step to both (1aa6424)
+- score through Jev on TypeSafe or OpenRouter in both plugins (339f87a)
+#### Bug Fixes
+- give the command hook a literal matcher so the surface check reads it (3d47913)
+- read key variables in a top-level function so plugin validate accepts it (e10140f)
+- name each key variable literally so plugin validate accepts the mod (722d278)
+- skip a failed provider for omp items that start while another falls back (25a99f1)
+#### Documentation
+- say an omp batch can send fewer requests than routed items (a3a93ed)
+- say Jev runs on TypeSafe or OpenRouter in the README intros (4e37716)
+- describe the OpenRouter provider in the READMEs and privacy pages (96c0936)
+- link the routed-call conditions from How it works (a0b5c5d)
+- rework the README into a landing page for both clients (a64f039)
+#### Tests
+- drive the thrown config.set error through the test kit itself (d70cc5e)
+#### Miscellaneous Chores
+- reject surplus calibrate arguments before reading the key (de14cd6)
+
+- - -
+
+
 ## v0.13.0 - 2026-10-22
 #### Features
 - BREAKING: route omp's bundled task agent by model role, not agent copies (eda2d57)
