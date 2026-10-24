@@ -3,6 +3,20 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.15.0 - 2026-10-24
+#### Features
+- add the scope option (7f24c57)
+#### Bug Fixes
+- state the description cap and key exposure in the install text (1dc122e)
+- send the agent's description as the Jev role (e23def3)
+#### Documentation
+- qualify extended routing and the desktop key buttons (377b7bb)
+#### Tests
+- share repeated setup across the scope and config tests (710824b)
+
+- - -
+
+
 ## v0.14.0 - 2026-10-23
 #### Features
 - add a model-router-setup skill to Claude Code and a provider step to both (1aa6424)
