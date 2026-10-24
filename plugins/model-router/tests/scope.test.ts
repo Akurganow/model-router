@@ -1,5 +1,13 @@
 import { type Engine, expect, test } from "claude-code/testing";
-import { config, configTool, harness, runCommand } from "./harness.ts";
+import {
+	config,
+	configTool,
+	fromOutside,
+	harness,
+	REFUSAL,
+	refusedWrites,
+	runCommand,
+} from "./harness.ts";
 
 const COMMAND = "model-router:scope";
 const SETTING = "model-router.scope";
@@ -30,11 +38,8 @@ test("a value changes the plugin's scope row", async ($, on) => {
 });
 
 test("a refused change prints the reason", async ($, on) => {
-	harness(on);
-	config(on, () => ({ deny: "managed settings own this row" }));
-	expect(await scope($, "extended")).toBe(
-		"scope unchanged: managed settings own this row",
-	);
+	refusedWrites(on);
+	expect(await scope($, "extended")).toBe(`scope unchanged: ${REFUSAL}`);
 });
 
 // The kit throws when nothing answers config.set, which stands for a write that fails.
@@ -56,20 +61,15 @@ test("any other argument lists the two values", async ($, on) => {
 test("a command from a model or a plugin prints the value and writes nothing", async ($, on) => {
 	harness(on);
 	const writes = config(on, (e) => ({ value: e.value }));
-	for (const origin of [
-		{ kind: "sdk" },
-		{ kind: "plugin", name: "other" },
-		{ kind: "unclassified" },
-	] as const)
-		expect(await runCommand($, COMMAND, "extended", origin)).toBe(
-			"scope: core",
-		);
+	expect(await fromOutside($, COMMAND, "extended")).toEqual(
+		Array(3).fill("scope: core"),
+	);
 	expect(writes).toEqual([]);
 });
 
 for (const [name, answer] of [
 	["a write", () => ({ value: "extended" })],
-	["a refused write", () => ({ deny: "managed settings own this row" })],
+	["a refused write", () => ({ deny: REFUSAL })],
 ] as const)
 	test(`the tool and the command give one text for ${name}`, async ($, on) => {
 		harness(on, {

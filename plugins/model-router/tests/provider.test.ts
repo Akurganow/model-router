@@ -1,5 +1,14 @@
 import { type Engine, expect, test } from "claude-code/testing";
-import { callOnce, config, harness, retried, runCommand } from "./harness.ts";
+import {
+	callOnce,
+	config,
+	fromOutside,
+	harness,
+	REFUSAL,
+	refusedWrites,
+	retried,
+	runCommand,
+} from "./harness.ts";
 
 const TYPESAFE_URL = "https://api.typesafe.ai/v1/systemone";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/systemone";
@@ -127,10 +136,9 @@ test("a value changes the plugin's provider row", async ($, on) => {
 });
 
 test("a refused change prints the reason", async ($, on) => {
-	harness(on);
-	config(on, () => ({ deny: "managed settings own this row" }));
+	refusedWrites(on);
 	expect(await provider($, "openrouter")).toBe(
-		"provider unchanged: managed settings own this row",
+		`provider unchanged: ${REFUSAL}`,
 	);
 });
 
@@ -157,14 +165,9 @@ test(
 	async ($, on) => {
 		harness(on);
 		const writes = config(on, (e) => ({ value: e.value }));
-		for (const origin of [
-			{ kind: "sdk" },
-			{ kind: "plugin", name: "other" },
-			{ kind: "unclassified" },
-		] as const)
-			expect(await runCommand($, COMMAND, "openrouter", origin)).toBe(
-				"provider: auto (typesafe, then openrouter)",
-			);
+		expect(await fromOutside($, COMMAND, "openrouter")).toEqual(
+			Array(3).fill("provider: auto (typesafe, then openrouter)"),
+		);
 		expect(writes).toEqual([]);
 	},
 );

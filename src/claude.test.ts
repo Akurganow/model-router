@@ -5,6 +5,12 @@ import { register } from "./claude.ts";
 type Hook = ($: unknown, e: unknown, next: unknown) => Promise<unknown>;
 
 const AGENT_CALL = 'tool.call {"tool":"Agent"}';
+const CLOCK = {
+	after: () => ({ cancel() {} }),
+	sleep: () => new Promise(() => {}),
+};
+const nextHook = () =>
+	Object.assign(async () => ({}), { signal: new AbortController().signal });
 
 function registered(
 	options: Record<string, unknown> = {},
@@ -22,17 +28,12 @@ function registered(
 test("a new registration forgets the offers made before it", async () => {
 	const logs: string[] = [];
 	const $ = {
-		clock: {
-			after: () => ({ cancel() {} }),
-			sleep: () => new Promise(() => {}),
-		},
+		clock: CLOCK,
 		env: { get: async () => undefined },
 		tool: { check: async () => ({ decision: "allow" }) },
 		ui: { log: async (text: string) => logs.push(text) },
 	};
-	const next = Object.assign(async () => ({}), {
-		signal: new AbortController().signal,
-	});
+	const next = nextHook();
 	const call = { tool: "Agent", prompt: "p", description: "d" };
 
 	await registered()["agent.offer"]?.(
@@ -68,10 +69,7 @@ async function routedCall(
 	const requests: { url: string; model: unknown }[] = [];
 	const roles: unknown[] = [];
 	const $ = {
-		clock: {
-			after: () => ({ cancel() {} }),
-			sleep: () => new Promise(() => {}),
-		},
+		clock: CLOCK,
 		env: {
 			get: async (name: string) => {
 				reads.push(name);
@@ -89,9 +87,7 @@ async function routedCall(
 		tool: { check: async () => ({ decision: "allow" }) },
 		ui: { log: async () => undefined },
 	};
-	const next = Object.assign(async () => ({}), {
-		signal: new AbortController().signal,
-	});
+	const next = nextHook();
 	const hooks = registered(options);
 	if (offered)
 		await hooks["agent.offer"]?.(

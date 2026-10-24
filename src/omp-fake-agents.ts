@@ -42,3 +42,12 @@ export const AGENTS: readonly DiscoveredAgent[] = [
 		description: "A user's agent with its own model.",
 	},
 ];
+
+// Puts the world under the extended scope, with a user agent that sets no model.
+export const extend = (world: {
+	project: Record<string, unknown>;
+	agents: DiscoveredAgent[];
+}) => {
+	world.project = { scope: "extended" };
+	world.agents = [...AGENTS, { name: "constructor", source: "user" }];
+};

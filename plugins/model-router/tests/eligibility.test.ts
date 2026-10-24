@@ -2,28 +2,24 @@ import { expect, test } from "claude-code/testing";
 import {
 	agentCall,
 	callOnce,
+	type Harness,
 	harness,
 	KEYED,
 	offer,
 	offerAll,
 } from "./harness.ts";
 
-// Each row is a call the hook must leave alone: no request, no log, and no check of its own.
-// The engine runs one permission check on every call after the hooks, so one check is the engine's.
-for (const [name, over, offers] of [
-	["a fork", { subagent_type: "fork" }, undefined],
-	["a named agent", { name: "scout" }, undefined],
-	["a call with its own model", { model: "sonnet" }, undefined],
-	[
-		"a user agent with a built-in's name",
-		{},
-		{ "general-purpose": "userSettings" },
-	],
-	[
-		"a plugin agent with a built-in's name",
-		{ subagent_type: "Explore" },
-		{ Explore: "plugin" },
-	],
+const expectPassedThrough = (h: Harness, over: object) => {
+	expect(h.calls).toBe(1);
+	expect(h.received.model).toBe("model" in over ? over.model : undefined);
+	expect(h.received.effort).toBeUndefined();
+	expect(h.checks.length).toBe(1);
+	expect(h.fetched).toBe(0);
+	expect(h.logs).toEqual([]);
+};
+
+// Calls whose agent the offers decide: the core scope leaves them alone, the extended scope scores them.
+const BUILT_IN_AND_USER_ROWS = [
 	[
 		"the statusline-setup built-in",
 		{ subagent_type: "statusline-setup" },
@@ -34,20 +30,34 @@ for (const [name, over, offers] of [
 		{ subagent_type: "claude-code-guide" },
 		undefined,
 	],
+	[
+		"a user agent with a built-in's name",
+		{},
+		{ "general-purpose": "userSettings" },
+	],
+	[
+		"a plugin agent with a built-in's name",
+		{ subagent_type: "Explore" },
+		{ Explore: "plugin" },
+	],
 	["an agent no offer named", { subagent_type: "Plan" }, {}],
 	["an agent of a user's own name", { subagent_type: "reviewer" }, undefined],
+] as const;
+
+// Each row is a call the hook must leave alone: no request, no log, and no check of its own.
+// The engine runs one permission check on every call after the hooks, so one check is the engine's.
+for (const [name, over, offers] of [
+	["a fork", { subagent_type: "fork" }, undefined],
+	["a named agent", { name: "scout" }, undefined],
+	["a call with its own model", { model: "sonnet" }, undefined],
+	...BUILT_IN_AND_USER_ROWS,
 ] as const)
 	test(
 		`${name} passes through without a check or a request`,
 		KEYED,
 		async ($, on) => {
 			const { h } = await callOnce($, on, over, offers ? { offers } : {});
-			expect(h.calls).toBe(1);
-			expect(h.received.model).toBe("model" in over ? over.model : undefined);
-			expect(h.received.effort).toBeUndefined();
-			expect(h.checks.length).toBe(1);
-			expect(h.fetched).toBe(0);
-			expect(h.logs).toEqual([]);
+			expectPassedThrough(h, over);
 			expect(h.debug).toEqual([]);
 		},
 	);
@@ -82,39 +92,11 @@ for (const [name, over] of [
 		EXTENDED,
 		async ($, on) => {
 			const { h } = await callOnce($, on, over);
-			expect(h.calls).toBe(1);
-			expect(h.received.model).toBe("model" in over ? over.model : undefined);
-			expect(h.received.effort).toBeUndefined();
-			expect(h.checks.length).toBe(1);
-			expect(h.fetched).toBe(0);
-			expect(h.logs).toEqual([]);
+			expectPassedThrough(h, over);
 		},
 	);
 
-for (const [name, over, offers] of [
-	[
-		"the statusline-setup built-in",
-		{ subagent_type: "statusline-setup" },
-		undefined,
-	],
-	[
-		"the claude-code-guide built-in",
-		{ subagent_type: "claude-code-guide" },
-		undefined,
-	],
-	[
-		"a user agent with a built-in's name",
-		{},
-		{ "general-purpose": "userSettings" },
-	],
-	[
-		"a plugin agent with a built-in's name",
-		{ subagent_type: "Explore" },
-		{ Explore: "plugin" },
-	],
-	["an agent no offer named", { subagent_type: "Plan" }, {}],
-	["an agent of a user's own name", { subagent_type: "reviewer" }, undefined],
-] as const)
+for (const [name, over, offers] of BUILT_IN_AND_USER_ROWS)
 	test(
 		`extended: ${name} is scored and gets a model`,
 		EXTENDED,

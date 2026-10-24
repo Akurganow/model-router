@@ -77,7 +77,7 @@ type Registered = {
 	inputSchema: unknown;
 };
 type Outcome = { result?: unknown; deny?: unknown };
-type Harness = {
+export type Harness = {
 	clock: MockClock;
 	logs: string[];
 	debug: string[];
@@ -344,3 +344,24 @@ export const runCommand = async (
 			presentation: { isFullscreen: false, columns: 80 },
 		})
 	).text;
+
+// The origins a command can come from besides the person typing it.
+const OUTSIDE_ORIGINS = [
+	{ kind: "sdk" },
+	{ kind: "plugin", name: "other" },
+	{ kind: "unclassified" },
+] as const satisfies readonly PromptOrigin[];
+
+// Runs a command from each of those origins and returns the text each printed.
+export const fromOutside = ($: Engine, command: string, args: string) =>
+	Promise.all(
+		OUTSIDE_ORIGINS.map((origin) => runCommand($, command, args, origin)),
+	);
+
+export const REFUSAL = "managed settings own this row";
+
+// Sets up a harness whose settings write is refused.
+export const refusedWrites = (on: On) => {
+	harness(on);
+	config(on, () => ({ deny: REFUSAL }));
+};
