@@ -386,9 +386,9 @@ reads back empty after the app restarts.
 https://github.com/anthropics/claude-code/issues/89749
 
 When the setup skill asks how to add a key, pick "Write it to the settings
-files myself" or "Same, open the files for me". Either button sets the
-variable in the `env` block of the user settings file. To do it by hand, until
-the bug is fixed:
+files myself" or "Same, open the files for me". Either button names the
+variable and the user settings file, and you add the variable to its `env`
+block. Until the bug is fixed:
 
 1. Open `~/.claude/settings.json`.
 2. Add `TYPESAFE_API_KEY`, `OPENROUTER_API_KEY` or both to the `env` block,

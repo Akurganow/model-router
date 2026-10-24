@@ -8,7 +8,7 @@ Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For Cl
 
 | | Claude Code | Oh My Pi |
 | --- | --- | --- |
-| Routes | Under `core`, Agent tool calls to the four built-in agents. Under `extended`, every Agent call that passes no model | Under `core`, `task` batch items. Under `extended`, every batch item whose agent's model you did not set |
+| Routes | Under `core`, Agent tool calls to the four built-in agents. Under `extended`, every Agent call that passes no model and no name, except a fork ([details](plugins/model-router/README.md#which-calls-are-routed)) | Under `core`, `task` batch items. Under `extended`, every batch item whose agent's model you did not set, except `seance` and the [item reasons](plugins/model-router-omp/README.md#item-reasons) |
 | Sets | `model` and `effort` | the `smol` or `slow` role |
 | Asks Jev | two questions | one question |
 | Needs | Claude Code v2.1.308 or later | Oh My Pi v18.12.6 or later |
