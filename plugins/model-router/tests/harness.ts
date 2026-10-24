@@ -1,4 +1,11 @@
-import type { On, ToolCallArgs, ToolCheckDecision } from "claude-code";
+import type {
+	ConfigSetInput,
+	ConfigSetResult,
+	On,
+	PromptOrigin,
+	ToolCallArgs,
+	ToolCheckDecision,
+} from "claude-code";
 import type { Engine, MockClock } from "claude-code/testing";
 import { mock } from "claude-code/testing";
 
@@ -64,6 +71,11 @@ type Request = {
 		body?: string;
 	};
 };
+type Registered = {
+	name: string;
+	description: string;
+	inputSchema: unknown;
+};
 type Outcome = { result?: unknown; deny?: unknown };
 type Harness = {
 	clock: MockClock;
@@ -76,6 +88,8 @@ type Harness = {
 	received: Loose;
 	seen: Loose[];
 	checks: Loose[];
+	registered: Registered[];
+	asked: Asked[];
 	sent: string | undefined;
 	auth: string | undefined;
 	envReads: string[];
@@ -93,7 +107,13 @@ type Setup = {
 	delayMs?: number;
 	env?: Readonly<Record<string, string>>;
 	result?: { result: string } | { deny: string };
+	// Answers the plugin's dialog with the text the person gave, or undefined for a dismissal.
+	// It gets the labels and may wait on the test's clock.
+	dialog?: (
+		labels: string[],
+	) => string | undefined | Promise<string | undefined>;
 };
+type Asked = { question: string; header: string; labels: string[] };
 
 const newHarness = (clock: MockClock): Harness => ({
 	clock,
@@ -106,6 +126,8 @@ const newHarness = (clock: MockClock): Harness => ({
 	received: {},
 	seen: [],
 	checks: [],
+	registered: [],
+	asked: [],
 	sent: undefined,
 	auth: undefined,
 	envReads: [],
@@ -173,14 +195,42 @@ const callHandler =
 		return result;
 	};
 
+// A hook the test registers first answers first, so the dialog goes in ahead of the catch-all.
+const dialogHandler =
+	(h: Harness, reply: NonNullable<Setup["dialog"]>) =>
+	async (_: unknown, e: { questions: unknown }) => {
+		const [{ question, header, options }] = e.questions as unknown as [
+			{ question: string; header: string; options: { label: string }[] },
+		];
+		const labels = options.map((option) => option.label);
+		h.asked.push({ question, header, labels });
+		const answer = await reply(labels);
+		return answer === undefined
+			? { deny: "dismissed" }
+			: { result: { questions: e.questions, answers: { [question]: answer } } };
+	};
+
+const registerHandler = (h: Harness) => (_: unknown, e: Registered) => {
+	h.registered.push(e);
+	return { value: { tool: `mcp__model-router__${e.name}` } };
+};
+
 export const harness = (on: On, setup: Setup = {}): Harness => {
 	const { decision = "allow", env = {}, result = { result: "ok" } } = setup;
 	const h = newHarness(mock.clock(on));
+	if (setup.dialog)
+		on(
+			"tool.call",
+			{ tool: "AskUserQuestion" },
+			dialogHandler(h, setup.dialog),
+		);
 	on("env.get", envHandler(h, env));
 	on("ui.log", logHandler(h));
 	on("http.fetch", fetchHandler(h, setup));
 	on("agent.offer", () => ({ isOffered: true }));
 	on("tool.check", checkHandler(h, decision));
+	on("tool.register", registerHandler(h));
+	on("session.start", (_, e) => ({ cwd: e.cwd }));
 	on("tool.call", callHandler(h, result));
 	return h;
 };
@@ -251,3 +301,46 @@ export const retried = async ($: Engine, on: On, setup: Setup) => {
 	await pending;
 	return h;
 };
+
+export const CONFIG_TOOL = "mcp__model-router__config";
+
+export const sessionStart = ($: Engine) =>
+	$.session.start({ cwd: "/", surface: null, isInteractive: true });
+
+// Calls the config tool as the model does, with the setting it names or none.
+export const configTool = async ($: Engine, setting?: unknown) => {
+	const outcome: Outcome = await $.tool.call({
+		tool: CONFIG_TOOL,
+		...(setting === undefined ? {} : { setting }),
+	} as unknown as ToolCallArgs);
+	return outcome;
+};
+
+// Answers $.config.set beneath the plugin and records what it was asked to write.
+export const config = (
+	on: On,
+	answer: (e: ConfigSetInput) => ConfigSetResult,
+) => {
+	const writes: ConfigSetInput[] = [];
+	on("config.set", (_, e) => {
+		writes.push(e);
+		return answer(e);
+	});
+	return writes;
+};
+
+// Runs a command as the person types it at the prompt, or from the origin given.
+export const runCommand = async (
+	$: Engine,
+	command: string,
+	args = "",
+	origin: PromptOrigin = { kind: "composer" },
+) =>
+	(
+		await $.command.run({
+			command,
+			args,
+			origin,
+			presentation: { isFullscreen: false, columns: 80 },
+		})
+	).text;

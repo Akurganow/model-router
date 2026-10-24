@@ -1,6 +1,24 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { prepareBrief, roleText } from "./brief.ts";
 import {
+	configCall,
+	configCommand,
+	registerConfigTool,
+	resetConfig,
+} from "./claude-config.ts";
+import {
+	type AgentCall,
+	denied,
+	type Engine,
+	type HttpReply,
+	type Next,
+	type On,
+	type Options,
+	type Outcome,
+	passOn,
+} from "./claude-host.ts";
+import { readKeys } from "./claude-keys.ts";
+import {
 	type Decision,
 	decisionSuffix,
 	LIMIT_REACHED,
@@ -12,83 +30,9 @@ import {
 import { work } from "./effort.ts";
 import { tier } from "./model.ts";
 import { formatProbability, type Level } from "./part.ts";
-import { order, PROVIDER_VALUES, type Provider, plan } from "./provider.ts";
+import { plan } from "./provider.ts";
+import { resolveScope, type Scope } from "./scope.ts";
 import { installTimers } from "./timers.ts";
-
-// The mods API and hook types this adapter uses. The bundle must not depend on the generated declarations.
-type Timer = { cancel(): void };
-type HttpInit = {
-	method?: string | undefined;
-	headers?: Record<string, string> | undefined;
-	body?: string | undefined;
-};
-type HttpReply = {
-	status: number;
-	ok: boolean;
-	headers: Record<string, string>;
-	text: string;
-};
-type Engine = {
-	clock: {
-		after(ms: number, fn: () => void): Timer;
-		sleep(ms: number, options: { signal: AbortSignal }): Promise<void>;
-	};
-	env: { get(name: string): Promise<string | undefined> };
-	config: {
-		set(row: { key: string; value: string }): Promise<{ deny?: string }>;
-	};
-	http: { fetch(url: string, init?: HttpInit): Promise<HttpReply> };
-	tool: {
-		check(call: {
-			tool: string;
-			input: Record<string, unknown>;
-		}): Promise<{ decision: string }>;
-	};
-	ui: { log(text: string, options?: { to: "debug" }): Promise<unknown> };
-};
-type Outcome = { readonly deny?: string };
-type Next = {
-	(e: unknown): Promise<Outcome>;
-	readonly signal: AbortSignal;
-};
-type Hook<E, R = Outcome> = ($: Engine, e: E, next: Next) => Promise<R>;
-type CommandRun = { command: string; args: string };
-type CommandOutput = { text: string };
-type AgentOffer = { agent: string; source: string; description: string };
-type AgentCall = {
-	tool: "Agent";
-	tool_use_id?: string;
-	agentId?: string;
-	requestMeta?: unknown;
-	prompt: string;
-	description: string;
-	subagent_type?: string;
-	name?: string;
-	model?: string;
-	effort?: string;
-};
-type On = {
-	(
-		event: "agent.offer",
-		hook: Hook<AgentOffer>,
-	): { catch(handler: Hook<unknown>): unknown };
-	(
-		event: "tool.call",
-		matcher: { tool: "Agent" },
-		hook: Hook<AgentCall>,
-	): { catch(handler: Hook<unknown>): unknown };
-	(
-		event: "command.run",
-		matcher: { command: string },
-		hook: Hook<CommandRun, CommandOutput>,
-	): { catch(handler: Hook<unknown>): unknown };
-};
-type Options = {
-	readonly api_key?: unknown;
-	readonly openrouter_api_key?: unknown;
-	readonly provider?: unknown;
-};
-type Keys = Partial<Record<Provider, string>>;
 
 const MODELS = ["haiku", "sonnet", "opus"] as const;
 // Effort is calibrated per model. Haiku's row sits one step higher: at low it stops early on agentic prompts.
@@ -98,10 +42,9 @@ const EFFORT_LADDER = {
 	opus: ["low", "medium", "high"],
 } as const;
 
-const PROVIDER_ROW = "model-router.provider";
-
 const BUILT_IN = "built-in";
 const DEFAULT_AGENT = "general-purpose";
+const FORK = "fork";
 // Forks inherit their parent's model and the other built-ins are fixed-purpose, so only these four are scored.
 const ROUTED_AGENTS: ReadonlySet<string> = new Set([
 	DEFAULT_AGENT,
@@ -111,12 +54,6 @@ const ROUTED_AGENTS: ReadonlySet<string> = new Set([
 ]);
 // The debug log keeps 10000 characters of a line, and a body can carry 12000 of task text.
 const DEBUG_PIECE_CHARS = 9000;
-
-// The sensitive option comes first. The desktop app reads it back empty after a restart, so the variable stands in.
-const KEY_OPTIONS: Readonly<Record<Provider, keyof Options>> = {
-	typesafe: "api_key",
-	openrouter: "openrouter_api_key",
-};
 
 // The latest offer of each agent name. A user or plugin agent can take a built-in's name.
 const offered = new Map<string, { source: string; description: string }>();
@@ -130,70 +67,30 @@ export function register(on: On, options: Options): void {
 	on("tool.call", { tool: "Agent" }, ($, e, next) =>
 		routeAgentCall($, e, next, options),
 	).catch(passOn);
-	// The surface check reads the matcher, so the command name stays a literal here.
-	on("command.run", { command: "model-router:provider" }, ($, e) =>
-		providerCommand($, e.args.trim(), options.provider),
+	resetConfig();
+	on("session.start", registerConfigTool).catch(passOn);
+	// The surface check reads the matchers, so the tool and command names stay literals here.
+	on("tool.call", { tool: "mcp__model-router__config" }, ($, e) =>
+		configCall($, e, options),
 	);
-}
-
-const describeProvider = (value: unknown) =>
-	`provider: ${value} (${order(value).join(", then ")})`;
-
-// The hook answers in the command's place, so the command's markdown body runs only when the hook is missing.
-async function providerCommand(
-	$: Engine,
-	args: string,
-	current: unknown,
-): Promise<CommandOutput> {
-	if (args === "") return { text: describeProvider(current) };
-	if (!PROVIDER_VALUES.some((value) => value === args))
-		return { text: `provider: use one of ${PROVIDER_VALUES.join(", ")}` };
-	try {
-		const { deny } = await $.config.set({ key: PROVIDER_ROW, value: args });
-		return {
-			text:
-				deny === undefined
-					? describeProvider(args)
-					: `provider unchanged: ${deny}`,
-		};
-	} catch (err) {
-		return {
-			text: `provider unchanged: ${err instanceof Error ? err.message : String(err)}`,
-		};
-	}
-}
-
-function passOn(_: Engine, e: unknown, next: Next): Promise<Outcome> {
-	return next(e);
+	on("command.run", { command: "model-router:provider" }, ($, e) =>
+		configCommand($, e, "provider", options),
+	);
+	on("command.run", { command: "model-router:scope" }, ($, e) =>
+		configCommand($, e, "scope", options),
+	);
 }
 
 function useClockTimers($: Engine): void {
 	installTimers((ms, fn) => $.clock.after(ms, fn));
 }
 
-const nonEmpty = (v: unknown): string | undefined =>
-	typeof v === "string" && v !== "" ? v : undefined;
-
-function routable(call: AgentCall): boolean {
+// Extended scope never reads the offers: any agent without a model of its own is routed, a fork excepted.
+function routable(call: AgentCall, scope: Scope): boolean {
 	const agent = call.subagent_type ?? DEFAULT_AGENT;
-	return (
-		call.name === undefined &&
-		call.model === undefined &&
-		ROUTED_AGENTS.has(agent) &&
-		offered.get(agent)?.source === BUILT_IN
-	);
-}
-
-// A call the user's rules deny as Claude made it never leaves the machine. The check opens no dialog.
-async function denied($: Engine, call: AgentCall): Promise<boolean> {
-	const {
-		tool: _tool,
-		tool_use_id: _id,
-		agentId: _agentId,
-		requestMeta: _meta,
-		...input
-	} = call;
-	return (await $.tool.check({ tool: "Agent", input })).decision === "deny";
+	if (call.name !== undefined || call.model !== undefined) return false;
+	if (scope === "extended") return agent !== FORK;
+	return ROUTED_AGENTS.has(agent) && offered.get(agent)?.source === BUILT_IN;
 }
 
 async function routeAgentCall(
@@ -203,7 +100,8 @@ async function routeAgentCall(
 	options: Options,
 ): Promise<Outcome> {
 	useClockTimers($);
-	if (!routable(call) || (await denied($, call))) return next(call);
+	if (!routable(call, resolveScope(options.scope)) || (await denied($, call)))
+		return next(call);
 	const state = {
 		role: roleText(
 			offered.get(call.subagent_type ?? DEFAULT_AGENT)?.description,
@@ -211,7 +109,7 @@ async function routeAgentCall(
 		description: call.description,
 		task: prepareBrief(call.prompt),
 	};
-	const keys = await readKeys($, options);
+	const keys = await readKeys($, options, options.provider);
 	const decision = await scored($, next.signal, {
 		state,
 		attempts: plan(options.provider, {
@@ -233,25 +131,6 @@ async function routeAgentCall(
 	);
 	if (outcome.deny !== undefined) await $.ui.log("denied");
 	return outcome;
-}
-
-// Each key goes only to its own provider. The key of a provider the value leaves out is never read.
-async function readKeys($: Engine, options: Options): Promise<Keys> {
-	const keys: Keys = {};
-	for (const provider of order(options.provider)) {
-		const key =
-			nonEmpty(options[KEY_OPTIONS[provider]]) ??
-			nonEmpty(await keyVariable($, provider));
-		if (key !== undefined) keys[provider] = key;
-	}
-	return keys;
-}
-
-// plugin validate lists the variables a module reads, so each $.env.get names its variable literally.
-function keyVariable($: Engine, provider: Provider): Promise<unknown> {
-	return provider === "typesafe"
-		? $.env.get("TYPESAFE_API_KEY")
-		: $.env.get("OPENROUTER_API_KEY");
 }
 
 type Picked = {

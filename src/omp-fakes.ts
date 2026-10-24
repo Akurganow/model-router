@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, mock } from "node:test";
 import { oneChunk } from "./omp-score.ts";
 import type {
+	CommandSpec,
 	Context,
 	DiscoveredAgent,
 	Lookup,
@@ -13,8 +14,11 @@ import type {
 	SpawnResult,
 	ToolCallEvent,
 	ToolProgressEvent,
+	ToolReply,
+	ToolSpec,
 } from "./omp-types.ts";
 
+export const TOOL_NAME = "model_router_config";
 export const KEY = "omp-key-0001";
 export const OR_KEY = "omp-or-key-0003";
 export const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
@@ -35,6 +39,11 @@ export const TASK_DESCRIPTION =
 export const lockfileWith = (provider: unknown, plugin = PLUGIN) => ({
 	plugins: {},
 	settings: { [plugin]: { provider } },
+});
+
+export const lockfileScoped = (scope: unknown) => ({
+	plugins: {},
+	settings: { [PLUGIN]: { scope } },
 });
 
 export function setEnv(name: string, value: string | undefined): void {
@@ -99,6 +108,17 @@ const newState = () => ({
 		provider: string,
 	) => Promise<string | undefined>,
 	asked: [] as string[],
+	// Each dialog the plugin opens, and what the fake person answers.
+	dialogs: [] as { title: string; options: string[] }[],
+	select: (async () => undefined) as () => Promise<string | undefined>,
+	// Each key prompt, what the fake person types, and what omp's credential store receives.
+	prompts: [] as string[],
+	input: (async () => undefined) as () => Promise<string | undefined>,
+	stored: [] as { provider: string; credential: unknown }[],
+	store: (async () => undefined) as () => Promise<void>,
+	writes: [] as { plugin: string; key: string; value: string }[],
+	commands: {} as Record<string, CommandSpec>,
+	tools: {} as Record<string, ToolSpec>,
 	// Written as JSON, a string is written as is, and undefined leaves no file.
 	lockfile: { plugins: {}, settings: {} } as unknown,
 	project: {} as Record<string, unknown>,
@@ -169,11 +189,33 @@ const buildImports = (state: State, dir: () => string): OmpImports => ({
 		...(lockSettings(state, name) as object),
 		...(name === PLUGIN ? state.project : {}),
 	}),
+	// Like omp, the write lands in the lockfile and validates nothing.
+	writeSetting: async (_cwd, plugin, key, value) => {
+		state.writes.push({ plugin, key, value });
+		const lock = state.lockfile as {
+			settings: Record<string, Record<string, unknown>>;
+		};
+		lock.settings[plugin] = { ...lock.settings[plugin], [key]: value };
+	},
 });
 
 const buildPi = (state: State): Pi => ({
 	on: (event, handler) => {
 		state.handlers[event] = handler as never;
+	},
+	registerCommand: (name, command) => {
+		state.commands[name] = command;
+	},
+	registerTool: (tool) => {
+		state.tools[tool.name] = tool;
+	},
+	// A schema is recorded as plain data for the tests to read.
+	zod: {
+		object: (shape) => ({ shape }),
+		enum: (values) => ({
+			values,
+			optional: () => ({ values, optional: true }),
+		}),
 	},
 	pi: {
 		settings: {},
@@ -184,8 +226,26 @@ const buildPi = (state: State): Pi => ({
 const buildCtx = (state: State) => (): Context => ({
 	cwd: "/work",
 	hasUI: state.hasUI,
-	ui: { notify: (message) => void state.notes.push(message) },
+	ui: {
+		notify: (message) => void state.notes.push(message),
+		select: (title, options) => {
+			state.dialogs.push({ title, options });
+			return state.select();
+		},
+		input: (title) => {
+			state.prompts.push(title);
+			return state.input();
+		},
+	},
 	modelRegistry: {
+		authStorage: {
+			credentials: {
+				set: (provider, credential) => {
+					state.stored.push({ provider, credential });
+					return state.store();
+				},
+			},
+		},
 		getApiKeyForProvider: (provider) => {
 			state.asked.push(provider);
 			return state.credential(provider);
@@ -266,5 +326,20 @@ export function useWorld() {
 	return Object.assign(state, buildEvents(state), {
 		imports: buildImports(state, () => dir),
 		pi: buildPi(state),
+		ctx: buildCtx(state),
+		// The tool's text for one call, as the model reads it.
+		callTool: async (params: unknown): Promise<string> => {
+			const tool = state.tools[TOOL_NAME] as ToolSpec;
+			const reply: ToolReply = await tool.execute(
+				"call",
+				params,
+				undefined,
+				undefined,
+				buildCtx(state)(),
+			);
+			return reply.content[0]?.text ?? "";
+		},
+		runCommand: (name: string, args: string) =>
+			(state.commands[name] as CommandSpec).handler(args, buildCtx(state)()),
 	});
 }

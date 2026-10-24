@@ -17,10 +17,11 @@ effort. The model is `haiku` for lookup or transcription,
 routed call appears in the transcript. To turn routing off, disable the
 plugin in `/plugin`.
 
-The mod routes only the built-in agents `general-purpose`, `claude`, `Explore`
-and `Plan`, and calls with no `subagent_type`. A call that sets a `model`, is a
-fork or has a `name` passes through, and so does a user, project or plugin
-agent.
+The `scope` option decides which Agent calls the mod routes. A call that sets
+a `model`, is a fork or has a `name` always passes through. The
+[README](README.md#which-calls-are-routed) lists the cases for `core` and
+`extended`, and says what `extended` does to the model and effort an agent
+definition sets.
 
 ## Escalation
 

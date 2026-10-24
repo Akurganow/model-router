@@ -1,6 +1,6 @@
 {
 	"name": "model-router",
 	"owner": { "name": "Akurganow" },
-	"description": "Routes each Claude Code subagent to a Claude model and effort that fits its task, judged by Jev. On every Agent call it sends the subagent's task text, condensed and with secrets masked, to api.typesafe.ai, openrouter.ai or both, as its provider option allows, each with its own key.",
+	"description": "Routes each Claude Code subagent to a Claude model and effort that fits its task, judged by Jev. On every Agent call it sends the subagent's task text and description, condensed and with secrets masked, to api.typesafe.ai, openrouter.ai or both, as its provider option allows, each with its own key.",
 	"plugins": [{ "name": "model-router", "source": "./plugins/model-router" }]
 }

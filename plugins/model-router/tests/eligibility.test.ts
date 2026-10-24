@@ -68,3 +68,75 @@ test("an offer goes on unchanged", KEYED, async ($, on) => {
 	harness(on);
 	expect(await offer($, "Explore")).toEqual({ isOffered: true });
 });
+
+const EXTENDED = { options: { api_key: "test-key", scope: "extended" } };
+
+// Under extended the offers never matter, so the rows differ only in the call.
+for (const [name, over] of [
+	["a fork", { subagent_type: "fork" }],
+	["a named agent", { name: "scout" }],
+	["a call with its own model", { model: "sonnet" }],
+] as const)
+	test(
+		`extended: ${name} passes through without a request`,
+		EXTENDED,
+		async ($, on) => {
+			const { h } = await callOnce($, on, over);
+			expect(h.calls).toBe(1);
+			expect(h.received.model).toBe("model" in over ? over.model : undefined);
+			expect(h.received.effort).toBeUndefined();
+			expect(h.checks.length).toBe(1);
+			expect(h.fetched).toBe(0);
+			expect(h.logs).toEqual([]);
+		},
+	);
+
+for (const [name, over, offers] of [
+	[
+		"the statusline-setup built-in",
+		{ subagent_type: "statusline-setup" },
+		undefined,
+	],
+	[
+		"the claude-code-guide built-in",
+		{ subagent_type: "claude-code-guide" },
+		undefined,
+	],
+	[
+		"a user agent with a built-in's name",
+		{},
+		{ "general-purpose": "userSettings" },
+	],
+	[
+		"a plugin agent with a built-in's name",
+		{ subagent_type: "Explore" },
+		{ Explore: "plugin" },
+	],
+	["an agent no offer named", { subagent_type: "Plan" }, {}],
+	["an agent of a user's own name", { subagent_type: "reviewer" }, undefined],
+] as const)
+	test(
+		`extended: ${name} is scored and gets a model`,
+		EXTENDED,
+		async ($, on) => {
+			const { h } = await callOnce($, on, over, offers ? { offers } : {});
+			expect(h.fetched).toBe(1);
+			expect(h.received.model).toBe("haiku");
+			expect(h.received.effort).toBe("high");
+		},
+	);
+
+test(
+	"extended: a call that permission rules deny is not sent",
+	EXTENDED,
+	async ($, on) => {
+		const { h } = await callOnce(
+			$,
+			on,
+			{ subagent_type: "reviewer" },
+			{ decision: "deny" },
+		);
+		expect(h.fetched).toBe(0);
+		expect(h.calls).toBe(0);
+	},
+);

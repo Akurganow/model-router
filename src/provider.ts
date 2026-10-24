@@ -43,7 +43,7 @@ export type Attempt = {
 	readonly retry?: { readonly maxRetries: number };
 };
 
-const resolve = (value: unknown): ProviderValue =>
+export const resolve = (value: unknown): ProviderValue =>
 	typeof value === "string" && Object.hasOwn(ORDER, value)
 		? (value as ProviderValue)
 		: DEFAULT_VALUE;

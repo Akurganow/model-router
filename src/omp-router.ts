@@ -1,6 +1,8 @@
 import { contextText } from "./brief.ts";
-import { checkGates, resolves, scopeGates } from "./omp-gates.ts";
-import { scoreItems, type TaskItem } from "./omp-score.ts";
+import { registerConfig, say } from "./omp-config.ts";
+import { checkGates, openBatch, readSettings, resolves } from "./omp-gates.ts";
+import { inScope, TASK } from "./omp-items.ts";
+import { type Pending, scoreItems, type TaskItem } from "./omp-score.ts";
 import { createStore } from "./omp-store.ts";
 import type {
 	Context,
@@ -15,13 +17,12 @@ import { isRecord } from "./part.ts";
 
 const LINE_PREFIX = "model-router ";
 const ENTRY_SEPARATOR = " | ";
-const TASK = "task";
 
 function isEligible(item: unknown): item is TaskItem {
 	if (!isRecord(item)) return false;
 	const { agent, task } = item;
 	return (
-		(agent === undefined || agent === TASK) &&
+		(agent === undefined || typeof agent === "string") &&
 		typeof task === "string" &&
 		task !== ""
 	);
@@ -37,19 +38,15 @@ async function attempt<T>(fn: () => Promise<T>): Promise<T | undefined> {
 }
 
 function report(ctx: Context, entries: readonly string[]): void {
-	const line = LINE_PREFIX + entries.join(ENTRY_SEPARATOR);
-	try {
-		if (ctx.hasUI) ctx.ui.notify(line);
-		else process.stderr.write(`${line}\n`);
-	} catch {
-		// A failed report must never block the spawn.
-	}
+	say(ctx, LINE_PREFIX + entries.join(ENTRY_SEPARATOR));
 }
 
 const entry = (index: number, line: string) => `task ${index + 1}: ${line}`;
 
-const eligibleItems = (tasks: unknown[]) =>
-	tasks.flatMap((item, index) => (isEligible(item) ? [{ index, item }] : []));
+const eligibleItems = (tasks: unknown[]): Pending[] =>
+	tasks.flatMap((item, index) =>
+		isEligible(item) ? [{ index, item, agent: item.agent ?? TASK }] : [],
+	);
 
 function createRouter(omp: OmpImports, pi: Pi) {
 	const store = createStore();
@@ -59,9 +56,14 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		if (event.toolName !== TASK || !isRecord(input)) return;
 		const { tasks, context } = input;
 		if (!Array.isArray(tasks)) return;
-		const items = eligibleItems(tasks);
+		const eligible = eligibleItems(tasks);
+		if (eligible.length === 0) return;
+		const settings = await readSettings(omp, ctx.cwd);
+		// Unreadable settings leave only the core scope's items to close the batch.
+		const scope = settings?.scope ?? "core";
+		const items = eligible.filter(({ agent }) => inScope(agent, scope));
 		if (items.length === 0) return;
-		const gates = await scopeGates(omp, pi, ctx);
+		const gates = await openBatch(omp, pi, ctx, settings);
 		if ("closed" in gates) {
 			const line = `skipped, ${gates.closed}`;
 			return report(
@@ -70,8 +72,8 @@ function createRouter(omp: OmpImports, pi: Pi) {
 			);
 		}
 		const scored = await scoreItems(items, contextText(context), gates);
-		for (const { index, item, stored } of scored)
-			store.add(event.toolCallId, index, item.name, stored);
+		for (const { index, item, agent, stored } of scored)
+			store.add(event.toolCallId, index, item.name, agent, stored);
 		report(
 			ctx,
 			scored.map(({ index, stored }) => entry(index, stored.line)),
@@ -82,10 +84,10 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		event: SpawnEvent,
 		ctx: Context,
 	): Promise<SpawnResult | undefined> {
-		if (event.agent !== TASK || event.invocationKind !== TASK) return;
-		const stored = store.take(event.spawnKey);
-		if (!stored?.role || event.modelRole) return;
-		if ("closed" in (await checkGates(omp, pi, ctx))) return;
+		if (event.invocationKind !== TASK) return;
+		const stored = store.take(event.spawnKey, event.agent);
+		if (!stored?.role) return;
+		if ("closed" in (await checkGates(omp, pi, ctx, event))) return;
 		if (!resolves(ctx, stored.role)) return;
 		return { model: stored.role, note: LINE_PREFIX + stored.line };
 	}
@@ -109,6 +111,7 @@ function createRouter(omp: OmpImports, pi: Pi) {
 export function createExtension(omp: OmpImports): (pi: Pi) => void {
 	return (pi) => {
 		const router = createRouter(omp, pi);
+		registerConfig(omp, pi);
 		pi.on("tool_call", async (event, ctx) => {
 			await attempt(() => router.onToolCall(event, ctx));
 			return undefined;

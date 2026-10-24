@@ -1,6 +1,5 @@
-import type { ConfigSetInput, ConfigSetResult, On } from "claude-code";
 import { type Engine, expect, test } from "claude-code/testing";
-import { callOnce, harness, retried } from "./harness.ts";
+import { callOnce, config, harness, retried, runCommand } from "./harness.ts";
 
 const TYPESAFE_URL = "https://api.typesafe.ai/v1/systemone";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/systemone";
@@ -94,26 +93,7 @@ test(
 const COMMAND = "model-router:provider";
 const SETTING = "model-router.provider";
 
-// Answers $.config.set beneath the plugin and records what it was asked to write.
-const config = (on: On, answer: (e: ConfigSetInput) => ConfigSetResult) => {
-	const writes: ConfigSetInput[] = [];
-	on("config.set", (_, e) => {
-		writes.push(e);
-		return answer(e);
-	});
-	return writes;
-};
-
-// Runs the command as the person types it at the prompt.
-const provider = async ($: Engine, args = "") =>
-	(
-		await $.command.run({
-			command: COMMAND,
-			args,
-			origin: { kind: "composer" },
-			presentation: { isFullscreen: false, columns: 80 },
-		})
-	).text;
+const provider = ($: Engine, args = "") => runCommand($, COMMAND, args);
 
 test(
 	"the bare command prints the value and its order, reading no key",
@@ -169,4 +149,29 @@ test("any other argument lists the four values", async ($, on) => {
 		"provider: use one of auto, openrouter-first, typesafe, openrouter",
 	);
 	expect(writes).toEqual([]);
+});
+
+test(
+	"a command from a model or a plugin prints the value and writes nothing",
+	{ options: { provider: "auto" } },
+	async ($, on) => {
+		harness(on);
+		const writes = config(on, (e) => ({ value: e.value }));
+		for (const origin of [
+			{ kind: "sdk" },
+			{ kind: "plugin", name: "other" },
+			{ kind: "unclassified" },
+		] as const)
+			expect(await runCommand($, COMMAND, "openrouter", origin)).toBe(
+				"provider: auto (typesafe, then openrouter)",
+			);
+		expect(writes).toEqual([]);
+	},
+);
+
+test("a bad value is refused before the origin is read", async ($, on) => {
+	harness(on);
+	expect(await runCommand($, COMMAND, "anthropic", { kind: "sdk" })).toBe(
+		"provider: use one of auto, openrouter-first, typesafe, openrouter",
+	);
 });

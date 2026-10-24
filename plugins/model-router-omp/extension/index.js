@@ -63,6 +63,44 @@ function roleText(description) {
 // src/omp-gates.ts
 import { readFile } from "node:fs/promises";
 
+// src/omp-items.ts
+var TASK = "task";
+var BUNDLED = "bundled";
+var ROLE_MARK = "@";
+var SEANCE = "seance";
+var CUSTOM_AGENT = "custom task agent";
+var isEmpty = (v) => v === void 0 || v === null || typeof v === "string" && v.trim() === "";
+var inScope = (name, scope) => scope === "extended" || name === TASK;
+var findAgent = (name, { agents }) => agents?.find((agent) => agent.name === name);
+var ownRole = (agent) => agent?.model?.find((model) => model.startsWith(ROLE_MARK))?.slice(ROLE_MARK.length);
+function userChoice(name, facts) {
+  if (name === TASK && !isEmpty(facts.roles[TASK]))
+    return "task model role set";
+  if (Object.hasOwn(facts.overrides, name) && !isEmpty(facts.overrides[name]))
+    return `${name} model override set`;
+  if (facts.disabled.includes(name)) return `${name} agent disabled`;
+  return void 0;
+}
+function agentGate(name, facts) {
+  const found = findAgent(name, facts);
+  if (found?.source === BUNDLED) return void 0;
+  if (facts.scope === "core") return CUSTOM_AGENT;
+  if (facts.agents === void 0) return `${name} agent discovery failed`;
+  if (found === void 0) return `${name} agent unknown`;
+  return found.model?.length ? `${name} sets its own model` : void 0;
+}
+var seanceGate = (name) => name === SEANCE ? `${name} spawns without the hook omp gives plugins, so its model cannot change` : void 0;
+function itemCheck(name, facts) {
+  if (!inScope(name, facts.scope)) return `${name} is outside the core scope`;
+  return userChoice(name, facts) ?? seanceGate(name) ?? agentGate(name, facts) ?? facts.noModels;
+}
+function spawnCheck({ agent, modelRole }, facts) {
+  const reason = itemCheck(agent, facts);
+  if (reason !== void 0) return reason;
+  return modelRole && modelRole !== ownRole(findAgent(agent, facts)) ? `${agent} spawns with another model role` : void 0;
+}
+var roleOf = (name, facts) => roleText(findAgent(name, facts)?.description);
+
 // src/part.ts
 var LEVELS = [0, 1, 2];
 var PROBABILITY_DIGITS = 2;
@@ -990,6 +1028,12 @@ var parseBody = async (res) => {
 };
 
 // src/provider.ts
+var PROVIDER_VALUES = [
+  "auto",
+  "openrouter-first",
+  "typesafe",
+  "openrouter"
+];
 var HOSTS = {
   typesafe: "https://api.typesafe.ai",
   openrouter: "https://openrouter.ai/api"
@@ -1038,45 +1082,53 @@ function narrow(global, project) {
   return NARROWABLE.includes(value) && (project === "typesafe" || project === "openrouter") ? project : value;
 }
 
+// src/scope.ts
+var SCOPE_VALUES = ["core", "extended"];
+var DEFAULT_SCOPE = "core";
+var resolveScope = (value) => SCOPE_VALUES.find((known) => known === value) ?? DEFAULT_SCOPE;
+
 // src/omp-gates.ts
 var ROLES = { small: "@smol", large: "@slow" };
-var TASK = "task";
-var BUNDLED = "bundled";
 var UNREADABLE = "settings unreadable";
 var PLUGIN = "model-router-omp";
-var SETTING = "provider";
 var KEY_VARIABLES = {
   typesafe: "TYPESAFE_API_KEY",
   openrouter: "OPENROUTER_API_KEY"
 };
-async function checkGates(omp, pi, ctx) {
-  const gates = await scopeGates(omp, pi, ctx);
-  if ("closed" in gates) return gates;
-  return { attempts: gates.attempts, keys: gates.keys };
+async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
+  const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
+  if ("closed" in batch) return batch;
+  const reason = spawnCheck(spawning, batch.facts);
+  return reason === void 0 ? { attempts: batch.attempts, keys: batch.keys } : { closed: reason };
 }
-async function scopeGates(omp, pi, ctx) {
-  let value;
-  try {
-    value = await readProvider(omp, ctx.cwd);
-  } catch {
-    return { closed: UNREADABLE };
-  }
-  const routing = await findKeys(ctx, value);
+async function openBatch(omp, pi, ctx, settings) {
+  if (settings === void 0) return { closed: UNREADABLE };
+  const routing = await findKeys(ctx, settings.provider);
   if (routing.attempts.length === 0) return { closed: "key unset" };
-  const settingsClosed = settingsGate(omp.lookup, pi.pi.settings);
-  if (settingsClosed !== void 0) return { closed: settingsClosed };
-  const agent = await findTaskAgent(pi, ctx);
-  if ("closed" in agent) return agent;
-  const modelsClosed = modelsGate(ctx);
-  if (modelsClosed !== void 0) return { closed: modelsClosed };
-  return { ...routing, role: roleText(agent.description) };
+  const config = readConfig(omp.lookup, pi.pi.settings);
+  if (config === void 0) return { closed: UNREADABLE };
+  const agents = await discover(pi, ctx);
+  const noModels = modelsGate(ctx);
+  return {
+    ...routing,
+    facts: { ...config, scope: settings.scope, agents, noModels }
+  };
 }
-async function readProvider(omp, cwd) {
-  const [global, effective] = await Promise.all([
-    readGlobal(omp.getPluginsLockfile()),
-    omp.getPluginSettings(PLUGIN, cwd)
-  ]);
-  return narrow(global, effective[SETTING]);
+async function readSettings(omp, cwd) {
+  try {
+    const [global, effective] = await Promise.all([
+      readGlobal(omp.getPluginsLockfile()),
+      omp.getPluginSettings(PLUGIN, cwd)
+    ]);
+    const { provider: fromGlobal } = global;
+    const { provider: fromProject, scope } = effective;
+    return {
+      provider: narrow(fromGlobal, fromProject),
+      scope: resolveScope(scope)
+    };
+  } catch {
+    return void 0;
+  }
 }
 async function readGlobal(path) {
   let text;
@@ -1084,13 +1136,13 @@ async function readGlobal(path) {
     text = await readFile(path, "utf8");
   } catch (err) {
     const { code } = isRecord(err) ? err : {};
-    if (code === "ENOENT") return void 0;
+    if (code === "ENOENT") return {};
     throw err;
   }
   const lock = JSON.parse(text);
   const { settings } = isRecord(lock) ? lock : {};
   const mine = isRecord(settings) ? settings[PLUGIN] : void 0;
-  return isRecord(mine) ? mine[SETTING] : void 0;
+  return isRecord(mine) ? mine : {};
 }
 async function findKeys(ctx, value) {
   const keys = {};
@@ -1126,30 +1178,229 @@ function read(lookup2, id, settings) {
     return void 0;
   }
 }
-var isEmpty = (v) => v === void 0 || v === null || typeof v === "string" && v.trim() === "";
-function settingsGate(lookup2, settings) {
+function readConfig(lookup2, settings) {
   const roles = read(lookup2, "modelRoles", settings);
   const overrides = read(lookup2, "task.agentModelOverrides", settings);
   const disabled = read(lookup2, "task.disabledAgents", settings);
-  if (!isRecord(roles) || !isRecord(overrides) || !Array.isArray(disabled))
-    return UNREADABLE;
-  if (!isEmpty(roles[TASK])) return "task model role set";
-  if (!isEmpty(overrides[TASK])) return "task model override set";
-  if (disabled.includes(TASK)) return "task agent disabled";
-  return void 0;
+  return isRecord(roles) && isRecord(overrides) && Array.isArray(disabled) ? { roles, overrides, disabled } : void 0;
 }
-var CUSTOM_AGENT = "custom task agent";
-async function findTaskAgent(pi, ctx) {
+async function discover(pi, ctx) {
   try {
-    const { agents } = await pi.pi.discoverAgents(ctx.cwd);
-    const found = agents.find((agent) => agent.name === TASK);
-    return found?.source === BUNDLED ? { description: found.description } : { closed: CUSTOM_AGENT };
+    return (await pi.pi.discoverAgents(ctx.cwd)).agents;
   } catch {
-    return { closed: CUSTOM_AGENT };
+    return void 0;
   }
 }
 function modelsGate(ctx) {
   return Object.values(ROLES).some((role) => resolves(ctx, role)) ? void 0 : `no ${ROLES.small} or ${ROLES.large} model`;
+}
+
+// src/settings.ts
+var VALUE_SETTINGS = ["provider", "scope"];
+var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
+var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
+var KEY_PROVIDERS = {
+  typesafe_key: "typesafe",
+  openrouter_key: "openrouter"
+};
+var PROVIDER_NAMES = {
+  typesafe: "TypeSafe",
+  openrouter: "OpenRouter"
+};
+var KEY_MAX_LENGTH = 512;
+var PADDED_LABELS = ["Yes", "No"];
+var LINE_BREAK = /[\r\n\u2028\u2029]/;
+var LABEL_SEPARATOR = " - ";
+var TEXTS = {
+  provider: {
+    values: PROVIDER_VALUES,
+    resolve,
+    about: "which providers score subagent calls",
+    question: "Which providers should score subagent calls?",
+    consequences: {
+      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
+      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
+      typesafe: "TypeSafe only",
+      openrouter: "OpenRouter only"
+    }
+  },
+  scope: {
+    values: SCOPE_VALUES,
+    resolve: resolveScope,
+    about: "which agent calls the router routes",
+    question: "Which agent calls should the router route?",
+    consequences: {
+      core: "today's routing: built-in general agents only",
+      extended: "also routes other agents that pass no model"
+    }
+  }
+};
+var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
+var isKeySetting = (name) => KEY_SETTINGS.some((known) => known === name);
+var keyProvider = (setting) => KEY_PROVIDERS[setting];
+var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
+var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
+var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
+var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
+var alreadyValue = (value) => `already ${value}`;
+var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
+var NO_ANSWER = "no answer from the dialog";
+var NOT_OFFERED = "the answer was not one of the offered values";
+var keyLine = (provider, state) => `${provider} key: ${state}`;
+var keyNotSaved = (provider) => `${provider} key not saved`;
+var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
+function ask(setting, current) {
+  const { values, resolve: resolve2, question } = TEXTS[setting];
+  const first = resolve2(current);
+  const sorted = [first, ...values.filter((value) => value !== first)];
+  return { question, options: sorted.map((value) => label(setting, value)) };
+}
+function pick(setting, answer) {
+  return TEXTS[setting].values.find(
+    (value) => label(setting, value) === answer
+  );
+}
+function keyFrom(answer) {
+  if (typeof answer !== "string" || LINE_BREAK.test(answer)) return void 0;
+  const key = answer.trim();
+  return key === "" || key.length > KEY_MAX_LENGTH || PADDED_LABELS.includes(key) ? void 0 : key;
+}
+var keyQuestion = (provider, replaces) => `Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's secure storage.${replaces ? " It replaces the key that is set now." : ""}`;
+var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
+var TOOL_LABEL = "Model Router settings";
+var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
+function describeCommand(setting) {
+  const { about, values } = TEXTS[setting];
+  return `Shows or changes ${about}: ${values.join(", ")}.`;
+}
+var COMMAND_DESCRIPTIONS = {
+  provider: describeCommand("provider"),
+  scope: describeCommand("scope")
+};
+
+// src/omp-key.ts
+async function changeKey(ctx, setting) {
+  const provider = keyProvider(setting);
+  if (!ctx.hasUI) return keyNotSaved(provider);
+  try {
+    const replaces = await findKey(ctx, provider) !== void 0;
+    const key = keyFrom(await ctx.ui.input(keyQuestion(provider, replaces)));
+    if (key === void 0) return keyNotSaved(provider);
+    await ctx.modelRegistry.authStorage.credentials.set(provider, {
+      type: "api_key",
+      key,
+      source: "login"
+    });
+    return keyLine(provider, "saved, checking");
+  } catch {
+    return keyNotSaved(provider);
+  }
+}
+
+// src/omp-config.ts
+var COMMAND_PREFIX = "model-router:";
+var TOOL_NAME = "model_router_config";
+var LINE_BREAK2 = "\n";
+function say(ctx, text) {
+  try {
+    if (ctx.hasUI) ctx.ui.notify(text);
+    else process.stderr.write(`${text}
+`);
+  } catch {
+  }
+}
+function serializer() {
+  let tail = Promise.resolve();
+  return (job) => {
+    const run = tail.then(job);
+    tail = run.catch(() => void 0);
+    return run;
+  };
+}
+async function withSettings(omp, ctx, show) {
+  const settings = await readSettings(omp, ctx.cwd);
+  return settings === void 0 ? UNREADABLE : show(settings);
+}
+var readAll = (omp, ctx) => withSettings(omp, ctx, async ({ provider, scope }) => {
+  const keys = await Promise.all(
+    order(provider).map(
+      async (name) => keyLine(
+        name,
+        await findKey(ctx, name) === void 0 ? "unset" : "set"
+      )
+    )
+  );
+  return [
+    valueLine("provider", provider),
+    valueLine("scope", scope),
+    ...keys
+  ].join(LINE_BREAK2);
+});
+async function apply(omp, ctx, setting, value) {
+  if (!isValue(setting, value)) return useOneOf(setting);
+  const before = await readSettings(omp, ctx.cwd);
+  if (before === void 0) return unchanged(setting, UNREADABLE);
+  if (before[setting] === value) return unchanged(setting, alreadyValue(value));
+  try {
+    await omp.writeSetting(ctx.cwd, PLUGIN, setting, value);
+  } catch (err) {
+    return unchanged(setting, err instanceof Error ? err.message : String(err));
+  }
+  const now = (await readSettings(omp, ctx.cwd))?.[setting] ?? value;
+  const line = valueLine(setting, now);
+  return now === value ? line : [line, projectOverrides(setting)].join(LINE_BREAK2);
+}
+async function select(ctx, question, options) {
+  try {
+    return await ctx.ui.select(question, options);
+  } catch {
+    return void 0;
+  }
+}
+async function dialog(omp, ctx, setting) {
+  if (!ctx.hasUI) return unchanged(setting, NO_ANSWER);
+  const shown = await readSettings(omp, ctx.cwd);
+  const { question, options } = ask(setting, shown?.[setting]);
+  const answer = await select(ctx, question, options);
+  if (answer === void 0) return unchanged(setting, NO_ANSWER);
+  const value = pick(setting, answer);
+  return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply(omp, ctx, setting, value);
+}
+async function runTool(omp, ctx, params) {
+  const { setting } = isRecord(params) ? params : {};
+  if (setting === void 0) return readAll(omp, ctx);
+  if (isValueSetting(setting)) return dialog(omp, ctx, setting);
+  return isKeySetting(setting) ? changeKey(ctx, setting) : badCall(SETTING_NAMES);
+}
+async function runCommand(omp, ctx, setting, args) {
+  const value = args.trim();
+  return value === "" ? withSettings(
+    omp,
+    ctx,
+    (settings) => valueLine(setting, settings[setting])
+  ) : apply(omp, ctx, setting, value);
+}
+var reply = (text) => ({
+  content: [{ type: "text", text }]
+});
+function registerConfig(omp, pi) {
+  const serial = serializer();
+  for (const setting of VALUE_SETTINGS)
+    pi.registerCommand(`${COMMAND_PREFIX}${setting}`, {
+      description: COMMAND_DESCRIPTIONS[setting],
+      handler: (args, ctx) => serial(async () => say(ctx, await runCommand(omp, ctx, setting, args)))
+    });
+  pi.registerTool({
+    name: TOOL_NAME,
+    label: TOOL_LABEL,
+    description: toolDescription(SETTING_NAMES),
+    parameters: pi.zod.object({
+      setting: pi.zod.enum(SETTING_NAMES).optional()
+    }),
+    loadMode: "essential",
+    approval: "write",
+    execute: (_id, params, _signal, _update, ctx) => serial(async () => reply(await runTool(omp, ctx, params)))
+  });
 }
 
 // src/client.ts
@@ -1191,7 +1442,7 @@ async function route(input) {
   for (const [i, attempt2] of attempts.entries()) {
     let result;
     try {
-      result = await ask(input, attempt2);
+      result = await ask2(input, attempt2);
     } catch (err) {
       failed.push({
         provider: attempt2.provider,
@@ -1217,7 +1468,7 @@ async function route(input) {
   }
   return skip(failed);
 }
-function ask(input, attempt2) {
+function ask2(input, attempt2) {
   const { parts, state, keys, fetchFn, signal } = input;
   const { provider, model, ...overrides } = attempt2;
   return createClient(provider, keys[provider], model, fetchFn).systemOne(
@@ -1299,20 +1550,23 @@ var oneChunk = (bytes) => new ReadableStream({
   }
 });
 var streamedFetch = async (url, init) => {
-  const reply = await globalThis.fetch(url, init);
-  const bytes = new TextEncoder().encode(await reply.text());
+  const reply2 = await globalThis.fetch(url, init);
+  const bytes = new TextEncoder().encode(await reply2.text());
   return new Response(oneChunk(bytes), {
-    status: reply.status,
-    statusText: reply.statusText,
-    headers: reply.headers
+    status: reply2.status,
+    statusText: reply2.statusText,
+    headers: reply2.headers
   });
 };
-async function scoreItems(items, context, { attempts, keys, role }) {
+async function scoreItems(items, context, { attempts, keys, facts }) {
   const limit = new AbortController();
   const timer = setTimeout(() => limit.abort(LIMIT_REACHED), ROUTING_LIMIT_MS);
   const passedOver = /* @__PURE__ */ new Set();
   try {
-    return await mapLimit(items, MAX_PARALLEL, async ({ index, item }) => {
+    return await mapLimit(items, MAX_PARALLEL, async (pending) => {
+      const { item, agent } = pending;
+      const reason = itemCheck(agent, facts);
+      if (reason !== void 0) return { ...pending, stored: skipped(reason) };
       const routing = {
         attempts: attempts.filter((a) => !passedOver.has(a.provider)),
         keys,
@@ -1321,11 +1575,11 @@ async function scoreItems(items, context, { attempts, keys, role }) {
       const decision = await scoreItem(
         item,
         context,
-        role,
+        roleOf(agent, facts),
         routing,
         limit.signal
       );
-      return { index, item, stored: toStored(decision) };
+      return { ...pending, stored: toStored(decision) };
     });
   } finally {
     clearTimeout(timer);
@@ -1344,14 +1598,14 @@ function scoreItem(item, context, role, routing, signal) {
     signal
   });
 }
+var skipped = (reason) => ({
+  role: void 0,
+  line: `skipped, ${reason}`
+});
 function toStored(decision) {
-  const skip2 = (reason) => ({
-    role: void 0,
-    line: `skipped, ${reason}`
-  });
-  if ("skipped" in decision) return skip2(decision.skipped);
+  if ("skipped" in decision) return skipped(decision.skipped);
   const part = decision.parts[tier.key];
-  if (!part) return skip2("bad reply");
+  if (!part) return skipped("bad reply");
   const role = ROLE_BY_LEVEL[part.level];
   const p = formatProbability(part.probabilities[part.level]);
   return {
@@ -1403,10 +1657,10 @@ function createStore() {
   };
   return {
     // The index is the item's position in the call's task list, which progress reports as `index`.
-    add(call, index, name, stored) {
+    add(call, index, name, agent, stored) {
       const oldest = c.entries.values().next();
       if (c.entries.size >= STORE_MAX && !oldest.done) remove(c, oldest.value);
-      const entry2 = { stored, call, index, keys: /* @__PURE__ */ new Set() };
+      const entry2 = { stored, agent, call, index, keys: /* @__PURE__ */ new Set() };
       c.entries.add(entry2);
       c.awaitingId.set(call, (c.awaitingId.get(call) ?? /* @__PURE__ */ new Set()).add(entry2));
       link(c, entry2, `${call}:${index}`);
@@ -1432,10 +1686,11 @@ function createStore() {
       for (const entry2 of [...c.awaitingId.get(call) ?? []]) remove(c, entry2);
     },
     // More than one match is ambiguous, and an ambiguous key takes nothing.
-    take(key) {
+    // A decision binds to its agent: another agent takes nothing and leaves it stored.
+    take(key, agent) {
       const holders = key === void 0 ? void 0 : c.byKey.get(key);
       const [entry2] = holders?.size === 1 ? holders : [];
-      if (!entry2) return void 0;
+      if (entry2?.agent !== agent) return void 0;
       remove(c, entry2);
       return entry2.stored;
     }
@@ -1445,11 +1700,10 @@ function createStore() {
 // src/omp-router.ts
 var LINE_PREFIX = "model-router ";
 var ENTRY_SEPARATOR = " | ";
-var TASK2 = "task";
 function isEligible(item) {
   if (!isRecord(item)) return false;
   const { agent, task } = item;
-  return (agent === void 0 || agent === TASK2) && typeof task === "string" && task !== "";
+  return (agent === void 0 || typeof agent === "string") && typeof task === "string" && task !== "";
 }
 async function attempt(fn) {
   try {
@@ -1459,26 +1713,26 @@ async function attempt(fn) {
   }
 }
 function report(ctx, entries) {
-  const line = LINE_PREFIX + entries.join(ENTRY_SEPARATOR);
-  try {
-    if (ctx.hasUI) ctx.ui.notify(line);
-    else process.stderr.write(`${line}
-`);
-  } catch {
-  }
+  say(ctx, LINE_PREFIX + entries.join(ENTRY_SEPARATOR));
 }
 var entry = (index, line) => `task ${index + 1}: ${line}`;
-var eligibleItems = (tasks) => tasks.flatMap((item, index) => isEligible(item) ? [{ index, item }] : []);
+var eligibleItems = (tasks) => tasks.flatMap(
+  (item, index) => isEligible(item) ? [{ index, item, agent: item.agent ?? TASK }] : []
+);
 function createRouter(omp, pi) {
   const store = createStore();
   async function onToolCall(event, ctx) {
     const { input } = event;
-    if (event.toolName !== TASK2 || !isRecord(input)) return;
+    if (event.toolName !== TASK || !isRecord(input)) return;
     const { tasks, context } = input;
     if (!Array.isArray(tasks)) return;
-    const items = eligibleItems(tasks);
+    const eligible = eligibleItems(tasks);
+    if (eligible.length === 0) return;
+    const settings = await readSettings(omp, ctx.cwd);
+    const scope = settings?.scope ?? "core";
+    const items = eligible.filter(({ agent }) => inScope(agent, scope));
     if (items.length === 0) return;
-    const gates = await scopeGates(omp, pi, ctx);
+    const gates = await openBatch(omp, pi, ctx, settings);
     if ("closed" in gates) {
       const line = `skipped, ${gates.closed}`;
       return report(
@@ -1487,36 +1741,37 @@ function createRouter(omp, pi) {
       );
     }
     const scored = await scoreItems(items, contextText(context), gates);
-    for (const { index, item, stored } of scored)
-      store.add(event.toolCallId, index, item.name, stored);
+    for (const { index, item, agent, stored } of scored)
+      store.add(event.toolCallId, index, item.name, agent, stored);
     report(
       ctx,
       scored.map(({ index, stored }) => entry(index, stored.line))
     );
   }
   async function onSpawn(event, ctx) {
-    if (event.agent !== TASK2 || event.invocationKind !== TASK2) return;
-    const stored = store.take(event.spawnKey);
-    if (!stored?.role || event.modelRole) return;
-    if ("closed" in await checkGates(omp, pi, ctx)) return;
+    if (event.invocationKind !== TASK) return;
+    const stored = store.take(event.spawnKey, event.agent);
+    if (!stored?.role) return;
+    if ("closed" in await checkGates(omp, pi, ctx, event)) return;
     if (!resolves(ctx, stored.role)) return;
     return { model: stored.role, note: LINE_PREFIX + stored.line };
   }
   function learn({ toolName, toolCallId }, result) {
-    if (toolName !== TASK2) return;
+    if (toolName !== TASK) return;
     const { details } = isRecord(result) ? result : {};
     const { progress } = isRecord(details) ? details : {};
     store.learn(toolCallId, progress);
   }
   function onToolEnd(event) {
     learn(event, event.result);
-    if (event.toolName === TASK2) store.end(event.toolCallId);
+    if (event.toolName === TASK) store.end(event.toolCallId);
   }
   return { onToolCall, onSpawn, learn, onToolEnd };
 }
 function createExtension(omp) {
   return (pi) => {
     const router = createRouter(omp, pi);
+    registerConfig(omp, pi);
     pi.on("tool_call", async (event, ctx) => {
       await attempt(() => router.onToolCall(event, ctx));
       return void 0;
@@ -1535,10 +1790,15 @@ function createExtension(omp) {
 }
 
 // src/omp.ts
+async function writeSetting(cwd, plugin, key, value) {
+  const { PluginManager } = await import("@oh-my-pi/pi-coding-agent/extensibility/plugins/manager");
+  await new PluginManager(cwd).setPluginSetting(plugin, key, value);
+}
 var omp_default = createExtension({
   lookup,
   getPluginsLockfile,
-  getPluginSettings
+  getPluginSettings,
+  writeSetting
 });
 export {
   omp_default as default

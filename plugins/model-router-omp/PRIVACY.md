@@ -6,8 +6,9 @@ what the plugin sends, where it goes, and what the plugin keeps. Effective
 
 ## Where requests go
 
-The plugin asks Jev to score each `task` batch item it routes. Jev answers on
-one or two providers:
+The plugin asks Jev to score each batch item it routes. Under the default
+`core` scope, only `task` items route. [The extended scope](#the-extended-scope)
+adds the others. Jev answers on one or two providers:
 
 - TypeSafe, at https://api.typesafe.ai/v1/systemone, with your TypeSafe key
 - OpenRouter, at https://openrouter.ai/api/v1/systemone, with your OpenRouter
@@ -30,8 +31,11 @@ first fails with a connection error, a timeout, or HTTP status 401, 402, 403,
 404, 408, 429 or 5xx. It never gets the item after 400, 422, a cancel, the
 routing limit or a bad reply.
 
-A project's own value may only narrow `auto` or `openrouter-first` to one of
-its two providers. It cannot add a provider, swap one or change the order.
+A project can set two plugin settings. For `provider`, its value may only
+narrow `auto` or `openrouter-first` to one of the two providers. It cannot add
+a provider, swap one or change the order. For `scope`, its value overrides yours
+in both directions. A project can also supply a key through its `.env` file, as
+[What the plugin stores](#what-the-plugin-stores) says.
 
 Each key goes only to its own provider's address above. The plugin passes the
 address and the key with every request, so no environment variable moves a key
@@ -41,7 +45,7 @@ says.
 
 ## What the plugin sends
 
-For every `task` batch item it routes, the plugin sends an HTTPS POST to the
+For every batch item it routes, the plugin sends an HTTPS POST to the
 provider the table above names. The plugin bundles the official TypeSafe SDK,
 `@typesafe-ai/sdk`, which builds the request for both providers. The JSON body
 holds:
@@ -50,11 +54,11 @@ holds:
 - a capped part of the batch `context`, at most 3000 characters, prepared the
   same way and placed after the task text. Task text and context together stay
   within 12,000 characters
-- the role: the description of the `task` agent that omp discovers, condensed
-  and with token-shaped strings masked, capped at 500 characters. A missing or
-  blank description sends `An agent with no description.` Under the default
-  scope this is the bundled agent's description, unless you replace it with
-  your own
+- the role: the description of the item's agent, as omp discovers it. The
+  plugin masks token-shaped strings, collapses whitespace and cuts it to 500
+  characters. A missing or blank description sends `An agent with no
+  description.` Under the default scope this is the `task` agent's
+  description, the bundled one unless you replace it with your own
 - the item's `name` as the description, or an empty description when it has
   none
 - the Jev alias `jev-latest`, and one fixed scoring question, `tier`, with
@@ -77,6 +81,23 @@ which can include code. The request is sent before omp asks for approval of
 the `task` call. A call you later refuse was already sent. That list is the
 whole request. Each key identifies your account to its provider. The plugin
 sends no telemetry and no other data about you or your machine.
+
+## The extended scope
+
+Under `extended`, the plugin routes every agent whose model you did not set.
+That includes the bundled agents `task`, `scout`, `sonic`, `reviewer`
+and `security-reviewer`, and your own user, project and plugin agents
+that declare no model.
+
+- The description and the task text of each such agent leave your machine, as
+  What the plugin sends describes.
+- A hand-written description can hold private names, such as a client, a
+  product or a team. The plugin masks token-shaped strings only. Read your
+  agents' descriptions before you set `extended`.
+- A project can set `scope` in its plugin settings, and its value overrides
+  yours. A project that sets `extended` sends the descriptions and task text of
+  your agents to your provider without your choice, and it can raise spend,
+  because routed agents may run on the `slow` model role.
 
 ## Requests and billing
 
@@ -115,7 +136,7 @@ request on. The plugin author has no access to those requests.
 
 ## What the plugin stores
 
-The plugin stores nothing on disk. In memory it holds up to 64 routing
+The plugin keeps no file of its own. In memory it holds up to 64 routing
 decisions, each a model role and its log line. A decision leaves when its
 subagent spawns, when its task call ends before omp reports the subagent's id,
 or when newer decisions push it out.
@@ -128,33 +149,49 @@ allows. It reads omp's own credential for that provider, `typesafe` or
 provider's endpoint above, as the bearer token. It reads no other environment
 variable, and it runs no program.
 
+When you choose a value in the plugin's dialog or give a command, the plugin
+writes your global `provider` or `scope` plugin setting through omp. It
+writes no project setting.
+
+When you call the `model_router_config` tool for a key, the plugin asks for
+the key in its own text dialog and stores it in omp's credential store, as
+`/login` does. The dialog shows the typed key in clear. The plugin passes the
+key to the credential store and nowhere else. It never logs or returns a key,
+and a failed save reports only `<provider> key not saved`. Other extensions'
+hooks in omp may see a dialog answer, the key included.
+
+A key you set as an environment variable is visible to every process omp
+starts.
+
 A project can set either variable in its `.env` file. When omp's credential
 for that provider is empty, the plugin then sends the task text to the account
 that project key belongs to. With the narrowing above, a project can also pick
 which of your allowed providers receives it.
 
 When a batch arrives, and again as each routed subagent starts, the plugin
-reads its `provider` setting through omp's plugin settings, which include the
-project's value. It also reads omp's plugins lockfile for your global value of
-that setting, and reads a missing lockfile as empty. The lockfile is the only
+reads its `provider` and `scope` settings through omp's plugin settings, which
+include the project's value. It also reads omp's plugins lockfile for your
+global values of them, and reads a missing lockfile as empty. The lockfile is the only
 file the plugin reads itself. When either read fails, the plugin skips routing
 and sends nothing. At the same
 points it reads omp's settings `modelRoles`, `task.agentModelOverrides` and
-`task.disabledAgents`, and the source of each agent omp discovers, to see
-whether your own `task` agent replaced the bundled one. It also checks whether
-the `@smol` and `@slow` roles resolve to a model. Nothing from these leaves
-your machine, except the `task` agent's description, which the request carries
-as described above.
+`task.disabledAgents`, and the source, declared models and description of each
+agent omp discovers, to see whether your own agent replaced a bundled one or
+sets its own model. It also checks whether the `@smol` and `@slow` roles
+resolve to a model. Nothing from these leaves your machine, except the
+description of each routed agent, which the request carries as described
+above.
 
 The lines the plugin prints per batch go to your omp notifications, or to
-standard error when omp has no UI. The setup skill writes only the
-configuration you approve: the `smol` and `slow` model roles and the global
-`provider` setting.
+standard error when omp has no UI. The setup skill changes only what you
+choose in the plugin's dialogs: the global `provider` and `scope` settings and
+a key.
 
 ## Your choices
 
 Set `provider` to `typesafe` or `openrouter` in `/settings`, under Plugins, to
-keep each item with one company. Remove the keys from omp's credential store
+keep each item with one company. Keep `scope` at `core` to route the `task`
+agent only. Remove the keys from omp's credential store
 and from both variables, and the plugin skips routing. Disable the plugin and
 nothing is sent.
 

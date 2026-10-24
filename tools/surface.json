@@ -2,7 +2,10 @@
 	"hooks": [
 		"agent.offer",
 		"command.run{command=model-router:provider}",
-		"tool.call{tool=Agent}"
+		"command.run{command=model-router:scope}",
+		"session.start",
+		"tool.call{tool=Agent}",
+		"tool.call{tool=mcp__model-router__config}"
 	],
 	"calls": [
 		"$.clock.after",
@@ -11,6 +14,8 @@
 		"$.env.get",
 		"$.http.fetch",
 		"$.tool.check",
+		"$.tool.register",
+		"$.ui.ask",
 		"$.ui.log"
 	]
 }
