@@ -8,6 +8,7 @@ export type Stored = {
 };
 type Entry = {
 	readonly stored: Stored;
+	readonly agent: string;
 	readonly call: string;
 	readonly index: number;
 	readonly keys: Set<string>;
@@ -56,10 +57,16 @@ export function createStore() {
 	};
 	return {
 		// The index is the item's position in the call's task list, which progress reports as `index`.
-		add(call: string, index: number, name: unknown, stored: Stored): void {
+		add(
+			call: string,
+			index: number,
+			name: unknown,
+			agent: string,
+			stored: Stored,
+		): void {
 			const oldest = c.entries.values().next();
 			if (c.entries.size >= STORE_MAX && !oldest.done) remove(c, oldest.value);
-			const entry: Entry = { stored, call, index, keys: new Set() };
+			const entry: Entry = { stored, agent, call, index, keys: new Set() };
 			c.entries.add(entry);
 			c.awaitingId.set(call, (c.awaitingId.get(call) ?? new Set()).add(entry));
 			link(c, entry, `${call}:${index}`);
@@ -88,10 +95,11 @@ export function createStore() {
 		},
 
 		// More than one match is ambiguous, and an ambiguous key takes nothing.
-		take(key: string | undefined): Stored | undefined {
+		// A decision binds to its agent: another agent takes nothing and leaves it stored.
+		take(key: string | undefined, agent: string): Stored | undefined {
 			const holders = key === undefined ? undefined : c.byKey.get(key);
 			const [entry] = holders?.size === 1 ? holders : [];
-			if (!entry) return undefined;
+			if (entry?.agent !== agent) return undefined;
 			remove(c, entry);
 			return entry.stored;
 		},

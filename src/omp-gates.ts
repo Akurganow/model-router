@@ -1,69 +1,107 @@
 import { readFile } from "node:fs/promises";
 import type { RouteInput } from "./compose.ts";
+import { type Facts, type Spawning, spawnCheck, TASK } from "./omp-items.ts";
 import type { Context, Lookup, OmpImports, Pi } from "./omp-types.ts";
 import { isRecord } from "./part.ts";
-import { narrow, order, type Provider, plan } from "./provider.ts";
+import {
+	narrow,
+	order,
+	type Provider,
+	type ProviderValue,
+	plan,
+} from "./provider.ts";
+import { resolveScope, type Scope } from "./scope.ts";
 
 export const ROLES = { small: "@smol", large: "@slow" } as const;
 
-const TASK = "task";
-const BUNDLED = "bundled";
-const UNREADABLE = "settings unreadable";
+export const UNREADABLE = "settings unreadable";
 // omp keys plugin settings by the package name.
-const PLUGIN = "model-router-omp";
-const SETTING = "provider";
+export const PLUGIN = "model-router-omp";
 const KEY_VARIABLES: Readonly<Record<Provider, string>> = {
 	typesafe: "TYPESAFE_API_KEY",
 	openrouter: "OPENROUTER_API_KEY",
 };
 
 export type Routing = Pick<RouteInput, "attempts" | "keys">;
-type Gates = Routing | { readonly closed: string };
+export type Batch = Routing & { readonly facts: Facts };
+export type Settings = {
+	readonly provider: ProviderValue;
+	readonly scope: Scope;
+};
+type Closed = { readonly closed: string };
 
-// The task agent and the user's own routing decide first. Each gate fails closed, and the keys are the cheapest check.
+// The spawn check needs the verdict alone. A spawn is judged like a batch item, for its own agent.
 export async function checkGates(
 	omp: OmpImports,
 	pi: Pi,
 	ctx: Context,
-): Promise<Gates> {
-	let value: string;
-	try {
-		value = await readProvider(omp, ctx.cwd);
-	} catch {
-		return { closed: UNREADABLE };
-	}
-	const routing = await findKeys(ctx, value);
+	spawning: Spawning = { agent: TASK },
+): Promise<Routing | Closed> {
+	const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
+	if ("closed" in batch) return batch;
+	const reason = spawnCheck(spawning, batch.facts);
+	return reason === undefined
+		? { attempts: batch.attempts, keys: batch.keys }
+		: { closed: reason };
+}
+
+// The gates that hold for the whole batch. Each fails closed, and the keys are the cheapest check.
+// What each item needs to be judged comes back as facts, read once.
+export async function openBatch(
+	omp: OmpImports,
+	pi: Pi,
+	ctx: Context,
+	settings: Settings | undefined,
+): Promise<Batch | Closed> {
+	if (settings === undefined) return { closed: UNREADABLE };
+	const routing = await findKeys(ctx, settings.provider);
 	if (routing.attempts.length === 0) return { closed: "key unset" };
-	const closed =
-		settingsGate(omp.lookup, pi.pi.settings) ??
-		(await agentGate(pi, ctx)) ??
-		modelsGate(ctx);
-	return closed === undefined ? routing : { closed };
+	const config = readConfig(omp.lookup, pi.pi.settings);
+	if (config === undefined) return { closed: UNREADABLE };
+	const agents = await discover(pi, ctx);
+	const noModels = modelsGate(ctx);
+	return {
+		...routing,
+		facts: { ...config, scope: settings.scope, agents, noModels },
+	};
 }
 
 // The effective settings hold the project's value when it sets one and the global value otherwise.
-async function readProvider(omp: OmpImports, cwd: string): Promise<string> {
-	const [global, effective] = await Promise.all([
-		readGlobal(omp.getPluginsLockfile()),
-		omp.getPluginSettings(PLUGIN, cwd),
-	]);
-	return narrow(global, effective[SETTING]);
+// A project may only narrow the provider, and its scope wins both ways. Unreadable settings give nothing.
+export async function readSettings(
+	omp: OmpImports,
+	cwd: string,
+): Promise<Settings | undefined> {
+	try {
+		const [global, effective] = await Promise.all([
+			readGlobal(omp.getPluginsLockfile()),
+			omp.getPluginSettings(PLUGIN, cwd),
+		]);
+		const { provider: fromGlobal } = global;
+		const { provider: fromProject, scope } = effective;
+		return {
+			provider: narrow(fromGlobal, fromProject),
+			scope: resolveScope(scope),
+		};
+	} catch {
+		return undefined;
+	}
 }
 
 // omp reads a missing lockfile as empty, and so does this.
-async function readGlobal(path: string): Promise<unknown> {
+async function readGlobal(path: string): Promise<Record<string, unknown>> {
 	let text: string;
 	try {
 		text = await readFile(path, "utf8");
 	} catch (err) {
 		const { code } = isRecord(err) ? err : {};
-		if (code === "ENOENT") return undefined;
+		if (code === "ENOENT") return {};
 		throw err;
 	}
 	const lock: unknown = JSON.parse(text);
 	const { settings } = isRecord(lock) ? lock : {};
 	const mine = isRecord(settings) ? settings[PLUGIN] : undefined;
-	return isRecord(mine) ? mine[SETTING] : undefined;
+	return isRecord(mine) ? mine : {};
 }
 
 // Only the providers the value allows are read. omp's own credential comes first, then the variable.
@@ -80,7 +118,7 @@ async function findKeys(ctx: Context, value: string): Promise<Routing> {
 	return { attempts: plan(value, present), keys };
 }
 
-async function findKey(
+export async function findKey(
 	ctx: Context,
 	provider: Provider,
 ): Promise<string | undefined> {
@@ -109,30 +147,22 @@ function read(lookup: Lookup, id: string, settings: unknown): unknown {
 	}
 }
 
-const isEmpty = (v: unknown) =>
-	v === undefined || v === null || (typeof v === "string" && v.trim() === "");
+type Config = Pick<Facts, "roles" | "overrides" | "disabled">;
 
-function settingsGate(lookup: Lookup, settings: unknown): string | undefined {
+function readConfig(lookup: Lookup, settings: unknown): Config | undefined {
 	const roles = read(lookup, "modelRoles", settings);
 	const overrides = read(lookup, "task.agentModelOverrides", settings);
 	const disabled = read(lookup, "task.disabledAgents", settings);
-	if (!isRecord(roles) || !isRecord(overrides) || !Array.isArray(disabled))
-		return UNREADABLE;
-	if (!isEmpty(roles[TASK])) return "task model role set";
-	if (!isEmpty(overrides[TASK])) return "task model override set";
-	if (disabled.includes(TASK)) return "task agent disabled";
-	return undefined;
+	return isRecord(roles) && isRecord(overrides) && Array.isArray(disabled)
+		? { roles, overrides, disabled }
+		: undefined;
 }
 
-const CUSTOM_AGENT = "custom task agent";
-
-async function agentGate(pi: Pi, ctx: Context): Promise<string | undefined> {
+async function discover(pi: Pi, ctx: Context): Promise<Facts["agents"]> {
 	try {
-		const { agents } = await pi.pi.discoverAgents(ctx.cwd);
-		const found = agents.find((agent) => agent.name === TASK);
-		return found?.source === BUNDLED ? undefined : CUSTOM_AGENT;
+		return (await pi.pi.discoverAgents(ctx.cwd)).agents;
 	} catch {
-		return CUSTOM_AGENT;
+		return undefined;
 	}
 }
 

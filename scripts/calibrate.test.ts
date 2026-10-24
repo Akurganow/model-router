@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { Readable } from "node:stream";
 import { afterEach, mock, test } from "node:test";
+import { ROLE_CAP } from "../src/brief.ts";
 import { plan } from "../src/provider.ts";
 import { type Case, caseHead, main, readKey, runCase } from "./calibrate.ts";
 
@@ -47,6 +48,23 @@ test("runCase sends the brief through the client and returns the decision", asyn
 	);
 	assert.ok(!seen[0]?.body.includes("abc.def.ghi"), "the brief is redacted");
 	assert.ok(seen[0]?.signal instanceof AbortSignal);
+});
+
+test("runCase sends the role collapsed and cut to the role cap", async () => {
+	let body = "";
+	const fetchFn = async (_url: string, init: RequestInit = {}) => {
+		body = String(init.body);
+		return replying();
+	};
+	const role = `coder\n\n  helper ${"x".repeat(ROLE_CAP * 2)}`;
+	await runCase(
+		{ ...CASE, role },
+		plan("typesafe", { typesafe: true, openrouter: false }),
+		{ typesafe: "test-key" },
+		fetchFn,
+	);
+	assert.ok(body.includes("coder helper x"), "whitespace is collapsed");
+	assert.ok(!body.includes("x".repeat(ROLE_CAP)), "the role is cut");
 });
 
 test("the printed head of a case is redacted like the request", () => {

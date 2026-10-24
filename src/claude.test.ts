@@ -4,12 +4,21 @@ import { register } from "./claude.ts";
 
 type Hook = ($: unknown, e: unknown, next: unknown) => Promise<unknown>;
 
+const AGENT_CALL = 'tool.call {"tool":"Agent"}';
+const CLOCK = {
+	after: () => ({ cancel() {} }),
+	sleep: () => new Promise(() => {}),
+};
+const nextHook = () =>
+	Object.assign(async () => ({}), { signal: new AbortController().signal });
+
 function registered(
 	options: Record<string, unknown> = {},
 ): Record<string, Hook> {
 	const hooks: Record<string, Hook> = {};
 	const on = (event: string, ...rest: unknown[]) => {
-		hooks[event] = rest.at(-1) as Hook;
+		const matcher = rest.length > 1 ? ` ${JSON.stringify(rest[0])}` : "";
+		hooks[`${event}${matcher}`] = rest.at(-1) as Hook;
 		return { catch: () => undefined };
 	};
 	register(on as never, options);
@@ -19,17 +28,12 @@ function registered(
 test("a new registration forgets the offers made before it", async () => {
 	const logs: string[] = [];
 	const $ = {
-		clock: {
-			after: () => ({ cancel() {} }),
-			sleep: () => new Promise(() => {}),
-		},
+		clock: CLOCK,
 		env: { get: async () => undefined },
 		tool: { check: async () => ({ decision: "allow" }) },
 		ui: { log: async (text: string) => logs.push(text) },
 	};
-	const next = Object.assign(async () => ({}), {
-		signal: new AbortController().signal,
-	});
+	const next = nextHook();
 	const call = { tool: "Agent", prompt: "p", description: "d" };
 
 	await registered()["agent.offer"]?.(
@@ -38,7 +42,7 @@ test("a new registration forgets the offers made before it", async () => {
 		next,
 	);
 	const fresh = registered();
-	await fresh["tool.call"]?.($, call, next);
+	await fresh[AGENT_CALL]?.($, call, next);
 	assert.deepEqual(logs, []);
 
 	await fresh["agent.offer"]?.(
@@ -46,7 +50,7 @@ test("a new registration forgets the offers made before it", async () => {
 		{ agent: "general-purpose", source: "built-in" },
 		next,
 	);
-	await fresh["tool.call"]?.($, call, next);
+	await fresh[AGENT_CALL]?.($, call, next);
 	assert.deepEqual(logs, ["skipped, key unset"]);
 });
 
@@ -59,14 +63,13 @@ const ANSWER = JSON.stringify({
 async function routedCall(
 	options: Record<string, unknown>,
 	env: Record<string, string>,
+	offered = true,
 ) {
 	const reads: string[] = [];
 	const requests: { url: string; model: unknown }[] = [];
+	const roles: unknown[] = [];
 	const $ = {
-		clock: {
-			after: () => ({ cancel() {} }),
-			sleep: () => new Promise(() => {}),
-		},
+		clock: CLOCK,
 		env: {
 			get: async (name: string) => {
 				reads.push(name);
@@ -75,28 +78,29 @@ async function routedCall(
 		},
 		http: {
 			fetch: async (url: string, init: { body: string }) => {
-				requests.push({ url, model: JSON.parse(init.body).model });
+				const body = JSON.parse(init.body);
+				requests.push({ url, model: body.model });
+				roles.push(body.state.role);
 				return { status: 200, ok: true, headers: {}, text: ANSWER };
 			},
 		},
 		tool: { check: async () => ({ decision: "allow" }) },
 		ui: { log: async () => undefined },
 	};
-	const next = Object.assign(async () => ({}), {
-		signal: new AbortController().signal,
-	});
+	const next = nextHook();
 	const hooks = registered(options);
-	await hooks["agent.offer"]?.(
-		$,
-		{ agent: "general-purpose", source: "built-in" },
-		next,
-	);
-	await hooks["tool.call"]?.(
+	if (offered)
+		await hooks["agent.offer"]?.(
+			$,
+			{ agent: "general-purpose", source: "built-in" },
+			next,
+		);
+	await hooks[AGENT_CALL]?.(
 		$,
 		{ tool: "Agent", prompt: "p", description: "d" },
 		next,
 	);
-	return { reads, requests };
+	return { reads, requests, roles };
 }
 
 test("an unknown provider value routes as typesafe and reads no OpenRouter key", async () => {
@@ -119,4 +123,30 @@ test("a stored model option is ignored and jev-latest is sent", async () => {
 		requests.map((r) => r.model),
 		["jev-latest"],
 	);
+});
+
+test("under extended a fresh registration with no offers routes with the neutral role", async () => {
+	const { requests, roles } = await routedCall(
+		{ api_key: "ts-key", scope: "extended" },
+		{},
+		false,
+	);
+	assert.equal(requests.length, 1);
+	assert.deepEqual(roles, ["An agent with no description."]);
+});
+
+test("under core a fresh registration with no offers sends no request", async () => {
+	const { requests } = await routedCall({ api_key: "ts-key" }, {}, false);
+	assert.deepEqual(requests, []);
+});
+
+test("register hooks the session start, the config tool and both commands by literal matcher", () => {
+	assert.deepEqual(Object.keys(registered()).sort(), [
+		"agent.offer",
+		'command.run {"command":"model-router:provider"}',
+		'command.run {"command":"model-router:scope"}',
+		"session.start",
+		'tool.call {"tool":"Agent"}',
+		'tool.call {"tool":"mcp__model-router__config"}',
+	]);
 });

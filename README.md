@@ -8,34 +8,40 @@ Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For Cl
 
 | | Claude Code | Oh My Pi |
 | --- | --- | --- |
-| Routes | Agent tool calls to the four built-in agents | `task` batch items |
+| Routes | Under `core`, Agent tool calls to the four built-in agents. Under `extended`, every Agent call that passes no model and no name, except a fork ([details](plugins/model-router/README.md#which-calls-are-routed)) | Under `core`, `task` batch items. Under `extended`, every batch item whose agent's model you did not set, except `seance` and the [item reasons](plugins/model-router-omp/README.md#item-reasons) |
 | Sets | `model` and `effort` | the `smol` or `slow` role |
 | Asks Jev | two questions | one question |
 | Needs | Claude Code v2.1.308 or later | Oh My Pi v18.12.6 or later |
 | Keys live in | the system's secure storage, or `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY` | omp's TypeSafe and OpenRouter credentials, or `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY` |
-| Provider is set in | the install dialog, `/config` or `/model-router:provider` | `/settings` → Plugins |
+| Provider is set in | the install dialog, `/config`, `/model-router:provider` or the `config` tool | `/settings` → Plugins, `/model-router:provider` or the `model_router_config` tool |
+| Scope | `core` (default) or `extended`. Set in the install dialog, `/config` or `/model-router:scope` | `core` (default) or `extended`. Set in `/settings` → Plugins or `/model-router:scope`. A project may set it |
 | Reference | [plugin README](plugins/model-router/README.md) | [plugin README](plugins/model-router-omp/README.md) |
 
 [Install](#install) · [Verify](#verify) · [Update](#update) · [Turn off and uninstall](#turn-off-and-uninstall) · [What leaves the machine](#what-leaves-the-machine)
 
 ## How it works
 
-**Claude Code.** On each Agent tool call it routes
-([which calls](plugins/model-router/README.md#which-calls-are-routed)), the
-plugin asks [Jev](https://docs.typesafe.ai) two questions: how much
-judgment and how much work the task needs. Then it sets the call's `model` and `effort`.
-The model is `haiku` for lookup or transcription, `sonnet` for bounded
-judgment and `opus` for open judgment.
+**Claude Code.** On each Agent tool call it routes, the plugin asks
+[Jev](https://docs.typesafe.ai) two questions: how much judgment and how much
+work the task needs. Jev reads the task and the agent's description. Then the
+plugin sets the call's `model` and `effort`. The model is `haiku` for lookup or
+transcription, `sonnet` for bounded judgment and `opus` for open judgment.
 [Effort](plugins/model-router/README.md#effort) shows the effort ladder.
 [model-choice.md](plugins/model-router/docs/model-choice.md) says why the
 tiers and the ladder are what they are, with Anthropic's sources.
 
-**Oh My Pi.** The plugin scores each `task` batch item with Jev, which answers
-one question: how much judgment the task needs. For lookup work it gives omp's
-bundled `task` agent the `smol` role at spawn. For open judgment it gives the
-`slow` role. For bounded judgment it changes nothing. It sets no effort and
-never changes the tool input. A named agent keeps its own model. The roles run
-on the models you point `smol` and `slow` at.
+The `scope` option picks the calls. [Which calls are routed](plugins/model-router/README.md#which-calls-are-routed)
+holds the rules.
+
+**Oh My Pi.** The plugin scores each batch item with Jev, which answers one
+question: how much judgment the task needs. Jev reads the task and the agent's
+description. For lookup work the plugin gives the spawn the `smol` role. For
+open judgment it gives the `slow` role. For bounded judgment it changes
+nothing. It sets no effort and never changes the tool input. The roles run on
+the models you point `smol` and `slow` at.
+
+The `scope` setting picks the agents. [Scope](plugins/model-router-omp/README.md#scope)
+holds the rules.
 
 ## Install
 
@@ -52,7 +58,8 @@ The `provider` option picks who scores each task: `typesafe` (the default),
 (OpenRouter, then TypeSafe). With one key, `auto` and `openrouter-first` use
 that key's provider alone. The [Claude Code](plugins/model-router/README.md)
 and [Oh My Pi](plugins/model-router-omp/README.md) READMEs say when the second
-provider takes over.
+provider takes over. The `scope` option picks the agents the plugin routes:
+`core` (the default) or `extended`.
 
 ### Claude Code
 
@@ -66,16 +73,16 @@ provider takes over.
 
 2. Answer `y` to add the marketplace.
 3. Pick the user scope.
-4. Pick a `provider` in the dialog.
+4. Pick a `provider` and a `scope` in the dialog.
 5. Paste your TypeSafe key, your OpenRouter key or both into the dialog.
 6. Run `/reload-plugins`, or start a new session.
-7. Ask Claude to run the `model-router-setup` skill to check the provider and
-   the keys.
+7. Ask Claude to run the `model-router-setup` skill. It asks the provider and
+   the scope with buttons, writes your choices itself and checks the keys.
 
 To reopen the dialog later, run
-`/plugin configure model-router@model-router`. `/config` and
-`/model-router:provider` also change the provider. Claude Code keeps the keys
-in the system's secure storage.
+`/plugin configure model-router@model-router`. `/config` also changes the
+options. `/model-router:provider` and `/model-router:scope` change one each.
+Claude Code keeps the keys in the system's secure storage.
 
 **Install from a shell.** This line installs the plugin, sets `provider` to
 `auto` and saves the keys. It shows `TypeSafe key:`, then `OpenRouter key:`.
@@ -121,7 +128,7 @@ while it runs.
 1. Run `/plugins` to open **Manage plugins**.
 2. Add `Akurganow/model-router` on the **Marketplaces** tab.
 3. Install `model-router` on the **Plugins** tab.
-4. Pick a `provider` in the form that opens.
+4. Pick a `provider` and a `scope` in the form that opens.
 5. Enter your TypeSafe key, your OpenRouter key or both.
 6. Start a new session.
 
@@ -136,32 +143,9 @@ open, set the key as [Desktop app](#desktop-app) describes.
 4. Install `model-router`.
 
 > [!WARNING]
-> The desktop app cannot set a plugin's key yet. A key saved from a shell also
-> reads back empty after the app restarts.
->
-> https://github.com/anthropics/claude-code/issues/89749
-
-Until the bug is fixed, set the key in Claude Code's settings file:
-
-1. Open `~/.claude/settings.json`.
-2. Add `TYPESAFE_API_KEY`, `OPENROUTER_API_KEY` or both to the `env` block,
-   with your keys in place of `YOUR_KEY` and `YOUR_OPENROUTER_KEY`:
-
-   ```json
-   {
-     "env": {
-       "TYPESAFE_API_KEY": "YOUR_KEY",
-       "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY"
-     }
-   }
-   ```
-
-3. Start a new session.
-4. If you set `OPENROUTER_API_KEY`, run `/model-router:provider auto` in the
-   session.
-5. Delete those lines once the bug is fixed.
-
-The keys sit there in plaintext, and commands the session runs can see them.
+> The desktop app cannot set a plugin's key yet.
+> [Keys in the desktop app](plugins/model-router/README.md#keys-in-the-desktop-app)
+> says how to set it in the settings file.
 
 ### Oh My Pi
 
@@ -181,12 +165,14 @@ The keys sit there in plaintext, and commands the session runs can see them.
 4. Restart omp, because omp loads extension modules at startup.
 5. Run `/login typesafe`, `/login openrouter` or both in omp to store your
    keys.
-6. Ask omp to run the `model-router-setup` skill to pick a provider.
+6. Ask omp to run the `model-router-setup` skill. It asks the provider, the
+   keys and the scope with buttons and writes your choices itself.
 
 Instead of `/login`, you can run `omp login typesafe` or
 `omp login openrouter` outside a session. You can also set `TYPESAFE_API_KEY`
-or `OPENROUTER_API_KEY`. To switch the provider later, open `/settings` →
-Plugins.
+or `OPENROUTER_API_KEY`. To change the provider or the scope later, open
+`/settings` → Plugins, or run `/model-router:provider` or
+`/model-router:scope`.
 [Set up](plugins/model-router-omp/README.md#set-up) says what the skill checks.
 
 ## Verify
@@ -282,6 +268,9 @@ omp plugin uninstall model-router@model-router
 > With both keys, `auto` and `openrouter-first` send the same text to the
 > second host when the first fails. The default, `typesafe`, never contacts
 > OpenRouter.
+>
+> Each request also carries the agent's description. Under `extended`, the
+> descriptions and task text of your other agents leave the machine too.
 
 Each plugin README lists the full request, and each privacy policy states the
 same in policy form:
@@ -291,7 +280,8 @@ same in policy form:
   [PRIVACY.md](plugins/model-router/PRIVACY.md)
 - Oh My Pi:
   [What leaves the machine](plugins/model-router-omp/README.md#what-leaves-the-machine),
-  [PRIVACY.md](plugins/model-router-omp/PRIVACY.md)
+  [PRIVACY.md](plugins/model-router-omp/PRIVACY.md),
+  [The extended scope](plugins/model-router-omp/PRIVACY.md#the-extended-scope)
 
 [Turn off and uninstall](#turn-off-and-uninstall) says how to stop the
 requests.

@@ -1,7 +1,7 @@
 {
 	"name": "model-router",
 	"owner": { "name": "Akurganow" },
-	"description": "Routes each Oh My Pi task subagent to the smol or slow model role, judged by Jev from the redacted task text, which it sends to api.typesafe.ai, openrouter.ai or both, as its provider setting allows.",
+	"description": "Routes each Oh My Pi task subagent to the smol or slow model role, judged by Jev from the redacted task text and the agent's description, which it sends to api.typesafe.ai, openrouter.ai or both, as its provider setting allows.",
 	"plugins": [
 		{
 			"name": "model-router",

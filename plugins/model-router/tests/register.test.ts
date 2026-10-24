@@ -17,15 +17,43 @@ test(
 );
 
 for (const [subagentType, role] of [
-	[undefined, "general-purpose"],
-	["claude", "claude"],
-	["Explore", "Explore"],
-	["Plan", "Plan"],
+	[
+		undefined,
+		"General-purpose agent for researching complex questions and executing multi-step tasks.",
+	],
+	["claude", "Catch-all agent for any task that fits no more specific agent."],
+	[
+		"Explore",
+		"Read-only search agent for broad fan-out searches across a codebase.",
+	],
+	["Plan", "Software architect agent for designing implementation plans."],
 ] as const)
-	test(`${role} is routed under its own role`, KEYED, async ($, on) => {
-		const { h } = await callOnce($, on, { subagent_type: subagentType });
+	test(
+		`${subagentType ?? "general-purpose"} is routed with its offered description as the role`,
+		KEYED,
+		async ($, on) => {
+			const { h } = await callOnce($, on, { subagent_type: subagentType });
+			expect(JSON.parse(h.sent ?? "").state.role).toBe(role);
+			expect(h.received.model).toBe("haiku");
+		},
+	);
+
+for (const [name, description, role] of [
+	["a long description is cut at the cap", "x".repeat(600), "x".repeat(500)],
+	[
+		"an empty description gets the neutral line",
+		"",
+		"An agent with no description.",
+	],
+] as const)
+	test(name, KEYED, async ($, on) => {
+		const { h } = await callOnce(
+			$,
+			on,
+			{},
+			{ descriptions: { "general-purpose": description } },
+		);
 		expect(JSON.parse(h.sent ?? "").state.role).toBe(role);
-		expect(h.received.model).toBe("haiku");
 	});
 
 test(
@@ -93,7 +121,7 @@ test(
 		const { h } = await callOnce($, on);
 		expect(h.debug.length).toBe(1);
 		expect(h.debug[0]?.startsWith("request 1/1 {")).toBe(true);
-		expect(h.debug[0]).toContain('"role":"general-purpose"');
+		expect(h.debug[0]).toContain('"role":"General-purpose agent');
 		expect(h.debug[0]).toContain('"description":"write hello"');
 		expect(h.debug[0]).not.toContain("test-key");
 	},

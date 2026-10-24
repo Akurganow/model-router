@@ -1,7 +1,7 @@
 {
 	"name": "model-router",
 	"version": "0.14.0",
-	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev. On every Agent call it sends the subagent's task text, condensed and with secrets masked, to api.typesafe.ai, openrouter.ai or both, as its provider option allows, each with its own key.",
+	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev. For each routed Agent call it sends the task text and the agent's description, cut to 500 characters and with secrets masked, to api.typesafe.ai, openrouter.ai or both, as its provider option allows, each with its own key. The scope option picks the calls: core routes the four built-in agents, extended also routes user, project and plugin agents and sends their text. A config tool opens the plugin's own dialog to change both options. A key set as an environment variable is visible to every process Claude Code starts.",
 	"author": {
 		"name": "Akurganow",
 		"url": "https://github.com/Akurganow"
@@ -21,9 +21,14 @@
 	"skills": ["."],
 	"commands": {
 		"provider": {
-			"description": "Shows or changes which providers score subagent calls: auto, openrouter-first, typesafe or openrouter.",
+			"description": "Shows or changes which providers score subagent calls: auto, openrouter-first, typesafe, openrouter.",
 			"argumentHint": "[auto|openrouter-first|typesafe|openrouter]",
-			"content": "The model-router plugin did not answer this command, so its provider was not shown or changed. Tell the user to open /config, find the model-router plugin, and set its provider option there."
+			"content": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"provider\" it asks the person which providers should score subagent calls and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its provider option in the plugin's settings."
+		},
+		"scope": {
+			"description": "Shows or changes which agent calls the router routes: core, extended.",
+			"argumentHint": "[core|extended]",
+			"content": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"scope\" it asks the person which agent calls the router should route and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its scope option in the plugin's settings."
 		}
 	},
 	"userConfig": {
@@ -45,6 +50,13 @@
 			"description": "Which providers may score a subagent call, and in which order. typesafe: TypeSafe only. openrouter: OpenRouter only. auto: TypeSafe, then OpenRouter if TypeSafe fails. openrouter-first: OpenRouter, then TypeSafe. With auto or openrouter-first and both keys set, one call may reach both companies.",
 			"options": ["auto", "openrouter-first", "typesafe", "openrouter"],
 			"default": "typesafe"
+		},
+		"scope": {
+			"type": "string",
+			"title": "Routing scope",
+			"description": "Which Agent calls the plugin routes. core: the built-in agents general-purpose, claude, Explore and Plan only. extended: also any Agent call that passes no model, including plugin and user agents, replacing the model and effort their definition sets. Forks and named calls stay unrouted.",
+			"options": ["core", "extended"],
+			"default": "core"
 		}
 	}
 }

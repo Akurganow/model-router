@@ -10,20 +10,26 @@ import {
 	type Skipped,
 } from "./compose.ts";
 import { tier } from "./model.ts";
-import { ROLES, type Routing } from "./omp-gates.ts";
+import { type Batch, ROLES } from "./omp-gates.ts";
+import { itemCheck, roleOf } from "./omp-items.ts";
 import type { Stored } from "./omp-store.ts";
 import { formatProbability, type Level } from "./part.ts";
 import type { Provider } from "./provider.ts";
 
-export type TaskItem = { readonly task: string; readonly name?: unknown };
-type Scored = {
+export type TaskItem = {
+	readonly task: string;
+	readonly name?: unknown;
+	readonly agent?: string;
+};
+// The agent is the item's own, or the default task agent.
+export type Pending = {
 	readonly index: number;
 	readonly item: TaskItem;
-	readonly stored: Stored;
+	readonly agent: string;
 };
+type Scored = Pending & { readonly stored: Stored };
 
 const MAX_PARALLEL = 4;
-const ROLE = "general-purpose";
 const ROLE_BY_LEVEL: Record<Level, string | undefined> = {
 	0: ROLES.small,
 	1: undefined,
@@ -51,23 +57,33 @@ export const streamedFetch: Fetch = async (url, init) => {
 
 // One limit covers the batch. Aborting also ends the SDK's retry wait, so no request follows a skip.
 // A provider passed over once is dropped for items that start later, and only within this batch.
+// An item the check skips sends nothing, and its reason is its line.
 export async function scoreItems(
-	items: readonly { index: number; item: TaskItem }[],
+	items: readonly Pending[],
 	context: string,
-	{ attempts, keys }: Routing,
+	{ attempts, keys, facts }: Batch,
 ): Promise<Scored[]> {
 	const limit = new AbortController();
 	const timer = setTimeout(() => limit.abort(LIMIT_REACHED), ROUTING_LIMIT_MS);
 	const passedOver = new Set<Provider>();
 	try {
-		return await mapLimit(items, MAX_PARALLEL, async ({ index, item }) => {
+		return await mapLimit(items, MAX_PARALLEL, async (pending) => {
+			const { item, agent } = pending;
+			const reason = itemCheck(agent, facts);
+			if (reason !== undefined) return { ...pending, stored: skipped(reason) };
 			const routing = {
 				attempts: attempts.filter((a) => !passedOver.has(a.provider)),
 				keys,
 				onFallback: (p: Provider) => void passedOver.add(p),
 			};
-			const decision = await scoreItem(item, context, routing, limit.signal);
-			return { index, item, stored: toStored(decision) };
+			const decision = await scoreItem(
+				item,
+				context,
+				roleOf(agent, facts),
+				routing,
+				limit.signal,
+			);
+			return { ...pending, stored: toStored(decision) };
 		});
 	} finally {
 		clearTimeout(timer);
@@ -77,13 +93,14 @@ export async function scoreItems(
 function scoreItem(
 	item: TaskItem,
 	context: string,
+	role: string,
 	routing: Pick<RouteInput, "attempts" | "keys" | "onFallback">,
 	signal: AbortSignal,
 ): Promise<Decision | Skipped> {
 	return route({
 		parts: [tier],
 		state: {
-			role: ROLE,
+			role,
 			description: typeof item.name === "string" ? item.name : "",
 			task: buildPrompt(item.task, context),
 		},
@@ -93,14 +110,15 @@ function scoreItem(
 	});
 }
 
+const skipped = (reason: string): Stored => ({
+	role: undefined,
+	line: `skipped, ${reason}`,
+});
+
 function toStored(decision: Decision | Skipped): Stored {
-	const skip = (reason: string): Stored => ({
-		role: undefined,
-		line: `skipped, ${reason}`,
-	});
-	if ("skipped" in decision) return skip(decision.skipped);
+	if ("skipped" in decision) return skipped(decision.skipped);
 	const part = decision.parts[tier.key];
-	if (!part) return skip("bad reply");
+	if (!part) return skipped("bad reply");
 	const role = ROLE_BY_LEVEL[part.level];
 	const p = formatProbability(part.probabilities[part.level]);
 	return {

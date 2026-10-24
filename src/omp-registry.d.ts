@@ -15,3 +15,10 @@ declare module "@oh-my-pi/pi-coding-agent/extensibility/plugins/loader" {
 declare module "@oh-my-pi/pi-utils" {
 	export function getPluginsLockfile(home?: string): string;
 }
+
+declare module "@oh-my-pi/pi-coding-agent/extensibility/plugins/manager" {
+	export class PluginManager {
+		constructor(cwd?: string);
+		setPluginSetting(name: string, key: string, value: unknown): Promise<void>;
+	}
+}

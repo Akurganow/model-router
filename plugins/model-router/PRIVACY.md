@@ -2,12 +2,14 @@
 
 model-router is a Claude Code plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-10-23.
+2026-10-24.
 
 ## Where requests go
 
-The plugin asks Jev to score each Agent tool call it routes. Jev answers on one
-or two providers:
+The plugin asks Jev to score each Agent tool call it routes. Under the default
+`core` scope, only the four built-in agents route. [The extended
+scope](#the-extended-scope) adds the others. Jev answers on one or two
+providers:
 
 - TypeSafe, at https://api.typesafe.ai/v1/systemone, with your TypeSafe key
 - OpenRouter, at https://openrouter.ai/api/v1/systemone, with your OpenRouter
@@ -45,7 +47,12 @@ holds:
 
 - the subagent's task text, condensed and with token-shaped strings masked.
   A text over 12,000 characters keeps its start and its end
-- the subagent's type
+- the agent's description, as Claude Code offers it, condensed and with
+  token-shaped strings masked, capped at 500 characters. A missing or blank
+  description sends `An agent with no description.` Under the default scope
+  these are the built-in agents' descriptions, unless you replace a built-in
+  agent with your own. Under `extended`, they are the descriptions of the
+  agents routed then
 - the caller's one-line description of the task
 - the Jev alias `jev-latest`, and two fixed scoring questions, `tier` and
   `work`, with their three descriptions each, text that ships with the plugin.
@@ -73,6 +80,19 @@ key identifies your account to its provider. The plugin sends no telemetry and
 no identifier of you or your machine. With Claude Code's `--debug` flag, the
 plugin writes each request body to your debug log, in numbered pieces when it
 is long. No key is ever written.
+
+## The extended scope
+
+Under `extended`, the plugin routes every Agent call that passes no model and
+no name, except a fork. That includes your user, project and plugin agents.
+
+- The description and the task text of each such agent leave your machine, as
+  What the plugin sends describes.
+- A hand-written description can hold private names, such as a client, a
+  product or a team. The plugin masks token-shaped strings only. Read your
+  agents' descriptions before you set `extended`.
+- The plugin replaces the model and effort that an agent's definition sets,
+  because Claude Code does not expose them.
 
 ## Requests and billing
 
@@ -108,31 +128,38 @@ request on. The plugin author has no access to those requests.
 The plugin stores nothing on disk itself. With `--debug`, Claude Code writes
 each request body to its debug log file. In memory the plugin holds the
 configured keys while the hook is registered. It also holds the latest source
-of each agent name Claude Code offers, such as `built-in`. Claude Code keeps
-your API keys in your system's secure storage as sensitive plugin options. The
-plugin reads a key only for a provider the `provider` option allows, and only
-to send it as the bearer token of a request to that provider. When the
-TypeSafe key option is empty, the plugin reads that key from the environment
-variable `TYPESAFE_API_KEY`. When the OpenRouter key option is empty, it reads
-`OPENROUTER_API_KEY`. It reads nothing else from the environment. A key in
-either variable stays wherever you set it, for example in plaintext in a
-settings file.
+and description of each agent name Claude Code offers, such as `built-in`.
+Claude Code keeps your API keys in your system's secure storage as sensitive
+plugin options. The plugin reads a key only for a provider the `provider`
+option allows, and only to send it as the bearer token of a request to that
+provider. When the TypeSafe key option is empty, the plugin reads that key
+from the environment variable `TYPESAFE_API_KEY`. When the OpenRouter key
+option is empty, it reads `OPENROUTER_API_KEY`. A key in either variable stays
+wherever you set it, for example in plaintext in a settings file. It is
+visible to every process Claude Code starts.
+
+The plugin reads no other environment variable. The `config` tool reports only
+whether a key is set, never the key, its length or any part of it.
 
 A project can set either variable in the `env` block of its Claude Code
 project settings. When the matching key option is empty, the plugin then sends
 the task text to the account that project key belongs to.
 
-The provider choice lives in your Claude Code settings. The
-`/model-router:provider` command writes one plugin option, `provider`, and
-nothing else. Claude Code ignores plugin options in project and local
-settings, so a project cannot change the provider.
+The provider and scope choices live in your Claude Code settings, as the plugin
+options `provider` and `scope`. The plugin writes them in two cases only. You
+pick a value in the dialog that the `config` tool opens. Or you type
+`/model-router:provider` or `/model-router:scope` with a value at your own
+prompt. A command from any other origin writes nothing. The plugin writes no
+other option and no file. Claude Code ignores plugin options in project and
+local settings, so a project cannot change either option.
 The lines the plugin prints per call go to your own transcript and, with
 `--debug`, to your debug log.
 
 ## Your choices
 
 Set `provider` to `typesafe` or `openrouter` to keep each call with one
-company. Remove the keys from the plugin's configuration and from both
+company. Keep `scope` at `core` to route the four built-in agents only.
+Remove the keys from the plugin's configuration and from both
 variables, and the plugin skips routing. Disable the plugin and nothing is
 sent.
 

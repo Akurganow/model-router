@@ -4,8 +4,11 @@ import {
 	BUDGET_CHARS,
 	buildPrompt,
 	contextText,
+	NO_DESCRIPTION,
 	OMISSION_MARKER,
 	prepareBrief,
+	ROLE_CAP,
+	roleText,
 } from "./brief.ts";
 
 // BUDGET_CHARS 12000, marker 31 characters: head floor(2/3 * 11969), tail the rest.
@@ -204,4 +207,45 @@ test("contextText keeps a non-blank string as it is", () => {
 test("contextText drops a blank string and any value that is not a string", () => {
 	for (const value of ["", "  \n\t ", undefined, null, 42, { text: "notes" }])
 		assert.equal(contextText(value), "");
+});
+
+test("the role cap and the neutral line are fixed", () => {
+	assert.equal(ROLE_CAP, 500);
+	assert.equal(NO_DESCRIPTION, "An agent with no description.");
+});
+
+test("a description of exactly the cap comes back whole, one unit more is cut", () => {
+	assert.equal(roleText("x".repeat(ROLE_CAP)), "x".repeat(ROLE_CAP));
+	assert.equal(roleText("x".repeat(ROLE_CAP + 1)), "x".repeat(ROLE_CAP));
+});
+
+test("whitespace runs collapse to one space and the ends are trimmed", () => {
+	assert.equal(
+		roleText("  Reviews\n\n code \t changes  "),
+		"Reviews code changes",
+	);
+});
+
+test("a key beyond the cap is masked before the cut", () => {
+	const key = "sk-abcdefghijklmnop";
+	const out = roleText(`${"x ".repeat(240)}${key}`);
+	assert.ok(!out.includes("sk-"));
+	assert.ok(out.length <= ROLE_CAP);
+	const split = roleText(`${"x".repeat(ROLE_CAP - 5)} ${key}`);
+	assert.ok(!split.includes("sk-"));
+	assert.ok(split.endsWith("***"));
+});
+
+test("a surrogate pair at the boundary is not split", () => {
+	const out = roleText(`${"x".repeat(ROLE_CAP - 1)}\u{1F600}`);
+	assert.equal(out, "x".repeat(ROLE_CAP - 1));
+	const whole = roleText(`${"x".repeat(ROLE_CAP - 2)}\u{1F600}`);
+	assert.equal(whole.length, ROLE_CAP);
+	assert.ok(whole.endsWith("\u{1F600}"));
+});
+
+test("a non-string, missing or blank description gives the neutral line", () => {
+	for (const input of [undefined, null, 7, {}, "", " \n\t "]) {
+		assert.equal(roleText(input), NO_DESCRIPTION);
+	}
 });

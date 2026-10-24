@@ -1,15 +1,17 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
+import { AGENTS, extend } from "./omp-fake-agents.ts";
 import {
 	KEY,
 	KEY_VARIABLE,
+	lockfileScoped,
 	lockfileWith,
 	OR_KEY,
 	OR_VARIABLE,
 	setEnv,
 	useWorld,
 } from "./omp-fakes.ts";
-import { checkGates } from "./omp-gates.ts";
+import { checkGates, readSettings } from "./omp-gates.ts";
 import { plan } from "./provider.ts";
 
 const world = useWorld();
@@ -26,25 +28,15 @@ const openOr = (key = OR_KEY) => ({
 	keys: { openrouter: key },
 });
 
-const ctx = () =>
-	({
-		cwd: "/work",
-		hasUI: true,
-		ui: { notify: () => undefined },
-		modelRegistry: {
-			getApiKeyForProvider: (provider: string) => {
-				world.asked.push(provider);
-				return world.credential(provider);
-			},
-		},
-		models: {
-			resolve: (spec: string) => (world.resolvable.has(spec) ? {} : undefined),
-		},
-	}) as const;
+const ctx = world.ctx;
 const gates = () => checkGates(world.imports, world.pi, ctx());
 const throws = () => {
 	throw new Error("boom");
 };
+const unreadable = () => [
+	{ ...world.imports, getPluginSettings: async () => throws() },
+	{ ...world.imports, getPluginsLockfile: throws },
+];
 
 test("with every gate open the attempts and their key come back", async () => {
 	assert.deepEqual(await gates(), open());
@@ -165,10 +157,7 @@ test("a missing lockfile or a value stored under another name means typesafe", a
 });
 
 test("a settings read that throws closes the gate and reads no key", async () => {
-	for (const imports of [
-		{ ...world.imports, getPluginSettings: async () => throws() },
-		{ ...world.imports, getPluginsLockfile: throws },
-	])
+	for (const imports of unreadable())
 		assert.deepEqual(await checkGates(imports, world.pi, ctx()), {
 			closed: "settings unreadable",
 		});
@@ -257,4 +246,129 @@ test("a throwing lookup, discovery or resolver closes the gate", async () => {
 	assert.deepEqual(await checkGates(world.imports, world.pi, broken), {
 		closed: "no @smol or @slow model",
 	});
+});
+
+test("one read gives the provider and the scope", async () => {
+	assert.deepEqual(await readSettings(world.imports, "/work"), {
+		provider: "typesafe",
+		scope: "core",
+	});
+	world.lockfile = {
+		plugins: {},
+		settings: { "model-router-omp": { provider: "auto", scope: "extended" } },
+	};
+	assert.deepEqual(await readSettings(world.imports, "/work"), {
+		provider: "auto",
+		scope: "extended",
+	});
+});
+
+const scopes: [string, unknown, unknown, string][] = [
+	["no value", undefined, undefined, "core"],
+	["a global extended", "extended", undefined, "extended"],
+	["a project extended over the global core", "core", "extended", "extended"],
+	["a project core over the global extended", "extended", "core", "core"],
+	["an unknown project value", "extended", "wide", "core"],
+	["an unknown global value", "wide", undefined, "core"],
+];
+for (const [name, global, project, scope] of scopes)
+	test(`scope: ${name} gives ${scope}`, async () => {
+		world.lockfile = lockfileScoped(global);
+		if (project !== undefined) world.project = { scope: project };
+		assert.equal((await readSettings(world.imports, "/work"))?.scope, scope);
+	});
+
+test("an unreadable lockfile or settings read gives no settings", async () => {
+	for (const imports of unreadable())
+		assert.equal(await readSettings(imports, "/work"), undefined);
+	world.lockfile = "{ not json";
+	assert.equal(await readSettings(world.imports, "/work"), undefined);
+});
+
+const forAgent = (agent: string, modelRole?: string) =>
+	checkGates(world.imports, world.pi, ctx(), { agent, modelRole });
+
+for (const name of [
+	"task",
+	"scout",
+	"sonic",
+	"reviewer",
+	"security-reviewer",
+	"helper",
+	"constructor",
+])
+	test(`extended: ${name} passes the item check`, async () => {
+		extend(world);
+		assert.deepEqual(await forAgent(name), open());
+	});
+
+const skips: [string, string, () => void][] = [
+	["pinned", "pinned sets its own model", () => undefined],
+	[
+		"scout",
+		"scout model override set",
+		() => (world.config["task.agentModelOverrides"] = { scout: "m" }),
+	],
+	[
+		"constructor",
+		"constructor model override set",
+		() => (world.config["task.agentModelOverrides"] = { constructor: "m" }),
+	],
+	[
+		"task",
+		"task model role set",
+		() => (world.config.modelRoles = { task: "m" }),
+	],
+	[
+		"sonic",
+		"sonic agent disabled",
+		() => (world.config["task.disabledAgents"] = ["sonic"]),
+	],
+	["ghost", "ghost agent unknown", () => undefined],
+	["scout", "no @smol or @slow model", () => world.resolvable.clear()],
+];
+for (const [name, reason, close] of skips)
+	test(`extended: ${name} is skipped with "${reason}"`, async () => {
+		extend(world);
+		close();
+		assert.deepEqual(await forAgent(name), { closed: reason });
+	});
+
+test("extended: a failed discovery skips with its own reason", async () => {
+	extend(world);
+	const pi = { ...world.pi, pi: { ...world.pi.pi, discoverAgents: throws } };
+	const result = await checkGates(world.imports, pi, ctx(), { agent: "scout" });
+	assert.deepEqual(result, { closed: "scout agent discovery failed" });
+});
+
+test("extended: a user's model for one agent leaves the others routed", async () => {
+	extend(world);
+	world.config.modelRoles = { task: "m" };
+	world.config["task.agentModelOverrides"] = { sonic: "m" };
+	assert.deepEqual(await forAgent("scout"), open());
+	assert.deepEqual(await forAgent("constructor"), open());
+});
+
+test("an agent outside the core scope is skipped", async () => {
+	world.agents = [...AGENTS];
+	assert.deepEqual(await forAgent("scout"), {
+		closed: "scout is outside the core scope",
+	});
+});
+
+test("a spawn keeps the agent's own model role or nothing", async () => {
+	extend(world);
+	assert.deepEqual(await forAgent("scout", "smol"), open());
+	assert.deepEqual(await forAgent("seance", "slow"), {
+		closed:
+			"seance spawns without the hook omp gives plugins, so its model cannot change",
+	});
+	assert.deepEqual(await forAgent("scout"), open());
+	assert.deepEqual(await forAgent("scout", "slow"), {
+		closed: "scout spawns with another model role",
+	});
+	for (const name of ["task", "helper"])
+		assert.deepEqual(await forAgent(name, "smol"), {
+			closed: `${name} spawns with another model role`,
+		});
 });
