@@ -1,5 +1,5 @@
 import { contextText } from "./brief.ts";
-import { checkGates, resolves } from "./omp-gates.ts";
+import { checkGates, resolves, scopeGates } from "./omp-gates.ts";
 import { scoreItems, type TaskItem } from "./omp-score.ts";
 import { createStore } from "./omp-store.ts";
 import type {
@@ -61,7 +61,7 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		if (!Array.isArray(tasks)) return;
 		const items = eligibleItems(tasks);
 		if (items.length === 0) return;
-		const gates = await checkGates(omp, pi, ctx);
+		const gates = await scopeGates(omp, pi, ctx);
 		if ("closed" in gates) {
 			const line = `skipped, ${gates.closed}`;
 			return report(

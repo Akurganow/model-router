@@ -5,6 +5,8 @@ import { getPluginsLockfile } from "@oh-my-pi/pi-utils";
 
 // src/brief.ts
 var BUDGET_CHARS = 12e3;
+var ROLE_CAP = 500;
+var NO_DESCRIPTION = "An agent with no description.";
 var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
 var HEAD_SHARE = 2 / 3;
 var CONTEXT_CAP_CHARS = 3e3;
@@ -49,6 +51,13 @@ function buildPrompt(task, context) {
 }
 function contextText(context) {
   return typeof context === "string" && context.trim() !== "" ? context : "";
+}
+function roleText(description) {
+  if (typeof description !== "string") return NO_DESCRIPTION;
+  const text = redact(description).replace(/\s+/g, " ").trim();
+  if (text === "") return NO_DESCRIPTION;
+  const cut = text.slice(0, ROLE_CAP);
+  return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
 }
 
 // src/omp-gates.ts
@@ -1041,6 +1050,11 @@ var KEY_VARIABLES = {
   openrouter: "OPENROUTER_API_KEY"
 };
 async function checkGates(omp, pi, ctx) {
+  const gates = await scopeGates(omp, pi, ctx);
+  if ("closed" in gates) return gates;
+  return { attempts: gates.attempts, keys: gates.keys };
+}
+async function scopeGates(omp, pi, ctx) {
   let value;
   try {
     value = await readProvider(omp, ctx.cwd);
@@ -1049,8 +1063,13 @@ async function checkGates(omp, pi, ctx) {
   }
   const routing = await findKeys(ctx, value);
   if (routing.attempts.length === 0) return { closed: "key unset" };
-  const closed = settingsGate(omp.lookup, pi.pi.settings) ?? await agentGate(pi, ctx) ?? modelsGate(ctx);
-  return closed === void 0 ? routing : { closed };
+  const settingsClosed = settingsGate(omp.lookup, pi.pi.settings);
+  if (settingsClosed !== void 0) return { closed: settingsClosed };
+  const agent = await findTaskAgent(pi, ctx);
+  if ("closed" in agent) return agent;
+  const modelsClosed = modelsGate(ctx);
+  if (modelsClosed !== void 0) return { closed: modelsClosed };
+  return { ...routing, role: roleText(agent.description) };
 }
 async function readProvider(omp, cwd) {
   const [global, effective] = await Promise.all([
@@ -1120,13 +1139,13 @@ function settingsGate(lookup2, settings) {
   return void 0;
 }
 var CUSTOM_AGENT = "custom task agent";
-async function agentGate(pi, ctx) {
+async function findTaskAgent(pi, ctx) {
   try {
     const { agents } = await pi.pi.discoverAgents(ctx.cwd);
     const found = agents.find((agent) => agent.name === TASK);
-    return found?.source === BUNDLED ? void 0 : CUSTOM_AGENT;
+    return found?.source === BUNDLED ? { description: found.description } : { closed: CUSTOM_AGENT };
   } catch {
-    return CUSTOM_AGENT;
+    return { closed: CUSTOM_AGENT };
   }
 }
 function modelsGate(ctx) {
@@ -1268,7 +1287,6 @@ var tier = {
 
 // src/omp-score.ts
 var MAX_PARALLEL = 4;
-var ROLE = "general-purpose";
 var ROLE_BY_LEVEL = {
   0: ROLES.small,
   1: void 0,
@@ -1289,7 +1307,7 @@ var streamedFetch = async (url, init) => {
     headers: reply.headers
   });
 };
-async function scoreItems(items, context, { attempts, keys }) {
+async function scoreItems(items, context, { attempts, keys, role }) {
   const limit = new AbortController();
   const timer = setTimeout(() => limit.abort(LIMIT_REACHED), ROUTING_LIMIT_MS);
   const passedOver = /* @__PURE__ */ new Set();
@@ -1300,18 +1318,24 @@ async function scoreItems(items, context, { attempts, keys }) {
         keys,
         onFallback: (p) => void passedOver.add(p)
       };
-      const decision = await scoreItem(item, context, routing, limit.signal);
+      const decision = await scoreItem(
+        item,
+        context,
+        role,
+        routing,
+        limit.signal
+      );
       return { index, item, stored: toStored(decision) };
     });
   } finally {
     clearTimeout(timer);
   }
 }
-function scoreItem(item, context, routing, signal) {
+function scoreItem(item, context, role, routing, signal) {
   return route({
     parts: [tier],
     state: {
-      role: ROLE,
+      role,
       description: typeof item.name === "string" ? item.name : "",
       task: buildPrompt(item.task, context)
     },
@@ -1454,7 +1478,7 @@ function createRouter(omp, pi) {
     if (!Array.isArray(tasks)) return;
     const items = eligibleItems(tasks);
     if (items.length === 0) return;
-    const gates = await checkGates(omp, pi, ctx);
+    const gates = await scopeGates(omp, pi, ctx);
     if ("closed" in gates) {
       const line = `skipped, ${gates.closed}`;
       return report(

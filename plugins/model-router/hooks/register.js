@@ -20,6 +20,8 @@ function clearTimeout(timer) {
 
 // src/brief.ts
 var BUDGET_CHARS = 12e3;
+var ROLE_CAP = 500;
+var NO_DESCRIPTION = "An agent with no description.";
 var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
 var HEAD_SHARE = 2 / 3;
 var REDACT_PATTERNS = [
@@ -49,6 +51,13 @@ function redact(text) {
     (t, [pattern, replacement]) => t.replace(pattern, replacement),
     text
   );
+}
+function roleText(description) {
+  if (typeof description !== "string") return NO_DESCRIPTION;
+  const text = redact(description).replace(/\s+/g, " ").trim();
+  if (text === "") return NO_DESCRIPTION;
+  const cut = text.slice(0, ROLE_CAP);
+  return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
 }
 
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
@@ -1210,7 +1219,7 @@ var offered = /* @__PURE__ */ new Map();
 function register(on, options) {
   offered.clear();
   on("agent.offer", (_, e, next) => {
-    offered.set(e.agent, e.source);
+    offered.set(e.agent, { source: e.source, description: e.description });
     return next(e);
   }).catch(passOn);
   on(
@@ -1249,7 +1258,7 @@ function useClockTimers($) {
 var nonEmpty = (v) => typeof v === "string" && v !== "" ? v : void 0;
 function routable(call) {
   const agent = call.subagent_type ?? DEFAULT_AGENT;
-  return call.name === void 0 && call.model === void 0 && ROUTED_AGENTS.has(agent) && offered.get(agent) === BUILT_IN;
+  return call.name === void 0 && call.model === void 0 && ROUTED_AGENTS.has(agent) && offered.get(agent)?.source === BUILT_IN;
 }
 async function denied($, call) {
   const {
@@ -1265,7 +1274,9 @@ async function routeAgentCall($, call, next, options) {
   useClockTimers($);
   if (!routable(call) || await denied($, call)) return next(call);
   const state = {
-    role: call.subagent_type ?? DEFAULT_AGENT,
+    role: roleText(
+      offered.get(call.subagent_type ?? DEFAULT_AGENT)?.description
+    ),
     description: call.description,
     task: prepareBrief(call.prompt)
   };

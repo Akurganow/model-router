@@ -150,7 +150,7 @@ The request body holds:
 
 - The item's task text and the batch `context`. Together they stay within 12,000 characters, and the context takes at most 3,000 of them.
 - The item's name, sent as the description.
-- A fixed role name, the `jev-latest` alias, and one fixed question about judgment.
+- The description of omp's `task` agent, the `jev-latest` alias, and one fixed question about judgment.
 
 Before sending, the plugin condenses the text. It replaces each fenced code block with a line count. It masks Bearer tokens, `sk-` keys, and values assigned to names that end in KEY, TOKEN, SECRET or PASSWORD.
 

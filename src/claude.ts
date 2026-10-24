@@ -1,5 +1,5 @@
 import type { Fetch } from "@typesafe-ai/sdk";
-import { prepareBrief } from "./brief.ts";
+import { prepareBrief, roleText } from "./brief.ts";
 import {
 	type Decision,
 	decisionSuffix,
@@ -54,7 +54,7 @@ type Next = {
 type Hook<E, R = Outcome> = ($: Engine, e: E, next: Next) => Promise<R>;
 type CommandRun = { command: string; args: string };
 type CommandOutput = { text: string };
-type AgentOffer = { agent: string; source: string };
+type AgentOffer = { agent: string; source: string; description: string };
 type AgentCall = {
 	tool: "Agent";
 	tool_use_id?: string;
@@ -118,13 +118,13 @@ const KEY_OPTIONS: Readonly<Record<Provider, keyof Options>> = {
 	openrouter: "openrouter_api_key",
 };
 
-// The latest source of each offered agent name. A user or plugin agent can take a built-in's name.
-const offered = new Map<string, string>();
+// The latest offer of each agent name. A user or plugin agent can take a built-in's name.
+const offered = new Map<string, { source: string; description: string }>();
 
 export function register(on: On, options: Options): void {
 	offered.clear();
 	on("agent.offer", (_, e, next) => {
-		offered.set(e.agent, e.source);
+		offered.set(e.agent, { source: e.source, description: e.description });
 		return next(e);
 	}).catch(passOn);
 	on("tool.call", { tool: "Agent" }, ($, e, next) =>
@@ -180,7 +180,7 @@ function routable(call: AgentCall): boolean {
 		call.name === undefined &&
 		call.model === undefined &&
 		ROUTED_AGENTS.has(agent) &&
-		offered.get(agent) === BUILT_IN
+		offered.get(agent)?.source === BUILT_IN
 	);
 }
 
@@ -205,7 +205,9 @@ async function routeAgentCall(
 	useClockTimers($);
 	if (!routable(call) || (await denied($, call))) return next(call);
 	const state = {
-		role: call.subagent_type ?? DEFAULT_AGENT,
+		role: roleText(
+			offered.get(call.subagent_type ?? DEFAULT_AGENT)?.description,
+		),
 		description: call.description,
 		task: prepareBrief(call.prompt),
 	};

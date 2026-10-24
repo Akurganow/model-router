@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { roleText } from "./brief.ts";
 import type { RouteInput } from "./compose.ts";
 import type { Context, Lookup, OmpImports, Pi } from "./omp-types.ts";
 import { isRecord } from "./part.ts";
@@ -18,14 +19,27 @@ const KEY_VARIABLES: Readonly<Record<Provider, string>> = {
 };
 
 export type Routing = Pick<RouteInput, "attempts" | "keys">;
-type Gates = Routing | { readonly closed: string };
+export type Scoped = Routing & { readonly role: string };
+type Closed = { readonly closed: string };
 
-// The task agent and the user's own routing decide first. Each gate fails closed, and the keys are the cheapest check.
+// The spawn check needs the verdict alone.
 export async function checkGates(
 	omp: OmpImports,
 	pi: Pi,
 	ctx: Context,
-): Promise<Gates> {
+): Promise<Routing | Closed> {
+	const gates = await scopeGates(omp, pi, ctx);
+	if ("closed" in gates) return gates;
+	return { attempts: gates.attempts, keys: gates.keys };
+}
+
+// The task agent and the user's own routing decide first. Each gate fails closed, and the keys are the cheapest check.
+// The one discovery call also gives the task agent's description, which becomes the role of every request.
+export async function scopeGates(
+	omp: OmpImports,
+	pi: Pi,
+	ctx: Context,
+): Promise<Scoped | Closed> {
 	let value: string;
 	try {
 		value = await readProvider(omp, ctx.cwd);
@@ -34,11 +48,13 @@ export async function checkGates(
 	}
 	const routing = await findKeys(ctx, value);
 	if (routing.attempts.length === 0) return { closed: "key unset" };
-	const closed =
-		settingsGate(omp.lookup, pi.pi.settings) ??
-		(await agentGate(pi, ctx)) ??
-		modelsGate(ctx);
-	return closed === undefined ? routing : { closed };
+	const settingsClosed = settingsGate(omp.lookup, pi.pi.settings);
+	if (settingsClosed !== undefined) return { closed: settingsClosed };
+	const agent = await findTaskAgent(pi, ctx);
+	if ("closed" in agent) return agent;
+	const modelsClosed = modelsGate(ctx);
+	if (modelsClosed !== undefined) return { closed: modelsClosed };
+	return { ...routing, role: roleText(agent.description) };
 }
 
 // The effective settings hold the project's value when it sets one and the global value otherwise.
@@ -126,13 +142,18 @@ function settingsGate(lookup: Lookup, settings: unknown): string | undefined {
 
 const CUSTOM_AGENT = "custom task agent";
 
-async function agentGate(pi: Pi, ctx: Context): Promise<string | undefined> {
+async function findTaskAgent(
+	pi: Pi,
+	ctx: Context,
+): Promise<Closed | { readonly description: unknown }> {
 	try {
 		const { agents } = await pi.pi.discoverAgents(ctx.cwd);
 		const found = agents.find((agent) => agent.name === TASK);
-		return found?.source === BUNDLED ? undefined : CUSTOM_AGENT;
+		return found?.source === BUNDLED
+			? { description: found.description }
+			: { closed: CUSTOM_AGENT };
 	} catch {
-		return CUSTOM_AGENT;
+		return { closed: CUSTOM_AGENT };
 	}
 }
 

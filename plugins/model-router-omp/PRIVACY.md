@@ -2,7 +2,7 @@
 
 model-router for Oh My Pi is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-10-23.
+2026-10-24.
 
 ## Where requests go
 
@@ -50,7 +50,11 @@ holds:
 - a capped part of the batch `context`, at most 3000 characters, prepared the
   same way and placed after the task text. Task text and context together stay
   within 12,000 characters
-- the role, always `general-purpose`
+- the role: the description of the `task` agent that omp discovers, condensed
+  and with token-shaped strings masked, capped at 500 characters. A missing or
+  blank description sends `An agent with no description.` Under the default
+  scope this is the bundled agent's description, unless you replace it with
+  your own
 - the item's `name` as the description, or an empty description when it has
   none
 - the Jev alias `jev-latest`, and one fixed scoring question, `tier`, with
@@ -139,7 +143,8 @@ points it reads omp's settings `modelRoles`, `task.agentModelOverrides` and
 `task.disabledAgents`, and the source of each agent omp discovers, to see
 whether your own `task` agent replaced the bundled one. It also checks whether
 the `@smol` and `@slow` roles resolve to a model. Nothing from these leaves
-your machine.
+your machine, except the `task` agent's description, which the request carries
+as described above.
 
 The lines the plugin prints per batch go to your omp notifications, or to
 standard error when omp has no UI. The setup skill writes only the

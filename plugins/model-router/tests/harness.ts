@@ -88,6 +88,7 @@ type Setup = {
 	replies?: readonly Reply[];
 	offline?: boolean;
 	offers?: Readonly<Record<string, string>>;
+	descriptions?: Readonly<Record<string, string>>;
 	decision?: ToolCheckDecision | "throw";
 	delayMs?: number;
 	env?: Readonly<Record<string, string>>;
@@ -195,17 +196,38 @@ const BUILT_IN_OFFERS: Readonly<Record<string, string>> = {
 	"claude-code-guide": BUILT_IN,
 };
 
-export const offer = ($: Engine, agent: string, source = BUILT_IN) =>
+// Short texts in the style of the descriptions Claude Code gives its built-in agents.
+const BUILT_IN_DESCRIPTIONS: Readonly<Record<string, string>> = {
+	"general-purpose":
+		"General-purpose agent for researching complex questions and executing multi-step tasks.",
+	claude: "Catch-all agent for any task that fits no more specific agent.",
+	Explore:
+		"Read-only search agent for broad fan-out searches across a codebase.",
+	Plan: "Software architect agent for designing implementation plans.",
+	"statusline-setup": "Configures the user's Claude Code status line setting.",
+	"claude-code-guide": "Answers questions about Claude Code and its SDK.",
+};
+
+export const offer = (
+	$: Engine,
+	agent: string,
+	source = BUILT_IN,
+	description = "",
+) =>
 	$.agent.offer({
 		agent,
-		description: "",
+		description,
 		source,
 		provider: { plugin: "engine", tier: "core" },
 	});
 
-export const offerAll = async ($: Engine, offers = BUILT_IN_OFFERS) => {
+export const offerAll = async (
+	$: Engine,
+	offers = BUILT_IN_OFFERS,
+	descriptions = BUILT_IN_DESCRIPTIONS,
+) => {
 	for (const [agent, source] of Object.entries(offers))
-		await offer($, agent, source);
+		await offer($, agent, source, descriptions[agent]);
 };
 
 export const callOnce = async (
@@ -215,7 +237,7 @@ export const callOnce = async (
 	setup: Setup = {},
 ) => {
 	const h = harness(on, setup);
-	await offerAll($, setup.offers);
+	await offerAll($, setup.offers, setup.descriptions);
 	const outcome: Outcome = await $.tool.call(agentCall(over));
 	return { h, outcome };
 };

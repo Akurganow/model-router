@@ -10,7 +10,7 @@ import {
 	type Skipped,
 } from "./compose.ts";
 import { tier } from "./model.ts";
-import { ROLES, type Routing } from "./omp-gates.ts";
+import { ROLES, type Scoped } from "./omp-gates.ts";
 import type { Stored } from "./omp-store.ts";
 import { formatProbability, type Level } from "./part.ts";
 import type { Provider } from "./provider.ts";
@@ -23,7 +23,6 @@ type Scored = {
 };
 
 const MAX_PARALLEL = 4;
-const ROLE = "general-purpose";
 const ROLE_BY_LEVEL: Record<Level, string | undefined> = {
 	0: ROLES.small,
 	1: undefined,
@@ -54,7 +53,7 @@ export const streamedFetch: Fetch = async (url, init) => {
 export async function scoreItems(
 	items: readonly { index: number; item: TaskItem }[],
 	context: string,
-	{ attempts, keys }: Routing,
+	{ attempts, keys, role }: Scoped,
 ): Promise<Scored[]> {
 	const limit = new AbortController();
 	const timer = setTimeout(() => limit.abort(LIMIT_REACHED), ROUTING_LIMIT_MS);
@@ -66,7 +65,13 @@ export async function scoreItems(
 				keys,
 				onFallback: (p: Provider) => void passedOver.add(p),
 			};
-			const decision = await scoreItem(item, context, routing, limit.signal);
+			const decision = await scoreItem(
+				item,
+				context,
+				role,
+				routing,
+				limit.signal,
+			);
 			return { index, item, stored: toStored(decision) };
 		});
 	} finally {
@@ -77,13 +82,14 @@ export async function scoreItems(
 function scoreItem(
 	item: TaskItem,
 	context: string,
+	role: string,
 	routing: Pick<RouteInput, "attempts" | "keys" | "onFallback">,
 	signal: AbortSignal,
 ): Promise<Decision | Skipped> {
 	return route({
 		parts: [tier],
 		state: {
-			role: ROLE,
+			role,
 			description: typeof item.name === "string" ? item.name : "",
 			task: buildPrompt(item.task, context),
 		},

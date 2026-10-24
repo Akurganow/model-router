@@ -1,4 +1,6 @@
 export const BUDGET_CHARS = 12000;
+export const ROLE_CAP = 500;
+export const NO_DESCRIPTION = "An agent with no description.";
 export const OMISSION_MARKER = "\n[middle of the brief omitted]\n";
 
 const HEAD_SHARE = 2 / 3;
@@ -55,4 +57,15 @@ export function buildPrompt(task: string, context: string): string {
 
 export function contextText(context: unknown): string {
 	return typeof context === "string" && context.trim() !== "" ? context : "";
+}
+
+// Redaction runs before the cut, and the cut drops a lone high surrogate so no half of a pair is sent.
+export function roleText(description: unknown): string {
+	if (typeof description !== "string") return NO_DESCRIPTION;
+	const text = redact(description).replace(/\s+/g, " ").trim();
+	if (text === "") return NO_DESCRIPTION;
+	const cut = text.slice(0, ROLE_CAP);
+	return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP
+		? cut.slice(0, -1)
+		: cut;
 }

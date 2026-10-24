@@ -53,12 +53,20 @@ type Handlers = {
 	) => Promise<SpawnResult | undefined>;
 };
 
+// The fields of an agent that discovery returns at omp 18.12.6. A bundled agent may have no description.
+export type DiscoveredAgent = {
+	name: string;
+	source: string;
+	model?: readonly string[];
+	description?: string;
+};
+
 export type Pi = {
 	on<E extends keyof Handlers>(event: E, handler: Handlers[E]): void;
 	pi: {
 		settings: unknown;
 		discoverAgents(
 			cwd: string,
-		): Promise<{ agents: readonly { name: string; source: string }[] }>;
+		): Promise<{ agents: readonly DiscoveredAgent[] }>;
 	};
 };

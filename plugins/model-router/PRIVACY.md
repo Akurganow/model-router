@@ -2,7 +2,7 @@
 
 model-router is a Claude Code plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-10-23.
+2026-10-24.
 
 ## Where requests go
 
@@ -45,7 +45,11 @@ holds:
 
 - the subagent's task text, condensed and with token-shaped strings masked.
   A text over 12,000 characters keeps its start and its end
-- the subagent's type
+- the agent's description, as Claude Code offers it, condensed and with
+  token-shaped strings masked, capped at 500 characters. A missing or blank
+  description sends `An agent with no description.` Under the default scope
+  these are the built-in agents' descriptions, unless you replace a built-in
+  agent with your own
 - the caller's one-line description of the task
 - the Jev alias `jev-latest`, and two fixed scoring questions, `tier` and
   `work`, with their three descriptions each, text that ships with the plugin.
@@ -108,10 +112,11 @@ request on. The plugin author has no access to those requests.
 The plugin stores nothing on disk itself. With `--debug`, Claude Code writes
 each request body to its debug log file. In memory the plugin holds the
 configured keys while the hook is registered. It also holds the latest source
-of each agent name Claude Code offers, such as `built-in`. Claude Code keeps
-your API keys in your system's secure storage as sensitive plugin options. The
-plugin reads a key only for a provider the `provider` option allows, and only
-to send it as the bearer token of a request to that provider. When the
+and description of each agent name Claude Code offers, such as `built-in`.
+Claude Code keeps your API keys in your system's secure storage as sensitive
+plugin options. The plugin reads a key only for a provider the `provider`
+option allows, and only to send it as the bearer token of a request to that
+provider. When the
 TypeSafe key option is empty, the plugin reads that key from the environment
 variable `TYPESAFE_API_KEY`. When the OpenRouter key option is empty, it reads
 `OPENROUTER_API_KEY`. It reads nothing else from the environment. A key in

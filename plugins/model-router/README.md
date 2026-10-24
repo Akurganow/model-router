@@ -26,10 +26,10 @@ asks six questions. The answers for this mod:
   provider the `provider` option allows. It reads no other environment
   variable and no file.
 - **Sees your session?** The arguments of each Agent tool call. It sends the
-  task, the description and the agent type. It reads `model`, `name` and
+  task, the description and the description of the agent. It reads `model`, `name` and
   `effort` to decide whether to route and whether to keep the caller's effort.
-  It also sees the name and source of each agent Claude Code offers, to tell a
-  built-in from a user or plugin agent. It asks Claude Code's permission
+  It also sees the name, source and description of each agent Claude Code
+  offers, to tell a built-in from a user or plugin agent and to describe it. It asks Claude Code's permission
   verdict for the call through `$.tool.check`, which opens no dialog and runs
   nothing. The verdict never leaves the machine. Between calls it keeps only
   the latest source of each agent name, in memory.
@@ -166,7 +166,8 @@ The second provider in the order gets a request only after the first fails,
 as below. Each key goes only to its own provider. The body holds:
 
 - the task text, condensed and redacted as below
-- the agent type and the caller's one-line description
+- the agent's description as Claude Code offers it, and the caller's
+  one-line description
 - the Jev alias `jev-latest` and two scoring questions with their
   three texts each, which ship with the plugin
 

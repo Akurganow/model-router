@@ -5,6 +5,7 @@ import { afterEach, beforeEach, mock } from "node:test";
 import { oneChunk } from "./omp-score.ts";
 import type {
 	Context,
+	DiscoveredAgent,
 	Lookup,
 	OmpImports,
 	Pi,
@@ -27,6 +28,8 @@ const STORED: Readonly<Record<string, string>> = {
 	openrouter: OR_KEY,
 };
 const PLUGIN = "model-router-omp";
+export const TASK_DESCRIPTION =
+	"General-purpose agent for researching and executing multi-step tasks.";
 
 // The global provider as omp's plugins lockfile stores it.
 export const lockfileWith = (provider: unknown, plugin = PLUGIN) => ({
@@ -90,7 +93,7 @@ const newState = () => ({
 	stderr: [] as string[],
 	sent: [] as Sent[],
 	config: {} as Config,
-	agents: [] as { name: string; source: string }[],
+	agents: [] as DiscoveredAgent[],
 	resolvable: new Set<string>(),
 	credential: (async (provider) => STORED[provider]) as (
 		provider: string,
@@ -114,7 +117,9 @@ const freshConfig = (): Config => ({
 function reset(state: State): void {
 	Object.assign(state, newState(), {
 		config: freshConfig(),
-		agents: [{ name: "task", source: "bundled" }],
+		agents: [
+			{ name: "task", source: "bundled", description: TASK_DESCRIPTION },
+		],
 		resolvable: new Set(["@smol", "@slow"]),
 	});
 }
