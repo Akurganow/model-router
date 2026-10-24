@@ -17,8 +17,8 @@ To install, run this line in a Claude Code session:
 [Anthropic's guide to trusting a mod](https://code.claude.com/docs/en/plugins/mods/overview#decide-whether-to-trust-a-mod)
 asks six questions. The answers for this mod:
 
-- **Acts on your machine as you?** No. It reads no files, writes none and
-  starts no program.
+- **Acts on your machine as you?** No. It reads no files, writes no files of
+  its own and starts no program.
 - **Reads your secrets?** Only its own TypeSafe and OpenRouter keys. Claude
   Code hands it the plugin's sensitive `api_key` and `openrouter_api_key`
   options from secure storage. When an option is empty, the mod reads the key
@@ -46,7 +46,7 @@ asks six questions. The answers for this mod:
 - **Acts without asking you?** No. It approves nothing, and it denies only its
   own tool when your permission rules deny that tool. Your permission rules
   and prompts decide every call. Every setting change waits for your choice in
-  the mod's dialog.
+  the mod's dialog or your own command.
 - **Spends your usage?** No model calls on your plan. Up to four requests per
   routed call go to TypeSafe or OpenRouter, each on its own key, as
   [What leaves the machine](#what-leaves-the-machine) counts them. An
@@ -241,9 +241,9 @@ that says the middle is omitted. Nothing else leaves the machine.
 
 Under the default `core` scope, the descriptions are those of the four
 built-in agents. Under `extended`, the descriptions and task text of your
-user, project and plugin agents leave too. A hand-written description can hold
-private names, and the mod masks only token-shaped strings. [PRIVACY.md](PRIVACY.md)
-lists what else the mod reads, stores and passes on.
+user, project and plugin agents leave too. [The extended
+scope](PRIVACY.md#the-extended-scope) says what that can expose, and
+[PRIVACY.md](PRIVACY.md) lists what else the mod reads, stores and passes on.
 
 With one provider, a routed call sends one request and up to two retries.
 The mod uses the official TypeSafe SDK. It retries a connection error, and a

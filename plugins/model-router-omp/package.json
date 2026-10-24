@@ -3,7 +3,7 @@
 	"version": "0.14.0",
 	"private": true,
 	"type": "module",
-	"description": "Routes Oh My Pi subagents to the smol or slow model role, judged by Jev. It sends the redacted task text and the agent's description to api.typesafe.ai, openrouter.ai or both, as its provider setting allows. The scope setting picks the agents: core routes the bundled task agent, extended routes every agent whose model you did not set. The plugin can store a key you type in its dialog.",
+	"description": "Routes Oh My Pi subagents to the smol or slow model role, judged by Jev. It sends the redacted task text and the agent's description, cut to 500 characters, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows. The scope setting picks the agents: core routes the bundled task agent, extended routes every agent whose model you did not set. A project can set scope, and extended there can raise spend on slow. The plugin can store a key you type in its dialog. A key set as an environment variable is visible to every process omp starts.",
 	"license": "MIT",
 	"homepage": "https://github.com/Akurganow/model-router",
 	"repository": "https://github.com/Akurganow/model-router",

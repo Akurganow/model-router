@@ -226,11 +226,11 @@ test("the key cap is 512", () => {
 test("the key question names the provider and the storage", () => {
 	const fresh = keyQuestion("typesafe", false);
 	assert.match(fresh, /TypeSafe/);
-	assert.match(fresh, /secure storage/);
+	assert.match(fresh, /credential store/);
 	assert.doesNotMatch(fresh, /replace/);
 	const replacing = keyQuestion("openrouter", true);
 	assert.match(replacing, /OpenRouter/);
-	assert.match(replacing, /secure storage/);
+	assert.match(replacing, /credential store/);
 	assert.match(replacing, /replaces/);
 });
 

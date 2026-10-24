@@ -138,7 +138,7 @@ export function keyFrom(answer: unknown): string | undefined {
 }
 
 export const keyQuestion = (provider: Provider, replaces: boolean): string =>
-	`Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's secure storage.${
+	`Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's credential store.${
 		replaces ? " It replaces the key that is set now." : ""
 	}`;
 

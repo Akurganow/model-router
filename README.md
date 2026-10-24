@@ -270,8 +270,7 @@ omp plugin uninstall model-router@model-router
 > OpenRouter.
 >
 > Each request also carries the agent's description. Under `extended`, the
-> descriptions and task text of your other agents leave the machine too. A
-> hand-written description can hold private names.
+> descriptions and task text of your other agents leave the machine too.
 
 Each plugin README lists the full request, and each privacy policy states the
 same in policy form:

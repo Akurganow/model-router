@@ -1,7 +1,7 @@
 {
 	"name": "model-router",
 	"version": "0.14.0",
-	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev. For each routed Agent call it sends the task text and the agent's description, condensed and with secrets masked, to api.typesafe.ai, openrouter.ai or both, as its provider option allows, each with its own key. The scope option picks the calls: core routes the four built-in agents, extended also routes user, project and plugin agents and sends their text. A config tool opens the plugin's own dialog to change both options.",
+	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev. For each routed Agent call it sends the task text and the agent's description, cut to 500 characters and with secrets masked, to api.typesafe.ai, openrouter.ai or both, as its provider option allows, each with its own key. The scope option picks the calls: core routes the four built-in agents, extended also routes user, project and plugin agents and sends their text. A config tool opens the plugin's own dialog to change both options. A key set as an environment variable is visible to every process Claude Code starts.",
 	"author": {
 		"name": "Akurganow",
 		"url": "https://github.com/Akurganow"

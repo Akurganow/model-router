@@ -58,6 +58,8 @@ The key question has four buttons:
 3. "Same, open the files for me". Do what button 2 does. Also open the file with the system opener: `open` on macOS, `xdg-open` on Linux, `start` on Windows.
 4. "Do nothing". Skip the key.
 
+A variable in the `.env` file reaches the environment of every process omp starts. Say so after button 2 or 3.
+
 The fallback button reads "Log in to the provider". Tell the user to run `/login typesafe` or `/login openrouter`.
 
 After button 2 or 3, wait until the user says the key is in place. Then call the tool with no setting and report the key line.

@@ -1265,7 +1265,7 @@ function keyFrom(answer) {
   const key = answer.trim();
   return key === "" || key.length > KEY_MAX_LENGTH || PADDED_LABELS.includes(key) ? void 0 : key;
 }
-var keyQuestion = (provider, replaces) => `Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's secure storage.${replaces ? " It replaces the key that is set now." : ""}`;
+var keyQuestion = (provider, replaces) => `Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's credential store.${replaces ? " It replaces the key that is set now." : ""}`;
 var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
 var TOOL_LABEL = "Model Router settings";
 var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
