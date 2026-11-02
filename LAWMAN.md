@@ -64,3 +64,9 @@ none
 ## Precedents
 
 none
+
+## Licenses
+
+reaches copies
+use non-commercial
+sources none
