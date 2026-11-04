@@ -3,6 +3,25 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.16.0 - 2026-11-04
+#### Features
+- (**scripts**) measure default-level threshold rules (c8e595d)
+- stay at the middle level unless an end is clearly more likely (f089899)
+- compare decision rules offline on recorded probabilities (543a588)
+- extend the calibration set and record per-case probabilities (90d6c29)
+#### Bug Fixes
+- address review findings on routing and the rule scripts (b30f5e4)
+- keep env effort, skip other plugins' spawns and stop leaking routing state (e538032)
+- route the subagent model at agent.spawn and its effort at turn.step (d9ffa6b)
+#### Documentation
+- state the 12,000-character task cap in the install descriptions (bbe4e8d)
+- describe the middle-default rule and the grown calibration set (df959f5)
+- describe routing at agent.spawn and turn.step (c701e4b)
+- amend the Lawman constitution to version 2 (dcacf2d)
+
+- - -
+
+
 ## v0.15.0 - 2026-10-24
 #### Features
 - add the scope option (7f24c57)
