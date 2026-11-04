@@ -249,7 +249,7 @@ pages were read on 2026-10-10.
 - **Mods reference** —
   <https://code.claude.com/docs/en/plugins/mods/reference> —
   undated, read 2026-10-10. The `tool.call` hook and how a hook rewrites an
-  event.
+  event. The plugin now sets the model at `agent.spawn`.
 
 ### Model launch posts
 

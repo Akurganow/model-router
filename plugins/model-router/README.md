@@ -30,12 +30,13 @@ asks six questions. The answers for this mod:
   `name` and `effort` to decide whether to route and whether to keep the
   caller's effort. It also sees the name, source and description of each agent
   Claude Code offers, to tell a built-in from a user or plugin agent and to
-  describe it. It asks Claude Code's permission verdict for the call through
-  `$.tool.check`, which opens no dialog and runs nothing. The verdict never
-  leaves the machine. Between calls it keeps only the latest source and
+  describe it. It reads the spawn of each subagent and the requests the
+  subagent then makes. Between calls it keeps only the latest source and
   description of each agent name, in memory.
-- **Changes your session?** Two arguments of that Agent tool call: `model`
-  and `effort`. It sets `effort` only when the call names none, or, under the
+- **Changes your session?** Two settings of the subagent: its `model` and its
+  `effort`. The mod sets the `model` when the subagent spawns, and the Agent
+  call stays as written. It sets `effort` on the subagent's own requests only
+  when the call names none, or, under the
   [extended scope](#which-calls-are-routed), replaces the one the agent's
   definition sets. It registers one tool the model can call,
   `mcp__model-router__config`. The tool reads the settings and opens the
@@ -62,14 +63,16 @@ This is the whole surface:
 | hook | `command.run{command=model-router:provider}` | Answers the `/model-router:provider` command. |
 | hook | `command.run{command=model-router:scope}` | Answers the `/model-router:scope` command. |
 | hook | `session.start` | Registers the `mcp__model-router__config` tool, at session start and after each plugin reload. |
-| hook | `tool.call{tool=Agent}` | Routes the Agent call. |
+| hook | `agent.spawn` | Scores the brief and sets the subagent's `model` before it starts. |
+| hook | `tool.call{tool=Agent}` | Passes the Agent call on unchanged and notes whether the caller set an `effort`. |
 | hook | `tool.call{tool=mcp__model-router__config}` | Answers the `config` tool: the settings and the dialogs. |
+| hook | `turn.step` | Sets the routed `effort` on the subagent's requests. |
 | call | `$.clock.after` | The TypeSafe SDK's timers run on it, for example its retry wait. |
 | call | `$.clock.sleep` | Times the 8 s limit. |
 | call | `$.config.set` | Writes the `provider` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. |
 | call | `$.env.get` | Reads `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY`, the only variables the mod reads. |
 | call | `$.http.fetch` | Sends the request to TypeSafe or OpenRouter. |
-| call | `$.tool.check` | Asks for the permission verdict of the call. |
+| call | `$.tool.check` | Asks for the permission verdict of a call to the `config` tool. |
 | call | `$.tool.register` | Registers the `config` tool. |
 | call | `$.ui.ask` | Opens the mod's dialog for a setting. |
 | call | `$.ui.log` | Writes the log line, and the request body to the debug log. |
@@ -264,14 +267,13 @@ recall a request in flight. A request can reach a provider even when its
 answer never returns. So a retry after a network failure may be billed more
 than once, and an abandoned first attempt may still be billed.
 
-The request is sent before Claude Code's permission check for the call.
-Before routing, the mod asks Claude Code's permission rules about the call's
-original arguments. If they deny the call, nothing is sent. A rule
-on the model the mod picks, a PreToolUse hook and the auto-mode classifier
-decide after the request left. A call that prompts you is sent before you
-answer. To read each request as it left, start Claude Code with `--debug`. The
-mod writes each request body to the debug log, in numbered pieces when it is
-long. The key is never written.
+The request is sent when the subagent spawns, after Claude Code's permission
+decision for the Agent call. A call that your rules or the auto-mode
+classifier deny never spawns, so nothing is sent. Auto mode reviews the Agent
+input as the model wrote it, and the mod does not rewrite it afterwards. A
+rule on the model the mod picks applies after the request left. To read each
+request as it left, start Claude Code with `--debug`. The mod writes each
+request body to the debug log, in numbered pieces when it is long. The key is never written.
 
 Any failure, from a missing key to a timeout, leaves the call unchanged. The
 log line then says `skipped` and names the cause, as
