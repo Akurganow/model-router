@@ -4,7 +4,14 @@ import { register } from "./claude.ts";
 
 type Hook = ($: unknown, e: unknown, next: unknown) => Promise<unknown>;
 
-const AGENT_CALL = 'tool.call {"tool":"Agent"}';
+const AGENT_CALL = "agent.spawn";
+const SPAWN = {
+	tool_use_id: "toolu_1",
+	prompt: "p",
+	description: "d",
+	subagentType: "general-purpose",
+	fork: false,
+};
 const CLOCK = {
 	after: () => ({ cancel() {} }),
 	sleep: () => new Promise(() => {}),
@@ -34,7 +41,7 @@ test("a new registration forgets the offers made before it", async () => {
 		ui: { log: async (text: string) => logs.push(text) },
 	};
 	const next = nextHook();
-	const call = { tool: "Agent", prompt: "p", description: "d" };
+	const call = SPAWN;
 
 	await registered()["agent.offer"]?.(
 		$,
@@ -95,11 +102,7 @@ async function routedCall(
 			{ agent: "general-purpose", source: "built-in" },
 			next,
 		);
-	await hooks[AGENT_CALL]?.(
-		$,
-		{ tool: "Agent", prompt: "p", description: "d" },
-		next,
-	);
+	await hooks[AGENT_CALL]?.($, SPAWN, next);
 	return { reads, requests, roles };
 }
 
@@ -140,13 +143,15 @@ test("under core a fresh registration with no offers sends no request", async ()
 	assert.deepEqual(requests, []);
 });
 
-test("register hooks the session start, the config tool and both commands by literal matcher", () => {
+test("register hooks the offers, the spawn, the steps, the session start, the config tool and both commands by literal matcher", () => {
 	assert.deepEqual(Object.keys(registered()).sort(), [
 		"agent.offer",
+		"agent.spawn",
 		'command.run {"command":"model-router:provider"}',
 		'command.run {"command":"model-router:scope"}',
 		"session.start",
 		'tool.call {"tool":"Agent"}',
 		'tool.call {"tool":"mcp__model-router__config"}',
+		"turn.step",
 	]);
 });

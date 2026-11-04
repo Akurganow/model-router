@@ -5,6 +5,8 @@ import type {
 	PromptOrigin,
 	ToolCallArgs,
 	ToolCheckDecision,
+	TurnStepInput,
+	TurnStepResult,
 } from "claude-code";
 import type { Engine, MockClock } from "claude-code/testing";
 import { mock } from "claude-code/testing";
@@ -58,6 +60,12 @@ type Loose = {
 	prompt?: unknown;
 	input?: unknown;
 };
+type AgentArgs = Loose & {
+	tool_use_id?: string;
+	description?: string;
+	subagent_type?: string;
+	name?: string;
+};
 type Reply = {
 	status?: number;
 	headers?: Record<string, string>;
@@ -79,6 +87,7 @@ type Registered = {
 type Outcome = { result?: unknown; deny?: unknown };
 export type Harness = {
 	clock: MockClock;
+	spawns: Loose[];
 	logs: string[];
 	debug: string[];
 	fetched: number;
@@ -107,6 +116,8 @@ type Setup = {
 	delayMs?: number;
 	env?: Readonly<Record<string, string>>;
 	result?: { result: string } | { deny: string };
+	// The refusal the spawn returns, as the engine would for a limit it holds.
+	spawnDeny?: string;
 	// Answers the plugin's dialog with the text the person gave, or undefined for a dismissal.
 	// It gets the labels and may wait on the test's clock.
 	dialog?: (
@@ -117,6 +128,7 @@ type Asked = { question: string; header: string; labels: string[] };
 
 const newHarness = (clock: MockClock): Harness => ({
 	clock,
+	spawns: [],
 	logs: [],
 	debug: [],
 	fetched: 0,
@@ -195,6 +207,40 @@ const callHandler =
 		return result;
 	};
 
+// The model and effort the engine would have used without the plugin.
+const SESSION_EFFORT = "max";
+let agentSeq = 0;
+
+// The spawn the engine runs once the Agent call is allowed: the plugin sets the model here.
+const spawnHandler = (h: Harness, deny?: string) => (_: unknown, e: Loose) => {
+	if (deny !== undefined) return { deny };
+	h.spawns.push(e);
+	h.received = { ...h.received, model: e.model };
+	agentSeq += 1;
+	return { model: String(e.model ?? "inherit"), agentId: `agent-${agentSeq}` };
+};
+
+// The subagent's request: the plugin sets the effort here. The session's own effort is no change.
+const stepHandler = (h: Harness) =>
+	// biome-ignore lint/correctness/useYield: the bottom of the chain streams no chunks
+	async function* (
+		_: unknown,
+		e: TurnStepInput,
+	): AsyncGenerator<never, TurnStepResult> {
+		h.received = {
+			...h.received,
+			effort: e.effort === SESSION_EFFORT ? undefined : e.effort,
+		};
+		return {
+			turnId: e.turnId,
+			index: e.index,
+			answer: "",
+			toolUses: [],
+			stopReason: null,
+			usage: null,
+		};
+	};
+
 // A hook the test registers first answers first, so the dialog goes in ahead of the catch-all.
 const dialogHandler =
 	(h: Harness, reply: NonNullable<Setup["dialog"]>) =>
@@ -232,6 +278,8 @@ export const harness = (on: On, setup: Setup = {}): Harness => {
 	on("tool.register", registerHandler(h));
 	on("session.start", (_, e) => ({ cwd: e.cwd }));
 	on("tool.call", callHandler(h, result));
+	on("agent.spawn", spawnHandler(h, setup.spawnDeny));
+	on("turn.step", stepHandler(h));
 	return h;
 };
 
@@ -280,6 +328,38 @@ export const offerAll = async (
 		await offer($, agent, source, descriptions[agent]);
 };
 
+// Runs an Agent call as the engine does: the tool call, then the spawn it makes once the call is allowed, then the subagent's first request.
+export const runAgent = async (
+	$: Engine,
+	h: Harness,
+	over: Record<string, unknown> = {},
+) => {
+	const call = agentCall(over) as unknown as AgentArgs;
+	const before = h.calls;
+	const outcome: Outcome = await $.tool.call(call as unknown as ToolCallArgs);
+	if (h.calls === before) return outcome;
+	h.received = call;
+	const spawned = await $.agent.spawn({
+		tool_use_id: call.tool_use_id,
+		prompt: call.prompt,
+		description: call.description,
+		subagentType: call.subagent_type ?? "general-purpose",
+		model: call.model,
+		name: call.name,
+	} as never);
+	if (spawned.deny !== undefined) return { deny: spawned.deny };
+	const step = $.turn.step({
+		turnId: "turn",
+		index: 0,
+		model: String(call.model ?? "opus"),
+		effort: call.effort ?? SESSION_EFFORT,
+		messageCount: 1,
+		agentId: spawned.agentId,
+	} as TurnStepInput);
+	for await (const _ of step);
+	return outcome;
+};
+
 export const callOnce = async (
 	$: Engine,
 	on: On,
@@ -288,7 +368,7 @@ export const callOnce = async (
 ) => {
 	const h = harness(on, setup);
 	await offerAll($, setup.offers, setup.descriptions);
-	const outcome: Outcome = await $.tool.call(agentCall(over));
+	const outcome = await runAgent($, h, over);
 	return { h, outcome };
 };
 
@@ -296,7 +376,7 @@ export const callOnce = async (
 export const retried = async ($: Engine, on: On, setup: Setup) => {
 	const h = harness(on, setup);
 	await offerAll($);
-	const pending = $.tool.call(agentCall());
+	const pending = runAgent($, h);
 	await h.clock.advance(1500);
 	await pending;
 	return h;

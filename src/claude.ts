@@ -7,15 +7,18 @@ import {
 	resetConfig,
 } from "./claude-config.ts";
 import {
-	type AgentCall,
-	denied,
+	type AgentSpawn,
 	type Engine,
 	type HttpReply,
 	type Next,
 	type On,
 	type Options,
-	type Outcome,
 	passOn,
+	passStep,
+	type Started,
+	type StepNext,
+	type StepStream,
+	type TurnStep,
 } from "./claude-host.ts";
 import { readKeys } from "./claude-keys.ts";
 import {
@@ -57,16 +60,31 @@ const DEBUG_PIECE_CHARS = 9000;
 
 // The latest offer of each agent name. A user or plugin agent can take a built-in's name.
 const offered = new Map<string, { source: string; description: string }>();
+// Agent calls whose caller set an effort, by tool_use_id. The spawn input carries no effort.
+const callerEffort = new Set<string>();
+// The effort routed for each started subagent, applied to its model requests.
+const efforts = new Map<string, string>();
+// Spawns that have not named their agent yet: a subagent's first request can come before its spawn settles.
+const starting = new Set<Promise<unknown>>();
 
 export function register(on: On, options: Options): void {
 	offered.clear();
+	callerEffort.clear();
+	efforts.clear();
+	starting.clear();
 	on("agent.offer", (_, e, next) => {
 		offered.set(e.agent, { source: e.source, description: e.description });
 		return next(e);
 	}).catch(passOn);
-	on("tool.call", { tool: "Agent" }, ($, e, next) =>
-		routeAgentCall($, e, next, options),
-	).catch(passOn);
+	on("tool.call", { tool: "Agent" }, (_, e, next) => {
+		if (e.tool_use_id !== undefined && e.effort !== undefined)
+			callerEffort.add(e.tool_use_id);
+		return next(e);
+	}).catch(passOn);
+	on("agent.spawn", ($, e, next) => routeSpawn($, e, next, options)).catch(
+		passOn,
+	);
+	on("turn.step", stepEffort).catch(passStep);
 	resetConfig();
 	on("session.start", registerConfigTool).catch(passOn);
 	// The surface check reads the matchers, so the tool and command names stay literals here.
@@ -86,28 +104,28 @@ function useClockTimers($: Engine): void {
 }
 
 // Extended scope never reads the offers: any agent without a model of its own is routed, a fork excepted.
-function routable(call: AgentCall, scope: Scope): boolean {
-	const agent = call.subagent_type ?? DEFAULT_AGENT;
-	if (call.name !== undefined || call.model !== undefined) return false;
+function routable(spawn: AgentSpawn, scope: Scope): boolean {
+	const agent = spawn.subagentType;
+	if (spawn.name !== undefined || spawn.model !== undefined) return false;
+	if (spawn.fork || spawn.isTeammate || spawn.resume || spawn.workflow)
+		return false;
 	if (scope === "extended") return agent !== FORK;
 	return ROUTED_AGENTS.has(agent) && offered.get(agent)?.source === BUILT_IN;
 }
 
-async function routeAgentCall(
+// The spawn runs after the permission decision and changes only the model, so the Agent call the server reviewed stays as written.
+async function routeSpawn(
 	$: Engine,
-	call: AgentCall,
-	next: Next,
+	spawn: AgentSpawn,
+	next: Next<Started>,
 	options: Options,
-): Promise<Outcome> {
+): Promise<Started> {
 	useClockTimers($);
-	if (!routable(call, resolveScope(options.scope)) || (await denied($, call)))
-		return next(call);
+	if (!routable(spawn, resolveScope(options.scope))) return next(spawn);
 	const state = {
-		role: roleText(
-			offered.get(call.subagent_type ?? DEFAULT_AGENT)?.description,
-		),
-		description: call.description,
-		task: prepareBrief(call.prompt),
+		role: roleText(offered.get(spawn.subagentType)?.description),
+		description: spawn.description,
+		task: prepareBrief(spawn.prompt),
 	};
 	const keys = await readKeys($, options, options.provider);
 	const decision = await scored($, next.signal, {
@@ -121,16 +139,35 @@ async function routeAgentCall(
 	const picked = pick(decision);
 	if ("skipped" in picked) {
 		await $.ui.log(`skipped, ${picked.skipped}`);
-		return next(call);
+		return next(spawn);
 	}
-	const keepEffort = call.effort !== undefined;
+	const keepEffort = callerEffort.delete(spawn.tool_use_id);
 	await $.ui.log(decisionLine(picked, keepEffort));
 	const { model, effort } = picked;
-	const outcome = await next(
-		keepEffort ? { ...call, model } : { ...call, model, effort },
-	);
+	const started = next({ ...spawn, model });
+	if (!keepEffort) track(started, effort);
+	const outcome = await started;
 	if (outcome.deny !== undefined) await $.ui.log("denied");
 	return outcome;
+}
+
+function track(started: Promise<Started>, effort: string): void {
+	const settled = started.then(
+		({ agentId }) => {
+			if (agentId !== undefined) efforts.set(agentId, effort);
+		},
+		() => undefined,
+	);
+	starting.add(settled);
+	settled.finally(() => starting.delete(settled));
+}
+
+// A subagent's requests carry its agentId. The routed effort replaces the session default.
+async function* stepEffort(_: Engine, e: TurnStep, next: StepNext): StepStream {
+	if (e.agentId !== undefined && !efforts.has(e.agentId))
+		await Promise.all(starting);
+	const effort = e.agentId === undefined ? undefined : efforts.get(e.agentId);
+	return yield* next(effort === undefined ? e : { ...e, effort });
 }
 
 type Picked = {

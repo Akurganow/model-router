@@ -64,6 +64,9 @@ function roleText(description) {
 function passOn(_, e, next) {
   return next(e);
 }
+async function* passStep(_, e, next) {
+  return yield* next(e);
+}
 async function denied($, call) {
   const {
     tool,
@@ -1394,17 +1397,27 @@ var ROUTED_AGENTS = /* @__PURE__ */ new Set([
 ]);
 var DEBUG_PIECE_CHARS = 9e3;
 var offered = /* @__PURE__ */ new Map();
+var callerEffort = /* @__PURE__ */ new Set();
+var efforts = /* @__PURE__ */ new Map();
+var starting = /* @__PURE__ */ new Set();
 function register(on, options) {
   offered.clear();
+  callerEffort.clear();
+  efforts.clear();
+  starting.clear();
   on("agent.offer", (_, e, next) => {
     offered.set(e.agent, { source: e.source, description: e.description });
     return next(e);
   }).catch(passOn);
-  on(
-    "tool.call",
-    { tool: "Agent" },
-    ($, e, next) => routeAgentCall($, e, next, options)
-  ).catch(passOn);
+  on("tool.call", { tool: "Agent" }, (_, e, next) => {
+    if (e.tool_use_id !== void 0 && e.effort !== void 0)
+      callerEffort.add(e.tool_use_id);
+    return next(e);
+  }).catch(passOn);
+  on("agent.spawn", ($, e, next) => routeSpawn($, e, next, options)).catch(
+    passOn
+  );
+  on("turn.step", stepEffort).catch(passStep);
   resetConfig();
   on("session.start", registerConfigTool).catch(passOn);
   on(
@@ -1426,22 +1439,21 @@ function register(on, options) {
 function useClockTimers($) {
   installTimers((ms, fn) => $.clock.after(ms, fn));
 }
-function routable(call, scope) {
-  const agent = call.subagent_type ?? DEFAULT_AGENT;
-  if (call.name !== void 0 || call.model !== void 0) return false;
+function routable(spawn, scope) {
+  const agent = spawn.subagentType;
+  if (spawn.name !== void 0 || spawn.model !== void 0) return false;
+  if (spawn.fork || spawn.isTeammate || spawn.resume || spawn.workflow)
+    return false;
   if (scope === "extended") return agent !== FORK;
   return ROUTED_AGENTS.has(agent) && offered.get(agent)?.source === BUILT_IN;
 }
-async function routeAgentCall($, call, next, options) {
+async function routeSpawn($, spawn, next, options) {
   useClockTimers($);
-  if (!routable(call, resolveScope(options.scope)) || await denied($, call))
-    return next(call);
+  if (!routable(spawn, resolveScope(options.scope))) return next(spawn);
   const state = {
-    role: roleText(
-      offered.get(call.subagent_type ?? DEFAULT_AGENT)?.description
-    ),
-    description: call.description,
-    task: prepareBrief(call.prompt)
+    role: roleText(offered.get(spawn.subagentType)?.description),
+    description: spawn.description,
+    task: prepareBrief(spawn.prompt)
   };
   const keys = await readKeys($, options, options.provider);
   const decision = await scored($, next.signal, {
@@ -1455,16 +1467,32 @@ async function routeAgentCall($, call, next, options) {
   const picked = pick2(decision);
   if ("skipped" in picked) {
     await $.ui.log(`skipped, ${picked.skipped}`);
-    return next(call);
+    return next(spawn);
   }
-  const keepEffort = call.effort !== void 0;
+  const keepEffort = callerEffort.delete(spawn.tool_use_id);
   await $.ui.log(decisionLine(picked, keepEffort));
   const { model, effort } = picked;
-  const outcome = await next(
-    keepEffort ? { ...call, model } : { ...call, model, effort }
-  );
+  const started = next({ ...spawn, model });
+  if (!keepEffort) track(started, effort);
+  const outcome = await started;
   if (outcome.deny !== void 0) await $.ui.log("denied");
   return outcome;
+}
+function track(started, effort) {
+  const settled = started.then(
+    ({ agentId }) => {
+      if (agentId !== void 0) efforts.set(agentId, effort);
+    },
+    () => void 0
+  );
+  starting.add(settled);
+  settled.finally(() => starting.delete(settled));
+}
+async function* stepEffort(_, e, next) {
+  if (e.agentId !== void 0 && !efforts.has(e.agentId))
+    await Promise.all(starting);
+  const effort = e.agentId === void 0 ? void 0 : efforts.get(e.agentId);
+  return yield* next(effort === void 0 ? e : { ...e, effort });
 }
 function pick2(decision) {
   if ("skipped" in decision) return decision;

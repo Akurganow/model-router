@@ -1,12 +1,12 @@
 import { expect, test } from "claude-code/testing";
 import {
-	agentCall,
 	callOnce,
 	type Harness,
 	harness,
 	KEYED,
 	offer,
 	offerAll,
+	runAgent,
 } from "./harness.ts";
 
 const expectPassedThrough = (h: Harness, over: object) => {
@@ -66,12 +66,12 @@ test("the latest offer for a name decides", KEYED, async ($, on) => {
 	const h = harness(on);
 	await offerAll($);
 	await offer($, "general-purpose", "plugin");
-	await $.tool.call(agentCall());
+	await runAgent($, h);
 	expect(h.fetched).toBe(0);
 	await offer($, "general-purpose");
-	await $.tool.call(agentCall());
+	await runAgent($, h);
 	expect(h.fetched).toBe(1);
-	expect(h.seen[1]?.model).toBe("haiku");
+	expect(h.spawns[1]?.model).toBe("haiku");
 });
 
 test("an offer goes on unchanged", KEYED, async ($, on) => {
