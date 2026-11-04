@@ -1,6 +1,8 @@
-import { LEVELS, type Level, type Part, type Probabilities } from "./part.ts";
+import { fromMiddle, type Part } from "./part.ts";
 
-const TIE_MARGIN = 0.1;
+// Fitted on calibration.jsonl, see docs/model-choice.md.
+const TIER_DOWN = 2 ** 0.25;
+const TIER_UP = 2 ** 0.5;
 
 const TIER_INSTRUCTIONS =
 	"How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
@@ -11,14 +13,6 @@ export const TIER_TEXTS = [
 	"Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause.",
 ] as const;
 
-// A near tie goes to the highest level within the margin: when unsure, the larger model.
-function pickTier(p: Probabilities): Level {
-	const best = LEVELS.reduce((a, b) => (p[b] > p[a] ? b : a));
-	for (const i of [2, 1] as Level[])
-		if (i > best && p[best] - p[i] < TIE_MARGIN) return i;
-	return best;
-}
-
 export const tier: Part = {
 	key: "tier",
 	question: {
@@ -26,5 +20,5 @@ export const tier: Part = {
 		instructions: TIER_INSTRUCTIONS,
 		criteria: TIER_TEXTS,
 	},
-	pick: pickTier,
+	pick: fromMiddle(TIER_DOWN, TIER_UP),
 };

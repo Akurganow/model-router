@@ -14,14 +14,10 @@ test("the calibrated data is three tier texts", () => {
 	assert.equal(TIER_TEXTS.length, 3);
 });
 
-test("a near tie goes to the highest level within the margin", () => {
-	assert.equal(tier.pick({ "0": 0.2, "1": 0.42, "2": 0.38 }), 2);
-	assert.equal(tier.pick({ "0": 0.1, "1": 0.6, "2": 0.3 }), 1);
-	assert.equal(tier.pick({ "0": 0.34, "1": 0.33, "2": 0.33 }), 2);
-	assert.equal(tier.pick({ "0": 0.5, "1": 0.45, "2": 0.05 }), 1);
-});
-
-test("a gap of exactly the margin is not a tie", () => {
-	assert.equal(tier.pick({ "0": 0.1, "1": 0.25, "2": 0.15 }), 1);
-	assert.equal(tier.pick({ "0": 0.1, "1": 0.25, "2": 0.16 }), 2);
+test("the tier stays at the middle unless an end is clearly more likely", () => {
+	assert.equal(tier.pick({ "0": 0.1, "1": 0.48, "2": 0.42 }), 1);
+	assert.equal(tier.pick({ "0": 0.05, "1": 0.35, "2": 0.6 }), 2);
+	assert.equal(tier.pick({ "0": 0.45, "1": 0.4, "2": 0.15 }), 1);
+	assert.equal(tier.pick({ "0": 0.55, "1": 0.4, "2": 0.05 }), 0);
+	assert.equal(tier.pick({ "0": 0.34, "1": 0.33, "2": 0.33 }), 1);
 });
