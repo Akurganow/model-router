@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Readable } from "node:stream";
 import { afterEach, mock, test } from "node:test";
 import { ROLE_CAP } from "../src/brief.ts";
@@ -150,6 +153,7 @@ for (const args of [
 	["jev-latest"],
 	["TypeSafe"],
 	["openrouter", "jev-latest", "extra"],
+	["typesafe", "--record"],
 ])
 	test(`main with arguments ${JSON.stringify(args)} prints the usage and exits 2 before the key`, async () => {
 		const out = recorded();
@@ -186,8 +190,30 @@ test("main reports each miss with its probability and fails below the bar", asyn
 	assert.equal(code, 1);
 	const text = out.join("\n");
 	assert.match(text, /miss tier {2}expected 0 {2}got 2 {2}p=0\.70 {2}/);
-	assert.match(text, /tier agreement 24% \(5\/21\), bar 85%/);
+	assert.match(text, /tier agreement 35% \(61\/172\), bar 85%/);
 	assert.match(text, /jev-latest answered as jev-1\.14\.0/);
+});
+
+test("main --record writes each case's labels and probabilities as JSONL", async () => {
+	recorded();
+	const dir = mkdtempSync(join(tmpdir(), "calibrate-"));
+	const file = join(dir, "record.jsonl");
+	await main(["typesafe", "--record", file], piped("test-key"), replying);
+	const rows = readFileSync(file, "utf8")
+		.trim()
+		.split("\n")
+		.map((l) => JSON.parse(l));
+	assert.equal(rows.length, 172);
+	assert.deepEqual(Object.keys(rows[0]), [
+		"description",
+		"expected",
+		"work",
+		"tier",
+		"workProbabilities",
+		"model",
+	]);
+	assert.deepEqual(Object.keys(rows[0].tier), ["0", "1", "2"]);
+	rmSync(dir, { recursive: true });
 });
 
 test("main prints a case whose reply lacks a part as skipped", async () => {
