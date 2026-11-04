@@ -194,6 +194,15 @@ test("main reports each miss with its probability and fails below the bar", asyn
 	assert.match(text, /jev-latest answered as jev-1\.14\.0/);
 });
 
+test("main --record exits 2 before the key when the file cannot be written", async () => {
+	const out = recorded();
+	const stdin = piped("test-key\n");
+	const file = join(tmpdir(), "calibrate-missing-dir", "x", "record.jsonl");
+	assert.equal(await main(["typesafe", "--record", file], stdin, replying), 2);
+	assert.match(out.join("\n"), /cannot write/);
+	assert.equal(stdin.readableEnded, false, "the key stays unread");
+});
+
 test("main --record writes each case's labels and probabilities as JSONL", async () => {
 	recorded();
 	const dir = mkdtempSync(join(tmpdir(), "calibrate-"));

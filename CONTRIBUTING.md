@@ -108,12 +108,15 @@ file. Then compare rule modules offline on that file:
 node scripts/compare-rules.ts <record.jsonl> <rule.ts>...
 ```
 
-`scripts/compare-rules.ts` scores each module in `scripts/rules/` with 5-fold
-cross-validation, fitting its parameters on the training folds only. It prints
+`scripts/compare-rules.ts` scores each rule module named on the command line
+with 5-fold cross-validation, fitting its parameters on the training folds
+only. A rule module default-exports a `Rule`. In `scripts/rules/`,
+`threshold.ts` and `doubt.ts` are helpers, not rules. It prints
 agreement, under-routing and over-routing for the tier and the work index.
 
 Each case in `calibration.jsonl` names its source, its license and the basis
-of its label. Mark a label that the brief supports both ways `contested`.
+of its label. For a label that the brief supports both ways, set the array
+`contested` to `["expected"]`, `["work"]` or both.
 
 Fix a miss by rewording a tier text in `src/model.ts` or a work-level text in
 `src/effort.ts`. Then rebuild with `node scripts/build.ts`. Never lower the

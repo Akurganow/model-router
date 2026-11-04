@@ -10,7 +10,7 @@ type Sample = { p: Probabilities; want: Level };
 
 const HUNDRED = 100;
 const NEVER_ABSOLUTE = 1.01;
-// 2^(k/4) from 1/4 to 64, plus Infinity for "never move".
+// 2^(k/4) from 1/4 to 16, plus Infinity for "never move".
 const FACTORS = [
 	...Array.from({ length: 25 }, (_, i) => 2 ** ((i - 8) / 4)),
 	Number.POSITIVE_INFINITY,

@@ -56,4 +56,4 @@ From the repository root:
   against Jev and prints misses and agreement. The model defaults to
   `jev-latest`. `--record <file>` also writes each case's probabilities.
 - `node scripts/compare-rules.ts <record.jsonl> <rule.ts>...` compares rule
-  modules from `scripts/rules/` on that file, with 5-fold cross-validation.
+  modules named on the command line on that file, with 5-fold cross-validation.

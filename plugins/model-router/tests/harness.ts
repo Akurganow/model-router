@@ -125,6 +125,8 @@ type Setup = {
 	result?: { result: string } | { deny: string };
 	// The refusal the spawn returns, as the engine would for a limit it holds.
 	spawnDeny?: string;
+	// How long the spawn takes to settle on the test's clock.
+	spawnDelayMs?: number;
 	// The extra keys of the spawn input beyond the call's own: fork, isTeammate, resume, workflow.
 	spawn?: Record<string, unknown>;
 	// The effort the subagent's model has before the plugin, or null for a model without effort.
@@ -237,14 +239,20 @@ const SESSION_EFFORT = "max";
 let agentSeq = 0;
 
 // The spawn the engine runs once the Agent call is allowed: the plugin sets the model here.
-const spawnHandler = (h: Harness, deny?: string) => (_: unknown, e: Loose) => {
-	h.spawnRuns += 1;
-	if (deny !== undefined) return { deny };
-	h.spawns.push(e);
-	h.received = { ...h.received, model: e.model };
-	agentSeq += 1;
-	return { model: String(e.model ?? "inherit"), agentId: `agent-${agentSeq}` };
-};
+const spawnHandler =
+	(h: Harness, deny?: string, delayMs = 0) =>
+	async (_: unknown, e: Loose) => {
+		h.spawnRuns += 1;
+		if (delayMs > 0) await h.clock.sleep(delayMs);
+		if (deny !== undefined) return { deny };
+		h.spawns.push(e);
+		h.received = { ...h.received, model: e.model };
+		agentSeq += 1;
+		return {
+			model: String(e.model ?? "inherit"),
+			agentId: `agent-${agentSeq}`,
+		};
+	};
 
 // The subagent's request: the plugin sets the effort here. The session's own effort is no change.
 const stepHandler = (h: Harness) =>
@@ -305,7 +313,7 @@ export const harness = (on: On, setup: Setup = {}): Harness => {
 	on("tool.register", registerHandler(h));
 	on("session.start", (_, e) => ({ cwd: e.cwd }));
 	on("tool.call", callHandler(h, result));
-	on("agent.spawn", spawnHandler(h, setup.spawnDeny));
+	on("agent.spawn", spawnHandler(h, setup.spawnDeny, setup.spawnDelayMs));
 	on("turn.step", stepHandler(h));
 	return h;
 };

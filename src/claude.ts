@@ -70,6 +70,8 @@ const callerEffort = new Set<string>();
 const efforts = new Map<string, string>();
 // Spawns that have not named their agent yet: a subagent's first request can come before its spawn settles.
 const starting = new Set<Promise<unknown>>();
+// Agents whose steps already waited for the spawns in flight. Only an agent's first step can beat its spawn.
+const waited = new Set<string>();
 // A step from an agent no routed spawn names waits this long for the spawns in flight, then goes on.
 const STEP_WAIT_MS = 1000;
 
@@ -78,6 +80,7 @@ export function register(on: On, options: Options): void {
 	callerEffort.clear();
 	efforts.clear();
 	starting.clear();
+	waited.clear();
 	on("agent.offer", (_, e, next) => {
 		offered.set(e.agent, { source: e.source, description: e.description });
 		return next(e);
@@ -88,7 +91,10 @@ export function register(on: On, options: Options): void {
 	);
 	on("turn.step", stepEffort).catch(passStep);
 	on("turn.complete", (_, e, next) => {
-		if (e.agentId !== undefined) efforts.delete(e.agentId);
+		if (e.agentId !== undefined) {
+			efforts.delete(e.agentId);
+			waited.delete(e.agentId);
+		}
 		return next(e);
 	}).catch(passOn);
 	resetConfig();
@@ -199,8 +205,14 @@ function track(started: Promise<Started>, effort: string): void {
 
 // A subagent's requests carry its agentId. The routed effort replaces the session default, unless the model has none.
 async function* stepEffort($: Engine, e: TurnStep, next: StepNext): StepStream {
-	if (e.agentId !== undefined && !efforts.has(e.agentId))
+	if (
+		e.agentId !== undefined &&
+		!efforts.has(e.agentId) &&
+		!waited.has(e.agentId)
+	) {
+		waited.add(e.agentId);
 		await spawnsSettled($);
+	}
 	const effort = e.agentId === undefined ? undefined : efforts.get(e.agentId);
 	if (effort === undefined || e.effort === undefined) return yield* next(e);
 	return yield* next({ ...e, effort });

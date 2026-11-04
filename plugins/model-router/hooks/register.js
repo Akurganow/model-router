@@ -1396,12 +1396,14 @@ var offered = /* @__PURE__ */ new Map();
 var callerEffort = /* @__PURE__ */ new Set();
 var efforts = /* @__PURE__ */ new Map();
 var starting = /* @__PURE__ */ new Set();
+var waited = /* @__PURE__ */ new Set();
 var STEP_WAIT_MS = 1e3;
 function register(on, options) {
   offered.clear();
   callerEffort.clear();
   efforts.clear();
   starting.clear();
+  waited.clear();
   on("agent.offer", (_, e, next) => {
     offered.set(e.agent, { source: e.source, description: e.description });
     return next(e);
@@ -1412,7 +1414,10 @@ function register(on, options) {
   );
   on("turn.step", stepEffort).catch(passStep);
   on("turn.complete", (_, e, next) => {
-    if (e.agentId !== void 0) efforts.delete(e.agentId);
+    if (e.agentId !== void 0) {
+      efforts.delete(e.agentId);
+      waited.delete(e.agentId);
+    }
     return next(e);
   }).catch(passOn);
   resetConfig();
@@ -1501,8 +1506,10 @@ function track(started, effort) {
   settled.finally(() => starting.delete(settled));
 }
 async function* stepEffort($, e, next) {
-  if (e.agentId !== void 0 && !efforts.has(e.agentId))
+  if (e.agentId !== void 0 && !efforts.has(e.agentId) && !waited.has(e.agentId)) {
+    waited.add(e.agentId);
     await spawnsSettled($);
+  }
   const effort = e.agentId === void 0 ? void 0 : efforts.get(e.agentId);
   if (effort === void 0 || e.effort === void 0) return yield* next(e);
   return yield* next({ ...e, effort });

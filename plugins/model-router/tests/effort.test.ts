@@ -80,6 +80,36 @@ test(
 	},
 );
 
+test(
+	"a subagent no spawn here routed waits for the spawns in flight once",
+	KEYED,
+	async ($, on) => {
+		const h = harness(on, { spawnDelayMs: 5000 });
+		await offerAll($);
+		const pending = runAgent($, h);
+		while (h.spawnRuns === 0) await Promise.resolve();
+		const step = (index: number) =>
+			(async () => {
+				for await (const _ of $.turn.step({
+					turnId: "turn",
+					index,
+					model: "opus",
+					effort: SESSION,
+					messageCount: 1,
+					agentId: "nested-by-a-plugin",
+				}));
+			})();
+		const first = step(0);
+		await h.clock.advance(1000);
+		await first;
+		await step(1);
+		expect(h.steps).toEqual([SESSION, SESSION]);
+		await h.clock.advance(4000);
+		await pending;
+		expect(h.steps).toEqual([SESSION, SESSION, "high"]);
+	},
+);
+
 // The spawn's flags decide before the scope does, so each row holds under both scopes.
 for (const [flag, spawn] of [
 	["fork", { fork: true }],

@@ -9,6 +9,7 @@ const USAGE =
 	"usage: node scripts/compare-rules.ts <record.jsonl> <rule.ts>...  (record.jsonl comes from calibrate.ts --record; each rule module default-exports a Rule)";
 
 export type Row = {
+	description: string;
 	expected: Level;
 	work: Level;
 	tier: Probabilities;
@@ -48,7 +49,13 @@ export function readRows(record: string, calibration: string): Row[] {
 		throw new Error(
 			`the record has ${rows.length} rows and calibration.jsonl ${cases.length} cases: record again`,
 		);
-	return rows.map((r, i) => ({ ...r, contested: cases[i].contested ?? [] }));
+	return rows.map((r, i) => {
+		if (r.description !== cases[i].description)
+			throw new Error(
+				`record row ${i + 1} is "${r.description}" and calibration.jsonl has "${cases[i].description}": record again`,
+			);
+		return { ...r, contested: cases[i].contested ?? [] };
+	});
 }
 
 export function score(
@@ -138,7 +145,12 @@ export async function main(args: readonly string[]): Promise<number> {
 		readFileSync(new URL("../calibration.jsonl", import.meta.url), "utf8"),
 	);
 	for (const path of rules) {
-		const rule: Rule = (await import(pathToFileURL(path).href)).default;
+		const rule: Rule | undefined = (await import(pathToFileURL(path).href))
+			.default;
+		if (typeof rule?.fit !== "function") {
+			console.error(`${path} does not default-export a Rule`);
+			return EXIT_USAGE;
+		}
 		console.log(report(rule, rows));
 	}
 	return 0;

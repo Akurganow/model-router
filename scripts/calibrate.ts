@@ -144,6 +144,15 @@ export async function main(
 		console.error(USAGE);
 		return EXIT_USAGE;
 	}
+	// Fail before the paid requests, not after them.
+	if (record) {
+		try {
+			writeFileSync(record, "");
+		} catch (error) {
+			console.error(`cannot write ${record}: ${(error as Error).message}`);
+			return EXIT_USAGE;
+		}
+	}
 	const key = await readKey(stdin, provider);
 	if (!key) {
 		console.error(USAGE);

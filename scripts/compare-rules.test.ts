@@ -5,6 +5,7 @@ import { crossValidate, type Row, readRows, score } from "./compare-rules.ts";
 
 const P = (a: number, b: number, c: number) => ({ 0: a, 1: b, 2: c });
 const row = (expected: Level, contested: string[] = []): Row => ({
+	description: "case",
 	expected,
 	work: 1,
 	tier: P(0.1, 0.2, 0.7),
@@ -50,5 +51,12 @@ test("readRows refuses a record that does not match the calibration set", () => 
 	assert.throws(
 		() => readRows('{"expected":0}\n', '{"expected":0}\n{"expected":1}\n'),
 		/record again/,
+	);
+});
+
+test("readRows refuses a record whose rows name other cases", () => {
+	assert.throws(
+		() => readRows('{"description":"a"}\n', '{"description":"b"}\n'),
+		/row 1 is "a"/,
 	);
 });
