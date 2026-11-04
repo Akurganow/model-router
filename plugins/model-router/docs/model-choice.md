@@ -1,7 +1,7 @@
 # Why the router chooses what it chooses
 
-This page explains the router's three tiers, its tie margin, its effort ladder
-and its escalation rule. Each choice rests on an Anthropic source, named by
+This page explains the router's three tiers, its default level, its effort
+ladder and its escalation rule. Each choice rests on an Anthropic source, named by
 title in italics and listed with its address under [Sources](#sources).
 
 See the effort ladder in [README](../README.md#effort).
@@ -58,14 +58,73 @@ open-ended work that needs sustained judgment on Opus. *Choosing the right
 model* starts most workloads on Opus 5.5, and *Models overview* starts there
 when unsure. Tier 2 takes the tasks whose brief leaves the approach open.
 
-## The tie margin
+## The default level
 
-`TIE_MARGIN = 0.1`, in `src/model.ts`. Jev returns a probability for each tier. When a higher tier
-comes within 0.1 of the most probable one, the router picks the highest such
-tier. A near tie therefore goes up, to the larger model. This matches
-*Choosing the right model*, where most workloads start with Opus 5.5. A tier
-too high costs more tokens. A tier too low can fail and pay for a second
-attempt on top.
+`fromMiddle`, in `src/part.ts`, picks the level for both questions. Jev
+returns a probability for each of the three levels. The router stays at the
+middle level unless an end is more than a fixed factor times as likely as the
+middle. When both ends pass, the likelier end wins. Equal ends stay at the
+middle.
+
+The middle is the default because level 1 leaves the call alone. The
+subagent keeps the user's default model and effort. The router suggests the
+small model or the slow one only on clear evidence. The harnesses and
+routers surveyed in the
+[findings record](https://github.com/Akurganow/model-router/issues/57#issuecomment-6626365731)
+match this. Harnesses keep the user's model as the root, send side jobs down and
+send review or planning up. No source found routes with a middle default and
+picks the ends on demand, so the factors rest on measurement.
+
+| question | down, to level 0 | up, to level 2 |
+| --- | --- | --- |
+| tier | 2^0.25 = 1.19 | 2^0.5 = 1.41 |
+| work | 2^1.25 = 2.38 | 2^0.5 = 1.41 |
+
+`TIER_DOWN` and `TIER_UP` sit in `src/model.ts`. `WORK_DOWN` and `WORK_UP`
+sit in `src/effort.ts`.
+
+### How the factors were measured
+
+`calibration.jsonl` holds 172 labelled cases. It grew from 21 cases. Each new
+case names its source, its license and the basis of its label. Labels that the
+brief supports both ways carry `contested`. Two annotators labelled the new
+cases blind, and a third settled their disagreements.
+
+One `scripts/calibrate.ts --record` run on `jev-1.14.0` wrote the probabilities
+for all 172 cases. `scripts/compare-rules.ts` then scored each rule module in
+`scripts/rules/` offline, with 5-fold cross-validation. Each rule fitted its
+parameters on the training folds only. The
+[rule measurements](https://github.com/Akurganow/model-router/issues/57#issuecomment-6627372979)
+and commit `f089899` record the run. "Under" means a pick below the label.
+"Over" means a pick above it.
+
+| rule | tier agreement | tier under / over | work agreement | work under / over |
+| --- | --- | --- | --- | --- |
+| old: near ties up, work prior `[0.5, 1, 0.5]` | 84% | 6% / 10% | 90% | 6% / 4% |
+| new: stay at the middle | 88% | 6% / 5% | 90% | 4% / 6% |
+
+Fitted on all 172 cases, the factors give 89% tier agreement and 91% work
+agreement on the same run. The factors fit for agreement with the labels.
+Other rule families scored within one or two cases of the ratio rule on tier.
+Absolute thresholds per end matched its accuracy with about three times the
+doubt. Fitting to a quality-loss cap overfit, and held-out under-routing rose
+to 7-8%. A cost matrix built on token prices alone under-routed 24% of tier
+cases.
+
+### The trade-off
+
+The old tier rule moved a near tie up, to the larger model. That sent 17 of
+172 cases to a larger model than their label. The new rule halves
+over-routing from 10% to 5% and leaves under-routing at 6%. A tier too low
+can fail and pay for a second attempt, so the 6% matters. It did not grow.
+
+For work, the old prior was the same rule with a factor of 2 on both ends.
+The fit moves the downward factor to 2.38 and the upward factor to 1.41.
+Under-routing falls from 6% to 4%. Over-routing rises from 4% to 6%.
+Agreement stays at 90%.
+
+The factors depend on the model that scored the run. Measure again after a
+new Jev release.
 
 ## The work question and the arch
 
@@ -80,11 +139,11 @@ in `src/effort.ts`:
 - **2.** A long or delicate task: many steps or files, hidden edge cases, or a
   wrong result that would look right.
 
-`WORK_PRIOR = [0.5, 1, 0.5]`, also in `src/effort.ts`, weights the three answers. An end wins only when
-Jev gives it more than twice the middle's probability. When both ends pass,
-the more probable end wins, and equal ends go to index 2.
+The index follows [the default level](#the-default-level) rule. An end wins
+only when Jev gives it more than 2.38 times the middle's probability for
+index 0, or more than 1.41 times for index 2.
 
-The middle is the resting point because index 1 maps to `medium` on Sonnet and
+The middle is the default because index 1 maps to `medium` on Sonnet and
 Opus. *Model configuration* gives `medium` as Claude Code's default effort for
 Opus 5.5, Sonnet 5.5 and Haiku 5.5. The router leaves that default only on
 clear evidence.
@@ -99,15 +158,17 @@ Sonnet attempt.
 cost and intelligence* measured Opus 5.5 at `xhigh` only 1.4 points above
 `high`. That step cost 2.5 times as much.
 
-The hook sets the call's `model` and `effort` arguments, so the subagent starts
-with both, as if the caller had named them. A call that names an effort gets a
-model and keeps its effort. A call that names a model is not routed.
+The plugin sets the subagent's model at `agent.spawn` and its effort on the
+subagent's requests, so the subagent starts with both. A call that names an
+effort gets a model and keeps its effort. A call that names a model is not
+routed.
 
 Claude Code resolves a subagent's model from the call's `model` first, then
-the agent definition, then `CLAUDE_CODE_SUBAGENT_MODEL`. The routed model sits
-in the first place, so it outranks the variable.
-`CLAUDE_CODE_SUBAGENT_MODEL_FORCE` and `CLAUDE_CODE_EFFORT_LEVEL` outrank the
-plugin.
+the agent definition, then `CLAUDE_CODE_SUBAGENT_MODEL`. A model that a mod
+sets at `agent.spawn` replaces the call's `model`. The routed model therefore
+outranks the variable. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` and
+`CLAUDE_CODE_EFFORT_LEVEL` outrank the plugin. While the effort variable is
+set, the plugin leaves the effort alone.
 
 ## Escalation
 
@@ -249,7 +310,7 @@ pages were read on 2026-10-10.
 - **Mods reference** —
   <https://code.claude.com/docs/en/plugins/mods/reference> —
   undated, read 2026-10-10. The `tool.call` hook and how a hook rewrites an
-  event.
+  event. The plugin now sets the model at `agent.spawn`.
 
 ### Model launch posts
 

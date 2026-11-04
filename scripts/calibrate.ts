@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import type { Fetch } from "@typesafe-ai/sdk";
 import { prepareBrief, roleText } from "../src/brief.ts";
 import {
@@ -21,7 +21,7 @@ const NAMES: Readonly<Record<Provider, string>> = {
 	typesafe: "TypeSafe",
 	openrouter: "OpenRouter",
 };
-const USAGE = `usage: node scripts/calibrate.ts <typesafe|openrouter> [model]  (typesafe sends the cases to ${HOSTS.typesafe}, openrouter to ${HOSTS.openrouter}; enter that host's API key at the prompt, or pipe it on stdin; model defaults to jev-latest)`;
+const USAGE = `usage: node scripts/calibrate.ts <typesafe|openrouter> [model] [--record <file>]  (typesafe sends the cases to ${HOSTS.typesafe}, openrouter to ${HOSTS.openrouter}; enter that host's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
 
 export type Case = {
 	role: string;
@@ -132,13 +132,26 @@ export async function main(
 	stdin: NodeJS.ReadStream,
 	fetchFn: Fetch,
 ): Promise<number> {
-	const [provider, model, ...surplus] = args;
+	const at = args.indexOf("--record");
+	const record = at === -1 ? undefined : args[at + 1];
+	const positional = at === -1 ? args : args.toSpliced(at, 2);
+	const [provider, model, ...surplus] = positional;
 	if (
 		(provider !== "typesafe" && provider !== "openrouter") ||
-		surplus.length > 0
+		surplus.length > 0 ||
+		(at !== -1 && !record)
 	) {
 		console.error(USAGE);
 		return EXIT_USAGE;
+	}
+	// Fail before the paid requests, not after them.
+	if (record) {
+		try {
+			writeFileSync(record, "");
+		} catch (error) {
+			console.error(`cannot write ${record}: ${(error as Error).message}`);
+			return EXIT_USAGE;
+		}
 	}
 	const key = await readKey(stdin, provider);
 	if (!key) {
@@ -161,6 +174,7 @@ export async function main(
 	const answeredBy = new Set<string>();
 	let tierHits = 0;
 	let workHits = 0;
+	const rows: string[] = [];
 	for (const c of cases) {
 		const d = await runCase(c, attempts, { [provider]: key }, fetchFn);
 		const head = caseHead(c.text);
@@ -170,9 +184,21 @@ export async function main(
 		}
 		if (d.model) answeredBy.add(d.model);
 		const { tier: tierPart, work: workPart } = d.parts;
+		rows.push(
+			JSON.stringify({
+				description: c.description,
+				expected: c.expected,
+				work: c.work,
+				tier: tierPart?.probabilities,
+				workProbabilities: workPart?.probabilities,
+				model: d.model,
+			}),
+		);
 		if (hit("tier", tierPart, c.expected, head)) tierHits += 1;
 		if (hit("work", workPart, c.work, head)) workHits += 1;
 	}
+
+	if (record) writeFileSync(record, rows.map((r) => `${r}\n`).join(""));
 
 	const agreement = (name: string, hits: number): number => {
 		const a = hits / cases.length;

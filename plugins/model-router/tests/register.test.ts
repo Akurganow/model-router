@@ -1,5 +1,5 @@
 import { expect, test } from "claude-code/testing";
-import { ANSWER, callOnce, KEYED, PROMPT } from "./harness.ts";
+import { ANSWER, agentCall, callOnce, KEYED, PROMPT } from "./harness.ts";
 
 test(
 	"the hook sets the model and the effort on the Agent call",
@@ -142,3 +142,25 @@ test(
 		).toBe(h.sent);
 	},
 );
+
+test(
+	"the Agent call reaches the tool as the model wrote it",
+	KEYED,
+	async ($, on) => {
+		const { h } = await callOnce($, on);
+		expect(h.seen).toEqual([agentCall()]);
+	},
+);
+
+test("the main loop's requests keep their effort", KEYED, async ($, on) => {
+	const { h } = await callOnce($, on);
+	const main = $.turn.step({
+		turnId: "main",
+		index: 0,
+		model: "opus",
+		effort: "low",
+		messageCount: 1,
+	});
+	for await (const _ of main);
+	expect(h.received.effort).toBe("low");
+});

@@ -122,7 +122,7 @@ Ask omp to run the `model-router-setup` skill. It walks through the provider, th
 | 1 | Bounded judgment | none, no change |
 | 2 | Open judgment | `@slow` |
 
-The plugin picks the level with the highest probability. A higher level within 0.10 of the best probability wins.
+The plugin stays at level 1 unless an end is clearly more likely. Level 0 needs more than 1.19 times the probability of level 1, and level 2 needs more than 1.41 times. When both ends pass, the likelier end wins. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors.
 
 At spawn, the plugin checks the batch-wide gates and the item again, as [Gate reasons](#gate-reasons) and [Item reasons](#item-reasons) list them. A stored decision binds only to the agent it was made for. The plugin returns the role for the item's level. It returns nothing when:
 

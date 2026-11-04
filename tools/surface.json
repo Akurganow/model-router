@@ -1,11 +1,14 @@
 {
 	"hooks": [
 		"agent.offer",
+		"agent.spawn",
 		"command.run{command=model-router:provider}",
 		"command.run{command=model-router:scope}",
 		"session.start",
 		"tool.call{tool=Agent}",
-		"tool.call{tool=mcp__model-router__config}"
+		"tool.call{tool=mcp__model-router__config}",
+		"turn.complete",
+		"turn.step"
 	],
 	"calls": [
 		"$.clock.after",

@@ -64,6 +64,9 @@ function roleText(description) {
 function passOn(_, e, next) {
   return next(e);
 }
+async function* passStep(_, e, next) {
+  return yield* next(e);
+}
 async function denied($, call) {
   const {
     tool,
@@ -1221,6 +1224,12 @@ function createClient(provider, apiKey, model, fetchFn) {
 
 // src/part.ts
 var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
+};
 var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 var isRecord2 = (v) => typeof v === "object" && v !== null;
@@ -1328,20 +1337,14 @@ function decisionSuffix({
 }
 
 // src/effort.ts
-var WORK_PRIOR = [0.5, 1, 0.5];
+var WORK_DOWN = 2 ** 1.25;
+var WORK_UP = 2 ** 0.5;
 var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
 var WORK_TEXTS = [
   "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
   "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
   "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
 ];
-function pickWork(p) {
-  let best = 1;
-  for (const i of [2, 0]) {
-    if (p[i] * WORK_PRIOR[i] > p[best] * WORK_PRIOR[best]) best = i;
-  }
-  return best;
-}
 var work = {
   key: "work",
   question: {
@@ -1349,23 +1352,18 @@ var work = {
     instructions: WORK_INSTRUCTIONS,
     criteria: WORK_TEXTS
   },
-  pick: pickWork
+  pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
 // src/model.ts
-var TIE_MARGIN = 0.1;
+var TIER_DOWN = 2 ** 0.25;
+var TIER_UP = 2 ** 0.5;
 var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
 var TIER_TEXTS = [
   "Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
   "Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
   "Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."
 ];
-function pickTier(p) {
-  const best = LEVELS.reduce((a, b) => p[b] > p[a] ? b : a);
-  for (const i of [2, 1])
-    if (i > best && p[best] - p[i] < TIE_MARGIN) return i;
-  return best;
-}
 var tier = {
   key: "tier",
   question: {
@@ -1373,7 +1371,7 @@ var tier = {
     instructions: TIER_INSTRUCTIONS,
     criteria: TIER_TEXTS
   },
-  pick: pickTier
+  pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
 
 // src/claude.ts
@@ -1384,6 +1382,7 @@ var EFFORT_LADDER = {
   opus: ["low", "medium", "high"]
 };
 var BUILT_IN = "built-in";
+var ENGINE = "engine";
 var DEFAULT_AGENT = "general-purpose";
 var FORK = "fork";
 var ROUTED_AGENTS = /* @__PURE__ */ new Set([
@@ -1394,17 +1393,33 @@ var ROUTED_AGENTS = /* @__PURE__ */ new Set([
 ]);
 var DEBUG_PIECE_CHARS = 9e3;
 var offered = /* @__PURE__ */ new Map();
+var callerEffort = /* @__PURE__ */ new Set();
+var efforts = /* @__PURE__ */ new Map();
+var starting = /* @__PURE__ */ new Set();
+var waited = /* @__PURE__ */ new Set();
+var STEP_WAIT_MS = 1e3;
 function register(on, options) {
   offered.clear();
+  callerEffort.clear();
+  efforts.clear();
+  starting.clear();
+  waited.clear();
   on("agent.offer", (_, e, next) => {
     offered.set(e.agent, { source: e.source, description: e.description });
     return next(e);
   }).catch(passOn);
-  on(
-    "tool.call",
-    { tool: "Agent" },
-    ($, e, next) => routeAgentCall($, e, next, options)
-  ).catch(passOn);
+  on("tool.call", { tool: "Agent" }, noteCallerEffort).catch(passOn);
+  on("agent.spawn", ($, e, next) => routeSpawn($, e, next, options)).catch(
+    passOn
+  );
+  on("turn.step", stepEffort).catch(passStep);
+  on("turn.complete", (_, e, next) => {
+    if (e.agentId !== void 0) {
+      efforts.delete(e.agentId);
+      waited.delete(e.agentId);
+    }
+    return next(e);
+  }).catch(passOn);
   resetConfig();
   on("session.start", registerConfigTool).catch(passOn);
   on(
@@ -1423,25 +1438,39 @@ function register(on, options) {
     ($, e) => configCommand($, e, "scope", options)
   );
 }
+async function noteCallerEffort(_, e, next) {
+  const id = e.tool_use_id;
+  if (id !== void 0 && e.effort !== void 0) callerEffort.add(id);
+  try {
+    const outcome = await next(e);
+    if (id !== void 0 && (outcome.deny !== void 0 || outcome.isError))
+      callerEffort.delete(id);
+    return outcome;
+  } catch (error) {
+    if (id !== void 0) callerEffort.delete(id);
+    throw error;
+  }
+}
 function useClockTimers($) {
   installTimers((ms, fn) => $.clock.after(ms, fn));
 }
-function routable(call, scope) {
-  const agent = call.subagent_type ?? DEFAULT_AGENT;
-  if (call.name !== void 0 || call.model !== void 0) return false;
+function routable(spawn, scope) {
+  const agent = spawn.subagentType;
+  if (spawn.name !== void 0 || spawn.model !== void 0) return false;
+  if (spawn.fork || spawn.isTeammate || spawn.resume || spawn.workflow)
+    return false;
   if (scope === "extended") return agent !== FORK;
   return ROUTED_AGENTS.has(agent) && offered.get(agent)?.source === BUILT_IN;
 }
-async function routeAgentCall($, call, next, options) {
+async function routeSpawn($, spawn, next, options) {
   useClockTimers($);
-  if (!routable(call, resolveScope(options.scope)) || await denied($, call))
-    return next(call);
+  const callerSet = callerEffort.delete(spawn.tool_use_id);
+  if (next.origin.plugin !== ENGINE || !routable(spawn, resolveScope(options.scope)))
+    return next(spawn);
   const state = {
-    role: roleText(
-      offered.get(call.subagent_type ?? DEFAULT_AGENT)?.description
-    ),
-    description: call.description,
-    task: prepareBrief(call.prompt)
+    role: roleText(offered.get(spawn.subagentType)?.description),
+    description: spawn.description,
+    task: prepareBrief(spawn.prompt)
   };
   const keys = await readKeys($, options, options.provider);
   const decision = await scored($, next.signal, {
@@ -1455,16 +1484,48 @@ async function routeAgentCall($, call, next, options) {
   const picked = pick2(decision);
   if ("skipped" in picked) {
     await $.ui.log(`skipped, ${picked.skipped}`);
-    return next(call);
+    return next(spawn);
   }
-  const keepEffort = call.effort !== void 0;
-  await $.ui.log(decisionLine(picked, keepEffort));
+  const kept = callerSet ? "caller effort" : await $.env.get("CLAUDE_CODE_EFFORT_LEVEL") ? "env effort" : void 0;
+  await $.ui.log(decisionLine(picked, kept));
   const { model, effort } = picked;
-  const outcome = await next(
-    keepEffort ? { ...call, model } : { ...call, model, effort }
-  );
+  const started = next({ ...spawn, model });
+  if (kept === void 0) track(started, effort);
+  const outcome = await started;
   if (outcome.deny !== void 0) await $.ui.log("denied");
   return outcome;
+}
+function track(started, effort) {
+  const settled = started.then(
+    ({ agentId }) => {
+      if (agentId !== void 0) efforts.set(agentId, effort);
+    },
+    () => void 0
+  );
+  starting.add(settled);
+  settled.finally(() => starting.delete(settled));
+}
+async function* stepEffort($, e, next) {
+  if (e.agentId !== void 0 && !efforts.has(e.agentId) && !waited.has(e.agentId)) {
+    waited.add(e.agentId);
+    await spawnsSettled($);
+  }
+  const effort = e.agentId === void 0 ? void 0 : efforts.get(e.agentId);
+  if (effort === void 0 || e.effort === void 0) return yield* next(e);
+  return yield* next({ ...e, effort });
+}
+async function spawnsSettled($) {
+  if (starting.size === 0) return;
+  const stop = new AbortController();
+  try {
+    await Promise.race([
+      Promise.all(starting),
+      $.clock.sleep(STEP_WAIT_MS, { signal: stop.signal }).catch(() => {
+      })
+    ]);
+  } finally {
+    stop.abort();
+  }
 }
 function pick2(decision) {
   if ("skipped" in decision) return decision;
@@ -1480,8 +1541,8 @@ function pick2(decision) {
     suffix: decisionSuffix(decision)
   };
 }
-function decisionLine(picked, keepEffort) {
-  const effort = keepEffort ? "caller effort" : picked.effort;
+function decisionLine(picked, kept) {
+  const effort = kept ?? picked.effort;
   return `L${picked.level} ${picked.model} \xB7 ${effort} \xB7 p=${picked.probabilities}${picked.suffix}`;
 }
 async function scored($, cancel, input) {

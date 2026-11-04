@@ -70,12 +70,10 @@ OpenRouter receives the same headers, the `x-typesafe-*` ones included. Claude
 Code adds the transport headers, such as `host` and `content-length`.
 
 The task text holds whatever the caller put in it, which can include code. The
-request is sent before Claude Code decides whether the call may run. Before
-routing, the plugin asks Claude Code's permission rules about the call's
-original arguments. If they deny the call, the plugin does not send the
-request. A rule on the model the plugin picks, a PreToolUse hook and the
-auto-mode classifier decide after the request left. A call that prompts you
-for permission is sent before you answer. That list is the whole request. Each
+request is sent when the subagent spawns, after Claude Code decides that the
+Agent call may run. A call that your rules or the auto-mode classifier deny
+never spawns, so the plugin sends no request. A rule on the model the plugin
+picks applies after the request left. That list is the whole request. Each
 key identifies your account to its provider. The plugin sends no telemetry and
 no identifier of you or your machine. With Claude Code's `--debug` flag, the
 plugin writes each request body to your debug log, in numbered pieces when it
@@ -138,7 +136,9 @@ option is empty, it reads `OPENROUTER_API_KEY`. A key in either variable stays
 wherever you set it, for example in plaintext in a settings file. It is
 visible to every process Claude Code starts.
 
-The plugin reads no other environment variable. The `config` tool reports only
+The plugin reads one more environment variable, `CLAUDE_CODE_EFFORT_LEVEL`,
+only to see whether it is set. It never sends or logs the value. It reads no
+other environment variable. The `config` tool reports only
 whether a key is set, never the key, its length or any part of it.
 
 A project can set either variable in the `env` block of its Claude Code

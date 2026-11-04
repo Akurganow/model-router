@@ -103,6 +103,12 @@ var roleOf = (name, facts) => roleText(findAgent(name, facts)?.description);
 
 // src/part.ts
 var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
+};
 var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 var isRecord = (v) => typeof v === "object" && v !== null;
@@ -1513,19 +1519,14 @@ function decisionSuffix({
 }
 
 // src/model.ts
-var TIE_MARGIN = 0.1;
+var TIER_DOWN = 2 ** 0.25;
+var TIER_UP = 2 ** 0.5;
 var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
 var TIER_TEXTS = [
   "Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
   "Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
   "Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."
 ];
-function pickTier(p) {
-  const best = LEVELS.reduce((a, b) => p[b] > p[a] ? b : a);
-  for (const i of [2, 1])
-    if (i > best && p[best] - p[i] < TIE_MARGIN) return i;
-  return best;
-}
 var tier = {
   key: "tier",
   question: {
@@ -1533,7 +1534,7 @@ var tier = {
     instructions: TIER_INSTRUCTIONS,
     criteria: TIER_TEXTS
   },
-  pick: pickTier
+  pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
 
 // src/omp-score.ts

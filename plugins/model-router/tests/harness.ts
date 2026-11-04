@@ -5,6 +5,8 @@ import type {
 	PromptOrigin,
 	ToolCallArgs,
 	ToolCheckDecision,
+	TurnStepInput,
+	TurnStepResult,
 } from "claude-code";
 import type { Engine, MockClock } from "claude-code/testing";
 import { mock } from "claude-code/testing";
@@ -58,6 +60,12 @@ type Loose = {
 	prompt?: unknown;
 	input?: unknown;
 };
+type AgentArgs = Loose & {
+	tool_use_id?: string;
+	description?: string;
+	subagent_type?: string;
+	name?: string;
+};
 type Reply = {
 	status?: number;
 	headers?: Record<string, string>;
@@ -79,6 +87,7 @@ type Registered = {
 type Outcome = { result?: unknown; deny?: unknown };
 export type Harness = {
 	clock: MockClock;
+	spawns: Loose[];
 	logs: string[];
 	debug: string[];
 	fetched: number;
@@ -93,6 +102,12 @@ export type Harness = {
 	sent: string | undefined;
 	auth: string | undefined;
 	envReads: string[];
+	// The variable that outranks the routed effort, kept apart so key tests list only key reads.
+	effortReads: string[];
+	// The effort each subagent request carried at the bottom of the chain, as the model would get it.
+	steps: Loose["effort"][];
+	// How many times the engine's own spawn ran.
+	spawnRuns: number;
 };
 export const KEYED = { options: { api_key: "test-key" } };
 
@@ -103,10 +118,21 @@ type Setup = {
 	offline?: boolean;
 	offers?: Readonly<Record<string, string>>;
 	descriptions?: Readonly<Record<string, string>>;
-	decision?: ToolCheckDecision | "throw";
+	// One verdict for every check, or one per check in turn with the last repeating.
+	decision?: ToolCheckDecision | "throw" | readonly ToolCheckDecision[];
 	delayMs?: number;
 	env?: Readonly<Record<string, string>>;
 	result?: { result: string } | { deny: string };
+	// The refusal the spawn returns, as the engine would for a limit it holds.
+	spawnDeny?: string;
+	// How long the spawn takes to settle on the test's clock.
+	spawnDelayMs?: number;
+	// The extra keys of the spawn input beyond the call's own: fork, isTeammate, resume, workflow.
+	spawn?: Record<string, unknown>;
+	// The effort the subagent's model has before the plugin, or null for a model without effort.
+	sessionEffort?: string | null;
+	// A log line that makes $.ui.log throw, as a failing engine call would.
+	logThrows?: string;
 	// Answers the plugin's dialog with the text the person gave, or undefined for a dismissal.
 	// It gets the labels and may wait on the test's clock.
 	dialog?: (
@@ -117,6 +143,7 @@ type Asked = { question: string; header: string; labels: string[] };
 
 const newHarness = (clock: MockClock): Harness => ({
 	clock,
+	spawns: [],
 	logs: [],
 	debug: [],
 	fetched: 0,
@@ -131,10 +158,15 @@ const newHarness = (clock: MockClock): Harness => ({
 	sent: undefined,
 	auth: undefined,
 	envReads: [],
+	effortReads: [],
+	steps: [],
+	spawnRuns: 0,
 });
 
 const logHandler =
-	(h: Harness) => (_: unknown, e: { text: string; to?: string }) => {
+	(h: Harness, throws?: string) =>
+	(_: unknown, e: { text: string; to?: string }) => {
+		if (e.text === throws) throw new Error("log failed");
 		(e.to === "debug" ? h.debug : h.logs).push(e.text);
 		return { value: undefined };
 	};
@@ -170,19 +202,26 @@ const fetchHandler =
 		};
 	};
 
+const EFFORT_ENV = "CLAUDE_CODE_EFFORT_LEVEL";
+
 // Records each variable read, so a test can show a variable was never read.
 const envHandler =
 	(h: Harness, env: Readonly<Record<string, string>>) =>
 	(_: unknown, e: { name: string }) => {
-		h.envReads.push(e.name);
+		(e.name === EFFORT_ENV ? h.effortReads : h.envReads).push(e.name);
 		return { value: env[e.name] };
 	};
 
 const checkHandler =
-	(h: Harness, decision: ToolCheckDecision | "throw") =>
+	(h: Harness, decision: NonNullable<Setup["decision"]>) =>
 	(_: unknown, e: Loose) => {
 		h.checks.push(e);
 		if (decision === "throw") throw new Error("boom");
+		if (typeof decision !== "string")
+			return {
+				decision:
+					decision[Math.min(h.checks.length, decision.length) - 1] ?? "deny",
+			};
 		return { decision };
 	};
 
@@ -193,6 +232,48 @@ const callHandler =
 		h.received = e;
 		h.seen.push(e);
 		return result;
+	};
+
+// The model and effort the engine would have used without the plugin.
+const SESSION_EFFORT = "max";
+let agentSeq = 0;
+
+// The spawn the engine runs once the Agent call is allowed: the plugin sets the model here.
+const spawnHandler =
+	(h: Harness, deny?: string, delayMs = 0) =>
+	async (_: unknown, e: Loose) => {
+		h.spawnRuns += 1;
+		if (delayMs > 0) await h.clock.sleep(delayMs);
+		if (deny !== undefined) return { deny };
+		h.spawns.push(e);
+		h.received = { ...h.received, model: e.model };
+		agentSeq += 1;
+		return {
+			model: String(e.model ?? "inherit"),
+			agentId: `agent-${agentSeq}`,
+		};
+	};
+
+// The subagent's request: the plugin sets the effort here. The session's own effort is no change.
+const stepHandler = (h: Harness) =>
+	// biome-ignore lint/correctness/useYield: the bottom of the chain streams no chunks
+	async function* (
+		_: unknown,
+		e: TurnStepInput,
+	): AsyncGenerator<never, TurnStepResult> {
+		h.steps.push(e.effort);
+		h.received = {
+			...h.received,
+			effort: e.effort === SESSION_EFFORT ? undefined : e.effort,
+		};
+		return {
+			turnId: e.turnId,
+			index: e.index,
+			answer: "",
+			toolUses: [],
+			stopReason: null,
+			usage: null,
+		};
 	};
 
 // A hook the test registers first answers first, so the dialog goes in ahead of the catch-all.
@@ -225,13 +306,15 @@ export const harness = (on: On, setup: Setup = {}): Harness => {
 			dialogHandler(h, setup.dialog),
 		);
 	on("env.get", envHandler(h, env));
-	on("ui.log", logHandler(h));
+	on("ui.log", logHandler(h, setup.logThrows));
 	on("http.fetch", fetchHandler(h, setup));
 	on("agent.offer", () => ({ isOffered: true }));
 	on("tool.check", checkHandler(h, decision));
 	on("tool.register", registerHandler(h));
 	on("session.start", (_, e) => ({ cwd: e.cwd }));
 	on("tool.call", callHandler(h, result));
+	on("agent.spawn", spawnHandler(h, setup.spawnDeny, setup.spawnDelayMs));
+	on("turn.step", stepHandler(h));
 	return h;
 };
 
@@ -280,6 +363,43 @@ export const offerAll = async (
 		await offer($, agent, source, descriptions[agent]);
 };
 
+// Runs an Agent call as the engine does: the tool call, then the spawn it makes once the call is allowed, then the subagent's first request.
+export const runAgent = async (
+	$: Engine,
+	h: Harness,
+	over: Record<string, unknown> = {},
+	setup: Pick<Setup, "spawn" | "sessionEffort"> = {},
+) => {
+	const call = agentCall(over) as unknown as AgentArgs;
+	const before = h.calls;
+	const outcome: Outcome = await $.tool.call(call as unknown as ToolCallArgs);
+	if (h.calls === before) return outcome;
+	h.received = call;
+	const spawned = await $.agent.spawn({
+		tool_use_id: call.tool_use_id,
+		prompt: call.prompt,
+		description: call.description,
+		subagentType: call.subagent_type ?? "general-purpose",
+		model: call.model,
+		name: call.name,
+		fork: call.subagent_type === "fork",
+		...setup.spawn,
+	} as never);
+	if (spawned.deny !== undefined) return { deny: spawned.deny };
+	const step = $.turn.step({
+		turnId: "turn",
+		index: 0,
+		model: String(call.model ?? "opus"),
+		...(setup.sessionEffort === null
+			? {}
+			: { effort: call.effort ?? setup.sessionEffort ?? SESSION_EFFORT }),
+		messageCount: 1,
+		agentId: spawned.agentId,
+	} as TurnStepInput);
+	for await (const _ of step);
+	return outcome;
+};
+
 export const callOnce = async (
 	$: Engine,
 	on: On,
@@ -288,7 +408,7 @@ export const callOnce = async (
 ) => {
 	const h = harness(on, setup);
 	await offerAll($, setup.offers, setup.descriptions);
-	const outcome: Outcome = await $.tool.call(agentCall(over));
+	const outcome = await runAgent($, h, over, setup);
 	return { h, outcome };
 };
 
@@ -296,7 +416,7 @@ export const callOnce = async (
 export const retried = async ($: Engine, on: On, setup: Setup) => {
 	const h = harness(on, setup);
 	await offerAll($);
-	const pending = $.tool.call(agentCall());
+	const pending = runAgent($, h);
 	await h.clock.advance(1500);
 	await pending;
 	return h;

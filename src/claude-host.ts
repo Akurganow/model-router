@@ -40,12 +40,38 @@ export type Engine = {
 		): Promise<string>;
 	};
 };
-export type Outcome = { readonly deny?: string };
-export type Next = {
-	(e: unknown): Promise<Outcome>;
+export type Outcome = { readonly deny?: string; readonly isError?: boolean };
+export type Next<R = Outcome> = {
+	(e: unknown): Promise<R>;
 	readonly signal: AbortSignal;
+	// Who raised the dispatch: the engine for the model's Agent call, a plugin name for its own calls.
+	readonly origin: { readonly plugin: string };
 };
-export type Hook<E, R = Outcome> = ($: Engine, e: E, next: Next) => Promise<R>;
+export type Hook<E, R = Outcome> = (
+	$: Engine,
+	e: E,
+	next: Next<R>,
+) => Promise<R>;
+// agent.spawn rewrites the model. Its answer names the started subagent.
+export type Started = { readonly deny?: string; readonly agentId?: string };
+export type AgentSpawn = {
+	tool_use_id: string;
+	prompt: string;
+	description: string;
+	subagentType: string;
+	model?: string;
+	name?: string;
+	fork: boolean;
+	isTeammate?: true;
+	resume?: unknown;
+	workflow?: unknown;
+};
+export type TurnStep = { agentId?: string; effort?: string };
+export type TurnComplete = { agentId?: string };
+// turn.step streams: the hook is an async generator and next(e) is the stream beneath.
+export type StepStream = AsyncGenerator<unknown, unknown>;
+export type StepNext = (e: TurnStep) => StepStream;
+export type StepHook = ($: Engine, e: TurnStep, next: StepNext) => StepStream;
 export type CommandRun = {
 	command: string;
 	args: string;
@@ -88,6 +114,15 @@ export type On = {
 		hook: Hook<AgentCall>,
 	): { catch(handler: Hook<unknown>): unknown };
 	(
+		event: "agent.spawn",
+		hook: Hook<AgentSpawn, Started>,
+	): { catch(handler: Hook<unknown>): unknown };
+	(event: "turn.step", hook: StepHook): { catch(handler: StepHook): unknown };
+	(
+		event: "turn.complete",
+		hook: Hook<TurnComplete>,
+	): { catch(handler: Hook<unknown>): unknown };
+	(
 		event: "tool.call",
 		matcher: { tool: `mcp__${string}` },
 		hook: Hook<ConfigCall, ToolAnswer>,
@@ -107,6 +142,14 @@ export type Options = {
 
 export function passOn(_: Engine, e: unknown, next: Next): Promise<Outcome> {
 	return next(e);
+}
+
+export async function* passStep(
+	_: Engine,
+	e: TurnStep,
+	next: StepNext,
+): StepStream {
+	return yield* next(e);
 }
 
 // A call the user's rules deny as Claude made it never leaves the machine. The check opens no dialog.
