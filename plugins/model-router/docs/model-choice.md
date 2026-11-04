@@ -99,15 +99,17 @@ Sonnet attempt.
 cost and intelligence* measured Opus 5.5 at `xhigh` only 1.4 points above
 `high`. That step cost 2.5 times as much.
 
-The hook sets the call's `model` and `effort` arguments, so the subagent starts
-with both, as if the caller had named them. A call that names an effort gets a
-model and keeps its effort. A call that names a model is not routed.
+The plugin sets the subagent's model at `agent.spawn` and its effort on the
+subagent's requests, so the subagent starts with both. A call that names an
+effort gets a model and keeps its effort. A call that names a model is not
+routed.
 
 Claude Code resolves a subagent's model from the call's `model` first, then
-the agent definition, then `CLAUDE_CODE_SUBAGENT_MODEL`. The routed model sits
-in the first place, so it outranks the variable.
-`CLAUDE_CODE_SUBAGENT_MODEL_FORCE` and `CLAUDE_CODE_EFFORT_LEVEL` outrank the
-plugin.
+the agent definition, then `CLAUDE_CODE_SUBAGENT_MODEL`. A model that a mod
+sets at `agent.spawn` replaces the call's `model`. The routed model therefore
+outranks the variable. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` and
+`CLAUDE_CODE_EFFORT_LEVEL` outrank the plugin. While the effort variable is
+set, the plugin leaves the effort alone.
 
 ## Escalation
 

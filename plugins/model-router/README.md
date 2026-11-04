@@ -23,12 +23,14 @@ asks six questions. The answers for this mod:
   Code hands it the plugin's sensitive `api_key` and `openrouter_api_key`
   options from secure storage. When an option is empty, the mod reads the key
   from `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY`. It reads a key only for a
-  provider the `provider` option allows. It reads no other environment
-  variable and no file.
+  provider the `provider` option allows. It reads one more environment
+  variable, `CLAUDE_CODE_EFFORT_LEVEL`, and only to see whether it is set. It
+  never sends its value anywhere. It reads no file.
 - **Sees your session?** The arguments of each Agent tool call. It sends the
   task, the description and the description of the agent. It reads `model`,
   `name` and `effort` to decide whether to route and whether to keep the
-  caller's effort. It also sees the name, source and description of each agent
+  caller's effort. It also sees which plugin started each spawn, to leave
+  other plugins' spawns alone. It also sees the name, source and description of each agent
   Claude Code offers, to tell a built-in from a user or plugin agent and to
   describe it. It reads the spawn of each subagent and the requests the
   subagent then makes. Between calls it keeps only the latest source and
@@ -36,9 +38,9 @@ asks six questions. The answers for this mod:
 - **Changes your session?** Two settings of the subagent: its `model` and its
   `effort`. The mod sets the `model` when the subagent spawns, and the Agent
   call stays as written. It sets `effort` on the subagent's own requests only
-  when the call names none, or, under the
-  [extended scope](#which-calls-are-routed), replaces the one the agent's
-  definition sets. It registers one tool the model can call,
+  when the call names none and `CLAUDE_CODE_EFFORT_LEVEL` is unset, or, under
+  the [extended scope](#which-calls-are-routed), replaces the one the agent's
+  definition sets. A model without effort gets none. It registers one tool the model can call,
   `mcp__model-router__config`. The tool reads the settings and opens the
   mod's own dialog. It writes the `provider` and `scope` options only after
   you pick a value there. The two commands write the same options, and only from your own prompt. The
@@ -67,10 +69,11 @@ This is the whole surface:
 | hook | `tool.call{tool=Agent}` | Passes the Agent call on unchanged and notes whether the caller set an `effort`. |
 | hook | `tool.call{tool=mcp__model-router__config}` | Answers the `config` tool: the settings and the dialogs. |
 | hook | `turn.step` | Sets the routed `effort` on the subagent's requests. |
+| hook | `turn.complete` | Forgets the routed `effort` of a subagent whose turn ended. |
 | call | `$.clock.after` | The TypeSafe SDK's timers run on it, for example its retry wait. |
 | call | `$.clock.sleep` | Times the 8 s limit. |
 | call | `$.config.set` | Writes the `provider` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. |
-| call | `$.env.get` | Reads `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY`, the only variables the mod reads. |
+| call | `$.env.get` | Reads `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY`, and whether `CLAUDE_CODE_EFFORT_LEVEL` is set, the only variables the mod reads. |
 | call | `$.http.fetch` | Sends the request to TypeSafe or OpenRouter. |
 | call | `$.tool.check` | Asks for the permission verdict of a call to the `config` tool. |
 | call | `$.tool.register` | Registers the `config` tool. |
@@ -198,21 +201,25 @@ definition sets. A plugin agent that pins a strong model can therefore run on
 a lower tier. A caller's own `effort` is kept, as under `core`. Keep `core`
 for agents whose model or effort you chose on purpose.
 
-Under both scopes, agents that a workflow script starts, or that another
-plugin starts without the Agent tool, pass through.
+Under both scopes, agents that a workflow script starts, teammates, resumed
+agents, and agents that another plugin starts with its own `$.agent.spawn`
+pass through. The mod routes only a spawn that the Agent tool makes.
 
 ### Precedence
 
-The mod sets the Agent call's `model`, the per-invocation parameter. Claude
-Code ranks that parameter first, above an agent definition's `model` and above
-`CLAUDE_CODE_SUBAGENT_MODEL`. So a routed call's model outranks
+The mod sets the subagent's model at `agent.spawn`, before Claude Code
+resolves it. A model that a mod sets there replaces the Agent call's `model`
+parameter, which Claude Code otherwise ranks above an agent definition's
+`model` and `CLAUDE_CODE_SUBAGENT_MODEL`. So a routed model outranks
 `CLAUDE_CODE_SUBAGENT_MODEL`.
 
 Two settings outrank the mod:
 
 - `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` makes Claude Code ignore the model a call
-  passes, so the forced model wins.
-- `CLAUDE_CODE_EFFORT_LEVEL` takes precedence over the call's `effort`.
+  or a mod passes, so the forced model wins.
+- `CLAUDE_CODE_EFFORT_LEVEL` takes precedence over any `effort`. When it is
+  set, the mod leaves the effort of the subagent's requests as Claude Code
+  chose it. The log line then shows `env effort`.
 
 An organization's `availableModels` list can also replace a blocked pick with
 another model.
@@ -328,7 +335,8 @@ the Jev model that answered and its input and output tokens. A part the answer
 lacks is left out. After a fallback the line ends with the provider that
 answered and why the first one failed, for example
 ` · via openrouter (typesafe HTTP 503)`. A kept caller effort shows as
-`caller effort` in place of the ladder label. The pick is logged as the call starts, and a call that
+`caller effort`, and a `CLAUDE_CODE_EFFORT_LEVEL` that is set shows as
+`env effort`, in place of the ladder label. The pick is logged as the call starts, and a call that
 Claude Code then refuses adds a second line, `denied`.
 
 ## Troubleshooting

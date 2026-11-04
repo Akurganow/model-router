@@ -40,10 +40,12 @@ export type Engine = {
 		): Promise<string>;
 	};
 };
-export type Outcome = { readonly deny?: string };
+export type Outcome = { readonly deny?: string; readonly isError?: boolean };
 export type Next<R = Outcome> = {
 	(e: unknown): Promise<R>;
 	readonly signal: AbortSignal;
+	// Who raised the dispatch: the engine for the model's Agent call, a plugin name for its own calls.
+	readonly origin: { readonly plugin: string };
 };
 export type Hook<E, R = Outcome> = (
 	$: Engine,
@@ -65,6 +67,7 @@ export type AgentSpawn = {
 	workflow?: unknown;
 };
 export type TurnStep = { agentId?: string; effort?: string };
+export type TurnComplete = { agentId?: string };
 // turn.step streams: the hook is an async generator and next(e) is the stream beneath.
 export type StepStream = AsyncGenerator<unknown, unknown>;
 export type StepNext = (e: TurnStep) => StepStream;
@@ -115,6 +118,10 @@ export type On = {
 		hook: Hook<AgentSpawn, Started>,
 	): { catch(handler: Hook<unknown>): unknown };
 	(event: "turn.step", hook: StepHook): { catch(handler: StepHook): unknown };
+	(
+		event: "turn.complete",
+		hook: Hook<TurnComplete>,
+	): { catch(handler: Hook<unknown>): unknown };
 	(
 		event: "tool.call",
 		matcher: { tool: `mcp__${string}` },

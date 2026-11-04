@@ -1387,6 +1387,7 @@ var EFFORT_LADDER = {
   opus: ["low", "medium", "high"]
 };
 var BUILT_IN = "built-in";
+var ENGINE = "engine";
 var DEFAULT_AGENT = "general-purpose";
 var FORK = "fork";
 var ROUTED_AGENTS = /* @__PURE__ */ new Set([
@@ -1400,6 +1401,7 @@ var offered = /* @__PURE__ */ new Map();
 var callerEffort = /* @__PURE__ */ new Set();
 var efforts = /* @__PURE__ */ new Map();
 var starting = /* @__PURE__ */ new Set();
+var STEP_WAIT_MS = 1e3;
 function register(on, options) {
   offered.clear();
   callerEffort.clear();
@@ -1409,15 +1411,15 @@ function register(on, options) {
     offered.set(e.agent, { source: e.source, description: e.description });
     return next(e);
   }).catch(passOn);
-  on("tool.call", { tool: "Agent" }, (_, e, next) => {
-    if (e.tool_use_id !== void 0 && e.effort !== void 0)
-      callerEffort.add(e.tool_use_id);
-    return next(e);
-  }).catch(passOn);
+  on("tool.call", { tool: "Agent" }, noteCallerEffort).catch(passOn);
   on("agent.spawn", ($, e, next) => routeSpawn($, e, next, options)).catch(
     passOn
   );
   on("turn.step", stepEffort).catch(passStep);
+  on("turn.complete", (_, e, next) => {
+    if (e.agentId !== void 0) efforts.delete(e.agentId);
+    return next(e);
+  }).catch(passOn);
   resetConfig();
   on("session.start", registerConfigTool).catch(passOn);
   on(
@@ -1436,6 +1438,19 @@ function register(on, options) {
     ($, e) => configCommand($, e, "scope", options)
   );
 }
+async function noteCallerEffort(_, e, next) {
+  const id = e.tool_use_id;
+  if (id !== void 0 && e.effort !== void 0) callerEffort.add(id);
+  try {
+    const outcome = await next(e);
+    if (id !== void 0 && (outcome.deny !== void 0 || outcome.isError))
+      callerEffort.delete(id);
+    return outcome;
+  } catch (error) {
+    if (id !== void 0) callerEffort.delete(id);
+    throw error;
+  }
+}
 function useClockTimers($) {
   installTimers((ms, fn) => $.clock.after(ms, fn));
 }
@@ -1449,7 +1464,9 @@ function routable(spawn, scope) {
 }
 async function routeSpawn($, spawn, next, options) {
   useClockTimers($);
-  if (!routable(spawn, resolveScope(options.scope))) return next(spawn);
+  const callerSet = callerEffort.delete(spawn.tool_use_id);
+  if (next.origin.plugin !== ENGINE || !routable(spawn, resolveScope(options.scope)))
+    return next(spawn);
   const state = {
     role: roleText(offered.get(spawn.subagentType)?.description),
     description: spawn.description,
@@ -1469,11 +1486,11 @@ async function routeSpawn($, spawn, next, options) {
     await $.ui.log(`skipped, ${picked.skipped}`);
     return next(spawn);
   }
-  const keepEffort = callerEffort.delete(spawn.tool_use_id);
-  await $.ui.log(decisionLine(picked, keepEffort));
+  const kept = callerSet ? "caller effort" : await $.env.get("CLAUDE_CODE_EFFORT_LEVEL") ? "env effort" : void 0;
+  await $.ui.log(decisionLine(picked, kept));
   const { model, effort } = picked;
   const started = next({ ...spawn, model });
-  if (!keepEffort) track(started, effort);
+  if (kept === void 0) track(started, effort);
   const outcome = await started;
   if (outcome.deny !== void 0) await $.ui.log("denied");
   return outcome;
@@ -1488,11 +1505,25 @@ function track(started, effort) {
   starting.add(settled);
   settled.finally(() => starting.delete(settled));
 }
-async function* stepEffort(_, e, next) {
+async function* stepEffort($, e, next) {
   if (e.agentId !== void 0 && !efforts.has(e.agentId))
-    await Promise.all(starting);
+    await spawnsSettled($);
   const effort = e.agentId === void 0 ? void 0 : efforts.get(e.agentId);
-  return yield* next(effort === void 0 ? e : { ...e, effort });
+  if (effort === void 0 || e.effort === void 0) return yield* next(e);
+  return yield* next({ ...e, effort });
+}
+async function spawnsSettled($) {
+  if (starting.size === 0) return;
+  const stop = new AbortController();
+  try {
+    await Promise.race([
+      Promise.all(starting),
+      $.clock.sleep(STEP_WAIT_MS, { signal: stop.signal }).catch(() => {
+      })
+    ]);
+  } finally {
+    stop.abort();
+  }
 }
 function pick2(decision) {
   if ("skipped" in decision) return decision;
@@ -1508,8 +1539,8 @@ function pick2(decision) {
     suffix: decisionSuffix(decision)
   };
 }
-function decisionLine(picked, keepEffort) {
-  const effort = keepEffort ? "caller effort" : picked.effort;
+function decisionLine(picked, kept) {
+  const effort = kept ?? picked.effort;
   return `L${picked.level} ${picked.model} \xB7 ${effort} \xB7 p=${picked.probabilities}${picked.suffix}`;
 }
 async function scored($, cancel, input) {

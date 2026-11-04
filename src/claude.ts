@@ -7,12 +7,14 @@ import {
 	resetConfig,
 } from "./claude-config.ts";
 import {
+	type AgentCall,
 	type AgentSpawn,
 	type Engine,
 	type HttpReply,
 	type Next,
 	type On,
 	type Options,
+	type Outcome,
 	passOn,
 	passStep,
 	type Started,
@@ -46,6 +48,8 @@ const EFFORT_LADDER = {
 } as const;
 
 const BUILT_IN = "built-in";
+// The origin of a spawn the Agent tool makes. Another plugin's $.agent.spawn carries its own name.
+const ENGINE = "engine";
 const DEFAULT_AGENT = "general-purpose";
 const FORK = "fork";
 // Forks inherit their parent's model and the other built-ins are fixed-purpose, so only these four are scored.
@@ -66,6 +70,8 @@ const callerEffort = new Set<string>();
 const efforts = new Map<string, string>();
 // Spawns that have not named their agent yet: a subagent's first request can come before its spawn settles.
 const starting = new Set<Promise<unknown>>();
+// A step from an agent no routed spawn names waits this long for the spawns in flight, then goes on.
+const STEP_WAIT_MS = 1000;
 
 export function register(on: On, options: Options): void {
 	offered.clear();
@@ -76,15 +82,15 @@ export function register(on: On, options: Options): void {
 		offered.set(e.agent, { source: e.source, description: e.description });
 		return next(e);
 	}).catch(passOn);
-	on("tool.call", { tool: "Agent" }, (_, e, next) => {
-		if (e.tool_use_id !== undefined && e.effort !== undefined)
-			callerEffort.add(e.tool_use_id);
-		return next(e);
-	}).catch(passOn);
+	on("tool.call", { tool: "Agent" }, noteCallerEffort).catch(passOn);
 	on("agent.spawn", ($, e, next) => routeSpawn($, e, next, options)).catch(
 		passOn,
 	);
 	on("turn.step", stepEffort).catch(passStep);
+	on("turn.complete", (_, e, next) => {
+		if (e.agentId !== undefined) efforts.delete(e.agentId);
+		return next(e);
+	}).catch(passOn);
 	resetConfig();
 	on("session.start", registerConfigTool).catch(passOn);
 	// The surface check reads the matchers, so the tool and command names stay literals here.
@@ -97,6 +103,25 @@ export function register(on: On, options: Options): void {
 	on("command.run", { command: "model-router:scope" }, ($, e) =>
 		configCommand($, e, "scope", options),
 	);
+}
+
+// The entry waits for this call's spawn, which deletes it. A call that ends in error or throws never spawns.
+async function noteCallerEffort(
+	_: Engine,
+	e: AgentCall,
+	next: Next,
+): Promise<Outcome> {
+	const id = e.tool_use_id;
+	if (id !== undefined && e.effort !== undefined) callerEffort.add(id);
+	try {
+		const outcome = await next(e);
+		if (id !== undefined && (outcome.deny !== undefined || outcome.isError))
+			callerEffort.delete(id);
+		return outcome;
+	} catch (error) {
+		if (id !== undefined) callerEffort.delete(id);
+		throw error;
+	}
 }
 
 function useClockTimers($: Engine): void {
@@ -121,7 +146,12 @@ async function routeSpawn(
 	options: Options,
 ): Promise<Started> {
 	useClockTimers($);
-	if (!routable(spawn, resolveScope(options.scope))) return next(spawn);
+	const callerSet = callerEffort.delete(spawn.tool_use_id);
+	if (
+		next.origin.plugin !== ENGINE ||
+		!routable(spawn, resolveScope(options.scope))
+	)
+		return next(spawn);
 	const state = {
 		role: roleText(offered.get(spawn.subagentType)?.description),
 		description: spawn.description,
@@ -141,11 +171,16 @@ async function routeSpawn(
 		await $.ui.log(`skipped, ${picked.skipped}`);
 		return next(spawn);
 	}
-	const keepEffort = callerEffort.delete(spawn.tool_use_id);
-	await $.ui.log(decisionLine(picked, keepEffort));
+	// Claude Code ranks this variable above any per-invocation effort, so a set value keeps the engine's effort.
+	const kept = callerSet
+		? "caller effort"
+		: (await $.env.get("CLAUDE_CODE_EFFORT_LEVEL"))
+			? "env effort"
+			: undefined;
+	await $.ui.log(decisionLine(picked, kept));
 	const { model, effort } = picked;
 	const started = next({ ...spawn, model });
-	if (!keepEffort) track(started, effort);
+	if (kept === undefined) track(started, effort);
 	const outcome = await started;
 	if (outcome.deny !== undefined) await $.ui.log("denied");
 	return outcome;
@@ -162,12 +197,27 @@ function track(started: Promise<Started>, effort: string): void {
 	settled.finally(() => starting.delete(settled));
 }
 
-// A subagent's requests carry its agentId. The routed effort replaces the session default.
-async function* stepEffort(_: Engine, e: TurnStep, next: StepNext): StepStream {
+// A subagent's requests carry its agentId. The routed effort replaces the session default, unless the model has none.
+async function* stepEffort($: Engine, e: TurnStep, next: StepNext): StepStream {
 	if (e.agentId !== undefined && !efforts.has(e.agentId))
-		await Promise.all(starting);
+		await spawnsSettled($);
 	const effort = e.agentId === undefined ? undefined : efforts.get(e.agentId);
-	return yield* next(effort === undefined ? e : { ...e, effort });
+	if (effort === undefined || e.effort === undefined) return yield* next(e);
+	return yield* next({ ...e, effort });
+}
+
+// The step cannot tell which spawn is its own, so it waits for them all, for a short time at most.
+async function spawnsSettled($: Engine): Promise<void> {
+	if (starting.size === 0) return;
+	const stop = new AbortController();
+	try {
+		await Promise.race([
+			Promise.all(starting),
+			$.clock.sleep(STEP_WAIT_MS, { signal: stop.signal }).catch(() => {}),
+		]);
+	} finally {
+		stop.abort();
+	}
 }
 
 type Picked = {
@@ -193,8 +243,8 @@ function pick(decision: Decision | Skipped): Picked | Skipped {
 	};
 }
 
-function decisionLine(picked: Picked, keepEffort: boolean): string {
-	const effort = keepEffort ? "caller effort" : picked.effort;
+function decisionLine(picked: Picked, kept: string | undefined): string {
+	const effort = kept ?? picked.effort;
 	return `L${picked.level} ${picked.model} · ${effort} · p=${picked.probabilities}${picked.suffix}`;
 }
 

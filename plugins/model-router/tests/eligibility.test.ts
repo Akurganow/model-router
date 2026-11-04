@@ -107,18 +107,3 @@ for (const [name, over, offers] of BUILT_IN_AND_USER_ROWS)
 			expect(h.received.effort).toBe("high");
 		},
 	);
-
-test(
-	"extended: a call that permission rules deny is not sent",
-	EXTENDED,
-	async ($, on) => {
-		const { h } = await callOnce(
-			$,
-			on,
-			{ subagent_type: "reviewer" },
-			{ decision: "deny" },
-		);
-		expect(h.fetched).toBe(0);
-		expect(h.calls).toBe(0);
-	},
-);

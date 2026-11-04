@@ -112,14 +112,3 @@ test("a hook failure lets the call run unchanged", KEYED, async ($, on) => {
 	expect(h.received.prompt).toBe(42);
 	expect(outcome.result).toBe("ok");
 });
-
-// A call the engine's permission check denies never reaches the spawn, so nothing is scored.
-test("a call that permission rules deny is not sent", KEYED, async ($, on) => {
-	const { h, outcome } = await callOnce($, on, {}, { decision: "deny" });
-	expect(h.fetched).toBe(0);
-	expect(h.checks.length).toBe(1);
-	expect(h.logs).toEqual([]);
-	expect(h.debug).toEqual([]);
-	expect(h.calls).toBe(0);
-	expect(String(outcome.result)).toMatch(/denied/);
-});

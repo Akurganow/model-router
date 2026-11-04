@@ -136,7 +136,9 @@ option is empty, it reads `OPENROUTER_API_KEY`. A key in either variable stays
 wherever you set it, for example in plaintext in a settings file. It is
 visible to every process Claude Code starts.
 
-The plugin reads no other environment variable. The `config` tool reports only
+The plugin reads one more environment variable, `CLAUDE_CODE_EFFORT_LEVEL`,
+only to see whether it is set. It never sends or logs the value. It reads no
+other environment variable. The `config` tool reports only
 whether a key is set, never the key, its length or any part of it.
 
 A project can set either variable in the `env` block of its Claude Code
