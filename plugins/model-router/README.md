@@ -292,8 +292,8 @@ log line then says `skipped` and names the cause, as
 
 Jev answers a second question: how much work the task takes once the
 judgment is settled, as an index from 0 to 2. The index rests on the middle
-and moves to an end only when Jev gives that end more than twice the
-middle's probability. The index then maps to an effort per model:
+and moves to an end only when Jev gives that end more than a fitted factor
+times the middle's probability: 2.38 for index 0 and 1.41 for index 2. The index then maps to an effort per model:
 
 | index | haiku | sonnet | opus |
 | --- | --- | --- | --- |

@@ -301,7 +301,8 @@ requests.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) covers the repository layout, the build,
 the checks, the commit rules and calibration against either provider, with
-`node scripts/calibrate.ts <typesafe|openrouter> [model]`.
+`node scripts/calibrate.ts <typesafe|openrouter> [model]`, and the offline rule
+comparison with `node scripts/compare-rules.ts`.
 
 ## Support
 

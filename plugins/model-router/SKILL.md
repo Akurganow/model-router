@@ -54,4 +54,6 @@ From the repository root:
 - `node scripts/calibrate.ts <typesafe|openrouter> [model]` takes that
   provider's API key from a masked prompt or stdin, runs the labelled seed
   against Jev and prints misses and agreement. The model defaults to
-  `jev-latest`.
+  `jev-latest`. `--record <file>` also writes each case's probabilities.
+- `node scripts/compare-rules.ts <record.jsonl> <rule.ts>...` compares rule
+  modules from `scripts/rules/` on that file, with 5-fold cross-validation.

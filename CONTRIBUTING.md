@@ -96,10 +96,24 @@ needs Node 22.18 or 23.6 or later. Its first argument names the provider. It
 reads that provider's key from a masked prompt or from stdin. The prompt names
 the host that gets the key, for example
 `OpenRouter API key for https://openrouter.ai/api:`. The script sends
-`calibration.jsonl`, twenty-one labelled briefs, to the endpoint that the
+`calibration.jsonl`, 172 labelled cases, to the endpoint that the
 plugins use for that provider. Its optional second argument names the Jev
 model and defaults to `jev-latest`. It exits 1 when tier or work
 agreement falls below 85%.
+
+Add `--record <file>` to write each case's labels and probabilities to a JSONL
+file. Then compare rule modules offline on that file:
+
+```sh
+node scripts/compare-rules.ts <record.jsonl> <rule.ts>...
+```
+
+`scripts/compare-rules.ts` scores each module in `scripts/rules/` with 5-fold
+cross-validation, fitting its parameters on the training folds only. It prints
+agreement, under-routing and over-routing for the tier and the work index.
+
+Each case in `calibration.jsonl` names its source, its license and the basis
+of its label. Mark a label that the brief supports both ways `contested`.
 
 Fix a miss by rewording a tier text in `src/model.ts` or a work-level text in
 `src/effort.ts`. Then rebuild with `node scripts/build.ts`. Never lower the
