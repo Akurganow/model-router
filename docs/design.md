@@ -18,7 +18,10 @@ A copy kept by hand drifts from its source, and nothing notices until a user doe
 So `metadata/source.json` is the only hand-written source of the facts the four files repeat.
 `metadata/source.schema.json` checks its shape.
 The source holds no value list.
-The provider and scope values come from `src/`, so the source cannot disagree with the code that enforces them.
+The value lists in the manifests come from `src/`, so a manifest cannot offer a value the code does not know.
+The option texts are prose, so a test holds them to `src/` instead.
+Each names every provider or scope value, except omp's provider text, which names `auto` and `openrouter-first` only.
+Each character limit in the source states the number `src/brief.ts` enforces.
 
 `scripts/build.ts` reads the source, and the renderers in `scripts/build/` write each copy.
 It writes the Claude manifest, both catalogues and the omp `package.json`.
@@ -86,10 +89,15 @@ The install does: omp reads `.omp-plugin/marketplace.json` before the Claude cat
 **Owner-setup scan.**
 The repository is public.
 The `scan` job checks the added lines of a pull request and every generated file for two markers.
-One is an absolute home path.
+One is an absolute home path, in the macOS, Linux or Windows form, also after `file://`.
 The other is a key-shaped string with the `sk-` or `Bearer` prefix that the redaction in `src/brief.ts` masks.
 Paths written from `~` pass.
-When a push names a base the clone lacks, the scan reads what the last commit adds, so no added line goes unread.
+The `Bearer` rule departs from the redaction on purpose.
+The redaction masks any token after `Bearer`, in any case.
+The scan also ignores case, but it needs a token of 16 or more characters with a digit.
+Without that, the manifest's "the bearer token" and the masked form `Bearer ***` would fail it.
+When a push names a base the clone lacks, the scan reads what HEAD adds over its merge base with `origin/main`.
+When that merge base is HEAD itself, or `origin/main` is absent, it reads only the last commit, and its note says so.
 The builder rewrites generated files whole, so the scan reads each of them in full.
 
 ## What this repository does not take from pegboard
