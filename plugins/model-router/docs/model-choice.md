@@ -137,11 +137,16 @@ define sends its own description once Claude Code has offered it. Before that
 offer it sends the fixed text. In omp, only the bundled `task` agent sends the
 fixed text. A `task` agent you define sends its description.
 
+OpenClaw has no built-in general agent. A spawn of the requesting agent itself
+sends that agent's description when one is set, and the fixed text otherwise.
+This departs from the fixed-text rule of the other harnesses. This was not
+measured.
+
 The harnesses word their descriptions differently, and a release can reword
 them again. A reworded role moves Jev's picks. `Explore`, `Plan` and omp's other
 agents keep their harness descriptions, so a harness rewording can still shift
-their picks. This was not measured. The fixed text keeps both plugins on the
-input the calibration used. In `calibration.jsonl`, 115 of the 122
+their picks. This was not measured. The fixed text keeps the Claude Code and omp
+plugins on the input the calibration used. In `calibration.jsonl`, 115 of the 122
 `general-purpose` cases carry it exactly. The other 7 come from sst/opencode's
 general agent, as their `source` field shows.
 
@@ -206,6 +211,10 @@ sets at `agent.spawn` replaces the call's `model`. The routed model therefore
 outranks the variable. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` and
 `CLAUDE_CODE_EFFORT_LEVEL` outrank the plugin. While the effort variable is
 set, the plugin leaves the effort alone.
+
+OpenClaw's `agents.defaults.subagents.thinking` plays the same part. It is the
+user's global effort for subagents, so the OpenClaw plugin keeps it and sets no
+`thinking`.
 
 ## Escalation
 
