@@ -131,28 +131,37 @@ new Jev release.
 Jev reads the agent's role with the task. Claude Code's `general-purpose` and
 `claude` agents and omp's bundled `task` agent send one fixed text instead of
 their harness's description. The text is `DEFAULT_ROLE` in `src/brief.ts`.
-Under `extended`, an agent you define under one of these names sends its own
-description once its harness has offered it.
+
+Under Claude Code's `extended` scope, a `general-purpose` or `claude` agent you
+define sends its own description once Claude Code has offered it. Before that
+offer it sends the fixed text. In omp, only the bundled `task` agent sends the
+fixed text. A `task` agent you define sends its description.
 
 The harnesses word their descriptions differently, and a release can reword
-them again. A reworded role moves Jev's picks. The fixed text keeps both plugins
-on the input the calibration used. In `calibration.jsonl`, 115 of the 122
-`general-purpose` cases carry it exactly, and 7 carry an older wording.
+them again. A reworded role moves Jev's picks. `Explore`, `Plan` and omp's other
+agents keep their harness descriptions, so a harness rewording can still shift
+their picks. This was not measured. The fixed text keeps both plugins on the
+input the calibration used. In `calibration.jsonl`, 115 of the 122
+`general-purpose` cases carry it exactly. The other 7 come from sst/opencode's
+general agent, as their `source` field shows.
 
-The measurement ran on 2026-11-05 with `jev-1.14.0`. It used the 122
-`general-purpose` cases of `calibration.jsonl`, with the same briefs and only the
-role swapped.
+The measurement ran on 2026-11-05 with `jev-1.14.0`. It used the 122 cases of
+`calibration.jsonl` whose role starts with "General-purpose agent", with the same
+briefs and only the role swapped. The case that carries omp's `task` description
+is not among them. Two full runs of all 172 calibration cases differed in 2 of 172
+tier picks.
 
-- Two identical runs differed in 2 of 172 picks.
-- Tier agreement with the labels, out of 122, was 112 with the `general-purpose`
-  text (113 on a repeat run), 106 with omp's `task` description, 106 with the
-  `claude` description and 104 with no role.
-- Tier under-routing was 9 of 122 with the `general-purpose` text, and 15 of 122
-  with omp's `task` description and with the `claude` description.
-- Refitting the factors on the omp-role run with 5-fold cross-validation
-  (`scripts/rules/ratio-agree.ts`) gave 80% agreement, against 83% for the
-  current factors. Per-harness weights do not fix the shift. Fixing the input
-  does.
+| Role variant | Agreement with labels, of 122 | Tier under-routing, of 122 |
+| --- | --- | --- |
+| Calibrated `general-purpose` text | 112 | 9 |
+| The same text, repeat run | 113 | 8 |
+| omp's `task` description | 106 | 15 |
+| `claude` description | 106 | 15 |
+| No role | 104 | 16 |
+
+Refitting the factors with 5-fold cross-validation (`scripts/rules/ratio-agree.ts`)
+on all 172 cases of the omp-role run gave 80% tier agreement, against 83% for the
+current factors. Per-harness weights do not fix the shift. Fixing the input does.
 
 ## The work question and the arch
 

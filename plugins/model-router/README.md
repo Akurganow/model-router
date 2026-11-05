@@ -238,8 +238,11 @@ The second provider in the order gets a request only after the first fails,
 as below. Each key goes only to its own provider. The body holds:
 
 - the task text, condensed and redacted as below
-- the agent's role, as [PRIVACY.md](PRIVACY.md) describes it, and the caller's
-  one-line description
+- the agent's role: the built-in `general-purpose` and `claude` agents send a
+  fixed text, and every other agent sends its description, masked and cut to
+  500 characters. [model-choice.md](docs/model-choice.md#the-role-of-the-default-agent)
+  says why
+- the caller's one-line description
 - the Jev alias `jev-latest` and two scoring questions with their
   three texts each, which ship with the plugin
 

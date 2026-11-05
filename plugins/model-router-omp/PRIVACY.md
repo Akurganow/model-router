@@ -54,14 +54,15 @@ holds:
 - a capped part of the batch `context`, at most 3000 characters, prepared the
   same way and placed after the task text. Task text and context together stay
   within 12,000 characters
-- the role. For the bundled `task` agent it is one fixed text that ships with
-  the plugin. Every other routed agent, a `task` agent you define included,
-  sends its description as omp discovers it. The plugin masks token-shaped
-  strings, collapses whitespace and cuts it to 500 characters. A missing or
-  blank description sends `An agent with no description.` Under the default
-  scope only the bundled `task` agent is routed. [The role of the default
-  agent](../model-router/docs/model-choice.md#the-role-of-the-default-agent)
-  says why the text is fixed.
+- the agent text, the request's `role` field:
+  - for the bundled `task` agent, one fixed text that ships with the plugin
+  - for every other routed agent, its description as omp discovers it, a
+    `task` agent you define included. The plugin masks token-shaped strings,
+    collapses whitespace and cuts it to 500 characters
+  - a missing or blank description sends `An agent with no description.`
+  - under the default scope only the bundled `task` agent is routed
+  - [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent)
+    says why the text is fixed
 - the item's `name` as the description, or an empty description when it has
   none
 - the Jev alias `jev-latest`, and one fixed scoring question, `tier`, with
@@ -92,7 +93,7 @@ That includes the bundled agents `task`, `scout`, `sonic`, `reviewer`
 and `security-reviewer`, and your own user, project and plugin agents
 that declare no model.
 
-- The role and the task text of each such agent leave your machine, as
+- The agent text and the task text of each such agent leave your machine, as
   What the plugin sends describes.
 - A hand-written description can hold private names, such as a client, a
   product or a team. The plugin masks token-shaped strings only. Read your
@@ -182,7 +183,7 @@ points it reads omp's settings `modelRoles`, `task.agentModelOverrides` and
 agent omp discovers, to see whether your own agent replaced a bundled one or
 sets its own model. It also checks whether the `@smol` and `@slow` roles
 resolve to a model. Nothing from these leaves your machine, except the
-role of each routed agent, which the request carries as described above.
+agent text of each routed agent, which the request carries as described above.
 
 The lines the plugin prints per batch go to your omp notifications, or to
 standard error when omp has no UI. The setup skill changes only what you
