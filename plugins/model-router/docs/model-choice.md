@@ -126,6 +126,34 @@ Agreement stays at 90%.
 The factors depend on the model that scored the run. Measure again after a
 new Jev release.
 
+## The role of the default agent
+
+Jev reads the agent's role with the task. Claude Code's `general-purpose` and
+`claude` agents and omp's bundled `task` agent send one fixed text instead of
+their harness's description. The text is `DEFAULT_ROLE` in `src/brief.ts`.
+Under `extended`, an agent you define under one of these names sends its own
+description once its harness has offered it.
+
+The harnesses word their descriptions differently, and a release can reword
+them again. A reworded role moves Jev's picks. The fixed text keeps both plugins
+on the input the calibration used. In `calibration.jsonl`, 115 of the 122
+`general-purpose` cases carry it exactly, and 7 carry an older wording.
+
+The measurement ran on 2026-11-05 with `jev-1.14.0`. It used the 122
+`general-purpose` cases of `calibration.jsonl`, with the same briefs and only the
+role swapped.
+
+- Two identical runs differed in 2 of 172 picks.
+- Tier agreement with the labels, out of 122, was 112 with the `general-purpose`
+  text (113 on a repeat run), 106 with omp's `task` description, 106 with the
+  `claude` description and 104 with no role.
+- Tier under-routing was 9 of 122 with the `general-purpose` text, and 15 of 122
+  with omp's `task` description and with the `claude` description.
+- Refitting the factors on the omp-role run with 5-fold cross-validation
+  (`scripts/rules/ratio-agree.ts`) gave 80% agreement, against 83% for the
+  current factors. Per-harness weights do not fix the shift. Fixing the input
+  does.
+
 ## The work question and the arch
 
 Jev answers a second question in the same request: how much work the task

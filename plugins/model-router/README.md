@@ -27,7 +27,7 @@ asks six questions. The answers for this mod:
   variable, `CLAUDE_CODE_EFFORT_LEVEL`, and only to see whether it is set. It
   never sends its value anywhere. It reads no file.
 - **Sees your session?** The arguments of each Agent tool call. It sends the
-  task, the description and the description of the agent. It reads `model`,
+  task, the description and the role of the agent. It reads `model`,
   `name` and `effort` to decide whether to route and whether to keep the
   caller's effort. It also sees which plugin started each spawn, to leave
   other plugins' spawns alone. It also sees the name, source and description of each agent
@@ -238,8 +238,8 @@ The second provider in the order gets a request only after the first fails,
 as below. Each key goes only to its own provider. The body holds:
 
 - the task text, condensed and redacted as below
-- the agent's description as Claude Code offers it, condensed, masked and cut
-  to 500 characters, and the caller's one-line description
+- the agent's role, as [PRIVACY.md](PRIVACY.md) describes it, and the caller's
+  one-line description
 - the Jev alias `jev-latest` and two scoring questions with their
   three texts each, which ship with the plugin
 
@@ -249,11 +249,10 @@ and assignments to names ending in `key`, `token`, `secret` or `password`. A
 text over 12,000 characters keeps its start and its end, joined by a marker
 that says the middle is omitted. Nothing else leaves the machine.
 
-Under the default `core` scope, the descriptions are those of the four
-built-in agents. Under `extended`, the descriptions and task text of your
-user, project and plugin agents leave too. [The extended
-scope](PRIVACY.md#the-extended-scope) says what that can expose, and
-[PRIVACY.md](PRIVACY.md) lists what else the mod reads, stores and passes on.
+Under `extended`, the descriptions and task text of your user, project and
+plugin agents leave too. [The extended scope](PRIVACY.md#the-extended-scope)
+says what that can expose, and [PRIVACY.md](PRIVACY.md) lists what else the
+mod reads, stores and passes on.
 
 With one provider, a routed call sends one request and up to two retries.
 The mod uses the official TypeSafe SDK. It retries a connection error, and a

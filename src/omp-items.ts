@@ -1,4 +1,4 @@
-import { roleText } from "./brief.ts";
+import { DEFAULT_ROLE, roleText } from "./brief.ts";
 import type { DiscoveredAgent } from "./omp-types.ts";
 import type { Scope } from "./scope.ts";
 
@@ -86,5 +86,9 @@ export function spawnCheck(
 		: undefined;
 }
 
-export const roleOf = (name: string, facts: Facts) =>
-	roleText(findAgent(name, facts)?.description);
+export function roleOf(name: string, facts: Facts): string {
+	const found = findAgent(name, facts);
+	return name === TASK && found?.source === BUNDLED
+		? DEFAULT_ROLE
+		: roleText(found?.description);
+}

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { roleText } from "./brief.ts";
+import { DEFAULT_ROLE, roleText } from "./brief.ts";
 import { AGENTS, extend } from "./omp-fake-agents.ts";
 import { lockfileScoped, useWorld } from "./omp-fakes.ts";
 import { createExtension } from "./omp-router.ts";
@@ -57,7 +57,7 @@ test("extended: seance is skipped with its own reason and the rest are scored", 
 	]);
 });
 
-test("extended: each item sends the description of its own agent as the role", async () => {
+test("extended: each item sends its own agent's description, and the task agent the default role", async () => {
 	extend(world);
 	install();
 	const named = ROUTED.map((agent) => ({ task: `a ${agent}`, agent }));
@@ -65,10 +65,12 @@ test("extended: each item sends the description of its own agent as the role", a
 	for (const { task, agent } of named)
 		assert.equal(
 			roleSentFor(task),
-			roleText(world.agents.find((a) => a.name === agent)?.description),
+			agent === "task"
+				? DEFAULT_ROLE
+				: roleText(world.agents.find((a) => a.name === agent)?.description),
 			agent,
 		);
-	assert.equal(roleSentFor("no agent"), roleText(AGENTS[0]?.description));
+	assert.equal(roleSentFor("no agent"), DEFAULT_ROLE);
 });
 
 test("extended: each skipped item names its reason and the rest are still scored", async () => {

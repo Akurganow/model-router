@@ -4,6 +4,7 @@ import {
 	BUDGET_CHARS,
 	buildPrompt,
 	contextText,
+	DEFAULT_ROLE,
 	NO_DESCRIPTION,
 	OMISSION_MARKER,
 	prepareBrief,
@@ -212,6 +213,14 @@ test("contextText drops a blank string and any value that is not a string", () =
 test("the role cap and the neutral line are fixed", () => {
 	assert.equal(ROLE_CAP, 500);
 	assert.equal(NO_DESCRIPTION, "An agent with no description.");
+});
+
+test("DEFAULT_ROLE is the calibrated text and fits the role cap", () => {
+	assert.equal(
+		DEFAULT_ROLE,
+		"General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.",
+	);
+	assert.ok(DEFAULT_ROLE.length <= ROLE_CAP);
 });
 
 test("a description of exactly the cap comes back whole, one unit more is cut", () => {

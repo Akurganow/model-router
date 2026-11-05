@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "./brief.ts";
 import { register } from "./claude.ts";
 
 type Hook = ($: unknown, e: unknown, next: unknown) => Promise<unknown>;
@@ -70,10 +71,17 @@ const ANSWER = JSON.stringify({
 	answers: { tier: SCORE([0.9, 0.1, 0]), work: SCORE([0.2, 0.6, 0.2]) },
 });
 
+type Offer = { agent: string; source: string; description?: string };
+const BUILT_IN_DEFAULT: Offer = {
+	agent: "general-purpose",
+	source: "built-in",
+};
+
 async function routedCall(
 	options: Record<string, unknown>,
 	env: Record<string, string>,
-	offered = true,
+	offers: readonly Offer[] = [BUILT_IN_DEFAULT],
+	subagentType = "general-purpose",
 ) {
 	const reads: string[] = [];
 	const requests: { url: string; model: unknown }[] = [];
@@ -99,13 +107,8 @@ async function routedCall(
 	};
 	const next = nextHook();
 	const hooks = registered(options);
-	if (offered)
-		await hooks["agent.offer"]?.(
-			$,
-			{ agent: "general-purpose", source: "built-in" },
-			next,
-		);
-	await hooks[AGENT_CALL]?.($, SPAWN, next);
+	for (const offer of offers) await hooks["agent.offer"]?.($, offer, next);
+	await hooks[AGENT_CALL]?.($, { ...SPAWN, subagentType }, next);
 	return { reads, requests, roles };
 }
 
@@ -131,19 +134,73 @@ test("a stored model option is ignored and jev-latest is sent", async () => {
 	);
 });
 
-test("under extended a fresh registration with no offers routes with the neutral role", async () => {
+test("under extended a fresh registration with no offers sends the default role", async () => {
 	const { requests, roles } = await routedCall(
 		{ api_key: "ts-key", scope: "extended" },
 		{},
-		false,
+		[],
 	);
 	assert.equal(requests.length, 1);
-	assert.deepEqual(roles, ["An agent with no description."]);
+	assert.deepEqual(roles, [DEFAULT_ROLE]);
 });
 
 test("under core a fresh registration with no offers sends no request", async () => {
-	const { requests } = await routedCall({ api_key: "ts-key" }, {}, false);
+	const { requests } = await routedCall({ api_key: "ts-key" }, {}, []);
 	assert.deepEqual(requests, []);
+});
+
+test("a built-in claude agent sends the default role whatever description Claude Code offers", async () => {
+	const { roles } = await routedCall(
+		{ api_key: "ts-key" },
+		{},
+		[
+			{
+				agent: "claude",
+				source: "built-in",
+				description:
+					"Catch-all agent for any task that fits no more specific agent.",
+			},
+		],
+		"claude",
+	);
+	assert.deepEqual(roles, [DEFAULT_ROLE]);
+});
+
+for (const agent of ["general-purpose", "claude"])
+	test(`under extended a user agent that takes the name ${agent} sends its own description`, async () => {
+		const { roles } = await routedCall(
+			{ api_key: "ts-key", scope: "extended" },
+			{},
+			[{ agent, source: "user", description: "Mine." }],
+			agent,
+		);
+		assert.deepEqual(roles, [roleText("Mine.")]);
+	});
+
+test("under extended an Explore agent with no offer sends the neutral line", async () => {
+	const { roles } = await routedCall(
+		{ api_key: "ts-key", scope: "extended" },
+		{},
+		[],
+		"Explore",
+	);
+	assert.deepEqual(roles, [NO_DESCRIPTION]);
+});
+
+test("a built-in Explore agent keeps its offered description", async () => {
+	const { roles } = await routedCall(
+		{ api_key: "ts-key" },
+		{},
+		[
+			{
+				agent: "Explore",
+				source: "built-in",
+				description: "Searches the code.",
+			},
+		],
+		"Explore",
+	);
+	assert.deepEqual(roles, [roleText("Searches the code.")]);
 });
 
 test("register hooks the offers, the spawn, the steps, the turn ends, the session start, the config tool and both commands by literal matcher", () => {

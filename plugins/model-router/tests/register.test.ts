@@ -1,6 +1,10 @@
 import { expect, test } from "claude-code/testing";
 import { ANSWER, agentCall, callOnce, KEYED, PROMPT } from "./harness.ts";
 
+const DEFAULT_ROLE =
+	"General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
+const EXTENDED = { options: { api_key: "test-key", scope: "extended" } };
+
 test(
 	"the hook sets the model and the effort on the Agent call",
 	KEYED,
@@ -16,12 +20,18 @@ test(
 	},
 );
 
+for (const subagentType of [undefined, "claude"] as const)
+	test(
+		`${subagentType ?? "general-purpose"} is routed with the fixed default role`,
+		KEYED,
+		async ($, on) => {
+			const { h } = await callOnce($, on, { subagent_type: subagentType });
+			expect(JSON.parse(h.sent ?? "").state.role).toBe(DEFAULT_ROLE);
+			expect(h.received.model).toBe("haiku");
+		},
+	);
+
 for (const [subagentType, role] of [
-	[
-		undefined,
-		"General-purpose agent for researching complex questions and executing multi-step tasks.",
-	],
-	["claude", "Catch-all agent for any task that fits no more specific agent."],
 	[
 		"Explore",
 		"Read-only search agent for broad fan-out searches across a codebase.",
@@ -46,15 +56,35 @@ for (const [name, description, role] of [
 		"An agent with no description.",
 	],
 ] as const)
-	test(name, KEYED, async ($, on) => {
+	test(name, EXTENDED, async ($, on) => {
 		const { h } = await callOnce(
 			$,
 			on,
 			{},
-			{ descriptions: { "general-purpose": description } },
+			{
+				offers: { "general-purpose": "user" },
+				descriptions: { "general-purpose": description },
+			},
 		);
 		expect(JSON.parse(h.sent ?? "").state.role).toBe(role);
 	});
+
+test(
+	"a general-purpose agent a user defines sends its own description",
+	EXTENDED,
+	async ($, on) => {
+		const { h } = await callOnce(
+			$,
+			on,
+			{},
+			{
+				offers: { "general-purpose": "user" },
+				descriptions: { "general-purpose": "Mine." },
+			},
+		);
+		expect(JSON.parse(h.sent ?? "").state.role).toBe("Mine.");
+	},
+);
 
 test(
 	"the request goes to the systemone endpoint with the key and the pinned model",
@@ -121,7 +151,9 @@ test(
 		const { h } = await callOnce($, on);
 		expect(h.debug.length).toBe(1);
 		expect(h.debug[0]?.startsWith("request 1/1 {")).toBe(true);
-		expect(h.debug[0]).toContain('"role":"General-purpose agent');
+		expect(h.debug[0]).toContain(
+			'"role":"General-purpose agent for researching complex questions, searching',
+		);
 		expect(h.debug[0]).toContain('"description":"write hello"');
 		expect(h.debug[0]).not.toContain("test-key");
 	},

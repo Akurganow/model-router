@@ -22,6 +22,7 @@ function clearTimeout(timer) {
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
 var NO_DESCRIPTION = "An agent with no description.";
+var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
 var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
 var HEAD_SHARE = 2 / 3;
 var REDACT_PATTERNS = [
@@ -1462,13 +1463,18 @@ function routable(spawn, scope) {
   if (scope === "extended") return agent !== FORK;
   return ROUTED_AGENTS.has(agent) && offered.get(agent)?.source === BUILT_IN;
 }
+function roleFor(agent) {
+  const offer = offered.get(agent);
+  const own = offer === void 0 || offer.source === BUILT_IN;
+  return (agent === DEFAULT_AGENT || agent === "claude") && own ? DEFAULT_ROLE : roleText(offer?.description);
+}
 async function routeSpawn($, spawn, next, options) {
   useClockTimers($);
   const callerSet = callerEffort.delete(spawn.tool_use_id);
   if (next.origin.plugin !== ENGINE || !routable(spawn, resolveScope(options.scope)))
     return next(spawn);
   const state = {
-    role: roleText(offered.get(spawn.subagentType)?.description),
+    role: roleFor(spawn.subagentType),
     description: spawn.description,
     task: prepareBrief(spawn.prompt)
   };

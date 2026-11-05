@@ -23,9 +23,11 @@ Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For Cl
 
 **Claude Code.** On each Agent tool call it routes, the plugin asks
 [Jev](https://docs.typesafe.ai) two questions: how much judgment and how much
-work the task needs. Jev reads the task and the agent's description. Then the
-plugin sets the call's `model` and `effort`. The model is `haiku` for lookup or
-transcription, `sonnet` for bounded judgment and `opus` for open judgment.
+work the task needs. Jev reads the task and the agent's
+[role](plugins/model-router/docs/model-choice.md#the-role-of-the-default-agent).
+Then the plugin sets the call's `model` and `effort`. The model is `haiku` for
+lookup or transcription, `sonnet` for bounded judgment and `opus` for open
+judgment.
 [Effort](plugins/model-router/README.md#effort) shows the effort ladder.
 [model-choice.md](plugins/model-router/docs/model-choice.md) says why the
 tiers and the ladder are what they are, with Anthropic's sources.
@@ -35,10 +37,11 @@ holds the rules.
 
 **Oh My Pi.** The plugin scores each batch item with Jev, which answers one
 question: how much judgment the task needs. Jev reads the task and the agent's
-description. For lookup work the plugin gives the spawn the `smol` role. For
-open judgment it gives the `slow` role. For bounded judgment it changes
-nothing. It sets no effort and never changes the tool input. The roles run on
-the models you point `smol` and `slow` at.
+[role](plugins/model-router/docs/model-choice.md#the-role-of-the-default-agent).
+For lookup work the plugin gives the spawn the `smol` role. For open judgment
+it gives the `slow` role. For bounded judgment it changes nothing. It sets no
+effort and never changes the tool input. The roles run on the models you point
+`smol` and `slow` at.
 
 The `scope` setting picks the agents. [Scope](plugins/model-router-omp/README.md#scope)
 holds the rules.
@@ -269,8 +272,9 @@ omp plugin uninstall model-router@model-router
 > second host when the first fails. The default, `typesafe`, never contacts
 > OpenRouter.
 >
-> Each request also carries the agent's description. Under `extended`, the
-> descriptions and task text of your other agents leave the machine too.
+> Each request also carries the agent's role: a fixed text for the default
+> agents, the description for the others. Under `extended`, the descriptions
+> and task text of your other agents leave the machine too.
 
 Each plugin README lists the full request, and each privacy policy states the
 same in policy form:

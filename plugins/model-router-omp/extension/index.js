@@ -7,6 +7,7 @@ import { getPluginsLockfile } from "@oh-my-pi/pi-utils";
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
 var NO_DESCRIPTION = "An agent with no description.";
+var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
 var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
 var HEAD_SHARE = 2 / 3;
 var CONTEXT_CAP_CHARS = 3e3;
@@ -99,7 +100,10 @@ function spawnCheck({ agent, modelRole }, facts) {
   if (reason !== void 0) return reason;
   return modelRole && modelRole !== ownRole(findAgent(agent, facts)) ? `${agent} spawns with another model role` : void 0;
 }
-var roleOf = (name, facts) => roleText(findAgent(name, facts)?.description);
+function roleOf(name, facts) {
+  const found = findAgent(name, facts);
+  return name === TASK && found?.source === BUNDLED ? DEFAULT_ROLE : roleText(found?.description);
+}
 
 // src/part.ts
 var LEVELS = [0, 1, 2];

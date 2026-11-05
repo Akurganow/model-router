@@ -1,6 +1,9 @@
 export const BUDGET_CHARS = 12000;
 export const ROLE_CAP = 500;
 export const NO_DESCRIPTION = "An agent with no description.";
+// Calibration input, like the tier and work texts: only a recalibration changes it, never a harness rewording its agent.
+export const DEFAULT_ROLE =
+	"General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
 export const OMISSION_MARKER = "\n[middle of the brief omitted]\n";
 
 const HEAD_SHARE = 2 / 3;
