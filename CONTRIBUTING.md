@@ -84,8 +84,9 @@ npm run check
   - `tsc` type-checks the plugin tests, `src/` and `scripts/`.
   - `node scripts/set-version.ts --check` checks that the plugin versions
     agree.
-  - `node --test` runs the tests of `src/`, `scripts/` and every
-    `plugins/model-router-*/tests` folder, each with a 60-second limit.
+  - `npm test` runs the tests of `src/`, `scripts/` and every
+    `plugins/model-router-*/tests` folder, each with a 60-second limit. CI
+    runs the same script.
   - Biome runs with warnings as errors.
 - `npm run check` runs neither `claude plugin validate` nor
   `node scripts/check-surface.ts`. It runs no `claude plugin test` either.

@@ -5,7 +5,8 @@
 		"npm": ">=11.10.0"
 	},
 	"scripts": {
-		"check": "tsc -p . && tsc -p src && tsc -p scripts && node scripts/set-version.ts --check && node --test --test-timeout=60000 'src/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-*/tests/*.test.ts' && biome ci --error-on-warnings .",
+		"check": "tsc -p . && tsc -p src && tsc -p scripts && node scripts/set-version.ts --check && npm test && biome ci --error-on-warnings .",
+		"test": "node --test --test-timeout=60000 'src/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-*/tests/*.test.ts'",
 		"fix": "biome check --write ."
 	},
 	"devDependencies": {

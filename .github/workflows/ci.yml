@@ -84,9 +84,10 @@ jobs:
       - name: Check the versions
         run: node scripts/set-version.ts --check
 
-      # The timeout turns a hung test into a failure that names it.
+      # The test script in package.json holds the globs and the timeout, so
+      # CI and npm run check run the same set.
       - name: Run the source, script and omp tests
-        run: node --test --test-timeout=60000 'src/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-*/tests/*.test.ts'
+        run: npm test
 
   # A user installs the committed files, so this job runs no build. It proves
   # that each client accepts the manifests and catalogues as they are checked in.
