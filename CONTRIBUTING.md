@@ -23,7 +23,10 @@ every commit as a [conventional commit](#commits).
 - `scripts/build.ts` reads the source and writes every generated file. It also
   builds the bundle of each plugin from `src/`. Both bundles inline the
   TypeSafe SDK, so each plugin runs on its own.
-- `scripts/build/` holds one renderer per generated file kind.
+- `scripts/build/` holds the renderers, one for each harness's manifest and
+  catalogue and one for the README install region, and their shared helpers:
+  the JSON writer, the schema check, the source loader, the values taken from
+  `src/` and the list of generated files.
 - `scripts/manifests.ts` lists the generated manifests that carry the plugin
   version. `node scripts/set-version.ts VERSION` writes the version `VERSION`
   to `metadata/source.json` only. `VERSION` stands for the new version, such
@@ -40,7 +43,7 @@ every commit as a [conventional commit](#commits).
 Edit metadata only in `metadata/source.json`. Then run
 `node scripts/build.ts` and commit the generated files with the change.
 Never edit a generated file by hand. CI fails when one differs from the
-builder's output. `generatedPaths()` in `scripts/build.ts` lists the
+builder's output. `GENERATED_PATHS` in `scripts/build/outputs.ts` lists the
 generated files. In the README only the region between
 `<!-- install:start -->` and `<!-- install:end -->` is generated.
 
@@ -81,8 +84,9 @@ npm run check
   - `tsc` type-checks the plugin tests, `src/` and `scripts/`.
   - `node scripts/set-version.ts --check` checks that the plugin versions
     agree.
-  - `node --test` runs the tests of `src/`, `scripts/` and every
-    `plugins/model-router-*/tests` folder.
+  - `npm test` runs the tests of `src/`, `scripts/` and every
+    `plugins/model-router-*/tests` folder, each with a 60-second limit. CI
+    runs the same script.
   - Biome runs with warnings as errors.
 - `npm run check` runs neither `claude plugin validate` nor
   `node scripts/check-surface.ts`. It runs no `claude plugin test` either.
@@ -202,19 +206,14 @@ CI runs these checks:
 - `tsc -p src` and `tsc -p scripts`
 - `biome ci`
 - Anthropic's plugin policy scan, with the prompt in `.github/policy/`
-- the generated files: the `check` job runs `node scripts/build.ts` on Ubuntu
-  and macOS and fails when `git status --porcelain` shows a difference
-- the install: the `install` job validates the plugin and the Claude Code
-  catalogue, then installs both plugins from the checkout
-- the owner-setup scan: the `scan` job runs `node scripts/scan-owner-setup.ts`
-  on the added lines of a change and on every generated file
+- the generated-file check, on Ubuntu and macOS
+- the install of both plugins from the checkout
+- the owner-setup scan, `node scripts/scan-owner-setup.ts`
 
 A pull request merges only when all of them pass.
 [docs/design.md](docs/design.md#ci-checks-the-copies-and-the-installation)
-gives the reasons.
-
-The scan fails on an absolute home path or a key-shaped string in an added
-line. A test that needs such a sample builds it at run time.
+says what the last three check and why. A test that needs a home path or a
+key-shaped sample builds it at run time, so the scan does not flag the test.
 
 A new hook or engine call changes what Anthropic's directory and users see.
 Update `tools/surface.json` and the surface table in

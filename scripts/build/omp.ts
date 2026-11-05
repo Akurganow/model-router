@@ -1,10 +1,7 @@
-import { VALUE_SETTINGS } from "../../src/settings.ts";
 import { type JsonObject, oneLine, type Rendered, serialize } from "./json.ts";
+import { OMP_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";
-import { SETTING_VALUES } from "./values.ts";
-
-const MANIFEST_PATH = "plugins/model-router-omp/package.json";
-const CATALOGUE_PATH = ".omp-plugin/marketplace.json";
+import { SETTING_VALUES, VALUE_SETTINGS } from "./values.ts";
 
 const settings = (source: Source): JsonObject =>
 	Object.fromEntries(
@@ -50,6 +47,6 @@ const catalogue = (source: Source): JsonObject => ({
 });
 
 export const renderOmp = (source: Source): Rendered[] => [
-	{ path: MANIFEST_PATH, text: serialize(manifest(source)) },
-	{ path: CATALOGUE_PATH, text: serialize(catalogue(source)) },
+	{ path: OMP_OUTPUTS.manifest, text: serialize(manifest(source)) },
+	{ path: OMP_OUTPUTS.catalogue, text: serialize(catalogue(source)) },
 ];

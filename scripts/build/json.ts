@@ -50,13 +50,18 @@ function lines(value: JsonValue, indent: string): string {
 
 export const serialize = (value: JsonValue): string => `${lines(value, "")}\n`;
 
+// One file formats in well under a second; the bound only stops a stuck formatter.
+const BIOME_TIMEOUT_MS = 30_000;
+
 // The repository's own Biome formats the text, so a file written here passes biome ci.
 export function formatJson(path: string, text: string, root: string): string {
 	const run = spawnSync(
 		process.execPath,
 		[BIOME, "format", `--stdin-file-path=${path}`],
-		{ cwd: root, input: text, encoding: "utf8" },
+		{ cwd: root, input: text, encoding: "utf8", timeout: BIOME_TIMEOUT_MS },
 	);
+	if (run.error !== undefined)
+		throw new Error(`biome could not format ${path}: ${run.error.message}`);
 	if (run.status !== 0)
 		throw new Error(`biome could not format ${path}: ${run.stderr}`);
 	return run.stdout;

@@ -1,6 +1,6 @@
+import { README_OUTPUT } from "./outputs.ts";
 import type { Install, Source } from "./source.ts";
 
-export const README_PATH = "README.md";
 const START = "<!-- install:start -->";
 const END = "<!-- install:end -->";
 
@@ -23,6 +23,19 @@ export const installCommands = (
 			.replaceAll("{plugin}", pluginId(source)),
 	);
 
+// GitHub's heading anchor: lower case, punctuation dropped, spaces as hyphens.
+export const anchorOf = (heading: string): string =>
+	heading
+		.toLowerCase()
+		.replace(/[^\p{L}\p{N} _-]/gu, "")
+		.replaceAll(" ", "-");
+
+// The hand-written setup steps sit under "Set up <harness>" after the region.
+const setupLine = ({ heading }: Install): string => {
+	const setup = `Set up ${heading}`;
+	return `[${setup}](#${anchorOf(setup)}) has the next steps.`;
+};
+
 const ciLine = ({ ciSystems }: Install): string =>
 	ciSystems.length === 0
 		? "CI does not install it."
@@ -40,6 +53,8 @@ const section = (source: Source, install: Install): string => {
 		`Source: ${publisher}, [${title}](${url}).`,
 		"",
 		ciLine(install),
+		"",
+		setupLine(install),
 	].join("\n");
 };
 
@@ -51,15 +66,17 @@ function checkMarkers(readme: string): void {
 		const count = occurrences(readme, marker);
 		if (count === 0)
 			throw new Error(
-				`${README_PATH}: the marker ${marker} is missing. Add it on its own line in the Install section.`,
+				`${README_OUTPUT}: the marker ${marker} is missing. Add it on its own line in the Install section.`,
 			);
 		if (count > 1)
 			throw new Error(
-				`${README_PATH}: the marker ${marker} appears ${count} times. Keep one.`,
+				`${README_OUTPUT}: the marker ${marker} appears ${count} times. Keep one.`,
 			);
 	}
 	if (readme.indexOf(END) < readme.indexOf(START))
-		throw new Error(`${README_PATH}: ${END} comes before ${START}. Swap them.`);
+		throw new Error(
+			`${README_OUTPUT}: ${END} comes before ${START}. Swap them.`,
+		);
 }
 
 // Returns the README with the text between the install markers replaced.

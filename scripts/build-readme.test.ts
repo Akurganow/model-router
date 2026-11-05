@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { installCommands, README_PATH, renderReadme } from "./build/readme.ts";
+import { README_OUTPUT } from "./build/outputs.ts";
+import { anchorOf, installCommands, renderReadme } from "./build/readme.ts";
 import { loadSource, type Source } from "./build/source.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -25,6 +26,61 @@ test("the region holds one section for each harness, in order", () => {
 	const text = renderReadme(readme("\nold\n"), source);
 	const headings = text.match(/^### .+$/gm);
 	assert.deepEqual(headings, ["### Claude Code", "### Oh My Pi"]);
+});
+
+test("each section ends with a link to its setup heading", () => {
+	const text = renderReadme(readme("\nold\n"), source);
+	for (const heading of ["Claude Code", "Oh My Pi"])
+		assert.ok(
+			text.includes(
+				`[Set up ${heading}](#${anchorOf(`Set up ${heading}`)}) has the next steps.`,
+			),
+			heading,
+		);
+});
+
+// GitHub suffixes a repeated heading's anchor with -1, -2 and so on.
+const FENCE = /^(```|~~~)/;
+const HEADING = /^#{1,6} (.+)$/;
+// A line inside a fenced code block, such as a shell comment, is not a heading.
+const headingsOf = (markdown: string): string[] => {
+	let inFence = false;
+	const titles: string[] = [];
+	for (const line of markdown.split("\n")) {
+		if (FENCE.test(line)) inFence = !inFence;
+		const title = inFence ? undefined : HEADING.exec(line)?.[1];
+		if (title !== undefined) titles.push(title);
+	}
+	return titles;
+};
+
+const anchorsOf = (markdown: string): Set<string> => {
+	const seen = new Map<string, number>();
+	const anchors = new Set<string>();
+	for (const title of headingsOf(markdown)) {
+		const anchor = anchorOf(title);
+		const count = seen.get(anchor) ?? 0;
+		anchors.add(count === 0 ? anchor : `${anchor}-${count}`);
+		seen.set(anchor, count + 1);
+	}
+	return anchors;
+};
+
+test("a heading sign inside a fenced code block makes no anchor", () => {
+	const markdown = "# Real\n\n```sh\n# not a heading\n```\n";
+	assert.deepEqual([...anchorsOf(markdown)], ["real"]);
+});
+
+test("every in-page link of the README lands on a heading", () => {
+	const text = readFileSync(join(ROOT, README_OUTPUT), "utf8");
+	const anchors = anchorsOf(text);
+	for (const [, target] of text.matchAll(/\]\(#([^)]+)\)/g))
+		assert.ok(anchors.has(target ?? ""), `README.md links to #${target}`);
+});
+
+test("an anchor drops punctuation and joins words with hyphens", () => {
+	assert.equal(anchorOf("Set up Oh My Pi"), "set-up-oh-my-pi");
+	assert.equal(anchorOf("Turn off and `uninstall`!"), "turn-off-and-uninstall");
 });
 
 test("the region names the install commands of both harnesses", () => {
@@ -83,7 +139,7 @@ const failure = (text: string) => {
 test("a missing marker fails and names the file and the marker", () => {
 	for (const marker of [START, END]) {
 		const message = failure(readme("\nold\n").replace(marker, ""));
-		assert.match(message, new RegExp(README_PATH.replace(".", "\\.")));
+		assert.match(message, new RegExp(README_OUTPUT.replace(".", "\\.")));
 		assert.ok(message.includes(marker), message);
 		assert.match(message, /missing/);
 	}
@@ -108,6 +164,8 @@ const CI_PATH = ".github/workflows/ci.yml";
 const SYSTEM_RUNNERS: Readonly<Record<string, string>> = {
 	Ubuntu: "ubuntu-latest",
 };
+// ci.yml indents each job two spaces under `jobs:` and its keys four, and the
+// slice below finds a job's end by the next line at two spaces.
 const jobBlock = (workflow: string, job: string): string => {
 	const lines = workflow.split("\n");
 	const first = lines.indexOf(`  ${job}:`);

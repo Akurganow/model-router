@@ -2,23 +2,32 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { generatedPaths } from "./build.ts";
+import { GENERATED_PATHS } from "./build/outputs.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 
-// The two key shapes are the ones the redaction in src/brief.ts masks. The
-// bearer rule also needs a digit and 16 characters, because prose such as
-// "the bearer token" and the masked form "Bearer ***" must pass.
+// The two key shapes are the ones the redaction in src/brief.ts masks, and the
+// bearer rule ignores case as that redaction does. It also needs a digit and
+// 16 characters, because prose such as "the bearer token" and the masked form
+// "Bearer ***" must pass.
 const BEARER_TOKEN = "[A-Za-z0-9._~+/=-]";
-const MARKERS = [
+const HOME_NAME = "[A-Za-z0-9._-]+";
+// A POSIX path counts at the start of a token or after "file://". A Windows
+// path starts with a drive letter and takes either slash.
+const HOME_PATH = new RegExp(
+	`(?:(?<![A-Za-z0-9./~])|(?<=\\bfile://))/(?:Users|home)/${HOME_NAME}` +
+		`|\\b[A-Za-z]:[\\\\/]+Users[\\\\/]+${HOME_NAME}`,
+);
+export const MARKERS = [
 	{
 		kind: "absolute home path",
-		pattern: /(?<![A-Za-z0-9./~])\/(?:Users|home)\/[A-Za-z0-9._-]+/,
+		pattern: HOME_PATH,
 	},
 	{ kind: "sk- key", pattern: /\bsk-[A-Za-z0-9_-]{8,}/ },
 	{
 		kind: "Bearer token",
 		pattern: new RegExp(
 			`Bearer\\s+(?=${BEARER_TOKEN}*\\d)${BEARER_TOKEN}{16,}`,
+			"i",
 		),
 	},
 ] as const;
@@ -29,8 +38,12 @@ type AddedLine = { path: string; line: number; text: string };
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const HUNK_START = /^@@ -\S+ \+(\d+)/;
-const NEW_FILE = "+++ b/";
-const DEV_NULL = "+++ /dev/null";
+const FILE_HEADER = "+++ ";
+const NEW_FILE = `${FILE_HEADER}b/`;
+const QUOTED_NEW_FILE = `${FILE_HEADER}"b/`;
+const TRAILING_TAB = /\t$/;
+const MAIN_REF = "origin/main";
+const GIT_TIMEOUT_MS = 60_000;
 
 export const findMarkers = (text: string): MarkerKind[] =>
 	MARKERS.filter(({ pattern }) => pattern.test(text)).map(({ kind }) => kind);
@@ -50,31 +63,92 @@ export function scanFiles(root: string, paths: readonly string[]): Hit[] {
 	);
 }
 
+const SIMPLE_ESCAPES: Readonly<Record<string, string>> = {
+	a: "\x07",
+	b: "\b",
+	f: "\f",
+	n: "\n",
+	r: "\r",
+	t: "\t",
+	v: "\v",
+};
+const ESCAPE_OR_TEXT = /\\([0-7]{3})|\\(.)|[^\\]+/gs;
+const OCTAL_RADIX = 8;
+
+// Git quotes a name that holds a quote, a backslash or a control character, and
+// writes bytes outside ASCII as octal escapes that together form UTF-8.
+function unquoteGitName(quoted: string): string {
+	const chunks = [...quoted.matchAll(ESCAPE_OR_TEXT)].map(
+		([text, octal, escaped]) => {
+			if (octal !== undefined)
+				return Buffer.from([Number.parseInt(octal, OCTAL_RADIX)]);
+			if (escaped !== undefined)
+				return Buffer.from(SIMPLE_ESCAPES[escaped] ?? escaped);
+			return Buffer.from(text);
+		},
+	);
+	return Buffer.concat(chunks).toString("utf8");
+}
+
+// Git ends the header of a name that holds a space or a quote with a tab.
+function newFilePath(line: string): string | undefined {
+	const header = line.replace(TRAILING_TAB, "");
+	if (header.startsWith(NEW_FILE)) return header.slice(NEW_FILE.length);
+	if (header.startsWith(QUOTED_NEW_FILE) && header.endsWith('"'))
+		return unquoteGitName(header.slice(QUOTED_NEW_FILE.length, -1));
+	return undefined;
+}
+
 // With --unified=0 every line after a hunk header is content until the next
 // file header, so an added line that starts with "++" is not mistaken for one.
+// An added line under a missing or unreadable header fails the scan, because
+// skipping it would let the scan pass a line it never read.
 export function addedLines(diff: string): AddedLine[] {
 	const added: AddedLine[] = [];
 	let path: string | undefined;
 	let line = 0;
 	let inHunk = false;
-	for (const text of diff.split("\n")) {
-		if (text.startsWith("diff --git ")) inHunk = false;
-		else if (!inHunk && text === DEV_NULL) path = undefined;
-		else if (!inHunk && text.startsWith(NEW_FILE))
-			path = text.slice(NEW_FILE.length);
+	for (const [index, text] of diff.split("\n").entries()) {
+		if (text.startsWith("diff --git ")) {
+			inHunk = false;
+			path = undefined;
+		} else if (!inHunk && text.startsWith(FILE_HEADER))
+			path = newFilePath(text);
 		else if (HUNK_START.test(text)) {
 			inHunk = true;
 			line = Number(HUNK_START.exec(text)?.[1]);
-		} else if (inHunk && path !== undefined && text.startsWith("+"))
+		} else if (inHunk && text.startsWith("+")) {
+			if (path === undefined)
+				throw new Error(`unreadable file header before line ${index + 1}`);
 			added.push({ path, line: line++, text: text.slice(1) });
+		}
 	}
 	return added;
 }
 
+// A git run that timed out or could not start says nothing about the commit,
+// so it throws instead of reading as "not a commit" and narrowing the range.
+function git(root: string, args: readonly string[]) {
+	const run = spawnSync("git", args, {
+		cwd: root,
+		encoding: "utf8",
+		timeout: GIT_TIMEOUT_MS,
+	});
+	if (run.error !== undefined)
+		throw new Error(`git could not run ${args[0]}: ${run.error.message}`);
+	return run;
+}
+
 const isCommit = (root: string, ref: string): boolean =>
-	ref !== "" &&
-	spawnSync("git", ["cat-file", "-e", `${ref}^{commit}`], { cwd: root })
-		.status === 0;
+	ref !== "" && git(root, ["cat-file", "-e", `${ref}^{commit}`]).status === 0;
+
+const revision = (
+	root: string,
+	args: readonly string[],
+): string | undefined => {
+	const run = git(root, args);
+	return run.status === 0 ? run.stdout.trim() : undefined;
+};
 
 // Computed, not typed, because the id of the empty tree depends on the hash the repository uses.
 const emptyTree = (root: string): string =>
@@ -82,37 +156,68 @@ const emptyTree = (root: string): string =>
 		cwd: root,
 		input: "",
 		encoding: "utf8",
+		timeout: GIT_TIMEOUT_MS,
 	}).trim();
 
-// A push can name a base the clone lacks, such as the all-zero id or a commit a
-// force push dropped. The scan then reads what HEAD adds over its first parent,
-// or every line of a first commit, so no added line goes unread.
+// The branch point is where the push began. It is absent when HEAD is
+// origin/main itself, as on a force push to main.
+function branchPoint(root: string): string | undefined {
+	const point = revision(root, ["merge-base", "HEAD", MAIN_REF]);
+	return point !== undefined && point !== revision(root, ["rev-parse", "HEAD"])
+		? point
+		: undefined;
+}
+
+// A push can name a base the clone lacks, such as the all-zero id of a new
+// branch or a commit a force push dropped. The scan then reads everything HEAD
+// adds over the merge base with origin/main. Without that merge base it reads
+// only the last commit, which is every line of a first commit. A change of
+// several commits can hide a line in an earlier one there, so the note says so.
 export function diffRange(
 	root: string,
 	base: string,
 ): { range: string[]; note?: string } {
 	if (isCommit(root, base)) return { range: [`${base}...HEAD`] };
 	const note = `base ${base || "(empty)"} is not a commit in this clone`;
+	const point = branchPoint(root);
+	if (point !== undefined)
+		return {
+			range: [point, "HEAD"],
+			note: `${note}; scanning from the merge base with ${MAIN_REF}`,
+		};
 	return isCommit(root, "HEAD^")
-		? { range: ["HEAD^", "HEAD"], note: `${note}; scanning the first parent` }
+		? {
+				range: ["HEAD^", "HEAD"],
+				note: `${note}; scanning the last commit only, against its first parent`,
+			}
 		: {
 				range: [emptyTree(root), "HEAD"],
-				note: `${note}; scanning all of HEAD`,
+				note: `${note}; scanning the last commit only, all of its lines`,
 			};
 }
 
-export function scanDiff(root: string, base: string): Hit[] {
+export function scanDiff(root: string, range: readonly string[]): Hit[] {
 	const diff = execFileSync(
 		"git",
 		[
 			"-c",
 			"core.quotepath=false",
 			"diff",
+			// Fixed prefixes and no external tools, whatever the user's git config says.
+			"--src-prefix=a/",
+			"--dst-prefix=b/",
+			"--no-ext-diff",
+			"--no-textconv",
 			"--unified=0",
 			"--no-color",
-			...diffRange(root, base).range,
+			...range,
 		],
-		{ cwd: root, encoding: "utf8", maxBuffer: Infinity },
+		{
+			cwd: root,
+			encoding: "utf8",
+			maxBuffer: Infinity,
+			timeout: GIT_TIMEOUT_MS,
+		},
 	);
 	return addedLines(diff).flatMap(hitsIn);
 }
@@ -129,11 +234,11 @@ if (import.meta.main) {
 		console.error("usage: node scripts/scan-owner-setup.ts [--base <commit>]");
 		process.exit(EXIT_USAGE);
 	}
-	const note = base === undefined ? undefined : diffRange(ROOT, base).note;
-	if (note) console.error(note);
+	const diff = base === undefined ? undefined : diffRange(ROOT, base);
+	if (diff?.note) console.error(diff.note);
 	const hits = [
-		...scanFiles(ROOT, generatedPaths()),
-		...(base === undefined ? [] : scanDiff(ROOT, base)),
+		...scanFiles(ROOT, GENERATED_PATHS),
+		...(diff === undefined ? [] : scanDiff(ROOT, diff.range)),
 	];
 	for (const hit of hits) console.error(formatHit(hit));
 	process.exitCode = hits.length === 0 ? 0 : 1;

@@ -9,53 +9,9 @@ import { main, setVersion } from "./set-version.ts";
 import { useTempRoot } from "./temp-root.ts";
 
 const claude = "plugins/model-router/.claude-plugin/plugin.json";
-const omp = "plugins/model-router-omp/package.json";
-const extra = "plugins/model-router-extra/plugin.json";
-const catalog = ".omp-plugin/marketplace.json";
+const COMMAND_TIMEOUT_MS = 30_000;
 
-const claudeText = `{
-	"name": "model-router",
-	"version": "0.11.0",
-	"keywords": [
-		"claude-code"
-	]
-}
-`;
-const ompText = `{
-	"name": "model-router-omp",
-	"version": "0.11.0",
-	"private": true,
-	"omp": {
-		"extensions": [
-			"./extension/index.ts"
-		]
-	}
-}
-`;
-const extraText = `{
-	"name": "model-router-extra",
-	"version": "0.11.0",
-	"skills": "./skills/"
-}
-`;
-
-const catalogText = `{
-	"name": "model-router",
-	"plugins": [
-		{
-			"name": "model-router",
-			"source": "./plugins/model-router-omp",
-			"version": "0.11.0",
-			"homepage": "https://example.com"
-		}
-	]
-}
-`;
-
-const box = useTempRoot("set-version-", (put) => {
-	put(claude, claudeText);
-	put(omp, ompText);
-});
+const box = useTempRoot("set-version-");
 const { put, read } = box;
 
 const sourceText = (version: string) =>
@@ -72,54 +28,64 @@ function seedAll(version: string) {
 	}
 }
 
-test("one call writes the version into every manifest that exists", () => {
-	assert.deepEqual(setVersion(box.root, "1.2.3", [claude, omp, extra]), [
-		claude,
-		omp,
-	]);
-	assert.equal(JSON.parse(read(claude)).version, "1.2.3");
-	assert.equal(JSON.parse(read(omp)).version, "1.2.3");
-});
+const SOURCE_WITH_NESTED = `{
+	"name": "model-router",
+	"version": "0.11.0",
+	"nested": {
+		"version": "0.11.0"
+	},
+	"list": [
+		{
+			"version": "0.11.0"
+		}
+	]
+}
+`;
 
-test("only the version line changes, so tabs, key order and the final newline stay", () => {
-	setVersion(box.root, "1.2.3", [claude, omp]);
-	assert.equal(read(claude), claudeText.replace("0.11.0", "1.2.3"));
-	assert.equal(read(omp), ompText.replace("0.11.0", "1.2.3"));
-});
-
-test("a manifest added to the list gets the version when its file exists", () => {
-	put(extra, extraText);
-	assert.equal(setVersion(box.root, "2.0.0", [claude, omp, extra]).length, 3);
-	assert.equal(read(extra), extraText.replace("0.11.0", "2.0.0"));
+test("only the top-level version line changes, so tabs, key order, nested versions and the final newline stay", () => {
+	put(SOURCE_PATH, SOURCE_WITH_NESTED);
+	setVersion(box.root, "1.2.3");
+	assert.equal(
+		read(SOURCE_PATH),
+		SOURCE_WITH_NESTED.replace("0.11.0", "1.2.3"),
+	);
 });
 
 test("a version that is the last key keeps its missing comma", () => {
 	const text = '{\n\t"name": "x",\n\t"version": "0.11.0"\n}\n';
-	put(extra, text);
-	setVersion(box.root, "3.0.0", [extra]);
-	assert.equal(read(extra), text.replace("0.11.0", "3.0.0"));
+	put(SOURCE_PATH, text);
+	setVersion(box.root, "3.0.0");
+	assert.equal(read(SOURCE_PATH), text.replace("0.11.0", "3.0.0"));
 });
 
-test("a manifest without a version line stops the bump and names the file", () => {
-	put(omp, '{\n\t"name": "model-router-omp"\n}\n');
-	assert.throws(() => setVersion(box.root, "1.2.3", [claude, omp]), {
-		message: new RegExp(omp.replaceAll(".", "\\.")),
+test("a source with only a nested version line stops the bump and names the file", () => {
+	const text = '{\n\t"nested": {\n\t\t"version": "0.11.0"\n\t}\n}\n';
+	put(SOURCE_PATH, text);
+	assert.throws(() => setVersion(box.root, "1.2.3"), {
+		message: new RegExp(`${SOURCE_PATH}.*found 0`),
 	});
+	assert.equal(read(SOURCE_PATH), text);
 });
 
-test("a nested catalog version is rewritten and nothing else changes", () => {
-	put(catalog, catalogText);
-	assert.deepEqual(setVersion(box.root, "1.2.3", [claude, catalog]), [
-		claude,
-		catalog,
-	]);
-	assert.equal(read(catalog), catalogText.replace("0.11.0", "1.2.3"));
+test("a source with two top-level version lines stops the bump and writes nothing", () => {
+	const text = '{\n\t"version": "0.11.0",\n\t"version": "0.12.0"\n}\n';
+	put(SOURCE_PATH, text);
+	assert.throws(() => setVersion(box.root, "1.2.3"), {
+		message: new RegExp(`${SOURCE_PATH}.*found 2`),
+	});
+	assert.equal(read(SOURCE_PATH), text);
+});
+
+test("a missing source is an error that names the file", () => {
+	assert.throws(() => setVersion(box.root, "1.2.3"), {
+		message: `${SOURCE_PATH} is missing`,
+	});
 });
 
 test("the writer writes the source only, and the check names the manifests the build has not caught up", () => {
 	seedAll("0.11.0");
 	const before = MANIFESTS.map(({ path }) => read(path));
-	assert.deepEqual(setVersion(box.root, "1.2.3"), [SOURCE_PATH]);
+	setVersion(box.root, "1.2.3");
 	assert.equal(read(SOURCE_PATH), sourceText("1.2.3"));
 	assert.deepEqual(
 		MANIFESTS.map(({ path }) => read(path)),
@@ -139,6 +105,7 @@ test("the command refuses a version that is not X.Y.Z with exit code 2", () => {
 	const script = fileURLToPath(new URL("./set-version.ts", import.meta.url));
 	const run = spawnSync(process.execPath, [script, "1.2"], {
 		encoding: "utf8",
+		timeout: COMMAND_TIMEOUT_MS,
 	});
 	assert.equal(run.status, 2);
 	assert.match(run.stderr, /usage: node scripts\/set-version\.ts X\.Y\.Z/);
@@ -163,9 +130,9 @@ test("main with no version prints the usage and exits 2", () => {
 });
 
 test("main with a malformed version exits 2 and writes nothing", () => {
-	put(claude, claudeText);
+	put(SOURCE_PATH, sourceText("0.11.0"));
 	assert.equal(quietly(["1.2"]).status, 2);
-	assert.equal(read(claude), claudeText);
+	assert.equal(read(SOURCE_PATH), sourceText("0.11.0"));
 });
 
 test("main bumps the source and exits 0", () => {
@@ -180,20 +147,20 @@ test("main reports a source without a version line and exits 1", () => {
 	put(SOURCE_PATH, '{\n\t"name": "x"\n}\n');
 	const { status, errors } = quietly(["1.2.3"]);
 	assert.equal(status, 1);
-	assert.match(errors.join("\n"), /no version line in/);
+	assert.match(errors.join("\n"), /metadata\/source\.json.*found 0/);
+});
+
+test("main reports a missing source and exits 1", () => {
+	const { status, errors } = quietly(["1.2.3"]);
+	assert.equal(status, 1);
+	assert.deepEqual(errors, [`${SOURCE_PATH} is missing`]);
 });
 
 test("main --check exits 0 when the versions agree and 1 when they differ", () => {
 	seedAll("0.11.0");
 	assert.equal(quietly(["--check"]).status, 0);
-	put(claude, claudeText.replace("0.11.0", "0.12.0"));
+	put(claude, '{"version": "0.12.0"}');
 	const { status, errors } = quietly(["--check"]);
 	assert.equal(status, 1);
 	assert.match(errors.join("\n"), /plugin versions are not one/);
-});
-
-test("a bad manifest later in the list leaves the earlier ones unwritten", () => {
-	put(omp, '{\n\t"name": "model-router-omp"\n}\n');
-	assert.throws(() => setVersion(box.root, "1.2.3", [claude, omp]));
-	assert.equal(read(claude), claudeText);
 });

@@ -8,12 +8,11 @@ Install commands and install-time notes are in the [README](../README.md#install
 The reasons built on these facts are in [About this repository's design](design.md).
 
 Two clients are covered: Claude Code and Oh My Pi (omp).
-Later pull requests add OpenClaw and Hermes.
 
 ## Claude Code
 
 Documentation pages below were read on 2026-11-05.
-The CI action pins Claude Code 2.1.308, and the README asks for that version or later.
+The CI action pins Claude Code 2.1.308 in `.github/actions/setup-claude-code/package.json`, and the README asks for that version or later.
 
 ### Manifest
 
@@ -163,9 +162,9 @@ The CI action pins Claude Code 2.1.308, and the README asks for that version or 
 ### Claude Code gaps
 
 No source read here settles three points.
-The pages give no rule for the declaration form of `register` in a hooks module.
+The [Mods reference](https://code.claude.com/docs/en/plugins/mods/reference) and the other pages above give no rule for the declaration form of `register` in a hooks module.
 They give none for free `setTimeout` globals or for a size limit on the module.
-`scripts/build.ts` checks those three anyway.
+`checkClaudeBundle` and `MAX_BUNDLE_BYTES` in `scripts/build.ts` check those three anyway.
 
 ## Oh My Pi
 
@@ -249,7 +248,7 @@ The evals workflow pins omp 18.12.6 in `evals/omp/package.json`, and the README 
 
 ### omp gaps
 
-No documentation page describes the `omp.settings` block.
-The settings facts above rest on source at the commit named.
-`marketplace.md` lists no `privacyPolicyUrl` entry field.
-The catalogue parser preserves extra entry fields, but no source read here says what omp does with this one.
+No documentation page under `docs/` at the commit named describes the `omp.settings` block.
+The settings facts above rest on source at that commit.
+[`marketplace.md` L129–L164](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L129-L164) lists no `privacyPolicyUrl` entry field.
+The [catalogue parser](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/packages/coding-agent/src/extensibility/plugins/marketplace/fetcher.ts#L123-L215) preserves extra entry fields, but no source read here says what omp does with this one.

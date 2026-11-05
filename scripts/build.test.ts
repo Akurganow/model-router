@@ -3,11 +3,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { GENERATED_PATHS, README_OUTPUT } from "./build/outputs.ts";
+import { loadSource } from "./build/source.ts";
 import {
+	BUNDLES,
 	buildBundle,
 	checkClaudeBundle,
-	generatedPaths,
 	MAX_BUNDLE_BYTES,
+	renderMetadata,
 } from "./build.ts";
 import { useTempRoot } from "./temp-root.ts";
 
@@ -83,14 +86,12 @@ test("an omp entry builds and keeps its host imports external", async () => {
 	assert.match(readFileSync(out, "utf8"), /@oh-my-pi\/pi-coding-agent/);
 });
 
-test("the generated paths are the README, the four rendered files and the two bundles", () => {
-	assert.deepEqual(generatedPaths().sort(), [
-		".claude-plugin/marketplace.json",
-		".omp-plugin/marketplace.json",
-		"README.md",
-		"plugins/model-router-omp/extension/index.js",
-		"plugins/model-router-omp/package.json",
-		"plugins/model-router/.claude-plugin/plugin.json",
-		"plugins/model-router/hooks/register.js",
-	]);
+test("the generated paths are what the builder writes", () => {
+	const root = fileURLToPath(new URL("../", import.meta.url));
+	const written = [
+		...renderMetadata(loadSource(root)).map(({ path }) => path),
+		README_OUTPUT,
+		...BUNDLES.map(({ out }) => out),
+	];
+	assert.deepEqual([...GENERATED_PATHS].sort(), written.sort());
 });
