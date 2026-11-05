@@ -101,6 +101,20 @@ npm run check
 The type-check of the plugin tests needs the steps under
 [Type declarations](#type-declarations).
 
+### Try the OpenClaw plugin from a checkout
+
+Link the plugin folder in place of installing from npm:
+
+```bash
+openclaw plugins install --link ./plugins/model-router-openclaw --force --accept-capabilities
+```
+
+The link adds the folder to `plugins.load.paths`. The folder holds the generated
+manifest and bundle, so run `node scripts/build.ts` before you link and after
+each edit of `src/`. Then run `openclaw plugins reload model-router-openclaw`.
+[docs/clients.md](docs/clients.md#openclaw-install-and-update) cites the
+link and reload commands.
+
 ## Type declarations
 
 `npx tsc -p src` type-checks the sources. They declare the few mod types they

@@ -6,16 +6,13 @@
 
 Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For Claude Code, Oh My Pi and OpenClaw.
 
-| | Claude Code | Oh My Pi | OpenClaw |
-| --- | --- | --- | --- |
-| Routes | Under `core`, Agent tool calls to the four built-in agents. Under `extended`, every Agent call that passes no model and no name, except a fork ([details](plugins/model-router/README.md#which-calls-are-routed)) | Under `core`, `task` batch items. Under `extended`, every batch item whose agent's model you did not set, except `seance` and the [item reasons](plugins/model-router-omp/README.md#item-reasons) | Under `core`, [the spawn of the requesting agent itself](plugins/model-router-openclaw/README.md#the-spawn-of-the-requesting-agent-itself). Under `extended`, also the spawns of other agents that set no model ([details](plugins/model-router-openclaw/README.md#which-spawns-are-routed)) |
-| Sets | `model` and `effort` | the `smol` or `slow` role | `model` from your `small_model` or `large_model` setting, and `thinking` |
-| Asks Jev | two questions | one question | two questions |
-| Needs | Claude Code v2.1.308 or later | Oh My Pi v18.12.6 or later | OpenClaw 2026.10.10 or later |
-| Keys live in | the system's secure storage, or `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY` | omp's TypeSafe and OpenRouter credentials, or `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY` | the plugin's secret settings, or `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY` in the Gateway's environment |
-| Provider is set in | the install dialog, `/config`, `/model-router:provider` or the `config` tool | `/settings` → Plugins, `/model-router:provider` or the `model_router_config` tool | the plugin's settings page, `/model-router-provider` or the `model_router_config` tool |
-| Scope | `core` (default) or `extended`. Set in the install dialog, `/config` or `/model-router:scope` | `core` (default) or `extended`. Set in `/settings` → Plugins or `/model-router:scope`. A project may set it | `core` (default) or `extended`. Set in the plugin's settings page or `/model-router-scope` |
-| Reference | [plugin README](plugins/model-router/README.md) | [plugin README](plugins/model-router-omp/README.md) | [plugin README](plugins/model-router-openclaw/README.md) |
+| Harness | The plugin sets | Questions to Jev | Minimum version | Reference |
+| --- | --- | --- | --- | --- |
+| Claude Code | `model` and `effort` | 2 | v2.1.308 | [plugin README](plugins/model-router/README.md) |
+| Oh My Pi | the `smol` or `slow` role | 1 | v18.12.6 | [plugin README](plugins/model-router-omp/README.md) |
+| OpenClaw | `model` and `thinking` | 2 | 2026.10.10 | [plugin README](plugins/model-router-openclaw/README.md) |
+
+A plugin with a `scope` setting takes `core` (the default) or `extended`. The setting picks the agents the plugin routes, and the plugin README says how.
 
 [Install](#install) · [Verify](#verify) · [Update](#update) · [Turn off and uninstall](#turn-off-and-uninstall) · [What leaves the machine](#what-leaves-the-machine)
 
@@ -74,8 +71,7 @@ The `provider` option picks who scores each task: `typesafe` (the default),
 that key's provider alone. The [Claude Code](plugins/model-router/README.md),
 [Oh My Pi](plugins/model-router-omp/README.md) and
 [OpenClaw](plugins/model-router-openclaw/README.md) READMEs say when the second
-provider takes over. The `scope` option picks the agents the plugin routes:
-`core` (the default) or `extended`.
+provider takes over.
 
 <!-- install:start -->
 
@@ -236,16 +232,7 @@ or `OPENROUTER_API_KEY`. To change the provider or the scope later, open
 
 ### Set up OpenClaw
 
-The install line above is the first step. The
-[OpenClaw plugin README](plugins/model-router-openclaw/README.md) has all of
-them:
-
-1. [Install](plugins/model-router-openclaw/README.md#install) the package. The
-   README says what the flags `--force` and `--accept-capabilities` skip.
-2. Enable the plugin, and check that it registered.
-3. [Set up](plugins/model-router-openclaw/README.md#set-up) the two model
-   slots and a [key](plugins/model-router-openclaw/README.md#keys). Ask
-   OpenClaw to run the `model-router-setup` skill.
+Follow [Set up](plugins/model-router-openclaw/README.md#set-up) in the OpenClaw plugin README after the commands above. [Install](plugins/model-router-openclaw/README.md#install) there says what the flags skip and how to check the install.
 
 ## Verify
 
@@ -277,16 +264,7 @@ model-router task 1: L0 @smol · p=0.91 | task 2: L1 no change · p=0.62 | task 
 `skipped` entry. No line prints when `task.batch` is off or the batch has no
 eligible item.
 
-**OpenClaw.** OpenClaw shows no line in the chat. Start a subagent, and read
-the Gateway log with `openclaw logs --follow --plain`. The plugin writes one
-line per spawn, like this example:
-
-```text
-model-router L0 acme/small · medium · p=0.91/0.84 · jev jev-1.14.0 · 812/9 tok
-```
-
-[The log line](plugins/model-router-openclaw/README.md#the-log-line) explains
-the line and its `skipped` reasons.
+**OpenClaw.** OpenClaw shows no line in the chat. Start a subagent, and read the Gateway log with `openclaw logs --follow --plain`. The plugin writes one line per spawn. [The log line](plugins/model-router-openclaw/README.md#the-log-line) shows an example and explains it. [Which spawns are routed](plugins/model-router-openclaw/README.md#which-spawns-are-routed) lists the `skipped` reasons. If no line appears, [No line at all?](plugins/model-router-openclaw/README.md#no-line-at-all) lists the causes.
 
 ## Update
 
@@ -350,9 +328,8 @@ omp plugin uninstall model-router@model-router
 openclaw plugins disable model-router-openclaw
 ```
 
-The plugin sends nothing while it is disabled. Removing the keys also stops
-routing. [Turn it off](plugins/model-router-openclaw/README.md#turn-it-off)
-says more.
+[Turn it off](plugins/model-router-openclaw/README.md#turn-it-off) says what
+else stops routing.
 
 ## What leaves the machine
 

@@ -7,9 +7,10 @@ what the plugin sends, where it goes, and what the plugin keeps. Effective
 ## Where requests go
 
 The plugin asks Jev to score each `sessions_spawn` call it routes. Under the
-default `core` scope, only [the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself) routes. [The
-extended scope](#the-extended-scope) adds the other configured agents. Jev
-answers on one or two providers:
+default `core` scope, only
+[the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself)
+routes. [The extended scope](#the-extended-scope) adds the other configured
+agents. Jev answers on one or two providers:
 
 - TypeSafe, at https://api.typesafe.ai/v1/systemone, with your TypeSafe key
 - OpenRouter, at https://openrouter.ai/api/v1/systemone, with your OpenRouter
@@ -35,8 +36,8 @@ routing limit or a bad reply.
 Each key goes only to its own provider's address above. The plugin passes the
 address and the key with every request, so no environment variable moves a key
 to another host. An environment variable can supply a key, and with it the
-account that receives the task text, as [What the plugin stores](#what-the-plugin-stores)
-says.
+account that receives the task text, as
+[What the plugin stores](#what-the-plugin-stores) says.
 
 ## What the plugin sends
 
@@ -48,10 +49,10 @@ holds:
 - the spawn's `task` text, condensed and with token-shaped strings masked.
   A text over 12,000 characters keeps its start and its end
 - the agent's role:
-  - [the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself) sends that agent's
-    `description` from OpenClaw's configuration when one is set. The plugin
-    masks token-shaped strings, collapses whitespace and cuts it to 500
-    characters
+  - [the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself)
+    sends that agent's `description` from OpenClaw's configuration when one is
+    set. The plugin masks token-shaped strings, collapses whitespace and cuts
+    it to 500 characters
   - the same spawn sends one fixed text that ships with the plugin when the
     requester has no description
   - under `extended`, a spawn of another configured agent sends that agent's
@@ -60,9 +61,11 @@ holds:
   - [The role of the default agent](../model-router/docs/model-choice.md#the-role-of-the-default-agent)
     says why the other plugins always send the fixed text
 - the spawn's `label` as the description, else its `taskName`, or an empty
-  description when it has neither. The plugin sends it as is, as the other
-  plugins send the description of a call. It masks and cuts nothing in it, so a
-  key or a private name in a label leaves your machine
+  description when it has neither. The plugin reads `label` and `taskName` as
+  [How the plugin reads a spawn](README.md#how-the-plugin-reads-a-spawn) says.
+  It sends the value as is, as the other plugins send the description of a
+  call. It masks and cuts nothing in it, so a key or a private name in a label
+  leaves your machine
 - the Jev alias `jev-latest`, and two fixed scoring questions, `tier` and
   `work`, with their three descriptions each, text that ships with the plugin.
 
@@ -88,15 +91,16 @@ your machine.
 ## The extended scope
 
 Under `extended`, the plugin routes the spawn of every other configured agent
-whose model you did not set, as well as [the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself).
+that does not set its own model, as well as
+[the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself).
 
 - The description and the task text of each such agent leave your machine, as
   What the plugin sends describes.
 - A hand-written description can hold private names, such as a client, a
   product or a team. The plugin masks token-shaped strings only. Read your
   agents' descriptions before you set `extended`.
-- The plugin replaces the `subagents.thinking` of the requesting agent and of the
-  target agent with its own effort.
+- The plugin can replace an effort you set.
+  [Efforts the plugin keeps](README.md#efforts-the-plugin-keeps) lists when.
 
 ## Requests and billing
 
@@ -111,13 +115,13 @@ plugin gives up on it after 2 s. The second provider then gets up to three
 attempts as above. One spawn therefore sends at most four requests.
 
 One routing limit covers the whole spawn, both providers and all retries
-included. The limit is 8 s, or the operator's hook timeout minus 2 s when that
-is smaller. The plugin stops waiting at the limit, but it cannot recall a
-request in flight. A request can reach its provider even when its answer never
-returns. A retry after a network failure may be billed more than once. A first
-request the plugin gave up on may still be billed, on top of the second
-provider's answer. Many parallel spawns make as many requests, so a provider's
-rate limit can leave later spawns unrouted. The plugin sends no other request.
+included. [Routing behaviour](README.md#routing-behaviour) gives the limit. The
+plugin stops waiting at the limit, but it cannot recall a request in flight. A
+request can reach its provider even when its answer never returns. A retry
+after a network failure may be billed more than once. A first request the
+plugin gave up on may still be billed, on top of the second provider's answer.
+Many parallel spawns make as many requests, so a provider's rate limit can
+leave later spawns unrouted. The plugin sends no other request.
 
 ## What the providers do with it
 
@@ -133,43 +137,40 @@ request on. The plugin author has no access to those requests.
 
 The plugin keeps no file of its own and no state between spawns.
 
-It reads a key only for a provider the `provider` setting allows. It checks the
-plugin's own key setting first, `api_key` for TypeSafe and `openrouter_api_key`
-for OpenRouter, which OpenClaw stores in its configuration as secret inputs.
-When that is empty, it reads the environment variable `TYPESAFE_API_KEY` or
-`OPENROUTER_API_KEY`. It never uses OpenClaw's own provider credentials as a Jev
-key. It holds a key in memory only while it
-checks whether to route and while it sends a request, and it sends each key only
-to its own provider's endpoint above, as the bearer token. It reads no other
-environment variable, and it runs no program.
+It reads a key only for a provider the `provider` setting allows.
+[Keys](README.md#keys) says where it looks, and in which order. It holds a key
+in memory only while it checks whether to route and while it sends a request,
+and it sends each key only to its own provider's endpoint above, as the bearer
+token. It never uses OpenClaw's own provider credentials as a Jev key. It reads
+no other environment variable, and it runs no program.
 
 A key in an environment variable stays wherever you set it. It is visible to
 every process the Gateway starts. A `.env` file in the Gateway's working
 directory can supply either variable. The plugin then sends the task text to the
 account that key belongs to. OpenClaw 2026.10.10 drops `OPENROUTER_API_KEY`
-from such a file but loads `TYPESAFE_API_KEY`, as [the `.env` fact](../../docs/clients.md#openclaw-runtime-logs-and-environment)
-records. The plugin does not depend on that filter. Keep the keys in the plugin's settings, or in the Gateway's own
-environment.
+from such a file but loads `TYPESAFE_API_KEY`, as
+[the `.env` fact](../../docs/clients.md#openclaw-runtime-logs-and-environment)
+records. The plugin does not depend on that filter. Keep the keys in the
+plugin's settings, or in the Gateway's own environment.
 
 The `model_router_config` tool only reads. It reports whether a key is set and
 never returns the key, its length or any part of it.
 
 The commands `/model-router-provider` and `/model-router-scope` write the
 plugin's `provider` or `scope` setting into OpenClaw's configuration. They
-refuse unless the sender is the owner. [Change the options](README.md#change-the-options)
-says how OpenClaw's scope check and the owner check work together. The plugin
-writes no other setting and no file. You assign `small_model` and
-`large_model` yourself, in OpenClaw's configuration.
+refuse unless the sender is the owner. The plugin writes no other setting and no
+file. You assign `small_model` and `large_model` yourself, in OpenClaw's
+configuration.
 
 At each spawn the plugin reads OpenClaw's live configuration: its own settings,
 `agents.defaults.subagents.model` and `.thinking`, and for the requesting agent
 and, under `extended`, the target agent, `description`, `model`,
-`subagents.model` and `subagents.thinking`. It finds an agent in
-`agents.entries` or in the older `agents.list` roster. For a model it is about to set, it
-asks OpenClaw to resolve the model string and to report whether a credential
-exists for that model's provider. These calls make no network request and
-refresh no credential. Nothing from these reads leaves your machine, except the
-role text the request carries as described above.
+`subagents.model` and `subagents.thinking`. It finds an agent as
+[The agent roster](README.md#the-agent-roster) says. For a model it is about to
+set, it asks OpenClaw to resolve the model string and to report whether a
+credential exists for that model's provider. These calls make no network
+request and refresh no credential. Nothing from these reads leaves your
+machine, except the role text the request carries as described above.
 
 The plugin writes one line per routed or skipped spawn, `model-router` followed
 by the decision, to the Gateway log and nowhere else. The line holds the level,
@@ -185,16 +186,20 @@ asks for approval and never throws into OpenClaw. A missing key, a closed gate,
 an error, a timeout or a failed check returns nothing, and the spawn runs as
 OpenClaw would run it without the plugin.
 
-The plugin cannot promise more than that. [Limits](README.md#limits) lists what
-OpenClaw can still do after the plugin's checks passed.
+The plugin cannot promise more than that:
+
+- The plugin checks a model before it sets one. OpenClaw can still reject the
+  rewritten spawn, and the child can still fail on the model.
+- A model set on a spawn loses OpenClaw's configured fallbacks.
 
 ## Your choices
 
 Set `provider` to `typesafe` or `openrouter` to keep each spawn with one
-company. Keep `scope` at `core` to route only [the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself). Remove the
-keys from the plugin's settings and from both variables, and the plugin skips
-routing. Run `openclaw plugins disable model-router-openclaw` and nothing is
-sent.
+company. Keep `scope` at `core` to route only
+[the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself).
+Remove the keys from the plugin's settings and from both variables, and the
+plugin skips routing. Disable the plugin, as
+[Turn it off](README.md#turn-it-off) says, and nothing is sent.
 
 ## Children
 

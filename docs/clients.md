@@ -325,7 +325,9 @@ Every running fact names its OpenClaw version and ran on 2026-11-05.
   [Manage plugins, Install plugins](https://docs.openclaw.ai/plugins/manage-plugins#install-plugins))
 - With a local Gateway running, install, enable, disable and uninstall apply through it.
   Without one, they save the change for the next start.
-  `openclaw plugins inspect <id> --runtime --json` loads the plugin module and lists what it registered.
+  `openclaw plugins inspect <id> --runtime --json` loads the plugin module.
+  The page says the report lists what the plugin registered.
+  That does not hold in `tool-discovery` mode, as the next bullet records.
   (documentation: [Manage plugins, Apply changes and inspect](https://docs.openclaw.ai/plugins/manage-plugins#apply-changes-and-inspect))
 - `openclaw plugins inspect <id> --runtime` loads the plugin in `tool-discovery` mode, not in `full` mode.
   The mode list calls `tool-discovery` "capability discovery for executable tools", and `full` "live runtime activation".
@@ -345,11 +347,11 @@ Every running fact names its OpenClaw version and ran on 2026-11-05.
 - The Gateway log shows a command registration as `Registered plugin command: /<name> (plugin: <id>)`.
   OpenClaw writes the line through `logVerbose`, which logs under `--verbose` or at file log level `debug`.
   A registered hook counts in `hook runner initialized with <n> registered hooks`, a debug-level line of the `plugins` logger.
+  A probe plugin's registration appeared in the Gateway log as `Registered plugin command: /probescope` when the Gateway loaded the plugin.
   (source: [`command-registration.ts` L377](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/command-registration.ts#L377),
   [`globals.ts` L6–L8](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/globals.ts#L6-L8),
-  [`hook-runner-global.ts` L22–L27](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hook-runner-global.ts#L22-L27))
-- A probe plugin's command registration appeared in the Gateway log as `Registered plugin command: /probescope` when the Gateway loaded the plugin.
-  (running: OpenClaw 2026.10.10, the probe plugin's Gateway log)
+  [`hook-runner-global.ts` L22–L27](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hook-runner-global.ts#L22-L27);
+  running: OpenClaw 2026.10.10, the probe plugin's Gateway log)
 - In the default `hybrid` reload mode, a change under `plugins.entries.<id>` replaces that plugin's runtime instance and reruns registration.
   (documentation: [Config hot reload](https://docs.openclaw.ai/gateway/configuration/hot-reload))
 - `openclaw plugins install --link <path>` adds a local folder to `plugins.load.paths`, needs capability consent, and does not inherit official package trust.
@@ -447,6 +449,28 @@ Every running fact names its OpenClaw version and ran on 2026-11-05.
   Loopback MCP calls run the same hook and execute with the hook's `params`.
   (source: [`agent-tools.before-tool-call.wrapper.ts` L253](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/agent-tools.before-tool-call.wrapper.ts#L253),
   [`mcp-http.handlers.ts` L170–L197](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/gateway/mcp-http.handlers.ts#L170-L197))
+- `before_tool_call` receives the arguments that the tool reads next.
+  The wrapper passes the call's `params` to the hook, and `sessions_spawn` defines no `prepareBeforeToolCallParams` to rewrite them first.
+  Only a trusted tool policy or a granted approval may adjust them before the hook.
+  The tool's `execute` then receives the hook's returned `params`, or the original ones when the hook returns none.
+  (source: [`agent-tools.before-tool-call.wrapper.ts` L393–L424](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/agent-tools.before-tool-call.wrapper.ts#L393-L424),
+  [L446–L452](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/agent-tools.before-tool-call.wrapper.ts#L446-L452),
+  [L483–L492](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/agent-tools.before-tool-call.wrapper.ts#L483-L492),
+  [`agent-tools.before-tool-call.policy.ts` L265](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/agent-tools.before-tool-call.policy.ts#L265),
+  [L300–L313](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/agent-tools.before-tool-call.policy.ts#L300-L313);
+  `sessions-spawn-tool.ts` holds no `prepareBeforeToolCallParams`, which `common.ts` L42 declares as an optional tool member)
+- `sessions_spawn` reads `agentId`, `label`, `model` and `thinking` through `readToolStringParam`.
+  That function takes the key as written when the params object has it, else the snake_case form, such as `agent_id`.
+  A key that is present wins even when its value is empty or not a string.
+  It counts the value only when it is a string, trims it, and treats an empty result as absent.
+  `model` then passes `normalizeToolModelOverride`, which also treats `default`, in any case, as no override.
+  The tool reads `runtime` as `params.runtime === "acp"`, and `taskName` as `params.taskName`, with no snake_case form.
+  (source: [`sessions-spawn-tool.ts` L432](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/tools/sessions-spawn-tool.ts#L432),
+  [L440–L441](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/tools/sessions-spawn-tool.ts#L440-L441),
+  [L459](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/tools/sessions-spawn-tool.ts#L459),
+  [L470–L471](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/tools/sessions-spawn-tool.ts#L470-L471),
+  [`common.ts` L96–L123](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/tools/common.ts#L96-L123),
+  [`param-key.ts` L4–L31](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/param-key.ts#L4-L31))
 - A handler that returned `{ params: { model, thinking } }` set both on a real `sessions_spawn`.
   The shallow merge kept `task`, and the result read `status: accepted`, the routed model, `modelApplied: true` and `mode: run`.
   The child transcript held a `model_change` to the routed model and a `thinking_level_change` to the routed level.
@@ -524,6 +548,16 @@ Every running fact names its OpenClaw version and ran on 2026-11-05.
   (source: [`plugin-command-execution.ts` L162–L174](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-command-execution.ts#L162-L174),
   [L193–L194](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-command-execution.ts#L193-L194),
   [L272–L275](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-command-execution.ts#L272-L275))
+- A Gateway client with `operator.admin` reaches the handler, and `senderIsOwner` is `true` for it.
+  `chat.send` sets the provider of every Gateway client's message to the internal channel and passes the client's scopes on.
+  The command check then marks the sender as owner when the provider is the internal channel and the scopes include `operator.admin`.
+  So a handler that checks `senderIsOwner` alone refuses no admin Gateway client from `chat.send`.
+  (source: [`gateway-client-identity.ts` L148](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/gateway/server-methods/gateway-client-identity.ts#L148),
+  [L160](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/gateway/server-methods/gateway-client-identity.ts#L160),
+  [`command-auth.ts` L489–L500](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/auto-reply/command-auth.ts#L489-L500),
+  [`commands-context.ts` L75](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/auto-reply/reply/commands-context.ts#L75),
+  [`plugin-command-execution.ts` L166–L170](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-command-execution.ts#L166-L170),
+  [L193–L194](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-command-execution.ts#L193-L194))
 - OpenClaw compares agent ids after `normalizeAgentId`, which trims, lower-cases and turns invalid characters into dashes.
   It finds an agent in `agents.entries`, or in the older `agents.list` array of `{ id }` items when `entries` is absent.
   (source: [`agent-id.ts` L3–L30](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/packages/normalization-core/src/agent-id.ts#L3-L30),
@@ -563,10 +597,11 @@ The `package` job's log holds the check's verdict, not the JSON, so that the rep
 The commands write the config through `api.runtime.config.mutateConfigFile`, and no live run has checked that write.
 The [update page](https://docs.openclaw.ai/cli/plugins/uninstall-and-update) says updates need a stopped Gateway.
 The [manage page](https://docs.openclaw.ai/plugins/manage-plugins#apply-changes-and-inspect) says an update refreshes a running one.
-The README tells people to restart after an update.
-No source read here lists every path that starts a subagent.
-The README names five paths the hook never sees, because the hook runs only when a tool call runs.
+The two pages disagree, and no run settled it.
+The hook runs only when a tool call runs.
+Five paths start a subagent without that tool: `/acp spawn`, the Gateway method `sessions.create`, the Control UI's new session, `api.runtime.subagent.run` from another plugin, and Codex's own `spawn_agent`.
+No source read here lists every such path.
 No run covers a sandboxed child with a CLI-backend model, or an `outputSchema` spawn on a model without tools.
-Those two README limits rest on the documentation cited above.
+The sandbox rule for CLI backends and the collector child's need for tools rest on the documentation cited above.
 The source check of the workspace `.env` list left out variables that an installed provider plugin adds.
 OpenClaw may drop `TYPESAFE_API_KEY` when such a plugin declares it.

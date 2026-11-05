@@ -9,10 +9,11 @@ model-router scores each routed `sessions_spawn` call with Jev, on TypeSafe or O
 
 ## Rules
 
+- When a step names a linked README section, open it before you act.
 - Ask one question per message. Wait for the answer.
 - Read every setting through the `model_router_config` tool. The tool only reads.
 - Never write a setting yourself. Ask the person to type the command the tool names: `/model-router-provider <value>` or `/model-router-scope <value>`.
-- Only the owner can run those commands. [Change the options](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#change-the-options) says how OpenClaw checks it.
+- Only the owner can run those commands. [Change the options](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#change-the-options) says who can write.
 - Run the setup the same way on the first run and on every re-run.
 - Never take a key through chat. If a key arrives, do not repeat or store it. Tell the person to rotate it.
 - Never display a key or any other credential.
@@ -50,10 +51,10 @@ Skip this step when every allowed provider reports `key: set`.
 The key question has three answers:
 
 1. "Enter it in the plugin settings". Recommend it for this question only. The person opens the plugin's settings in the Control UI and fills the TypeSafe or OpenRouter key field. The field stores a secret.
-2. "Set the environment variable". The person sets `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` in the gateway's environment, then restarts the gateway with `openclaw gateway restart`.
+2. "Set the environment variable". The person sets `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` in the Gateway's environment, then restarts the Gateway with `openclaw gateway restart`.
 3. "Do nothing". Skip the key.
 
-Say that a variable in the gateway's environment reaches every process the gateway starts.
+Say that a variable in the Gateway's environment reaches every process the Gateway starts.
 
 [Keys](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#keys) says where the plugin looks for a key.
 
@@ -71,22 +72,18 @@ If a key is missing for every allowed provider, say that every call skips with `
 
 ## Step 5. List the reasons routing is off
 
-Check each reason below. Report every reason that holds, not only the first.
-
-- The plugin is disabled. No line appears in the gateway log.
-- The plugin's hook timeout is too short. [Limits](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#limits) gives the threshold.
-- A skip reason from [Which spawns are routed](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#which-spawns-are-routed) holds. That section lists each reason, and a spawn that passes with no line.
+Check each cause on the [No line at all?](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#no-line-at-all) list and each skip reason in [Which spawns are routed](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#which-spawns-are-routed). Report every reason that holds, not only the first.
 
 For each reason that holds, tell the person which setting to change, and where. [Set up](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#set-up) shows how to assign a model. The person runs the change. This skill changes none of them.
 
 ## Step 6. Routing check
 
-1. If the plugin was just enabled or installed, or a key variable changed, ask the person to restart the gateway. Then return to this step.
+1. If the plugin was just enabled or installed, or a key variable changed, ask the person to restart the Gateway. Then return to this step.
 2. Ask the routing-check question with the answers "Check" and "Skip".
 3. On Skip, record "routing check: skipped" and go to the closing summary.
 4. On Check, call `sessions_spawn` with the task "Reply with the single word ok." Pass no `agentId`, `model` or `thinking`.
 5. Read the spawn result. Note `resolvedModel` and any model the spawn reports.
-6. OpenClaw shows no chat line. Read the newest `model-router` line in the gateway log with `openclaw logs --plain`, or ask the person to read it.
+6. OpenClaw shows no chat line. Read the newest `model-router` line in the Gateway log with `openclaw logs --plain`, or ask the person to read it.
 7. Check that the line names a level, a model or `no change`, and an effort.
 8. If the line names a skip reason, stop and report it.
 9. Check `resolvedModel` against the line. Report the result in one line.
@@ -100,7 +97,7 @@ Read the line as follows:
 - Any other reason in step 5 points to step 5.
 - `timeout`, `network error` or an HTTP status points to the provider or the network.
 
-When the check fails after a model was set, say that OpenClaw can still say no, as [Limits](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#limits) explains.
+When the check fails after a model was set, say that OpenClaw can still say no, as [Fails open](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/PRIVACY.md#fails-open) explains.
 
 ## Closing summary
 
