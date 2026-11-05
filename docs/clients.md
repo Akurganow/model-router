@@ -226,7 +226,7 @@ The evals workflow pins omp 18.12.6 in `evals/omp/package.json`, and the README 
 ### omp install and update
 
 - The commands are `omp plugin marketplace add <source>`, `omp plugin install name@marketplace` and `omp plugin upgrade [name@marketplace]`.
-  `install` and `upgrade` accept `--scope user|project`, and the user scope is the default.
+  `install` accepts `--scope user|project`, and the user scope is its default.
   (documentation: [`marketplace.md` L20–L25](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L20-L25),
   [L63–L78](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L63-L78))
 - The installed version comes from the catalogue entry's `version`, then `.claude-plugin/plugin.json`, then a root `plugin.json`, then `package.json`.
@@ -234,9 +234,11 @@ The evals workflow pins omp 18.12.6 in `evals/omp/package.json`, and the README 
   (documentation: [`marketplace.md` L137](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L137))
 - An upgrade of all plugins compares only catalogue entries that declare `version`.
   A semver version must be newer, and a non-semver version counts as changed when it differs.
+  This upgrade ignores `--scope`.
   (documentation: [`marketplace.md` L223](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L223))
 - `omp plugin marketplace update` refreshes catalogues only and reinstalls nothing.
-  `omp plugin upgrade name@marketplace` reinstalls every installed scope, and an upgrade keeps settings and disabled state.
+  Without `--scope`, `omp plugin upgrade name@marketplace` reinstalls every installed scope.
+  An upgrade keeps settings and disabled state.
   (documentation: [`marketplace.md` L221–L224](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L221-L224))
 - `marketplace.autoUpdate` is `off`, `notify` or `auto`, and `notify` is the default.
   In `notify` mode omp writes update availability to the debug log only.
