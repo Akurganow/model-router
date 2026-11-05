@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Keep the organization's settings and add only what this repository needs.
+inheritance: true
+reviews:
+  # scripts/build.ts writes these bundles from src/ and esbuild drops comments, so the review reads the sources.
+  path_filters:
+    - "!plugins/model-router/hooks/register.js"
+    - "!plugins/model-router-omp/extension/index.js"
