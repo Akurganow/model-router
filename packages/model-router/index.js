@@ -244,10 +244,10 @@ var Image = class Image2 {
   * const photo = Image.fromBase64(upload.photoBase64);
   * ```
   */
-  static fromBase64(text3) {
+  static fromBase64(text) {
     let binary;
     try {
-      binary = atob(text3);
+      binary = atob(text);
     } catch (err) {
       throw new TypeSafeError("Image data must contain valid base64 text.", { cause: err });
     }
@@ -268,8 +268,8 @@ var TextWithAssets = class {
   text;
   /** The assets interpolated into the text, including those in nested `withAssets` text. */
   assets;
-  constructor(text3, assets) {
-    this.text = text3;
+  constructor(text, assets) {
+    this.text = text;
     this.assets = assets;
   }
   toString() {
@@ -281,15 +281,15 @@ var TextWithAssets = class {
   }
 };
 Object.defineProperty(TextWithAssets.prototype, TEXT_WITH_ASSETS, { value: true });
-var textWithAssets = (text3, values) => {
+var textWithAssets = (text, values) => {
   const interpolated = /* @__PURE__ */ new Map();
   collectAssets(values, interpolated, /* @__PURE__ */ new Set());
   const assets = /* @__PURE__ */ new Map();
-  for (const [reference] of text3.matchAll(REFERENCE)) {
+  for (const [reference] of text.matchAll(REFERENCE)) {
     const asset = interpolated.get(reference);
     if (asset !== void 0) assets.set(reference, asset);
   }
-  return new TextWithAssets(text3, [...assets.values()]);
+  return new TextWithAssets(text, [...assets.values()]);
 };
 var withAssets = Object.assign((strings, ...values) => textWithAssets(strings.reduce((joined, piece, i) => joined + String(values[i - 1]) + piece), values), { join: (values, separator) => textWithAssets(values.join(separator), values) });
 var collectAssets = (value, found, visited) => {
@@ -311,13 +311,13 @@ var serializeRequest = (payload, assets = {}) => {
       if (name !== void 0) return name;
       known.set(String(original), original);
     } else if (isTextWithAssets(original)) {
-      let text3 = original.text;
+      let text = original.text;
       for (const asset of original.assets) {
         const name = names.get(asset);
         if (name === void 0) known.set(String(asset), asset);
-        else text3 = text3.replaceAll(String(asset), name);
+        else text = text.replaceAll(String(asset), name);
       }
-      return text3;
+      return text;
     }
     return value;
   });
@@ -893,17 +893,17 @@ var TypeSafeClient = class {
   }
 };
 var parseBody = async (res) => {
-  const text3 = await res.text();
-  if (text3.length === 0) return void 0;
+  const text = await res.text();
+  if (text.length === 0) return void 0;
   if ((res.headers.get("content-type") ?? "").includes("application/json")) try {
-    return JSON.parse(text3);
+    return JSON.parse(text);
   } catch {
-    return text3;
+    return text;
   }
   try {
-    return JSON.parse(text3);
+    return JSON.parse(text);
   } catch {
-    return text3;
+    return text;
   }
 };
 
@@ -917,6 +917,10 @@ var PROVIDER_VALUES = [
 var HOSTS = {
   typesafe: "https://api.typesafe.ai",
   openrouter: "https://openrouter.ai/api"
+};
+var KEY_VARIABLES = {
+  typesafe: "TYPESAFE_API_KEY",
+  openrouter: "OPENROUTER_API_KEY"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
 var MODEL = "jev-latest";
@@ -985,6 +989,10 @@ var fromMiddle = (down, up) => (p) => {
 };
 var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
 var isRecord2 = (v) => typeof v === "object" && v !== null;
 function parseProbabilities(answers, key) {
   const a = isRecord2(answers) ? answers[key] : void 0;
@@ -1117,34 +1125,25 @@ var KEY_FIELDS = {
   typesafe: "api_key",
   openrouter: "openrouter_api_key"
 };
-var KEY_VARIABLES = {
-  typesafe: "TYPESAFE_API_KEY",
-  openrouter: "OPENROUTER_API_KEY"
-};
 function sources(live, pluginConfig) {
   const entry = live?.plugins?.entries?.[PLUGIN_ID]?.config;
   return [entry, pluginConfig].filter(isRecord2);
 }
 var firstDefined = (from, field) => from.find((settings) => settings[field] !== void 0)?.[field];
-function slot(value) {
-  const text3 = typeof value === "string" ? value.trim() : "";
-  return text3 === "" ? void 0 : text3;
-}
 function readSettings(live, pluginConfig) {
   const from = sources(live, pluginConfig);
   return {
     provider: resolve(firstDefined(from, "provider")),
     scope: resolveScope(firstDefined(from, "scope")),
-    smallModel: slot(firstDefined(from, "small_model")),
-    largeModel: slot(firstDefined(from, "large_model"))
+    smallModel: nonEmpty(firstDefined(from, "small_model")),
+    largeModel: nonEmpty(firstDefined(from, "large_model"))
   };
 }
-var text = (value) => typeof value === "string" && value !== "" ? value : void 0;
 function readKeys(live, pluginConfig, providerValue, env) {
   const from = sources(live, pluginConfig);
   const keys = {};
   for (const provider of order(providerValue)) {
-    const key = from.map((s) => text(s[KEY_FIELDS[provider]])).find(Boolean) ?? text(env[KEY_VARIABLES[provider]]);
+    const key = from.map((s) => nonEmpty(s[KEY_FIELDS[provider]])).find(Boolean) ?? nonEmpty(env[KEY_VARIABLES[provider]]);
     if (key !== void 0) keys[provider] = key;
   }
   return keys;
@@ -1287,8 +1286,8 @@ async function runCommand(api, ctx, setting) {
   if (current === value) return unchanged(setting, alreadyValue(value));
   return write(api, ctx, setting, value);
 }
-var textOf = (text3) => ({
-  content: [{ type: "text", text: text3 }]
+var textOf = (text) => ({
+  content: [{ type: "text", text }]
 });
 function failure(err) {
   return `error: ${err instanceof Error ? err.message : String(err)}`;
@@ -1342,32 +1341,32 @@ var REDACT_PATTERNS = [
     "$1$2***"
   ]
 ];
-function prepareBrief(text3, budget = BUDGET_CHARS) {
-  const condensed = condense(redact2(text3));
+function prepareBrief(text, budget = BUDGET_CHARS) {
+  const condensed = condense(redact2(text));
   if (condensed.length <= budget) return condensed;
   const kept = budget - OMISSION_MARKER.length;
   const head = Math.floor(kept * HEAD_SHARE);
   const tail = kept - head;
   return `${condensed.slice(0, head)}${OMISSION_MARKER}${condensed.slice(condensed.length - tail)}`;
 }
-function condense(text3) {
-  return text3.replace(/```[^\n]*\n([\s\S]*?)```/g, (_, block) => {
+function condense(text) {
+  return text.replace(/```[^\n]*\n([\s\S]*?)```/g, (_, block) => {
     const lines = block.replace(/\n$/, "").split("\n").length;
     return `[an exact block of ${lines} lines is given verbatim]`;
   }).replace(/\n{3,}/g, "\n\n");
 }
-function redact2(text3) {
+function redact2(text) {
   return REDACT_PATTERNS.reduce(
     (t, [pattern, replacement]) => t.replace(pattern, replacement),
-    text3
+    text
   );
 }
 function roleText(description) {
   if (typeof description !== "string") return NO_DESCRIPTION;
-  const text3 = redact2(description).replace(/\s+/g, " ").trim();
-  if (text3 === "") return NO_DESCRIPTION;
-  const cut = text3.slice(0, ROLE_CAP);
-  return /[\uD800-\uDBFF]$/.test(cut) && text3.length > ROLE_CAP ? cut.slice(0, -1) : cut;
+  const text = redact2(description).replace(/\s+/g, " ").trim();
+  if (text === "") return NO_DESCRIPTION;
+  const cut = text.slice(0, ROLE_CAP);
+  return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
 }
 
 // src/decide.ts
@@ -1457,7 +1456,7 @@ var tier = {
 };
 
 // src/openclaw-checks.ts
-async function slotResolves(runtime, cfg, agentId, slot2) {
+async function slotResolves(runtime, cfg, agentId, slot) {
   try {
     const target = agentId === void 0 ? { cfg } : { cfg, agentId };
     const { modelConfig, modelAuth, agent } = runtime;
@@ -1465,7 +1464,7 @@ async function slotResolves(runtime, cfg, agentId, slot2) {
     const resolved = modelConfig.resolveAllowedModelRef({
       ...target,
       catalog: [],
-      raw: slot2,
+      raw: slot,
       defaultProvider
     });
     if ("error" in resolved) return false;
@@ -1495,7 +1494,7 @@ function at(value, ...path) {
   }
   return node;
 }
-var isSet = (v) => v !== void 0 && v !== null && !(typeof v === "string" && v.trim() === "");
+var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
 var agentField = (config, id, ...path) => at(config, "agents", "entries", id, ...path);
 function namesModel({ model }) {
   return isSet(model) && !(typeof model === "string" && model.trim() === NO_MODEL_VALUE);
@@ -1524,7 +1523,7 @@ function effortRule(input) {
 function roleOf(input, target, own) {
   const description = agentField(input.config, target, "description");
   if (!own) return roleText(description);
-  return typeof description === "string" && description.trim() !== "" ? roleText(description) : DEFAULT_ROLE;
+  return nonEmpty(description) === void 0 ? DEFAULT_ROLE : roleText(description);
 }
 function gateSpawn(input) {
   const { params, requester, settings } = input;
@@ -1555,7 +1554,6 @@ var MIN_DEADLINE_MS = 1e3;
 var LINE_PREFIX = "model-router ";
 var SPAWN_TOOL = "sessions_spawn";
 var SLOT_NAMES = { 0: "small", 2: "large" };
-var text2 = (value) => typeof value === "string" ? value : void 0;
 function liveConfig(api) {
   try {
     return api.runtime.config.current();
@@ -1569,7 +1567,7 @@ async function score({ deps, signal, params }, settings, keys, gate) {
     parts: [tier, work],
     state: {
       role: gate.role,
-      description: text2(params.label) ?? text2(params.taskName) ?? "",
+      description: nonEmpty(params.label) ?? nonEmpty(params.taskName) ?? "",
       task: prepareBrief(String(params.task))
     },
     attempts: plan(settings.provider, {
@@ -1646,7 +1644,7 @@ function createBeforeToolCall(api, deadlineMs, deps) {
         stop.abort(LIMIT_REACHED);
         settle(void 0);
       });
-      const requester = text2(ctx.agentId) || void 0;
+      const requester = nonEmpty(ctx.agentId);
       routeSpawn({ api, deps, signal, params: event.params, requester, log }).catch(() => void 0).then((result) => signal.aborted ? void 0 : result).then(settle).finally(() => timer.cancel());
     });
   };

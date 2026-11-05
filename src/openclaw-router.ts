@@ -24,7 +24,7 @@ import type {
 	SpawnParams,
 	ToolContext,
 } from "./openclaw-types.ts";
-import type { Level } from "./part.ts";
+import { type Level, nonEmpty } from "./part.ts";
 import { plan } from "./provider.ts";
 import { UNREADABLE } from "./settings.ts";
 
@@ -54,9 +54,6 @@ type Spawn = {
 	readonly log: (message: string) => void;
 };
 
-const text = (value: unknown): string | undefined =>
-	typeof value === "string" ? value : undefined;
-
 function liveConfig(api: OpenClawApi): OpenClawConfig | undefined {
 	try {
 		return api.runtime.config.current();
@@ -78,7 +75,7 @@ async function score(
 		parts: [tier, work],
 		state: {
 			role: gate.role,
-			description: text(params.label) ?? text(params.taskName) ?? "",
+			description: nonEmpty(params.label) ?? nonEmpty(params.taskName) ?? "",
 			task: prepareBrief(String(params.task)),
 		},
 		attempts: plan(settings.provider, {
@@ -169,7 +166,7 @@ export function createBeforeToolCall(
 				stop.abort(LIMIT_REACHED);
 				settle(undefined);
 			});
-			const requester = text(ctx.agentId) || undefined;
+			const requester = nonEmpty(ctx.agentId);
 			routeSpawn({ api, deps, signal, params: event.params, requester, log })
 				.catch(() => undefined)
 				.then((result) => (signal.aborted ? undefined : result))

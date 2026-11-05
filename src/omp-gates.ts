@@ -1,9 +1,11 @@
 import { readFile } from "node:fs/promises";
 import type { RouteInput } from "./compose.ts";
 import { type Facts, type Spawning, spawnCheck, TASK } from "./omp-items.ts";
+import { FALLBACK_NAME } from "./omp-name.ts";
 import type { Context, Lookup, OmpImports, Pi } from "./omp-types.ts";
 import { isRecord } from "./part.ts";
 import {
+	KEY_VARIABLES,
 	narrow,
 	order,
 	type Provider,
@@ -14,11 +16,6 @@ import { resolveScope, type Scope } from "./scope.ts";
 import { UNREADABLE } from "./settings.ts";
 
 export const ROLES = { small: "@smol", large: "@slow" } as const;
-
-const KEY_VARIABLES: Readonly<Record<Provider, string>> = {
-	typesafe: "TYPESAFE_API_KEY",
-	openrouter: "OPENROUTER_API_KEY",
-};
 
 export type Routing = Pick<RouteInput, "attempts" | "keys">;
 export type Batch = Routing & { readonly facts: Facts };
@@ -66,12 +63,12 @@ export async function openBatch(
 
 // The effective settings hold the project's value when it sets one and the global value otherwise.
 // A project may only narrow the provider, and its scope wins both ways. Unreadable settings give nothing.
+// When omp gave no installed name, reads use the catalogue name. Writes still refuse, in omp-config.
 export async function readSettings(
 	omp: OmpImports,
 	cwd: string,
 ): Promise<Settings | undefined> {
-	const { plugin } = omp;
-	if (plugin === undefined) return undefined;
+	const plugin = omp.plugin ?? FALLBACK_NAME;
 	try {
 		const [global, effective] = await Promise.all([
 			readGlobal(omp.getPluginsLockfile(), plugin),

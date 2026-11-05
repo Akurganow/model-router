@@ -13,6 +13,7 @@ import {
 	FIRST_ATTEMPT_TIMEOUT_MS,
 	fallsBack,
 	HOSTS,
+	KEY_VARIABLES,
 	narrow,
 	order,
 	PROVIDER_VALUES,
@@ -122,4 +123,11 @@ test("a project only narrows auto or openrouter-first to one provider", () => {
 				`${String(global)} narrowed by ${String(project)}`,
 			);
 		});
+});
+
+test("each provider reads its key from one named variable", () => {
+	assert.deepEqual(KEY_VARIABLES, {
+		typesafe: "TYPESAFE_API_KEY",
+		openrouter: "OPENROUTER_API_KEY",
+	});
 });

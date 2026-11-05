@@ -1,7 +1,7 @@
 import { DEFAULT_ROLE, roleText } from "./brief.ts";
 import type { OpenClawSettings } from "./openclaw-settings.ts";
 import type { OpenClawConfig, SpawnParams } from "./openclaw-types.ts";
-import { isRecord } from "./part.ts";
+import { isRecord, nonEmpty } from "./part.ts";
 
 export type EffortRule =
 	| { readonly kind: "set" }
@@ -48,8 +48,11 @@ function at(value: unknown, ...path: (string | undefined)[]): unknown {
 	return node;
 }
 
+// Config values may be objects, such as a model with fallbacks, so only text is checked for blankness.
 const isSet = (v: unknown): boolean =>
-	v !== undefined && v !== null && !(typeof v === "string" && v.trim() === "");
+	typeof v === "string"
+		? nonEmpty(v) !== undefined
+		: v !== undefined && v !== null;
 
 const agentField = (
 	config: OpenClawConfig | undefined,
@@ -106,9 +109,9 @@ function effortRule(input: GateInput): EffortRule {
 function roleOf(input: GateInput, target: string | undefined, own: boolean) {
 	const description = agentField(input.config, target, "description");
 	if (!own) return roleText(description);
-	return typeof description === "string" && description.trim() !== ""
-		? roleText(description)
-		: DEFAULT_ROLE;
+	return nonEmpty(description) === undefined
+		? DEFAULT_ROLE
+		: roleText(description);
 }
 
 export function gateSpawn(input: GateInput): Gate {

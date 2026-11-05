@@ -1,6 +1,7 @@
 import type { OpenClawConfig } from "./openclaw-types.ts";
-import { isRecord } from "./part.ts";
+import { isRecord, nonEmpty } from "./part.ts";
 import {
+	KEY_VARIABLES,
 	order,
 	type Provider,
 	type ProviderValue,
@@ -24,10 +25,6 @@ const KEY_FIELDS: Readonly<Record<Provider, string>> = {
 	typesafe: "api_key",
 	openrouter: "openrouter_api_key",
 };
-const KEY_VARIABLES: Readonly<Record<Provider, string>> = {
-	typesafe: "TYPESAFE_API_KEY",
-	openrouter: "OPENROUTER_API_KEY",
-};
 
 // The live config holds a command's write. The plugin config is what OpenClaw read at start-up.
 function sources(
@@ -41,11 +38,6 @@ function sources(
 const firstDefined = (from: readonly Settings[], field: string): unknown =>
 	from.find((settings) => settings[field] !== undefined)?.[field];
 
-function slot(value: unknown): string | undefined {
-	const text = typeof value === "string" ? value.trim() : "";
-	return text === "" ? undefined : text;
-}
-
 export function readSettings(
 	live: OpenClawConfig | undefined,
 	pluginConfig: Settings | undefined,
@@ -54,13 +46,10 @@ export function readSettings(
 	return {
 		provider: resolve(firstDefined(from, "provider")),
 		scope: resolveScope(firstDefined(from, "scope")),
-		smallModel: slot(firstDefined(from, "small_model")),
-		largeModel: slot(firstDefined(from, "large_model")),
+		smallModel: nonEmpty(firstDefined(from, "small_model")),
+		largeModel: nonEmpty(firstDefined(from, "large_model")),
 	};
 }
-
-const text = (value: unknown): string | undefined =>
-	typeof value === "string" && value !== "" ? value : undefined;
 
 // Only the providers the value allows are read. OpenClaw's own provider credentials are never Jev keys.
 export function readKeys(
@@ -73,8 +62,8 @@ export function readKeys(
 	const keys: Partial<Record<Provider, string>> = {};
 	for (const provider of order(providerValue)) {
 		const key =
-			from.map((s) => text(s[KEY_FIELDS[provider]])).find(Boolean) ??
-			text(env[KEY_VARIABLES[provider]]);
+			from.map((s) => nonEmpty(s[KEY_FIELDS[provider]])).find(Boolean) ??
+			nonEmpty(env[KEY_VARIABLES[provider]]);
 		if (key !== undefined) keys[provider] = key;
 	}
 	return keys;

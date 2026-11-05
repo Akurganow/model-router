@@ -108,31 +108,46 @@ for (const name of NAMES) {
 	});
 }
 
-test("a name that cannot be read makes the settings unreadable", async () => {
+test("a name that cannot be read falls back to the catalogue name for reads", async () => {
 	world.plugin = undefined;
 	world.lockfile = lockfileWith("openrouter", CATALOGUE);
-	assert.equal(await readSettings(world.imports, "/work"), undefined);
-	assert.deepEqual(await checkGates(world.imports, world.pi, world.ctx()), {
-		closed: UNREADABLE,
+	assert.deepEqual(await readSettings(world.imports, "/work"), {
+		provider: "openrouter",
+		scope: "core",
 	});
-	assert.deepEqual(world.asked, []);
 });
 
-test("routing skips with the unreadable reason when the name cannot be read", async () => {
+test("a value stored under the scoped name is ignored when the name cannot be read", async () => {
+	world.plugin = undefined;
+	world.lockfile = lockfileWith("openrouter", SCOPED);
+	assert.deepEqual(await readSettings(world.imports, "/work"), {
+		provider: "typesafe",
+		scope: "core",
+	});
+});
+
+test("routing reads the catalogue settings when the name cannot be read", async () => {
 	install();
 	world.plugin = undefined;
+	world.lockfile = lockfileWith("typesafe", CATALOGUE);
 	await world.toolCall("c", { tasks: [{ task: "level0 a" }] });
-	assert.equal(world.sent.length, 0);
-	assert.deepEqual(world.notes, [
-		`model-router task 1: skipped, ${UNREADABLE}`,
-	]);
+	assert.equal(world.sent.length, 1);
+});
+
+test("the tool shows the catalogue settings when the name cannot be read", async () => {
+	install();
+	world.plugin = undefined;
+	world.lockfile = lockfileWith("openrouter", CATALOGUE);
+	const shown = await world.callTool({});
+	assert.match(String(shown), /provider/);
+	assert.notEqual(shown, UNREADABLE);
+	assert.match(String(shown), /openrouter/);
 });
 
 test("commands and the tool refuse and write nothing when the name cannot be read", async () => {
 	install();
 	world.plugin = undefined;
 	world.select = async () => ask("scope", "core").options[1];
-	assert.equal(await world.callTool({}), UNREADABLE);
 	assert.equal(
 		await world.callTool({ setting: "scope" }),
 		unchanged("scope", UNREADABLE),

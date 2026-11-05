@@ -162,3 +162,20 @@ test("a disallowed provider's key is never read from the environment", () => {
 		{},
 	);
 });
+
+test("a blank key or variable is no key, and a padded one is trimmed", () => {
+	assert.deepEqual(
+		readKeys(live({ api_key: "  " }), undefined, "typesafe", {
+			TYPESAFE_API_KEY: " \t",
+		}),
+		{},
+	);
+	assert.deepEqual(
+		readKeys(live({ api_key: " plug-ts " }), undefined, "typesafe", ENV),
+		{ typesafe: "plug-ts" },
+	);
+	assert.deepEqual(
+		readKeys(undefined, undefined, "typesafe", { TYPESAFE_API_KEY: " k\n" }),
+		{ typesafe: "k" },
+	);
+});

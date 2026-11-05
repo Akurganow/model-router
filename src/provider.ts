@@ -19,6 +19,12 @@ export const HOSTS: Readonly<Record<Provider, string>> = {
 	openrouter: "https://openrouter.ai/api",
 };
 
+// Every harness reads a provider's key from the same variable.
+export const KEY_VARIABLES: Readonly<Record<Provider, string>> = {
+	typesafe: "TYPESAFE_API_KEY",
+	openrouter: "OPENROUTER_API_KEY",
+};
+
 export const FIRST_ATTEMPT_TIMEOUT_MS = 2000;
 // Both providers resolve this alias to their newest Jev release.
 const MODEL = "jev-latest";

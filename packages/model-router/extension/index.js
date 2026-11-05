@@ -30,6 +30,7 @@ function parseProbabilities(answers, key) {
 }
 
 // src/omp-name.ts
+var FALLBACK_NAME = "model-router-omp";
 function readInstalledName(moduleUrl) {
   try {
     const manifest = JSON.parse(
@@ -1078,6 +1079,10 @@ var HOSTS = {
   typesafe: "https://api.typesafe.ai",
   openrouter: "https://openrouter.ai/api"
 };
+var KEY_VARIABLES = {
+  typesafe: "TYPESAFE_API_KEY",
+  openrouter: "OPENROUTER_API_KEY"
+};
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
 var MODEL = "jev-latest";
 var DEFAULT_VALUE = "typesafe";
@@ -1213,10 +1218,6 @@ var COMMAND_DESCRIPTIONS = {
 
 // src/omp-gates.ts
 var ROLES = { small: "@smol", large: "@slow" };
-var KEY_VARIABLES = {
-  typesafe: "TYPESAFE_API_KEY",
-  openrouter: "OPENROUTER_API_KEY"
-};
 async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
   const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
   if ("closed" in batch) return batch;
@@ -1237,8 +1238,7 @@ async function openBatch(omp, pi, ctx, settings) {
   };
 }
 async function readSettings(omp, cwd) {
-  const { plugin } = omp;
-  if (plugin === void 0) return void 0;
+  const plugin = omp.plugin ?? FALLBACK_NAME;
   try {
     const [global, effective] = await Promise.all([
       readGlobal(omp.getPluginsLockfile(), plugin),
