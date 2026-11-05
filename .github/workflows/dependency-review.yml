@@ -11,7 +11,9 @@ name: dependency-review
 # and no copyleft license is on it. deny-licenses is deprecated, so the
 # policy is an allow list. Claude Code and its platform packages are exempt
 # by name: .github/actions/setup-claude-code installs them in CI only, and
-# no plugin carries them.
+# no plugin carries them. The OpenClaw packages whose license is off the list
+# are exempt by name for the same reason: .github/actions/setup-openclaw
+# installs them in CI only.
 on:
   pull_request:
 
@@ -53,4 +55,43 @@ jobs:
             pkg:npm/@anthropic-ai/claude-code-linux-x64,
             pkg:npm/@anthropic-ai/claude-code-linux-x64-musl,
             pkg:npm/@anthropic-ai/claude-code-win32-arm64,
-            pkg:npm/@anthropic-ai/claude-code-win32-x64
+            pkg:npm/@anthropic-ai/claude-code-win32-x64,
+            pkg:npm/@resvg/resvg-js,
+            pkg:npm/@resvg/resvg-js-android-arm-eabi,
+            pkg:npm/@resvg/resvg-js-android-arm64,
+            pkg:npm/@resvg/resvg-js-darwin-arm64,
+            pkg:npm/@resvg/resvg-js-darwin-x64,
+            pkg:npm/@resvg/resvg-js-linux-arm-gnueabihf,
+            pkg:npm/@resvg/resvg-js-linux-arm64-gnu,
+            pkg:npm/@resvg/resvg-js-linux-arm64-musl,
+            pkg:npm/@resvg/resvg-js-linux-x64-gnu,
+            pkg:npm/@resvg/resvg-js-linux-x64-musl,
+            pkg:npm/@resvg/resvg-js-win32-arm64-msvc,
+            pkg:npm/@resvg/resvg-js-win32-ia32-msvc,
+            pkg:npm/@resvg/resvg-js-win32-x64-msvc,
+            pkg:npm/@trycua/cua-driver-darwin-arm64,
+            pkg:npm/@trycua/cua-driver-darwin-x64,
+            pkg:npm/@trycua/cua-driver-linux-arm64-gnu,
+            pkg:npm/@trycua/cua-driver-linux-x64-gnu,
+            pkg:npm/@trycua/cua-driver-win32-arm64-msvc,
+            pkg:npm/@trycua/cua-driver-win32-x64-msvc,
+            pkg:npm/@ubjs/core,
+            pkg:npm/@ubjs/node,
+            pkg:npm/@ubjs/node-darwin-arm64,
+            pkg:npm/@ubjs/node-darwin-x64,
+            pkg:npm/@ubjs/node-linux-arm64-gnu,
+            pkg:npm/@ubjs/node-linux-arm64-musl,
+            pkg:npm/@ubjs/node-linux-x64-gnu,
+            pkg:npm/@ubjs/node-linux-x64-musl,
+            pkg:npm/@ubjs/node-win32-arm64-msvc,
+            pkg:npm/@ubjs/node-win32-x64-msvc,
+            pkg:npm/json-schema-typed,
+            pkg:npm/npm,
+            pkg:npm/spdx-exceptions,
+            pkg:npm/sqlite-vec,
+            pkg:npm/sqlite-vec-darwin-arm64,
+            pkg:npm/sqlite-vec-darwin-x64,
+            pkg:npm/sqlite-vec-linux-arm64,
+            pkg:npm/sqlite-vec-linux-x64,
+            pkg:npm/sqlite-vec-windows-x64,
+            pkg:npm/web-push
