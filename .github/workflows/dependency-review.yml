@@ -13,7 +13,8 @@ name: dependency-review
 # by name: .github/actions/setup-claude-code installs them in CI only, and
 # no plugin carries them. The OpenClaw packages whose license is off the list
 # are exempt by name for the same reason: .github/actions/setup-openclaw
-# installs them in CI only.
+# installs them in CI only. json-schema-typed is BSD-2-Clause in its
+# package.json; GitHub reads it as BSD-2-Clause AND JSON.
 on:
   pull_request:
 
