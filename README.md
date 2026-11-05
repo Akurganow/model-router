@@ -75,6 +75,8 @@ Source: Claude Code documentation, [Install and manage plugins](https://code.cla
 
 CI installs it on Ubuntu.
 
+[Set up Claude Code](#set-up-claude-code) has the next steps.
+
 ### Oh My Pi
 
 ```sh
@@ -86,16 +88,18 @@ Source: Oh My Pi documentation, [marketplace.md, lines 20 to 25](https://github.
 
 CI installs it on Ubuntu.
 
+[Set up Oh My Pi](#set-up-oh-my-pi) has the next steps.
+
 <!-- install:end -->
 
 [docs/clients.md](docs/clients.md) lists what each client reads, each fact with its source.
 
 ### Set up Claude Code
 
-The two lines above install the plugin without its keys. Each route below
-installs it and sets the options and the keys too, so use one of them in
-place of the two lines. After the two lines, run
-`/plugin configure model-router@model-router` in a session to set them.
+Pick one route: the two lines above are the minimal one, and each route below
+also sets the options and the keys. The two lines install the plugin without
+its keys, so after them run `/plugin configure model-router@model-router` in a
+session to set them.
 
 #### Terminal
 

@@ -23,6 +23,19 @@ export const installCommands = (
 			.replaceAll("{plugin}", pluginId(source)),
 	);
 
+// GitHub's heading anchor: lower case, punctuation dropped, spaces as hyphens.
+export const anchorOf = (heading: string): string =>
+	heading
+		.toLowerCase()
+		.replace(/[^\p{L}\p{N} _-]/gu, "")
+		.replaceAll(" ", "-");
+
+// The hand-written setup steps sit under "Set up <harness>" after the region.
+const setupLine = ({ heading }: Install): string => {
+	const setup = `Set up ${heading}`;
+	return `[${setup}](#${anchorOf(setup)}) has the next steps.`;
+};
+
 const ciLine = ({ ciSystems }: Install): string =>
 	ciSystems.length === 0
 		? "CI does not install it."
@@ -40,6 +53,8 @@ const section = (source: Source, install: Install): string => {
 		`Source: ${publisher}, [${title}](${url}).`,
 		"",
 		ciLine(install),
+		"",
+		setupLine(install),
 	].join("\n");
 };
 
