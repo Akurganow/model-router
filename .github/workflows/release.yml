@@ -2,9 +2,9 @@ name: release
 
 # Releases the plugins with cocogitto (https://docs.cocogitto.io) straight on
 # main when a feat, fix or breaking commit follows the last tag. cog.toml has
-# the pre-bump hooks: scripts/set-version.ts writes the version into every
-# plugin manifest, and scripts/build.ts rebuilds the plugin bundles, so the
-# version commit carries both.
+# the pre-bump hooks: scripts/set-version.ts writes the version into
+# metadata/source.json, and scripts/build.ts carries it to every manifest and
+# rebuilds the plugin bundles, so the version commit carries all of them.
 #
 # The version commit and its tag are pushed with the release deploy key, the
 # actor the owner's ruleset on main admits for this push. A deploy-key push

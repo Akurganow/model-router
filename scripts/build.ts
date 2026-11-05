@@ -30,6 +30,8 @@ export async function buildBundle(
 		format: "esm",
 		minify: false,
 		write: true,
+		// Keeps the bundle comments free of the real path behind a symlinked node_modules.
+		preserveSymlinks: true,
 		logLevel: "warning",
 		...(claude
 			? { platform: "neutral", inject: [TIMERS] }

@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { mock, test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { SOURCE_PATH } from "./build/source.ts";
 import { checkVersions, MANIFESTS } from "./manifests.ts";
 import { main, setVersion } from "./set-version.ts";
 import { useTempRoot } from "./temp-root.ts";
@@ -57,7 +58,11 @@ const box = useTempRoot("set-version-", (put) => {
 });
 const { put, read } = box;
 
+const sourceText = (version: string) =>
+	`{\n\t"name": "model-router",\n\t"version": "${version}"\n}\n`;
+
 function seedAll(version: string) {
+	put(SOURCE_PATH, sourceText(version));
 	for (const { path, versionPath } of MANIFESTS) {
 		const json = versionPath.reduceRight<unknown>(
 			(inner, key) => (typeof key === "number" ? [inner] : { [key]: inner }),
@@ -111,14 +116,16 @@ test("a nested catalog version is rewritten and nothing else changes", () => {
 	assert.equal(read(catalog), catalogText.replace("0.11.0", "1.2.3"));
 });
 
-test("the writer writes every manifest in the list, the catalog included, and the check agrees", () => {
+test("the writer writes the source only, and the check names the manifests the build has not caught up", () => {
 	seedAll("0.11.0");
+	const before = MANIFESTS.map(({ path }) => read(path));
+	assert.deepEqual(setVersion(box.root, "1.2.3"), [SOURCE_PATH]);
+	assert.equal(read(SOURCE_PATH), sourceText("1.2.3"));
 	assert.deepEqual(
-		setVersion(box.root, "1.2.3"),
-		MANIFESTS.map((manifest) => manifest.path),
+		MANIFESTS.map(({ path }) => read(path)),
+		before,
 	);
-	assert.deepEqual(checkVersions(box.root), []);
-	assert.equal(JSON.parse(read(catalog)).plugins[0].version, "1.2.3");
+	assert.match(checkVersions(box.root).join("\n"), /1\.2\.3.*0\.11\.0/s);
 });
 
 test("the writer and the check import no esbuild", () => {
@@ -161,16 +168,16 @@ test("main with a malformed version exits 2 and writes nothing", () => {
 	assert.equal(read(claude), claudeText);
 });
 
-test("main bumps every manifest and exits 0", () => {
+test("main bumps the source and exits 0", () => {
 	seedAll("0.11.0");
 	const { status, errors } = quietly(["1.2.3"]);
 	assert.equal(status, 0);
 	assert.deepEqual(errors, []);
-	assert.equal(JSON.parse(read(claude)).version, "1.2.3");
+	assert.equal(JSON.parse(read(SOURCE_PATH)).version, "1.2.3");
 });
 
-test("main reports a manifest without a version line and exits 1", () => {
-	put(claude, '{\n\t"name": "x"\n}\n');
+test("main reports a source without a version line and exits 1", () => {
+	put(SOURCE_PATH, '{\n\t"name": "x"\n}\n');
 	const { status, errors } = quietly(["1.2.3"]);
 	assert.equal(status, 1);
 	assert.match(errors.join("\n"), /no version line in/);

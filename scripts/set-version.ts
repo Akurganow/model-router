@@ -1,17 +1,19 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { SOURCE_PATH } from "./build/source.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
-import { checkVersions, MANIFESTS } from "./manifests.ts";
+import { checkVersions } from "./manifests.ts";
 
 // Only the version line changes, so each file keeps the formatting biome ci checks.
-// Any tab depth matches: the omp catalog nests its version inside plugins[0].
+// Any tab depth matches, so a nested version line would match too.
 const line = /^(\t+"version": ")\d+\.\d+\.\d+(",?)$/m;
 
+// The builder carries the source version into every generated manifest.
 export function setVersion(
 	root: string,
 	version: string,
-	manifests: readonly string[] = MANIFESTS.map(({ path }) => path),
+	manifests: readonly string[] = [SOURCE_PATH],
 ): string[] {
 	// Every manifest is checked before any is written, so a failed bump leaves the tree as it was.
 	const pending = manifests
