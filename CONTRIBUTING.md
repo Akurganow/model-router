@@ -224,7 +224,10 @@ CI runs these checks:
 - the `package` job: it packs `packages/model-router` and compares the packed
   files with its `files` list, runs `npm publish --dry-run`, and installs the
   tarball into the pinned OpenClaw and omp
-- the owner-setup scan, `node scripts/scan-owner-setup.ts`
+- the owner-setup scan, `node scripts/scan-owner-setup.ts --base <commit>`,
+  where CI passes the commit the change starts from. Without `--base` it reads
+  what your branch adds over its merge base with `origin/main`, and with no
+  `origin/main` the generated files only.
 
 A pull request merges only when all of them pass.
 [docs/design.md](docs/design.md#ci-checks-the-copies-and-the-installation)

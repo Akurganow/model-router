@@ -112,7 +112,10 @@ const readJson = (root: string, path: string): unknown =>
 export const loadSchema = (root: string): Schema =>
 	readJson(root, SCHEMA_PATH) as Schema;
 
-// The schema is checked first, so the cast below only names a shape already proven.
+/**
+ * Reads metadata/source.json and returns it typed as Source. It throws with
+ * every schema problem first, so the cast only names a shape already proven.
+ */
 export function loadSource(root: string): Source {
 	const data = readJson(root, SOURCE_PATH);
 	const problems = validate(loadSchema(root), data);

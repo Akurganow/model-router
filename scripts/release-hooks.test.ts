@@ -60,7 +60,11 @@ function runHook(cwd: string, hook: string) {
 	return run(cwd, process.execPath, args);
 }
 
-// Untracked files count, so a new file a release needs is copied before its first commit.
+/**
+ * Copies the files git lists, untracked ones included, so a new file a release
+ * needs is copied before its first commit. Links and node_modules are left out;
+ * the copy gets its own link to node_modules.
+ */
 function copyTree(from: string, to: string) {
 	const listed = git(
 		from,

@@ -62,6 +62,10 @@ const section = (source: Source, install: Install): string => {
 const occurrences = (text: string, marker: string): number =>
 	text.split(marker).length - 1;
 
+/**
+ * Throws, naming the README and the marker, unless each install marker appears
+ * exactly once and the start marker comes first.
+ */
 function checkMarkers(readme: string): void {
 	for (const marker of [START, END]) {
 		const count = occurrences(readme, marker);

@@ -41,10 +41,13 @@ const choose = (setting: ValueSetting, value: string) => {
 };
 const lines = (...parts: string[]) => parts.join("\n");
 const SETTLE_MS = 20;
-// A call opens its dialog after it reads the settings, and a busy machine can
-// delay that past any fixed number of event-loop turns, so the wait is by
-// condition and fails the test when the time runs out.
 const DIALOG_WAIT_MS = 5000;
+/**
+ * Waits until the given number of dialogs has opened. A call opens its dialog
+ * after it reads the settings, and a busy machine can delay that past any fixed
+ * number of event-loop turns, so the wait is by condition and fails the test
+ * when the time runs out.
+ */
 const settle = async (dialogs: number) => {
 	const deadline = Date.now() + DIALOG_WAIT_MS;
 	while (world.dialogs.length < dialogs) {

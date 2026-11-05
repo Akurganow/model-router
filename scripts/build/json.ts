@@ -29,6 +29,10 @@ const BIOME = createRequire(import.meta.url).resolve(
 	"@biomejs/biome/bin/biome",
 );
 
+/**
+ * Serializes a value with tab indentation, and writes a OneLine object on one
+ * line so Biome keeps it there.
+ */
 function lines(value: JsonValue, indent: string): string {
 	if (value instanceof OneLine) return JSON.stringify(value.value);
 	if (typeof value !== "object" || value === null) return JSON.stringify(value);
@@ -60,7 +64,10 @@ export const formatRendered = (
 	root: string,
 ): string => (path.endsWith(".json") ? formatJson(path, text, root) : text);
 
-// The repository's own Biome formats the text, so a file written here passes biome ci.
+/**
+ * Formats JSON text with the repository's own Biome, so a file written here
+ * passes biome ci. Throws when Biome fails or runs past its time limit.
+ */
 export function formatJson(path: string, text: string, root: string): string {
 	const run = spawnSync(
 		process.execPath,

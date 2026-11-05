@@ -123,6 +123,7 @@ The scan also ignores case, but it needs a token of 16 or more characters with a
 Without that, the manifest's "the bearer token" and the masked form `Bearer ***` would fail it.
 When a push names a base the clone lacks, the scan reads what HEAD adds over its merge base with `origin/main`.
 When that merge base is HEAD itself, or `origin/main` is absent, it reads only the last commit, and its note says so.
+Run locally without `--base`, the scan reads what the branch adds over its merge base with `origin/main`.
 The builder rewrites generated files whole, so the scan reads each of them in full.
 
 ## What this repository does not take from pegboard

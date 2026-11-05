@@ -43,10 +43,12 @@ test("each section ends with a link to its setup heading", () => {
 		);
 });
 
-// GitHub suffixes a repeated heading's anchor with -1, -2 and so on.
 const FENCE = /^(```|~~~)/;
 const HEADING = /^#{1,6} (.+)$/;
-// A line inside a fenced code block, such as a shell comment, is not a heading.
+/**
+ * Lists the heading titles of a Markdown text. A line inside a fenced code
+ * block, such as a shell comment, is not a heading.
+ */
 const headingsOf = (markdown: string): string[] => {
 	let inFence = false;
 	const titles: string[] = [];
@@ -58,6 +60,10 @@ const headingsOf = (markdown: string): string[] => {
 	return titles;
 };
 
+/**
+ * Returns the anchors GitHub gives the headings. GitHub suffixes a repeated
+ * heading's anchor with -1, -2 and so on.
+ */
 const anchorsOf = (markdown: string): Set<string> => {
 	const seen = new Map<string, number>();
 	const anchors = new Set<string>();
@@ -136,6 +142,10 @@ test("a second render changes nothing", () => {
 	assert.equal(renderReadme(once, source), once);
 });
 
+/**
+ * Returns the message renderReadme throws for this text, failing the test when
+ * it throws nothing.
+ */
 const failure = (text: string) => {
 	try {
 		renderReadme(text, source);
@@ -173,8 +183,11 @@ const CI_PATH = ".github/workflows/ci.yml";
 const SYSTEM_RUNNERS: Readonly<Record<string, string>> = {
 	Ubuntu: "ubuntu-latest",
 };
-// ci.yml indents each job two spaces under `jobs:` and its keys four, and the
-// slice below finds a job's end by the next line at two spaces.
+/**
+ * Returns the lines of one job in ci.yml. The workflow indents each job two
+ * spaces under jobs: and its keys four, so a job ends at the next line indented
+ * two spaces.
+ */
 const jobBlock = (workflow: string, job: string): string => {
 	const lines = workflow.split("\n");
 	const first = lines.indexOf(`  ${job}:`);

@@ -24,7 +24,6 @@ const TIMER_NAMES = ["setTimeout", "clearTimeout"];
 
 type Harness = "claude" | "omp" | "openclaw";
 
-// The Claude Code hooks module has no timer globals, so the shim rebinds the free names to $.clock.after.
 // OpenClaw's bundle keeps no module external except the node: built-ins, which esbuild leaves alone on the node platform.
 const HOST_OPTIONS: Readonly<Record<Harness, BuildOptions>> = {
 	claude: { platform: "neutral", inject: [TIMERS] },
@@ -32,6 +31,12 @@ const HOST_OPTIONS: Readonly<Record<Harness, BuildOptions>> = {
 	openclaw: { platform: "node" },
 };
 
+/**
+ * Bundles one harness entry to `out` and returns its problems: the Claude Code
+ * shape checks and the size limit. The Claude Code hooks module has no timer
+ * globals, so its bundle injects a shim that rebinds the free names to
+ * $.clock.after.
+ */
 export async function buildBundle(
 	harness: Harness,
 	entry: string,
@@ -59,6 +64,11 @@ export async function buildBundle(
 	return problems;
 }
 
+/**
+ * Lists why a Claude Code bundle would not load as a hooks module: no top-level
+ * `function register(`, no final `export { register }`, or a timer global the
+ * shim did not bind.
+ */
 export function checkClaudeBundle(code: string): string[] {
 	const problems: string[] = [];
 	if (!/^function register\(/m.test(code))
@@ -108,6 +118,10 @@ export const renderMetadata = (source: Source): Rendered[] => [
 	...renderNpm(source),
 ];
 
+/**
+ * Writes the rendered JSON files and the README install region from the
+ * validated source. Throws when the source fails its schema.
+ */
 function writeMetadata(root: string): void {
 	const source = loadSource(root);
 	for (const { path, text } of renderMetadata(source)) {
@@ -118,6 +132,10 @@ function writeMetadata(root: string): void {
 	writeFileSync(readme, renderReadme(readFileSync(readme, "utf8"), source));
 }
 
+/**
+ * Builds every generated file and returns the problems. A source error stops
+ * the run before the bundles are built.
+ */
 async function main(): Promise<string[]> {
 	try {
 		writeMetadata(ROOT);

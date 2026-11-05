@@ -9,7 +9,11 @@ import { checkVersions } from "./manifests.ts";
 // One tab anchors the match to the top level; nested objects sit deeper.
 const line = /^(\t"version": ")\d+\.\d+\.\d+(",?)$/gm;
 
-// The builder carries the source version into every generated manifest.
+/**
+ * Writes the version into the one top-level version line of
+ * metadata/source.json; the builder carries it to every manifest. Throws when
+ * the source is missing or holds no single such line.
+ */
 export function setVersion(root: string, version: string): void {
 	const path = join(root, SOURCE_PATH);
 	if (!existsSync(path)) throw new Error(`${SOURCE_PATH} is missing`);
