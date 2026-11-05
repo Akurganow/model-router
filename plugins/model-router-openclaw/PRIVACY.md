@@ -111,11 +111,11 @@ limit. It retries no other status. The retries send the same body as the first
 request.
 
 With two providers, the first provider gets one request and no retry. The
-plugin gives up on it after 2 s. The second provider then gets up to three
-attempts as above. One spawn therefore sends at most four requests.
+plugin gives up on it after the [per-provider wait](README.md#hook-timeout). The
+second provider then gets up to three attempts as above. One spawn therefore sends at most four requests.
 
 One routing limit covers the whole spawn, both providers and all retries
-included. [Routing behaviour](README.md#routing-behaviour) gives the limit. The
+included. [Hook timeout](README.md#hook-timeout) gives the limit. The
 plugin stops waiting at the limit, but it cannot recall a request in flight. A
 request can reach its provider even when its answer never returns. A retry
 after a network failure may be billed more than once. A first request the
@@ -138,16 +138,13 @@ request on. The plugin author has no access to those requests.
 The plugin keeps no file of its own and no state between spawns.
 
 It reads a key only for a provider the `provider` setting allows.
-[Keys](README.md#keys) says where it looks, and in which order. It holds a key
-in memory only while it checks whether to route and while it sends a request,
-and it sends each key only to its own provider's endpoint above, as the bearer
-token. It never uses OpenClaw's own provider credentials as a Jev key. It reads
-no other environment variable, and it runs no program.
+[Keys](README.md#keys) says where it looks, in which order, and who can read an
+environment variable. It holds a key in memory only while it checks whether to
+route and while it sends a request. It reads no other environment variable, and
+it runs no program.
 
-A key in an environment variable stays wherever you set it. It is visible to
-every process the Gateway starts. A `.env` file in the Gateway's working
-directory can supply either variable. The plugin then sends the task text to the
-account that key belongs to. OpenClaw 2026.10.10 drops `OPENROUTER_API_KEY`
+A `.env` file in the Gateway's working directory can supply either variable.
+The plugin then sends the task text to the account that key belongs to. OpenClaw 2026.10.10 drops `OPENROUTER_API_KEY`
 from such a file but loads `TYPESAFE_API_KEY`, as
 [the `.env` fact](../../docs/clients.md#openclaw-runtime-logs-and-environment)
 records. The plugin does not depend on that filter. Keep the keys in the
@@ -172,12 +169,9 @@ credential exists for that model's provider. These calls make no network
 request and refresh no credential. Nothing from these reads leaves your
 machine, except the role text the request carries as described above.
 
-The plugin writes one line per routed or skipped spawn, `model-router` followed
-by the decision, to the Gateway log and nowhere else. The line holds the level,
-the model string you assigned or `no change`, the effort, the probabilities, and
-a skip reason such as `key unset` or an HTTP status. It holds the Jev model
-name and token counts when the reply carries them. It holds no task text, no
-description and no key. OpenClaw shows no line in the chat.
+The plugin writes one line per routed or skipped spawn to the Gateway log and
+nowhere else. [The log line](README.md#the-log-line) lists its fields. It holds
+no task text, no description and no key.
 
 ## Fails open
 

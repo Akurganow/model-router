@@ -599,7 +599,7 @@ The [update page](https://docs.openclaw.ai/cli/plugins/uninstall-and-update) say
 The [manage page](https://docs.openclaw.ai/plugins/manage-plugins#apply-changes-and-inspect) says an update refreshes a running one.
 The two pages disagree, and no run settled it.
 The hook runs only when a tool call runs.
-Five paths start a subagent without that tool: `/acp spawn`, the Gateway method `sessions.create`, the Control UI's new session, `api.runtime.subagent.run` from another plugin, and Codex's own `spawn_agent`.
+Five paths start a subagent without that tool. [Paths the hook never sees](../plugins/model-router-openclaw/README.md#paths-the-hook-never-sees) lists them.
 No source read here lists every such path.
 No run covers a sandboxed child with a CLI-backend model, or an `outputSchema` spawn on a model without tools.
 The sandbox rule for CLI backends and the collector child's need for tools rest on the documentation cited above.

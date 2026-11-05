@@ -10,10 +10,12 @@ An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model an
 - It sets only a model you assigned. It proposes none, and it never sets a model that OpenClaw cannot resolve with a credential.
 - It never overrides a model you chose, nor an effort the spawn or the global config sets. [Which spawns are routed](#which-spawns-are-routed) lists the model rules, and [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the effort rules.
 - Under the default `core` scope, it routes only [the spawn of the requesting agent itself](#the-spawn-of-the-requesting-agent-itself). [Scope](#scope) defines the term.
-- It fails open. It never blocks a spawn, never asks for approval and never throws into OpenClaw. [Fails open](PRIVACY.md#fails-open) says what OpenClaw can still do.
+- It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what OpenClaw can still do.
 - The plugin changes a setting only when the owner types one of its two commands. [Change the options](#change-the-options) lists them.
 
 ## Install
+
+The install commands are under [OpenClaw](../../README.md#openclaw) in the root README. The notes below explain them.
 
 The npm package is `@akurganow/model-router`. The plugin id is `model-router-openclaw`. The two names differ: OpenClaw notes it in an info line during install and uses the id as the config key. Install with the package name. Enable, configure, update and disable with the id.
 
@@ -25,19 +27,17 @@ The install command carries a prefix and two flags:
 
 Drop both flags in a terminal to answer OpenClaw's prompts instead. Review the source before you pass the flags. They skip OpenClaw's prompts.
 
-The `inspect` step shows that OpenClaw installed and enabled the plugin. A good install reads `status: loaded`, `imported: true` and `enabled: true`, the fields CI checks. The step loads the plugin in tool-discovery mode, where the plugin registers nothing. The report's lists of registered hooks, tools and commands stay empty, and only the manifest's `contracts.tools` names `model_router_config`. This is read from OpenClaw's source, because no run kept the report.
+The `inspect` step shows that OpenClaw installed and enabled the plugin. A good install reads `status: loaded`, `imported: true` and `enabled: true`. The step loads the plugin in tool-discovery mode, where the plugin registers nothing. The report's lists of registered hooks, tools and commands stay empty, and only the manifest's `contracts.tools` names `model_router_config`.
 
 To see the registration, start or restart the Gateway and read its log with `openclaw logs --follow --plain`. Under verbose logging or file log level `debug`, the log holds `Registered plugin command: /model-router-provider (plugin: model-router-openclaw)`.
 
-A running local Gateway applies the install, the enable and later config changes without a restart. Without a running Gateway, OpenClaw saves the change for the next start. When the registration line is missing, run `openclaw gateway restart`.
-
-To update, run `openclaw plugins update model-router-openclaw`, then restart the Gateway.
+A running local Gateway applies the install, the enable and later config changes without a restart. Without a running Gateway, OpenClaw saves the change for the next start.
 
 [Facts behind this section](../../docs/clients.md#openclaw-install-and-update)
 
 ## Set up
 
-Run the [install commands](../../README.md#openclaw) first. Routing then needs a model in a slot and a key. The [setup skill](openclaw-skills/model-router-setup/SKILL.md) walks through them. Ask OpenClaw to run `model-router-setup`.
+Routing needs a model in a slot and a key. The [setup skill](openclaw-skills/model-router-setup/SKILL.md) walks through them. Ask OpenClaw to run `model-router-setup`.
 
 1. Assign `small_model` and `large_model` in OpenClaw's config. Write each as `provider/model`. A bare name gets the default provider of the agent. Use the Control UI page `/settings/plugins/model-router-openclaw`, or run:
 
@@ -46,7 +46,7 @@ Run the [install commands](../../README.md#openclaw) first. Routing then needs a
    openclaw config set plugins.entries.model-router-openclaw.config.large_model <provider/model>
    ```
 
-   Pick models of a provider that has an API key. [Choosing models](#choosing-models) says why. The plugin has no command for the models.
+   Pick models of a provider that has an API key, because the plugin skips a model that OpenClaw holds no credential for. [Choosing models](#choosing-models) has more. The plugin has no command for the models.
 2. Add a [key](#keys).
 3. Pick the [provider](#provider) and the [scope](#scope) if the defaults do not fit.
 4. Watch the Gateway log with `openclaw logs --follow --plain`, and start a subagent. [The log line](#the-log-line) shows the decision.
@@ -63,7 +63,7 @@ A key counts as set when either place holds a non-empty value. Get a key from [T
 Add a key in one of two ways:
 
 - Fill the secret field in the plugin's settings page in the Control UI. Enter a plain text key. A SecretRef object is not read.
-- Set the environment variable in the Gateway's own environment, then restart the Gateway. The variable is visible to every process the Gateway starts. [PRIVACY.md](PRIVACY.md#what-the-plugin-stores) says more.
+- Set the environment variable in the Gateway's own environment, then restart the Gateway. The variable is visible to every process the Gateway starts. [What the plugin stores](PRIVACY.md#what-the-plugin-stores) covers a `.env` file.
 
 Never type a key into the chat.
 
@@ -172,18 +172,10 @@ At level 1 with a kept effort, there is nothing to set. The plugin returns nothi
 
 A spawn with no `model-router` line in the Gateway log has one of four causes:
 
-- The Gateway has not loaded the plugin. [Install](#install) says when to restart it.
+- The Gateway has not loaded the plugin. Run `openclaw plugins inspect model-router-openclaw --runtime --json`. `status` must read `loaded` and `enabled` must read `true`. Then restart the Gateway. [Install](#install) has the commands.
 - The spawn [passes without a line](#spawns-that-pass-without-a-line).
-- The spawn takes a [path the hook never sees](#routing-behaviour).
-- The [routing limit expired](#routing-behaviour), or the hook timeout is too short for the plugin to run.
-
-### How the plugin reads a spawn
-
-The plugin reads the parameters of a `sessions_spawn` call as OpenClaw's tool does.
-
-- For `agentId`, `label`, `model` and `thinking`, the plugin takes the key as written. It takes the snake_case key, such as `agent_id`, only when the written key is absent.
-- The plugin counts the value only when it is a string. It trims the value, and an empty value counts as absent.
-- The plugin reads `runtime` and `taskName` as written.
+- The spawn takes a [path the hook never sees](#paths-the-hook-never-sees).
+- The routing limit expired, or the hook timeout is too short for the plugin to run. [Hook timeout](#hook-timeout) lists the limits.
 
 ### Spawns that pass without a line
 
@@ -191,6 +183,7 @@ These spawns pass through unchanged, and the plugin logs nothing:
 
 - The spawn sets a text `model` that is not empty and not `default`, in any case.
 - The spawn sets a `runtime` other than `subagent`, such as `acp`.
+- The spawn sets an `agentId`, or an `agent_id` when `agentId` is absent, that is present but not text.
 - The spawn sets `visible: true`, `context: "fork"`, `mode: "session"` or `thread: true`.
 - The spawn has no `task` text.
 
@@ -217,11 +210,19 @@ A scored spawn can still skip:
 
 - `small model unset` or `large model unset`: the level picked a slot you left empty.
 - `small model unresolved` or `large model unresolved`: OpenClaw cannot resolve the slot's string for the target agent, or holds no credential for its provider. The check makes no network request. The plugin then sets neither model nor effort.
-- `timeout`, `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer in time or at all. `timeout` means Jev's own timeout only. [Routing behaviour](#routing-behaviour) says what the routing limit does. After two providers, the reason names each, for example `typesafe HTTP 503, openrouter timeout`.
+- `timeout`, `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer in time or at all. `timeout` means Jev's own timeout only. [Hook timeout](#hook-timeout) says what the routing limit does. After two providers, the reason names each, for example `typesafe HTTP 503, openrouter timeout`.
+
+### How the plugin reads a spawn
+
+The plugin reads the parameters of a `sessions_spawn` call as OpenClaw's tool does.
+
+- For `agentId`, `label`, `model` and `thinking`, the plugin takes the key as written. It takes the snake_case key, such as `agent_id`, only when the written key is absent.
+- The plugin counts the value only when it is a string, except `agentId`. [Spawns that pass without a line](#spawns-that-pass-without-a-line) says what a non-text `agentId` does. It trims the value, and an empty value counts as absent.
+- The plugin reads `runtime` and `taskName` as written.
 
 ### The role Jev reads
 
-The role Jev reads with the task is the requesting agent's `description`, from its roster entry, when it is set. Otherwise it is one fixed text. Under `extended`, another agent sends its own description. [PRIVACY.md](PRIVACY.md#what-the-plugin-sends) lists the request, and [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent) says why this plugin differs from the others.
+[What the plugin sends](PRIVACY.md#what-the-plugin-sends) says which role text Jev reads with the task. [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent) says why this plugin differs from the others.
 
 [Facts behind this section](../../docs/clients.md#openclaw-hook-and-spawn)
 
@@ -237,7 +238,7 @@ model-router skipped, key unset
 
 A routed line reads `L<level> <model or no change> · <effort or kept label> · p=<tier>/<work>`. The model is the slot string as you wrote it. The two probabilities belong to the chosen levels of the two questions. When the reply carries them, the line also names the Jev model and the token counts. After a fallback, it ends with the provider that answered and why the first one failed, for example ` · via openrouter (typesafe HTTP 503)`.
 
-A skipped line reads `skipped, <reason>`. [Which spawns are routed](#which-spawns-are-routed) lists the reasons. The plugin logs one warning when a hook timeout makes it inert, as [Routing behaviour](#routing-behaviour) says.
+A skipped line reads `skipped, <reason>`. [Which spawns are routed](#which-spawns-are-routed) lists the reasons. The plugin logs one warning when a hook timeout makes it inert, as [Hook timeout](#hook-timeout) says.
 
 ## Choosing models
 
@@ -251,11 +252,38 @@ A skipped line reads `skipped, <reason>`. [Which spawns are routed](#which-spawn
 
 ## Routing behaviour
 
-- **Paths the hook never sees.** The plugin hooks the `sessions_spawn` tool. A spawn that does not call that tool is never routed: `/acp spawn`, the gateway method `sessions.create`, the Control UI's new session, `api.runtime.subagent.run` from another plugin, and Codex's own `spawn_agent`.
 - **OpenClaw can still say no.** [Fails open](PRIVACY.md#fails-open) says what OpenClaw can still do after the plugin sets a model.
 - **Later hooks.** Handlers run by descending priority, and the plugin uses priority 100. A later plugin that returns `params` replaces the plugin's result whole.
-- **Hook timeout.** The plugin registers its hook with a 10 s timeout, and an operator can override it with `plugins.entries.model-router-openclaw.hooks.timeouts.before_tool_call` or `hooks.timeoutMs`. The routing limit is 8 s, or the timeout minus 2 s when that is smaller. A timeout below 3000 ms leaves less than 1 s, so the plugin routes nothing and logs one warning at start-up. When the routing limit expires, the plugin logs nothing, sets nothing and lets the spawn run unchanged.
 - **Parallel spawns.** [Requests and billing](PRIVACY.md#requests-and-billing) says what many parallel spawns cost.
+
+### Paths the hook never sees
+
+The plugin hooks the `sessions_spawn` tool. A spawn that does not call that tool is never routed. Five paths start a subagent without it:
+
+- `/acp spawn`
+- the gateway method `sessions.create`
+- the Control UI's new session
+- `api.runtime.subagent.run` from another plugin
+- Codex's own `spawn_agent`
+
+### Hook timeout
+
+Four limits bound the time a spawn waits for routing:
+
+| Limit | Value | What it bounds |
+| --- | --- | --- |
+| Hook timeout | 10 s | The whole hook. The plugin registers it with this value. |
+| Routing limit | 8 s | The plugin's work in the hook: both providers and all retries. |
+| Jev timeout | 10 s | One request to one provider. It is the SDK default. |
+| Per-provider wait | 2 s | The first of two providers. It gets no retry. |
+
+The routing limit is shorter than the Jev timeout, so it ends a slow request first.
+
+An operator overrides the hook timeout with `plugins.entries.model-router-openclaw.hooks.timeouts.before_tool_call` or `hooks.timeoutMs`.
+
+- **The limit.** The routing limit shrinks to the hook timeout minus 2 s when that is smaller. The margin keeps the plugin ahead of OpenClaw's own timeout. When the routing limit expires, the plugin logs nothing, sets nothing and lets the spawn run unchanged.
+- **The floor.** A hook timeout below 3000 ms leaves less than 1 s to route, so the plugin routes nothing.
+- **The warning.** For such a timeout, the plugin logs one warning at start-up. It names the timeout and the value to set.
 
 [Facts behind this section](../../docs/clients.md#openclaw-hook-and-spawn)
 
@@ -269,7 +297,7 @@ A skipped line reads `skipped, <reason>`. [Which spawns are routed](#which-spawn
 
 ## Turn it off
 
-[Turn off and uninstall](../../README.md#turn-off-and-uninstall) has the command. The plugin sends nothing while it is disabled. Removing the key of every provider the `provider` setting allows also stops routing. Every spawn then reports `key unset`.
+[Turn off and uninstall](../../README.md#turn-off-and-uninstall) has the command and says what else stops routing.
 
 ## Support
 
