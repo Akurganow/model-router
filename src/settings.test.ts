@@ -4,6 +4,8 @@ import { test } from "node:test";
 import { order, PROVIDER_VALUES } from "./provider.ts";
 import { SCOPE_VALUES } from "./scope.ts";
 import {
+	agentDiscoveryFailed,
+	agentUnknown,
 	alreadyValue,
 	ask,
 	badCall,
@@ -21,10 +23,12 @@ import {
 	keyQuestion,
 	NO_ANSWER,
 	NOT_OFFERED,
+	outsideCoreScope,
 	pick,
 	projectOverrides,
 	REFUSED,
 	SETTING_NAMES,
+	setsOwnModel,
 	TOOL_LABEL,
 	toolDescription,
 	unchanged,
@@ -294,4 +298,11 @@ test("the project-override note names the setting", () => {
 
 test("the tool label names the router", () => {
 	assert.match(TOOL_LABEL, /Model Router/);
+});
+
+test("the four skip reasons read as they do in the log", () => {
+	assert.equal(outsideCoreScope("scout"), "scout is outside the core scope");
+	assert.equal(agentDiscoveryFailed("scout"), "scout agent discovery failed");
+	assert.equal(agentUnknown("scout"), "scout agent unknown");
+	assert.equal(setsOwnModel("scout"), "scout sets its own model");
 });

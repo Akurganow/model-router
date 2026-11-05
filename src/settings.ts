@@ -95,6 +95,14 @@ export const projectOverrides = (setting: ValueSetting): string =>
 	`A project value for ${setting} overrides it.`;
 
 export const UNREADABLE = "settings unreadable";
+// The skip reasons a spawn check gives. Every harness words them the same.
+export const outsideCoreScope = (id: string): string =>
+	`${id} is outside the core scope`;
+export const agentDiscoveryFailed = (id: string): string =>
+	`${id} agent discovery failed`;
+export const agentUnknown = (id: string): string => `${id} agent unknown`;
+export const setsOwnModel = (id: string): string => `${id} sets its own model`;
+
 export const NO_ANSWER = "no answer from the dialog";
 export const NOT_OFFERED = "the answer was not one of the offered values";
 export const REFUSED =

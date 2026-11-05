@@ -16,6 +16,10 @@ var fromMiddle = (down, up) => (p) => {
 };
 var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
 var isRecord = (v) => typeof v === "object" && v !== null;
 function parseProbabilities(answers, key) {
   const a = isRecord(answers) ? answers[key] : void 0;
@@ -91,7 +95,7 @@ function buildPrompt(task, context) {
   return `${brief}${CONTEXT_LABEL}${prepareBrief(context, budget)}`;
 }
 function contextText(context) {
-  return typeof context === "string" && context.trim() !== "" ? context : "";
+  return nonEmpty(context) ?? "";
 }
 function roleText(description) {
   if (typeof description !== "string") return NO_DESCRIPTION;
@@ -117,47 +121,6 @@ var skippedLine = (reason) => `skipped, ${reason}`;
 
 // src/omp-gates.ts
 import { readFile } from "node:fs/promises";
-
-// src/omp-items.ts
-var TASK = "task";
-var BUNDLED = "bundled";
-var ROLE_MARK = "@";
-var SEANCE = "seance";
-var CUSTOM_AGENT = "custom task agent";
-var isEmpty = (v) => v === void 0 || v === null || typeof v === "string" && v.trim() === "";
-var inScope = (name, scope) => scope === "extended" || name === TASK;
-var findAgent = (name, { agents }) => agents?.find((agent) => agent.name === name);
-var ownRole = (agent) => agent?.model?.find((model) => model.startsWith(ROLE_MARK))?.slice(ROLE_MARK.length);
-function userChoice(name, facts) {
-  if (name === TASK && !isEmpty(facts.roles[TASK]))
-    return "task model role set";
-  if (Object.hasOwn(facts.overrides, name) && !isEmpty(facts.overrides[name]))
-    return `${name} model override set`;
-  if (facts.disabled.includes(name)) return `${name} agent disabled`;
-  return void 0;
-}
-function agentGate(name, facts) {
-  const found = findAgent(name, facts);
-  if (found?.source === BUNDLED) return void 0;
-  if (facts.scope === "core") return CUSTOM_AGENT;
-  if (facts.agents === void 0) return `${name} agent discovery failed`;
-  if (found === void 0) return `${name} agent unknown`;
-  return found.model?.length ? `${name} sets its own model` : void 0;
-}
-var seanceGate = (name) => name === SEANCE ? `${name} spawns without the hook omp gives plugins, so its model cannot change` : void 0;
-function itemCheck(name, facts) {
-  if (!inScope(name, facts.scope)) return `${name} is outside the core scope`;
-  return userChoice(name, facts) ?? seanceGate(name) ?? agentGate(name, facts) ?? facts.noModels;
-}
-function spawnCheck({ agent, modelRole }, facts) {
-  const reason = itemCheck(agent, facts);
-  if (reason !== void 0) return reason;
-  return modelRole && modelRole !== ownRole(findAgent(agent, facts)) ? `${agent} spawns with another model role` : void 0;
-}
-function roleOf(name, facts) {
-  const found = findAgent(name, facts);
-  return name === TASK && found?.source === BUNDLED ? DEFAULT_ROLE : roleText(found?.description);
-}
 
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
 var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
@@ -1102,7 +1065,8 @@ var ORDER = {
   openrouter: ["openrouter"]
 };
 var NARROWABLE = ["auto", "openrouter-first"];
-var resolve = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : DEFAULT_VALUE;
+var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
+var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
 function plan(value, present) {
   const providers = order(value).filter((p) => present[p]);
@@ -1130,7 +1094,8 @@ function narrow(global, project) {
 // src/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
-var resolveScope = (value) => SCOPE_VALUES.find((known) => known === value) ?? DEFAULT_SCOPE;
+var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
+var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
@@ -1182,6 +1147,10 @@ var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var alreadyValue = (value) => `already ${value}`;
 var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
 var UNREADABLE = "settings unreadable";
+var outsideCoreScope = (id) => `${id} is outside the core scope`;
+var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
+var agentUnknown = (id) => `${id} agent unknown`;
+var setsOwnModel = (id) => `${id} sets its own model`;
 var NO_ANSWER = "no answer from the dialog";
 var NOT_OFFERED = "the answer was not one of the offered values";
 var keyLine = (provider, state) => `${provider} key: ${state}`;
@@ -1215,6 +1184,47 @@ var COMMAND_DESCRIPTIONS = {
   provider: describeCommand("provider"),
   scope: describeCommand("scope")
 };
+
+// src/omp-items.ts
+var TASK = "task";
+var BUNDLED = "bundled";
+var ROLE_MARK = "@";
+var SEANCE = "seance";
+var CUSTOM_AGENT = "custom task agent";
+var isEmpty = (v) => v === void 0 || v === null || typeof v === "string" && nonEmpty(v) === void 0;
+var inScope = (name, scope) => scope === "extended" || name === TASK;
+var findAgent = (name, { agents }) => agents?.find((agent) => agent.name === name);
+var ownRole = (agent) => agent?.model?.find((model) => model.startsWith(ROLE_MARK))?.slice(ROLE_MARK.length);
+function userChoice(name, facts) {
+  if (name === TASK && !isEmpty(facts.roles[TASK]))
+    return "task model role set";
+  if (Object.hasOwn(facts.overrides, name) && !isEmpty(facts.overrides[name]))
+    return `${name} model override set`;
+  if (facts.disabled.includes(name)) return `${name} agent disabled`;
+  return void 0;
+}
+function agentGate(name, facts) {
+  const found = findAgent(name, facts);
+  if (found?.source === BUNDLED) return void 0;
+  if (facts.scope === "core") return CUSTOM_AGENT;
+  if (facts.agents === void 0) return agentDiscoveryFailed(name);
+  if (found === void 0) return agentUnknown(name);
+  return found.model?.length ? setsOwnModel(name) : void 0;
+}
+var seanceGate = (name) => name === SEANCE ? `${name} spawns without the hook omp gives plugins, so its model cannot change` : void 0;
+function itemCheck(name, facts) {
+  if (!inScope(name, facts.scope)) return outsideCoreScope(name);
+  return userChoice(name, facts) ?? seanceGate(name) ?? agentGate(name, facts) ?? facts.noModels;
+}
+function spawnCheck({ agent, modelRole }, facts) {
+  const reason = itemCheck(agent, facts);
+  if (reason !== void 0) return reason;
+  return modelRole && modelRole !== ownRole(findAgent(agent, facts)) ? `${agent} spawns with another model role` : void 0;
+}
+function roleOf(name, facts) {
+  const found = findAgent(name, facts);
+  return name === TASK && found?.source === BUNDLED ? DEFAULT_ROLE : roleText(found?.description);
+}
 
 // src/omp-gates.ts
 var ROLES = { small: "@smol", large: "@slow" };
@@ -1283,10 +1293,11 @@ async function findKeys(ctx, value) {
 async function findKey(ctx, provider) {
   try {
     const key = await ctx.modelRegistry.getApiKeyForProvider(provider);
-    if (typeof key === "string" && key !== "") return key;
+    const trimmed = nonEmpty(key);
+    if (trimmed !== void 0) return trimmed;
   } catch {
   }
-  return process.env[KEY_VARIABLES[provider]] || void 0;
+  return nonEmpty(process.env[KEY_VARIABLES[provider]]);
 }
 function resolves(ctx, role) {
   try {
@@ -1733,7 +1744,8 @@ function createStore() {
       c.entries.add(entry2);
       c.awaitingId.set(call, (c.awaitingId.get(call) ?? /* @__PURE__ */ new Set()).add(entry2));
       link(c, entry2, `${call}:${index}`);
-      if (typeof name === "string" && name.trim() !== "") link(c, entry2, name);
+      if (typeof name === "string" && nonEmpty(name) !== void 0)
+        link(c, entry2, name);
     },
     // Progress names each running child. Its id is the spawn key in async mode, so it replaces the guesses.
     learn(call, progress) {

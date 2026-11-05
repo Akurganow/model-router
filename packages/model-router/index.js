@@ -940,7 +940,8 @@ var ORDER = {
   typesafe: ["typesafe"],
   openrouter: ["openrouter"]
 };
-var resolve = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : DEFAULT_VALUE;
+var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
+var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
 function plan(value, present) {
   const providers = order(value).filter((p) => present[p]);
@@ -1117,7 +1118,8 @@ var streamedFetch = async (url, init) => {
 // src/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
-var resolveScope = (value) => SCOPE_VALUES.find((known) => known === value) ?? DEFAULT_SCOPE;
+var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
+var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/openclaw-settings.ts
 var PLUGIN_ID = "model-router-openclaw";

@@ -13,10 +13,11 @@ import {
 	FIRST_ATTEMPT_TIMEOUT_MS,
 	fallsBack,
 	HOSTS,
-	KEY_VARIABLES,
+	KEY_FIELDS,
 	narrow,
 	order,
 	PROVIDER_VALUES,
+	parseProvider,
 	plan,
 } from "./provider.ts";
 
@@ -125,9 +126,16 @@ test("a project only narrows auto or openrouter-first to one provider", () => {
 		});
 });
 
-test("each provider reads its key from one named variable", () => {
-	assert.deepEqual(KEY_VARIABLES, {
-		typesafe: "TYPESAFE_API_KEY",
-		openrouter: "OPENROUTER_API_KEY",
+test("each provider has one setting name for its key", () => {
+	assert.deepEqual(KEY_FIELDS, {
+		typesafe: "api_key",
+		openrouter: "openrouter_api_key",
 	});
+});
+
+test("parseProvider keeps a known value and drops anything else", () => {
+	for (const value of PROVIDER_VALUES)
+		assert.equal(parseProvider(value), value);
+	for (const value of ["", "Auto", "toString", 4, null, undefined, {}])
+		assert.equal(parseProvider(value), undefined, String(value));
 });

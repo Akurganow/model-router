@@ -1,10 +1,10 @@
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { OPENCLAW_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";
-import { TOOL_NAME, VALUE_SETTINGS } from "./values.ts";
+import { KEY_FIELDS, TOOL_NAME, VALUE_SETTINGS } from "./values.ts";
 
 // The fields below follow docs/plugins/manifest.md of OpenClaw 2026.10.10 and the pages it links.
-const SECRET_KEYS = ["api_key", "openrouter_api_key"] as const;
+const SECRET_KEYS = Object.values(KEY_FIELDS);
 const SECRET_EXPECTED = "string";
 const SLOTS = ["small_model", "large_model"] as const;
 

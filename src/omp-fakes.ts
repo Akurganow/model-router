@@ -17,6 +17,7 @@ import type {
 	ToolReply,
 	ToolSpec,
 } from "./omp-types.ts";
+import { KEY_VARIABLES } from "./provider.ts";
 
 export { jevAnswer, streamed };
 export const TOOL_NAME = "model_router_config";
@@ -25,9 +26,9 @@ export const OR_KEY = "omp-or-key-0003";
 export const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 export const OR_ENDPOINT = "https://openrouter.ai/api/v1/systemone";
 
-export const KEY_VARIABLE = "TYPESAFE_API_KEY";
-export const OR_VARIABLE = "OPENROUTER_API_KEY";
-const VARIABLES = [KEY_VARIABLE, OR_VARIABLE];
+export const KEY_VARIABLE = KEY_VARIABLES.typesafe;
+export const OR_VARIABLE = KEY_VARIABLES.openrouter;
+const VARIABLES = Object.values(KEY_VARIABLES);
 const STORED: Readonly<Record<string, string>> = {
 	typesafe: KEY,
 	openrouter: OR_KEY,

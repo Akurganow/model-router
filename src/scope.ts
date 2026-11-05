@@ -3,5 +3,8 @@ export type Scope = (typeof SCOPE_VALUES)[number];
 
 export const DEFAULT_SCOPE: Scope = "core";
 
+export const parseScope = (value: unknown): Scope | undefined =>
+	SCOPE_VALUES.find((known) => known === value);
+
 export const resolveScope = (value: unknown): Scope =>
-	SCOPE_VALUES.find((known) => known === value) ?? DEFAULT_SCOPE;
+	parseScope(value) ?? DEFAULT_SCOPE;

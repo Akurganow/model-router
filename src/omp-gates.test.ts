@@ -72,6 +72,23 @@ for (const [name, credential] of [
 		assert.deepEqual(await gates(), openOr(OR_ENV_KEY));
 	});
 
+test("a whitespace-only credential or variable counts as unset", async () => {
+	setEnv(KEY_VARIABLE, ENV_KEY);
+	world.credential = async () => " \n";
+	assert.deepEqual(await gates(), open(ENV_KEY));
+	world.credential = async () => undefined;
+	setEnv(KEY_VARIABLE, "   ");
+	assert.deepEqual(await gates(), { closed: "key unset" });
+});
+
+test("a key is used trimmed, from omp's credential and from the variable", async () => {
+	world.credential = async () => ` ${KEY}\n`;
+	assert.deepEqual(await gates(), open());
+	world.credential = async () => undefined;
+	setEnv(KEY_VARIABLE, `\t${ENV_KEY} `);
+	assert.deepEqual(await gates(), open(ENV_KEY));
+});
+
 test("no credential and no variable close the gate", async () => {
 	world.credential = async () => undefined;
 	assert.deepEqual(await gates(), { closed: "key unset" });

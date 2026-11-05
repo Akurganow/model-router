@@ -3,7 +3,7 @@ import type { RouteInput } from "./compose.ts";
 import { type Facts, type Spawning, spawnCheck, TASK } from "./omp-items.ts";
 import { FALLBACK_NAME } from "./omp-name.ts";
 import type { Context, Lookup, OmpImports, Pi } from "./omp-types.ts";
-import { isRecord } from "./part.ts";
+import { isRecord, nonEmpty } from "./part.ts";
 import {
 	KEY_VARIABLES,
 	narrow,
@@ -124,11 +124,12 @@ export async function findKey(
 ): Promise<string | undefined> {
 	try {
 		const key = await ctx.modelRegistry.getApiKeyForProvider(provider);
-		if (typeof key === "string" && key !== "") return key;
+		const trimmed = nonEmpty(key);
+		if (trimmed !== undefined) return trimmed;
 	} catch {
 		// A broken credential store falls through to the variable.
 	}
-	return process.env[KEY_VARIABLES[provider]] || undefined;
+	return nonEmpty(process.env[KEY_VARIABLES[provider]]);
 }
 
 export function resolves(ctx: Context, role: string): boolean {

@@ -18,6 +18,33 @@ function clearTimeout(timer) {
   timer?.cancel();
 }
 
+// src/part.ts
+var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
+};
+var PROBABILITY_DIGITS = 2;
+var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+var isRecord = (v) => typeof v === "object" && v !== null;
+function parseProbabilities(answers, key) {
+  const a = isRecord(answers) ? answers[key] : void 0;
+  if (!isRecord(a)) return void 0;
+  const { type, probabilities } = a;
+  if (type !== "score" || !isRecord(probabilities)) return void 0;
+  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
+  const { 0: p0, 1: p1, 2: p2 } = probabilities;
+  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+
 // src/brief.ts
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
@@ -181,21 +208,21 @@ var TypeSafeError = class extends Error {
     this.name = new.target.name;
   }
 };
-var isRecord = (value) => typeof value === "object" && value !== null;
+var isRecord2 = (value) => typeof value === "object" && value !== null;
 var extractMessage = (body) => {
   if (typeof body === "string") return body || void 0;
-  if (!isRecord(body)) return void 0;
+  if (!isRecord2(body)) return void 0;
   const { error, message, detail } = body;
   if (typeof error === "string") return error;
-  if (isRecord(error) && typeof error.message === "string") return error.message;
+  if (isRecord2(error) && typeof error.message === "string") return error.message;
   if (typeof message === "string") return message;
   if (typeof detail === "string") return detail;
-  if (isRecord(detail) && typeof detail.message === "string") return detail.message;
+  if (isRecord2(detail) && typeof detail.message === "string") return detail.message;
   if (Array.isArray(detail)) return describeValidationErrors(detail);
 };
 var describeValidationErrors = (errors) => {
   const parts = errors.flatMap((e) => {
-    if (!isRecord(e) || typeof e.msg !== "string") return [];
+    if (!isRecord2(e) || typeof e.msg !== "string") return [];
     const loc = Array.isArray(e.loc) ? e.loc.filter((x) => x !== "body").join(".") : "";
     return [loc ? `${loc}: ${e.msg}` : e.msg];
   });
@@ -999,6 +1026,10 @@ var HOSTS = {
   typesafe: "https://api.typesafe.ai",
   openrouter: "https://openrouter.ai/api"
 };
+var KEY_FIELDS = {
+  typesafe: "api_key",
+  openrouter: "openrouter_api_key"
+};
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
 var MODEL = "jev-latest";
 var DEFAULT_VALUE = "typesafe";
@@ -1017,7 +1048,8 @@ var ORDER = {
   typesafe: ["typesafe"],
   openrouter: ["openrouter"]
 };
-var resolve = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : DEFAULT_VALUE;
+var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
+var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
 function plan(value, present) {
   const providers = order(value).filter((p) => present[p]);
@@ -1039,15 +1071,10 @@ function fallsBack(err) {
 }
 
 // src/claude-keys.ts
-var KEY_OPTIONS = {
-  typesafe: "api_key",
-  openrouter: "openrouter_api_key"
-};
-var nonEmpty = (v) => typeof v === "string" && v !== "" ? v : void 0;
 async function readKeys($, options, provider) {
   const keys = {};
   for (const name of order(provider)) {
-    const key = nonEmpty(options[KEY_OPTIONS[name]]) ?? nonEmpty(await keyVariable($, name));
+    const key = nonEmpty(options[KEY_FIELDS[name]]) ?? nonEmpty(await keyVariable($, name));
     if (key !== void 0) keys[name] = key;
   }
   return keys;
@@ -1059,7 +1086,8 @@ function keyVariable($, provider) {
 // src/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
-var resolveScope = (value) => SCOPE_VALUES.find((known) => known === value) ?? DEFAULT_SCOPE;
+var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
+var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
@@ -1223,29 +1251,6 @@ function createClient(provider, apiKey, model, fetchFn) {
   });
 }
 
-// src/part.ts
-var LEVELS = [0, 1, 2];
-var fromMiddle = (down, up) => (p) => {
-  const low = p[0] > down * p[1];
-  const high = p[2] > up * p[1];
-  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
-  return low ? 0 : high ? 2 : 1;
-};
-var PROBABILITY_DIGITS = 2;
-var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
-var isRecord2 = (v) => typeof v === "object" && v !== null;
-function parseProbabilities(answers, key) {
-  const a = isRecord2(answers) ? answers[key] : void 0;
-  if (!isRecord2(a)) return void 0;
-  const { type, probabilities } = a;
-  if (type !== "score" || !isRecord2(probabilities)) return void 0;
-  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
-  const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
-    return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
-}
-
 // src/compose.ts
 var ROUTING_LIMIT_MS = 8e3;
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
@@ -1314,7 +1319,7 @@ function skip(failed) {
   };
 }
 function decide(parts, result) {
-  const { answers, model, usage } = isRecord2(result) ? result : {};
+  const { answers, model, usage } = isRecord(result) ? result : {};
   const decided = {};
   for (const part of parts) {
     const probabilities = parseProbabilities(answers, part.key);
@@ -1324,7 +1329,7 @@ function decide(parts, result) {
   return {
     parts: decided,
     model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
-    usage: isRecord2(usage) ? usage : void 0
+    usage: isRecord(usage) ? usage : void 0
   };
 }
 function decisionSuffix({

@@ -25,6 +25,12 @@ export const KEY_VARIABLES: Readonly<Record<Provider, string>> = {
 	openrouter: "OPENROUTER_API_KEY",
 };
 
+// The setting name that holds each provider's key, in the harnesses that name one.
+export const KEY_FIELDS = {
+	typesafe: "api_key",
+	openrouter: "openrouter_api_key",
+} as const satisfies Readonly<Record<Provider, string>>;
+
 export const FIRST_ATTEMPT_TIMEOUT_MS = 2000;
 // Both providers resolve this alias to their newest Jev release.
 const MODEL = "jev-latest";
@@ -49,10 +55,13 @@ export type Attempt = {
 	readonly retry?: { readonly maxRetries: number };
 };
 
-export const resolve = (value: unknown): ProviderValue =>
+export const parseProvider = (value: unknown): ProviderValue | undefined =>
 	typeof value === "string" && Object.hasOwn(ORDER, value)
 		? (value as ProviderValue)
-		: DEFAULT_VALUE;
+		: undefined;
+
+export const resolve = (value: unknown): ProviderValue =>
+	parseProvider(value) ?? DEFAULT_VALUE;
 
 export const order = (value: unknown): readonly Provider[] =>
 	ORDER[resolve(value)];
