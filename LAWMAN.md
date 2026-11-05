@@ -23,6 +23,9 @@ contract_version: 3
 - CI validates the plugin, runs its tests, and checks the mod's surface: .github/workflows/ci.yml
 - A pull request with an open advisory or an invalid registry signature fails: .github/workflows/ci.yml
 - Anthropic's plugin policy scan runs on every pull request and push: .github/workflows/policy.yml
+- CI rebuilds every generated file on Ubuntu and macOS and fails on any difference: .github/workflows/ci.yml
+- CI installs both plugins from the checkout and validates the plugin and the Claude Code catalogue: .github/workflows/ci.yml
+- CI scans each change's added lines and every generated file for owner-setup facts: .github/workflows/ci.yml
 
 ## Regression proof
 
@@ -35,6 +38,11 @@ contract_version: 3
 - package-lock.json
 - .claude-plugin/marketplace.json
 - .omp-plugin/marketplace.json
+- plugins/model-router/.claude-plugin/plugin.json
+- plugins/model-router-omp/package.json
+- plugins/model-router/hooks/register.js
+- plugins/model-router-omp/extension/index.js
+- the README install region, between `<!-- install:start -->` and `<!-- install:end -->`
 
 ## Execution
 
