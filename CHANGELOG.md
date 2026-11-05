@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.16.1 - 2026-11-05
+#### Bug Fixes
+- send one fixed role for each harness's default agent (f5e7784)
+#### Documentation
+- state the agent text rule inline and the measurement bases (a6399fc)
+#### Refactoring
+- name the default-role agents and share the Claude test fake (2ea4c03)
+#### Miscellaneous Chores
+- exclude the built bundles from CodeRabbit review (f343a5f)
+
+- - -
+
+
 ## v0.16.0 - 2026-11-04
 #### Features
 - (**scripts**) measure default-level threshold rules (c8e595d)
