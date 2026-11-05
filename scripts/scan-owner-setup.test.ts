@@ -53,10 +53,12 @@ test("a short sk- word passes", () => {
 	assert.deepEqual(findMarkers("sk-short"), []);
 });
 
+// useTempRoot registers its hooks when called, so it must run at module level.
+const box = useTempRoot("scan-file-");
+
 test("a hit names the file and the line, and never the value", () => {
 	const hit = { path: "docs/a.md", line: 7, kind: "sk- key" } as const;
 	assert.equal(formatHit(hit), "docs/a.md:7: sk- key");
-	const box = useTempRoot("scan-file-");
 	box.put("docs/a.md", `fine\n${SK_KEY}\n`);
 	const [found] = scanFiles(box.root, ["docs/a.md"]);
 	assert.deepEqual(found, { path: "docs/a.md", line: 2, kind: "sk- key" });
