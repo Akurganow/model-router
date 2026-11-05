@@ -137,7 +137,8 @@ define sends its own description once Claude Code has offered it. Before that
 offer it sends the fixed text. In omp, only the bundled `task` agent sends the
 fixed text. A `task` agent you define sends its description.
 
-OpenClaw has no built-in general agent. A spawn of the requesting agent itself
+OpenClaw has no built-in general agent.
+[The spawn of the requesting agent itself](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#the-spawn-of-the-requesting-agent-itself)
 sends that agent's description when one is set, and the fixed text otherwise.
 This departs from the fixed-text rule of the other harnesses. This was not
 measured.

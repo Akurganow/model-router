@@ -27,7 +27,7 @@ omp plugin upgrade @akurganow/model-router
 
 The git catalogue route stays. It installs `model-router-omp`, and `omp plugin upgrade model-router@model-router` upgrades it. omp keys the plugin's settings by the package name it installed. The git route uses `model-router-omp`, and the npm route uses `@akurganow/model-router`. The plugin reads and writes its settings under the name it was installed with. Existing git installs keep their settings.
 
-A person with both installs sees two plugins in omp, and each has its own settings. Change the `provider` and `scope` of each in its own entry of `/settings` → Plugins.
+Installing both the git plugin and the npm package is not advised. omp keeps their settings under different names, so each copy needs its own `provider` and `scope` ([omp install names](../../docs/clients.md#omp-install-names)). With both installed, change each in its own entry of `/settings` → Plugins.
 
 ## Key
 

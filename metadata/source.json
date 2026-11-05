@@ -32,7 +32,7 @@
 			"catalogue": "Routes each Oh My Pi task subagent to the smol or slow model role, judged by Jev from the redacted task text and the agent's description, which it sends to api.typesafe.ai, openrouter.ai or both, as its provider setting allows. The bundled task agent sends a fixed text in place of its description."
 		},
 		"openclaw": {
-			"manifest": "Routes OpenClaw subagent spawns to your small or large model and an effort that fits the task, judged by Jev. For each routed sessions_spawn call it sends the task text, condensed to at most 12,000 characters, the spawn's one-line label and the agent's description, cut to 500 characters, with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows, each with its own key. OpenClaw's own default agent sends its description when it has one and a fixed text when it has none. The plugin sets a model only from your small_model and large_model settings, and only after OpenClaw resolves it and holds a credential for it. The scope setting picks the spawns: core routes OpenClaw's own default agent, a spawn that names no other agent; extended also routes other agents that set no model. A key set as an environment variable is visible to every process OpenClaw starts."
+			"manifest": "Routes OpenClaw subagent spawns to your small or large model and an effort that fits the task, judged by Jev. For each routed sessions_spawn call it sends the task text, condensed to at most 12,000 characters, the spawn's one-line label and the agent's description, cut to 500 characters, with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows, each with its own key. The spawn of the requesting agent itself sends that agent's description when it has one and a fixed text when it has none. The plugin sets a model only from your small_model and large_model settings, and only after OpenClaw resolves it and holds a credential for it. The scope setting picks the spawns: core routes the spawn of the requesting agent itself; extended also routes the spawns of other agents that set no model. A key set as an environment variable is visible to every process OpenClaw starts."
 		}
 	},
 	"options": {
@@ -51,7 +51,7 @@
 			"descriptions": {
 				"claude": "Which Agent calls the plugin routes. core: the built-in agents general-purpose, claude, Explore and Plan only. extended: also any Agent call that passes no model, including plugin and user agents, replacing the model and effort their definition sets. Forks and named calls stay unrouted.",
 				"omp": "Which subagents are routed. core: the task agent only. extended: every agent whose model you did not set, bundled agents included.",
-				"openclaw": "Which spawns are routed. core: OpenClaw's own default agent, a spawn that names no other agent. extended: also other agents that set no model."
+				"openclaw": "Which spawns are routed. core: the spawn of the requesting agent itself. extended: also the spawns of other agents that set no model."
 			}
 		}
 	},

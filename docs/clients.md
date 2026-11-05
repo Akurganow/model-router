@@ -292,15 +292,17 @@ No documentation page under `docs/` at the commit named describes the `omp.setti
 The settings facts above rest on source at that commit.
 [`marketplace.md` L129–L164](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L129-L164) lists no `privacyPolicyUrl` entry field.
 The [catalogue parser](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/packages/coding-agent/src/extensibility/plugins/marketplace/fetcher.ts#L123-L215) preserves extra entry fields, but no source read here says what omp does with this one.
+The [omp install names](#omp-install-names) facts ran on omp 18.16.0.
+CI pins omp 18.12.6 in `evals/omp/package.json`, which `.github/actions/setup-omp/action.yml` installs, and the README asks for that version or later.
+The `package` job in `.github/workflows/ci.yml` only installs the unpacked tarball and lists the package, so no run exercises the settings name on omp 18.12.6.
+The settings-name facts are unchecked on every omp version from 18.12.6 up to 18.16.0.
 
 ## OpenClaw
 
 Documentation is the Markdown under `docs/` in `openclaw/openclaw`, published at docs.openclaw.ai.
 Documentation pages below were read on 2026-11-05.
 Every source link is a permalink at commit `d48be80a6379`, which equals tag `v2026.10.10`.
-Every running fact names OpenClaw 2026.10.10 and ran on 2026-11-05.
-The running facts used a copy of the state directory and a probe Gateway on its own port.
-A probe plugin wrote what it saw to a file.
+Every running fact names its OpenClaw version and ran on 2026-11-05.
 
 ### OpenClaw install and update
 
@@ -325,6 +327,29 @@ A probe plugin wrote what it saw to a file.
   Without one, they save the change for the next start.
   `openclaw plugins inspect <id> --runtime --json` loads the plugin module and lists what it registered.
   (documentation: [Manage plugins, Apply changes and inspect](https://docs.openclaw.ai/plugins/manage-plugins#apply-changes-and-inspect))
+- `openclaw plugins inspect <id> --runtime` loads the plugin in `tool-discovery` mode, not in `full` mode.
+  The mode list calls `tool-discovery` "capability discovery for executable tools", and `full` "live runtime activation".
+  This plugin registers its hook, tool and commands only when `api.registrationMode` is `full`, so `inspect` has no registration of it to list.
+  (source: [`plugins-inspect-command.ts` L125–L130](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/cli/plugins-inspect-command.ts#L125-L130),
+  [`status.ts` L284](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/status.ts#L284),
+  [`loader-registration-plan.ts` L48–L50](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-registration-plan.ts#L48-L50),
+  [`plugin-registration.types.ts` L494–L509](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-registration.types.ts#L494-L509);
+  this repository's `src/openclaw.ts` returns from `register` unless the mode is `full`)
+- The `package` job installed the packed tarball and ran `openclaw plugins inspect model-router-openclaw --runtime --json`.
+  `scripts/check-openclaw-install.ts` read the report and passed.
+  So the report held the plugin id, the package name and the package version, status `loaded`, and `imported` and `enabled` true.
+  It also held `model_router_config` in `contracts.tools` and no diagnostics.
+  The script then called the installed bundle's `register()` on a recording API in `full` mode, instead of reading the registration from the report.
+  The install printed `Installed plugin: model-router-openclaw` and `Saved for the next Gateway start.`, and the script printed `model-router-openclaw 0.16.1 is installed and loaded; it registers before_tool_call, model_router_config and model-router-provider, model-router-scope.`
+  (running: OpenClaw 2026.11.1, the `package` job of [run 42119970365](https://github.com/Akurganow/model-router/actions/runs/42119970365), 2026-11-05)
+- The Gateway log shows a command registration as `Registered plugin command: /<name> (plugin: <id>)`.
+  OpenClaw writes the line through `logVerbose`, which logs under `--verbose` or at file log level `debug`.
+  A registered hook counts in `hook runner initialized with <n> registered hooks`, a debug-level line of the `plugins` logger.
+  (source: [`command-registration.ts` L377](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/command-registration.ts#L377),
+  [`globals.ts` L6–L8](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/globals.ts#L6-L8),
+  [`hook-runner-global.ts` L22–L27](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hook-runner-global.ts#L22-L27))
+- A probe plugin's command registration appeared in the Gateway log as `Registered plugin command: /probescope` when the Gateway loaded the plugin.
+  (running: OpenClaw 2026.10.10, the probe plugin's Gateway log)
 - In the default `hybrid` reload mode, a change under `plugins.entries.<id>` replaces that plugin's runtime instance and reruns registration.
   (documentation: [Config hot reload](https://docs.openclaw.ai/gateway/configuration/hot-reload))
 - `openclaw plugins install --link <path>` adds a local folder to `plugins.load.paths`, needs capability consent, and does not inherit official package trust.
@@ -441,6 +466,16 @@ A probe plugin wrote what it saw to a file.
 - A visible session is created through `sessions.create`, and a thinking override is unavailable on that path.
   (documentation: [Sub-agent tool reference, Tool parameters](https://docs.openclaw.ai/tools/subagents/tool-reference#tool-parameters);
   source: [`tool-reference.md` L266](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/docs/tools/subagents/tool-reference.md#L266))
+- OpenClaw rejects a spawn's `thinking` only when the string does not normalise to a known level.
+  The error reads `Invalid thinking level`.
+  A known level that the model does not support, such as `xhigh`, passes the spawn.
+  At run time OpenClaw clamps it to the closest supported level and shows a notice, `Thinking level clamped to <effective> for <provider>/<model> (requested <level>; preference retained).`
+  `api.runtime.agent.resolveThinkingPolicy` exists.
+  (source: [`subagent-spawn-thinking.ts` L24–L30](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/subagents/spawn/subagent-spawn-thinking.ts#L24-L30),
+  [`subagent-spawn-plan.ts` L78–L87](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/subagents/spawn/subagent-spawn-plan.ts#L78-L87),
+  [`thinking.ts` L421–L441](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/auto-reply/thinking.ts#L421-L441),
+  [`thinking.shared.ts` L61–L83](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/auto-reply/thinking.shared.ts#L61-L83);
+  running: OpenClaw 2026.10.10, the probe plugin listed `resolveThinkingPolicy` among the members of `api.runtime.agent`)
 - Explicit native subagent model selections keep their normal precedence and strictness.
   An agent's `model` is strict unless it carries its own `fallbacks`.
   (documentation: [Model failover, Selection source policy](https://docs.openclaw.ai/concepts/model-failover#selection-source-policy))
@@ -476,6 +511,24 @@ A probe plugin wrote what it saw to a file.
 - A client with `operator.admin` ran the command, and the handler got `senderIsOwner: true` and `gatewayClientScopes` with the scope.
   A client with `operator.read` and `operator.write` only got `This command requires gateway scope: operator.admin.`, and the handler did not run.
   (running: OpenClaw 2026.10.10, a probe command with `requiredScopes: ["operator.admin"]`, called through `chat.send` over the Gateway WebSocket)
+- A channel message carries no gateway scopes.
+  `GatewayClientScopes` is set only for a message from the gateway client, and the command context passes it on as `gatewayClientScopes`.
+  (source: [`templating.ts` L381–L382](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/auto-reply/templating.ts#L381-L382),
+  [`gateway-client-identity.ts` L160](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/gateway/server-methods/gateway-client-identity.ts#L160),
+  [`commands-context.ts` L27](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/auto-reply/reply/commands-context.ts#L27))
+- For a command with `requiredScopes`, OpenClaw blocks a client whose scopes lack the scope.
+  It blocks a caller with no scopes unless `senderIsOwner` is true.
+  So a channel owner passes the check and the handler runs with no `gatewayClientScopes`.
+  OpenClaw exposes `senderIsOwner` to the handler, and it runs `assertOwnerCurrent` when the scopes are not an array.
+  The plugin's handler therefore checks `senderIsOwner === true` and does not read the scopes.
+  (source: [`plugin-command-execution.ts` L162–L174](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-command-execution.ts#L162-L174),
+  [L193–L194](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-command-execution.ts#L193-L194),
+  [L272–L275](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-command-execution.ts#L272-L275))
+- OpenClaw compares agent ids after `normalizeAgentId`, which trims, lower-cases and turns invalid characters into dashes.
+  It finds an agent in `agents.entries`, or in the older `agents.list` array of `{ id }` items when `entries` is absent.
+  (source: [`agent-id.ts` L3–L30](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/packages/normalization-core/src/agent-id.ts#L3-L30),
+  [`agent-scope-config.ts` L317–L349](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/agent-scope-config.ts#L317-L349),
+  [`agent-roster.ts` L84–L99](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/agent-roster.ts#L84-L99))
 - Configuration, enable, disable, install and uninstall changes through the Control UI need `operator.admin`.
   (documentation: [Manage plugins, Use the Control UI](https://docs.openclaw.ai/plugins/manage-plugins#use-the-control-ui))
 
@@ -493,11 +546,21 @@ A probe plugin wrote what it saw to a file.
   (documentation: [Environment variables, Provider credentials and workspace `.env`](https://docs.openclaw.ai/help/environment#provider-credentials-and-workspace-env);
   source: [`dotenv.ts` L21–L78](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/infra/dotenv.ts#L21-L78),
   [L238–L247](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/infra/dotenv.ts#L238-L247))
+- Plugins receive resolved values for the `secretInputs` paths a manifest declares.
+  The page says: "plugins receive resolved values with defaults selected from the source config".
+  This plugin declares `api_key` and `openrouter_api_key`.
+  It reads the live config first, where it skips a value that is not text, such as an unresolved SecretRef object, and then `api.pluginConfig`.
+  No live probe has checked a SecretRef.
+  (documentation: [Manifest config and secrets, secretInputs paths](https://docs.openclaw.ai/plugins/manifest/config-and-secrets#secretinputs-paths), `docs/plugins/manifest/config-and-secrets.md` L71, read 2026-11-05)
 
 ### OpenClaw gaps
 
-No install from npm ran here, because the package is not published yet.
-The install commands above rest on documentation, and the probes loaded the plugin through `plugins.load.paths`.
+CI installs the packed tarball through `npm-pack:` on OpenClaw 2026.11.1, and the probes loaded the plugin through `plugins.load.paths`.
+The registry install of the npm package has not run, because the package is not published yet.
+The `npm:` install command above rests on documentation.
+No run kept the `inspect --runtime` report.
+The `package` job's log holds the check's verdict, not the JSON, so that the report lists no hook or command rests on the source above.
+The commands write the config through `api.runtime.config.mutateConfigFile`, and no live run has checked that write.
 The [update page](https://docs.openclaw.ai/cli/plugins/uninstall-and-update) says updates need a stopped Gateway.
 The [manage page](https://docs.openclaw.ai/plugins/manage-plugins#apply-changes-and-inspect) says an update refreshes a running one.
 The README tells people to restart after an update.

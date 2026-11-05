@@ -8,7 +8,7 @@ Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For Cl
 
 | | Claude Code | Oh My Pi | OpenClaw |
 | --- | --- | --- | --- |
-| Routes | Under `core`, Agent tool calls to the four built-in agents. Under `extended`, every Agent call that passes no model and no name, except a fork ([details](plugins/model-router/README.md#which-calls-are-routed)) | Under `core`, `task` batch items. Under `extended`, every batch item whose agent's model you did not set, except `seance` and the [item reasons](plugins/model-router-omp/README.md#item-reasons) | Under `core`, a `sessions_spawn` call of the requesting agent itself. Under `extended`, also the other agents that set no model ([details](plugins/model-router-openclaw/README.md#which-spawns-are-routed)) |
+| Routes | Under `core`, Agent tool calls to the four built-in agents. Under `extended`, every Agent call that passes no model and no name, except a fork ([details](plugins/model-router/README.md#which-calls-are-routed)) | Under `core`, `task` batch items. Under `extended`, every batch item whose agent's model you did not set, except `seance` and the [item reasons](plugins/model-router-omp/README.md#item-reasons) | Under `core`, [the spawn of the requesting agent itself](plugins/model-router-openclaw/README.md#the-spawn-of-the-requesting-agent-itself). Under `extended`, also the spawns of other agents that set no model ([details](plugins/model-router-openclaw/README.md#which-spawns-are-routed)) |
 | Sets | `model` and `effort` | the `smol` or `slow` role | `model` from your `small_model` or `large_model` setting, and `thinking` |
 | Asks Jev | two questions | one question | two questions |
 | Needs | Claude Code v2.1.308 or later | Oh My Pi v18.12.6 or later | OpenClaw 2026.10.10 or later |
@@ -370,10 +370,10 @@ says more.
 > OpenRouter.
 >
 > Each request also carries the agent text. The built-in `general-purpose` and
-> `claude` agents, and omp's bundled `task` agent, send a fixed text. OpenClaw's
-> own default agent sends its description when it has one, and a fixed text
-> otherwise. Every other agent sends its description, masked and cut to 500
-> characters.
+> `claude` agents, and omp's bundled `task` agent, send a fixed text. In
+> OpenClaw, [the spawn of the requesting agent itself](plugins/model-router-openclaw/README.md#the-spawn-of-the-requesting-agent-itself)
+> sends that agent's description when it has one, and a fixed text otherwise.
+> Every other agent sends its description, masked and cut to 500 characters.
 > [model-choice.md](plugins/model-router/docs/model-choice.md#the-role-of-the-default-agent)
 > says why. Under `extended`, the descriptions and task text of your other
 > agents leave the machine too.
