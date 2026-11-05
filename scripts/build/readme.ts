@@ -9,7 +9,7 @@ const marketplaceArgument = (source: Source): string =>
 	new URL(source.repository).pathname.slice(1);
 
 // The catalogue and the plugin carry the same name, so the id repeats it.
-export const pluginId = (source: Source): string =>
+export const catalogueId = (source: Source): string =>
 	`${source.name}@${source.name}`;
 
 // The placeholders a command or a note may hold: {marketplace}, {plugin} (the
@@ -17,7 +17,7 @@ export const pluginId = (source: Source): string =>
 const fill = (source: Source, text: string, marketplace: string): string =>
 	text
 		.replaceAll("{marketplace}", marketplace)
-		.replaceAll("{plugin}", pluginId(source))
+		.replaceAll("{plugin}", catalogueId(source))
 		.replaceAll("{package}", source.npm.name)
 		.replaceAll("{id}", source.openclaw.pluginId);
 
@@ -41,10 +41,11 @@ const setupLine = ({ heading }: Install): string => {
 	return `[${setup}](#${anchorOf(setup)}) has the next steps.`;
 };
 
-const ciLine = ({ ciSystems, ciInstalls = "it" }: Install): string =>
-	ciSystems.length === 0
+const ciLine = ({ ciSystems, ciLine: sentence }: Install): string =>
+	sentence ??
+	(ciSystems.length === 0
 		? "CI does not install it."
-		: `CI installs ${ciInstalls} on ${ciSystems.join(" and ")}.`;
+		: `CI installs it on ${ciSystems.join(" and ")}.`);
 
 const section = (source: Source, install: Install): string => {
 	const { publisher, title, url } = install.source;

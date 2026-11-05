@@ -28,8 +28,8 @@ export type Install = {
 		readonly url: string;
 	};
 	readonly ciSystems: readonly string[];
-	// What CI installs when it is not the plugin as a user installs it. Default: "it".
-	readonly ciInstalls?: string;
+	// The whole CI sentence, for a harness whose CI install differs from a user's. Default: built from ciSystems.
+	readonly ciLine?: string;
 	// A line under the source line.
 	readonly note?: string;
 };

@@ -176,9 +176,10 @@ jobs:
           TARBALL: ${{ steps.pack.outputs.tarball }}
         run: npm publish --dry-run --access public --ignore-scripts "$TARBALL"
 
-      # OpenClaw's inspection loads the installed package without activating
-      # it, so it lists no hook, tool or command. The script reads its report
-      # and registers the installed bundle against a recording api.
+      # The script checks the inspect report's status, imported and enabled
+      # fields, its contracts.tools and its diagnostics. The inspection does
+      # not activate the plugin, so the script also registers the installed
+      # bundle against a recording api.
       - name: Install the tarball into OpenClaw
         env:
           TARBALL: ${{ steps.pack.outputs.tarball }}

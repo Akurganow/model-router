@@ -216,6 +216,12 @@ CI fails on any of these:
 - a pull request that adds a license outside the permissive list in
   `.github/workflows/dependency-review.yml`
 
+The license check exempts some packages by name: Claude Code and its platform
+packages, and the packages of the OpenClaw install whose license is off the
+list. Only CI installs them, in `.github/actions/setup-claude-code` and
+`.github/actions/setup-openclaw`, and no plugin ships them. Any other package
+with an off-list license still fails the check.
+
 ## Continuous integration
 
 CI runs these checks:

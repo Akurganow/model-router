@@ -4,7 +4,12 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { README_OUTPUT } from "./build/outputs.ts";
-import { anchorOf, installCommands, renderReadme } from "./build/readme.ts";
+import {
+	anchorOf,
+	catalogueId,
+	installCommands,
+	renderReadme,
+} from "./build/readme.ts";
 import { loadSource, type Source } from "./build/source.ts";
 import { anchorsOf } from "./markdown-anchors.ts";
 
@@ -91,13 +96,13 @@ test("each section cites the harness documentation", () => {
 	);
 });
 
-const withCiInstalls = (ciInstalls: string | undefined): Source => {
-	const { ciInstalls: _dropped, ...rest } = source.openclaw.install;
+const withCiLine = (ciLine: string | undefined): Source => {
+	const { ciLine: _dropped, ...rest } = source.openclaw.install;
 	return {
 		...source,
 		openclaw: {
 			...source.openclaw,
-			install: ciInstalls === undefined ? rest : { ...rest, ciInstalls },
+			install: ciLine === undefined ? rest : { ...rest, ciLine },
 		},
 	};
 };
@@ -111,22 +116,37 @@ test("a harness that CI installs says so, and one that CI skips says so", () => 
 	assert.equal(skipped.match(/^CI installs it on Ubuntu\.$/gm)?.length, 1);
 });
 
-test("a harness whose CI installs something else names it in the CI line", () => {
+test("a harness with its own CI sentence shows it whole, and the others keep the default", () => {
+	const sentence = "CI installs the packed package on Ubuntu.";
+	const custom = renderReadme(readme("\nold\n"), withCiLine(sentence));
+	assert.equal(custom.match(new RegExp(`^${sentence}$`, "m"))?.length, 1);
+	assert.equal(custom.match(/^CI installs it on Ubuntu\.$/gm)?.length, 2);
+	const plain = renderReadme(readme("\nold\n"), withCiLine(undefined));
+	assert.equal(plain.match(/^CI installs it on Ubuntu\.$/gm)?.length, 3);
+});
+
+test("the OpenClaw CI sentence names no tool-internal source scheme", () => {
+	const text = renderReadme(readme("\nold\n"), source);
+	assert.doesNotMatch(text, /npm-pack/);
+});
+
+test("the catalogue id repeats the name on both sides of the at sign", () => {
+	assert.equal(catalogueId(source), `${source.name}@${source.name}`);
+});
+
+test("the OpenClaw note warns to review the source before the commands run", () => {
 	const text = renderReadme(readme("\nold\n"), source);
 	assert.match(
 		text,
-		/^CI installs the packed tarball through `npm-pack:` on Ubuntu\.$/m,
+		/Review the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`\./,
 	);
-	const plain = renderReadme(readme("\nold\n"), withCiInstalls(undefined));
-	assert.doesNotMatch(plain, /packed tarball/);
-	assert.equal(plain.match(/^CI installs it on Ubuntu\.$/gm)?.length, 3);
 });
 
 test("a note renders under the source line, with the package name filled in", () => {
 	const text = renderReadme(readme("\nold\n"), source);
 	assert.match(
 		text,
-		/^Source: OpenClaw documentation, .+\n\nThe npm package `@akurganow\/model-router` exists only after its first publication\.\n\nCI installs/m,
+		/^Source: OpenClaw documentation, .+\n\nThe npm package `@akurganow\/model-router` exists only after its first publication\. .+\n\nCI installs/m,
 	);
 	assert.equal(text.match(/first publication/g)?.length, 1);
 });
@@ -225,9 +245,9 @@ test("each CI claim matches the install job of the workflow", () => {
 
 // The package job installs the packed tarball, a local source of the same package.
 test("the OpenClaw CI claim matches the package job of the workflow", () => {
-	const { ciSystems, ciInstalls } = source.openclaw.install;
+	const { ciSystems, ciLine = "" } = source.openclaw.install;
 	assert.deepEqual(ciSystems, ["Ubuntu"]);
-	assert.equal(ciInstalls, "the packed tarball through `npm-pack:`");
+	for (const system of ciSystems) assert.ok(ciLine.includes(system), ciLine);
 	const block = jobBlock(readFileSync(join(ROOT, CI_PATH), "utf8"), "package");
 	for (const system of ciSystems) assert.match(block, runnerLine(system));
 	const runLines = block.split("\n").map((line) => line.trim());

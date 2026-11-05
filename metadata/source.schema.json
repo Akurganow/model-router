@@ -281,7 +281,7 @@
 		},
 		"install": {
 			"type": "object",
-			"description": "What the README install region shows for one harness. A command or a note holds {marketplace}, {plugin}, {package} and {id}, which the builder fills from repository, name, the catalogue name, the npm name and the OpenClaw plugin id. An empty ciSystems list renders as a harness that CI does not install. ciInstalls names what CI installs when that differs from the plugin as a user installs it.",
+			"description": "What the README install region shows for one harness. A command or a note holds {marketplace}, {plugin}, {package} and {id}, which the builder fills from repository, name, the catalogue name, the npm name and the OpenClaw plugin id. An empty ciSystems list renders as a harness that CI does not install. ciLine replaces the generated CI sentence, for a harness whose CI install differs from a user's; ciSystems still names the runners that the CI check ties to the workflow.",
 			"additionalProperties": false,
 			"required": ["heading", "commands", "source", "ciSystems"],
 			"properties": {
@@ -305,7 +305,7 @@
 					"type": "array",
 					"items": { "$ref": "#/$defs/text" }
 				},
-				"ciInstalls": { "$ref": "#/$defs/text" },
+				"ciLine": { "$ref": "#/$defs/text" },
 				"note": { "$ref": "#/$defs/text" }
 			}
 		},

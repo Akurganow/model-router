@@ -7,7 +7,6 @@ import { fileURLToPath } from "node:url";
 import { copyNpmFiles, generatedFiles, listCopies } from "./build/copies.ts";
 import { formatRendered } from "./build/json.ts";
 import { renderNpm } from "./build/npm.ts";
-import * as outputs from "./build/outputs.ts";
 import {
 	NPM_OUTPUTS,
 	NPM_ROOT,
@@ -128,23 +127,6 @@ test("the generated paths list every rendered file, copy and bundle of the tree"
 		`${NPM_ROOT}/extension/index.js`,
 	])
 		assert.ok(listed.has(path), path);
-});
-
-test("outputs.ts holds no second list of generated files", () => {
-	assert.equal("GENERATED_PATHS" in outputs, false);
-});
-
-test("the generated files hold every output, every copy and the README", () => {
-	const listed = new Set(generatedFiles(ROOT));
-	for (const path of [
-		...Object.values(outputs.CLAUDE_OUTPUTS),
-		...Object.values(outputs.OMP_OUTPUTS),
-		...Object.values(outputs.OPENCLAW_OUTPUTS),
-		outputs.README_OUTPUT,
-		...listCopies(ROOT).map(({ to }) => to),
-	])
-		assert.ok(listed.has(path), path);
-	assert.equal(listed.size, generatedFiles(ROOT).length);
 });
 
 test("no skill the tree copies links to a relative path", () => {

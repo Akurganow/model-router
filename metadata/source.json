@@ -155,9 +155,9 @@
 				"title": "Manage plugins",
 				"url": "https://docs.openclaw.ai/plugins/manage-plugins"
 			},
-			"note": "The npm package `{package}` exists only after its first publication.",
+			"note": "The npm package `{package}` exists only after its first publication. Review the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`.",
 			"ciSystems": ["Ubuntu"],
-			"ciInstalls": "the packed tarball through `npm-pack:`"
+			"ciLine": "CI installs the packed npm package on Ubuntu and checks that OpenClaw loads it."
 		}
 	},
 	"npm": {
