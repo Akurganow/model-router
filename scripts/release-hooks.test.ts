@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import {
 	copyFileSync,
 	existsSync,
+	lstatSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -18,7 +19,9 @@ import { MANIFESTS, SOURCE } from "./manifests.ts";
 
 const REPO = fileURLToPath(new URL("../", import.meta.url));
 const NEW_VERSION = "9.9.9";
-const HOOK_TIMEOUT_MS = 120_000;
+// A spawnSync blocks the test runner's own timer, so this bound must stay
+// below the runner's 60-second test timeout to fail the test by name.
+const HOOK_TIMEOUT_MS = 30_000;
 const identity = ["-c", "user.name=release-test", "-c", "user.email=a@b.test"];
 
 function run(cwd: string, command: string, args: string[]) {
@@ -40,8 +43,9 @@ const git = (cwd: string, ...args: string[]) => run(cwd, "git", args);
 // Needs the list as `pre_bump_hooks = [ "hook", ... ]` with plain double-quoted strings, no escaped quote.
 // A `]` inside a hook string is fine; a comment line in the list must not hold a quote or a `]`.
 function hooksIn(toml: string): string[] {
-	const list =
-		/^pre_bump_hooks = \[((?:"[^"]*"|[^\]"])*)\]/m.exec(toml)?.[1] ?? "";
+	const list = /^pre_bump_hooks = \[((?:"[^"]*"|[^\]"])*)\]/m.exec(toml)?.[1];
+	if (list === undefined)
+		throw new Error("pre_bump_hooks not found in cog.toml");
 	return [...list.matchAll(/"([^"]+)"/g)].map(([, hook]) =>
 		(hook ?? "").replaceAll("{{version}}", NEW_VERSION),
 	);
@@ -65,9 +69,12 @@ function copyTree(from: string, to: string) {
 		"--cached",
 		"--others",
 		"--exclude-standard",
+		"--exclude=node_modules",
 	);
+	// A deleted file or a link is not copied; the copy gets its own node_modules link.
 	for (const file of listed.split("\0").filter(Boolean)) {
-		if (!existsSync(join(from, file))) continue;
+		if (!lstatSync(join(from, file), { throwIfNoEntry: false })?.isFile())
+			continue;
 		mkdirSync(dirname(join(to, file)), { recursive: true });
 		copyFileSync(join(from, file), join(to, file));
 	}
@@ -114,8 +121,19 @@ test("the tree copy takes tracked and untracked files and skips ignored ones", (
 		rmSync(join(from, "removed.txt"));
 		writeFileSync(join(from, "fresh.txt"), "f");
 		writeFileSync(join(from, "noise.log"), "n");
+		// A worktree often links node_modules; the pattern node_modules/ skips folders only.
+		mkdirSync(join(from, "elsewhere"));
+		symlinkSync(join(from, "elsewhere"), join(from, "node_modules"));
+		symlinkSync(join(from, "tracked.txt"), join(from, "link.txt"));
 		copyTree(from, to);
-		const copied = ["tracked.txt", "fresh.txt", "removed.txt", "noise.log"];
+		const copied = [
+			"tracked.txt",
+			"fresh.txt",
+			"removed.txt",
+			"noise.log",
+			"node_modules",
+			"link.txt",
+		];
 		assert.deepEqual(
 			copied.filter((file) => existsSync(join(to, file))).sort(),
 			["fresh.txt", "tracked.txt"],
@@ -124,6 +142,12 @@ test("the tree copy takes tracked and untracked files and skips ignored ones", (
 		rmSync(from, { recursive: true, force: true });
 		rmSync(to, { recursive: true, force: true });
 	}
+});
+
+test("a cog.toml without pre_bump_hooks fails the parse", () => {
+	assert.throws(() => hooksIn('tag_prefix = "v"\n'), {
+		message: "pre_bump_hooks not found in cog.toml",
+	});
 });
 
 test("cog.toml runs the version writer, then the builder", () => {
