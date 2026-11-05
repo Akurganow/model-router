@@ -14,6 +14,17 @@ type Secret = {
 	readonly sensitive: boolean;
 };
 
+export type Install = {
+	readonly heading: string;
+	readonly commands: readonly string[];
+	readonly source: {
+		readonly publisher: string;
+		readonly title: string;
+		readonly url: string;
+	};
+	readonly ciSystems: readonly string[];
+};
+
 export type Source = {
 	readonly name: string;
 	readonly version: string;
@@ -50,6 +61,7 @@ export type Source = {
 			};
 		};
 		readonly catalogueSource: string;
+		readonly install: Install;
 	};
 	readonly omp: {
 		readonly package: {
@@ -60,6 +72,7 @@ export type Source = {
 		};
 		readonly settingType: string;
 		readonly catalogueSource: string;
+		readonly install: Install;
 	};
 };
 

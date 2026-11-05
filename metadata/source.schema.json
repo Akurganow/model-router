@@ -65,7 +65,8 @@
 				"skills",
 				"commandContents",
 				"userConfig",
-				"catalogueSource"
+				"catalogueSource",
+				"install"
 			],
 			"properties": {
 				"skills": {
@@ -99,13 +100,14 @@
 						}
 					}
 				},
-				"catalogueSource": { "$ref": "#/$defs/text" }
+				"catalogueSource": { "$ref": "#/$defs/text" },
+				"install": { "$ref": "#/$defs/install" }
 			}
 		},
 		"omp": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["package", "settingType", "catalogueSource"],
+			"required": ["package", "settingType", "catalogueSource", "install"],
 			"properties": {
 				"package": {
 					"type": "object",
@@ -123,7 +125,8 @@
 					}
 				},
 				"settingType": { "$ref": "#/$defs/text" },
-				"catalogueSource": { "$ref": "#/$defs/text" }
+				"catalogueSource": { "$ref": "#/$defs/text" },
+				"install": { "$ref": "#/$defs/install" }
 			}
 		}
 	},
@@ -163,6 +166,34 @@
 						"claude": { "$ref": "#/$defs/text" },
 						"omp": { "$ref": "#/$defs/text" }
 					}
+				}
+			}
+		},
+		"install": {
+			"type": "object",
+			"description": "What the README install region shows for one harness. A command holds {marketplace} and {plugin}, which the builder fills from repository, name and the catalogue name. An empty ciSystems list renders as a harness that CI does not install.",
+			"additionalProperties": false,
+			"required": ["heading", "commands", "source", "ciSystems"],
+			"properties": {
+				"heading": { "$ref": "#/$defs/text" },
+				"commands": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "$ref": "#/$defs/text" }
+				},
+				"source": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["publisher", "title", "url"],
+					"properties": {
+						"publisher": { "$ref": "#/$defs/text" },
+						"title": { "$ref": "#/$defs/text" },
+						"url": { "$ref": "#/$defs/url" }
+					}
+				},
+				"ciSystems": {
+					"type": "array",
+					"items": { "$ref": "#/$defs/text" }
 				}
 			}
 		},

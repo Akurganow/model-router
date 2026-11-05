@@ -7,6 +7,7 @@ import { resolve as resolveProvider } from "../src/provider.ts";
 import { resolveScope } from "../src/scope.ts";
 import { VALUE_SETTINGS } from "../src/settings.ts";
 import { formatJson } from "./build/json.ts";
+import { renderReadme } from "./build/readme.ts";
 import { loadSource } from "./build/source.ts";
 import { buildBundle, renderMetadata } from "./build.ts";
 import { useTempRoot } from "./temp-root.ts";
@@ -63,4 +64,8 @@ test("the source holds one entry for each value setting", () => {
 	const names = [...VALUE_SETTINGS].sort();
 	assert.deepEqual(Object.keys(source.options).sort(), names);
 	assert.deepEqual(Object.keys(source.claude.commandContents).sort(), names);
+});
+
+test("the committed README equals the rendered README", () => {
+	assert.equal(renderReadme(read("README.md"), source), read("README.md"));
 });

@@ -61,3 +61,11 @@ test("a reference to a missing definition is refused", () => {
 		"$: schema reference #/$defs/nope is not defined",
 	]);
 });
+
+test("a harness without install data fails and names its path", () => {
+	const broken = source();
+	delete broken.omp.install;
+	assert.deepEqual(validate(schema, broken), [
+		"$.omp.install: required key is missing",
+	]);
+});

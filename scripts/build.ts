@@ -5,6 +5,7 @@ import { build } from "esbuild";
 import { renderClaude } from "./build/claude.ts";
 import { formatJson, type Rendered } from "./build/json.ts";
 import { renderOmp } from "./build/omp.ts";
+import { README_PATH, renderReadme } from "./build/readme.ts";
 import { loadSource, type Source } from "./build/source.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -84,12 +85,16 @@ export const renderMetadata = (source: Source): Rendered[] => [
 // Every file the builder writes; CI and the owner-setup scan read this list.
 export const generatedPaths = (): string[] => [
 	...renderMetadata(loadSource(ROOT)).map(({ path }) => path),
+	README_PATH,
 	...BUNDLES.map(({ out }) => out),
 ];
 
 function writeMetadata(root: string): void {
-	for (const { path, text } of renderMetadata(loadSource(root)))
+	const source = loadSource(root);
+	for (const { path, text } of renderMetadata(source))
 		writeFileSync(join(root, path), formatJson(path, text, root));
+	const readme = join(root, README_PATH);
+	writeFileSync(readme, renderReadme(readFileSync(readme, "utf8"), source));
 }
 
 async function main(): Promise<string[]> {

@@ -83,10 +83,11 @@ test("an omp entry builds and keeps its host imports external", async () => {
 	assert.match(readFileSync(out, "utf8"), /@oh-my-pi\/pi-coding-agent/);
 });
 
-test("the generated paths are the four rendered files and the two bundles", () => {
+test("the generated paths are the README, the four rendered files and the two bundles", () => {
 	assert.deepEqual(generatedPaths().sort(), [
 		".claude-plugin/marketplace.json",
 		".omp-plugin/marketplace.json",
+		"README.md",
 		"plugins/model-router-omp/extension/index.js",
 		"plugins/model-router-omp/package.json",
 		"plugins/model-router/.claude-plugin/plugin.json",

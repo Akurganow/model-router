@@ -72,7 +72,20 @@
 				}
 			}
 		},
-		"catalogueSource": "./plugins/model-router"
+		"catalogueSource": "./plugins/model-router",
+		"install": {
+			"heading": "Claude Code",
+			"commands": [
+				"claude plugin marketplace add {marketplace}",
+				"claude plugin install {plugin}"
+			],
+			"source": {
+				"publisher": "Claude Code documentation",
+				"title": "Install and manage plugins",
+				"url": "https://code.claude.com/docs/en/plugins/install#add-a-marketplace"
+			},
+			"ciSystems": ["Ubuntu"]
+		}
 	},
 	"omp": {
 		"package": {
@@ -82,6 +95,19 @@
 			"extensions": ["./extension/index.js"]
 		},
 		"settingType": "enum",
-		"catalogueSource": "./plugins/model-router-omp"
+		"catalogueSource": "./plugins/model-router-omp",
+		"install": {
+			"heading": "Oh My Pi",
+			"commands": [
+				"omp plugin marketplace add {marketplace}",
+				"omp plugin install {plugin}"
+			],
+			"source": {
+				"publisher": "Oh My Pi documentation",
+				"title": "marketplace.md, lines 20 to 25",
+				"url": "https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L20-L25"
+			},
+			"ciSystems": ["Ubuntu"]
+		}
 	}
 }
