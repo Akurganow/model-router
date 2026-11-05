@@ -15,7 +15,7 @@ const HOME_NAME = "[A-Za-z0-9._-]+";
 // path starts with a drive letter and takes either slash.
 const HOME_PATH = new RegExp(
 	`(?:(?<![A-Za-z0-9./~])|(?<=\\bfile://))/(?:Users|home)/${HOME_NAME}` +
-		`|\\b[A-Za-z]:[\\\\/]Users[\\\\/]${HOME_NAME}`,
+		`|\\b[A-Za-z]:[\\\\/]+Users[\\\\/]+${HOME_NAME}`,
 );
 export const MARKERS = [
 	{
@@ -101,13 +101,14 @@ function newFilePath(line: string): string | undefined {
 
 // With --unified=0 every line after a hunk header is content until the next
 // file header, so an added line that starts with "++" is not mistaken for one.
-// A file whose header is missing or unreadable owns no line.
+// An added line under a missing or unreadable header fails the scan, because
+// skipping it would let the scan pass a line it never read.
 export function addedLines(diff: string): AddedLine[] {
 	const added: AddedLine[] = [];
 	let path: string | undefined;
 	let line = 0;
 	let inHunk = false;
-	for (const text of diff.split("\n")) {
+	for (const [index, text] of diff.split("\n").entries()) {
 		if (text.startsWith("diff --git ")) {
 			inHunk = false;
 			path = undefined;
@@ -116,18 +117,27 @@ export function addedLines(diff: string): AddedLine[] {
 		else if (HUNK_START.test(text)) {
 			inHunk = true;
 			line = Number(HUNK_START.exec(text)?.[1]);
-		} else if (inHunk && path !== undefined && text.startsWith("+"))
+		} else if (inHunk && text.startsWith("+")) {
+			if (path === undefined)
+				throw new Error(`unreadable file header before line ${index + 1}`);
 			added.push({ path, line: line++, text: text.slice(1) });
+		}
 	}
 	return added;
 }
 
-const git = (root: string, args: readonly string[]) =>
-	spawnSync("git", args, {
+// A git run that timed out or could not start says nothing about the commit,
+// so it throws instead of reading as "not a commit" and narrowing the range.
+function git(root: string, args: readonly string[]) {
+	const run = spawnSync("git", args, {
 		cwd: root,
 		encoding: "utf8",
 		timeout: GIT_TIMEOUT_MS,
 	});
+	if (run.error !== undefined)
+		throw new Error(`git could not run ${args[0]}: ${run.error.message}`);
+	return run;
+}
 
 const isCommit = (root: string, ref: string): boolean =>
 	ref !== "" && git(root, ["cat-file", "-e", `${ref}^{commit}`]).status === 0;
@@ -193,6 +203,11 @@ export function scanDiff(root: string, range: readonly string[]): Hit[] {
 			"-c",
 			"core.quotepath=false",
 			"diff",
+			// Fixed prefixes and no external tools, whatever the user's git config says.
+			"--src-prefix=a/",
+			"--dst-prefix=b/",
+			"--no-ext-diff",
+			"--no-textconv",
 			"--unified=0",
 			"--no-color",
 			...range,

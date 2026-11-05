@@ -26,6 +26,8 @@ const LINUX_HOME = ["", "home", "bob"].join("/");
 const FILE_URL_HOME = `file://${MAC_HOME}`;
 const WINDOWS_HOME = ["C:", "Users", "carol"].join("\\");
 const WINDOWS_SLASH_HOME = ["D:", "Users", "dave"].join("/");
+// JSON and TypeScript strings double each backslash of a Windows path.
+const ESCAPED_WINDOWS_HOME = ["C:", "Users", "bob"].join("\\\\");
 const SK_KEY = ["sk", "a1B2c3D4e5F6"].join("-");
 const BEARER_TOKEN = `${["Bearer", "abcd1234efgh5678ijkl"].join(" ")}`;
 
@@ -39,6 +41,9 @@ test("each marker kind hits", () => {
 		"absolute home path",
 	]);
 	assert.deepEqual(findMarkers(`cd ${WINDOWS_SLASH_HOME}/code`), [
+		"absolute home path",
+	]);
+	assert.deepEqual(findMarkers(`"cwd": "${ESCAPED_WINDOWS_HOME}"`), [
 		"absolute home path",
 	]);
 	assert.deepEqual(findMarkers(`key ${SK_KEY}`), ["sk- key"]);
@@ -263,17 +268,40 @@ test("a quoted header decodes quotes, backslashes, control characters and octal 
 	assert.equal(pathOf("caf\\303\\251.md"), "caf\u00e9.md");
 });
 
-test("a file header the parser cannot read does not inherit the path before it", () => {
+test("an added line under a file header the parser cannot read fails the scan", () => {
 	const diff = [
 		"diff --git a/a.md b/a.md",
 		"+++ b/a.md",
 		"@@ -0,0 +1 @@",
 		"+one",
-		"diff --git a/b.md b/b.md",
+		"diff --git i/b.md w/b.md",
+		"+++ w/b.md",
 		"@@ -0,0 +1 @@",
 		"+two",
 	].join("\n");
-	assert.deepEqual(addedLines(diff), [{ path: "a.md", line: 1, text: "one" }]);
+	assert.throws(() => addedLines(diff), {
+		message: "unreadable file header before line 8",
+	});
+});
+
+test("a diff prefix set in the git config does not hide added lines", () => {
+	git("init", "-q");
+	git("config", "diff.noprefix", "true");
+	repo.put("a.md", "fine\n");
+	git("add", ".");
+	git("commit", "-q", "-m", "base");
+	const base = git("rev-parse", "HEAD");
+	repo.put("a.md", `fine\n${SK_KEY}\n`);
+	git("commit", "-q", "-a", "-m", "change");
+	assert.deepEqual(scanDiff(repo.root, diffRange(repo.root, base).range), [
+		{ path: "a.md", line: 2, kind: "sk- key" },
+	]);
+});
+
+test("a git run that cannot start fails the base check instead of narrowing it", () => {
+	assert.throws(() => diffRange(join(repo.root, "missing-folder"), "HEAD"), {
+		message: /git could not run/,
+	});
 });
 
 test("--base without a commit is a usage error", () => {
