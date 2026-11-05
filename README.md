@@ -96,10 +96,11 @@ CI installs it on Ubuntu.
 
 ### Set up Claude Code
 
-Pick one route: the two lines above are the minimal one, and each route below
-also sets the options and the keys. The two lines install the plugin without
-its keys, so after them run `/plugin configure model-router@model-router` in a
-session to set them.
+Pick one route: the two `claude` lines under [Claude Code](#claude-code) are
+the minimal one, and each route below also sets the options and the keys.
+Those two lines install the plugin without its keys.
+After them, run `/plugin configure model-router@model-router` in a session to
+set the keys.
 
 #### Terminal
 
