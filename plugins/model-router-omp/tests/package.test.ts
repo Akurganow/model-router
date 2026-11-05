@@ -11,6 +11,7 @@ const EXTERNALS = [
 	"@oh-my-pi/pi-coding-agent/config/registry",
 	"@oh-my-pi/pi-coding-agent/extensibility/plugins/loader",
 	"@oh-my-pi/pi-utils",
+	"node:fs",
 	"node:fs/promises",
 ];
 // The write path loads this module on demand, so a break in it stops writes only.
@@ -43,7 +44,7 @@ test("the plugin ships no agent files", () => {
 	assert.equal(existsSync(join(PLUGIN, "agents")), false);
 });
 
-test("the bundle leaves only omp's own modules and one Node module external", () => {
+test("the bundle leaves only omp's own modules and two Node modules external", () => {
 	const imports = [...bundle().matchAll(/from\s+"([^"]+)"/g)].map((m) => m[1]);
 	assert.deepEqual(imports.sort(), EXTERNALS);
 });

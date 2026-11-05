@@ -97,6 +97,8 @@ const newState = () => ({
 	// Written as JSON, a string is written as is, and undefined leaves no file.
 	lockfile: { plugins: {}, settings: {} } as unknown,
 	project: {} as Record<string, unknown>,
+	// The name omp installed the plugin under; undefined means the name could not be read.
+	plugin: PLUGIN as string | undefined,
 	answer: answerByTask as Answer,
 	hasUI: true,
 	handlers: {} as Record<string, (...args: never[]) => unknown>,
@@ -148,6 +150,9 @@ const lockSettings = (state: State, name: string): unknown => {
 
 // Like omp, the effective settings are the lockfile's merged with the project's.
 const buildImports = (state: State, dir: () => string): OmpImports => ({
+	get plugin() {
+		return state.plugin;
+	},
 	lookup: buildLookup(state),
 	getPluginsLockfile: () => {
 		const path = join(dir(), "omp-plugins.lock.json");
@@ -162,7 +167,7 @@ const buildImports = (state: State, dir: () => string): OmpImports => ({
 	},
 	getPluginSettings: async (name) => ({
 		...(lockSettings(state, name) as object),
-		...(name === PLUGIN ? state.project : {}),
+		...(name === state.plugin ? state.project : {}),
 	}),
 	// Like omp, the write lands in the lockfile and validates nothing.
 	writeSetting: async (_cwd, plugin, key, value) => {

@@ -1,6 +1,5 @@
 import {
 	findKey,
-	PLUGIN,
 	readSettings,
 	type Settings,
 	UNREADABLE,
@@ -91,11 +90,13 @@ async function apply(
 	value: string,
 ): Promise<string> {
 	if (!isValue(setting, value)) return useOneOf(setting);
+	const { plugin } = omp;
 	const before = await readSettings(omp, ctx.cwd);
-	if (before === undefined) return unchanged(setting, UNREADABLE);
+	if (before === undefined || plugin === undefined)
+		return unchanged(setting, UNREADABLE);
 	if (before[setting] === value) return unchanged(setting, alreadyValue(value));
 	try {
-		await omp.writeSetting(ctx.cwd, PLUGIN, setting, value);
+		await omp.writeSetting(ctx.cwd, plugin, setting, value);
 	} catch (err) {
 		return unchanged(setting, err instanceof Error ? err.message : String(err));
 	}

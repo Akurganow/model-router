@@ -3,6 +3,45 @@ import { lookup } from "@oh-my-pi/pi-coding-agent/config/registry";
 import { getPluginSettings } from "@oh-my-pi/pi-coding-agent/extensibility/plugins/loader";
 import { getPluginsLockfile } from "@oh-my-pi/pi-utils";
 
+// src/omp-name.ts
+import { readFileSync } from "node:fs";
+
+// src/part.ts
+var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
+};
+var PROBABILITY_DIGITS = 2;
+var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+var isRecord = (v) => typeof v === "object" && v !== null;
+function parseProbabilities(answers, key) {
+  const a = isRecord(answers) ? answers[key] : void 0;
+  if (!isRecord(a)) return void 0;
+  const { type, probabilities } = a;
+  if (type !== "score" || !isRecord(probabilities)) return void 0;
+  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
+  const { 0: p0, 1: p1, 2: p2 } = probabilities;
+  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+
+// src/omp-name.ts
+function readInstalledName(moduleUrl) {
+  try {
+    const manifest = JSON.parse(
+      readFileSync(new URL("../package.json", moduleUrl), "utf8")
+    );
+    const { name } = isRecord(manifest) ? manifest : {};
+    return typeof name === "string" && name !== "" ? name : void 0;
+  } catch {
+    return void 0;
+  }
+}
+
 // src/brief.ts
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
@@ -117,29 +156,6 @@ function spawnCheck({ agent, modelRole }, facts) {
 function roleOf(name, facts) {
   const found = findAgent(name, facts);
   return name === TASK && found?.source === BUNDLED ? DEFAULT_ROLE : roleText(found?.description);
-}
-
-// src/part.ts
-var LEVELS = [0, 1, 2];
-var fromMiddle = (down, up) => (p) => {
-  const low = p[0] > down * p[1];
-  const high = p[2] > up * p[1];
-  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
-  return low ? 0 : high ? 2 : 1;
-};
-var PROBABILITY_DIGITS = 2;
-var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
-var isRecord = (v) => typeof v === "object" && v !== null;
-function parseProbabilities(answers, key) {
-  const a = isRecord(answers) ? answers[key] : void 0;
-  if (!isRecord(a)) return void 0;
-  const { type, probabilities } = a;
-  if (type !== "score" || !isRecord(probabilities)) return void 0;
-  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
-  const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
-    return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
 }
 
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
@@ -1114,7 +1130,6 @@ var resolveScope = (value) => SCOPE_VALUES.find((known) => known === value) ?? D
 // src/omp-gates.ts
 var ROLES = { small: "@smol", large: "@slow" };
 var UNREADABLE = "settings unreadable";
-var PLUGIN = "model-router-omp";
 var KEY_VARIABLES = {
   typesafe: "TYPESAFE_API_KEY",
   openrouter: "OPENROUTER_API_KEY"
@@ -1139,10 +1154,12 @@ async function openBatch(omp, pi, ctx, settings) {
   };
 }
 async function readSettings(omp, cwd) {
+  const { plugin } = omp;
+  if (plugin === void 0) return void 0;
   try {
     const [global, effective] = await Promise.all([
-      readGlobal(omp.getPluginsLockfile()),
-      omp.getPluginSettings(PLUGIN, cwd)
+      readGlobal(omp.getPluginsLockfile(), plugin),
+      omp.getPluginSettings(plugin, cwd)
     ]);
     const { provider: fromGlobal } = global;
     const { provider: fromProject, scope } = effective;
@@ -1154,7 +1171,7 @@ async function readSettings(omp, cwd) {
     return void 0;
   }
 }
-async function readGlobal(path) {
+async function readGlobal(path, plugin) {
   let text;
   try {
     text = await readFile(path, "utf8");
@@ -1165,7 +1182,7 @@ async function readGlobal(path) {
   }
   const lock = JSON.parse(text);
   const { settings } = isRecord(lock) ? lock : {};
-  const mine = isRecord(settings) ? settings[PLUGIN] : void 0;
+  const mine = isRecord(settings) ? settings[plugin] : void 0;
   return isRecord(mine) ? mine : {};
 }
 async function findKeys(ctx, value) {
@@ -1362,11 +1379,13 @@ var readAll = (omp, ctx) => withSettings(omp, ctx, async ({ provider, scope }) =
 });
 async function apply(omp, ctx, setting, value) {
   if (!isValue(setting, value)) return useOneOf(setting);
+  const { plugin } = omp;
   const before = await readSettings(omp, ctx.cwd);
-  if (before === void 0) return unchanged(setting, UNREADABLE);
+  if (before === void 0 || plugin === void 0)
+    return unchanged(setting, UNREADABLE);
   if (before[setting] === value) return unchanged(setting, alreadyValue(value));
   try {
-    await omp.writeSetting(ctx.cwd, PLUGIN, setting, value);
+    await omp.writeSetting(ctx.cwd, plugin, setting, value);
   } catch (err) {
     return unchanged(setting, err instanceof Error ? err.message : String(err));
   }
@@ -1845,6 +1864,7 @@ async function writeSetting(cwd, plugin, key, value) {
   await new PluginManager(cwd).setPluginSetting(plugin, key, value);
 }
 var omp_default = createExtension({
+  plugin: readInstalledName(import.meta.url),
   lookup,
   getPluginsLockfile,
   getPluginSettings,

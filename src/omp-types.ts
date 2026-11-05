@@ -6,6 +6,8 @@ export type Lookup = (
 
 // The omp functions the entry imports. Tests hand in fakes.
 export type OmpImports = {
+	// The name omp installed the plugin under. Undefined makes the settings unreadable.
+	readonly plugin: string | undefined;
 	lookup: Lookup;
 	getPluginsLockfile: () => string;
 	getPluginSettings: (

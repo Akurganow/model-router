@@ -15,8 +15,6 @@ import { resolveScope, type Scope } from "./scope.ts";
 export const ROLES = { small: "@smol", large: "@slow" } as const;
 
 export const UNREADABLE = "settings unreadable";
-// omp keys plugin settings by the package name.
-export const PLUGIN = "model-router-omp";
 const KEY_VARIABLES: Readonly<Record<Provider, string>> = {
 	typesafe: "TYPESAFE_API_KEY",
 	openrouter: "OPENROUTER_API_KEY",
@@ -72,10 +70,12 @@ export async function readSettings(
 	omp: OmpImports,
 	cwd: string,
 ): Promise<Settings | undefined> {
+	const { plugin } = omp;
+	if (plugin === undefined) return undefined;
 	try {
 		const [global, effective] = await Promise.all([
-			readGlobal(omp.getPluginsLockfile()),
-			omp.getPluginSettings(PLUGIN, cwd),
+			readGlobal(omp.getPluginsLockfile(), plugin),
+			omp.getPluginSettings(plugin, cwd),
 		]);
 		const { provider: fromGlobal } = global;
 		const { provider: fromProject, scope } = effective;
@@ -89,7 +89,10 @@ export async function readSettings(
 }
 
 // omp reads a missing lockfile as empty, and so does this.
-async function readGlobal(path: string): Promise<Record<string, unknown>> {
+async function readGlobal(
+	path: string,
+	plugin: string,
+): Promise<Record<string, unknown>> {
 	let text: string;
 	try {
 		text = await readFile(path, "utf8");
@@ -100,7 +103,7 @@ async function readGlobal(path: string): Promise<Record<string, unknown>> {
 	}
 	const lock: unknown = JSON.parse(text);
 	const { settings } = isRecord(lock) ? lock : {};
-	const mine = isRecord(settings) ? settings[PLUGIN] : undefined;
+	const mine = isRecord(settings) ? settings[plugin] : undefined;
 	return isRecord(mine) ? mine : {};
 }
 
