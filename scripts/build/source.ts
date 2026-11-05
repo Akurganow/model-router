@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ValueSetting } from "../../src/settings.ts";
 import { type Schema, validate } from "./schema.ts";
+import type { ValueSetting } from "./values.ts";
 
 export const SOURCE_PATH = "metadata/source.json";
 export const SCHEMA_PATH = "metadata/source.schema.json";
@@ -25,6 +25,7 @@ export type Install = {
 	readonly ciSystems: readonly string[];
 };
 
+// This type, metadata/source.schema.json and metadata/source.json change together; build-shape.test.ts holds the first two to each other.
 export type Source = {
 	readonly name: string;
 	readonly version: string;

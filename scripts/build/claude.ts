@@ -1,7 +1,10 @@
-import { COMMAND_DESCRIPTIONS, VALUE_SETTINGS } from "../../src/settings.ts";
 import { type JsonObject, oneLine, type Rendered, serialize } from "./json.ts";
 import type { Source } from "./source.ts";
-import { SETTING_VALUES } from "./values.ts";
+import {
+	COMMAND_DESCRIPTIONS,
+	SETTING_VALUES,
+	VALUE_SETTINGS,
+} from "./values.ts";
 
 const MANIFEST_PATH = "plugins/model-router/.claude-plugin/plugin.json";
 const CATALOGUE_PATH = ".claude-plugin/marketplace.json";

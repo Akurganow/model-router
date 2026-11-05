@@ -14,8 +14,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { SOURCE_PATH } from "./build/source.ts";
-import { MANIFESTS } from "./manifests.ts";
+import { MANIFESTS, SOURCE } from "./manifests.ts";
 
 const REPO = fileURLToPath(new URL("../", import.meta.url));
 const NEW_VERSION = "9.9.9";
@@ -38,13 +37,18 @@ function run(cwd: string, command: string, args: string[]) {
 
 const git = (cwd: string, ...args: string[]) => run(cwd, "git", args);
 
-function preBumpHooks(): string[] {
-	const toml = readFileSync(join(REPO, "cog.toml"), "utf8");
-	const list = /^pre_bump_hooks = \[([^\]]*)\]/m.exec(toml)?.[1] ?? "";
+// Needs the list as `pre_bump_hooks = [ "hook", ... ]` with plain double-quoted strings, no escaped quote.
+// A `]` inside a hook string is fine; a comment line in the list must not hold a quote or a `]`.
+function hooksIn(toml: string): string[] {
+	const list =
+		/^pre_bump_hooks = \[((?:"[^"]*"|[^\]"])*)\]/m.exec(toml)?.[1] ?? "";
 	return [...list.matchAll(/"([^"]+)"/g)].map(([, hook]) =>
 		(hook ?? "").replaceAll("{{version}}", NEW_VERSION),
 	);
 }
+
+const preBumpHooks = () =>
+	hooksIn(readFileSync(join(REPO, "cog.toml"), "utf8"));
 
 function runHook(cwd: string, hook: string) {
 	const [program, ...args] = hook.split(" ");
@@ -52,13 +56,21 @@ function runHook(cwd: string, hook: string) {
 	return run(cwd, process.execPath, args);
 }
 
-function copyTracked(to: string) {
-	for (const file of git(REPO, "ls-files").split("\n").filter(Boolean)) {
-		if (!existsSync(join(REPO, file))) continue;
+// Untracked files count, so a new file a release needs is copied before its first commit.
+function copyTree(from: string, to: string) {
+	const listed = git(
+		from,
+		"ls-files",
+		"-z",
+		"--cached",
+		"--others",
+		"--exclude-standard",
+	);
+	for (const file of listed.split("\0").filter(Boolean)) {
+		if (!existsSync(join(from, file))) continue;
 		mkdirSync(dirname(join(to, file)), { recursive: true });
-		copyFileSync(join(REPO, file), join(to, file));
+		copyFileSync(join(from, file), join(to, file));
 	}
-	symlinkSync(join(REPO, "node_modules"), join(to, "node_modules"));
 }
 
 function commitAll(cwd: string, message: string) {
@@ -73,7 +85,8 @@ let copy = "";
 
 before(() => {
 	copy = mkdtempSync(join(tmpdir(), "release-hooks-"));
-	copyTracked(copy);
+	copyTree(REPO, copy);
+	symlinkSync(join(REPO, "node_modules"), join(copy, "node_modules"));
 	git(copy, "init", "-q");
 	// The ignore pattern node_modules/ skips folders only, and the copy holds a symlink.
 	writeFileSync(join(copy, ".git", "info", "exclude"), "node_modules\n");
@@ -83,6 +96,36 @@ before(() => {
 
 after(() => rmSync(copy, { recursive: true, force: true }));
 
+test("the hook parse keeps a closing bracket inside a hook string", () => {
+	const toml =
+		'pre_bump_hooks = [\n\t"echo [a] {{version}}",\n\t"echo b",\n]\n';
+	assert.deepEqual(hooksIn(toml), [`echo [a] ${NEW_VERSION}`, "echo b"]);
+});
+
+test("the tree copy takes tracked and untracked files and skips ignored ones", () => {
+	const from = mkdtempSync(join(tmpdir(), "release-from-"));
+	const to = mkdtempSync(join(tmpdir(), "release-to-"));
+	try {
+		writeFileSync(join(from, ".gitignore"), "*.log\n");
+		writeFileSync(join(from, "tracked.txt"), "t");
+		writeFileSync(join(from, "removed.txt"), "r");
+		git(from, "init", "-q");
+		commitAll(from, "seed");
+		rmSync(join(from, "removed.txt"));
+		writeFileSync(join(from, "fresh.txt"), "f");
+		writeFileSync(join(from, "noise.log"), "n");
+		copyTree(from, to);
+		const copied = ["tracked.txt", "fresh.txt", "removed.txt", "noise.log"];
+		assert.deepEqual(
+			copied.filter((file) => existsSync(join(to, file))).sort(),
+			["fresh.txt", "tracked.txt"],
+		);
+	} finally {
+		rmSync(from, { recursive: true, force: true });
+		rmSync(to, { recursive: true, force: true });
+	}
+});
+
 test("cog.toml runs the version writer, then the builder", () => {
 	assert.deepEqual(preBumpHooks(), [
 		`node scripts/set-version.ts ${NEW_VERSION}`,
@@ -91,10 +134,7 @@ test("cog.toml runs the version writer, then the builder", () => {
 });
 
 test("the source and every manifest carry the new version", () => {
-	for (const { path, versionPath } of [
-		{ path: SOURCE_PATH, versionPath: ["version"] },
-		...MANIFESTS,
-	]) {
+	for (const { path, versionPath } of [SOURCE, ...MANIFESTS]) {
 		const json = JSON.parse(readFileSync(join(copy, path), "utf8"));
 		const version = versionPath.reduce((node, key) => node[key], json);
 		assert.equal(version, NEW_VERSION, path);
@@ -109,7 +149,7 @@ test("the hooks change the source and the three manifests, each only on its vers
 	const changed = git(copy, "diff", "--name-only").split("\n").filter(Boolean);
 	assert.deepEqual(
 		changed.sort(),
-		[SOURCE_PATH, ...MANIFESTS.map(({ path }) => path)].sort(),
+		[SOURCE.path, ...MANIFESTS.map(({ path }) => path)].sort(),
 	);
 	for (const path of changed) {
 		const lines = changedLines(

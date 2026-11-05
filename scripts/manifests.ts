@@ -29,7 +29,7 @@ function versionOf(json: unknown, versionPath: Manifest["versionPath"]) {
 }
 
 // A source bumped without a build differs from the manifests, and the check names both.
-const SOURCE: Manifest = { path: SOURCE_PATH, versionPath: ["version"] };
+export const SOURCE: Manifest = { path: SOURCE_PATH, versionPath: ["version"] };
 
 export function checkVersions(
 	root: string,

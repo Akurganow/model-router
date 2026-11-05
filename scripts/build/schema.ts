@@ -42,7 +42,25 @@ export function validate(schema: Schema, value: unknown): string[] {
 	return walk.problems;
 }
 
+// A malformed schema is the author's error, so it throws instead of listing a data problem.
+function refuseMalformed(schema: Schema, path: string): void {
+	if (schema.$ref !== undefined)
+		for (const keyword of Object.keys(schema))
+			if (keyword !== "$ref" && !ANNOTATIONS.includes(keyword))
+				throw new Error(
+					`${path}: schema keyword ${keyword} next to $ref is ignored; move it into the referenced definition`,
+				);
+	if (
+		schema.additionalProperties !== undefined &&
+		typeof schema.additionalProperties !== "boolean"
+	)
+		throw new Error(
+			`${path}: schema keyword additionalProperties must be a boolean`,
+		);
+}
+
 function check(walk: Walk, schema: Schema, path: string, value: unknown): void {
+	refuseMalformed(schema, path);
 	for (const keyword of Object.keys(schema))
 		if (!SUPPORTED.has(keyword))
 			walk.problems.push(`${path}: schema keyword ${keyword} is not supported`);

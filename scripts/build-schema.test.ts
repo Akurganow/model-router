@@ -69,3 +69,29 @@ test("a harness without install data fails and names its path", () => {
 		"$.omp.install: required key is missing",
 	]);
 });
+
+test("a keyword next to a reference is a schema error, not a data problem", () => {
+	const odd = {
+		$defs: { text: { type: "string" } },
+		$ref: "#/$defs/text",
+		minLength: 3,
+	} as Schema;
+	assert.throws(() => validate(odd, "x"), /minLength.*\$ref/);
+});
+
+test("an annotation next to a reference is allowed", () => {
+	const fine = {
+		$defs: { text: { type: "string" } },
+		$ref: "#/$defs/text",
+		description: "a note",
+	} as Schema;
+	assert.deepEqual(validate(fine, "x"), []);
+});
+
+test("an additionalProperties that is not a boolean is a schema error", () => {
+	const odd = {
+		type: "object",
+		additionalProperties: { type: "string" },
+	} as unknown as Schema;
+	assert.throws(() => validate(odd, {}), /additionalProperties.*boolean/);
+});
