@@ -25,27 +25,23 @@ import {
 import { readKeys } from "./claude-keys.ts";
 import {
 	type Decision,
-	decisionSuffix,
 	LIMIT_REACHED,
 	ROUTING_LIMIT_MS,
 	type RouteInput,
 	route,
 	type Skipped,
 } from "./compose.ts";
+import { decide } from "./decide.ts";
 import { work } from "./effort.ts";
+import { effortFor } from "./ladder.ts";
+import { routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
-import { formatProbability, type Level } from "./part.ts";
+import type { Level } from "./part.ts";
 import { plan } from "./provider.ts";
 import { resolveScope, type Scope } from "./scope.ts";
 import { installTimers } from "./timers.ts";
 
 const MODELS = ["haiku", "sonnet", "opus"] as const;
-// Effort is calibrated per model. Haiku's row sits one step higher: at low it stops early on agentic prompts.
-const EFFORT_LADDER = {
-	haiku: ["medium", "high", "xhigh"],
-	sonnet: ["low", "medium", "high"],
-	opus: ["low", "medium", "high"],
-} as const;
 
 const BUILT_IN = "built-in";
 // The origin of a spawn the Agent tool makes. Another plugin's $.agent.spawn carries its own name.
@@ -192,7 +188,7 @@ async function routeSpawn(
 	});
 	const picked = pick(decision);
 	if ("skipped" in picked) {
-		await $.ui.log(`skipped, ${picked.skipped}`);
+		await $.ui.log(skippedLine(picked.skipped));
 		return next(spawn);
 	}
 	// Claude Code ranks this variable above any per-invocation effort, so a set value keeps the engine's effort.
@@ -259,23 +255,25 @@ type Picked = {
 };
 
 function pick(decision: Decision | Skipped): Picked | Skipped {
-	if ("skipped" in decision) return decision;
-	const tiered = decision.parts[tier.key];
-	const worked = decision.parts[work.key];
-	if (!tiered || !worked) return { skipped: "bad reply" };
-	const model = MODELS[tiered.level];
+	const decided = decide(decision, tier.key, work.key);
+	if ("skipped" in decided) return decided;
 	return {
-		model,
-		effort: EFFORT_LADDER[model][worked.level],
-		level: tiered.level,
-		probabilities: `${formatProbability(tiered.probabilities[tiered.level])}/${formatProbability(worked.probabilities[worked.level])}`,
-		suffix: decisionSuffix(decision),
+		model: MODELS[decided.tier],
+		effort: effortFor(decided.tier, decided.work),
+		level: decided.tier,
+		probabilities: decided.probabilities,
+		suffix: decided.suffix,
 	};
 }
 
 function decisionLine(picked: Picked, kept: string | undefined): string {
-	const effort = kept ?? picked.effort;
-	return `L${picked.level} ${picked.model} · ${effort} · p=${picked.probabilities}${picked.suffix}`;
+	return routedLine({
+		level: picked.level,
+		target: picked.model,
+		effort: kept ?? picked.effort,
+		probabilities: picked.probabilities,
+		suffix: picked.suffix,
+	});
 }
 
 // The limit covers the whole call, retries included. Aborting also ends the retry wait, so no request follows a skip.

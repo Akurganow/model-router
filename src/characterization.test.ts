@@ -9,9 +9,10 @@ import {
 	registered,
 	SPAWN,
 } from "./claude-fakes.ts";
+import { streamedFetch } from "./fetch.ts";
 import { useWorld } from "./omp-fakes.ts";
 import type { Batch } from "./omp-gates.ts";
-import { type Pending, scoreItems, streamedFetch } from "./omp-score.ts";
+import { type Pending, scoreItems } from "./omp-score.ts";
 import { plan } from "./provider.ts";
 
 type Reply = { status: number; ok: boolean; headers: object; text: string };

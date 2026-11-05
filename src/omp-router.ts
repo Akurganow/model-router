@@ -1,4 +1,5 @@
 import { contextText } from "./brief.ts";
+import { skippedLine } from "./line.ts";
 import { registerConfig, say } from "./omp-config.ts";
 import { checkGates, openBatch, readSettings, resolves } from "./omp-gates.ts";
 import { inScope, TASK } from "./omp-items.ts";
@@ -65,7 +66,7 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		if (items.length === 0) return;
 		const gates = await openBatch(omp, pi, ctx, settings);
 		if ("closed" in gates) {
-			const line = `skipped, ${gates.closed}`;
+			const line = skippedLine(gates.closed);
 			return report(
 				ctx,
 				items.map(({ index }) => entry(index, line)),

@@ -61,6 +61,20 @@ function roleText(description) {
   return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
 }
 
+// src/line.ts
+var NO_CHANGE = "no change";
+function routedLine({
+  level,
+  target,
+  effort,
+  probabilities,
+  suffix
+}) {
+  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
+  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+}
+var skippedLine = (reason) => `skipped, ${reason}`;
+
 // src/omp-gates.ts
 import { readFile } from "node:fs/promises";
 
@@ -1522,6 +1536,49 @@ function decisionSuffix({
   return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
 }
 
+// src/decide.ts
+var BAD_REPLY = { skipped: "bad reply" };
+var levelOf = (decision, key) => {
+  const part = decision.parts[key];
+  return part && {
+    level: part.level,
+    probability: formatProbability(part.probabilities[part.level])
+  };
+};
+function decide2(decision, tierKey, workKey) {
+  if ("skipped" in decision) return decision;
+  const tier2 = levelOf(decision, tierKey);
+  if (!tier2) return BAD_REPLY;
+  const suffix = decisionSuffix(decision);
+  if (workKey === void 0)
+    return { tier: tier2.level, probabilities: tier2.probability, suffix };
+  const work = levelOf(decision, workKey);
+  if (!work) return BAD_REPLY;
+  return {
+    tier: tier2.level,
+    work: work.level,
+    probabilities: `${tier2.probability}/${work.probability}`,
+    suffix
+  };
+}
+
+// src/fetch.ts
+var oneChunk = (bytes) => new ReadableStream({
+  start(controller) {
+    controller.enqueue(bytes);
+    controller.close();
+  }
+});
+var streamedFetch = async (url, init) => {
+  const reply2 = await globalThis.fetch(url, init);
+  const bytes = new TextEncoder().encode(await reply2.text());
+  return new Response(oneChunk(bytes), {
+    status: reply2.status,
+    statusText: reply2.statusText,
+    headers: reply2.headers
+  });
+};
+
 // src/model.ts
 var TIER_DOWN = 2 ** 0.25;
 var TIER_UP = 2 ** 0.5;
@@ -1547,21 +1604,6 @@ var ROLE_BY_LEVEL = {
   0: ROLES.small,
   1: void 0,
   2: ROLES.large
-};
-var oneChunk = (bytes) => new ReadableStream({
-  start(controller) {
-    controller.enqueue(bytes);
-    controller.close();
-  }
-});
-var streamedFetch = async (url, init) => {
-  const reply2 = await globalThis.fetch(url, init);
-  const bytes = new TextEncoder().encode(await reply2.text());
-  return new Response(oneChunk(bytes), {
-    status: reply2.status,
-    statusText: reply2.statusText,
-    headers: reply2.headers
-  });
 };
 async function scoreItems(items, context, { attempts, keys, facts }) {
   const limit = new AbortController();
@@ -1605,17 +1647,20 @@ function scoreItem(item, context, role, routing, signal) {
 }
 var skipped = (reason) => ({
   role: void 0,
-  line: `skipped, ${reason}`
+  line: skippedLine(reason)
 });
 function toStored(decision) {
-  if ("skipped" in decision) return skipped(decision.skipped);
-  const part = decision.parts[tier.key];
-  if (!part) return skipped("bad reply");
-  const role = ROLE_BY_LEVEL[part.level];
-  const p = formatProbability(part.probabilities[part.level]);
+  const decided = decide2(decision, tier.key);
+  if ("skipped" in decided) return skipped(decided.skipped);
+  const role = ROLE_BY_LEVEL[decided.tier];
   return {
     role,
-    line: `L${part.level} ${role ?? "no change"} \xB7 p=${p}${decisionSuffix(decision)}`
+    line: routedLine({
+      level: decided.tier,
+      target: role,
+      probabilities: decided.probabilities,
+      suffix: decided.suffix
+    })
   };
 }
 async function mapLimit(items, limit, fn) {
@@ -1739,7 +1784,7 @@ function createRouter(omp, pi) {
     if (items.length === 0) return;
     const gates = await openBatch(omp, pi, ctx, settings);
     if ("closed" in gates) {
-      const line = `skipped, ${gates.closed}`;
+      const line = skippedLine(gates.closed);
       return report(
         ctx,
         items.map(({ index }) => entry(index, line))

@@ -1,4 +1,4 @@
-import { oneChunk } from "./omp-score.ts";
+import { oneChunk } from "./fetch.ts";
 
 const spread = (level: number) => ({
 	0: level === 0 ? 0.9 : 0.05,

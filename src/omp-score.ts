@@ -1,19 +1,20 @@
-import type { Fetch } from "@typesafe-ai/sdk";
 import { buildPrompt } from "./brief.ts";
 import {
 	type Decision,
-	decisionSuffix,
 	LIMIT_REACHED,
 	ROUTING_LIMIT_MS,
 	type RouteInput,
 	route,
 	type Skipped,
 } from "./compose.ts";
+import { decide } from "./decide.ts";
+import { streamedFetch } from "./fetch.ts";
+import { routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
 import { type Batch, ROLES } from "./omp-gates.ts";
 import { itemCheck, roleOf } from "./omp-items.ts";
 import type { Stored } from "./omp-store.ts";
-import { formatProbability, type Level } from "./part.ts";
+import type { Level } from "./part.ts";
 import type { Provider } from "./provider.ts";
 
 export type TaskItem = {
@@ -34,25 +35,6 @@ const ROLE_BY_LEVEL: Record<Level, string | undefined> = {
 	0: ROLES.small,
 	1: undefined,
 	2: ROLES.large,
-};
-
-export const oneChunk = (bytes: Uint8Array) =>
-	new ReadableStream<Uint8Array>({
-		start(controller) {
-			controller.enqueue(bytes);
-			controller.close();
-		},
-	});
-
-// Bun gives the SDK a buffered reply whose body reads as already used. A stream-bodied copy reads fine.
-export const streamedFetch: Fetch = async (url, init) => {
-	const reply = await globalThis.fetch(url, init);
-	const bytes = new TextEncoder().encode(await reply.text());
-	return new Response(oneChunk(bytes), {
-		status: reply.status,
-		statusText: reply.statusText,
-		headers: reply.headers,
-	});
 };
 
 // One limit covers the batch. Aborting also ends the SDK's retry wait, so no request follows a skip.
@@ -112,18 +94,21 @@ function scoreItem(
 
 const skipped = (reason: string): Stored => ({
 	role: undefined,
-	line: `skipped, ${reason}`,
+	line: skippedLine(reason),
 });
 
 function toStored(decision: Decision | Skipped): Stored {
-	if ("skipped" in decision) return skipped(decision.skipped);
-	const part = decision.parts[tier.key];
-	if (!part) return skipped("bad reply");
-	const role = ROLE_BY_LEVEL[part.level];
-	const p = formatProbability(part.probabilities[part.level]);
+	const decided = decide(decision, tier.key);
+	if ("skipped" in decided) return skipped(decided.skipped);
+	const role = ROLE_BY_LEVEL[decided.tier];
 	return {
 		role,
-		line: `L${part.level} ${role ?? "no change"} · p=${p}${decisionSuffix(decision)}`,
+		line: routedLine({
+			level: decided.tier,
+			target: role,
+			probabilities: decided.probabilities,
+			suffix: decided.suffix,
+		}),
 	};
 }
 

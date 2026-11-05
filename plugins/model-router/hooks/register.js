@@ -1337,6 +1337,32 @@ function decisionSuffix({
   return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
 }
 
+// src/decide.ts
+var BAD_REPLY = { skipped: "bad reply" };
+var levelOf = (decision, key) => {
+  const part = decision.parts[key];
+  return part && {
+    level: part.level,
+    probability: formatProbability(part.probabilities[part.level])
+  };
+};
+function decide2(decision, tierKey, workKey) {
+  if ("skipped" in decision) return decision;
+  const tier2 = levelOf(decision, tierKey);
+  if (!tier2) return BAD_REPLY;
+  const suffix = decisionSuffix(decision);
+  if (workKey === void 0)
+    return { tier: tier2.level, probabilities: tier2.probability, suffix };
+  const work2 = levelOf(decision, workKey);
+  if (!work2) return BAD_REPLY;
+  return {
+    tier: tier2.level,
+    work: work2.level,
+    probabilities: `${tier2.probability}/${work2.probability}`,
+    suffix
+  };
+}
+
 // src/effort.ts
 var WORK_DOWN = 2 ** 1.25;
 var WORK_UP = 2 ** 0.5;
@@ -1355,6 +1381,28 @@ var work = {
   },
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
+
+// src/ladder.ts
+var EFFORT_BY_TIER = {
+  0: ["medium", "high", "xhigh"],
+  1: ["low", "medium", "high"],
+  2: ["low", "medium", "high"]
+};
+var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
+
+// src/line.ts
+var NO_CHANGE = "no change";
+function routedLine({
+  level,
+  target,
+  effort,
+  probabilities,
+  suffix
+}) {
+  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
+  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+}
+var skippedLine = (reason) => `skipped, ${reason}`;
 
 // src/model.ts
 var TIER_DOWN = 2 ** 0.25;
@@ -1377,11 +1425,6 @@ var tier = {
 
 // src/claude.ts
 var MODELS = ["haiku", "sonnet", "opus"];
-var EFFORT_LADDER = {
-  haiku: ["medium", "high", "xhigh"],
-  sonnet: ["low", "medium", "high"],
-  opus: ["low", "medium", "high"]
-};
 var BUILT_IN = "built-in";
 var ENGINE = "engine";
 var GENERAL_PURPOSE = "general-purpose";
@@ -1493,7 +1536,7 @@ async function routeSpawn($, spawn, next, options) {
   });
   const picked = pick2(decision);
   if ("skipped" in picked) {
-    await $.ui.log(`skipped, ${picked.skipped}`);
+    await $.ui.log(skippedLine(picked.skipped));
     return next(spawn);
   }
   const kept = callerSet ? "caller effort" : await $.env.get("CLAUDE_CODE_EFFORT_LEVEL") ? "env effort" : void 0;
@@ -1538,22 +1581,24 @@ async function spawnsSettled($) {
   }
 }
 function pick2(decision) {
-  if ("skipped" in decision) return decision;
-  const tiered = decision.parts[tier.key];
-  const worked = decision.parts[work.key];
-  if (!tiered || !worked) return { skipped: "bad reply" };
-  const model = MODELS[tiered.level];
+  const decided = decide2(decision, tier.key, work.key);
+  if ("skipped" in decided) return decided;
   return {
-    model,
-    effort: EFFORT_LADDER[model][worked.level],
-    level: tiered.level,
-    probabilities: `${formatProbability(tiered.probabilities[tiered.level])}/${formatProbability(worked.probabilities[worked.level])}`,
-    suffix: decisionSuffix(decision)
+    model: MODELS[decided.tier],
+    effort: effortFor(decided.tier, decided.work),
+    level: decided.tier,
+    probabilities: decided.probabilities,
+    suffix: decided.suffix
   };
 }
 function decisionLine(picked, kept) {
-  const effort = kept ?? picked.effort;
-  return `L${picked.level} ${picked.model} \xB7 ${effort} \xB7 p=${picked.probabilities}${picked.suffix}`;
+  return routedLine({
+    level: picked.level,
+    target: picked.model,
+    effort: kept ?? picked.effort,
+    probabilities: picked.probabilities,
+    suffix: picked.suffix
+  });
 }
 async function scored($, cancel, input) {
   const stop = new AbortController();
