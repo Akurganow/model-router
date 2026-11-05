@@ -5,6 +5,7 @@ import { build } from "esbuild";
 import { renderClaude } from "./build/claude.ts";
 import { formatJson, type Rendered } from "./build/json.ts";
 import { renderOmp } from "./build/omp.ts";
+import { BUNDLE_OUTPUTS } from "./build/outputs.ts";
 import { README_PATH, renderReadme } from "./build/readme.ts";
 import { loadSource, type Source } from "./build/source.ts";
 
@@ -66,29 +67,26 @@ export function checkClaudeBundle(code: string): string[] {
 	return problems;
 }
 
-const BUNDLES: readonly { harness: Harness; entry: string; out: string }[] = [
+export const BUNDLES: readonly {
+	harness: Harness;
+	entry: string;
+	out: string;
+}[] = [
 	{
 		harness: "claude",
 		entry: "src/claude.ts",
-		out: "plugins/model-router/hooks/register.js",
+		out: BUNDLE_OUTPUTS.claude,
 	},
 	{
 		harness: "omp",
 		entry: "src/omp.ts",
-		out: "plugins/model-router-omp/extension/index.js",
+		out: BUNDLE_OUTPUTS.omp,
 	},
 ];
 
 export const renderMetadata = (source: Source): Rendered[] => [
 	...renderClaude(source),
 	...renderOmp(source),
-];
-
-// Every file the builder writes; CI and the owner-setup scan read this list.
-export const generatedPaths = (): string[] => [
-	...renderMetadata(loadSource(ROOT)).map(({ path }) => path),
-	README_PATH,
-	...BUNDLES.map(({ out }) => out),
 ];
 
 function writeMetadata(root: string): void {
