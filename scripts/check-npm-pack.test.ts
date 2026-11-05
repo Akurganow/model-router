@@ -8,6 +8,7 @@ import {
 	comparePackedFiles,
 	expectedPackedFiles,
 	main,
+	packResult,
 	packTree,
 	verifyPack,
 } from "./check-npm-pack.ts";
@@ -107,4 +108,19 @@ test("a packed list that differs from the files list fails", () => {
 		() => verifyPack(tree.root, out.root),
 		/missing from the tarball: .*lib\/a\.js/,
 	);
+});
+
+const RESULT = { filename: "x-1.0.0.tgz", files: [{ path: "package.json" }] };
+
+test("the pack result is read from npm 11's list and npm 12's object", () => {
+	assert.deepEqual(packResult([RESULT]), RESULT);
+	assert.deepEqual(packResult({ x: RESULT }), RESULT);
+	assert.deepEqual(packResult(RESULT), RESULT);
+});
+
+test("output without a pack result gives none", () => {
+	assert.equal(packResult([]), undefined);
+	assert.equal(packResult({}), undefined);
+	assert.equal(packResult(null), undefined);
+	assert.equal(packResult({ x: { filename: 1 } }), undefined);
 });

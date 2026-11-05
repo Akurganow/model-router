@@ -66,6 +66,24 @@ export function comparePackedFiles(
 }
 
 export type Packed = { tarball: string; files: string[] };
+type PackResult = { filename: string; files: { path: string }[] };
+
+const isPackResult = (value: unknown): value is PackResult =>
+	typeof value === "object" &&
+	value !== null &&
+	typeof (value as { filename?: unknown }).filename === "string" &&
+	Array.isArray((value as { files?: unknown }).files);
+
+// npm 11 prints a list of results, and npm 12 an object keyed by package name.
+export function packResult(json: unknown): PackResult | undefined {
+	if (isPackResult(json)) return json;
+	const results = Array.isArray(json)
+		? json
+		: typeof json === "object" && json !== null
+			? Object.values(json)
+			: [];
+	return results.find(isPackResult);
+}
 
 export function packTree(treeRoot: string, destination: string): Packed {
 	// npm pack writes into a folder that exists and does not create it.
@@ -80,10 +98,7 @@ export function packTree(treeRoot: string, destination: string): Packed {
 			stdio: ["ignore", "pipe", "inherit"],
 		},
 	);
-	const [result] = JSON.parse(output) as {
-		filename: string;
-		files: { path: string }[];
-	}[];
+	const result = packResult(JSON.parse(output));
 	if (result === undefined) throw new Error("npm pack printed no result");
 	return {
 		tarball: join(destination, result.filename),

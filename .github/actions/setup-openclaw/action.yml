@@ -10,6 +10,9 @@ runs:
     # The install runs in a copy under the runner's temp folder. The
     # repository's .npmrc holds a 14-day age rule that would refuse a version
     # this new, and npm reads it only from the folder it installs in.
+    # package.json overrides two packages OpenClaw pins exactly: npm 12.2.1
+    # bundles a brace-expansion without the advisories of 12.2.0's, and
+    # zod 4.6.6 fixes an advisory of 4.6.5. Both are older than 14 days.
     # npm refuses a tarball whose digest differs from the lockfile. No
     # lifecycle script runs: the install script of OpenClaw only prepares its
     # bundled plugins, and the plugin install and inspect commands the package
@@ -24,6 +27,10 @@ runs:
         cp "$ACTION_PATH/package.json" "$ACTION_PATH/package-lock.json" "$dir/"
         cd "$dir"
         npm ci --ignore-scripts
-        echo "$dir/node_modules/.bin" >> "$GITHUB_PATH"
+        # OpenClaw depends on npm, so its whole .bin folder on the PATH would
+        # shadow the runner's npm. Only the openclaw command goes there.
+        mkdir -p "$dir/bin"
+        ln -s "$dir/node_modules/.bin/openclaw" "$dir/bin/openclaw"
+        echo "$dir/bin" >> "$GITHUB_PATH"
         version=$(node -p 'require("./package.json").dependencies.openclaw')
         node_modules/.bin/openclaw --version | grep -F "$version"
