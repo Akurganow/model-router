@@ -108,12 +108,16 @@ CI installs it on Ubuntu.
 ### OpenClaw
 
 ```sh
-openclaw plugins install npm:@akurganow/model-router
+openclaw plugins install npm:@akurganow/model-router --force --accept-capabilities
+openclaw plugins enable model-router-openclaw
+openclaw plugins inspect model-router-openclaw --runtime --json
 ```
 
 Source: OpenClaw documentation, [Manage plugins](https://docs.openclaw.ai/plugins/manage-plugins).
 
-CI installs it on Ubuntu.
+The npm package `@akurganow/model-router` exists only after its first publication.
+
+CI installs the packed tarball through `npm-pack:` on Ubuntu.
 
 [Set up OpenClaw](#set-up-openclaw) has the next steps.
 

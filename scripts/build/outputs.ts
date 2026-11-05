@@ -1,6 +1,7 @@
-// Every file the builder writes, each path named once. The renderers and the
-// bundle list take their paths from here. This module imports nothing, so the
-// owner-setup scan reads the list without loading esbuild or a renderer.
+// The output paths of each harness, each named once. The renderers and the
+// bundle list take their paths from here, and generatedFiles in copies.ts lists
+// them all. This module imports nothing, so the owner-setup scan reads the
+// list without loading esbuild or a renderer.
 export const CLAUDE_OUTPUTS = {
 	manifest: "plugins/model-router/.claude-plugin/plugin.json",
 	catalogue: ".claude-plugin/marketplace.json",
@@ -55,14 +56,4 @@ export const NPM_FOLDER_COPIES: readonly Copy[] = [
 		from: `${OPENCLAW_DIR}/openclaw-skills`,
 		to: `${NPM_ROOT}/openclaw-skills`,
 	},
-];
-
-// The files named here; copies.ts lists the files inside NPM_FOLDER_COPIES.
-export const GENERATED_PATHS: readonly string[] = [
-	...Object.values(CLAUDE_OUTPUTS),
-	...Object.values(OMP_OUTPUTS),
-	...Object.values(OPENCLAW_OUTPUTS),
-	README_OUTPUT,
-	...Object.values(NPM_OUTPUTS),
-	...NPM_FILE_COPIES.map(({ to }) => to),
 ];

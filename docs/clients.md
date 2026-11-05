@@ -331,6 +331,10 @@ A probe plugin wrote what it saw to a file.
   `openclaw plugins reload <id>` reloads a plugin after an edit.
   (documentation: [Install plugins, Local paths and bundle formats](https://docs.openclaw.ai/cli/plugins/install#local-paths-and-bundle-formats),
   [Manage plugins, Apply changes and inspect](https://docs.openclaw.ai/plugins/manage-plugins#apply-changes-and-inspect))
+- `openclaw plugins install npm-pack:<path.tgz>` installs a local tarball that `npm pack` built.
+  It uses the same managed npm project path as a registry install, and the tarball must sit on the Gateway host.
+  (documentation: [Install plugins, Archives](https://docs.openclaw.ai/cli/plugins/install#archives) and [Install](https://docs.openclaw.ai/cli/plugins/install#install), `docs/cli/plugins/install.md`, read 2026-11-05;
+  running: OpenClaw 2026.11.1, the `package` job of [run 42119970365](https://github.com/Akurganow/model-router/actions/runs/42119970365), which ran `openclaw plugins install "npm-pack:$TARBALL" --force --accept-capabilities` and `openclaw plugins inspect model-router-openclaw --runtime --json`, 2026-11-05)
 - `openclaw plugins update <id>` reuses the tracked install spec.
   (documentation: [Manage plugins, Update plugins](https://docs.openclaw.ai/plugins/manage-plugins#update-plugins))
 - `openclaw plugins disable <id>` toggles the plugin's config entry and leaves the installed files.

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { README_OUTPUT } from "./build/outputs.ts";
 import { anchorOf, installCommands, renderReadme } from "./build/readme.ts";
 import { loadSource, type Source } from "./build/source.ts";
+import { anchorsOf } from "./markdown-anchors.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const source = loadSource(ROOT);
@@ -43,39 +44,6 @@ test("each section ends with a link to its setup heading", () => {
 		);
 });
 
-const FENCE = /^(```|~~~)/;
-const HEADING = /^#{1,6} (.+)$/;
-/**
- * Lists the heading titles of a Markdown text. A line inside a fenced code
- * block, such as a shell comment, is not a heading.
- */
-const headingsOf = (markdown: string): string[] => {
-	let inFence = false;
-	const titles: string[] = [];
-	for (const line of markdown.split("\n")) {
-		if (FENCE.test(line)) inFence = !inFence;
-		const title = inFence ? undefined : HEADING.exec(line)?.[1];
-		if (title !== undefined) titles.push(title);
-	}
-	return titles;
-};
-
-/**
- * Returns the anchors GitHub gives the headings. GitHub suffixes a repeated
- * heading's anchor with -1, -2 and so on.
- */
-const anchorsOf = (markdown: string): Set<string> => {
-	const seen = new Map<string, number>();
-	const anchors = new Set<string>();
-	for (const title of headingsOf(markdown)) {
-		const anchor = anchorOf(title);
-		const count = seen.get(anchor) ?? 0;
-		anchors.add(count === 0 ? anchor : `${anchor}-${count}`);
-		seen.set(anchor, count + 1);
-	}
-	return anchors;
-};
-
 test("a heading sign inside a fenced code block makes no anchor", () => {
 	const markdown = "# Real\n\n```sh\n# not a heading\n```\n";
 	assert.deepEqual([...anchorsOf(markdown)], ["real"]);
@@ -100,7 +68,9 @@ test("the region names the install commands of every harness", () => {
 		"claude plugin install model-router@model-router",
 		"omp plugin marketplace add Akurganow/model-router",
 		"omp plugin install model-router@model-router",
-		"openclaw plugins install npm:@akurganow/model-router",
+		"openclaw plugins install npm:@akurganow/model-router --force --accept-capabilities",
+		"openclaw plugins enable model-router-openclaw",
+		"openclaw plugins inspect model-router-openclaw --runtime --json",
 	])
 		assert.match(text, new RegExp(`^${command}$`, "m"));
 });
@@ -121,13 +91,44 @@ test("each section cites the harness documentation", () => {
 	);
 });
 
+const withCiInstalls = (ciInstalls: string | undefined): Source => {
+	const { ciInstalls: _dropped, ...rest } = source.openclaw.install;
+	return {
+		...source,
+		openclaw: {
+			...source.openclaw,
+			install: ciInstalls === undefined ? rest : { ...rest, ciInstalls },
+		},
+	};
+};
+
 test("a harness that CI installs says so, and one that CI skips says so", () => {
 	const installed = renderReadme(readme("\nold\n"), source);
-	assert.equal(installed.match(/^CI installs it on Ubuntu\.$/gm)?.length, 3);
+	assert.equal(installed.match(/^CI installs it on Ubuntu\.$/gm)?.length, 2);
 	assert.doesNotMatch(installed, /CI does not install it/);
 	const skipped = renderReadme(readme("\nold\n"), withoutCi());
 	assert.equal(skipped.match(/^CI does not install it\.$/gm)?.length, 1);
-	assert.equal(skipped.match(/^CI installs it on Ubuntu\.$/gm)?.length, 2);
+	assert.equal(skipped.match(/^CI installs it on Ubuntu\.$/gm)?.length, 1);
+});
+
+test("a harness whose CI installs something else names it in the CI line", () => {
+	const text = renderReadme(readme("\nold\n"), source);
+	assert.match(
+		text,
+		/^CI installs the packed tarball through `npm-pack:` on Ubuntu\.$/m,
+	);
+	const plain = renderReadme(readme("\nold\n"), withCiInstalls(undefined));
+	assert.doesNotMatch(plain, /packed tarball/);
+	assert.equal(plain.match(/^CI installs it on Ubuntu\.$/gm)?.length, 3);
+});
+
+test("a note renders under the source line, with the package name filled in", () => {
+	const text = renderReadme(readme("\nold\n"), source);
+	assert.match(
+		text,
+		/^Source: OpenClaw documentation, .+\n\nThe npm package `@akurganow\/model-router` exists only after its first publication\.\n\nCI installs/m,
+	);
+	assert.equal(text.match(/first publication/g)?.length, 1);
 });
 
 test("only the region changes, and the rest keeps its bytes", () => {
@@ -224,15 +225,32 @@ test("each CI claim matches the install job of the workflow", () => {
 
 // The package job installs the packed tarball, a local source of the same package.
 test("the OpenClaw CI claim matches the package job of the workflow", () => {
-	const { ciSystems } = source.openclaw.install;
+	const { ciSystems, ciInstalls } = source.openclaw.install;
 	assert.deepEqual(ciSystems, ["Ubuntu"]);
+	assert.equal(ciInstalls, "the packed tarball through `npm-pack:`");
 	const block = jobBlock(readFileSync(join(ROOT, CI_PATH), "utf8"), "package");
 	for (const system of ciSystems) assert.match(block, runnerLine(system));
-	assert.match(block, /openclaw plugins install "npm-pack:\$TARBALL"/);
+	const runLines = block.split("\n").map((line) => line.trim());
+	const [install = "", , inspect = ""] = installCommands(
+		source,
+		source.openclaw.install,
+	);
+	assert.ok(
+		runLines.includes(
+			install.replace(`npm:${source.npm.name}`, '"npm-pack:$TARBALL"'),
+		),
+		install,
+	);
+	assert.ok(
+		runLines.some((line) => line.startsWith(`${inspect} > `)),
+		inspect,
+	);
 });
 
-test("the OpenClaw install command names the npm package", () => {
+test("the OpenClaw install commands name the npm package and the plugin id", () => {
 	assert.deepEqual(installCommands(source, source.openclaw.install), [
-		"openclaw plugins install npm:@akurganow/model-router",
+		"openclaw plugins install npm:@akurganow/model-router --force --accept-capabilities",
+		"openclaw plugins enable model-router-openclaw",
+		"openclaw plugins inspect model-router-openclaw --runtime --json",
 	]);
 });

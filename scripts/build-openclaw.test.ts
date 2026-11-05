@@ -5,7 +5,6 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { TOOL_NAME } from "../src/openclaw-config.ts";
 import { PLUGIN_ID, readKeys, readSettings } from "../src/openclaw-settings.ts";
-import { PROVIDER_VALUES } from "../src/provider.ts";
 import { SCOPE_VALUES } from "../src/scope.ts";
 import { formatJson } from "./build/json.ts";
 import { renderOpenclaw } from "./build/openclaw.ts";
@@ -63,15 +62,28 @@ test("each default in the manifest is the value the code applies to an empty con
 	assert.deepEqual(readKeys(undefined, {}, settings.provider, {}), {});
 });
 
-test("the enumerations come from src/ and the options text names each value", () => {
-	assert.deepEqual(property("provider")?.enum, PROVIDER_VALUES);
-	assert.deepEqual(property("scope")?.enum, SCOPE_VALUES);
+test("the settings carry no enumeration, so any string is accepted and counts as the default", () => {
+	for (const name of ["provider", "scope"]) {
+		assert.equal(property(name)?.enum, undefined, name);
+		assert.equal(property(name)?.type, "string", name);
+	}
+	assert.deepEqual(validate(schema, { provider: "nope", scope: "nope" }), []);
+});
+
+test("the options text names each value", () => {
 	assert.equal(
 		manifest.uiHints.scope.help,
 		source.options.scope.descriptions.openclaw,
 	);
 	for (const value of SCOPE_VALUES)
 		assert.ok(manifest.uiHints.scope.help.includes(`${value}: `), value);
+});
+
+test("a value outside the lists reads as the default", () => {
+	const settings = readSettings(undefined, {});
+	const bad = readSettings(undefined, { provider: "nope", scope: "nope" });
+	assert.equal(bad.provider, settings.provider);
+	assert.equal(bad.scope, settings.scope);
 });
 
 test("both keys are sensitive secret inputs, and the slots are not", () => {
@@ -135,10 +147,4 @@ test("the bundle holds no absolute path", () => {
 		read(OPENCLAW_OUTPUTS.bundle),
 		/(^|[\s"'`(])\/(Users|home|private|tmp)\//,
 	);
-});
-
-test("the schema's enum keyword rejects a value outside the list", () => {
-	assert.deepEqual(validate(schema, { provider: "nope" }), [
-		"$.provider: not one of auto, openrouter-first, typesafe, openrouter",
-	]);
 });

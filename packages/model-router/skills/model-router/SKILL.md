@@ -12,7 +12,7 @@ description: >
 model-router scores each eligible batch item through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it gives the agent the `smol` role for level 0, or the `slow` role for level 2. Level 1 changes nothing. The plugin sets no effort.
 
 - The batch line starts with `model-router`. It shows each decision, or the reason an item ran unrouted.
-- The `scope` setting decides which agents the plugin routes. The [README](../../README.md#scope) lists them and the skip reasons.
+- The `scope` setting decides which agents the plugin routes. The [README](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#scope) lists them and the skip reasons.
 - A model the user set is never overridden.
 - A generic `task` item cannot set a model. The model comes from the agent's definition, from `task.agentModelOverrides`, or from the role the plugin gives.
 

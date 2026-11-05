@@ -10,8 +10,6 @@ import {
 	readKeys,
 	readSettings,
 } from "../../../src/openclaw-settings.ts";
-import { PROVIDER_VALUES } from "../../../src/provider.ts";
-import { SCOPE_VALUES } from "../../../src/scope.ts";
 
 const PLUGIN = join(import.meta.dirname, "..");
 const TREE = join(PLUGIN, "..", "..", "packages", "model-router");
@@ -72,9 +70,14 @@ test("the config schema accepts each default", () => {
 	assert.deepEqual(validate(schema, defaults), []);
 });
 
-test("the config schema enumerates the values the code knows", () => {
-	assert.deepEqual(property("provider")?.enum, PROVIDER_VALUES);
-	assert.deepEqual(property("scope")?.enum, SCOPE_VALUES);
+test("the config schema accepts any string, and the code reads an invalid value as the default", () => {
+	for (const name of ["provider", "scope"])
+		assert.equal(property(name)?.enum, undefined, name);
+	const invalid = { provider: "nope", scope: "nope" };
+	assert.deepEqual(validate(schema, invalid), []);
+	const fallback = readSettings(undefined, {});
+	assert.equal(readSettings(undefined, invalid).provider, fallback.provider);
+	assert.equal(readSettings(undefined, invalid).scope, fallback.scope);
 });
 
 // A record that notes each field the settings code asks it for.

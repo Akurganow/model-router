@@ -58,12 +58,10 @@
 		"properties": {
 			"provider": {
 				"type": "string",
-				"enum": ["auto", "openrouter-first", "typesafe", "openrouter"],
 				"default": "typesafe"
 			},
 			"scope": {
 				"type": "string",
-				"enum": ["core", "extended"],
 				"default": "core"
 			},
 			"small_model": {

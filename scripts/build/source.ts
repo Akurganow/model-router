@@ -28,6 +28,10 @@ export type Install = {
 		readonly url: string;
 	};
 	readonly ciSystems: readonly string[];
+	// What CI installs when it is not the plugin as a user installs it. Default: "it".
+	readonly ciInstalls?: string;
+	// A line under the source line.
+	readonly note?: string;
 };
 
 // This type, metadata/source.schema.json and metadata/source.json change together; build-shape.test.ts holds the first two to each other.

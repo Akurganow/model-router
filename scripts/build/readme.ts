@@ -12,17 +12,21 @@ const marketplaceArgument = (source: Source): string =>
 export const pluginId = (source: Source): string =>
 	`${source.name}@${source.name}`;
 
+// The placeholders a command or a note may hold: {marketplace}, {plugin} (the
+// catalogue id), {package} (the npm name) and {id} (the OpenClaw plugin id).
+const fill = (source: Source, text: string, marketplace: string): string =>
+	text
+		.replaceAll("{marketplace}", marketplace)
+		.replaceAll("{plugin}", pluginId(source))
+		.replaceAll("{package}", source.npm.name)
+		.replaceAll("{id}", source.openclaw.pluginId);
+
 export const installCommands = (
 	source: Source,
 	install: Install,
 	marketplace: string = marketplaceArgument(source),
 ): string[] =>
-	install.commands.map((command) =>
-		command
-			.replaceAll("{marketplace}", marketplace)
-			.replaceAll("{plugin}", pluginId(source))
-			.replaceAll("{package}", source.npm.name),
-	);
+	install.commands.map((command) => fill(source, command, marketplace));
 
 // GitHub's heading anchor: lower case, punctuation dropped, spaces as hyphens.
 export const anchorOf = (heading: string): string =>
@@ -37,13 +41,16 @@ const setupLine = ({ heading }: Install): string => {
 	return `[${setup}](#${anchorOf(setup)}) has the next steps.`;
 };
 
-const ciLine = ({ ciSystems }: Install): string =>
+const ciLine = ({ ciSystems, ciInstalls = "it" }: Install): string =>
 	ciSystems.length === 0
 		? "CI does not install it."
-		: `CI installs it on ${ciSystems.join(" and ")}.`;
+		: `CI installs ${ciInstalls} on ${ciSystems.join(" and ")}.`;
 
 const section = (source: Source, install: Install): string => {
 	const { publisher, title, url } = install.source;
+	const note = install.note
+		? [fill(source, install.note, marketplaceArgument(source)), ""]
+		: [];
 	return [
 		`### ${install.heading}`,
 		"",
@@ -53,6 +60,7 @@ const section = (source: Source, install: Install): string => {
 		"",
 		`Source: ${publisher}, [${title}](${url}).`,
 		"",
+		...note,
 		ciLine(install),
 		"",
 		setupLine(install),

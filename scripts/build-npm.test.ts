@@ -4,11 +4,11 @@ import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { copyNpmFiles, listCopies } from "./build/copies.ts";
+import { copyNpmFiles, generatedFiles, listCopies } from "./build/copies.ts";
 import { formatRendered } from "./build/json.ts";
 import { renderNpm } from "./build/npm.ts";
+import * as outputs from "./build/outputs.ts";
 import {
-	GENERATED_PATHS,
 	NPM_OUTPUTS,
 	NPM_ROOT,
 	OMP_OUTPUTS,
@@ -17,6 +17,7 @@ import {
 } from "./build/outputs.ts";
 import { type Schema, validate } from "./build/schema.ts";
 import { loadSchema, loadSource } from "./build/source.ts";
+import { anchorsOf } from "./markdown-anchors.ts";
 import { useTempRoot } from "./temp-root.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -116,7 +117,7 @@ test("the copies cover the licence, both bundles, the manifest and both skill fo
 });
 
 test("the generated paths list every rendered file, copy and bundle of the tree", () => {
-	const listed = new Set(GENERATED_PATHS);
+	const listed = new Set(generatedFiles(ROOT));
 	for (const path of [
 		NPM_OUTPUTS.manifest,
 		NPM_OUTPUTS.readme,
@@ -127,6 +128,51 @@ test("the generated paths list every rendered file, copy and bundle of the tree"
 		`${NPM_ROOT}/extension/index.js`,
 	])
 		assert.ok(listed.has(path), path);
+});
+
+test("outputs.ts holds no second list of generated files", () => {
+	assert.equal("GENERATED_PATHS" in outputs, false);
+});
+
+test("the generated files hold every output, every copy and the README", () => {
+	const listed = new Set(generatedFiles(ROOT));
+	for (const path of [
+		...Object.values(outputs.CLAUDE_OUTPUTS),
+		...Object.values(outputs.OMP_OUTPUTS),
+		...Object.values(outputs.OPENCLAW_OUTPUTS),
+		outputs.README_OUTPUT,
+		...listCopies(ROOT).map(({ to }) => to),
+	])
+		assert.ok(listed.has(path), path);
+	assert.equal(listed.size, generatedFiles(ROOT).length);
+});
+
+test("no skill the tree copies links to a relative path", () => {
+	const skills = listCopies(ROOT).filter(({ from }) =>
+		from.endsWith("SKILL.md"),
+	);
+	assert.ok(skills.length >= 4);
+	for (const { from } of skills)
+		assert.doesNotMatch(read(from), /\]\(\.\.\//, from);
+});
+
+test("each repository link in a copied skill lands on a file and a heading", () => {
+	const prefix = `${source.homepage}/blob/main/`;
+	const pattern = new RegExp(`\\]\\(${prefix}([^)#]+)(?:#([^)]+))?\\)`, "g");
+	let found = 0;
+	for (const { from } of listCopies(ROOT).filter(({ from }) =>
+		from.endsWith("SKILL.md"),
+	))
+		for (const [, path = "", anchor] of read(from).matchAll(pattern)) {
+			found += 1;
+			assert.ok(existsSync(join(ROOT, path)), `${from} links to ${path}`);
+			if (anchor)
+				assert.ok(
+					anchorsOf(read(path)).has(anchor),
+					`${from} links to ${path}#${anchor}`,
+				);
+		}
+	assert.ok(found >= 5, `found ${found} repository links`);
 });
 
 test("no OpenClaw file in the tree uses a name omp reads as a sibling", () => {

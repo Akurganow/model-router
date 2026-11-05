@@ -145,13 +145,19 @@
 		},
 		"install": {
 			"heading": "OpenClaw",
-			"commands": ["openclaw plugins install npm:{package}"],
+			"commands": [
+				"openclaw plugins install npm:{package} --force --accept-capabilities",
+				"openclaw plugins enable {id}",
+				"openclaw plugins inspect {id} --runtime --json"
+			],
 			"source": {
 				"publisher": "OpenClaw documentation",
 				"title": "Manage plugins",
 				"url": "https://docs.openclaw.ai/plugins/manage-plugins"
 			},
-			"ciSystems": ["Ubuntu"]
+			"note": "The npm package `{package}` exists only after its first publication.",
+			"ciSystems": ["Ubuntu"],
+			"ciInstalls": "the packed tarball through `npm-pack:`"
 		}
 	},
 	"npm": {

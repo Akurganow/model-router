@@ -1,10 +1,14 @@
 import { cpSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
+	CLAUDE_OUTPUTS,
 	type Copy,
-	GENERATED_PATHS,
 	NPM_FILE_COPIES,
 	NPM_FOLDER_COPIES,
+	NPM_OUTPUTS,
+	OMP_OUTPUTS,
+	OPENCLAW_OUTPUTS,
+	README_OUTPUT,
 } from "./outputs.ts";
 
 // Paths are relative to the folder given, with forward slashes, in a fixed order.
@@ -31,9 +35,17 @@ export function listCopies(root: string): Copy[] {
 	];
 }
 
-// Every file the builder writes, the copies inside the folders included.
+// The one list of every file the builder writes: each output, the README and
+// every copy, the files inside the copied folders included.
 export const generatedFiles = (root: string): string[] => [
-	...new Set([...GENERATED_PATHS, ...listCopies(root).map(({ to }) => to)]),
+	...new Set([
+		...Object.values(CLAUDE_OUTPUTS),
+		...Object.values(OMP_OUTPUTS),
+		...Object.values(OPENCLAW_OUTPUTS),
+		README_OUTPUT,
+		...Object.values(NPM_OUTPUTS),
+		...listCopies(root).map(({ to }) => to),
+	]),
 ];
 
 // A folder is removed first, so a file taken out of a plugin folder leaves the tree.

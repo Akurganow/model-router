@@ -47,7 +47,7 @@ every commit as a [conventional commit](#commits).
 Edit metadata only in `metadata/source.json`. Then run
 `node scripts/build.ts` and commit the generated files with the change.
 Never edit a generated file by hand. CI fails when one differs from the
-builder's output. `GENERATED_PATHS` in `scripts/build/outputs.ts` lists the
+builder's output. `generatedFiles` in `scripts/build/copies.ts` lists the
 generated files. In the README only the region between
 `<!-- install:start -->` and `<!-- install:end -->` is generated.
 

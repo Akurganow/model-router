@@ -1,7 +1,7 @@
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { OPENCLAW_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";
-import { SETTING_VALUES, TOOL_NAME, VALUE_SETTINGS } from "./values.ts";
+import { TOOL_NAME, VALUE_SETTINGS } from "./values.ts";
 
 // The fields below follow docs/plugins/manifest.md of OpenClaw 2026.10.10 and the pages it links.
 const SECRET_KEYS = ["api_key", "openrouter_api_key"] as const;
@@ -9,7 +9,7 @@ const SECRET_EXPECTED = "string";
 const SLOTS = ["small_model", "large_model"] as const;
 
 // manifest.md, "JSON Schema requirements": the config is validated against this schema before the plugin loads.
-// The enumerations and defaults of the two value settings come from src/ and the source.
+// The two value settings carry no enumeration: OpenClaw then accepts any string, and the code counts an invalid value as the default.
 const configSchema = (source: Source): JsonObject => ({
 	type: "object",
 	additionalProperties: false,
@@ -19,7 +19,6 @@ const configSchema = (source: Source): JsonObject => ({
 				setting,
 				{
 					type: source.openclaw.settingType,
-					enum: [...SETTING_VALUES[setting]],
 					default: source.options[setting].default,
 				},
 			]),
