@@ -63,9 +63,28 @@ export function checkClaudeBundle(code: string): string[] {
 	return problems;
 }
 
+const BUNDLES: readonly { harness: Harness; entry: string; out: string }[] = [
+	{
+		harness: "claude",
+		entry: "src/claude.ts",
+		out: "plugins/model-router/hooks/register.js",
+	},
+	{
+		harness: "omp",
+		entry: "src/omp.ts",
+		out: "plugins/model-router-omp/extension/index.js",
+	},
+];
+
 export const renderMetadata = (source: Source): Rendered[] => [
 	...renderClaude(source),
 	...renderOmp(source),
+];
+
+// Every file the builder writes; CI and the owner-setup scan read this list.
+export const generatedPaths = (): string[] => [
+	...renderMetadata(loadSource(ROOT)).map(({ path }) => path),
+	...BUNDLES.map(({ out }) => out),
 ];
 
 function writeMetadata(root: string): void {
@@ -79,18 +98,10 @@ async function main(): Promise<string[]> {
 	} catch (error) {
 		return [error instanceof Error ? error.message : String(error)];
 	}
-	return [
-		...(await buildBundle(
-			"claude",
-			"src/claude.ts",
-			"plugins/model-router/hooks/register.js",
-		)),
-		...(await buildBundle(
-			"omp",
-			"src/omp.ts",
-			"plugins/model-router-omp/extension/index.js",
-		)),
-	];
+	const problems: string[] = [];
+	for (const { harness, entry, out } of BUNDLES)
+		problems.push(...(await buildBundle(harness, entry, out)));
+	return problems;
 }
 
 if (import.meta.main) {

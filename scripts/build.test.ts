@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { buildBundle, checkClaudeBundle, MAX_BUNDLE_BYTES } from "./build.ts";
+import {
+	buildBundle,
+	checkClaudeBundle,
+	generatedPaths,
+	MAX_BUNDLE_BYTES,
+} from "./build.ts";
 import { useTempRoot } from "./temp-root.ts";
 
 const GOOD = `export function register(on) {
@@ -76,4 +81,15 @@ test("an omp entry builds and keeps its host imports external", async () => {
 	const out = join(box.root, "out", "index.js");
 	assert.deepEqual(await buildBundle("omp", join(box.root, "omp.ts"), out), []);
 	assert.match(readFileSync(out, "utf8"), /@oh-my-pi\/pi-coding-agent/);
+});
+
+test("the generated paths are the four rendered files and the two bundles", () => {
+	assert.deepEqual(generatedPaths().sort(), [
+		".claude-plugin/marketplace.json",
+		".omp-plugin/marketplace.json",
+		"plugins/model-router-omp/extension/index.js",
+		"plugins/model-router-omp/package.json",
+		"plugins/model-router/.claude-plugin/plugin.json",
+		"plugins/model-router/hooks/register.js",
+	]);
 });
