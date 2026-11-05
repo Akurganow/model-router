@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { rmSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
+import { SOURCE_PATH } from "./build/source.ts";
 import { checkVersions, MANIFESTS } from "./manifests.ts";
 import { useTempRoot } from "./temp-root.ts";
 
@@ -11,6 +14,7 @@ const catalogWith = (version?: string) =>
 	JSON.stringify({ plugins: [{ name: "a", version }] });
 
 const box = useTempRoot("manifests-", (put) => {
+	put(SOURCE_PATH, '{"version": "0.11.0"}');
 	put(claude, '{"version": "0.11.0"}');
 	put(omp, '{"name": "b", "version": "0.11.0"}');
 	put(catalog, catalogWith("0.11.0"));
@@ -25,6 +29,20 @@ test("the list names the Claude Code and omp manifests and the omp catalog", () 
 test("the catalog version sits in its first plugin entry", () => {
 	const entry = MANIFESTS.find((manifest) => manifest.path === catalog);
 	assert.deepEqual(entry?.versionPath, ["plugins", 0, "version"]);
+});
+
+test("check fails when the source is bumped without a build, naming both versions", () => {
+	put(SOURCE_PATH, '{"version": "0.12.0"}');
+	const problems = checkVersions(box.root);
+	assert.equal(problems.length, 1);
+	assert.match(problems[0] ?? "", /0\.11\.0/);
+	assert.match(problems[0] ?? "", /0\.12\.0/);
+	assert.ok(problems[0]?.includes(SOURCE_PATH));
+});
+
+test("check fails when the source is missing, naming it", () => {
+	rmSync(join(box.root, SOURCE_PATH));
+	assert.deepEqual(checkVersions(box.root), [`${SOURCE_PATH} is missing`]);
 });
 
 test("check passes when the manifests and the catalog carry one version", () => {

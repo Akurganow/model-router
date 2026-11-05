@@ -62,7 +62,45 @@ and [Oh My Pi](plugins/model-router-omp/README.md) READMEs say when the second
 provider takes over. The `scope` option picks the agents the plugin routes:
 `core` (the default) or `extended`.
 
+<!-- install:start -->
+
 ### Claude Code
+
+```sh
+claude plugin marketplace add Akurganow/model-router
+claude plugin install model-router@model-router
+```
+
+Source: Claude Code documentation, [Install and manage plugins](https://code.claude.com/docs/en/plugins/install#add-a-marketplace).
+
+CI installs it on Ubuntu.
+
+[Set up Claude Code](#set-up-claude-code) has the next steps.
+
+### Oh My Pi
+
+```sh
+omp plugin marketplace add Akurganow/model-router
+omp plugin install model-router@model-router
+```
+
+Source: Oh My Pi documentation, [marketplace.md, lines 20 to 25](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L20-L25).
+
+CI installs it on Ubuntu.
+
+[Set up Oh My Pi](#set-up-oh-my-pi) has the next steps.
+
+<!-- install:end -->
+
+[docs/clients.md](docs/clients.md) lists what each client reads, each fact with its source.
+
+### Set up Claude Code
+
+Pick one route: the two `claude` lines under [Claude Code](#claude-code) are
+the minimal one, and each route below also sets the options and the keys.
+Those two lines install the plugin without its keys.
+After them, run `/plugin configure model-router@model-router` in a session to
+set the keys.
 
 #### Terminal
 
@@ -148,25 +186,14 @@ open, set the key as [Desktop app](#desktop-app) describes.
 > [Keys in the desktop app](plugins/model-router/README.md#keys-in-the-desktop-app)
 > says how to set it in the settings file.
 
-### Oh My Pi
+### Set up Oh My Pi
 
 1. Install [Oh My Pi](https://github.com/can1357/oh-my-pi) v18.12.6 or later.
-2. Add the marketplace:
-
-   ```sh
-   omp plugin marketplace add Akurganow/model-router
-   ```
-
-3. Install the plugin:
-
-   ```sh
-   omp plugin install model-router@model-router
-   ```
-
-4. Restart omp, because omp loads extension modules at startup.
-5. Run `/login typesafe`, `/login openrouter` or both in omp to store your
+2. Run the two install commands under [Oh My Pi](#oh-my-pi).
+3. Restart omp, because omp loads extension modules at startup.
+4. Run `/login typesafe`, `/login openrouter` or both in omp to store your
    keys.
-6. Ask omp to run the `model-router-setup` skill. It asks the provider, the
+5. Ask omp to run the `model-router-setup` skill. It asks the provider, the
    keys and the scope with buttons and writes your choices itself.
 
 Instead of `/login`, you can run `omp login typesafe` or

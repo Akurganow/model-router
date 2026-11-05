@@ -17,19 +17,42 @@ every commit as a [conventional commit](#commits).
 - `.claude-plugin/marketplace.json` is the Claude Code catalog.
 - `.omp-plugin/marketplace.json` is the omp catalog. Each harness reads only
   its own catalog.
-- `scripts/build.ts` builds the bundle of each plugin from `src/`. Both
-  bundles inline the TypeSafe SDK, so each plugin runs on its own.
-- `scripts/manifests.ts` lists the files that carry the plugin version.
-  `node scripts/set-version.ts VERSION` writes the version `VERSION` to them.
-  `VERSION` stands for the new version, such as `0.14.0`.
-  `node scripts/set-version.ts --check` fails when they differ.
+- `metadata/` holds the one hand-written source of the manifests, the
+  catalogues and the README install region. `metadata/source.json` is the
+  source, and `metadata/source.schema.json` checks it.
+- `scripts/build.ts` reads the source and writes every generated file. It also
+  builds the bundle of each plugin from `src/`. Both bundles inline the
+  TypeSafe SDK, so each plugin runs on its own.
+- `scripts/build/` holds the renderers, one for each harness's manifest and
+  catalogue and one for the README install region, and their shared helpers:
+  the JSON writer, the schema check, the source loader, the values taken from
+  `src/` and the list of generated files.
+- `scripts/manifests.ts` lists the generated manifests that carry the plugin
+  version. `node scripts/set-version.ts VERSION` writes the version `VERSION`
+  to `metadata/source.json` only. `VERSION` stands for the new version, such
+  as `0.14.0`. `node scripts/set-version.ts --check` fails when the source and
+  a manifest differ.
+- `scripts/scan-owner-setup.ts` scans for owner-setup facts. See
+  [Continuous integration](#continuous-integration).
+- `docs/clients.md` cites how each client loads a package.
+  `docs/design.md` gives the reasons for this layout and for the CI checks.
 - `evals/` and `scripts/evals.ts` run real clients against the plugins.
 
-Claude Code installs the `plugins/model-router` folder, so that folder holds
-no `package.json`. Claude Code installs the packages of a lockfile in a
-plugin's root onto every user's machine. Anthropic's directory holds such a
-plugin for a reviewer. The development tools therefore live at the repository
-root.
+### Generated files
+
+Edit metadata only in `metadata/source.json`. Then run
+`node scripts/build.ts` and commit the generated files with the change.
+Never edit a generated file by hand. CI fails when one differs from the
+builder's output. `GENERATED_PATHS` in `scripts/build/outputs.ts` lists the
+generated files. In the README only the region between
+`<!-- install:start -->` and `<!-- install:end -->` is generated.
+
+### No package.json in the Claude Code plugin
+
+The `plugins/model-router` folder holds no `package.json`. Claude Code
+installs dependencies for a plugin whose root holds a `package.json` and a
+lockfile. [docs/clients.md](docs/clients.md#package-files) cites the
+condition. The development tools therefore live at the repository root.
 
 ## Build and check
 
@@ -45,11 +68,12 @@ npm run check
 ```
 
 - `npm ci` installs the development tools.
-- `node scripts/build.ts` builds the hooks module,
-  `plugins/model-router/hooks/register.js`, from `src/claude.ts` and checks
-  its shape. It also writes `plugins/model-router-omp/extension/index.js`
-  from `src/`, the only file omp loads. The plugins load these bundles, so
-  build before you validate or test.
+- `node scripts/build.ts` writes the manifests, the catalogues and the README
+  install region from `metadata/source.json`. It also builds both bundles
+  from `src/`. The Claude Code bundle is
+  `plugins/model-router/hooks/register.js`, and its shape is checked. The omp
+  bundle is `plugins/model-router-omp/extension/index.js`, the only file omp
+  loads. Build before you validate or test.
 - `claude plugin validate --strict plugins/model-router` lists the hooks and
   engine calls of the mod. `--strict` fails on warnings too.
 - `node scripts/check-surface.ts` compares that list with
@@ -60,7 +84,9 @@ npm run check
   - `tsc` type-checks the plugin tests, `src/` and `scripts/`.
   - `node scripts/set-version.ts --check` checks that the plugin versions
     agree.
-  - `node --test` runs the tests of `src/`, `scripts/` and the omp plugin.
+  - `npm test` runs the tests of `src/`, `scripts/` and every
+    `plugins/model-router-*/tests` folder, each with a 60-second limit. CI
+    runs the same script.
   - Biome runs with warnings as errors.
 - `npm run check` runs neither `claude plugin validate` nor
   `node scripts/check-surface.ts`. It runs no `claude plugin test` either.
@@ -180,8 +206,17 @@ CI runs these checks:
 - `tsc -p src` and `tsc -p scripts`
 - `biome ci`
 - Anthropic's plugin policy scan, with the prompt in `.github/policy/`
+- the generated-file check, on Ubuntu and macOS
+- the install of both plugins from the checkout
+- the owner-setup scan, `node scripts/scan-owner-setup.ts --base <commit>`,
+  where CI passes the commit the change starts from. Without `--base` it reads
+  what your branch adds over its merge base with `origin/main`, and with no
+  `origin/main` the generated files only.
 
 A pull request merges only when all of them pass.
+[docs/design.md](docs/design.md#ci-checks-the-copies-and-the-installation)
+says what the last three check and why. A test that needs a home path or a
+key-shaped sample builds it at run time, so the scan does not flag the test.
 
 A new hook or engine call changes what Anthropic's directory and users see.
 Update `tools/surface.json` and the surface table in

@@ -3,7 +3,15 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { buildBundle, checkClaudeBundle, MAX_BUNDLE_BYTES } from "./build.ts";
+import { GENERATED_PATHS, README_OUTPUT } from "./build/outputs.ts";
+import { loadSource } from "./build/source.ts";
+import {
+	BUNDLES,
+	buildBundle,
+	checkClaudeBundle,
+	MAX_BUNDLE_BYTES,
+	renderMetadata,
+} from "./build.ts";
 import { useTempRoot } from "./temp-root.ts";
 
 const GOOD = `export function register(on) {
@@ -76,4 +84,14 @@ test("an omp entry builds and keeps its host imports external", async () => {
 	const out = join(box.root, "out", "index.js");
 	assert.deepEqual(await buildBundle("omp", join(box.root, "omp.ts"), out), []);
 	assert.match(readFileSync(out, "utf8"), /@oh-my-pi\/pi-coding-agent/);
+});
+
+test("the generated paths are what the builder writes", () => {
+	const root = fileURLToPath(new URL("../", import.meta.url));
+	const written = [
+		...renderMetadata(loadSource(root)).map(({ path }) => path),
+		README_OUTPUT,
+		...BUNDLES.map(({ out }) => out),
+	];
+	assert.deepEqual([...GENERATED_PATHS].sort(), written.sort());
 });

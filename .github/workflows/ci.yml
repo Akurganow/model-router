@@ -49,9 +49,19 @@ jobs:
         run: npm audit signatures
 
       # Each plugin runs a bundle, so validation and tests check a fresh build of
-      # src/. The step builds the Claude Code and the omp bundle.
-      - name: Build the plugin bundles
+      # src/. The step builds the manifests, the catalogues and both bundles.
+      - name: Build the generated files
         run: node scripts/build.ts
+
+      # The generated files are committed, because the plugin installs read them
+      # from the repository. A difference means the commit holds a stale copy.
+      - name: Check that the generated files match the commit
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git status --porcelain
+            echo "::error::Generated files differ from the commit. Run node scripts/build.ts and commit the result."
+            exit 1
+          fi
 
       # src/ declares the few mod types it uses, so it type-checks without the
       # declarations Claude Code writes beside a loaded mod. The plugin tests
@@ -61,10 +71,6 @@ jobs:
 
       - name: Lint and check the formatting
         run: npx biome ci --error-on-warnings .
-
-      # --strict fails on warnings too, as the publishing docs say to run it in CI.
-      - name: Validate the plugin
-        run: claude plugin validate --strict plugins/model-router
 
       # Every hook and engine call is a line in the directory's review and in
       # the README. A change here is a decision, not a side effect.
@@ -78,5 +84,67 @@ jobs:
       - name: Check the versions
         run: node scripts/set-version.ts --check
 
+      # The test script in package.json holds the globs and the timeout, so
+      # CI and npm run check run the same set.
       - name: Run the source, script and omp tests
-        run: node --test 'src/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-omp/tests/*.test.ts'
+        run: npm test
+
+  # A user installs the committed files, so this job runs no build. It proves
+  # that each client accepts the manifests and catalogues as they are checked in.
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Keeps Claude Code at the pinned version for the whole job.
+      DISABLE_AUTOUPDATER: "1"
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-node
+
+      - uses: ./.github/actions/setup-claude-code
+
+      # --strict fails on warnings too, as the publishing docs say to run it in
+      # CI. The second command validates .claude-plugin/marketplace.json.
+      - name: Validate the plugin and the catalogue
+        run: |
+          claude plugin validate --strict plugins/model-router
+          claude plugin validate --strict .
+
+      - name: Install the Claude Code plugin from the checkout
+        run: |
+          claude plugin marketplace add "$PWD"
+          claude plugin install model-router@model-router
+          claude plugin list | grep -F model-router
+
+      - uses: ./.github/actions/setup-omp
+
+      - name: Install the omp plugin from the checkout
+        run: |
+          omp plugin marketplace add "$PWD"
+          omp plugin install model-router@model-router
+          omp plugin list | grep -F model-router
+
+  # Public logs and published files must not carry facts about a contributor's
+  # setup. The base is the commit the change started from, so the scan reads
+  # only the lines the change adds.
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-node
+
+      # The base commit comes through env, because a script text built from
+      # event data could run injected commands.
+      - name: Scan for owner-setup facts
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/scan-owner-setup.ts --base "$BASE"

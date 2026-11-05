@@ -1,12 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { SOURCE_PATH } from "./build/source.ts";
 
 type Manifest = {
 	path: string;
 	versionPath: readonly (string | number)[];
 };
 
-// Every harness ships from one release, so every manifest here names one version.
+// The generated manifests that carry a version; the builder writes each from the source.
 // The omp catalog entry declares a version so omp offers upgrades.
 export const MANIFESTS: readonly Manifest[] = [
 	{
@@ -27,13 +28,20 @@ function versionOf(json: unknown, versionPath: Manifest["versionPath"]) {
 	return typeof node === "string" ? node : "none";
 }
 
+// A source bumped without a build differs from the manifests, and the check names both.
+export const SOURCE: Manifest = { path: SOURCE_PATH, versionPath: ["version"] };
+
+/**
+ * Returns one problem per missing file, and one more when the source and the
+ * manifests do not carry a single version, naming each version and its files.
+ */
 export function checkVersions(
 	root: string,
 	manifests: readonly Manifest[] = MANIFESTS,
 ): string[] {
 	const problems: string[] = [];
 	const versions = new Map<string, string[]>();
-	for (const { path, versionPath } of manifests) {
+	for (const { path, versionPath } of [SOURCE, ...manifests]) {
 		if (!existsSync(join(root, path))) {
 			problems.push(`${path} is missing`);
 			continue;

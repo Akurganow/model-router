@@ -41,10 +41,20 @@ const choose = (setting: ValueSetting, value: string) => {
 };
 const lines = (...parts: string[]) => parts.join("\n");
 const SETTLE_MS = 20;
-const MAX_TICKS = 100;
+const DIALOG_WAIT_MS = 5000;
+/**
+ * Waits until the given number of dialogs has opened. A call opens its dialog
+ * after it reads the settings, and a busy machine can delay that past any fixed
+ * number of event-loop turns, so the wait is by condition and fails the test
+ * when the time runs out.
+ */
 const settle = async (dialogs: number) => {
-	for (let tick = 0; tick < MAX_TICKS && world.dialogs.length < dialogs; tick++)
-		await new Promise((resolve) => setImmediate(resolve));
+	const deadline = Date.now() + DIALOG_WAIT_MS;
+	while (world.dialogs.length < dialogs) {
+		if (Date.now() > deadline)
+			assert.fail(`dialog ${dialogs} did not open in ${DIALOG_WAIT_MS} ms`);
+		await new Promise((resolve) => setTimeout(resolve, 1));
+	}
 };
 
 test("the commands and the tool register under their names", () => {
