@@ -1,0 +1,87 @@
+{
+	"$schema": "./source.schema.json",
+	"name": "model-router",
+	"version": "0.16.1",
+	"license": "MIT",
+	"homepage": "https://github.com/Akurganow/model-router",
+	"repository": "https://github.com/Akurganow/model-router",
+	"author": {
+		"name": "Akurganow",
+		"url": "https://github.com/Akurganow"
+	},
+	"keywords": [
+		"claude-code",
+		"mod",
+		"subagents",
+		"model-routing",
+		"typesafe",
+		"jev"
+	],
+	"privacyPolicyUrls": {
+		"claude": "https://github.com/Akurganow/model-router/blob/main/plugins/model-router/PRIVACY.md",
+		"omp": "https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/PRIVACY.md"
+	},
+	"descriptions": {
+		"claude": {
+			"manifest": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev. For each routed Agent call it sends the task text, condensed to at most 12,000 characters, the call's one-line description and the agent's description, cut to 500 characters, with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider option allows, each with its own key. The built-in general-purpose and claude agents send a fixed text in place of their description. The scope option picks the calls: core routes the four built-in agents, extended also routes user, project and plugin agents and sends their text. A config tool opens the plugin's own dialog to change both options. A key set as an environment variable is visible to every process Claude Code starts.",
+			"catalogue": "Routes each Claude Code subagent to a Claude model and effort that fits its task, judged by Jev. On every Agent call it sends the subagent's task text, condensed to at most 12,000 characters, and its descriptions, with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider option allows, each with its own key. The built-in general-purpose and claude agents send a fixed text in place of their description."
+		},
+		"omp": {
+			"manifest": "Routes Oh My Pi subagents to the smol or slow model role, judged by Jev. It sends the task text, condensed to at most 12,000 characters, and the agent's description, cut to 500 characters, with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows. The bundled task agent sends a fixed text in place of its description. The scope setting picks the agents: core routes the bundled task agent, extended routes every agent whose model you did not set. A project can set scope, and extended there can raise spend on slow. The plugin can store a key you type in its dialog. A key set as an environment variable is visible to every process omp starts.",
+			"catalogue": "Routes each Oh My Pi task subagent to the smol or slow model role, judged by Jev from the redacted task text and the agent's description, which it sends to api.typesafe.ai, openrouter.ai or both, as its provider setting allows. The bundled task agent sends a fixed text in place of its description."
+		}
+	},
+	"options": {
+		"provider": {
+			"default": "typesafe",
+			"title": "Jev provider",
+			"descriptions": {
+				"claude": "Which providers may score a subagent call, and in which order. typesafe: TypeSafe only. openrouter: OpenRouter only. auto: TypeSafe, then OpenRouter if TypeSafe fails. openrouter-first: OpenRouter, then TypeSafe. With auto or openrouter-first and both keys set, one call may reach both companies.",
+				"omp": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe."
+			}
+		},
+		"scope": {
+			"default": "core",
+			"title": "Routing scope",
+			"descriptions": {
+				"claude": "Which Agent calls the plugin routes. core: the built-in agents general-purpose, claude, Explore and Plan only. extended: also any Agent call that passes no model, including plugin and user agents, replacing the model and effort their definition sets. Forks and named calls stay unrouted.",
+				"omp": "Which subagents are routed. core: the task agent only. extended: every agent whose model you did not set, bundled agents included."
+			}
+		}
+	},
+	"claude": {
+		"skills": ["."],
+		"commandContents": {
+			"provider": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"provider\" it asks the person which providers should score subagent calls and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its provider option in the plugin's settings.",
+			"scope": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"scope\" it asks the person which agent calls the router should route and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its scope option in the plugin's settings."
+		},
+		"userConfig": {
+			"optionType": "string",
+			"keys": {
+				"api_key": {
+					"type": "string",
+					"title": "TypeSafe API key",
+					"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider option allows TypeSafe. The README says where to get one.",
+					"sensitive": true
+				},
+				"openrouter_api_key": {
+					"type": "string",
+					"title": "OpenRouter API key",
+					"description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the provider option allows OpenRouter.",
+					"sensitive": true
+				}
+			}
+		},
+		"catalogueSource": "./plugins/model-router"
+	},
+	"omp": {
+		"package": {
+			"name": "model-router-omp",
+			"private": true,
+			"type": "module",
+			"extensions": ["./extension/index.js"]
+		},
+		"settingType": "enum",
+		"catalogueSource": "./plugins/model-router-omp"
+	}
+}

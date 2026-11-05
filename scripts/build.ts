@@ -1,6 +1,11 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { renderClaude } from "./build/claude.ts";
+import { formatJson, type Rendered } from "./build/json.ts";
+import { renderOmp } from "./build/omp.ts";
+import { loadSource, type Source } from "./build/source.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const TIMERS = "src/timers.ts";
@@ -58,8 +63,23 @@ export function checkClaudeBundle(code: string): string[] {
 	return problems;
 }
 
-if (import.meta.main) {
-	const problems = [
+export const renderMetadata = (source: Source): Rendered[] => [
+	...renderClaude(source),
+	...renderOmp(source),
+];
+
+function writeMetadata(root: string): void {
+	for (const { path, text } of renderMetadata(loadSource(root)))
+		writeFileSync(join(root, path), formatJson(path, text, root));
+}
+
+async function main(): Promise<string[]> {
+	try {
+		writeMetadata(ROOT);
+	} catch (error) {
+		return [error instanceof Error ? error.message : String(error)];
+	}
+	return [
 		...(await buildBundle(
 			"claude",
 			"src/claude.ts",
@@ -71,6 +91,10 @@ if (import.meta.main) {
 			"plugins/model-router-omp/extension/index.js",
 		)),
 	];
+}
+
+if (import.meta.main) {
+	const problems = await main();
 	for (const problem of problems) console.error(problem);
 	process.exitCode = problems.length === 0 ? 0 : 1;
 }

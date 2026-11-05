@@ -1,0 +1,81 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import type { ValueSetting } from "../../src/settings.ts";
+import { type Schema, validate } from "./schema.ts";
+
+export const SOURCE_PATH = "metadata/source.json";
+export const SCHEMA_PATH = "metadata/source.schema.json";
+
+type PerHarness = { readonly claude: string; readonly omp: string };
+type Secret = {
+	readonly type: string;
+	readonly title: string;
+	readonly description: string;
+	readonly sensitive: boolean;
+};
+
+export type Source = {
+	readonly name: string;
+	readonly version: string;
+	readonly license: string;
+	readonly homepage: string;
+	readonly repository: string;
+	readonly author: { readonly name: string; readonly url: string };
+	readonly keywords: readonly string[];
+	readonly privacyPolicyUrls: PerHarness;
+	readonly descriptions: Readonly<
+		Record<
+			"claude" | "omp",
+			{ readonly manifest: string; readonly catalogue: string }
+		>
+	>;
+	readonly options: Readonly<
+		Record<
+			ValueSetting,
+			{
+				readonly default: string;
+				readonly title: string;
+				readonly descriptions: PerHarness;
+			}
+		>
+	>;
+	readonly claude: {
+		readonly skills: readonly string[];
+		readonly commandContents: Readonly<Record<ValueSetting, string>>;
+		readonly userConfig: {
+			readonly optionType: string;
+			readonly keys: {
+				readonly api_key: Secret;
+				readonly openrouter_api_key: Secret;
+			};
+		};
+		readonly catalogueSource: string;
+	};
+	readonly omp: {
+		readonly package: {
+			readonly name: string;
+			readonly private: boolean;
+			readonly type: string;
+			readonly extensions: readonly string[];
+		};
+		readonly settingType: string;
+		readonly catalogueSource: string;
+	};
+};
+
+const readJson = (root: string, path: string): unknown =>
+	JSON.parse(readFileSync(join(root, path), "utf8"));
+
+export const loadSchema = (root: string): Schema =>
+	readJson(root, SCHEMA_PATH) as Schema;
+
+// The schema is checked first, so the cast below only names a shape already proven.
+export function loadSource(root: string): Source {
+	const data = readJson(root, SOURCE_PATH);
+	const problems = validate(loadSchema(root), data);
+	if (problems.length > 0)
+		throw new Error(
+			`${SOURCE_PATH} does not match ${SCHEMA_PATH}:\n${problems.join("\n")}`,
+		);
+	return data as Source;
+}
