@@ -4,6 +4,7 @@ import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "./brief.ts";
 import { type Gate, type GateInput, gateSpawn } from "./openclaw-gates.ts";
 import type { OpenClawSettings } from "./openclaw-settings.ts";
 import type { OpenClawConfig } from "./openclaw-types.ts";
+import { UNREADABLE } from "./settings.ts";
 
 const SETTINGS: OpenClawSettings = {
 	provider: "typesafe",
@@ -391,10 +392,99 @@ test("effort step 5: otherwise the ladder effort is set", () => {
 		kind: "set",
 	});
 	assert.deepEqual(effort(gate({ config: {} })), { kind: "set" });
-	assert.deepEqual(effort(gate({ config: undefined })), { kind: "set" });
+});
+
+test("an unreadable config skips the route with settings unreadable", () => {
+	assert.equal(skipped(gate({ config: undefined })), UNREADABLE);
+});
+
+test("settings unreadable comes after every other skip of the own agent", () => {
+	assert.equal(
+		skipped(gate({ config: undefined, hasKey: false })),
+		"key unset",
+	);
+	const noModels = {
+		...SETTINGS,
+		smallModel: undefined,
+		largeModel: undefined,
+	};
+	assert.equal(
+		skipped(gate({ config: undefined, settings: noModels })),
+		"no small or large model",
+	);
 });
 
 test("the first match decides: under extended a global default beats a per-agent value", () => {
 	const result = gate({ config: thinking("low", "high"), settings: extended });
 	assert.deepEqual(effort(result), { kind: "keep", label: "config effort" });
 });
+
+// OpenClaw reads the older `agents.list: [{ id }]` roster when `agents.entries` is absent, and matches ids after normalising them.
+const listed = (...entries: object[]) => agents({ list: entries });
+
+test("an agent in the list roster is known, and its own model skips the spawn", () => {
+	routed(other(listed({ id: OTHER })));
+	assert.equal(
+		skipped(other(listed({ id: OTHER, model: "x/y" }))),
+		`${OTHER} sets its own model`,
+	);
+	assert.equal(
+		skipped(other(listed({ id: "else" }))),
+		`${OTHER} agent unknown`,
+	);
+});
+
+test("an agent in the list roster sends its description as the role", () => {
+	const config = listed({ id: OTHER, description: "Writes docs." });
+	assert.equal(routed(other(config)).role, roleText("Writes docs."));
+});
+
+test("the list roster is read only when entries is absent", () => {
+	const config = agents({ entries: {}, list: [{ id: OTHER }] });
+	assert.equal(skipped(other(config)), `${OTHER} agent unknown`);
+});
+
+test("an agent id matches its entry key in any case", () => {
+	routed(other(agents({ entries: { Writer: {} } }), { agentId: "WRITER" }));
+	routed(other(listed({ id: "Writer" }), { agentId: "writer" }));
+	assert.equal(
+		skipped(
+			other(agents({ entries: { Writer: { model: "x/y" } } }), {
+				agentId: "writer",
+			}),
+		),
+		"writer sets its own model",
+	);
+});
+
+test("the named agent and the requester are the same agent in any case or padding", () => {
+	for (const agentId of ["MAIN", " Main "])
+		assert.equal(routed(withParams({ agentId })).agentId, REQUESTER);
+	assert.equal(
+		routed(gate({ requester: "Main", params: { task: "t", agentId: "main" } }))
+			.agentId,
+		"Main",
+	);
+});
+
+const ROSTERS: [string, (id: string, subagents: object) => OpenClawConfig][] = [
+	["entries", (id, subagents) => agents({ entries: { [id]: { subagents } } })],
+	["list", (id, subagents) => listed({ id, subagents })],
+];
+for (const [kind, build] of ROSTERS)
+	test(`the subagent model and thinking in ${kind} are found in another case`, () => {
+		const model = { model: "a/b" };
+		assert.equal(
+			skipped(gate({ config: build("MAIN", model) })),
+			"subagent model set",
+		);
+		assert.equal(skipped(other(build("WRITER", model))), "subagent model set");
+		const thinking = { thinking: "high" };
+		assert.deepEqual(effort(gate({ config: build("MAIN", thinking) })), {
+			kind: "keep",
+			label: "config effort",
+		});
+		assert.deepEqual(effort(other(build("WRITER", thinking))), {
+			kind: "set",
+		});
+	});

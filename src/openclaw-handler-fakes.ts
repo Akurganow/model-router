@@ -5,7 +5,7 @@ import {
 	type FakeApiOverrides,
 	type Levels,
 } from "./openclaw-fakes.ts";
-import { createBeforeToolCall } from "./openclaw-router.ts";
+import { createBeforeToolCall, SPAWN_TOOL } from "./openclaw-router.ts";
 import type { OpenClawConfig, ToolContext } from "./openclaw-types.ts";
 
 // The shared set-up of the handler tests: an api, a Jev fetch and a clock, with one handler.
@@ -18,7 +18,7 @@ export const SETTINGS = {
 export const DEADLINE_MS = 8000;
 export const REQUESTER = "main";
 export const CONTEXT: ToolContext = {
-	toolName: "sessions_spawn",
+	toolName: SPAWN_TOOL,
 	agentId: REQUESTER,
 };
 export const TASK = "do the work";
@@ -49,10 +49,7 @@ export function setup(options: Setup = {}) {
 		params: Record<string, unknown> = {},
 		ctx: ToolContext = CONTEXT,
 	) =>
-		handler(
-			{ toolName: "sessions_spawn", params: { task: TASK, ...params } },
-			ctx,
-		);
+		handler({ toolName: SPAWN_TOOL, params: { task: TASK, ...params } }, ctx);
 	return { ...fake, jev, time, handler, call };
 }
 export const lines = (s: ReturnType<typeof setup>) =>

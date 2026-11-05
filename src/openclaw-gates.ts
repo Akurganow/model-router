@@ -1,7 +1,9 @@
 import { DEFAULT_ROLE, roleText } from "./brief.ts";
+import { findAgent, sameAgent } from "./openclaw-agents.ts";
 import type { OpenClawSettings } from "./openclaw-settings.ts";
 import type { OpenClawConfig, SpawnParams } from "./openclaw-types.ts";
 import { isRecord, nonEmpty } from "./part.ts";
+import { UNREADABLE } from "./settings.ts";
 
 export type EffortRule =
 	| { readonly kind: "set" }
@@ -58,7 +60,7 @@ const agentField = (
 	config: OpenClawConfig | undefined,
 	id: string | undefined,
 	...path: string[]
-) => at(config, "agents", "entries", id, ...path);
+) => at(findAgent(config, id), ...path);
 
 function namesModel({ model }: SpawnParams): boolean {
 	return (
@@ -121,7 +123,10 @@ export function gateSpawn(input: GateInput): Gate {
 		typeof params.agentId === "string" && params.agentId !== ""
 			? params.agentId
 			: undefined;
-	const own = named === undefined || named === requester;
+	// "The spawn of the requesting agent itself": no agent id, or the requester's own id.
+	const own =
+		named === undefined ||
+		(requester !== undefined && sameAgent(named, requester));
 	const target = own ? requester : named;
 	// omp's order: the key gate, the scope, the user's own model choice, the agent, the model slots.
 	if (!input.hasKey) return skip("key unset");
@@ -134,6 +139,8 @@ export function gateSpawn(input: GateInput): Gate {
 	}
 	if (settings.smallModel === undefined && settings.largeModel === undefined)
 		return skip("no small or large model");
+	// Without the config the user's own subagent model and effort cannot be checked.
+	if (input.config === undefined) return skip(UNREADABLE);
 	return {
 		outcome: "route",
 		agentId: target,

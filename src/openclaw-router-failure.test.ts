@@ -9,7 +9,12 @@ import {
 	setup,
 	TASK,
 } from "./openclaw-handler-fakes.ts";
-import { createBeforeToolCall, MIN_DEADLINE_MS } from "./openclaw-router.ts";
+import {
+	createBeforeToolCall,
+	MIN_DEADLINE_MS,
+	SPAWN_TOOL,
+} from "./openclaw-router.ts";
+import type { BeforeToolCallEvent, ToolContext } from "./openclaw-types.ts";
 
 describe("failure", () => {
 	const faults: [string, (s: ReturnType<typeof setup>) => void][] = [
@@ -62,7 +67,7 @@ describe("failure", () => {
 			},
 		};
 		assert.equal(
-			await s.handler({ toolName: "sessions_spawn", params }, CONTEXT),
+			await s.handler({ toolName: SPAWN_TOOL, params }, CONTEXT),
 			undefined,
 		);
 	});
@@ -77,10 +82,52 @@ describe("failure", () => {
 			env: {},
 		});
 		assert.equal(
-			await handler(
-				{ toolName: "sessions_spawn", params: { task: TASK } },
-				CONTEXT,
-			),
+			await handler({ toolName: SPAWN_TOOL, params: { task: TASK } }, CONTEXT),
+			undefined,
+		);
+	});
+});
+
+describe("a malformed hook call", () => {
+	const spawn = { toolName: SPAWN_TOOL, params: { task: TASK } };
+	const levels = { tier: 0, work: 1 };
+
+	it("routes the own default agent when ctx is undefined", async () => {
+		const s = setup({ levels });
+		assert.ok(await s.handler(spawn, undefined as unknown as ToolContext));
+	});
+
+	it("routes the own default agent when ctx is empty", async () => {
+		const s = setup({ levels });
+		assert.ok(await s.handler(spawn, {} as ToolContext));
+	});
+
+	it("returns nothing when the abort signal is not a signal", async () => {
+		const s = setup({ levels });
+		const ctx = { ...CONTEXT, abortSignal: {} as AbortSignal };
+		assert.equal(await s.handler(spawn, ctx), undefined);
+		assert.equal(s.jev.requests.length, 0);
+	});
+
+	it("returns nothing when the clock throws", async () => {
+		const s = setup({ levels });
+		const handler = createBeforeToolCall(s.api, DEADLINE_MS, {
+			fetchFn: s.jev.fetch,
+			clock: {
+				after: () => {
+					throw new Error("clock");
+				},
+			},
+			env: {},
+		});
+		assert.equal(await handler(spawn, CONTEXT), undefined);
+		assert.equal(s.jev.requests.length, 0);
+	});
+
+	it("returns nothing when the event is missing", async () => {
+		const s = setup({ levels });
+		assert.equal(
+			await s.handler(undefined as unknown as BeforeToolCallEvent, CONTEXT),
 			undefined,
 		);
 	});

@@ -13,6 +13,7 @@ import {
 	type Keys,
 	type OpenClawSettings,
 	readKeys,
+	readLive,
 	readSettings,
 } from "./openclaw-settings.ts";
 import type {
@@ -26,12 +27,12 @@ import type {
 } from "./openclaw-types.ts";
 import { type Level, nonEmpty } from "./part.ts";
 import { plan } from "./provider.ts";
-import { UNREADABLE } from "./settings.ts";
 
 // Below this the deadline leaves too little time for one Jev request.
 export const MIN_DEADLINE_MS = 1000;
 export const LINE_PREFIX = "model-router ";
-const SPAWN_TOOL = "sessions_spawn";
+export const SPAWN_TOOL = "sessions_spawn";
+const MIDDLE_TIER = 1;
 const SLOT_NAMES = { 0: "small", 2: "large" } as const;
 
 export type Clock = {
@@ -53,14 +54,6 @@ type Spawn = {
 	readonly requester: string | undefined;
 	readonly log: (message: string) => void;
 };
-
-function liveConfig(api: OpenClawApi): OpenClawConfig | undefined {
-	try {
-		return api.runtime.config.current();
-	} catch {
-		return undefined;
-	}
-}
 
 const hasKeys = (keys: Keys): boolean => Object.keys(keys).length > 0;
 
@@ -89,19 +82,32 @@ async function score(
 	return decide(decision, tier.key, work.key);
 }
 
-function slotFor(settings: OpenClawSettings, level: Level) {
-	if (level === 1) return { name: undefined, model: undefined };
-	return {
-		name: SLOT_NAMES[level],
-		model: level === 0 ? settings.smallModel : settings.largeModel,
-	};
+type Slot =
+	| { readonly model: string | undefined }
+	| { readonly skipped: string };
+
+// The middle tier keeps the spawn's own model. An end tier needs its slot set and resolved for the agent.
+async function slotFor(
+	{ api }: Spawn,
+	settings: OpenClawSettings,
+	config: OpenClawConfig,
+	agentId: string | undefined,
+	level: Level,
+): Promise<Slot> {
+	if (level === MIDDLE_TIER) return { model: undefined };
+	const name = SLOT_NAMES[level];
+	const model = level === 0 ? settings.smallModel : settings.largeModel;
+	if (model === undefined) return { skipped: `${name} model unset` };
+	if (!(await slotResolves(api.runtime, config, agentId, model)))
+		return { skipped: `${name} model unresolved` };
+	return { model };
 }
 
 async function routeSpawn(
 	spawn: Spawn,
 ): Promise<BeforeToolCallResult | undefined> {
 	const { api, deps, params, requester, log } = spawn;
-	const config = liveConfig(api);
+	const config = readLive(api);
 	const settings = readSettings(config, api.pluginConfig);
 	const keys = readKeys(config, api.pluginConfig, settings.provider, deps.env);
 	const gate = gateSpawn({
@@ -113,17 +119,18 @@ async function routeSpawn(
 	});
 	if (gate.outcome === "pass") return undefined;
 	if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
-	// Without the config the user's own subagent model and effort cannot be checked.
-	if (config === undefined) return void log(skippedLine(UNREADABLE));
 	const decided = await score(spawn, settings, keys, gate);
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
-	const { name, model } = slotFor(settings, decided.tier);
-	if (name !== undefined) {
-		if (model === undefined)
-			return void log(skippedLine(`${name} model unset`));
-		if (!(await slotResolves(api.runtime, config, gate.agentId, model)))
-			return void log(skippedLine(`${name} model unresolved`));
-	}
+	// The gate skips an unreadable config, so a route always has one.
+	const slot = await slotFor(
+		spawn,
+		settings,
+		config ?? {},
+		gate.agentId,
+		decided.tier,
+	);
+	if ("skipped" in slot) return void log(skippedLine(slot.skipped));
+	const { model } = slot;
 	const kept = gate.effort.kind === "keep" ? gate.effort.label : undefined;
 	const effort = effortFor(decided.tier, decided.work);
 	log(
@@ -152,26 +159,30 @@ export function createBeforeToolCall(
 	deps: RouterDeps,
 ): BeforeToolCallHandler {
 	return async (event: BeforeToolCallEvent, ctx: ToolContext) => {
-		if (deadlineMs < MIN_DEADLINE_MS || event.toolName !== SPAWN_TOOL)
-			return undefined;
-		const stop = new AbortController();
-		const signal = AbortSignal.any(
-			ctx.abortSignal ? [stop.signal, ctx.abortSignal] : [stop.signal],
-		);
-		const log = (message: string) => {
-			if (!signal.aborted) api.logger.info(LINE_PREFIX + message);
-		};
-		return await new Promise<BeforeToolCallResult | undefined>((settle) => {
-			const timer = deps.clock.after(deadlineMs, () => {
-				stop.abort(LIMIT_REACHED);
-				settle(undefined);
+		try {
+			if (deadlineMs < MIN_DEADLINE_MS || event?.toolName !== SPAWN_TOOL)
+				return undefined;
+			const stop = new AbortController();
+			const signal = AbortSignal.any(
+				ctx?.abortSignal ? [stop.signal, ctx.abortSignal] : [stop.signal],
+			);
+			const log = (message: string) => {
+				if (!signal.aborted) api.logger.info(LINE_PREFIX + message);
+			};
+			return await new Promise<BeforeToolCallResult | undefined>((settle) => {
+				const timer = deps.clock.after(deadlineMs, () => {
+					stop.abort(LIMIT_REACHED);
+					settle(undefined);
+				});
+				const requester = nonEmpty(ctx?.agentId);
+				routeSpawn({ api, deps, signal, params: event.params, requester, log })
+					.catch(() => undefined)
+					.then((result) => (signal.aborted ? undefined : result))
+					.then(settle)
+					.finally(() => timer.cancel());
 			});
-			const requester = nonEmpty(ctx.agentId);
-			routeSpawn({ api, deps, signal, params: event.params, requester, log })
-				.catch(() => undefined)
-				.then((result) => (signal.aborted ? undefined : result))
-				.then(settle)
-				.finally(() => timer.cancel());
-		});
+		} catch {
+			return undefined;
+		}
 	};
 }

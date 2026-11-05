@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { COMMAND_NAMES, TOOL_NAME } from "../src/openclaw-config.ts";
+import { SPAWN_TOOL } from "../src/openclaw-router.ts";
+import { PLUGIN_ID } from "../src/openclaw-settings.ts";
+import type { OpenClawApi } from "../src/openclaw-types.ts";
 import {
 	inspectProblems,
 	main,
@@ -62,6 +66,41 @@ test("the shipped bundle registers the hook, the tool and both commands", async 
 	assert.deepEqual(registrationProblems(plugin), []);
 });
 
+test("a plugin registering the names that src defines has no problems", () => {
+	const problems = registrationProblems({
+		register: (api: OpenClawApi) => {
+			api.on("before_tool_call", async () => undefined, {
+				matcher: [SPAWN_TOOL],
+			});
+			api.registerTool({
+				name: TOOL_NAME,
+				label: "l",
+				description: "d",
+				parameters: {},
+				execute: async () => ({ content: [] }),
+			});
+			for (const name of COMMAND_NAMES)
+				api.registerCommand({
+					name,
+					description: "d",
+					handler: () => ({}),
+				});
+		},
+	});
+	assert.deepEqual(problems, []);
+});
+
+test("the bundle registers into a full-mode api with a runtime, as a Gateway gives", () => {
+	const seen: unknown[] = [];
+	const problems = registrationProblems({
+		register: (api: OpenClawApi) => {
+			seen.push(api.id, api.registrationMode, api.runtime.config.current());
+		},
+	});
+	assert.deepEqual(seen, [PLUGIN_ID, "full", {}]);
+	assert.equal(problems.length, 4);
+});
+
 test("a plugin that registers nothing is reported on every count", () => {
 	const problems = registrationProblems({
 		id: "model-router-openclaw",
@@ -70,6 +109,15 @@ test("a plugin that registers nothing is reported on every count", () => {
 	assert.equal(problems.length, 4);
 	assert.match(problems.join("\n"), /before_tool_call/);
 	assert.match(problems.join("\n"), /model-router-scope/);
+});
+
+test("a hook without options does not match the spawn tool", () => {
+	const problems = registrationProblems({
+		register: (api: OpenClawApi) => {
+			api.on("before_tool_call", async () => undefined);
+		},
+	});
+	assert.match(problems.join("\n"), new RegExp(`does not match ${SPAWN_TOOL}`));
 });
 
 test("a plugin without a register function is a problem", () => {

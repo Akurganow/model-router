@@ -1,8 +1,10 @@
 import {
+	type Environment,
 	type Keys,
 	type OpenClawSettings,
 	PLUGIN_ID,
 	readKeys,
+	readLive,
 	readSettings,
 } from "./openclaw-settings.ts";
 import type {
@@ -34,6 +36,9 @@ import {
 
 export const TOOL_NAME = "model_router_config";
 const COMMAND_PREFIX = "model-router-";
+const commandName = (setting: ValueSetting): string =>
+	`${COMMAND_PREFIX}${setting}`;
+export const COMMAND_NAMES: readonly string[] = VALUE_SETTINGS.map(commandName);
 const ADMIN_SCOPE = "operator.admin";
 const LINE_BREAK = "\n";
 const UNSET = "unset";
@@ -48,17 +53,12 @@ type Snapshot = {
 };
 
 // The live config holds a command's write; a failed read leaves the plugin config OpenClaw loaded at start-up.
-function snapshot(api: OpenClawApi): Snapshot {
-	let live: OpenClawConfig | undefined;
-	try {
-		live = api.runtime.config.current();
-	} catch {
-		live = undefined;
-	}
+function snapshot(api: OpenClawApi, env: Environment): Snapshot {
+	const live = readLive(api);
 	const settings = readSettings(live, api.pluginConfig);
 	return {
 		settings,
-		keys: readKeys(live, api.pluginConfig, settings.provider, process.env),
+		keys: readKeys(live, api.pluginConfig, settings.provider, env),
 	};
 }
 
@@ -85,7 +85,7 @@ function readAll({ settings, keys }: Snapshot): string {
 function howToChange(setting: unknown): string {
 	if (isValueSetting(setting))
 		return [
-			`Type /${COMMAND_PREFIX}${setting} <value> in the chat.`,
+			`Type /${commandName(setting)} <value> in the chat.`,
 			useOneOf(setting),
 		].join(LINE_BREAK);
 	return isKeySetting(setting)
@@ -93,15 +93,17 @@ function howToChange(setting: unknown): string {
 		: badCall(SETTING_NAMES);
 }
 
-function runTool(api: OpenClawApi, params: unknown): string {
+function runTool(api: OpenClawApi, env: Environment, params: unknown): string {
 	const { setting } = isRecord(params) ? params : {};
-	return setting === undefined ? readAll(snapshot(api)) : howToChange(setting);
+	return setting === undefined
+		? readAll(snapshot(api, env))
+		: howToChange(setting);
 }
 
-// Both checks must hold: the owner flag, and the admin scope the gateway grants.
-const isOwner = (ctx: CommandContext): boolean =>
-	ctx.senderIsOwner === true &&
-	ctx.gatewayClientScopes?.includes(ADMIN_SCOPE) === true;
+// OpenClaw runs the `requiredScopes` check before the handler. A channel message carries no
+// gateway scopes, and the check lets its owner through (src/plugins/plugin-command-execution.ts L162-L173),
+// so the owner flag is the one check left here.
+const isOwner = (ctx: CommandContext): boolean => ctx.senderIsOwner === true;
 
 function store(draft: OpenClawConfig, setting: ValueSetting, value: string) {
 	const plugins = draft.plugins ?? {};
@@ -139,11 +141,12 @@ async function write(
 
 async function runCommand(
 	api: OpenClawApi,
+	env: Environment,
 	ctx: CommandContext,
 	setting: ValueSetting,
 ): Promise<string> {
 	const value = (ctx.args ?? "").trim();
-	const current = snapshot(api).settings[setting];
+	const current = snapshot(api, env).settings[setting];
 	if (value === "") return valueLine(setting, current);
 	if (!isValue(setting, value)) return useOneOf(setting);
 	if (!isOwner(ctx))
@@ -163,7 +166,7 @@ function failure(err: unknown): string {
 	return `error: ${err instanceof Error ? err.message : String(err)}`;
 }
 
-export function registerConfig(api: OpenClawApi): void {
+export function registerConfig(api: OpenClawApi, env: Environment): void {
 	api.registerTool({
 		name: TOOL_NAME,
 		label: TOOL_LABEL,
@@ -175,7 +178,7 @@ export function registerConfig(api: OpenClawApi): void {
 		},
 		execute: async (_id, params) => {
 			try {
-				return textOf(runTool(api, params));
+				return textOf(runTool(api, env, params));
 			} catch (err) {
 				return textOf(failure(err));
 			}
@@ -183,13 +186,13 @@ export function registerConfig(api: OpenClawApi): void {
 	});
 	for (const setting of VALUE_SETTINGS)
 		api.registerCommand({
-			name: `${COMMAND_PREFIX}${setting}`,
+			name: commandName(setting),
 			description: COMMAND_DESCRIPTIONS[setting],
 			acceptsArgs: true,
 			requiredScopes: [ADMIN_SCOPE],
 			handler: async (ctx): Promise<CommandResult> => {
 				try {
-					return { text: await runCommand(api, ctx, setting) };
+					return { text: await runCommand(api, env, ctx, setting) };
 				} catch (err) {
 					return { text: failure(err) };
 				}

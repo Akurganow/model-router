@@ -71,6 +71,40 @@ test("a scope outside the enumeration counts as the default", () => {
 		assert.equal(readSettings(live({ scope: bad }), undefined).scope, "core");
 });
 
+test("an invalid live value falls through to the valid plugin config value", () => {
+	const settings = readSettings(
+		live({
+			provider: "both",
+			scope: "all",
+			small_model: "  ",
+			large_model: 5,
+		}),
+		{
+			provider: "openrouter",
+			scope: "extended",
+			small_model: "a/b",
+			large_model: "c/d",
+		},
+	);
+	assert.deepEqual(settings, {
+		provider: "openrouter",
+		scope: "extended",
+		smallModel: "a/b",
+		largeModel: "c/d",
+	});
+});
+
+test("when no source holds a valid value the default or unset applies", () => {
+	const settings = readSettings(live({ provider: "both", small_model: "" }), {
+		provider: 3,
+		small_model: null,
+	});
+	assert.deepEqual(
+		[settings.provider, settings.smallModel],
+		["typesafe", undefined],
+	);
+});
+
 test("a model slot is trimmed, and a blank or non-string slot is unset", () => {
 	const set = readSettings(live({ small_model: "  a/b  " }), undefined);
 	assert.equal(set.smallModel, "a/b");

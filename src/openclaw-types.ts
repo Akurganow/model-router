@@ -1,7 +1,7 @@
-// The parts of OpenClaw's plugin API this adapter uses, from OpenClaw 2026.10.10.
+// The parts of OpenClaw's plugin API this adapter uses. Every source path below is a file of OpenClaw 2026.10.10.
 // Nothing here imports OpenClaw. Every field OpenClaw may omit or vary is optional or `unknown`, so the adapter checks it.
 
-// src/plugins/plugin-registration.types.ts, OpenClaw 2026.10.10.
+// src/plugins/plugin-registration.types.ts.
 export type RegistrationMode =
 	| "full"
 	| "discovery"
@@ -10,7 +10,7 @@ export type RegistrationMode =
 	| "setup-runtime"
 	| "cli-metadata";
 
-// src/plugins/logger-types.ts, OpenClaw 2026.10.10.
+// src/plugins/logger-types.ts.
 export type Logger = {
 	debug?: (message: string) => void;
 	info: (message: string) => void;
@@ -18,30 +18,33 @@ export type Logger = {
 	error: (message: string) => void;
 };
 
-// src/config/zod-schema.agent-runtime.ts, OpenClaw 2026.10.10: the subagent settings of an agent or of the defaults.
+// src/config/zod-schema.agent-runtime.ts: the subagent settings of an agent or of the defaults.
 export type SubagentSettings = {
 	model?: unknown;
 	thinking?: unknown;
 };
 
-// src/config/zod-schema.agent-entry-base.ts, OpenClaw 2026.10.10: the fields of `agents.entries.<id>` the adapter reads.
+// src/config/zod-schema.agent-entry-base.ts: the fields of an agent entry the adapter reads, from `agents.entries.<id>` or an `agents.list` item.
 export type AgentEntry = {
+	id?: unknown;
 	description?: unknown;
 	model?: unknown;
 	subagents?: SubagentSettings;
 };
 
-// docs/plugins/hooks/reference.md, OpenClaw 2026.10.10: `plugins.entries.<id>.hooks`, in ms.
+// docs/plugins/hooks/reference.md: `plugins.entries.<id>.hooks`, in ms.
 export type HookTimeoutSettings = {
 	timeoutMs?: unknown;
 	timeouts?: { before_tool_call?: unknown };
 };
 
-// src/config/types.openclaw.ts, OpenClaw 2026.10.10: the config paths the adapter reads.
+// src/config/types.openclaw.ts: the config paths the adapter reads.
 export type OpenClawConfig = {
 	agents?: {
 		defaults?: { subagents?: SubagentSettings };
 		entries?: Record<string, AgentEntry>;
+		// The older roster, src/agents/agent-roster.ts: read when `entries` is absent.
+		list?: AgentEntry[];
 	};
 	plugins?: {
 		entries?: Record<
@@ -51,15 +54,15 @@ export type OpenClawConfig = {
 	};
 };
 
-// src/agents/model-ref-shared.ts, OpenClaw 2026.10.10.
+// src/agents/model-ref-shared.ts.
 export type ModelRef = { provider: string; model: string };
 
-// src/agents/model-selection-resolve.ts, OpenClaw 2026.10.10: a rejected model string comes back as `error`.
+// src/agents/model-selection-resolve.ts: a rejected model string comes back as `error`.
 export type ResolvedModelRef =
 	| { ref: ModelRef; key: string }
 	| { error: string };
 
-// src/plugins/runtime/types-core.ts, OpenClaw 2026.10.10: `RuntimeMutateConfigFileParams`, reduced; `afterWrite` is required there.
+// src/plugins/runtime/types-core.ts: `RuntimeMutateConfigFileParams`, reduced; `afterWrite` is required there.
 export type ConfigMutation = {
 	afterWrite:
 		| { mode: "auto" }
@@ -69,7 +72,7 @@ export type ConfigMutation = {
 	mutate: (draft: OpenClawConfig) => unknown;
 };
 
-// src/plugins/runtime/types-core.ts, OpenClaw 2026.10.10: the runtime members the adapter calls.
+// src/plugins/runtime/types-core.ts: the runtime members the adapter calls.
 export type PluginRuntime = {
 	config: {
 		current: () => OpenClawConfig;
@@ -99,7 +102,7 @@ export type PluginRuntime = {
 	agent: { resolveAgentDir: (cfg: OpenClawConfig, agentId: string) => string };
 };
 
-// src/agents/tools/sessions-spawn-tool.ts, OpenClaw 2026.10.10: the `sessions_spawn` parameters the adapter reads.
+// src/agents/tools/sessions-spawn-tool.ts: the `sessions_spawn` parameters the adapter reads.
 export type SpawnParams = {
 	task?: unknown;
 	agentId?: unknown;
@@ -114,7 +117,7 @@ export type SpawnParams = {
 	taskName?: unknown;
 };
 
-// src/plugins/hook-types.ts, OpenClaw 2026.10.10: `PluginHookBeforeToolCallEvent`.
+// src/plugins/hook-types.ts: `PluginHookBeforeToolCallEvent`.
 export type BeforeToolCallEvent = {
 	toolName: string;
 	params: Record<string, unknown>;
@@ -122,7 +125,7 @@ export type BeforeToolCallEvent = {
 	runId?: string;
 };
 
-// src/plugins/hook-types.ts, OpenClaw 2026.10.10: `PluginHookToolContext`; `agentId` is the requester.
+// src/plugins/hook-types.ts: `PluginHookToolContext`; `agentId` is the requester.
 export type ToolContext = {
 	toolName: string;
 	agentId?: string;
@@ -132,29 +135,29 @@ export type ToolContext = {
 	runId?: string;
 };
 
-// src/plugins/hook-before-tool-call-result.ts, OpenClaw 2026.10.10: the adapter returns `params` and nothing else, never `block`.
+// src/plugins/hook-before-tool-call-result.ts: the adapter returns `params` and nothing else, never `block`.
 export type BeforeToolCallResult = { params?: Record<string, unknown> };
 
-// src/plugins/hook-types.ts, OpenClaw 2026.10.10: the handler type for `before_tool_call`.
+// src/plugins/hook-types.ts: the handler type for `before_tool_call`.
 export type BeforeToolCallHandler = (
 	event: BeforeToolCallEvent,
 	ctx: ToolContext,
 ) => Promise<BeforeToolCallResult | undefined>;
 
-// src/plugins/hook-types.ts, OpenClaw 2026.10.10: `PluginHookRegistrationOptions` with the tool matcher.
+// src/plugins/hook-types.ts: `PluginHookRegistrationOptions` with the tool matcher.
 export type HookOptions = {
 	matcher?: readonly [string, ...string[]];
 	priority?: number;
 	timeoutMs?: number;
 };
 
-// src/agents/tools/common.ts, OpenClaw 2026.10.10: the result of a plugin tool.
+// src/agents/tools/common.ts: the result of a plugin tool.
 export type ToolResult = {
 	content: { type: "text"; text: string }[];
 	details?: unknown;
 };
 
-// src/agents/tools/common.ts, OpenClaw 2026.10.10: `AnyAgentTool` as a plugin registers it.
+// src/agents/tools/common.ts: `AnyAgentTool` as a plugin registers it.
 export type ToolDefinition = {
 	name: string;
 	label: string;
@@ -167,7 +170,7 @@ export type ToolDefinition = {
 	) => Promise<ToolResult>;
 };
 
-// src/plugins/plugin-command.types.ts, OpenClaw 2026.10.10: `PluginCommandContext`; the gateway scopes tell who may write.
+// src/plugins/plugin-command.types.ts: `PluginCommandContext`; the gateway scopes tell who may write.
 export type CommandContext = {
 	channel: string;
 	isAuthorizedSender: boolean;
@@ -180,10 +183,10 @@ export type CommandContext = {
 	config: OpenClawConfig;
 };
 
-// src/plugins/plugin-command.types.ts, OpenClaw 2026.10.10: `PluginCommandResult`, reduced to its reply text.
+// src/plugins/plugin-command.types.ts: `PluginCommandResult`, reduced to its reply text.
 export type CommandResult = { text?: string };
 
-// src/plugins/plugin-command.types.ts, OpenClaw 2026.10.10: `OpenClawPluginCommandDefinition`.
+// src/plugins/plugin-command.types.ts: `OpenClawPluginCommandDefinition`.
 export type CommandDefinition = {
 	name: string;
 	description: string;
@@ -192,7 +195,7 @@ export type CommandDefinition = {
 	handler: (ctx: CommandContext) => CommandResult | Promise<CommandResult>;
 };
 
-// src/plugins/plugin-api.types.ts, OpenClaw 2026.10.10: `OpenClawPluginApi`, reduced to the members the adapter uses.
+// src/plugins/plugin-api.types.ts: `OpenClawPluginApi`, reduced to the members the adapter uses.
 export type OpenClawApi = {
 	id: string;
 	registrationMode: RegistrationMode;

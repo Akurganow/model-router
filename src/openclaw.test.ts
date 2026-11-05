@@ -1,18 +1,20 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import plugin, { createPlugin } from "./openclaw.ts";
+import plugin, { createPlugin, deadlineFor } from "./openclaw.ts";
 import {
 	createFakeApi,
 	createFakeClock,
 	createJevFetch,
 } from "./openclaw-fakes.ts";
+import { SPAWN_TOOL } from "./openclaw-router.ts";
 import { PLUGIN_ID } from "./openclaw-settings.ts";
 import type {
 	OpenClawApi,
 	OpenClawConfig,
 	RegistrationMode,
 } from "./openclaw-types.ts";
+import { keyLine } from "./settings.ts";
 
 const SETTINGS = {
 	provider: "typesafe",
@@ -23,11 +25,15 @@ const hooksOf = (hooks: unknown): OpenClawConfig => ({
 	plugins: { entries: { [PLUGIN_ID]: { hooks: hooks as never } } },
 });
 
-function install(config: OpenClawConfig = {}) {
-	const fake = createFakeApi({ config, pluginConfig: SETTINGS });
+function install(
+	config: OpenClawConfig = {},
+	env: Record<string, string> = {},
+	pluginConfig: Record<string, unknown> = SETTINGS,
+) {
+	const fake = createFakeApi({ config, pluginConfig });
 	const jev = createJevFetch({ tier: 0, work: 1 });
 	const time = createFakeClock();
-	createPlugin({ fetchFn: jev.fetch, clock: time.clock, env: {} }).register(
+	createPlugin({ fetchFn: jev.fetch, clock: time.clock, env }).register(
 		fake.api,
 	);
 	return { ...fake, jev, time };
@@ -37,8 +43,8 @@ function install(config: OpenClawConfig = {}) {
 async function deadlineOf(config: OpenClawConfig) {
 	const s = install(config);
 	await s.beforeToolCall()(
-		{ toolName: "sessions_spawn", params: { task: "work" } },
-		{ toolName: "sessions_spawn", agentId: "main" },
+		{ toolName: SPAWN_TOOL, params: { task: "work" } },
+		{ toolName: SPAWN_TOOL, agentId: "main" },
 	);
 	return s.time.delays()[0];
 }
@@ -64,7 +70,7 @@ describe("registration", () => {
 		assert.equal(s.hooks.length, 1);
 		assert.equal(s.hooks[0]?.event, "before_tool_call");
 		assert.deepEqual(s.hooks[0]?.options, {
-			matcher: ["sessions_spawn"],
+			matcher: [SPAWN_TOOL],
 			priority: 100,
 			timeoutMs: 10000,
 		});
@@ -102,6 +108,19 @@ describe("registration", () => {
 		);
 	});
 
+	it("gives the config tool and the router the environment it was built with", async () => {
+		const { api_key: _key, ...withoutKey } = SETTINGS;
+		const s = install({}, { TYPESAFE_API_KEY: "env-key" }, withoutKey);
+		const tool = s.tools[0];
+		const text = (await tool?.execute("call-1", {}))?.content[0]?.text ?? "";
+		assert.match(text, new RegExp(keyLine("typesafe", "set")));
+		const result = await s.beforeToolCall()(
+			{ toolName: SPAWN_TOOL, params: { task: "work" } },
+			{ toolName: SPAWN_TOOL, agentId: "main" },
+		);
+		assert.ok(result);
+	});
+
 	it("leaves routing off with one warning when the tool cannot be registered", () => {
 		const fake = createFakeApi();
 		fake.api.registerTool = () => {
@@ -118,8 +137,8 @@ describe("registration", () => {
 	it("routes a spawn through the registered handler", async () => {
 		const s = install();
 		const result = await s.beforeToolCall()(
-			{ toolName: "sessions_spawn", params: { task: "work" } },
-			{ toolName: "sessions_spawn", agentId: "main" },
+			{ toolName: SPAWN_TOOL, params: { task: "work" } },
+			{ toolName: SPAWN_TOOL, agentId: "main" },
 		);
 		assert.deepEqual(result, {
 			params: { model: "openai/small", thinking: "high" },
@@ -164,6 +183,20 @@ describe("registration", () => {
 	});
 });
 
+describe("deadlineFor", () => {
+	const cases: [number, number][] = [
+		[10000, 8000],
+		[600000, 8000],
+		[5000, 3000],
+		[3000, 1000],
+		[2999, 999],
+	];
+	for (const [timeout, deadline] of cases)
+		it(`maps a hook timeout of ${timeout} ms to ${deadline} ms`, () => {
+			assert.equal(deadlineFor(timeout), deadline);
+		});
+});
+
 describe("the deadline from the operator's hook timeouts", () => {
 	const cases: [string, unknown, number][] = [
 		["the plugin's own value without settings", undefined, 8000],
@@ -204,8 +237,8 @@ describe("the deadline from the operator's hook timeouts", () => {
 		it(`leaves the plugin inert with one warning at ${timeoutMs} ms`, async () => {
 			const s = install(hooksOf({ timeoutMs }));
 			const result = await s.beforeToolCall()(
-				{ toolName: "sessions_spawn", params: { task: "work" } },
-				{ toolName: "sessions_spawn", agentId: "main" },
+				{ toolName: SPAWN_TOOL, params: { task: "work" } },
+				{ toolName: SPAWN_TOOL, agentId: "main" },
 			);
 			assert.equal(result, undefined);
 			assert.equal(s.jev.requests.length, 0);

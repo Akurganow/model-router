@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { NOT_OWNER, registerConfig } from "./openclaw-config.ts";
 import { createFakeApi } from "./openclaw-fakes.ts";
-import { PLUGIN_ID } from "./openclaw-settings.ts";
+import { type Environment, PLUGIN_ID } from "./openclaw-settings.ts";
 import type {
 	CommandContext,
 	CommandDefinition,
@@ -32,9 +32,12 @@ const live = (config: Record<string, unknown>): OpenClawConfig => ({
 
 type Stored = { provider?: unknown; scope?: unknown; small_model?: unknown };
 
-function setup(config: Record<string, unknown> = {}) {
+function setup(
+	config: Record<string, unknown> = {},
+	env: Environment = process.env,
+) {
 	const fake = createFakeApi({ config: live(config) });
-	registerConfig(fake.api);
+	registerConfig(fake.api, env);
 	const command = (name: string): CommandDefinition => {
 		const found = fake.commands.find((c) => c.name === name);
 		assert.ok(found, `command ${name} registered`);
@@ -196,6 +199,16 @@ describe("the tool reads", () => {
 		});
 	});
 
+	it("reads the keys from the environment it was given, not from the process", async () => {
+		await withEnv({ OPENROUTER_API_KEY: OPENROUTER_KEY }, async () => {
+			const given = await runTool(
+				setup({ provider: "auto" }, { TYPESAFE_API_KEY: TYPESAFE_KEY }),
+			);
+			assert.match(given, new RegExp(keyLine("typesafe", "set")));
+			assert.match(given, new RegExp(keyLine("openrouter", "unset")));
+		});
+	});
+
 	it("falls back to the plugin config when the live config is unreadable", async () => {
 		const fake = setup();
 		fake.runtime.throwOn.add("config");
@@ -289,7 +302,7 @@ describe("the commands", () => {
 
 	it("write when the plugin has no config entry yet", async () => {
 		const fake = createFakeApi({ config: {} });
-		registerConfig(fake.api);
+		registerConfig(fake.api, {});
 		const command = fake.commands.find((c) => c.name === "model-router-scope");
 		await command?.handler(ownerContext("extended"));
 		assert.deepEqual(
@@ -346,9 +359,9 @@ describe("the commands", () => {
 		assert.deepEqual(fake.runtime.calls.mutate, []);
 	});
 
-	it("refuse without the admin scope", async () => {
-		const fake = setup({ scope: "core" });
+	it("accept the owner whatever scopes the context carries, as the gateway has checked them", async () => {
 		for (const gatewayClientScopes of [["operator.read"], [], undefined]) {
+			const fake = setup({ scope: "core" });
 			const context: CommandContext = {
 				...ownerContext("extended"),
 				...(gatewayClientScopes === undefined ? {} : { gatewayClientScopes }),
@@ -356,10 +369,24 @@ describe("the commands", () => {
 			if (gatewayClientScopes === undefined) delete context.gatewayClientScopes;
 			assert.equal(
 				await runCommand("model-router-scope", context, fake),
-				lines(unchanged("scope", NOT_OWNER), valueLine("scope", "core")),
+				valueLine("scope", "extended"),
 			);
+			assert.equal(fake.stored().scope, "extended");
 		}
-		assert.deepEqual(fake.runtime.calls.mutate, []);
+	});
+
+	it("recheck the owner when the context carries no scopes", async () => {
+		const fake = setup({ scope: "core" });
+		const context = ownerContext("extended");
+		delete context.gatewayClientScopes;
+		context.assertOwnerCurrent = () => {
+			throw new Error("owner changed");
+		};
+		assert.equal(
+			await runCommand("model-router-scope", context, fake),
+			unchanged("scope", "owner changed"),
+		);
+		assert.equal(fake.stored().scope, "core");
 	});
 
 	it("refuse a sender whose owner flag is absent", async () => {

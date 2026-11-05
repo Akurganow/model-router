@@ -11,10 +11,11 @@ import {
 	setup,
 	TASK,
 } from "./openclaw-handler-fakes.ts";
+import { SPAWN_TOOL } from "./openclaw-router.ts";
 import { PLUGIN_ID } from "./openclaw-settings.ts";
 import type { BeforeToolCallResult } from "./openclaw-types.ts";
 
-// The decision-line pattern of scripts/evals/claude.ts (line 10), which the evals read the decision line with.
+// The `DECISION_LINE` pattern of scripts/evals/claude.ts, which the evals read the decision line with.
 const DECISION_LINE =
 	/^(?:model-router )?L(?<tier>[012]) (?<target>\S+) · (?<effort>caller effort|[^\s·]+) · p=\d+(?:\.\d+)?\/\d+(?:\.\d+)?/;
 
@@ -255,7 +256,7 @@ describe("gates and skips", () => {
 	it("skips a spawn naming an agent when the context has no requester", async () => {
 		const s = setup();
 		assert.equal(
-			await s.call({ agentId: REQUESTER }, { toolName: "sessions_spawn" }),
+			await s.call({ agentId: REQUESTER }, { toolName: SPAWN_TOOL }),
 			undefined,
 		);
 		assert.match(lines(s)[0] ?? "", /main is outside the core scope/);
@@ -332,7 +333,7 @@ describe("model checks", () => {
 
 	it("passes no agent id and no directory when the context has none", async () => {
 		const s = setup({ levels: { tier: 0, work: 1 } });
-		assert.ok(await s.call({}, { toolName: "sessions_spawn" }));
+		assert.ok(await s.call({}, { toolName: SPAWN_TOOL }));
 		assert.equal("agentId" in (s.runtime.calls.allowedRef[0] ?? {}), false);
 		assert.equal("agentDir" in (s.runtime.calls.credential[0] ?? {}), false);
 	});

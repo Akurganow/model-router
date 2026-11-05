@@ -142,6 +142,11 @@ jobs:
 
       - uses: ./.github/actions/setup-node
 
+      # The install check takes the plugin's names from src/, which loads the
+      # TypeSafe SDK.
+      - name: Install the dev tools
+        run: npm ci
+
       - uses: ./.github/actions/setup-openclaw
 
       - uses: ./.github/actions/setup-omp

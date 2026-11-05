@@ -1,13 +1,14 @@
-import type { OpenClawConfig } from "./openclaw-types.ts";
+import type { OpenClawApi, OpenClawConfig } from "./openclaw-types.ts";
 import { isRecord, nonEmpty } from "./part.ts";
 import {
 	KEY_VARIABLES,
 	order,
+	PROVIDER_VALUES,
 	type Provider,
 	type ProviderValue,
 	resolve,
 } from "./provider.ts";
-import { resolveScope, type Scope } from "./scope.ts";
+import { resolveScope, SCOPE_VALUES, type Scope } from "./scope.ts";
 
 export const PLUGIN_ID = "model-router-openclaw";
 
@@ -35,8 +36,29 @@ function sources(
 	return [entry, pluginConfig].filter(isRecord);
 }
 
-const firstDefined = (from: readonly Settings[], field: string): unknown =>
-	from.find((settings) => settings[field] !== undefined)?.[field];
+// A source whose value is invalid counts as silent, so a later source can still supply the setting.
+const firstValid = (
+	from: readonly Settings[],
+	field: string,
+	valid: (value: unknown) => boolean,
+): unknown => from.map((settings) => settings[field]).find(valid);
+
+const oneOf =
+	(allowed: readonly unknown[]) =>
+	(value: unknown): boolean =>
+		allowed.includes(value);
+const isProvider = oneOf(PROVIDER_VALUES);
+const isScope = oneOf(SCOPE_VALUES);
+const isText = (value: unknown): boolean => nonEmpty(value) !== undefined;
+
+/** The live config, or undefined when the runtime cannot read it. The tool and the router both read it here. */
+export function readLive(api: OpenClawApi): OpenClawConfig | undefined {
+	try {
+		return api.runtime.config.current();
+	} catch {
+		return undefined;
+	}
+}
 
 export function readSettings(
 	live: OpenClawConfig | undefined,
@@ -44,10 +66,10 @@ export function readSettings(
 ): OpenClawSettings {
 	const from = sources(live, pluginConfig);
 	return {
-		provider: resolve(firstDefined(from, "provider")),
-		scope: resolveScope(firstDefined(from, "scope")),
-		smallModel: nonEmpty(firstDefined(from, "small_model")),
-		largeModel: nonEmpty(firstDefined(from, "large_model")),
+		provider: resolve(firstValid(from, "provider", isProvider)),
+		scope: resolveScope(firstValid(from, "scope", isScope)),
+		smallModel: nonEmpty(firstValid(from, "small_model", isText)),
+		largeModel: nonEmpty(firstValid(from, "large_model", isText)),
 	};
 }
 
