@@ -2,5 +2,9 @@
 	"private": true,
 	"dependencies": {
 		"openclaw": "2026.11.1"
+	},
+	"overrides": {
+		"npm": "12.2.1",
+		"zod": "4.6.6"
 	}
 }
