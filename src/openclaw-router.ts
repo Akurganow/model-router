@@ -1,43 +1,47 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { prepareBrief } from "./brief.ts";
-import { LIMIT_REACHED, route } from "./compose.ts";
+import { route } from "./compose.ts";
 import { decide } from "./decide.ts";
 import { work } from "./effort.ts";
 import { effortFor } from "./ladder.ts";
 import { routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
 import { slotResolves } from "./openclaw-checks.ts";
+import {
+	type Clock,
+	MIN_DEADLINE_MS,
+	raceDeadline,
+} from "./openclaw-deadline.ts";
 import { type Gate, gateSpawn } from "./openclaw-gates.ts";
+import { readStringParam } from "./openclaw-params.ts";
 import {
 	type Environment,
 	type Keys,
 	type OpenClawSettings,
-	readKeys,
-	readLive,
-	readSettings,
+	readState,
 } from "./openclaw-settings.ts";
 import type {
 	BeforeToolCallEvent,
 	BeforeToolCallHandler,
 	BeforeToolCallResult,
 	OpenClawApi,
-	OpenClawConfig,
+	PluginRuntime,
 	SpawnParams,
 	ToolContext,
 } from "./openclaw-types.ts";
 import { type Level, nonEmpty } from "./part.ts";
 import { plan } from "./provider.ts";
 
-// Below this the deadline leaves too little time for one Jev request.
-export const MIN_DEADLINE_MS = 1000;
 export const LINE_PREFIX = "model-router ";
 export const SPAWN_TOOL = "sessions_spawn";
+export const HOOK = "before_tool_call";
 const MIDDLE_TIER = 1;
-const SLOT_NAMES = { 0: "small", 2: "large" } as const;
+// An end tier names its slot in the skip text and the setting that holds its model.
+const END_SLOTS = {
+	0: { name: "small", model: (s: OpenClawSettings) => s.smallModel },
+	2: { name: "large", model: (s: OpenClawSettings) => s.largeModel },
+} as const;
 
-export type Clock = {
-	after: (ms: number, fn: () => void) => { cancel: () => void };
-};
 export type RouterDeps = {
 	readonly fetchFn: Fetch;
 	readonly clock: Clock;
@@ -55,8 +59,6 @@ type Spawn = {
 	readonly log: (message: string) => void;
 };
 
-const hasKeys = (keys: Keys): boolean => Object.keys(keys).length > 0;
-
 // Jev is asked once for both parts. The picked levels come back as a line and the slot to set.
 async function score(
 	{ deps, signal, params }: Spawn,
@@ -68,8 +70,9 @@ async function score(
 		parts: [tier, work],
 		state: {
 			role: gate.role,
-			description: nonEmpty(params.label) ?? nonEmpty(params.taskName) ?? "",
-			task: prepareBrief(String(params.task)),
+			description:
+				readStringParam(params, "label") ?? nonEmpty(params.taskName) ?? "",
+			task: prepareBrief(gate.task),
 		},
 		attempts: plan(settings.provider, {
 			typesafe: keys.typesafe !== undefined,
@@ -88,17 +91,16 @@ type Slot =
 
 // The middle tier keeps the spawn's own model. An end tier needs its slot set and resolved for the agent.
 async function slotFor(
-	{ api }: Spawn,
+	runtime: PluginRuntime,
 	settings: OpenClawSettings,
-	config: OpenClawConfig,
-	agentId: string | undefined,
+	{ config, target }: Route,
 	level: Level,
 ): Promise<Slot> {
 	if (level === MIDDLE_TIER) return { model: undefined };
-	const name = SLOT_NAMES[level];
-	const model = level === 0 ? settings.smallModel : settings.largeModel;
+	const { name, model: slot } = END_SLOTS[level];
+	const model = slot(settings);
 	if (model === undefined) return { skipped: `${name} model unset` };
-	if (!(await slotResolves(api.runtime, config, agentId, model)))
+	if (!(await slotResolves(runtime, config, target, model)))
 		return { skipped: `${name} model unresolved` };
 	return { model };
 }
@@ -107,28 +109,19 @@ async function routeSpawn(
 	spawn: Spawn,
 ): Promise<BeforeToolCallResult | undefined> {
 	const { api, deps, params, requester, log } = spawn;
-	const config = readLive(api);
-	const settings = readSettings(config, api.pluginConfig);
-	const keys = readKeys(config, api.pluginConfig, settings.provider, deps.env);
+	const { config, settings, keys } = readState(api, deps.env);
 	const gate = gateSpawn({
 		params,
 		requester,
 		config,
 		settings,
-		hasKey: hasKeys(keys),
+		hasKey: Object.keys(keys).length > 0,
 	});
 	if (gate.outcome === "pass") return undefined;
 	if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
 	const decided = await score(spawn, settings, keys, gate);
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
-	// The gate skips an unreadable config, so a route always has one.
-	const slot = await slotFor(
-		spawn,
-		settings,
-		config ?? {},
-		gate.agentId,
-		decided.tier,
-	);
+	const slot = await slotFor(api.runtime, settings, gate, decided.tier);
 	if ("skipped" in slot) return void log(skippedLine(slot.skipped));
 	const { model } = slot;
 	const kept = gate.effort.kind === "keep" ? gate.effort.label : undefined;
@@ -162,26 +155,29 @@ export function createBeforeToolCall(
 		try {
 			if (deadlineMs < MIN_DEADLINE_MS || event?.toolName !== SPAWN_TOOL)
 				return undefined;
-			const stop = new AbortController();
-			const signal = AbortSignal.any(
-				ctx?.abortSignal ? [stop.signal, ctx.abortSignal] : [stop.signal],
+			const requester = nonEmpty(ctx?.agentId);
+			const { params } = event;
+			return await raceDeadline(
+				(signal) => {
+					// Once the deadline or the hook's signal ends the work, the work writes no line.
+					const log = (message: string) => {
+						if (!signal.aborted) api.logger.info(LINE_PREFIX + message);
+					};
+					return routeSpawn({
+						api,
+						deps,
+						signal,
+						params,
+						requester,
+						log,
+					});
+				},
+				deadlineMs,
+				deps.clock,
+				ctx?.abortSignal,
 			);
-			const log = (message: string) => {
-				if (!signal.aborted) api.logger.info(LINE_PREFIX + message);
-			};
-			return await new Promise<BeforeToolCallResult | undefined>((settle) => {
-				const timer = deps.clock.after(deadlineMs, () => {
-					stop.abort(LIMIT_REACHED);
-					settle(undefined);
-				});
-				const requester = nonEmpty(ctx?.agentId);
-				routeSpawn({ api, deps, signal, params: event.params, requester, log })
-					.catch(() => undefined)
-					.then((result) => (signal.aborted ? undefined : result))
-					.then(settle)
-					.finally(() => timer.cancel());
-			});
 		} catch {
+			// Reading a malformed event or context can throw.
 			return undefined;
 		}
 	};

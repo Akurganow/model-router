@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { LIMIT_REACHED } from "./compose.ts";
+import { MIN_DEADLINE_MS } from "./openclaw-deadline.ts";
 import {
 	CONTEXT,
 	DEADLINE_MS,
@@ -9,11 +10,7 @@ import {
 	setup,
 	TASK,
 } from "./openclaw-handler-fakes.ts";
-import {
-	createBeforeToolCall,
-	MIN_DEADLINE_MS,
-	SPAWN_TOOL,
-} from "./openclaw-router.ts";
+import { createBeforeToolCall, SPAWN_TOOL } from "./openclaw-router.ts";
 import type { BeforeToolCallEvent, ToolContext } from "./openclaw-types.ts";
 
 describe("failure", () => {
@@ -92,12 +89,12 @@ describe("a malformed hook call", () => {
 	const spawn = { toolName: SPAWN_TOOL, params: { task: TASK } };
 	const levels = { tier: 0, work: 1 };
 
-	it("routes the own default agent when ctx is undefined", async () => {
+	it("routes the requesting agent itself when ctx is undefined", async () => {
 		const s = setup({ levels });
 		assert.ok(await s.handler(spawn, undefined as unknown as ToolContext));
 	});
 
-	it("routes the own default agent when ctx is empty", async () => {
+	it("routes the requesting agent itself when ctx is empty", async () => {
 		const s = setup({ levels });
 		assert.ok(await s.handler(spawn, {} as ToolContext));
 	});
@@ -204,7 +201,54 @@ describe("deadline", () => {
 	it("cancels its timer when the work ends first", async () => {
 		const s = setup();
 		await s.call();
-		s.time.fire();
-		assert.deepEqual(lines(s).length, 1);
+		assert.equal(s.time.live(), 0);
+	});
+
+	it("returns nothing when the hook's signal aborts while a model check is held", async () => {
+		const s = setup({ levels: { tier: 0, work: 1 } });
+		let release: () => void = () => undefined;
+		s.runtime.runtime.modelAuth.isProviderApiKeyConfiguredAsync = () =>
+			new Promise((resolve) => {
+				release = () => resolve(true);
+			});
+		const hook = new AbortController();
+		const pending = s.call({}, { ...CONTEXT, abortSignal: hook.signal });
+		await settle();
+		await settle();
+		hook.abort();
+		release();
+		assert.equal(await pending, undefined);
+		assert.deepEqual(lines(s), []);
+	});
+
+	it("leaves no unhandled rejection when cancelling the timer throws", async () => {
+		const s = setup();
+		const rejections: unknown[] = [];
+		const record = (reason: unknown) => rejections.push(reason);
+		process.on("unhandledRejection", record);
+		try {
+			const handler = createBeforeToolCall(s.api, DEADLINE_MS, {
+				fetchFn: s.jev.fetch,
+				clock: {
+					after: () => ({
+						cancel: () => {
+							throw new Error("cancel");
+						},
+					}),
+				},
+				env: {},
+			});
+			assert.ok(
+				await handler(
+					{ toolName: SPAWN_TOOL, params: { task: TASK } },
+					CONTEXT,
+				),
+			);
+			await settle();
+			await settle();
+			assert.deepEqual(rejections, []);
+		} finally {
+			process.off("unhandledRejection", record);
+		}
 	});
 });

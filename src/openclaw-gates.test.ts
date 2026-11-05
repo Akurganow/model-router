@@ -1,48 +1,30 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "./brief.ts";
-import { type Gate, type GateInput, gateSpawn } from "./openclaw-gates.ts";
-import type { OpenClawSettings } from "./openclaw-settings.ts";
+import {
+	agents,
+	effort,
+	extended,
+	gate,
+	known,
+	OTHER,
+	REQUESTER,
+	routed,
+	SETTINGS,
+	skipped,
+	withParams,
+} from "./openclaw-gate-fakes.ts";
 import type { OpenClawConfig } from "./openclaw-types.ts";
 import { UNREADABLE } from "./settings.ts";
 
-const SETTINGS: OpenClawSettings = {
-	provider: "typesafe",
-	scope: "core",
-	smallModel: "openai/small",
-	largeModel: "openai/large",
-};
-const REQUESTER = "main";
-const OTHER = "writer";
-
-const gate = (overrides: Partial<GateInput> = {}): Gate =>
-	gateSpawn({
-		params: { task: "do the work" },
-		requester: REQUESTER,
-		config: {},
-		settings: SETTINGS,
-		hasKey: true,
-		...overrides,
-	});
-const withParams = (params: Record<string, unknown>) =>
-	gate({ params: { task: "do the work", ...params } });
-const extended = { ...SETTINGS, scope: "extended" as const };
-
-function routed(result: Gate) {
-	assert.equal(result.outcome, "route", JSON.stringify(result));
-	return result as Extract<Gate, { outcome: "route" }>;
-}
-const skipped = (result: Gate) => {
-	assert.equal(result.outcome, "skip", JSON.stringify(result));
-	return (result as Extract<Gate, { outcome: "skip" }>).reason;
-};
-
-test("a plain spawn of the own default agent is routed", () => {
+test("a plain spawn of the requesting agent itself is routed", () => {
 	assert.deepEqual(gate(), {
 		outcome: "route",
-		agentId: REQUESTER,
+		target: REQUESTER,
 		role: DEFAULT_ROLE,
 		effort: { kind: "set" },
+		config: {},
+		task: "do the work",
 	});
 });
 
@@ -56,6 +38,11 @@ const SILENT: readonly [string, Record<string, unknown>][] = [
 	["a session mode", { mode: "session" }],
 	["a thread spawn", { thread: true }],
 	["an agent id that is not a string", { agentId: 4 }],
+	["a snake-case agent id that is not a string", { agent_id: 4 }],
+	[
+		"an own agent id that is not a string beside a snake-case one",
+		{ agentId: 4, agent_id: "writer" },
+	],
 ];
 for (const [name, params] of SILENT)
 	test(`${name} passes silently`, () => {
@@ -91,16 +78,16 @@ test("a spawn flag that is not exactly set does not pass silently", () => {
 	);
 });
 
-test("the own default agent is a spawn naming the requester", () => {
-	assert.equal(routed(withParams({ agentId: REQUESTER })).agentId, REQUESTER);
+test("a spawn naming the requester is the requesting agent itself", () => {
+	assert.equal(routed(withParams({ agentId: REQUESTER })).target, REQUESTER);
 });
 
-test("an empty agent id is the own default agent", () => {
-	assert.equal(routed(withParams({ agentId: "" })).agentId, REQUESTER);
+test("an empty agent id is the requesting agent itself", () => {
+	assert.equal(routed(withParams({ agentId: "" })).target, REQUESTER);
 });
 
-test("without a requester id the own default agent has no agent id", () => {
-	assert.equal(routed(gate({ requester: undefined })).agentId, undefined);
+test("without a requester id the requesting agent itself has no target", () => {
+	assert.equal(routed(gate({ requester: undefined })).target, undefined);
 });
 
 test("a named agent without a requester id counts as another agent", () => {
@@ -121,11 +108,6 @@ test("under core another agent is outside the scope even when unknown", () => {
 	);
 });
 
-const agents = (
-	section: NonNullable<OpenClawConfig["agents"]>,
-): OpenClawConfig => ({ agents: section });
-const known = (entry: object): OpenClawConfig =>
-	agents({ entries: { [OTHER]: entry } });
 const other = (
 	config: OpenClawConfig | undefined,
 	params: Record<string, unknown> = {},
@@ -174,7 +156,7 @@ test("an agent with an empty model is routed", () => {
 });
 
 test("another agent under extended is routed with its own id", () => {
-	assert.equal(routed(other(known({}))).agentId, OTHER);
+	assert.equal(routed(other(known({}))).target, OTHER);
 });
 
 test("the target's subagent model skips the spawn", () => {
@@ -287,13 +269,13 @@ const describe = (description: unknown) =>
 		entries: { [REQUESTER]: { description }, [OTHER]: { description } },
 	});
 
-test("the own default agent with a requester description sends roleText of it", () => {
+test("the requesting agent itself with a requester description sends roleText of it", () => {
 	const role = routed(gate({ config: describe("Plans the release.") })).role;
 	assert.equal(role, roleText("Plans the release."));
 	assert.notEqual(role, DEFAULT_ROLE);
 });
 
-test("the own default agent without a description sends the default role", () => {
+test("the requesting agent itself without a description sends the default role", () => {
 	for (const description of [undefined, "", "   ", 3, null])
 		assert.equal(
 			routed(gate({ config: describe(description) })).role,
@@ -302,7 +284,7 @@ test("the own default agent without a description sends the default role", () =>
 	assert.equal(routed(gate({ config: {} })).role, DEFAULT_ROLE);
 });
 
-test("the own default agent without a requester id sends the default role", () => {
+test("the requesting agent itself without a requester id sends the default role", () => {
 	const config = describe("Plans the release.");
 	assert.equal(
 		routed(gate({ requester: undefined, config })).role,
@@ -329,7 +311,6 @@ const thinking = (defaults?: unknown, requester?: unknown, target?: unknown) =>
 			[OTHER]: { subagents: { thinking: target } },
 		},
 	});
-const effort = (result: Gate) => routed(result).effort;
 
 test("effort step 1: a thinking param is kept as caller effort", () => {
 	assert.deepEqual(effort(withParams({ thinking: "low" })), {
@@ -459,10 +440,10 @@ test("an agent id matches its entry key in any case", () => {
 
 test("the named agent and the requester are the same agent in any case or padding", () => {
 	for (const agentId of ["MAIN", " Main "])
-		assert.equal(routed(withParams({ agentId })).agentId, REQUESTER);
+		assert.equal(routed(withParams({ agentId })).target, REQUESTER);
 	assert.equal(
 		routed(gate({ requester: "Main", params: { task: "t", agentId: "main" } }))
-			.agentId,
+			.target,
 		"Main",
 	);
 });

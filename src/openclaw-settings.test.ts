@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PLUGIN_ID, readKeys, readSettings } from "./openclaw-settings.ts";
+import { createFakeApi } from "./openclaw-fakes.ts";
+import {
+	PLUGIN_ID,
+	readKeys,
+	readSettings,
+	readState,
+} from "./openclaw-settings.ts";
 import type { OpenClawConfig } from "./openclaw-types.ts";
 
 const live = (config: Record<string, unknown>): OpenClawConfig => ({
@@ -212,4 +218,23 @@ test("a blank key or variable is no key, and a padded one is trimmed", () => {
 		readKeys(undefined, undefined, "typesafe", { TYPESAFE_API_KEY: " k\n" }),
 		{ typesafe: "k" },
 	);
+});
+
+test("readState reads the live config once and draws the settings and the keys from it", () => {
+	const config = live({ provider: "openrouter", openrouter_api_key: "k" });
+	const fake = createFakeApi({ config, pluginConfig: { api_key: "plug" } });
+	const state = readState(fake.api, { TYPESAFE_API_KEY: "env" });
+	assert.equal(state.config, config);
+	assert.equal(state.settings.provider, "openrouter");
+	assert.deepEqual(state.keys, { openrouter: "k" });
+	assert.equal(fake.runtime.calls.config.length, 1);
+});
+
+test("readState falls back to the plugin config and the environment when the live config cannot be read", () => {
+	const fake = createFakeApi({ pluginConfig: { provider: "auto" } });
+	fake.runtime.throwOn.add("config");
+	const state = readState(fake.api, { OPENROUTER_API_KEY: "env" });
+	assert.equal(state.config, undefined);
+	assert.equal(state.settings.provider, "auto");
+	assert.deepEqual(state.keys, { openrouter: "env" });
 });

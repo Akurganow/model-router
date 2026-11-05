@@ -1,11 +1,9 @@
 import {
 	type Environment,
 	type Keys,
-	type OpenClawSettings,
 	PLUGIN_ID,
-	readKeys,
-	readLive,
-	readSettings,
+	readState,
+	type State,
 } from "./openclaw-settings.ts";
 import type {
 	CommandContext,
@@ -43,24 +41,10 @@ const ADMIN_SCOPE = "operator.admin";
 const LINE_BREAK = "\n";
 const UNSET = "unset";
 
-export const NOT_OWNER = `only the owner with the ${ADMIN_SCOPE} scope can change it`;
+export const NOT_OWNER = "only the owner can change it";
 export const TOOL_DESCRIPTION = `Reads the router's settings. With no input it returns the provider, the scope, both models, and whether each key the provider allows is set. With a setting name (${SETTING_NAMES.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
 
 type Settings = Record<string, unknown>;
-type Snapshot = {
-	readonly settings: OpenClawSettings;
-	readonly keys: Keys;
-};
-
-// The live config holds a command's write; a failed read leaves the plugin config OpenClaw loaded at start-up.
-function snapshot(api: OpenClawApi, env: Environment): Snapshot {
-	const live = readLive(api);
-	const settings = readSettings(live, api.pluginConfig);
-	return {
-		settings,
-		keys: readKeys(live, api.pluginConfig, settings.provider, env),
-	};
-}
 
 const modelLine = (name: string, model: string | undefined): string =>
 	`${name}: ${model ?? UNSET}`;
@@ -72,7 +56,7 @@ function keyLines(providers: readonly Provider[], keys: Keys): string[] {
 	);
 }
 
-function readAll({ settings, keys }: Snapshot): string {
+function readAll({ settings, keys }: State): string {
 	return [
 		valueLine("provider", settings.provider),
 		valueLine("scope", settings.scope),
@@ -96,13 +80,13 @@ function howToChange(setting: unknown): string {
 function runTool(api: OpenClawApi, env: Environment, params: unknown): string {
 	const { setting } = isRecord(params) ? params : {};
 	return setting === undefined
-		? readAll(snapshot(api, env))
+		? readAll(readState(api, env))
 		: howToChange(setting);
 }
 
 // OpenClaw runs the `requiredScopes` check before the handler. A channel message carries no
-// gateway scopes, and the check lets its owner through (src/plugins/plugin-command-execution.ts L162-L173),
-// so the owner flag is the one check left here.
+// gateway scopes, and the check lets its owner through (`executeRegisteredPluginCommand` in
+// src/plugins/plugin-command-execution.ts), so the owner flag is the one check left here.
 const isOwner = (ctx: CommandContext): boolean => ctx.senderIsOwner === true;
 
 function store(draft: OpenClawConfig, setting: ValueSetting, value: string) {
@@ -146,7 +130,7 @@ async function runCommand(
 	setting: ValueSetting,
 ): Promise<string> {
 	const value = (ctx.args ?? "").trim();
-	const current = snapshot(api, env).settings[setting];
+	const current = readState(api, env).settings[setting];
 	if (value === "") return valueLine(setting, current);
 	if (!isValue(setting, value)) return useOneOf(setting);
 	if (!isOwner(ctx))

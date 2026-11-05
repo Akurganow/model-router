@@ -58,7 +58,6 @@ const ownerContext = (args?: string): CommandContext => ({
 	channel: "webchat",
 	isAuthorizedSender: true,
 	senderIsOwner: true,
-	gatewayClientScopes: [ADMIN, "operator.read"],
 	commandBody: "",
 	config: {},
 	...(args === undefined ? {} : { args }),
@@ -349,6 +348,19 @@ describe("the commands", () => {
 		assert.equal(fake.stored().scope, "core");
 	});
 
+	it("word the refusal as the owner-only rule", async () => {
+		const fake = setup({ provider: "auto" });
+		const context = { ...ownerContext("openrouter"), senderIsOwner: false };
+		assert.equal(NOT_OWNER, "only the owner can change it");
+		assert.equal(
+			await runCommand("model-router-provider", context, fake),
+			lines(
+				"provider unchanged: only the owner can change it",
+				valueLine("provider", "auto"),
+			),
+		);
+	});
+
 	it("refuse without the owner flag and show the current value", async () => {
 		const fake = setup({ provider: "auto" });
 		const context = { ...ownerContext("openrouter"), senderIsOwner: false };
@@ -357,36 +369,6 @@ describe("the commands", () => {
 			lines(unchanged("provider", NOT_OWNER), valueLine("provider", "auto")),
 		);
 		assert.deepEqual(fake.runtime.calls.mutate, []);
-	});
-
-	it("accept the owner whatever scopes the context carries, as the gateway has checked them", async () => {
-		for (const gatewayClientScopes of [["operator.read"], [], undefined]) {
-			const fake = setup({ scope: "core" });
-			const context: CommandContext = {
-				...ownerContext("extended"),
-				...(gatewayClientScopes === undefined ? {} : { gatewayClientScopes }),
-			};
-			if (gatewayClientScopes === undefined) delete context.gatewayClientScopes;
-			assert.equal(
-				await runCommand("model-router-scope", context, fake),
-				valueLine("scope", "extended"),
-			);
-			assert.equal(fake.stored().scope, "extended");
-		}
-	});
-
-	it("recheck the owner when the context carries no scopes", async () => {
-		const fake = setup({ scope: "core" });
-		const context = ownerContext("extended");
-		delete context.gatewayClientScopes;
-		context.assertOwnerCurrent = () => {
-			throw new Error("owner changed");
-		};
-		assert.equal(
-			await runCommand("model-router-scope", context, fake),
-			unchanged("scope", "owner changed"),
-		);
-		assert.equal(fake.stored().scope, "core");
 	});
 
 	it("refuse a sender whose owner flag is absent", async () => {

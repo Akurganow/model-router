@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import plugin, { createPlugin, deadlineFor } from "./openclaw.ts";
+import plugin, { createPlugin } from "./openclaw.ts";
 import {
 	createFakeApi,
 	createFakeClock,
@@ -181,20 +181,6 @@ describe("registration", () => {
 		};
 		assert.doesNotThrow(() => createPlugin().register(fake.api));
 	});
-});
-
-describe("deadlineFor", () => {
-	const cases: [number, number][] = [
-		[10000, 8000],
-		[600000, 8000],
-		[5000, 3000],
-		[3000, 1000],
-		[2999, 999],
-	];
-	for (const [timeout, deadline] of cases)
-		it(`maps a hook timeout of ${timeout} ms to ${deadline} ms`, () => {
-			assert.equal(deadlineFor(timeout), deadline);
-		});
 });
 
 describe("the deadline from the operator's hook timeouts", () => {

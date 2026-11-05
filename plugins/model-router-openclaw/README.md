@@ -189,7 +189,7 @@ The plugin reads the parameters of a `sessions_spawn` call as OpenClaw's tool do
 
 These spawns pass through unchanged, and the plugin logs nothing:
 
-- The spawn sets a `model` that is not empty and not `default`.
+- The spawn sets a text `model` that is not empty and not `default`, in any case.
 - The spawn sets a `runtime` other than `subagent`, such as `acp`.
 - The spawn sets `visible: true`, `context: "fork"`, `mode: "session"` or `thread: true`.
 - The spawn has no `task` text.

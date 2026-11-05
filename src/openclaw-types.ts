@@ -170,13 +170,12 @@ export type ToolDefinition = {
 	) => Promise<ToolResult>;
 };
 
-// src/plugins/plugin-command.types.ts: `PluginCommandContext`; the gateway scopes tell who may write.
+// src/plugins/plugin-command.types.ts: `PluginCommandContext`, reduced; the owner flag tells who may write.
 export type CommandContext = {
 	channel: string;
 	isAuthorizedSender: boolean;
 	senderIsOwner?: boolean;
 	assertOwnerCurrent?: () => void;
-	gatewayClientScopes?: string[];
 	agentId?: string;
 	args?: string;
 	commandBody: string;

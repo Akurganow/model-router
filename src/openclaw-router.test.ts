@@ -163,7 +163,7 @@ describe("what Jev is asked", () => {
 		);
 	});
 
-	it("sends the requester's description as the role of the own default agent", async () => {
+	it("sends the requester's description as the role of the requesting agent itself", async () => {
 		const s = setup({
 			config: {
 				agents: { entries: { [REQUESTER]: { description: "Plans releases" } } },
@@ -251,6 +251,18 @@ describe("gates and skips", () => {
 		assert.deepEqual(lines(s), [
 			"model-router skipped, writer is outside the core scope",
 		]);
+	});
+
+	it("skips a spawn that names its agent as agent_id, as the tool reads it", async () => {
+		const s = setup({
+			settings: { scope: "extended" },
+			config: { agents: { entries: { worker: { model: "own/model" } } } },
+		});
+		assert.equal(await s.call({ agent_id: "worker" }), undefined);
+		assert.deepEqual(lines(s), [
+			"model-router skipped, worker sets its own model",
+		]);
+		assert.equal(s.jev.requests.length, 0);
 	});
 
 	it("skips a spawn naming an agent when the context has no requester", async () => {

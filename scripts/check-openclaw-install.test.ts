@@ -3,9 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { COMMAND_NAMES, TOOL_NAME } from "../src/openclaw-config.ts";
 import { SPAWN_TOOL } from "../src/openclaw-router.ts";
-import { PLUGIN_ID } from "../src/openclaw-settings.ts";
 import type { OpenClawApi } from "../src/openclaw-types.ts";
 import {
 	inspectProblems,
@@ -18,6 +16,7 @@ import { useTempRoot } from "./temp-root.ts";
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const TREE = join(ROOT, "packages", "model-router");
 const VERSION = "1.2.3";
+const EXPECTED = { name: "@akurganow/model-router", version: VERSION };
 const report = (plugin: object = {}, diagnostics: unknown[] = []) => ({
 	plugin: {
 		id: "model-router-openclaw",
@@ -34,7 +33,7 @@ const report = (plugin: object = {}, diagnostics: unknown[] = []) => ({
 });
 
 test("a loaded report of the expected package has no problems", () => {
-	assert.deepEqual(inspectProblems(report(), VERSION), []);
+	assert.deepEqual(inspectProblems(report(), EXPECTED), []);
 });
 
 test("each wrong field names itself", () => {
@@ -47,16 +46,29 @@ test("each wrong field names itself", () => {
 		[{ contracts: { tools: [] } }, /model_router_config/],
 	];
 	for (const [plugin, pattern] of cases)
-		assert.match(inspectProblems(report(plugin), VERSION).join("\n"), pattern);
+		assert.match(inspectProblems(report(plugin), EXPECTED).join("\n"), pattern);
+});
+
+test("the expected package name comes from the caller", () => {
+	const expected = { name: "@other/pkg", version: VERSION };
+	assert.match(inspectProblems(report(), expected).join("\n"), /packageName/);
+});
+
+test("a report without a root directory is a problem", () => {
+	for (const rootDir of [undefined, "", "  ", 7])
+		assert.match(
+			inspectProblems(report({ rootDir }), EXPECTED).join("\n"),
+			/rootDir/,
+		);
 });
 
 test("a diagnostic is a problem", () => {
-	const problems = inspectProblems(report({}, [{ message: "boom" }]), VERSION);
+	const problems = inspectProblems(report({}, [{ message: "boom" }]), EXPECTED);
 	assert.match(problems.join("\n"), /diagnostics/);
 });
 
 test("something that is not a report is a problem", () => {
-	assert.deepEqual(inspectProblems("text", VERSION), [
+	assert.deepEqual(inspectProblems("text", EXPECTED), [
 		"the inspect output has no plugin",
 	]);
 });
@@ -64,41 +76,6 @@ test("something that is not a report is a problem", () => {
 test("the shipped bundle registers the hook, the tool and both commands", async () => {
 	const { default: plugin } = await import(join(TREE, "index.js"));
 	assert.deepEqual(registrationProblems(plugin), []);
-});
-
-test("a plugin registering the names that src defines has no problems", () => {
-	const problems = registrationProblems({
-		register: (api: OpenClawApi) => {
-			api.on("before_tool_call", async () => undefined, {
-				matcher: [SPAWN_TOOL],
-			});
-			api.registerTool({
-				name: TOOL_NAME,
-				label: "l",
-				description: "d",
-				parameters: {},
-				execute: async () => ({ content: [] }),
-			});
-			for (const name of COMMAND_NAMES)
-				api.registerCommand({
-					name,
-					description: "d",
-					handler: () => ({}),
-				});
-		},
-	});
-	assert.deepEqual(problems, []);
-});
-
-test("the bundle registers into a full-mode api with a runtime, as a Gateway gives", () => {
-	const seen: unknown[] = [];
-	const problems = registrationProblems({
-		register: (api: OpenClawApi) => {
-			seen.push(api.id, api.registrationMode, api.runtime.config.current());
-		},
-	});
-	assert.deepEqual(seen, [PLUGIN_ID, "full", {}]);
-	assert.equal(problems.length, 4);
 });
 
 test("a plugin that registers nothing is reported on every count", () => {

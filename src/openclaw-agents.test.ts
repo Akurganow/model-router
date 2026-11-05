@@ -16,6 +16,7 @@ describe("normalizeAgentId", () => {
 		["!!!", "main"],
 		[undefined, "main"],
 		[7, "main"],
+		["ops-", "ops-"],
 		["a".repeat(70), "a".repeat(64)],
 		[`-${"b".repeat(70)}`, "b".repeat(64)],
 	];

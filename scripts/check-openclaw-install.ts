@@ -3,14 +3,13 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { COMMAND_NAMES, TOOL_NAME } from "../src/openclaw-config.ts";
 import { createFakeApi } from "../src/openclaw-fakes.ts";
-import { SPAWN_TOOL } from "../src/openclaw-router.ts";
+import { HOOK, SPAWN_TOOL } from "../src/openclaw-router.ts";
 import { PLUGIN_ID } from "../src/openclaw-settings.ts";
+import { nonEmpty } from "../src/part.ts";
 import { NPM_ROOT } from "./build/outputs.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
-const PACKAGE_NAME = "@akurganow/model-router";
-const HOOK = "before_tool_call";
 
 // An object read for the named fields, each of which may be absent or of any type.
 type Fields<K extends string> = Partial<Record<K, unknown>>;
@@ -22,7 +21,10 @@ const fieldsOf = <K extends string>(value: unknown): Fields<K> | undefined =>
 // `openclaw plugins inspect --runtime` loads the installed package without
 // activating it, so its report proves the install and the module load but
 // lists no hook, tool or command of this plugin. registrationProblems covers those.
-export function inspectProblems(report: unknown, version: string): string[] {
+export function inspectProblems(
+	report: unknown,
+	expected: { readonly name: string; readonly version: string },
+): string[] {
 	const root = fieldsOf<"plugin" | "diagnostics">(report);
 	const plugin = fieldsOf<
 		| "id"
@@ -32,6 +34,7 @@ export function inspectProblems(report: unknown, version: string): string[] {
 		| "imported"
 		| "enabled"
 		| "contracts"
+		| "rootDir"
 	>(root?.plugin);
 	if (root === undefined || plugin === undefined)
 		return ["the inspect output has no plugin"];
@@ -41,11 +44,13 @@ export function inspectProblems(report: unknown, version: string): string[] {
 			problems.push(`plugin.${field} is ${plugin[field]}, expected ${want}`);
 	};
 	expect("id", PLUGIN_ID);
-	expect("packageName", PACKAGE_NAME);
-	expect("version", version);
+	expect("packageName", expected.name);
+	expect("version", expected.version);
 	expect("status", "loaded");
 	expect("imported", true);
 	expect("enabled", true);
+	if (nonEmpty(plugin.rootDir) === undefined)
+		problems.push("plugin.rootDir is missing, so the bundle cannot be loaded");
 	const tools = fieldsOf<"tools">(plugin.contracts)?.tools;
 	if (!Array.isArray(tools) || !tools.includes(TOOL_NAME))
 		problems.push(`plugin.contracts.tools does not list ${TOOL_NAME}`);
@@ -95,10 +100,10 @@ export async function main(args: string[], root: string): Promise<number> {
 	}
 	try {
 		const report = JSON.parse(readFileSync(file, "utf8"));
-		const { version } = JSON.parse(
+		const { name, version } = JSON.parse(
 			readFileSync(join(root, NPM_ROOT, "package.json"), "utf8"),
 		);
-		const problems = inspectProblems(report, version);
+		const problems = inspectProblems(report, { name, version });
 		if (problems.length === 0) {
 			const bundle = join(report.plugin.rootDir, "index.js");
 			const { default: plugin } = await import(pathToFileURL(bundle).href);

@@ -922,6 +922,10 @@ var KEY_VARIABLES = {
   typesafe: "TYPESAFE_API_KEY",
   openrouter: "OPENROUTER_API_KEY"
 };
+var KEY_FIELDS = {
+  typesafe: "api_key",
+  openrouter: "openrouter_api_key"
+};
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
 var MODEL = "jev-latest";
 var DEFAULT_VALUE = "typesafe";
@@ -1123,19 +1127,17 @@ var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/openclaw-settings.ts
 var PLUGIN_ID = "model-router-openclaw";
-var KEY_FIELDS = {
-  typesafe: "api_key",
-  openrouter: "openrouter_api_key"
-};
 function sources(live, pluginConfig) {
   const entry = live?.plugins?.entries?.[PLUGIN_ID]?.config;
   return [entry, pluginConfig].filter(isRecord2);
 }
-var firstValid = (from, field, valid) => from.map((settings) => settings[field]).find(valid);
-var oneOf = (allowed) => (value) => allowed.includes(value);
-var isProvider = oneOf(PROVIDER_VALUES);
-var isScope = oneOf(SCOPE_VALUES);
-var isText = (value) => nonEmpty(value) !== void 0;
+function firstValid(from, field, parse) {
+  for (const settings of from) {
+    const parsed = parse(settings[field]);
+    if (parsed !== void 0) return parsed;
+  }
+  return void 0;
+}
 function readLive(api) {
   try {
     return api.runtime.config.current();
@@ -1146,10 +1148,10 @@ function readLive(api) {
 function readSettings(live, pluginConfig) {
   const from = sources(live, pluginConfig);
   return {
-    provider: resolve(firstValid(from, "provider", isProvider)),
-    scope: resolveScope(firstValid(from, "scope", isScope)),
-    smallModel: nonEmpty(firstValid(from, "small_model", isText)),
-    largeModel: nonEmpty(firstValid(from, "large_model", isText))
+    provider: resolve(firstValid(from, "provider", parseProvider)),
+    scope: resolveScope(firstValid(from, "scope", parseScope)),
+    smallModel: firstValid(from, "small_model", nonEmpty),
+    largeModel: firstValid(from, "large_model", nonEmpty)
   };
 }
 function readKeys(live, pluginConfig, providerValue, env) {
@@ -1160,6 +1162,15 @@ function readKeys(live, pluginConfig, providerValue, env) {
     if (key !== void 0) keys[provider] = key;
   }
   return keys;
+}
+function readState(api, env) {
+  const config = readLive(api);
+  const settings = readSettings(config, api.pluginConfig);
+  return {
+    config,
+    settings,
+    keys: readKeys(config, api.pluginConfig, settings.provider, env)
+  };
 }
 
 // src/settings.ts
@@ -1203,6 +1214,10 @@ var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var alreadyValue = (value) => `already ${value}`;
 var UNREADABLE = "settings unreadable";
+var outsideCoreScope = (id) => `${id} is outside the core scope`;
+var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
+var agentUnknown = (id) => `${id} agent unknown`;
+var setsOwnModel = (id) => `${id} sets its own model`;
 var keyLine = (provider, state) => `${provider} key: ${state}`;
 var TOOL_LABEL = "Model Router settings";
 var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
@@ -1223,16 +1238,8 @@ var COMMAND_NAMES = VALUE_SETTINGS.map(commandName);
 var ADMIN_SCOPE = "operator.admin";
 var LINE_BREAK = "\n";
 var UNSET = "unset";
-var NOT_OWNER = `only the owner with the ${ADMIN_SCOPE} scope can change it`;
+var NOT_OWNER = "only the owner can change it";
 var TOOL_DESCRIPTION = `Reads the router's settings. With no input it returns the provider, the scope, both models, and whether each key the provider allows is set. With a setting name (${SETTING_NAMES.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
-function snapshot(api, env) {
-  const live = readLive(api);
-  const settings = readSettings(live, api.pluginConfig);
-  return {
-    settings,
-    keys: readKeys(live, api.pluginConfig, settings.provider, env)
-  };
-}
 var modelLine = (name, model) => `${name}: ${model ?? UNSET}`;
 function keyLines(providers, keys) {
   return providers.map(
@@ -1258,7 +1265,7 @@ function howToChange(setting) {
 }
 function runTool(api, env, params) {
   const { setting } = isRecord2(params) ? params : {};
-  return setting === void 0 ? readAll(snapshot(api, env)) : howToChange(setting);
+  return setting === void 0 ? readAll(readState(api, env)) : howToChange(setting);
 }
 var isOwner = (ctx) => ctx.senderIsOwner === true;
 function store(draft, setting, value) {
@@ -1286,7 +1293,7 @@ async function write(api, ctx, setting, value) {
 }
 async function runCommand(api, env, ctx, setting) {
   const value = (ctx.args ?? "").trim();
-  const current = snapshot(api, env).settings[setting];
+  const current = readState(api, env).settings[setting];
   if (value === "") return valueLine(setting, current);
   if (!isValue(setting, value)) return useOneOf(setting);
   if (!isOwner(ctx))
@@ -1334,6 +1341,32 @@ function registerConfig(api, env) {
         }
       }
     });
+}
+
+// src/openclaw-deadline.ts
+var HOOK_MARGIN_MS = 2e3;
+var MIN_DEADLINE_MS = 1e3;
+var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HOOK_MARGIN_MS;
+var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HOOK_MARGIN_MS);
+async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
+  try {
+    const stop = new AbortController();
+    const signal = AbortSignal.any(
+      hostSignal ? [stop.signal, hostSignal] : [stop.signal]
+    );
+    return await new Promise((settle) => {
+      const timer = clock.after(deadlineMs, () => {
+        stop.abort(LIMIT_REACHED);
+        settle(void 0);
+      });
+      work2(signal).then(
+        (result) => signal.aborted ? void 0 : result,
+        () => void 0
+      ).then(settle).finally(() => timer.cancel()).catch(() => void 0);
+    });
+  } catch {
+    return void 0;
+  }
 }
 
 // src/brief.ts
@@ -1493,7 +1526,10 @@ async function slotResolves(runtime, cfg, agentId, slot) {
 // src/openclaw-agents.ts
 var DEFAULT_AGENT_ID = "main";
 var MAX_ID_LENGTH = 64;
-var VALID_ID = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
+var VALID_ID = new RegExp(
+  `^[a-z0-9][a-z0-9_-]{0,${MAX_ID_LENGTH - 1}}$`,
+  "i"
+);
 var INVALID_CHARS = /[^a-z0-9_-]+/g;
 var LEADING_DASHES = /^-+/;
 var TRAILING_DASHES = /-+$/;
@@ -1510,7 +1546,7 @@ function findAgent(config, id) {
   if (id === void 0 || !isRecord2(agents)) return void 0;
   const wanted = normalizeAgentId(id);
   const { entries, list } = agents;
-  if (Object.hasOwn(agents, "entries") && entries !== void 0) {
+  if (entries !== void 0) {
     if (!isRecord2(entries)) return void 0;
     const key = Object.keys(entries).find(
       (candidate) => isRecord2(entries[candidate]) && normalizeAgentId(candidate) === wanted
@@ -1518,10 +1554,17 @@ function findAgent(config, id) {
     return key === void 0 ? void 0 : entries[key];
   }
   if (!Array.isArray(list)) return void 0;
-  return list.find(
-    (item) => isRecord2(item) && normalizeAgentId(item.id) === wanted
-  );
+  return list.filter(isRecord2).find(({ id: itemId }) => normalizeAgentId(itemId) === wanted);
 }
+
+// src/openclaw-params.ts
+var snakeCase = (key) => key.replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2").replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+function readParam(params, key) {
+  if (Object.hasOwn(params, key)) return params[key];
+  const snake = snakeCase(key);
+  return Object.hasOwn(params, snake) ? params[snake] : void 0;
+}
+var readStringParam = (params, key) => nonEmpty(readParam(params, key));
 
 // src/openclaw-gates.ts
 var PASS = { outcome: "pass" };
@@ -1531,36 +1574,43 @@ var NO_MODEL_VALUE = "default";
 function at(value, ...path) {
   let node = value;
   for (const key of path) {
-    if (key === void 0 || !isRecord2(node) || !Object.hasOwn(node, key))
-      return void 0;
+    if (!isRecord2(node) || !Object.hasOwn(node, key)) return void 0;
     node = node[key];
   }
   return node;
 }
 var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
 var agentField = (config, id, ...path) => at(findAgent(config, id), ...path);
-function namesModel({ model }) {
-  return isSet(model) && !(typeof model === "string" && model.trim() === NO_MODEL_VALUE);
+function namesModel(params) {
+  const model = readStringParam(params, "model");
+  return model !== void 0 && model.toLowerCase() !== NO_MODEL_VALUE;
 }
 function passesSilently(params) {
-  const { runtime, agentId, task } = params;
-  return typeof task !== "string" || namesModel(params) || isSet(runtime) && runtime !== SUBAGENT_RUNTIME || isSet(agentId) && typeof agentId !== "string" || params.visible === true || params.context === "fork" || params.mode === "session" || params.thread === true;
+  const { runtime } = params;
+  const agentId = readParam(params, "agentId");
+  return namesModel(params) || isSet(runtime) && runtime !== SUBAGENT_RUNTIME || isSet(agentId) && typeof agentId !== "string" || params.visible === true || params.context === "fork" || params.mode === "session" || params.thread === true;
 }
 function otherAgentSkip(id, { config }) {
-  if (config === void 0) return `${id} agent discovery failed`;
-  const entry = agentField(config, id);
-  if (!isRecord2(entry)) return `${id} agent unknown`;
-  return isSet(at(entry, "model")) ? `${id} sets its own model` : void 0;
+  if (config === void 0) return agentDiscoveryFailed(id);
+  const entry = findAgent(config, id);
+  if (entry === void 0) return agentUnknown(id);
+  return isSet(at(entry, "model")) ? setsOwnModel(id) : void 0;
 }
 function subagentModelSet(input, target) {
   return isSet(agentField(input.config, target, "subagents", "model")) || isSet(at(input.config, "agents", "defaults", "subagents", "model"));
 }
 function effortRule(input) {
   const { params, config, requester, settings } = input;
-  if (isSet(params.thinking)) return { kind: "keep", label: "caller effort" };
+  if (readStringParam(params, "thinking") !== void 0)
+    return { kind: "keep", label: "caller effort" };
   const global = at(config, "agents", "defaults", "subagents", "thinking");
-  const own = agentField(config, requester, "subagents", "thinking");
-  const kept = isSet(global) || settings.scope === "core" && isSet(own);
+  const requesterThinking = agentField(
+    config,
+    requester,
+    "subagents",
+    "thinking"
+  );
+  const kept = isSet(global) || settings.scope === "core" && isSet(requesterThinking);
   return kept ? { kind: "keep", label: "config effort" } : { kind: "set" };
 }
 function roleOf(input, target, own) {
@@ -1569,14 +1619,14 @@ function roleOf(input, target, own) {
   return nonEmpty(description) === void 0 ? DEFAULT_ROLE : roleText(description);
 }
 function gateSpawn(input) {
-  const { params, requester, settings } = input;
-  if (passesSilently(params)) return PASS;
-  const named = typeof params.agentId === "string" && params.agentId !== "" ? params.agentId : void 0;
+  const { params, requester, settings, config } = input;
+  const { task } = params;
+  if (typeof task !== "string" || passesSilently(params)) return PASS;
+  const named = readStringParam(params, "agentId");
   const own = named === void 0 || requester !== void 0 && sameAgent(named, requester);
   const target = own ? requester : named;
   if (!input.hasKey) return skip2("key unset");
-  if (!own && settings.scope === "core")
-    return skip2(`${named} is outside the core scope`);
+  if (!own && settings.scope === "core") return skip2(outsideCoreScope(named));
   if (subagentModelSet(input, target)) return skip2("subagent model set");
   if (!own) {
     const reason = otherAgentSkip(named, input);
@@ -1584,29 +1634,33 @@ function gateSpawn(input) {
   }
   if (settings.smallModel === void 0 && settings.largeModel === void 0)
     return skip2("no small or large model");
-  if (input.config === void 0) return skip2(UNREADABLE);
+  if (config === void 0) return skip2(UNREADABLE);
   return {
     outcome: "route",
-    agentId: target,
+    target,
     role: roleOf(input, target, own),
-    effort: effortRule(input)
+    effort: effortRule(input),
+    config,
+    task
   };
 }
 
 // src/openclaw-router.ts
-var MIN_DEADLINE_MS = 1e3;
 var LINE_PREFIX = "model-router ";
 var SPAWN_TOOL = "sessions_spawn";
+var HOOK = "before_tool_call";
 var MIDDLE_TIER = 1;
-var SLOT_NAMES = { 0: "small", 2: "large" };
-var hasKeys = (keys) => Object.keys(keys).length > 0;
+var END_SLOTS = {
+  0: { name: "small", model: (s) => s.smallModel },
+  2: { name: "large", model: (s) => s.largeModel }
+};
 async function score({ deps, signal, params }, settings, keys, gate) {
   const decision = await route({
     parts: [tier, work],
     state: {
       role: gate.role,
-      description: nonEmpty(params.label) ?? nonEmpty(params.taskName) ?? "",
-      task: prepareBrief(String(params.task))
+      description: readStringParam(params, "label") ?? nonEmpty(params.taskName) ?? "",
+      task: prepareBrief(gate.task)
     },
     attempts: plan(settings.provider, {
       typesafe: keys.typesafe !== void 0,
@@ -1618,38 +1672,30 @@ async function score({ deps, signal, params }, settings, keys, gate) {
   });
   return decide2(decision, tier.key, work.key);
 }
-async function slotFor({ api }, settings, config, agentId, level) {
+async function slotFor(runtime, settings, { config, target }, level) {
   if (level === MIDDLE_TIER) return { model: void 0 };
-  const name = SLOT_NAMES[level];
-  const model = level === 0 ? settings.smallModel : settings.largeModel;
+  const { name, model: slot } = END_SLOTS[level];
+  const model = slot(settings);
   if (model === void 0) return { skipped: `${name} model unset` };
-  if (!await slotResolves(api.runtime, config, agentId, model))
+  if (!await slotResolves(runtime, config, target, model))
     return { skipped: `${name} model unresolved` };
   return { model };
 }
 async function routeSpawn(spawn) {
   const { api, deps, params, requester, log } = spawn;
-  const config = readLive(api);
-  const settings = readSettings(config, api.pluginConfig);
-  const keys = readKeys(config, api.pluginConfig, settings.provider, deps.env);
+  const { config, settings, keys } = readState(api, deps.env);
   const gate = gateSpawn({
     params,
     requester,
     config,
     settings,
-    hasKey: hasKeys(keys)
+    hasKey: Object.keys(keys).length > 0
   });
   if (gate.outcome === "pass") return void 0;
   if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
   const decided = await score(spawn, settings, keys, gate);
   if ("skipped" in decided) return void log(skippedLine(decided.skipped));
-  const slot = await slotFor(
-    spawn,
-    settings,
-    config ?? {},
-    gate.agentId,
-    decided.tier
-  );
+  const slot = await slotFor(api.runtime, settings, gate, decided.tier);
   if ("skipped" in slot) return void log(skippedLine(slot.skipped));
   const { model } = slot;
   const kept = gate.effort.kind === "keep" ? gate.effort.label : void 0;
@@ -1674,21 +1720,26 @@ function createBeforeToolCall(api, deadlineMs, deps) {
     try {
       if (deadlineMs < MIN_DEADLINE_MS || event?.toolName !== SPAWN_TOOL)
         return void 0;
-      const stop = new AbortController();
-      const signal = AbortSignal.any(
-        ctx?.abortSignal ? [stop.signal, ctx.abortSignal] : [stop.signal]
+      const requester = nonEmpty(ctx?.agentId);
+      const { params } = event;
+      return await raceDeadline(
+        (signal) => {
+          const log = (message) => {
+            if (!signal.aborted) api.logger.info(LINE_PREFIX + message);
+          };
+          return routeSpawn({
+            api,
+            deps,
+            signal,
+            params,
+            requester,
+            log
+          });
+        },
+        deadlineMs,
+        deps.clock,
+        ctx?.abortSignal
       );
-      const log = (message) => {
-        if (!signal.aborted) api.logger.info(LINE_PREFIX + message);
-      };
-      return await new Promise((settle) => {
-        const timer = deps.clock.after(deadlineMs, () => {
-          stop.abort(LIMIT_REACHED);
-          settle(void 0);
-        });
-        const requester = nonEmpty(ctx?.agentId);
-        routeSpawn({ api, deps, signal, params: event.params, requester, log }).catch(() => void 0).then((result) => signal.aborted ? void 0 : result).then(settle).finally(() => timer.cancel());
-      });
     } catch {
       return void 0;
     }
@@ -1696,7 +1747,6 @@ function createBeforeToolCall(api, deadlineMs, deps) {
 }
 
 // src/openclaw.ts
-var HOOK_MARGIN_MS = 2e3;
 var HOOK_TIMEOUT_MAX_MS = 6e5;
 var PLUGIN_HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HOOK_MARGIN_MS;
 var realClock = {
@@ -1711,7 +1761,6 @@ function effectiveTimeout(config) {
   const perHook = isRecord2(hooks?.timeouts) ? hooks.timeouts.before_tool_call : void 0;
   return [perHook, hooks?.timeoutMs].find(usable) ?? PLUGIN_HOOK_TIMEOUT_MS;
 }
-var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HOOK_MARGIN_MS);
 function warn(api, message) {
   try {
     api.logger.warn(LINE_PREFIX + message);
@@ -1726,10 +1775,10 @@ function register(api, deps) {
     if (deadline < MIN_DEADLINE_MS)
       warn(
         api,
-        `the hook timeout is ${timeout} ms, which leaves ${deadline} ms to route; the plugin routes nothing. Set it to ${MIN_DEADLINE_MS + HOOK_MARGIN_MS} ms or more.`
+        `the hook timeout is ${timeout} ms, which leaves ${deadline} ms to route; the plugin routes nothing. Set it to ${MIN_TIMEOUT_MS} ms or more.`
       );
     registerConfig(api, deps.env);
-    api.on("before_tool_call", createBeforeToolCall(api, deadline, deps), {
+    api.on(HOOK, createBeforeToolCall(api, deadline, deps), {
       matcher: [SPAWN_TOOL],
       priority: 100,
       timeoutMs: PLUGIN_HOOK_TIMEOUT_MS
@@ -1748,6 +1797,5 @@ function createPlugin(deps = {
 var openclaw_default = createPlugin();
 export {
   createPlugin,
-  deadlineFor,
   openclaw_default as default
 };

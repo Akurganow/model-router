@@ -1,14 +1,15 @@
 import type { OpenClawApi, OpenClawConfig } from "./openclaw-types.ts";
 import { isRecord, nonEmpty } from "./part.ts";
 import {
+	KEY_FIELDS,
 	KEY_VARIABLES,
 	order,
-	PROVIDER_VALUES,
 	type Provider,
 	type ProviderValue,
+	parseProvider,
 	resolve,
 } from "./provider.ts";
-import { resolveScope, SCOPE_VALUES, type Scope } from "./scope.ts";
+import { parseScope, resolveScope, type Scope } from "./scope.ts";
 
 export const PLUGIN_ID = "model-router-openclaw";
 
@@ -22,11 +23,6 @@ export type Keys = Readonly<Partial<Record<Provider, string>>>;
 export type Environment = Readonly<Record<string, string | undefined>>;
 type Settings = Record<string, unknown>;
 
-const KEY_FIELDS: Readonly<Record<Provider, string>> = {
-	typesafe: "api_key",
-	openrouter: "openrouter_api_key",
-};
-
 // The live config holds a command's write. The plugin config is what OpenClaw read at start-up.
 function sources(
 	live: OpenClawConfig | undefined,
@@ -36,23 +32,21 @@ function sources(
 	return [entry, pluginConfig].filter(isRecord);
 }
 
-// A source whose value is invalid counts as silent, so a later source can still supply the setting.
-const firstValid = (
+// A source whose value does not parse counts as silent, so a later source can still supply the setting.
+function firstValid<T>(
 	from: readonly Settings[],
 	field: string,
-	valid: (value: unknown) => boolean,
-): unknown => from.map((settings) => settings[field]).find(valid);
+	parse: (value: unknown) => T | undefined,
+): T | undefined {
+	for (const settings of from) {
+		const parsed = parse(settings[field]);
+		if (parsed !== undefined) return parsed;
+	}
+	return undefined;
+}
 
-const oneOf =
-	(allowed: readonly unknown[]) =>
-	(value: unknown): boolean =>
-		allowed.includes(value);
-const isProvider = oneOf(PROVIDER_VALUES);
-const isScope = oneOf(SCOPE_VALUES);
-const isText = (value: unknown): boolean => nonEmpty(value) !== undefined;
-
-/** The live config, or undefined when the runtime cannot read it. The tool and the router both read it here. */
-export function readLive(api: OpenClawApi): OpenClawConfig | undefined {
+// The live config, or undefined when the runtime cannot read it.
+function readLive(api: OpenClawApi): OpenClawConfig | undefined {
 	try {
 		return api.runtime.config.current();
 	} catch {
@@ -66,10 +60,10 @@ export function readSettings(
 ): OpenClawSettings {
 	const from = sources(live, pluginConfig);
 	return {
-		provider: resolve(firstValid(from, "provider", isProvider)),
-		scope: resolveScope(firstValid(from, "scope", isScope)),
-		smallModel: nonEmpty(firstValid(from, "small_model", isText)),
-		largeModel: nonEmpty(firstValid(from, "large_model", isText)),
+		provider: resolve(firstValid(from, "provider", parseProvider)),
+		scope: resolveScope(firstValid(from, "scope", parseScope)),
+		smallModel: firstValid(from, "small_model", nonEmpty),
+		largeModel: firstValid(from, "large_model", nonEmpty),
 	};
 }
 
@@ -89,4 +83,21 @@ export function readKeys(
 		if (key !== undefined) keys[provider] = key;
 	}
 	return keys;
+}
+
+export type State = {
+	readonly config: OpenClawConfig | undefined;
+	readonly settings: OpenClawSettings;
+	readonly keys: Keys;
+};
+
+/** Everything the plugin reads for one decision, in one sequence. The tool and the router both read it here. */
+export function readState(api: OpenClawApi, env: Environment): State {
+	const config = readLive(api);
+	const settings = readSettings(config, api.pluginConfig);
+	return {
+		config,
+		settings,
+		keys: readKeys(config, api.pluginConfig, settings.provider, env),
+	};
 }

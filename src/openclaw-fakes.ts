@@ -1,6 +1,6 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { jevAnswer, streamed } from "./jev-fakes.ts";
-import type { Clock } from "./openclaw-router.ts";
+import type { Clock } from "./openclaw-deadline.ts";
 import type {
 	BeforeToolCallHandler,
 	CommandDefinition,
@@ -226,7 +226,7 @@ export function createJevFetch(initial: Levels = { tier: 1, work: 1 }) {
 
 /**
  * A clock that runs a timer only when the test calls `fire`.
- * `delays` lists every delay asked for, cancelled or not.
+ * `delays` lists every delay asked for, cancelled or not, and `live` counts the timers not yet fired or cancelled.
  */
 export function createFakeClock() {
 	const timers: { ms: number; fn: () => void; live: boolean }[] = [];
@@ -248,5 +248,10 @@ export function createFakeClock() {
 			timer.fn();
 		}
 	};
-	return { clock, fire, delays: () => timers.map((t) => t.ms) };
+	return {
+		clock,
+		fire,
+		delays: () => timers.map((t) => t.ms),
+		live: () => timers.filter((t) => t.live).length,
+	};
 }

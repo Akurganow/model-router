@@ -1,9 +1,16 @@
 import { DEFAULT_ROLE, roleText } from "./brief.ts";
 import { findAgent, sameAgent } from "./openclaw-agents.ts";
+import { readParam, readStringParam } from "./openclaw-params.ts";
 import type { OpenClawSettings } from "./openclaw-settings.ts";
 import type { OpenClawConfig, SpawnParams } from "./openclaw-types.ts";
 import { isRecord, nonEmpty } from "./part.ts";
-import { UNREADABLE } from "./settings.ts";
+import {
+	agentDiscoveryFailed,
+	agentUnknown,
+	outsideCoreScope,
+	setsOwnModel,
+	UNREADABLE,
+} from "./settings.ts";
 
 export type EffortRule =
 	| { readonly kind: "set" }
@@ -12,16 +19,19 @@ export type EffortRule =
 			readonly label: "caller effort" | "config effort";
 	  };
 
-// A spawn passes silently, is skipped with a reason, or is routed for this agent with this role and effort rule.
+// A spawn passes silently, is skipped with a reason, or is routed for its target agent with this role and effort rule.
 export type Gate =
 	| { readonly outcome: "pass" }
 	| { readonly outcome: "skip"; readonly reason: string }
 	| {
 			readonly outcome: "route";
-			// Unset when the spawn is the own default agent and the context names no requester.
-			readonly agentId: string | undefined;
+			// Unset when the spawn is the requesting agent itself and the context names no requester.
+			readonly target: string | undefined;
 			readonly role: string;
 			readonly effort: EffortRule;
+			// The live config the checks read. A route has one, because the gate skips an unreadable config.
+			readonly config: OpenClawConfig;
+			readonly task: string;
 	  };
 
 export type GateInput = {
@@ -40,11 +50,10 @@ const SUBAGENT_RUNTIME = "subagent";
 const NO_MODEL_VALUE = "default";
 
 // OpenClaw's config is user-written JSON, so every step down it is checked.
-function at(value: unknown, ...path: (string | undefined)[]): unknown {
+function at(value: unknown, ...path: string[]): unknown {
 	let node = value;
 	for (const key of path) {
-		if (key === undefined || !isRecord(node) || !Object.hasOwn(node, key))
-			return undefined;
+		if (!isRecord(node) || !Object.hasOwn(node, key)) return undefined;
 		node = node[key];
 	}
 	return node;
@@ -62,18 +71,17 @@ const agentField = (
 	...path: string[]
 ) => at(findAgent(config, id), ...path);
 
-function namesModel({ model }: SpawnParams): boolean {
-	return (
-		isSet(model) &&
-		!(typeof model === "string" && model.trim() === NO_MODEL_VALUE)
-	);
+// OpenClaw's `normalizeToolModelOverride`: trimmed text, where "default" in any case names no model.
+function namesModel(params: SpawnParams): boolean {
+	const model = readStringParam(params, "model");
+	return model !== undefined && model.toLowerCase() !== NO_MODEL_VALUE;
 }
 
 // Claude Code passes these calls through, and so does the router.
 function passesSilently(params: SpawnParams): boolean {
-	const { runtime, agentId, task } = params;
+	const { runtime } = params;
+	const agentId = readParam(params, "agentId");
 	return (
-		typeof task !== "string" ||
 		namesModel(params) ||
 		(isSet(runtime) && runtime !== SUBAGENT_RUNTIME) ||
 		(isSet(agentId) && typeof agentId !== "string") ||
@@ -85,10 +93,10 @@ function passesSilently(params: SpawnParams): boolean {
 }
 
 function otherAgentSkip(id: string, { config }: GateInput): string | undefined {
-	if (config === undefined) return `${id} agent discovery failed`;
-	const entry = agentField(config, id);
-	if (!isRecord(entry)) return `${id} agent unknown`;
-	return isSet(at(entry, "model")) ? `${id} sets its own model` : undefined;
+	if (config === undefined) return agentDiscoveryFailed(id);
+	const entry = findAgent(config, id);
+	if (entry === undefined) return agentUnknown(id);
+	return isSet(at(entry, "model")) ? setsOwnModel(id) : undefined;
 }
 
 function subagentModelSet(input: GateInput, target: string | undefined) {
@@ -101,10 +109,17 @@ function subagentModelSet(input: GateInput, target: string | undefined) {
 // The first match decides. Under extended the requester's or target's own value is replaced, which is the ladder effort too.
 function effortRule(input: GateInput): EffortRule {
 	const { params, config, requester, settings } = input;
-	if (isSet(params.thinking)) return { kind: "keep", label: "caller effort" };
+	if (readStringParam(params, "thinking") !== undefined)
+		return { kind: "keep", label: "caller effort" };
 	const global = at(config, "agents", "defaults", "subagents", "thinking");
-	const own = agentField(config, requester, "subagents", "thinking");
-	const kept = isSet(global) || (settings.scope === "core" && isSet(own));
+	const requesterThinking = agentField(
+		config,
+		requester,
+		"subagents",
+		"thinking",
+	);
+	const kept =
+		isSet(global) || (settings.scope === "core" && isSet(requesterThinking));
 	return kept ? { kind: "keep", label: "config effort" } : { kind: "set" };
 }
 
@@ -116,13 +131,12 @@ function roleOf(input: GateInput, target: string | undefined, own: boolean) {
 		: roleText(description);
 }
 
+// Order: plugins/model-router-openclaw/README.md#which-spawns-are-routed. Change both.
 export function gateSpawn(input: GateInput): Gate {
-	const { params, requester, settings } = input;
-	if (passesSilently(params)) return PASS;
-	const named =
-		typeof params.agentId === "string" && params.agentId !== ""
-			? params.agentId
-			: undefined;
+	const { params, requester, settings, config } = input;
+	const { task } = params;
+	if (typeof task !== "string" || passesSilently(params)) return PASS;
+	const named = readStringParam(params, "agentId");
 	// "The spawn of the requesting agent itself": no agent id, or the requester's own id.
 	const own =
 		named === undefined ||
@@ -130,8 +144,7 @@ export function gateSpawn(input: GateInput): Gate {
 	const target = own ? requester : named;
 	// omp's order: the key gate, the scope, the user's own model choice, the agent, the model slots.
 	if (!input.hasKey) return skip("key unset");
-	if (!own && settings.scope === "core")
-		return skip(`${named} is outside the core scope`);
+	if (!own && settings.scope === "core") return skip(outsideCoreScope(named));
 	if (subagentModelSet(input, target)) return skip("subagent model set");
 	if (!own) {
 		const reason = otherAgentSkip(named, input);
@@ -140,11 +153,13 @@ export function gateSpawn(input: GateInput): Gate {
 	if (settings.smallModel === undefined && settings.largeModel === undefined)
 		return skip("no small or large model");
 	// Without the config the user's own subagent model and effort cannot be checked.
-	if (input.config === undefined) return skip(UNREADABLE);
+	if (config === undefined) return skip(UNREADABLE);
 	return {
 		outcome: "route",
-		agentId: target,
+		target,
 		role: roleOf(input, target, own),
 		effort: effortRule(input),
+		config,
+		task,
 	};
 }

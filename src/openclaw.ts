@@ -2,9 +2,15 @@ import { ROUTING_LIMIT_MS } from "./compose.ts";
 import { streamedFetch } from "./fetch.ts";
 import { registerConfig } from "./openclaw-config.ts";
 import {
-	createBeforeToolCall,
-	LINE_PREFIX,
+	deadlineFor,
+	HOOK_MARGIN_MS,
 	MIN_DEADLINE_MS,
+	MIN_TIMEOUT_MS,
+} from "./openclaw-deadline.ts";
+import {
+	createBeforeToolCall,
+	HOOK,
+	LINE_PREFIX,
 	type RouterDeps,
 	SPAWN_TOOL,
 } from "./openclaw-router.ts";
@@ -12,8 +18,6 @@ import { PLUGIN_ID } from "./openclaw-settings.ts";
 import type { OpenClawApi, OpenClawConfig } from "./openclaw-types.ts";
 import { isRecord } from "./part.ts";
 
-// The hook gets this much beyond the routing limit before OpenClaw times it out.
-const HOOK_MARGIN_MS = 2000;
 const HOOK_TIMEOUT_MAX_MS = 600000;
 const PLUGIN_HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HOOK_MARGIN_MS;
 
@@ -39,10 +43,6 @@ function effectiveTimeout(config: OpenClawConfig): number {
 	return [perHook, hooks?.timeoutMs].find(usable) ?? PLUGIN_HOOK_TIMEOUT_MS;
 }
 
-// The routing time left once the hook's own margin is kept back, capped at the routing limit.
-export const deadlineFor = (timeout: number): number =>
-	Math.min(ROUTING_LIMIT_MS, timeout - HOOK_MARGIN_MS);
-
 function warn(api: OpenClawApi, message: string): void {
 	try {
 		api.logger.warn(LINE_PREFIX + message);
@@ -59,11 +59,11 @@ function register(api: OpenClawApi, deps: RouterDeps): void {
 		if (deadline < MIN_DEADLINE_MS)
 			warn(
 				api,
-				`the hook timeout is ${timeout} ms, which leaves ${deadline} ms to route; the plugin routes nothing. Set it to ${MIN_DEADLINE_MS + HOOK_MARGIN_MS} ms or more.`,
+				`the hook timeout is ${timeout} ms, which leaves ${deadline} ms to route; the plugin routes nothing. Set it to ${MIN_TIMEOUT_MS} ms or more.`,
 			);
 		// The config tool and the commands register before the hook, so a throw leaves routing off.
 		registerConfig(api, deps.env);
-		api.on("before_tool_call", createBeforeToolCall(api, deadline, deps), {
+		api.on(HOOK, createBeforeToolCall(api, deadline, deps), {
 			matcher: [SPAWN_TOOL],
 			priority: 100,
 			timeoutMs: PLUGIN_HOOK_TIMEOUT_MS,
