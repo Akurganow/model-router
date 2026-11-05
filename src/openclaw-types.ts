@@ -44,7 +44,10 @@ export type OpenClawConfig = {
 		entries?: Record<string, AgentEntry>;
 	};
 	plugins?: {
-		entries?: Record<string, { hooks?: HookTimeoutSettings }>;
+		entries?: Record<
+			string,
+			{ hooks?: HookTimeoutSettings; config?: Record<string, unknown> }
+		>;
 	};
 };
 

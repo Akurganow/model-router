@@ -1,0 +1,400 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "./brief.ts";
+import { type Gate, type GateInput, gateSpawn } from "./openclaw-gates.ts";
+import type { OpenClawSettings } from "./openclaw-settings.ts";
+import type { OpenClawConfig } from "./openclaw-types.ts";
+
+const SETTINGS: OpenClawSettings = {
+	provider: "typesafe",
+	scope: "core",
+	smallModel: "openai/small",
+	largeModel: "openai/large",
+};
+const REQUESTER = "main";
+const OTHER = "writer";
+
+const gate = (overrides: Partial<GateInput> = {}): Gate =>
+	gateSpawn({
+		params: { task: "do the work" },
+		requester: REQUESTER,
+		config: {},
+		settings: SETTINGS,
+		hasKey: true,
+		...overrides,
+	});
+const withParams = (params: Record<string, unknown>) =>
+	gate({ params: { task: "do the work", ...params } });
+const extended = { ...SETTINGS, scope: "extended" as const };
+
+function routed(result: Gate) {
+	assert.equal(result.outcome, "route", JSON.stringify(result));
+	return result as Extract<Gate, { outcome: "route" }>;
+}
+const skipped = (result: Gate) => {
+	assert.equal(result.outcome, "skip", JSON.stringify(result));
+	return (result as Extract<Gate, { outcome: "skip" }>).reason;
+};
+
+test("a plain spawn of the own default agent is routed", () => {
+	assert.deepEqual(gate(), {
+		outcome: "route",
+		agentId: REQUESTER,
+		role: DEFAULT_ROLE,
+		effort: { kind: "set" },
+	});
+});
+
+// Silent pass: no line, as Claude Code passes such calls through.
+const SILENT: readonly [string, Record<string, unknown>][] = [
+	["a model that names one", { model: "openai/gpt-5" }],
+	["the acp runtime", { runtime: "acp" }],
+	["a runtime other than subagent", { runtime: "other" }],
+	["a visible spawn", { visible: true }],
+	["a forked context", { context: "fork" }],
+	["a session mode", { mode: "session" }],
+	["a thread spawn", { thread: true }],
+	["an agent id that is not a string", { agentId: 4 }],
+];
+for (const [name, params] of SILENT)
+	test(`${name} passes silently`, () => {
+		assert.deepEqual(withParams(params), { outcome: "pass" });
+	});
+
+test("a missing task passes silently", () => {
+	assert.deepEqual(gate({ params: {} }), { outcome: "pass" });
+});
+
+test("a task that is not a string passes silently", () => {
+	assert.deepEqual(gate({ params: { task: 5 } }), { outcome: "pass" });
+});
+
+test("the model value default does not pass silently", () => {
+	routed(withParams({ model: "default" }));
+});
+
+test("an empty or absent model does not pass silently", () => {
+	for (const model of ["", "  ", null, undefined])
+		routed(withParams({ model }));
+});
+
+test("a spawn flag that is not exactly set does not pass silently", () => {
+	routed(
+		withParams({
+			visible: false,
+			thread: false,
+			context: "isolated",
+			mode: "run",
+			runtime: "subagent",
+		}),
+	);
+});
+
+test("the own default agent is a spawn naming the requester", () => {
+	assert.equal(routed(withParams({ agentId: REQUESTER })).agentId, REQUESTER);
+});
+
+test("an empty agent id is the own default agent", () => {
+	assert.equal(routed(withParams({ agentId: "" })).agentId, REQUESTER);
+});
+
+test("without a requester id the own default agent has no agent id", () => {
+	assert.equal(routed(gate({ requester: undefined })).agentId, undefined);
+});
+
+test("a named agent without a requester id counts as another agent", () => {
+	const result = withParams({ agentId: OTHER });
+	assert.equal(
+		skipped(
+			gate({ params: { task: "t", agentId: OTHER }, requester: undefined }),
+		),
+		`${OTHER} is outside the core scope`,
+	);
+	assert.equal(skipped(result), `${OTHER} is outside the core scope`);
+});
+
+test("under core another agent is outside the scope even when unknown", () => {
+	assert.equal(
+		skipped(withParams({ agentId: OTHER })),
+		`${OTHER} is outside the core scope`,
+	);
+});
+
+const agents = (
+	section: NonNullable<OpenClawConfig["agents"]>,
+): OpenClawConfig => ({ agents: section });
+const known = (entry: object): OpenClawConfig =>
+	agents({ entries: { [OTHER]: entry } });
+const other = (
+	config: OpenClawConfig | undefined,
+	params: Record<string, unknown> = {},
+) =>
+	gate({
+		params: { task: "t", agentId: OTHER, ...params },
+		config,
+		settings: extended,
+	});
+
+test("an unreadable config gives agent discovery failed", () => {
+	assert.equal(skipped(other(undefined)), `${OTHER} agent discovery failed`);
+});
+
+test("an agent that is not configured is unknown", () => {
+	assert.equal(skipped(other({})), `${OTHER} agent unknown`);
+	assert.equal(
+		skipped(other(agents({ entries: {} }))),
+		`${OTHER} agent unknown`,
+	);
+});
+
+test("an inherited property name is not a configured agent", () => {
+	const result = gate({
+		params: { task: "t", agentId: "constructor" },
+		config: agents({ entries: {} }),
+		settings: extended,
+	});
+	assert.equal(skipped(result), "constructor agent unknown");
+});
+
+test("an agent that sets its own model is skipped", () => {
+	assert.equal(
+		skipped(other(known({ model: "x/y" }))),
+		`${OTHER} sets its own model`,
+	);
+	assert.equal(
+		skipped(other(known({ model: { primary: "x/y" } }))),
+		`${OTHER} sets its own model`,
+	);
+});
+
+test("an agent with an empty model is routed", () => {
+	for (const model of ["", "  ", undefined, null])
+		routed(other(known({ model })));
+});
+
+test("another agent under extended is routed with its own id", () => {
+	assert.equal(routed(other(known({}))).agentId, OTHER);
+});
+
+test("the target's subagent model skips the spawn", () => {
+	const own = agents({
+		entries: { [REQUESTER]: { subagents: { model: "a/b" } } },
+	});
+	assert.equal(skipped(gate({ config: own })), "subagent model set");
+	const cfg = known({ subagents: { model: "a/b" } });
+	assert.equal(skipped(other(cfg)), "subagent model set");
+});
+
+test("the default subagent model skips the spawn", () => {
+	const config = agents({ defaults: { subagents: { model: "a/b" } } });
+	assert.equal(skipped(gate({ config })), "subagent model set");
+	assert.equal(
+		skipped(gate({ config, requester: undefined })),
+		"subagent model set",
+	);
+});
+
+test("a subagent model object counts as set, an empty one does not", () => {
+	const set = agents({
+		defaults: { subagents: { model: { primary: "a/b" } } },
+	});
+	assert.equal(skipped(gate({ config: set })), "subagent model set");
+	for (const model of ["", "  ", null])
+		routed(gate({ config: agents({ defaults: { subagents: { model } } }) }));
+});
+
+test("another agent's subagent model does not skip the requester", () => {
+	const config = agents({
+		entries: { [OTHER]: { subagents: { model: "a/b" } } },
+	});
+	routed(gate({ config }));
+});
+
+test("no key for any allowed provider skips with key unset", () => {
+	assert.equal(skipped(gate({ hasKey: false })), "key unset");
+});
+
+test("neither model slot set skips with no small or large model", () => {
+	const settings = {
+		...SETTINGS,
+		smallModel: undefined,
+		largeModel: undefined,
+	};
+	assert.equal(skipped(gate({ settings })), "no small or large model");
+});
+
+test("one slot set is enough", () => {
+	routed(gate({ settings: { ...SETTINGS, smallModel: undefined } }));
+	routed(gate({ settings: { ...SETTINGS, largeModel: undefined } }));
+});
+
+test("key unset comes before no small or large model", () => {
+	const settings = {
+		...SETTINGS,
+		smallModel: undefined,
+		largeModel: undefined,
+	};
+	assert.equal(skipped(gate({ hasKey: false, settings })), "key unset");
+});
+
+test("key unset comes before every other skip, as in omp", () => {
+	const config = agents({ defaults: { subagents: { model: "a/b" } } });
+	assert.equal(skipped(gate({ config, hasKey: false })), "key unset");
+	assert.equal(
+		skipped(
+			gate({ params: { task: "t", agentId: OTHER }, config, hasKey: false }),
+		),
+		"key unset",
+	);
+});
+
+test("the core scope comes before subagent model set", () => {
+	const config = agents({ defaults: { subagents: { model: "a/b" } } });
+	assert.equal(
+		skipped(gate({ params: { task: "t", agentId: OTHER }, config })),
+		`${OTHER} is outside the core scope`,
+	);
+});
+
+test("subagent model set comes before the agent checks, as in omp", () => {
+	const config = agents({ defaults: { subagents: { model: "a/b" } } });
+	assert.equal(
+		skipped(
+			gate({
+				params: { task: "t", agentId: OTHER },
+				config,
+				settings: extended,
+			}),
+		),
+		"subagent model set",
+	);
+});
+
+test("a silent pass comes before every skip", () => {
+	assert.deepEqual(
+		gate({
+			params: { task: "t", model: "a/b" },
+			hasKey: false,
+			settings: { ...SETTINGS, smallModel: undefined, largeModel: undefined },
+		}),
+		{ outcome: "pass" },
+	);
+});
+
+const describe = (description: unknown) =>
+	agents({
+		entries: { [REQUESTER]: { description }, [OTHER]: { description } },
+	});
+
+test("the own default agent with a requester description sends roleText of it", () => {
+	const role = routed(gate({ config: describe("Plans the release.") })).role;
+	assert.equal(role, roleText("Plans the release."));
+	assert.notEqual(role, DEFAULT_ROLE);
+});
+
+test("the own default agent without a description sends the default role", () => {
+	for (const description of [undefined, "", "   ", 3, null])
+		assert.equal(
+			routed(gate({ config: describe(description) })).role,
+			DEFAULT_ROLE,
+		);
+	assert.equal(routed(gate({ config: {} })).role, DEFAULT_ROLE);
+});
+
+test("the own default agent without a requester id sends the default role", () => {
+	const config = describe("Plans the release.");
+	assert.equal(
+		routed(gate({ requester: undefined, config })).role,
+		DEFAULT_ROLE,
+	);
+});
+
+test("another agent with a description sends roleText of it", () => {
+	assert.equal(
+		routed(other(describe("Writes docs."))).role,
+		roleText("Writes docs."),
+	);
+});
+
+test("another agent without a description sends the neutral text", () => {
+	assert.equal(routed(other(known({}))).role, NO_DESCRIPTION);
+});
+
+const thinking = (defaults?: unknown, requester?: unknown, target?: unknown) =>
+	agents({
+		defaults: { subagents: { thinking: defaults } },
+		entries: {
+			[REQUESTER]: { subagents: { thinking: requester } },
+			[OTHER]: { subagents: { thinking: target } },
+		},
+	});
+const effort = (result: Gate) => routed(result).effort;
+
+test("effort step 1: a thinking param is kept as caller effort", () => {
+	assert.deepEqual(effort(withParams({ thinking: "low" })), {
+		kind: "keep",
+		label: "caller effort",
+	});
+});
+
+test("effort step 1 decides over every configured value", () => {
+	const config = thinking("high", "high", "high");
+	assert.deepEqual(
+		effort(
+			gate({
+				params: { task: "t", thinking: "low" },
+				config,
+				settings: extended,
+			}),
+		),
+		{
+			kind: "keep",
+			label: "caller effort",
+		},
+	);
+});
+
+test("an empty thinking param is not step 1", () => {
+	for (const value of ["", "  ", null])
+		assert.deepEqual(effort(withParams({ thinking: value })), { kind: "set" });
+});
+
+test("effort step 2: a default subagent thinking is kept as config effort", () => {
+	assert.deepEqual(effort(gate({ config: thinking("high") })), {
+		kind: "keep",
+		label: "config effort",
+	});
+});
+
+test("effort step 3: under core the requester's thinking is kept", () => {
+	assert.deepEqual(effort(gate({ config: thinking(undefined, "high") })), {
+		kind: "keep",
+		label: "config effort",
+	});
+});
+
+test("effort step 4: under extended the requester's thinking is replaced", () => {
+	assert.deepEqual(
+		effort(gate({ config: thinking(undefined, "high"), settings: extended })),
+		{ kind: "set" },
+	);
+});
+
+test("effort step 4: under extended the target's thinking is replaced", () => {
+	assert.deepEqual(effort(other(thinking(undefined, undefined, "high"))), {
+		kind: "set",
+	});
+});
+
+test("effort step 5: otherwise the ladder effort is set", () => {
+	assert.deepEqual(effort(gate({ config: thinking(undefined, "", "") })), {
+		kind: "set",
+	});
+	assert.deepEqual(effort(gate({ config: {} })), { kind: "set" });
+	assert.deepEqual(effort(gate({ config: undefined })), { kind: "set" });
+});
+
+test("the first match decides: under extended a global default beats a per-agent value", () => {
+	const result = gate({ config: thinking("low", "high"), settings: extended });
+	assert.deepEqual(effort(result), { kind: "keep", label: "config effort" });
+});
