@@ -12,6 +12,7 @@ import {
 	findMarkers,
 	formatHit,
 	MARKERS,
+	planScan,
 	scanDiff,
 	scanFiles,
 } from "./scan-owner-setup.ts";
@@ -188,6 +189,36 @@ test("a base the clone lacks scans from the merge base with origin/main", () => 
 		{ path: "c.md", line: 1, kind: "sk- key" },
 	]);
 	assert.match(diffRange(repo.root, ZERO_ID).note ?? "", /merge base/);
+});
+
+test("without --base the scan reads from the merge base with origin/main", () => {
+	git("init", "-q");
+	repo.put("a.md", `${MAC_HOME}\n`);
+	git("add", ".");
+	git("commit", "-q", "-m", "main");
+	const main = git("rev-parse", "HEAD");
+	git("update-ref", "refs/remotes/origin/main", main);
+	repo.put("b.md", `${SK_KEY}\n`);
+	git("add", ".");
+	git("commit", "-q", "-m", "branch");
+	const plan = planScan(repo.root, undefined);
+	assert.deepEqual(scanDiff(repo.root, plan.range ?? []), [
+		{ path: "b.md", line: 1, kind: "sk- key" },
+	]);
+	assert.match(
+		plan.note ?? "",
+		new RegExp(`merge base with origin/main, ${main.slice(0, 7)}`),
+	);
+});
+
+test("without --base and without origin/main the scan reads the generated files only", () => {
+	git("init", "-q");
+	repo.put("a.md", "fine\n");
+	git("add", ".");
+	git("commit", "-q", "-m", "first");
+	const plan = planScan(repo.root, undefined);
+	assert.equal(plan.range, undefined);
+	assert.match(plan.note ?? "", /generated files only/);
 });
 
 test("a tip that is origin/main itself falls back to the last commit", () => {

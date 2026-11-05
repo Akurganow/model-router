@@ -196,6 +196,30 @@ export function diffRange(
 			};
 }
 
+const SHORT_ID = 7;
+
+/**
+ * Picks the commits the scan diffs. A given base goes through diffRange.
+ * Without one the scan reads what HEAD adds over its merge base with
+ * origin/main, so a local run checks the branch's own lines. With no
+ * origin/main there is no range, and only the generated files are read.
+ */
+export function planScan(
+	root: string,
+	base: string | undefined,
+): { range?: string[]; note?: string } {
+	if (base !== undefined) return diffRange(root, base);
+	const point = revision(root, ["merge-base", "HEAD", MAIN_REF]);
+	if (point === undefined)
+		return {
+			note: `no --base and no ${MAIN_REF} in this clone; scanning the generated files only`,
+		};
+	return {
+		range: [point, "HEAD"],
+		note: `no --base; scanning from the merge base with ${MAIN_REF}, ${point.slice(0, SHORT_ID)}`,
+	};
+}
+
 export function scanDiff(root: string, range: readonly string[]): Hit[] {
 	const diff = execFileSync(
 		"git",
@@ -234,11 +258,11 @@ if (import.meta.main) {
 		console.error("usage: node scripts/scan-owner-setup.ts [--base <commit>]");
 		process.exit(EXIT_USAGE);
 	}
-	const diff = base === undefined ? undefined : diffRange(ROOT, base);
-	if (diff?.note) console.error(diff.note);
+	const plan = planScan(ROOT, base);
+	if (plan.note) console.error(plan.note);
 	const hits = [
 		...scanFiles(ROOT, GENERATED_PATHS),
-		...(diff === undefined ? [] : scanDiff(ROOT, diff.range)),
+		...(plan.range === undefined ? [] : scanDiff(ROOT, plan.range)),
 	];
 	for (const hit of hits) console.error(formatHit(hit));
 	process.exitCode = hits.length === 0 ? 0 : 1;
