@@ -25,7 +25,7 @@ every commit as a [conventional commit](#commits).
   catalogues and the README install region. `metadata/source.json` is the
   source, and `metadata/source.schema.json` checks it.
 - `scripts/build.ts` reads the source and writes every generated file. It also
-  builds the bundle of each plugin from `src/`. Both bundles inline the
+  builds the bundle of each plugin from `src/`. Every bundle inlines the
   TypeSafe SDK, so each plugin runs on its own.
 - `scripts/build/` holds the renderers, one for each harness's manifest and
   catalogue and one for the README install region, and their shared helpers:
@@ -73,11 +73,13 @@ npm run check
 
 - `npm ci` installs the development tools.
 - `node scripts/build.ts` writes the manifests, the catalogues and the README
-  install region from `metadata/source.json`. It also builds both bundles
-  from `src/`. The Claude Code bundle is
+  install region from `metadata/source.json`. It also builds the three
+  bundles from `src/` and writes the npm tree. The Claude Code bundle is
   `plugins/model-router/hooks/register.js`, and its shape is checked. The omp
   bundle is `plugins/model-router-omp/extension/index.js`, the only file omp
-  loads. Build before you validate or test.
+  loads. The OpenClaw bundle is `plugins/model-router-openclaw/index.js`, next
+  to the generated manifest `openclaw.plugin.json`. Build before you validate
+  or test.
 - `claude plugin validate --strict plugins/model-router` lists the hooks and
   engine calls of the mod. `--strict` fails on warnings too.
 - `node scripts/check-surface.ts` compares that list with
@@ -226,7 +228,7 @@ CI runs these checks:
 
 A pull request merges only when all of them pass.
 [docs/design.md](docs/design.md#ci-checks-the-copies-and-the-installation)
-says what the last three check and why. A test that needs a home path or a
+says what the last four check and why. A test that needs a home path or a
 key-shaped sample builds it at run time, so the scan does not flag the test.
 
 A new hook or engine call changes what Anthropic's directory and users see.

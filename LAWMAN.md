@@ -11,12 +11,15 @@ contract_version: 3
 - plugins/model-router/README.md
 - plugins/model-router/docs/model-choice.md
 - plugins/model-router-omp/README.md
+- plugins/model-router-openclaw/README.md
+- docs/design.md
 
 ## Departments
 
 - dependencies: judged by .github/workflows/dependency-review.yml
 - privacy: judged by plugins/model-router/PRIVACY.md
 - privacy: judged by plugins/model-router-omp/PRIVACY.md
+- privacy: judged by plugins/model-router-openclaw/PRIVACY.md
 
 ## Fence
 
@@ -24,7 +27,9 @@ contract_version: 3
 - A pull request with an open advisory or an invalid registry signature fails: .github/workflows/ci.yml
 - Anthropic's plugin policy scan runs on every pull request and push: .github/workflows/policy.yml
 - CI rebuilds every generated file on Ubuntu and macOS and fails on any difference: .github/workflows/ci.yml
-- CI installs both plugins from the checkout and validates the plugin and the Claude Code catalogue: .github/workflows/ci.yml
+- CI installs the Claude Code and omp plugins from the checkout and validates the plugin and the Claude Code catalogue: .github/workflows/ci.yml
+- The `package` job packs the npm tree, checks the packed files against its `files` list, runs a publish dry run, and installs the tarball into OpenClaw and omp: .github/workflows/ci.yml
+- The `publish` job publishes `@akurganow/model-router` after a release, with npm trusted publishing and only when the registry lacks the version: .github/workflows/release.yml
 - CI scans each change's added lines and every generated file for owner-setup facts: .github/workflows/ci.yml
 
 ## Regression proof
@@ -42,6 +47,9 @@ contract_version: 3
 - plugins/model-router-omp/package.json
 - plugins/model-router/hooks/register.js
 - plugins/model-router-omp/extension/index.js
+- plugins/model-router-openclaw/openclaw.plugin.json
+- plugins/model-router-openclaw/index.js
+- packages/model-router, the generated npm tree
 - the README install region, between `<!-- install:start -->` and `<!-- install:end -->`
 
 ## Execution

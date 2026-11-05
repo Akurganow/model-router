@@ -197,6 +197,9 @@ The evals workflow pins omp 18.12.6 in `evals/omp/package.json`, and the README 
 - A project file, `<project>/.omp/plugin-overrides.json`, can override a plugin's features and settings.
   (documentation: [`plugin-manager-installer-plumbing.md` L59](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/plugin-manager-installer-plumbing.md#L59);
   source: [`types.ts` L153–L164](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/packages/coding-agent/src/extensibility/plugins/types.ts#L153-L164))
+- omp's extension-package discovery also reads a package's sibling folders `skills/`, `hooks/pre|post/`, `tools/`, `commands/`, `rules/`, `prompts/` and `.mcp.json`.
+  So the npm package keeps OpenClaw's skills in `openclaw-skills/`.
+  (source: [`omp-plugins.ts` L1–L18](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/packages/coding-agent/src/discovery/omp-plugins.ts#L1-L18))
 - Extension modules load when a session starts.
   After an install, `/reload-plugins` refreshes agents, skills and commands, and a restart loads new extension modules.
   (documentation: [`marketplace.md` L80](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L80),

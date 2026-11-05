@@ -6,3 +6,6 @@ reviews:
   path_filters:
     - "!plugins/model-router/hooks/register.js"
     - "!plugins/model-router-omp/extension/index.js"
+    - "!plugins/model-router-openclaw/index.js"
+    # The npm tree is generated from the plugin folders, so the review reads their sources.
+    - "!packages/model-router/**"

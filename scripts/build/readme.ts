@@ -83,7 +83,11 @@ function checkMarkers(readme: string): void {
 // Returns the README with the text between the install markers replaced.
 export function renderReadme(readme: string, source: Source): string {
 	checkMarkers(readme);
-	const body = [source.claude.install, source.omp.install]
+	const body = [
+		source.claude.install,
+		source.omp.install,
+		source.openclaw.install,
+	]
 		.map((install) => section(source, install))
 		.join("\n\n");
 	const head = readme.slice(0, readme.indexOf(START) + START.length);

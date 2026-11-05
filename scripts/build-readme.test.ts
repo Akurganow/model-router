@@ -25,12 +25,16 @@ const withoutCi = (): Source => ({
 test("the region holds one section for each harness, in order", () => {
 	const text = renderReadme(readme("\nold\n"), source);
 	const headings = text.match(/^### .+$/gm);
-	assert.deepEqual(headings, ["### Claude Code", "### Oh My Pi"]);
+	assert.deepEqual(headings, [
+		"### Claude Code",
+		"### Oh My Pi",
+		"### OpenClaw",
+	]);
 });
 
 test("each section ends with a link to its setup heading", () => {
 	const text = renderReadme(readme("\nold\n"), source);
-	for (const heading of ["Claude Code", "Oh My Pi"])
+	for (const heading of ["Claude Code", "Oh My Pi", "OpenClaw"])
 		assert.ok(
 			text.includes(
 				`[Set up ${heading}](#${anchorOf(`Set up ${heading}`)}) has the next steps.`,
@@ -83,13 +87,14 @@ test("an anchor drops punctuation and joins words with hyphens", () => {
 	assert.equal(anchorOf("Turn off and `uninstall`!"), "turn-off-and-uninstall");
 });
 
-test("the region names the install commands of both harnesses", () => {
+test("the region names the install commands of every harness", () => {
 	const text = renderReadme(readme("\nold\n"), source);
 	for (const command of [
 		"claude plugin marketplace add Akurganow/model-router",
 		"claude plugin install model-router@model-router",
 		"omp plugin marketplace add Akurganow/model-router",
 		"omp plugin install model-router@model-router",
+		"openclaw plugins install npm:@akurganow/model-router",
 	])
 		assert.match(text, new RegExp(`^${command}$`, "m"));
 });
@@ -102,17 +107,21 @@ test("each section cites the harness documentation", () => {
 	);
 	assert.match(
 		text,
+		/^Source: OpenClaw documentation, \[Manage plugins\]\(https:\/\/docs\.openclaw\.ai\/plugins\/manage-plugins\)\.$/m,
+	);
+	assert.match(
+		text,
 		/^Source: Oh My Pi documentation, \[.+\]\(https:\/\/github\.com\/can1357\/oh-my-pi\/blob\/96e4d8eb5ba1212d2d6018f242de266284cffab9\/docs\/marketplace\.md#L\d+-L\d+\)\.$/m,
 	);
 });
 
 test("a harness that CI installs says so, and one that CI skips says so", () => {
 	const installed = renderReadme(readme("\nold\n"), source);
-	assert.equal(installed.match(/^CI installs it on Ubuntu\.$/gm)?.length, 2);
+	assert.equal(installed.match(/^CI installs it on Ubuntu\.$/gm)?.length, 3);
 	assert.doesNotMatch(installed, /CI does not install it/);
 	const skipped = renderReadme(readme("\nold\n"), withoutCi());
 	assert.equal(skipped.match(/^CI does not install it\.$/gm)?.length, 1);
-	assert.equal(skipped.match(/^CI installs it on Ubuntu\.$/gm)?.length, 1);
+	assert.equal(skipped.match(/^CI installs it on Ubuntu\.$/gm)?.length, 2);
 });
 
 test("only the region changes, and the rest keeps its bytes", () => {

@@ -7,15 +7,16 @@ The build follows the one-source principle of the public repository [Akurganow/p
 
 ## One source for every copy
 
-The two clients read the same facts from different files.
+The clients read the same facts from different files.
 Claude Code reads `.claude-plugin/plugin.json` and the catalogue `.claude-plugin/marketplace.json` ([Claude Code](clients.md#manifest), [catalogue](clients.md#catalogue)).
 omp reads the `omp` block of `package.json` and the catalogue `.omp-plugin/marketplace.json`, with `.claude-plugin/marketplace.json` as a fallback ([omp manifest](clients.md#omp-manifest-and-settings), [omp catalogue](clients.md#omp-catalogue)).
-So the plugin has four JSON files, and each repeats the name, the licence, the links and a description.
+OpenClaw reads `openclaw.plugin.json` at the plugin root and the `openclaw` block of `package.json` ([OpenClaw package files](clients.md#openclaw-package-files)).
+So the plugins have five generated manifests and catalogues, and each repeats the name, the licence, the links and a description.
 Anthropic's directory reads the privacy policy URL from `plugin.json` only, and omp's catalogue entry carries its own copy ([Claude Code](clients.md#manifest)).
 The version sits in three of the four files, because omp upgrades only entries that declare one ([omp install and update](clients.md#omp-install-and-update)).
 
 A copy kept by hand drifts from its source, and nothing notices until a user does.
-So `metadata/source.json` is the only hand-written source of the facts the four files repeat.
+So `metadata/source.json` is the only hand-written source of the facts those files repeat.
 `metadata/source.schema.json` checks its shape.
 The source holds no value list.
 The value lists in the manifests come from `src/`, so a manifest cannot offer a value the code does not know.
@@ -25,8 +26,9 @@ Each character limit in the source states the number `src/brief.ts` enforces.
 
 `scripts/build.ts` reads the source, and the renderers in `scripts/build/` write each copy.
 It writes the Claude manifest, both catalogues and the omp `package.json`.
-It fills the install region of the root README between `<!-- install:start -->` and `<!-- install:end -->`.
-It builds both bundles from `src/`.
+It writes the OpenClaw manifest `plugins/model-router-openclaw/openclaw.plugin.json`.
+It fills the install region of the root README between `<!-- install:start -->` and `<!-- install:end -->`, with one section for each client.
+It builds the three bundles from `src/`: the Claude Code hooks module, the omp extension and the OpenClaw entry `plugins/model-router-openclaw/index.js`.
 Nobody edits a generated file by hand, and [CI](#ci-checks-the-copies-and-the-installation) fails when one differs from the builder's output.
 
 The two clients need their own files, so one file could not serve both.
@@ -35,7 +37,16 @@ omp reads settings from a different block with a different schema, and it limits
 The source keeps the shared facts once, and each renderer shapes them for one client.
 
 Each plugin needs a bundle, because Claude Code loads a hooks module that imports nothing outside the plugin folder except `claude-code` ([Claude Code](clients.md#hooks-module)).
-The builder inlines the TypeSafe SDK into both bundles, so each plugin runs on its own.
+The builder inlines the TypeSafe SDK into every bundle, so each plugin runs on its own.
+
+**The npm tree.**
+OpenClaw and omp both install the npm package `@akurganow/model-router`, so one folder serves both: `packages/model-router/`.
+The builder writes its `package.json` and `README.md` from the source.
+It copies every other file byte for byte from a plugin folder: the licence, both bundles, the OpenClaw manifest and the skills.
+Nobody edits the tree by hand, and the `check` job fails when it differs from the builder's output.
+OpenClaw's skills sit in `openclaw-skills/`, apart from `skills/`, because omp reads `skills/` of any package it installs ([omp manifest and settings](clients.md#omp-manifest-and-settings)).
+Each client then finds only the skills written for it ([OpenClaw package files](clients.md#openclaw-package-files)).
+The one package carries one version for both clients.
 
 Three alternatives lost.
 Checking only the version, as `node scripts/set-version.ts --check` did before, left every other repeated fact to drift.
@@ -63,7 +74,7 @@ It catches a manifest changed by hand and a source bumped without a build.
 
 CI runs these checks without a model.
 The `check` job runs on Ubuntu and macOS.
-The `install` job runs on Ubuntu.
+The `install` job and the `package` job run on Ubuntu.
 The `scan` job runs on every change.
 
 **Regeneration.**
@@ -85,6 +96,20 @@ Both an unknown field and a missing catalogue description raise warnings, and `-
 A validate run on the plugin applies none of the plugin directory's rules for hooks modules ([Claude Code](clients.md#validate-and-test)).
 So validation alone does not show that a client finds the plugin through the catalogue.
 The install does: omp reads `.omp-plugin/marketplace.json` before the Claude catalogue ([omp catalogue](clients.md#omp-catalogue)).
+
+**Package.**
+The npm tree is committed, so the `package` job packs it as it stands.
+It compares the files in the tarball with the `files` list of the tree.
+It runs `npm publish --dry-run`, which goes through every publish check and sends nothing.
+It then installs the tarball into a pinned OpenClaw, and checks the install report and that the installed bundle registers its hook, tool and commands against a recording `api`.
+It unpacks the tarball and installs the folder into a pinned omp, because omp installs a registry name, a git spec or a folder, not a tarball.
+Both harnesses keep their state and config under the runner's temp folder.
+The OpenClaw pin tracks the latest release, so a Renovate rule raises it with no age delay ([CONTRIBUTING.md](../CONTRIBUTING.md#dependencies)).
+The OpenClaw facts behind these steps are in [OpenClaw install and update](clients.md#openclaw-install-and-update) and [OpenClaw entry and registration](clients.md#openclaw-entry-and-registration).
+
+**Publication.**
+The release workflow's `publish` job runs after a release, with npm trusted publishing and no stored token.
+It publishes only when the registry lacks the version, so a rerun does nothing ([CONTRIBUTING.md](../CONTRIBUTING.md#publishing-to-npm)).
 
 **Owner-setup scan.**
 The repository is public.
