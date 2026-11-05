@@ -1,8 +1,10 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { jevAnswer, streamed } from "./jev-fakes.ts";
+import type { Clock } from "./openclaw-router.ts";
 import type {
 	BeforeToolCallHandler,
 	CommandDefinition,
+	ConfigMutation,
 	HookOptions,
 	Logger,
 	ModelRef,
@@ -16,6 +18,7 @@ import type {
 type Params<K extends keyof FakeCalls> = FakeCalls[K][number];
 type FakeCalls = {
 	config: unknown[];
+	mutate: ConfigMutation[];
 	defaultModel: Parameters<
 		PluginRuntime["modelConfig"]["resolveDefaultModelForAgent"]
 	>[0][];
@@ -64,6 +67,7 @@ export function createFakeRuntime(initial: Partial<RuntimeAnswers> = {}) {
 	};
 	const calls: FakeCalls = {
 		config: [],
+		mutate: [],
 		defaultModel: [],
 		allowedRef: [],
 		credential: [],
@@ -79,6 +83,15 @@ export function createFakeRuntime(initial: Partial<RuntimeAnswers> = {}) {
 			current: () => {
 				enter("config");
 				return answers.config;
+			},
+			// Like the writer, it rechecks the caller after the mutation and publishes the draft only if that passes.
+			mutateConfigFile: async (params) => {
+				enter("mutate", params);
+				const draft = structuredClone(answers.config);
+				await params.mutate(draft);
+				params.writeOptions?.assertCurrent?.();
+				answers.config = draft;
+				return {};
 			},
 		},
 		modelConfig: {
@@ -178,13 +191,24 @@ export function createFakeApi(overrides: FakeApiOverrides = {}) {
 
 export type Levels = { tier: number; work: number };
 export type JevRequest = { url: string; body: unknown; signal?: AbortSignal };
+// "hang" holds a request until its signal aborts. A status answers an empty body with that status.
+export type JevMode = "answer" | "hang" | { status: number };
+
+function hold(signal: AbortSignal | null | undefined): Promise<never> {
+	return new Promise((_, reject) => {
+		signal?.addEventListener("abort", () => reject(signal.reason), {
+			once: true,
+		});
+	});
+}
 
 /**
  * A fetch that answers every Jev request with the tier and work levels in `levels`.
- * A test changes `levels` between calls.
+ * A test changes `levels` or `mode.current` between calls.
  */
 export function createJevFetch(initial: Levels = { tier: 1, work: 1 }) {
 	const levels = { ...initial };
+	const mode: { current: JevMode } = { current: "answer" };
 	const requests: JevRequest[] = [];
 	const fetch: Fetch = async (url, init) => {
 		// Like the real fetch, an aborted signal fails before anything is sent.
@@ -192,7 +216,37 @@ export function createJevFetch(initial: Levels = { tier: 1, work: 1 }) {
 		const request: JevRequest = { url, body: JSON.parse(String(init?.body)) };
 		if (init?.signal) request.signal = init.signal;
 		requests.push(request);
+		if (mode.current === "hang") return hold(init?.signal);
+		if (typeof mode.current === "object")
+			return streamed(mode.current.status, {});
 		return streamed(200, jevAnswer(levels.tier, levels.work));
 	};
-	return { fetch, levels, requests };
+	return { fetch, levels, mode, requests };
+}
+
+/**
+ * A clock that runs a timer only when the test calls `fire`.
+ * `delays` lists every delay asked for, cancelled or not.
+ */
+export function createFakeClock() {
+	const timers: { ms: number; fn: () => void; live: boolean }[] = [];
+	const clock: Clock = {
+		after: (ms, fn) => {
+			const timer = { ms, fn, live: true };
+			timers.push(timer);
+			return {
+				cancel: () => {
+					timer.live = false;
+				},
+			};
+		},
+	};
+	const fire = () => {
+		for (const timer of timers) {
+			if (!timer.live) continue;
+			timer.live = false;
+			timer.fn();
+		}
+	};
+	return { clock, fire, delays: () => timers.map((t) => t.ms) };
 }

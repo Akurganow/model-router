@@ -1,0 +1,65 @@
+import {
+	createFakeApi,
+	createFakeClock,
+	createJevFetch,
+	type FakeApiOverrides,
+	type Levels,
+} from "./openclaw-fakes.ts";
+import { createBeforeToolCall } from "./openclaw-router.ts";
+import type { OpenClawConfig, ToolContext } from "./openclaw-types.ts";
+
+// The shared set-up of the handler tests: an api, a Jev fetch and a clock, with one handler.
+export const SETTINGS = {
+	provider: "typesafe",
+	small_model: "openai/small",
+	large_model: "openai/large",
+	api_key: "typesafe-key",
+};
+export const DEADLINE_MS = 8000;
+export const REQUESTER = "main";
+export const CONTEXT: ToolContext = {
+	toolName: "sessions_spawn",
+	agentId: REQUESTER,
+};
+export const TASK = "do the work";
+export const JEV = " · jev jev-1.14.0 · 812/9 tok";
+export type Setup = {
+	levels?: Levels;
+	settings?: Record<string, unknown>;
+	config?: OpenClawConfig;
+	env?: Record<string, string>;
+	deadlineMs?: number;
+	api?: FakeApiOverrides;
+};
+
+export function setup(options: Setup = {}) {
+	const fake = createFakeApi({
+		config: options.config ?? {},
+		pluginConfig: { ...SETTINGS, ...options.settings },
+		...options.api,
+	});
+	const jev = createJevFetch(options.levels);
+	const time = createFakeClock();
+	const handler = createBeforeToolCall(
+		fake.api,
+		options.deadlineMs ?? DEADLINE_MS,
+		{ fetchFn: jev.fetch, clock: time.clock, env: options.env ?? {} },
+	);
+	const call = (
+		params: Record<string, unknown> = {},
+		ctx: ToolContext = CONTEXT,
+	) =>
+		handler(
+			{ toolName: "sessions_spawn", params: { task: TASK, ...params } },
+			ctx,
+		);
+	return { ...fake, jev, time, handler, call };
+}
+export const lines = (s: ReturnType<typeof setup>) =>
+	s.logs.map((l) => l.message);
+// Index access by a variable key, which the strict index-signature rule allows.
+export const field = (
+	record: Record<string, unknown> | undefined,
+	key: string,
+) => record?.[key];
+export const settle = () => new Promise((resolve) => setImmediate(resolve));

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
 	createFakeApi,
+	createFakeClock,
 	createFakeRuntime,
 	createJevFetch,
 } from "./openclaw-fakes.ts";
@@ -271,5 +272,50 @@ describe("createJevFetch", () => {
 			}),
 		);
 		assert.equal(jev.requests.length, 0);
+	});
+});
+
+describe("createJevFetch modes", () => {
+	const send = (
+		fetch: ReturnType<typeof createJevFetch>["fetch"],
+		signal?: AbortSignal,
+	) =>
+		fetch("https://example.test/", {
+			body: JSON.stringify({ state: {} }),
+			...(signal ? { signal } : {}),
+		});
+
+	it("answers a status when the mode is a status", async () => {
+		const jev = createJevFetch();
+		jev.mode.current = { status: 401 };
+		assert.equal((await send(jev.fetch)).status, 401);
+	});
+
+	it("holds a request until its signal aborts, then rejects with the reason", async () => {
+		const jev = createJevFetch();
+		jev.mode.current = "hang";
+		const stop = new AbortController();
+		const pending = send(jev.fetch, stop.signal);
+		stop.abort("limit");
+		await assert.rejects(pending, (reason) => reason === "limit");
+		assert.equal(jev.requests.length, 1);
+	});
+
+	it("starts in the answer mode", async () => {
+		assert.equal((await send(createJevFetch().fetch)).status, 200);
+	});
+});
+
+describe("createFakeClock", () => {
+	it("fires pending timers on demand and skips cancelled ones", () => {
+		const fake = createFakeClock();
+		const fired: string[] = [];
+		fake.clock.after(8000, () => fired.push("a"));
+		fake.clock.after(5, () => fired.push("b")).cancel();
+		assert.deepEqual(fake.delays(), [8000, 5]);
+		fake.fire();
+		assert.deepEqual(fired, ["a"]);
+		fake.fire();
+		assert.deepEqual(fired, ["a"]);
 	});
 });

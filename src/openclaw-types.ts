@@ -59,9 +59,22 @@ export type ResolvedModelRef =
 	| { ref: ModelRef; key: string }
 	| { error: string };
 
+// src/plugins/runtime/types-core.ts, OpenClaw 2026.10.10: `RuntimeMutateConfigFileParams`, reduced; `afterWrite` is required there.
+export type ConfigMutation = {
+	afterWrite:
+		| { mode: "auto" }
+		| { mode: "restart"; reason: string }
+		| { mode: "none"; reason: string };
+	writeOptions?: { assertCurrent?: () => void };
+	mutate: (draft: OpenClawConfig) => unknown;
+};
+
 // src/plugins/runtime/types-core.ts, OpenClaw 2026.10.10: the runtime members the adapter calls.
 export type PluginRuntime = {
-	config: { current: () => OpenClawConfig };
+	config: {
+		current: () => OpenClawConfig;
+		mutateConfigFile: (params: ConfigMutation) => Promise<unknown>;
+	};
 	modelConfig: {
 		resolveDefaultModelForAgent: (params: {
 			cfg: OpenClawConfig;
@@ -159,6 +172,7 @@ export type CommandContext = {
 	channel: string;
 	isAuthorizedSender: boolean;
 	senderIsOwner?: boolean;
+	assertOwnerCurrent?: () => void;
 	gatewayClientScopes?: string[];
 	agentId?: string;
 	args?: string;
