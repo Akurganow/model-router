@@ -8,6 +8,7 @@ import { generatedPaths } from "./build.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 import {
 	addedLines,
+	diffRange,
 	findMarkers,
 	formatHit,
 	scanDiff,
@@ -121,6 +122,39 @@ test("the diff scan ignores deleted lines and deleted files", () => {
 	git("rm", "-q", "gone.md");
 	git("commit", "-q", "-a", "-m", "change");
 	assert.deepEqual(scanDiff(repo.root, base), []);
+});
+
+const ZERO_ID = "0".repeat(40);
+
+test("a base the clone lacks scans what HEAD adds over its first parent", () => {
+	git("init", "-q");
+	repo.put("a.md", `${MAC_HOME}\n`);
+	git("add", ".");
+	git("commit", "-q", "-m", "older");
+	repo.put("a.md", `${MAC_HOME}\n${SK_KEY}\n`);
+	git("commit", "-q", "-a", "-m", "head");
+	assert.deepEqual(scanDiff(repo.root, ZERO_ID), [
+		{ path: "a.md", line: 2, kind: "sk- key" },
+	]);
+	assert.match(diffRange(repo.root, ZERO_ID).note ?? "", /first parent/);
+});
+
+test("a base the clone lacks on a first commit scans every line of it", () => {
+	git("init", "-q");
+	repo.put("a.md", `fine\n${LINUX_HOME}\n`);
+	git("add", ".");
+	git("commit", "-q", "-m", "first");
+	assert.deepEqual(scanDiff(repo.root, ""), [
+		{ path: "a.md", line: 2, kind: "absolute home path" },
+	]);
+});
+
+test("a base the clone has needs no note", () => {
+	git("init", "-q");
+	repo.put("a.md", "fine\n");
+	git("add", ".");
+	git("commit", "-q", "-m", "base");
+	assert.equal(diffRange(repo.root, git("rev-parse", "HEAD")).note, undefined);
 });
 
 test("an added line that starts with plus signs is content, not a file header", () => {

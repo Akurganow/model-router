@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -71,6 +71,36 @@ export function addedLines(diff: string): AddedLine[] {
 	return added;
 }
 
+const isCommit = (root: string, ref: string): boolean =>
+	ref !== "" &&
+	spawnSync("git", ["cat-file", "-e", `${ref}^{commit}`], { cwd: root })
+		.status === 0;
+
+// Computed, not typed, because the id of the empty tree depends on the hash the repository uses.
+const emptyTree = (root: string): string =>
+	execFileSync("git", ["hash-object", "-t", "tree", "--stdin"], {
+		cwd: root,
+		input: "",
+		encoding: "utf8",
+	}).trim();
+
+// A push can name a base the clone lacks, such as the all-zero id or a commit a
+// force push dropped. The scan then reads what HEAD adds over its first parent,
+// or every line of a first commit, so no added line goes unread.
+export function diffRange(
+	root: string,
+	base: string,
+): { range: string[]; note?: string } {
+	if (isCommit(root, base)) return { range: [`${base}...HEAD`] };
+	const note = `base ${base || "(empty)"} is not a commit in this clone`;
+	return isCommit(root, "HEAD^")
+		? { range: ["HEAD^", "HEAD"], note: `${note}; scanning the first parent` }
+		: {
+				range: [emptyTree(root), "HEAD"],
+				note: `${note}; scanning all of HEAD`,
+			};
+}
+
 export function scanDiff(root: string, base: string): Hit[] {
 	const diff = execFileSync(
 		"git",
@@ -80,7 +110,7 @@ export function scanDiff(root: string, base: string): Hit[] {
 			"diff",
 			"--unified=0",
 			"--no-color",
-			`${base}...HEAD`,
+			...diffRange(root, base).range,
 		],
 		{ cwd: root, encoding: "utf8", maxBuffer: Infinity },
 	);
@@ -95,13 +125,15 @@ function baseArgument(args: readonly string[]): string | undefined {
 if (import.meta.main) {
 	const args = process.argv.slice(2);
 	const base = baseArgument(args);
-	if (args.includes("--base") && !base) {
+	if (args.includes("--base") && base === undefined) {
 		console.error("usage: node scripts/scan-owner-setup.ts [--base <commit>]");
 		process.exit(EXIT_USAGE);
 	}
+	const note = base === undefined ? undefined : diffRange(ROOT, base).note;
+	if (note) console.error(note);
 	const hits = [
 		...scanFiles(ROOT, generatedPaths()),
-		...(base ? scanDiff(ROOT, base) : []),
+		...(base === undefined ? [] : scanDiff(ROOT, base)),
 	];
 	for (const hit of hits) console.error(formatHit(hit));
 	process.exitCode = hits.length === 0 ? 0 : 1;

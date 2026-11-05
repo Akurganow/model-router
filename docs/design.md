@@ -89,6 +89,7 @@ The `scan` job checks the added lines of a pull request and every generated file
 One is an absolute home path.
 The other is a key-shaped string with the `sk-` or `Bearer` prefix that the redaction in `src/brief.ts` masks.
 Paths written from `~` pass.
+When a push names a base the clone lacks, the scan reads what the last commit adds, so no added line goes unread.
 The builder rewrites generated files whole, so the scan reads each of them in full.
 
 ## What this repository does not take from pegboard
