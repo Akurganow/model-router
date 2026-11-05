@@ -1,9 +1,4 @@
-import {
-	findKey,
-	readSettings,
-	type Settings,
-	UNREADABLE,
-} from "./omp-gates.ts";
+import { findKey, readSettings, type Settings } from "./omp-gates.ts";
 import { changeKey } from "./omp-key.ts";
 import type { Context, OmpImports, Pi, ToolReply } from "./omp-types.ts";
 import { isRecord } from "./part.ts";
@@ -24,6 +19,7 @@ import {
 	SETTING_NAMES,
 	TOOL_LABEL,
 	toolDescription,
+	UNREADABLE,
 	unchanged,
 	useOneOf,
 	VALUE_SETTINGS,

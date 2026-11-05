@@ -1127,9 +1127,92 @@ var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
 var resolveScope = (value) => SCOPE_VALUES.find((known) => known === value) ?? DEFAULT_SCOPE;
 
+// src/settings.ts
+var VALUE_SETTINGS = ["provider", "scope"];
+var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
+var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
+var KEY_PROVIDERS = {
+  typesafe_key: "typesafe",
+  openrouter_key: "openrouter"
+};
+var PROVIDER_NAMES = {
+  typesafe: "TypeSafe",
+  openrouter: "OpenRouter"
+};
+var KEY_MAX_LENGTH = 512;
+var PADDED_LABELS = ["Yes", "No"];
+var LINE_BREAK = /[\r\n\u2028\u2029]/;
+var LABEL_SEPARATOR = " - ";
+var TEXTS = {
+  provider: {
+    values: PROVIDER_VALUES,
+    resolve,
+    about: "which providers score subagent calls",
+    question: "Which providers should score subagent calls?",
+    consequences: {
+      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
+      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
+      typesafe: "TypeSafe only",
+      openrouter: "OpenRouter only"
+    }
+  },
+  scope: {
+    values: SCOPE_VALUES,
+    resolve: resolveScope,
+    about: "which agent calls the router routes",
+    question: "Which agent calls should the router route?",
+    consequences: {
+      core: "today's routing: built-in general agents only",
+      extended: "also routes other agents that pass no model"
+    }
+  }
+};
+var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
+var isKeySetting = (name) => KEY_SETTINGS.some((known) => known === name);
+var keyProvider = (setting) => KEY_PROVIDERS[setting];
+var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
+var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
+var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
+var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
+var alreadyValue = (value) => `already ${value}`;
+var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
+var UNREADABLE = "settings unreadable";
+var NO_ANSWER = "no answer from the dialog";
+var NOT_OFFERED = "the answer was not one of the offered values";
+var keyLine = (provider, state) => `${provider} key: ${state}`;
+var keyNotSaved = (provider) => `${provider} key not saved`;
+var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
+function ask(setting, current) {
+  const { values, resolve: resolve2, question } = TEXTS[setting];
+  const first = resolve2(current);
+  const sorted = [first, ...values.filter((value) => value !== first)];
+  return { question, options: sorted.map((value) => label(setting, value)) };
+}
+function pick(setting, answer) {
+  return TEXTS[setting].values.find(
+    (value) => label(setting, value) === answer
+  );
+}
+function keyFrom(answer) {
+  if (typeof answer !== "string" || LINE_BREAK.test(answer)) return void 0;
+  const key = answer.trim();
+  return key === "" || key.length > KEY_MAX_LENGTH || PADDED_LABELS.includes(key) ? void 0 : key;
+}
+var keyQuestion = (provider, replaces) => `Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's credential store.${replaces ? " It replaces the key that is set now." : ""}`;
+var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
+var TOOL_LABEL = "Model Router settings";
+var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
+function describeCommand(setting) {
+  const { about, values } = TEXTS[setting];
+  return `Shows or changes ${about}: ${values.join(", ")}.`;
+}
+var COMMAND_DESCRIPTIONS = {
+  provider: describeCommand("provider"),
+  scope: describeCommand("scope")
+};
+
 // src/omp-gates.ts
 var ROLES = { small: "@smol", large: "@slow" };
-var UNREADABLE = "settings unreadable";
 var KEY_VARIABLES = {
   typesafe: "TYPESAFE_API_KEY",
   openrouter: "OPENROUTER_API_KEY"
@@ -1235,89 +1318,6 @@ async function discover(pi, ctx) {
 function modelsGate(ctx) {
   return Object.values(ROLES).some((role) => resolves(ctx, role)) ? void 0 : `no ${ROLES.small} or ${ROLES.large} model`;
 }
-
-// src/settings.ts
-var VALUE_SETTINGS = ["provider", "scope"];
-var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
-var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
-var KEY_PROVIDERS = {
-  typesafe_key: "typesafe",
-  openrouter_key: "openrouter"
-};
-var PROVIDER_NAMES = {
-  typesafe: "TypeSafe",
-  openrouter: "OpenRouter"
-};
-var KEY_MAX_LENGTH = 512;
-var PADDED_LABELS = ["Yes", "No"];
-var LINE_BREAK = /[\r\n\u2028\u2029]/;
-var LABEL_SEPARATOR = " - ";
-var TEXTS = {
-  provider: {
-    values: PROVIDER_VALUES,
-    resolve,
-    about: "which providers score subagent calls",
-    question: "Which providers should score subagent calls?",
-    consequences: {
-      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
-      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
-      typesafe: "TypeSafe only",
-      openrouter: "OpenRouter only"
-    }
-  },
-  scope: {
-    values: SCOPE_VALUES,
-    resolve: resolveScope,
-    about: "which agent calls the router routes",
-    question: "Which agent calls should the router route?",
-    consequences: {
-      core: "today's routing: built-in general agents only",
-      extended: "also routes other agents that pass no model"
-    }
-  }
-};
-var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
-var isKeySetting = (name) => KEY_SETTINGS.some((known) => known === name);
-var keyProvider = (setting) => KEY_PROVIDERS[setting];
-var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
-var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
-var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
-var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
-var alreadyValue = (value) => `already ${value}`;
-var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
-var NO_ANSWER = "no answer from the dialog";
-var NOT_OFFERED = "the answer was not one of the offered values";
-var keyLine = (provider, state) => `${provider} key: ${state}`;
-var keyNotSaved = (provider) => `${provider} key not saved`;
-var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
-function ask(setting, current) {
-  const { values, resolve: resolve2, question } = TEXTS[setting];
-  const first = resolve2(current);
-  const sorted = [first, ...values.filter((value) => value !== first)];
-  return { question, options: sorted.map((value) => label(setting, value)) };
-}
-function pick(setting, answer) {
-  return TEXTS[setting].values.find(
-    (value) => label(setting, value) === answer
-  );
-}
-function keyFrom(answer) {
-  if (typeof answer !== "string" || LINE_BREAK.test(answer)) return void 0;
-  const key = answer.trim();
-  return key === "" || key.length > KEY_MAX_LENGTH || PADDED_LABELS.includes(key) ? void 0 : key;
-}
-var keyQuestion = (provider, replaces) => `Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's credential store.${replaces ? " It replaces the key that is set now." : ""}`;
-var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
-var TOOL_LABEL = "Model Router settings";
-var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
-function describeCommand(setting) {
-  const { about, values } = TEXTS[setting];
-  return `Shows or changes ${about}: ${values.join(", ")}.`;
-}
-var COMMAND_DESCRIPTIONS = {
-  provider: describeCommand("provider"),
-  scope: describeCommand("scope")
-};
 
 // src/omp-key.ts
 async function changeKey(ctx, setting) {

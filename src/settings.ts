@@ -94,6 +94,7 @@ export const alreadyValue = (value: string): string => `already ${value}`;
 export const projectOverrides = (setting: ValueSetting): string =>
 	`A project value for ${setting} overrides it.`;
 
+export const UNREADABLE = "settings unreadable";
 export const NO_ANSWER = "no answer from the dialog";
 export const NOT_OFFERED = "the answer was not one of the offered values";
 export const REFUSED =

@@ -11,10 +11,10 @@ import {
 	plan,
 } from "./provider.ts";
 import { resolveScope, type Scope } from "./scope.ts";
+import { UNREADABLE } from "./settings.ts";
 
 export const ROLES = { small: "@smol", large: "@slow" } as const;
 
-export const UNREADABLE = "settings unreadable";
 const KEY_VARIABLES: Readonly<Record<Provider, string>> = {
 	typesafe: "TYPESAFE_API_KEY",
 	openrouter: "OPENROUTER_API_KEY",
