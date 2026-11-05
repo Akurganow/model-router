@@ -1,6 +1,11 @@
 import { expect, test } from "claude-code/testing";
 import { ANSWER, agentCall, callOnce, KEYED, PROMPT } from "./harness.ts";
 
+// The plugin folder cannot import src/brief.ts, so the test pins the start of the fixed role.
+const DEFAULT_ROLE_PREFIX =
+	"General-purpose agent for researching complex questions, searching";
+const EXTENDED = { options: { api_key: "test-key", scope: "extended" } };
+
 test(
 	"the hook sets the model and the effort on the Agent call",
 	KEYED,
@@ -16,12 +21,20 @@ test(
 	},
 );
 
+for (const subagentType of [undefined, "claude"] as const)
+	test(
+		`${subagentType ?? "general-purpose"} is routed with the fixed default role`,
+		KEYED,
+		async ($, on) => {
+			const { h } = await callOnce($, on, { subagent_type: subagentType });
+			expect(JSON.parse(h.sent ?? "").state.role).toContain(
+				DEFAULT_ROLE_PREFIX,
+			);
+			expect(h.received.model).toBe("haiku");
+		},
+	);
+
 for (const [subagentType, role] of [
-	[
-		undefined,
-		"General-purpose agent for researching complex questions and executing multi-step tasks.",
-	],
-	["claude", "Catch-all agent for any task that fits no more specific agent."],
 	[
 		"Explore",
 		"Read-only search agent for broad fan-out searches across a codebase.",
@@ -29,7 +42,7 @@ for (const [subagentType, role] of [
 	["Plan", "Software architect agent for designing implementation plans."],
 ] as const)
 	test(
-		`${subagentType ?? "general-purpose"} is routed with its offered description as the role`,
+		`${subagentType} is routed with its offered description as the role`,
 		KEYED,
 		async ($, on) => {
 			const { h } = await callOnce($, on, { subagent_type: subagentType });
@@ -39,22 +52,46 @@ for (const [subagentType, role] of [
 	);
 
 for (const [name, description, role] of [
-	["a long description is cut at the cap", "x".repeat(600), "x".repeat(500)],
 	[
-		"an empty description gets the neutral line",
+		"a user general-purpose agent with a long description is cut at the cap",
+		"x".repeat(600),
+		"x".repeat(500),
+	],
+	[
+		"a user general-purpose agent with an empty description gets the neutral line",
 		"",
 		"An agent with no description.",
 	],
 ] as const)
-	test(name, KEYED, async ($, on) => {
+	test(name, EXTENDED, async ($, on) => {
 		const { h } = await callOnce(
 			$,
 			on,
 			{},
-			{ descriptions: { "general-purpose": description } },
+			{
+				offers: { "general-purpose": "user" },
+				descriptions: { "general-purpose": description },
+			},
 		);
 		expect(JSON.parse(h.sent ?? "").state.role).toBe(role);
 	});
+
+test(
+	"a user general-purpose agent sends its own description",
+	EXTENDED,
+	async ($, on) => {
+		const { h } = await callOnce(
+			$,
+			on,
+			{},
+			{
+				offers: { "general-purpose": "user" },
+				descriptions: { "general-purpose": "Mine." },
+			},
+		);
+		expect(JSON.parse(h.sent ?? "").state.role).toBe("Mine.");
+	},
+);
 
 test(
 	"the request goes to the systemone endpoint with the key and the pinned model",
@@ -121,7 +158,9 @@ test(
 		const { h } = await callOnce($, on);
 		expect(h.debug.length).toBe(1);
 		expect(h.debug[0]?.startsWith("request 1/1 {")).toBe(true);
-		expect(h.debug[0]).toContain('"role":"General-purpose agent');
+		expect(h.debug[0]).toContain(
+			'"role":"General-purpose agent for researching complex questions, searching',
+		);
 		expect(h.debug[0]).toContain('"description":"write hello"');
 		expect(h.debug[0]).not.toContain("test-key");
 	},

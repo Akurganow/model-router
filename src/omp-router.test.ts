@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
-import { buildPrompt, NO_DESCRIPTION, roleText } from "./brief.ts";
+import {
+	buildPrompt,
+	DEFAULT_ROLE,
+	NO_DESCRIPTION,
+	roleText,
+} from "./brief.ts";
 import { tier } from "./model.ts";
 import {
 	ENDPOINT,
@@ -11,7 +16,6 @@ import {
 	OR_KEY,
 	setEnv,
 	streamed,
-	TASK_DESCRIPTION,
 	useWorld,
 } from "./omp-fakes.ts";
 import { createExtension } from "./omp-router.ts";
@@ -40,7 +44,7 @@ test("a request carries the tier question only, and the key goes in the header",
 	assert.deepEqual(world.sent[0]?.body, {
 		model: "jev-latest",
 		state: {
-			role: roleText(TASK_DESCRIPTION),
+			role: DEFAULT_ROLE,
 			description: "Foo",
 			task: "level0 Do it",
 		},
@@ -50,9 +54,10 @@ test("a request carries the tier question only, and the key goes in the header",
 	assert.equal(world.sent[0]?.authorization, `Bearer ${KEY}`);
 });
 
-test("the role is the task agent's description, prepared as role text", async () => {
+test("the role is a user task agent's description, prepared as role text", async () => {
 	const description = `  Plans\n the work with key sk-${"a".repeat(20)} ${"x".repeat(600)}`;
-	world.agents = [{ name: "task", source: "bundled", description }];
+	world.project = { scope: "extended" };
+	world.agents = [{ name: "task", source: "user", description }];
 	install();
 	await world.toolCall("c", { tasks: [{ task: "a" }, { task: "b" }] });
 	const roles = world.sent.map(
@@ -64,18 +69,31 @@ test("the role is the task agent's description, prepared as role text", async ()
 });
 
 for (const [name, agent] of [
-	["no description", { name: "task", source: "bundled" }],
-	[
-		"a blank description",
-		{ name: "task", source: "bundled", description: " " },
-	],
+	["no description", { name: "task", source: "user" }],
+	["a blank description", { name: "task", source: "user", description: " " }],
 ] as const)
-	test(`the task agent with ${name} sends the neutral line`, async () => {
+	test(`the user task agent with ${name} sends the neutral line`, async () => {
+		world.project = { scope: "extended" };
 		world.agents = [agent];
 		install();
 		await world.toolCall("c", { tasks: [{ task: "a" }] });
 		const body = world.sent[0]?.body as { state: { role: string } };
 		assert.equal(body.state.role, NO_DESCRIPTION);
+	});
+
+for (const [name, agent] of [
+	[
+		"a description",
+		{ name: "task", source: "bundled", description: "Anything." },
+	],
+	["no description", { name: "task", source: "bundled" }],
+] as const)
+	test(`the bundled task agent with ${name} sends the default role`, async () => {
+		world.agents = [agent];
+		install();
+		await world.toolCall("c", { tasks: [{ task: "a" }] });
+		const body = world.sent[0]?.body as { state: { role: string } };
+		assert.equal(body.state.role, DEFAULT_ROLE);
 	});
 
 test("an unnamed item has an empty description, and the batch context follows the task", async () => {

@@ -126,6 +126,43 @@ Agreement stays at 90%.
 The factors depend on the model that scored the run. Measure again after a
 new Jev release.
 
+## The role of the default agent
+
+Jev reads the agent's role with the task. Claude Code's `general-purpose` and
+`claude` agents and omp's bundled `task` agent send one fixed text instead of
+their harness's description. The text is `DEFAULT_ROLE` in `src/brief.ts`.
+
+Under Claude Code's `extended` scope, a `general-purpose` or `claude` agent you
+define sends its own description once Claude Code has offered it. Before that
+offer it sends the fixed text. In omp, only the bundled `task` agent sends the
+fixed text. A `task` agent you define sends its description.
+
+The harnesses word their descriptions differently, and a release can reword
+them again. A reworded role moves Jev's picks. `Explore`, `Plan` and omp's other
+agents keep their harness descriptions, so a harness rewording can still shift
+their picks. This was not measured. The fixed text keeps both plugins on the
+input the calibration used. In `calibration.jsonl`, 115 of the 122
+`general-purpose` cases carry it exactly. The other 7 come from sst/opencode's
+general agent, as their `source` field shows.
+
+The measurement ran on 2026-11-05 with `jev-1.14.0`. It used the 122 cases of
+`calibration.jsonl` whose role starts with "General-purpose agent", with the same
+briefs and only the role swapped. The case that carries omp's `task` description
+is not among them. Two full runs of all 172 calibration cases differed in 2 of 172
+tier picks.
+
+| Role variant | Agreement with labels, of 122 | Tier under-routing, of 122 |
+| --- | --- | --- |
+| Calibrated `general-purpose` text | 112 | 9 |
+| The same text, repeat run | 113 | 8 |
+| omp's `task` description | 106 | 15 |
+| `claude` description | 106 | 15 |
+| No role | 104 | 16 |
+
+Refitting the factors with 5-fold cross-validation (`scripts/rules/ratio-agree.ts`)
+on all 172 cases of the omp-role run gave 80% tier agreement, against 83% for the
+current factors. Per-harness weights do not fix the shift. Fixing the input does.
+
 ## The work question and the arch
 
 Jev answers a second question in the same request: how much work the task

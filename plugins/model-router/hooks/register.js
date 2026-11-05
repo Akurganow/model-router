@@ -22,6 +22,7 @@ function clearTimeout(timer) {
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
 var NO_DESCRIPTION = "An agent with no description.";
+var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
 var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
 var HEAD_SHARE = 2 / 3;
 var REDACT_PATTERNS = [
@@ -1383,11 +1384,15 @@ var EFFORT_LADDER = {
 };
 var BUILT_IN = "built-in";
 var ENGINE = "engine";
-var DEFAULT_AGENT = "general-purpose";
+var GENERAL_PURPOSE = "general-purpose";
+var CLAUDE_AGENT = "claude";
 var FORK = "fork";
+var DEFAULT_ROLE_AGENTS = /* @__PURE__ */ new Set([
+  GENERAL_PURPOSE,
+  CLAUDE_AGENT
+]);
 var ROUTED_AGENTS = /* @__PURE__ */ new Set([
-  DEFAULT_AGENT,
-  "claude",
+  ...DEFAULT_ROLE_AGENTS,
   "Explore",
   "Plan"
 ]);
@@ -1462,13 +1467,18 @@ function routable(spawn, scope) {
   if (scope === "extended") return agent !== FORK;
   return ROUTED_AGENTS.has(agent) && offered.get(agent)?.source === BUILT_IN;
 }
+function roleFor(agent) {
+  const offer = offered.get(agent);
+  const own = offer === void 0 || offer.source === BUILT_IN;
+  return DEFAULT_ROLE_AGENTS.has(agent) && own ? DEFAULT_ROLE : roleText(offer?.description);
+}
 async function routeSpawn($, spawn, next, options) {
   useClockTimers($);
   const callerSet = callerEffort.delete(spawn.tool_use_id);
   if (next.origin.plugin !== ENGINE || !routable(spawn, resolveScope(options.scope)))
     return next(spawn);
   const state = {
-    role: roleText(offered.get(spawn.subagentType)?.description),
+    role: roleFor(spawn.subagentType),
     description: spawn.description,
     task: prepareBrief(spawn.prompt)
   };

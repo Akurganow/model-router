@@ -183,7 +183,7 @@ The plugin calls `pi.pi.discoverAgents`, a typed omp API that the docs prose doe
 
 - The source tells omp's bundled agents from a user, project or plugin agent with the same name.
 - The declared models decide whether a non-bundled agent keeps its own model under `extended`, and what the agent's own role is.
-- The description goes to Jev as the `role`, as [What leaves the machine](#what-leaves-the-machine) says.
+- The description goes to Jev as the agent text (the request's `role` field). The bundled `task` agent sends a fixed text instead, as [What leaves the machine](#what-leaves-the-machine) says.
 
 ## Limits and retries
 
@@ -227,7 +227,7 @@ The request body holds:
 
 - The item's task text and the batch `context`. Together they stay within 12,000 characters, and the context takes at most 3,000 of them.
 - The item's name, sent as the description.
-- The role: the description of the item's agent, as omp discovers it. The plugin masks secrets by shape, collapses whitespace and cuts it to 500 characters. A missing or blank description sends `An agent with no description.`
+- The agent text: the bundled `task` agent sends one fixed text, and every other agent sends its description, masked and cut to 500 characters. [PRIVACY.md](PRIVACY.md) has the details, and [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent) says why.
 - The `jev-latest` alias and one fixed question about judgment.
 
 Before sending, the plugin condenses the task text. It replaces each fenced code block with a line count. It masks Bearer tokens, `sk-` keys, and values assigned to names that end in KEY, TOKEN, SECRET or PASSWORD.

@@ -1,15 +1,19 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
 	BUDGET_CHARS,
 	buildPrompt,
 	contextText,
+	DEFAULT_ROLE,
 	NO_DESCRIPTION,
 	OMISSION_MARKER,
 	prepareBrief,
 	ROLE_CAP,
 	roleText,
 } from "./brief.ts";
+
+const CALIBRATION = new URL("../calibration.jsonl", import.meta.url);
 
 // BUDGET_CHARS 12000, marker 31 characters: head floor(2/3 * 11969), tail the rest.
 const HEAD_CHARS = 7979;
@@ -212,6 +216,20 @@ test("contextText drops a blank string and any value that is not a string", () =
 test("the role cap and the neutral line are fixed", () => {
 	assert.equal(ROLE_CAP, 500);
 	assert.equal(NO_DESCRIPTION, "An agent with no description.");
+});
+
+// The factors were fitted on the calibration cases, so the role must be the one most of them carry.
+test("DEFAULT_ROLE is the most common general-purpose role of the calibration cases and fits the role cap", () => {
+	const counts = new Map<string, number>();
+	for (const line of readFileSync(CALIBRATION, "utf8").split("\n")) {
+		if (line.trim() === "") continue;
+		const { role } = JSON.parse(line) as { role: string };
+		if (role.startsWith("General-purpose agent"))
+			counts.set(role, (counts.get(role) ?? 0) + 1);
+	}
+	const [common] = [...counts].reduce((a, b) => (b[1] > a[1] ? b : a));
+	assert.equal(DEFAULT_ROLE, common);
+	assert.ok(DEFAULT_ROLE.length <= ROLE_CAP);
 });
 
 test("a description of exactly the cap comes back whole, one unit more is cut", () => {

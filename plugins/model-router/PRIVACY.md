@@ -47,12 +47,18 @@ holds:
 
 - the subagent's task text, condensed and with token-shaped strings masked.
   A text over 12,000 characters keeps its start and its end
-- the agent's description, as Claude Code offers it, condensed and with
-  token-shaped strings masked, capped at 500 characters. A missing or blank
-  description sends `An agent with no description.` Under the default scope
-  these are the built-in agents' descriptions, unless you replace a built-in
-  agent with your own. Under `extended`, they are the descriptions of the
-  agents routed then
+- the agent's role:
+  - the built-in `general-purpose` and `claude` agents send one fixed text that
+    ships with the plugin
+  - every other routed agent sends its description, as Claude Code offers it,
+    condensed and with token-shaped strings masked, capped at 500 characters.
+    Under the default scope these are the built-in `Explore` and `Plan`
+  - a missing or blank description sends `An agent with no description.`
+  - under `extended`, a `general-purpose` or `claude` agent you define sends its
+    description once Claude Code has offered it. Before that offer it sends the
+    fixed text
+  - [The role of the default agent](docs/model-choice.md#the-role-of-the-default-agent)
+    says why the text is fixed
 - the caller's one-line description of the task
 - the Jev alias `jev-latest`, and two fixed scoring questions, `tier` and
   `work`, with their three descriptions each, text that ships with the plugin.
@@ -84,7 +90,7 @@ is long. No key is ever written.
 Under `extended`, the plugin routes every Agent call that passes no model and
 no name, except a fork. That includes your user, project and plugin agents.
 
-- The description and the task text of each such agent leave your machine, as
+- The role and the task text of each such agent leave your machine, as
   What the plugin sends describes.
 - A hand-written description can hold private names, such as a client, a
   product or a team. The plugin masks token-shaped strings only. Read your
