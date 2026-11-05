@@ -128,6 +128,71 @@ jobs:
           omp plugin install model-router@model-router
           omp plugin list | grep -F model-router
 
+  # The npm package is a committed tree, so this job packs that tree as it is.
+  # It proves that the tarball holds the files the tree lists, that npm accepts
+  # it for publishing, and that OpenClaw and omp install it. Both harnesses run
+  # with their state and config under the runner's temp folder.
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-node
+
+      - uses: ./.github/actions/setup-openclaw
+
+      - uses: ./.github/actions/setup-omp
+
+      # omp reads PI_CONFIG_DIR relative to the home folder.
+      - name: Keep the harness state under the runner's temp folder
+        run: |
+          {
+            echo "OPENCLAW_STATE_DIR=$RUNNER_TEMP/openclaw-state"
+            echo "OPENCLAW_CONFIG_PATH=$RUNNER_TEMP/openclaw-state/openclaw.json"
+            echo "OPENCLAW_HOME=$RUNNER_TEMP/openclaw-home"
+            echo "PI_CONFIG_DIR=$(realpath -m --relative-to="$HOME" "$RUNNER_TEMP/omp-config")"
+            echo "PI_CODING_AGENT_DIR=$RUNNER_TEMP/omp-config/agent"
+          } >> "$GITHUB_ENV"
+
+      # The script fails when npm packs other files than the tree's files
+      # list and npm's always-packed files give, and prints the tarball path.
+      - name: Pack the tree and check the file list
+        id: pack
+        run: |
+          tarball=$(node scripts/check-npm-pack.ts "$RUNNER_TEMP/pack")
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+
+      # A dry run goes through every publish check and sends nothing.
+      - name: Dry-run the publish
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: npm publish --dry-run --access public --ignore-scripts "$TARBALL"
+
+      # OpenClaw's inspection loads the installed package without activating
+      # it, so it lists no hook, tool or command. The script reads its report
+      # and registers the installed bundle against a recording api.
+      - name: Install the tarball into OpenClaw
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          openclaw plugins install "npm-pack:$TARBALL" --force --accept-capabilities
+          openclaw plugins inspect model-router-openclaw --runtime --json > "$RUNNER_TEMP/inspect.json"
+          node scripts/check-openclaw-install.ts "$RUNNER_TEMP/inspect.json"
+
+      # omp installs a registry name, a git spec or a folder, not a tarball.
+      - name: Install the unpacked tarball into omp
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          mkdir "$RUNNER_TEMP/unpacked"
+          tar -xzf "$TARBALL" -C "$RUNNER_TEMP/unpacked"
+          omp plugin install "$RUNNER_TEMP/unpacked/package"
+          version=$(node -p 'require("./packages/model-router/package.json").version')
+          omp plugin list | grep -F "@akurganow/model-router@$version"
+
   # Public logs and published files must not carry facts about a contributor's
   # setup. The base is the commit the change started from, so the scan reads
   # only the lines the change adds.

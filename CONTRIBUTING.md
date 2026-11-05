@@ -14,6 +14,10 @@ every commit as a [conventional commit](#commits).
   and `src/effort.ts` both build on it.
 - `plugins/model-router` is the Claude Code plugin.
 - `plugins/model-router-omp` is the omp plugin.
+- `plugins/model-router-openclaw` is the OpenClaw plugin.
+- `packages/model-router` is the npm package that OpenClaw and omp install.
+  The builder writes it, and CI packs the committed tree. Never edit it by
+  hand.
 - `.claude-plugin/marketplace.json` is the Claude Code catalog.
 - `.omp-plugin/marketplace.json` is the omp catalog. Each harness reads only
   its own catalog.
@@ -181,11 +185,18 @@ Renovate (`.github/renovate.json`) keeps every pinned version current:
 
 - the development tools
 - Claude Code and omp for CI and the evals
+- OpenClaw for CI
 - Bun
 - the actions
 
 Renovate proposes updates after the same 14 days, one pull request a week per
 group. It proposes security fixes at once.
+
+The OpenClaw pin is the one exception to the 14-day rule. CI installs the
+latest OpenClaw release, so a Renovate rule raises the pin at any time with no
+age delay. The `setup-openclaw` action installs it from a copy under the
+runner's temp folder, because the age rule in `.npmrc` would refuse a new
+version. The lockfile still locks it by digest, and no install script runs.
 
 CI fails on any of these:
 
@@ -208,6 +219,9 @@ CI runs these checks:
 - Anthropic's plugin policy scan, with the prompt in `.github/policy/`
 - the generated-file check, on Ubuntu and macOS
 - the install of both plugins from the checkout
+- the `package` job: it packs `packages/model-router` and compares the packed
+  files with its `files` list, runs `npm publish --dry-run`, and installs the
+  tarball into the pinned OpenClaw and omp
 - the owner-setup scan, `node scripts/scan-owner-setup.ts`
 
 A pull request merges only when all of them pass.
@@ -219,3 +233,20 @@ A new hook or engine call changes what Anthropic's directory and users see.
 Update `tools/surface.json` and the surface table in
 [plugins/model-router/README.md](plugins/model-router/README.md) in the same
 change.
+
+## Publishing to npm
+
+The release workflow publishes `@akurganow/model-router` with npm trusted
+publishing, so no token is stored. The `publish` job runs after a release, and
+only when the repository variable `NPM_PUBLISH` is `true`.
+
+The owner publishes the first version by hand from its tag, because npm
+accepts a trusted publisher only for a package that exists. Then, within 2
+days before a release that publishes:
+
+1. Set a trusted publisher in the package's settings on npmjs.com for this
+   repository and the workflow file `release.yml`.
+2. Set `NPM_PUBLISH` to `true`.
+
+A trusted publisher that sees no publication within 2 days of its setup
+expires. Set it again if that happens. Every later version publishes from CI.

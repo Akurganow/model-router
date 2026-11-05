@@ -151,7 +151,7 @@
 				"title": "Manage plugins",
 				"url": "https://docs.openclaw.ai/plugins/manage-plugins"
 			},
-			"ciSystems": []
+			"ciSystems": ["Ubuntu"]
 		}
 	},
 	"npm": {

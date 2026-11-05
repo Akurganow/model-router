@@ -1,0 +1,29 @@
+name: Set up OpenClaw
+description: >
+  Installs the OpenClaw version that package.json in this folder pins and
+  package-lock.json locks by digest, and puts `openclaw` on the PATH. The pin
+  tracks the latest OpenClaw release: a Renovate rule raises it with no age
+  delay (CONTRIBUTING.md, Dependencies).
+runs:
+  using: composite
+  steps:
+    # The install runs in a copy under the runner's temp folder. The
+    # repository's .npmrc holds a 14-day age rule that would refuse a version
+    # this new, and npm reads it only from the folder it installs in.
+    # npm refuses a tarball whose digest differs from the lockfile. No
+    # lifecycle script runs: the install script of OpenClaw only prepares its
+    # bundled plugins, and the plugin install and inspect commands the package
+    # job runs work without it.
+    - name: Install OpenClaw
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        dir="$RUNNER_TEMP/setup-openclaw"
+        mkdir -p "$dir"
+        cp "$ACTION_PATH/package.json" "$ACTION_PATH/package-lock.json" "$dir/"
+        cd "$dir"
+        npm ci --ignore-scripts
+        echo "$dir/node_modules/.bin" >> "$GITHUB_PATH"
+        version=$(node -p 'require("./package.json").dependencies.openclaw')
+        node_modules/.bin/openclaw --version | grep -F "$version"

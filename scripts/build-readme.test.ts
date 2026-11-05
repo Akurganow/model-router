@@ -178,18 +178,18 @@ const jobBlock = (workflow: string, job: string): string => {
 		.join("\n");
 };
 
+const runnerLine = (system: string) =>
+	new RegExp(`^ {4}runs-on: ${SYSTEM_RUNNERS[system]}$`, "m");
+
 test("each CI claim matches the install job of the workflow", () => {
 	const workflow = readFileSync(join(ROOT, CI_PATH), "utf8");
 	const block = jobBlock(workflow, "install");
 	const runLines = block.split("\n").map((line) => line.trim());
-	for (const harness of [source.claude, source.omp, source.openclaw]) {
+	for (const harness of [source.claude, source.omp]) {
 		const { ciSystems } = harness.install;
 		for (const system of ciSystems) {
 			assert.ok(SYSTEM_RUNNERS[system], `no runner is known for ${system}`);
-			assert.match(
-				block,
-				new RegExp(`^ {4}runs-on: ${SYSTEM_RUNNERS[system]}$`, "m"),
-			);
+			assert.match(block, runnerLine(system));
 		}
 		if (ciSystems.length === 0) continue;
 		for (const command of installCommands(source, harness.install, '"$PWD"'))
@@ -200,9 +200,17 @@ test("each CI claim matches the install job of the workflow", () => {
 	}
 });
 
-test("the OpenClaw install command names the npm package and no CI system claims it yet", () => {
+// The package job installs the packed tarball, a local source of the same package.
+test("the OpenClaw CI claim matches the package job of the workflow", () => {
+	const { ciSystems } = source.openclaw.install;
+	assert.deepEqual(ciSystems, ["Ubuntu"]);
+	const block = jobBlock(readFileSync(join(ROOT, CI_PATH), "utf8"), "package");
+	for (const system of ciSystems) assert.match(block, runnerLine(system));
+	assert.match(block, /openclaw plugins install "npm-pack:\$TARBALL"/);
+});
+
+test("the OpenClaw install command names the npm package", () => {
 	assert.deepEqual(installCommands(source, source.openclaw.install), [
 		"openclaw plugins install npm:@akurganow/model-router",
 	]);
-	assert.deepEqual(source.openclaw.install.ciSystems, []);
 });
