@@ -34,6 +34,12 @@ jobs:
           allow-licenses: >-
             MIT, MIT-0, ISC, 0BSD, BSD-2-Clause, BSD-3-Clause, Apache-2.0,
             Unlicense, CC0-1.0, BlueOak-1.0.0, Zlib, Python-2.0
+          # One advisory is allowed: glob 13.0.6, bundled inside npm 12.2.2 in
+          # the CI-only OpenClaw install of .github/actions/setup-openclaw,
+          # which no plugin ships. A bundled package cannot be overridden, and
+          # no npm release bundles the fixed glob yet. Remove the entry once an
+          # npm release bundles glob 14.0.2 or later.
+          allow-ghsas: GHSA-3g3m-2fjr-6pw4
           allow-dependencies-licenses: >-
             pkg:npm/@anthropic-ai/claude-code,
             pkg:npm/@anthropic-ai/claude-code-darwin-arm64,
