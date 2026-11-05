@@ -1,13 +1,11 @@
 import { type JsonObject, oneLine, type Rendered, serialize } from "./json.ts";
+import { CLAUDE_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";
 import {
 	COMMAND_DESCRIPTIONS,
 	SETTING_VALUES,
 	VALUE_SETTINGS,
 } from "./values.ts";
-
-const MANIFEST_PATH = "plugins/model-router/.claude-plugin/plugin.json";
-const CATALOGUE_PATH = ".claude-plugin/marketplace.json";
 
 const commands = (source: Source): JsonObject =>
 	Object.fromEntries(
@@ -65,6 +63,6 @@ const catalogue = (source: Source): JsonObject => ({
 });
 
 export const renderClaude = (source: Source): Rendered[] => [
-	{ path: MANIFEST_PATH, text: serialize(manifest(source)) },
-	{ path: CATALOGUE_PATH, text: serialize(catalogue(source)) },
+	{ path: CLAUDE_OUTPUTS.manifest, text: serialize(manifest(source)) },
+	{ path: CLAUDE_OUTPUTS.catalogue, text: serialize(catalogue(source)) },
 ];

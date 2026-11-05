@@ -1,6 +1,6 @@
+import { README_OUTPUT } from "./outputs.ts";
 import type { Install, Source } from "./source.ts";
 
-export const README_PATH = "README.md";
 const START = "<!-- install:start -->";
 const END = "<!-- install:end -->";
 
@@ -66,15 +66,17 @@ function checkMarkers(readme: string): void {
 		const count = occurrences(readme, marker);
 		if (count === 0)
 			throw new Error(
-				`${README_PATH}: the marker ${marker} is missing. Add it on its own line in the Install section.`,
+				`${README_OUTPUT}: the marker ${marker} is missing. Add it on its own line in the Install section.`,
 			);
 		if (count > 1)
 			throw new Error(
-				`${README_PATH}: the marker ${marker} appears ${count} times. Keep one.`,
+				`${README_OUTPUT}: the marker ${marker} appears ${count} times. Keep one.`,
 			);
 	}
 	if (readme.indexOf(END) < readme.indexOf(START))
-		throw new Error(`${README_PATH}: ${END} comes before ${START}. Swap them.`);
+		throw new Error(
+			`${README_OUTPUT}: ${END} comes before ${START}. Swap them.`,
+		);
 }
 
 // Returns the README with the text between the install markers replaced.

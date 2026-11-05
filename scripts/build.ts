@@ -5,8 +5,8 @@ import { build } from "esbuild";
 import { renderClaude } from "./build/claude.ts";
 import { formatJson, type Rendered } from "./build/json.ts";
 import { renderOmp } from "./build/omp.ts";
-import { BUNDLE_OUTPUTS } from "./build/outputs.ts";
-import { README_PATH, renderReadme } from "./build/readme.ts";
+import { CLAUDE_OUTPUTS, OMP_OUTPUTS, README_OUTPUT } from "./build/outputs.ts";
+import { renderReadme } from "./build/readme.ts";
 import { loadSource, type Source } from "./build/source.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -75,12 +75,12 @@ export const BUNDLES: readonly {
 	{
 		harness: "claude",
 		entry: "src/claude.ts",
-		out: BUNDLE_OUTPUTS.claude,
+		out: CLAUDE_OUTPUTS.bundle,
 	},
 	{
 		harness: "omp",
 		entry: "src/omp.ts",
-		out: BUNDLE_OUTPUTS.omp,
+		out: OMP_OUTPUTS.bundle,
 	},
 ];
 
@@ -93,7 +93,7 @@ function writeMetadata(root: string): void {
 	const source = loadSource(root);
 	for (const { path, text } of renderMetadata(source))
 		writeFileSync(join(root, path), formatJson(path, text, root));
-	const readme = join(root, README_PATH);
+	const readme = join(root, README_OUTPUT);
 	writeFileSync(readme, renderReadme(readFileSync(readme, "utf8"), source));
 }
 

@@ -67,11 +67,13 @@ function requiredPaths(node: Schema, prefix = ""): string[] {
 	const items = target.items
 		? requiredPaths(target.items, `${prefix}${ARRAY_ITEM}`)
 		: [];
-	return (target.required ?? []).flatMap((name) => [
-		`${prefix}.${name}`,
-		...requiredPaths(target.properties?.[name] ?? {}, `${prefix}.${name}`),
+	return [
 		...items,
-	]);
+		...(target.required ?? []).flatMap((name) => [
+			`${prefix}.${name}`,
+			...requiredPaths(target.properties?.[name] ?? {}, `${prefix}.${name}`),
+		]),
+	];
 }
 
 function keyPaths(value: unknown, prefix = ""): string[] {

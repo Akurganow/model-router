@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { GENERATED_PATHS, README_OUTPUT } from "./build/outputs.ts";
-import { README_PATH } from "./build/readme.ts";
 import { loadSource } from "./build/source.ts";
 import {
 	BUNDLES,
@@ -91,9 +90,8 @@ test("the generated paths are what the builder writes", () => {
 	const root = fileURLToPath(new URL("../", import.meta.url));
 	const written = [
 		...renderMetadata(loadSource(root)).map(({ path }) => path),
-		README_PATH,
+		README_OUTPUT,
 		...BUNDLES.map(({ out }) => out),
 	];
-	assert.equal(README_OUTPUT, README_PATH);
 	assert.deepEqual([...GENERATED_PATHS].sort(), written.sort());
 });

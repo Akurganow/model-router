@@ -1,19 +1,22 @@
-// The files the builder writes. This module imports nothing, so the owner-setup
-// scan reads the list without loading esbuild or a renderer; build.test.ts
-// checks the list against what the builder writes.
-export const README_OUTPUT = "README.md";
-
-export const BUNDLE_OUTPUTS = {
-	claude: "plugins/model-router/hooks/register.js",
-	omp: "plugins/model-router-omp/extension/index.js",
+// Every file the builder writes, each path named once. The renderers and the
+// bundle list take their paths from here. This module imports nothing, so the
+// owner-setup scan reads the list without loading esbuild or a renderer.
+export const CLAUDE_OUTPUTS = {
+	manifest: "plugins/model-router/.claude-plugin/plugin.json",
+	catalogue: ".claude-plugin/marketplace.json",
+	bundle: "plugins/model-router/hooks/register.js",
 } as const;
 
+export const OMP_OUTPUTS = {
+	manifest: "plugins/model-router-omp/package.json",
+	catalogue: ".omp-plugin/marketplace.json",
+	bundle: "plugins/model-router-omp/extension/index.js",
+} as const;
+
+export const README_OUTPUT = "README.md";
+
 export const GENERATED_PATHS: readonly string[] = [
-	".claude-plugin/marketplace.json",
-	".omp-plugin/marketplace.json",
-	"plugins/model-router-omp/package.json",
-	"plugins/model-router/.claude-plugin/plugin.json",
+	...Object.values(CLAUDE_OUTPUTS),
+	...Object.values(OMP_OUTPUTS),
 	README_OUTPUT,
-	BUNDLE_OUTPUTS.claude,
-	BUNDLE_OUTPUTS.omp,
 ];
