@@ -1384,11 +1384,15 @@ var EFFORT_LADDER = {
 };
 var BUILT_IN = "built-in";
 var ENGINE = "engine";
-var DEFAULT_AGENT = "general-purpose";
+var GENERAL_PURPOSE = "general-purpose";
+var CLAUDE_AGENT = "claude";
 var FORK = "fork";
+var DEFAULT_ROLE_AGENTS = /* @__PURE__ */ new Set([
+  GENERAL_PURPOSE,
+  CLAUDE_AGENT
+]);
 var ROUTED_AGENTS = /* @__PURE__ */ new Set([
-  DEFAULT_AGENT,
-  "claude",
+  ...DEFAULT_ROLE_AGENTS,
   "Explore",
   "Plan"
 ]);
@@ -1466,7 +1470,7 @@ function routable(spawn, scope) {
 function roleFor(agent) {
   const offer = offered.get(agent);
   const own = offer === void 0 || offer.source === BUILT_IN;
-  return (agent === DEFAULT_AGENT || agent === "claude") && own ? DEFAULT_ROLE : roleText(offer?.description);
+  return DEFAULT_ROLE_AGENTS.has(agent) && own ? DEFAULT_ROLE : roleText(offer?.description);
 }
 async function routeSpawn($, spawn, next, options) {
   useClockTimers($);

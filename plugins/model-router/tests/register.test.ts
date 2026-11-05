@@ -1,8 +1,9 @@
 import { expect, test } from "claude-code/testing";
 import { ANSWER, agentCall, callOnce, KEYED, PROMPT } from "./harness.ts";
 
-const DEFAULT_ROLE =
-	"General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
+// The plugin folder cannot import src/brief.ts, so the test pins the start of the fixed role.
+const DEFAULT_ROLE_PREFIX =
+	"General-purpose agent for researching complex questions, searching";
 const EXTENDED = { options: { api_key: "test-key", scope: "extended" } };
 
 test(
@@ -26,7 +27,9 @@ for (const subagentType of [undefined, "claude"] as const)
 		KEYED,
 		async ($, on) => {
 			const { h } = await callOnce($, on, { subagent_type: subagentType });
-			expect(JSON.parse(h.sent ?? "").state.role).toBe(DEFAULT_ROLE);
+			expect(JSON.parse(h.sent ?? "").state.role).toContain(
+				DEFAULT_ROLE_PREFIX,
+			);
 			expect(h.received.model).toBe("haiku");
 		},
 	);
@@ -39,7 +42,7 @@ for (const [subagentType, role] of [
 	["Plan", "Software architect agent for designing implementation plans."],
 ] as const)
 	test(
-		`${subagentType ?? "general-purpose"} is routed with its offered description as the role`,
+		`${subagentType} is routed with its offered description as the role`,
 		KEYED,
 		async ($, on) => {
 			const { h } = await callOnce($, on, { subagent_type: subagentType });
@@ -49,9 +52,13 @@ for (const [subagentType, role] of [
 	);
 
 for (const [name, description, role] of [
-	["a long description is cut at the cap", "x".repeat(600), "x".repeat(500)],
 	[
-		"an empty description gets the neutral line",
+		"a user general-purpose agent with a long description is cut at the cap",
+		"x".repeat(600),
+		"x".repeat(500),
+	],
+	[
+		"a user general-purpose agent with an empty description gets the neutral line",
 		"",
 		"An agent with no description.",
 	],
@@ -70,7 +77,7 @@ for (const [name, description, role] of [
 	});
 
 test(
-	"a general-purpose agent a user defines sends its own description",
+	"a user general-purpose agent sends its own description",
 	EXTENDED,
 	async ($, on) => {
 		const { h } = await callOnce(

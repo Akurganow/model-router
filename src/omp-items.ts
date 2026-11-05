@@ -86,6 +86,9 @@ export function spawnCheck(
 		: undefined;
 }
 
+/**
+ * Only omp's bundled task agent sends the fixed role. A user or project agent under that name sends its own description.
+ */
 export function roleOf(name: string, facts: Facts): string {
 	const found = findAgent(name, facts);
 	return name === TASK && found?.source === BUNDLED

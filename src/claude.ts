@@ -50,12 +50,16 @@ const EFFORT_LADDER = {
 const BUILT_IN = "built-in";
 // The origin of a spawn the Agent tool makes. Another plugin's $.agent.spawn carries its own name.
 const ENGINE = "engine";
-const DEFAULT_AGENT = "general-purpose";
+const GENERAL_PURPOSE = "general-purpose";
+const CLAUDE_AGENT = "claude";
 const FORK = "fork";
+const DEFAULT_ROLE_AGENTS: ReadonlySet<string> = new Set([
+	GENERAL_PURPOSE,
+	CLAUDE_AGENT,
+]);
 // Forks inherit their parent's model and the other built-ins are fixed-purpose, so only these four are scored.
 const ROUTED_AGENTS: ReadonlySet<string> = new Set([
-	DEFAULT_AGENT,
-	"claude",
+	...DEFAULT_ROLE_AGENTS,
 	"Explore",
 	"Plan",
 ]);
@@ -144,16 +148,21 @@ function routable(spawn: AgentSpawn, scope: Scope): boolean {
 	return ROUTED_AGENTS.has(agent) && offered.get(agent)?.source === BUILT_IN;
 }
 
-// Only Claude Code's own default agents send the fixed role. An agent a user defines under the same name sends its own description.
+/**
+ * Only Claude Code's own default agents send the fixed role. An agent a user defines under the same name sends its own description.
+ */
 function roleFor(agent: string): string {
 	const offer = offered.get(agent);
+	// The mod registers after Claude Code's offers, so an agent with no offer is the built-in.
 	const own = offer === undefined || offer.source === BUILT_IN;
-	return (agent === DEFAULT_AGENT || agent === "claude") && own
+	return DEFAULT_ROLE_AGENTS.has(agent) && own
 		? DEFAULT_ROLE
 		: roleText(offer?.description);
 }
 
-// The spawn runs after the permission decision and changes only the model, so the Agent call the server reviewed stays as written.
+/**
+ * The spawn runs after the permission decision and changes only the model, so the Agent call the server reviewed stays as written.
+ */
 async function routeSpawn(
 	$: Engine,
 	spawn: AgentSpawn,
