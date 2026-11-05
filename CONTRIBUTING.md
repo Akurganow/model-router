@@ -194,11 +194,19 @@ Renovate (`.github/renovate.json`) keeps every pinned version current:
 Renovate proposes updates after the same 14 days, one pull request a week per
 group. It proposes security fixes at once.
 
-The OpenClaw pin is the one exception to the 14-day rule. CI installs the
-latest OpenClaw release, so a Renovate rule raises the pin at any time with no
-age delay. The `setup-openclaw` action installs it from a copy under the
-runner's temp folder, because the age rule in `.npmrc` would refuse a new
-version. The lockfile still locks it by digest, and no install script runs.
+Two pins are exceptions to the 14-day rule, both in the `setup-openclaw`
+action that installs OpenClaw for CI only:
+
+- OpenClaw itself. CI installs the latest OpenClaw release, so a Renovate rule
+  raises the pin at any time with no age delay.
+- The npm that OpenClaw bundles there. OpenClaw pins an exact npm, and the
+  action overrides it with a newer npm release when the pinned one carries
+  advisories. A Renovate rule raises that override with no age delay too. No
+  other package and no other npm in the repository has this exception.
+
+The action installs from a copy under the runner's temp folder, because the age
+rule in `.npmrc` would refuse a new version. The lockfile still locks every
+package by digest, and no install script runs.
 
 CI fails on any of these:
 

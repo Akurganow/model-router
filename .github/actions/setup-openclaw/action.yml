@@ -10,9 +10,10 @@ runs:
     # The install runs in a copy under the runner's temp folder. The
     # repository's .npmrc holds a 14-day age rule that would refuse a version
     # this new, and npm reads it only from the folder it installs in.
-    # package.json overrides two packages OpenClaw pins exactly: npm 12.2.1
-    # bundles a brace-expansion without the advisories of 12.2.0's, and
-    # zod 4.6.6 fixes an advisory of 4.6.5. Both are older than 14 days.
+    # package.json overrides two packages OpenClaw pins exactly. npm 12.2.2
+    # bundles a brace-expansion and an undici without the advisories of
+    # 12.2.0's; it is newer than 14 days, an exception CONTRIBUTING.md
+    # records. zod 4.6.6 fixes an advisory of 4.6.5.
     # npm refuses a tarball whose digest differs from the lockfile. No
     # lifecycle script runs: the install script of OpenClaw only prepares its
     # bundled plugins, and the plugin install and inspect commands the package
