@@ -75,8 +75,11 @@ const SIMPLE_ESCAPES: Readonly<Record<string, string>> = {
 const ESCAPE_OR_TEXT = /\\([0-7]{3})|\\(.)|[^\\]+/gs;
 const OCTAL_RADIX = 8;
 
-// Git quotes a name that holds a quote, a backslash or a control character, and
-// writes bytes outside ASCII as octal escapes that together form UTF-8.
+/**
+ * Decodes a name git quoted. Git quotes a name that holds a quote, a backslash
+ * or a control character, and writes bytes outside ASCII as octal escapes that
+ * together form UTF-8.
+ */
 function unquoteGitName(quoted: string): string {
 	const chunks = [...quoted.matchAll(ESCAPE_OR_TEXT)].map(
 		([text, octal, escaped]) => {
@@ -90,7 +93,11 @@ function unquoteGitName(quoted: string): string {
 	return Buffer.concat(chunks).toString("utf8");
 }
 
-// Git ends the header of a name that holds a space or a quote with a tab.
+/**
+ * Returns the new-file path of a +++ header, quoted or not, or undefined for
+ * /dev/null and any other prefix. Git ends the header of a name that holds a
+ * space or a quote with a tab.
+ */
 function newFilePath(line: string): string | undefined {
 	const header = line.replace(TRAILING_TAB, "");
 	if (header.startsWith(NEW_FILE)) return header.slice(NEW_FILE.length);
@@ -99,10 +106,13 @@ function newFilePath(line: string): string | undefined {
 	return undefined;
 }
 
-// With --unified=0 every line after a hunk header is content until the next
-// file header, so an added line that starts with "++" is not mistaken for one.
-// An added line under a missing or unreadable header fails the scan, because
-// skipping it would let the scan pass a line it never read.
+/**
+ * Lists each added line of a --unified=0 diff with its file and new line
+ * number. Every line after a hunk header is content until the next file header,
+ * so an added line that starts with ++ is not taken for one. An added line
+ * under a missing or unreadable header throws, because skipping it would let
+ * the scan pass a line it never read.
+ */
 export function addedLines(diff: string): AddedLine[] {
 	const added: AddedLine[] = [];
 	let path: string | undefined;
@@ -126,8 +136,11 @@ export function addedLines(diff: string): AddedLine[] {
 	return added;
 }
 
-// A git run that timed out or could not start says nothing about the commit,
-// so it throws instead of reading as "not a commit" and narrowing the range.
+/**
+ * Runs git in root with a time limit. A run that timed out or could not start
+ * says nothing about the commit, so it throws instead of reading as not a
+ * commit and narrowing the range.
+ */
 function git(root: string, args: readonly string[]) {
 	const run = spawnSync("git", args, {
 		cwd: root,
@@ -139,9 +152,16 @@ function git(root: string, args: readonly string[]) {
 	return run;
 }
 
+/**
+ * True when ref names a commit in the clone. An empty ref names none.
+ */
 const isCommit = (root: string, ref: string): boolean =>
 	ref !== "" && git(root, ["cat-file", "-e", `${ref}^{commit}`]).status === 0;
 
+/**
+ * Returns the trimmed output of a git command that succeeded, or undefined when
+ * it exited non-zero.
+ */
 const revision = (
 	root: string,
 	args: readonly string[],
@@ -159,8 +179,10 @@ const emptyTree = (root: string): string =>
 		timeout: GIT_TIMEOUT_MS,
 	}).trim();
 
-// The branch point is where the push began. It is absent when HEAD is
-// origin/main itself, as on a force push to main.
+/**
+ * Returns where the push began: the merge base of HEAD and origin/main. It is
+ * absent when HEAD is origin/main itself, as on a force push to main.
+ */
 function branchPoint(root: string): string | undefined {
 	const point = revision(root, ["merge-base", "HEAD", MAIN_REF]);
 	return point !== undefined && point !== revision(root, ["rev-parse", "HEAD"])
@@ -168,11 +190,14 @@ function branchPoint(root: string): string | undefined {
 		: undefined;
 }
 
-// A push can name a base the clone lacks, such as the all-zero id of a new
-// branch or a commit a force push dropped. The scan then reads everything HEAD
-// adds over the merge base with origin/main. Without that merge base it reads
-// only the last commit, which is every line of a first commit. A change of
-// several commits can hide a line in an earlier one there, so the note says so.
+/**
+ * Picks the commits to diff for a given base. A push can name a base the clone
+ * lacks, such as the all-zero id of a new branch or a commit a force push
+ * dropped. The scan then reads everything HEAD adds over the merge base with
+ * origin/main. Without that merge base it reads only the last commit, which is
+ * every line of a first commit. A change of several commits can hide a line in
+ * an earlier one there, so the note says so.
+ */
 export function diffRange(
 	root: string,
 	base: string,
@@ -246,6 +271,10 @@ export function scanDiff(root: string, range: readonly string[]): Hit[] {
 	return addedLines(diff).flatMap(hitsIn);
 }
 
+/**
+ * Returns the value after --base, or undefined when the flag or its value is
+ * absent.
+ */
 function baseArgument(args: readonly string[]): string | undefined {
 	const at = args.indexOf("--base");
 	return at === -1 ? undefined : args[at + 1];

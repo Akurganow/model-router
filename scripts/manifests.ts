@@ -31,6 +31,10 @@ function versionOf(json: unknown, versionPath: Manifest["versionPath"]) {
 // A source bumped without a build differs from the manifests, and the check names both.
 export const SOURCE: Manifest = { path: SOURCE_PATH, versionPath: ["version"] };
 
+/**
+ * Returns one problem per missing file, and one more when the source and the
+ * manifests do not carry a single version, naming each version and its files.
+ */
 export function checkVersions(
 	root: string,
 	manifests: readonly Manifest[] = MANIFESTS,

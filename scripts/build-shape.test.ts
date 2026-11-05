@@ -59,6 +59,10 @@ const FIXTURE: Source = {
 
 const ARRAY_ITEM = "[]";
 
+/**
+ * Lists the dotted path of every required key in a schema node, following $ref
+ * and array items.
+ */
 function requiredPaths(node: Schema, prefix = ""): string[] {
 	const target = node.$ref
 		? schema.$defs?.[node.$ref.replace("#/$defs/", "")]
@@ -76,6 +80,10 @@ function requiredPaths(node: Schema, prefix = ""): string[] {
 	];
 }
 
+/**
+ * Lists the dotted path of every key in a value, with [] for an array item, to
+ * compare with requiredPaths.
+ */
 function keyPaths(value: unknown, prefix = ""): string[] {
 	if (Array.isArray(value))
 		return value.flatMap((item) => keyPaths(item, `${prefix}${ARRAY_ITEM}`));
@@ -92,6 +100,9 @@ test("the schema requires exactly the keys of the Source type", () => {
 	assert.deepEqual(unique(requiredPaths(schema)), unique(keyPaths(FIXTURE)));
 });
 
+/**
+ * Returns the required names of the schema node at the given property path.
+ */
 const requiredAt = (...names: string[]): string[] => [
 	...(names.reduce<Schema | undefined>(
 		(node, name) => node?.properties?.[name],

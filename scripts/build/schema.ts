@@ -32,6 +32,9 @@ type Walk = {
 	readonly problems: string[];
 };
 
+/**
+ * Names a value's JSON Schema type, telling null and arrays apart from objects.
+ */
 const kindOf = (value: unknown): string =>
 	value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
 
@@ -42,7 +45,11 @@ export function validate(schema: Schema, value: unknown): string[] {
 	return walk.problems;
 }
 
-// A malformed schema is the author's error, so it throws instead of listing a data problem.
+/**
+ * Throws on a keyword next to $ref and on an additionalProperties that is not a
+ * boolean. A malformed schema is the author's error, so it is not listed as a
+ * data problem.
+ */
 function refuseMalformed(schema: Schema, path: string): void {
 	if (schema.$ref !== undefined)
 		for (const keyword of Object.keys(schema))
@@ -59,6 +66,11 @@ function refuseMalformed(schema: Schema, path: string): void {
 		);
 }
 
+/**
+ * Checks one value against one schema node and adds each violation to
+ * walk.problems. A keyword the validator does not implement is a problem too,
+ * so the schema cannot use an unchecked rule.
+ */
 function check(walk: Walk, schema: Schema, path: string, value: unknown): void {
 	refuseMalformed(schema, path);
 	for (const keyword of Object.keys(schema))
@@ -79,6 +91,10 @@ function check(walk: Walk, schema: Schema, path: string, value: unknown): void {
 		checkObject(walk, schema, path, value as Record<string, unknown>);
 }
 
+/**
+ * Follows a local #/$defs/ reference. A reference to a missing definition is
+ * listed as a problem.
+ */
 function checkReference(
 	walk: Walk,
 	ref: string,
@@ -93,6 +109,9 @@ function checkReference(
 	else check(walk, target, path, value);
 }
 
+/**
+ * Applies minLength and pattern to a string.
+ */
 function checkString(
 	walk: Walk,
 	{ minLength, pattern }: Schema,
@@ -105,6 +124,9 @@ function checkString(
 		walk.problems.push(`${path}: does not match ${pattern}`);
 }
 
+/**
+ * Applies minItems, then checks every item against items.
+ */
 function checkArray(
 	walk: Walk,
 	{ minItems, items }: Schema,
@@ -119,6 +141,10 @@ function checkArray(
 		});
 }
 
+/**
+ * Lists each missing required key, checks each known key, and lists an unknown
+ * key when additionalProperties is false.
+ */
 function checkObject(
 	walk: Walk,
 	{ properties = {}, required = [], additionalProperties }: Schema,

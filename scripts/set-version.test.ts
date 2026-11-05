@@ -17,6 +17,10 @@ const { put, read } = box;
 const sourceText = (version: string) =>
 	`{\n\t"name": "model-router",\n\t"version": "${version}"\n}\n`;
 
+/**
+ * Writes the source and every manifest with the given version, each holding
+ * only its version path.
+ */
 function seedAll(version: string) {
 	put(SOURCE_PATH, sourceText(version));
 	for (const { path, versionPath } of MANIFESTS) {
