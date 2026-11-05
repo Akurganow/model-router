@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, mock } from "node:test";
-import { oneChunk } from "./omp-score.ts";
+import { jevAnswer, streamed } from "./jev-fakes.ts";
 import type {
 	CommandSpec,
 	Context,
@@ -18,6 +18,7 @@ import type {
 	ToolSpec,
 } from "./omp-types.ts";
 
+export { jevAnswer, streamed };
 export const TOOL_NAME = "model_router_config";
 export const KEY = "omp-key-0001";
 export const OR_KEY = "omp-or-key-0003";
@@ -64,32 +65,6 @@ type Config = {
 	"task.agentModelOverrides": unknown;
 	"task.disabledAgents": unknown;
 };
-
-export function streamed(
-	status: number,
-	body: unknown,
-	headers: Record<string, string> = {},
-): Response {
-	const bytes = new TextEncoder().encode(
-		typeof body === "string" ? body : JSON.stringify(body),
-	);
-	return new Response(oneChunk(bytes), {
-		status,
-		headers: { "content-type": "application/json", ...headers },
-	});
-}
-
-const spread = (level: number) => ({
-	0: level === 0 ? 0.9 : 0.05,
-	1: level === 1 ? 0.9 : 0.05,
-	2: level === 2 ? 0.9 : 0.05,
-});
-
-export const jevAnswer = (level: number) => ({
-	model: "jev-1.14.0",
-	usage: { input_tokens: 812, output_tokens: 9 },
-	answers: { tier: { type: "score", probabilities: spread(level) } },
-});
 
 // A task text holding `level0`, `level1` or `level2` gets that level from the fake Jev. Others get level 1.
 const answerByTask: Answer = async ({ body }) => {
