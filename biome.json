@@ -5,7 +5,9 @@
 		"includes": [
 			"**",
 			"!plugins/model-router/hooks/register.js",
-			"!plugins/model-router-omp/extension/index.js"
+			"!plugins/model-router-omp/extension/index.js",
+			"!plugins/model-router-openclaw/index.js",
+			"!packages/model-router"
 		]
 	},
 	"linter": {

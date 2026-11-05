@@ -53,6 +53,13 @@ export const serialize = (value: JsonValue): string => `${lines(value, "")}\n`;
 // One file formats in well under a second; the bound only stops a stuck formatter.
 const BIOME_TIMEOUT_MS = 30_000;
 
+// Only JSON passes through Biome; a README keeps the text the renderer wrote.
+export const formatRendered = (
+	path: string,
+	text: string,
+	root: string,
+): string => (path.endsWith(".json") ? formatJson(path, text, root) : text);
+
 // The repository's own Biome formats the text, so a file written here passes biome ci.
 export function formatJson(path: string, text: string, root: string): string {
 	const run = spawnSync(

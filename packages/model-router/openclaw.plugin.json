@@ -1,0 +1,83 @@
+{
+	"id": "model-router-openclaw",
+	"name": "Model Router",
+	"description": "Routes OpenClaw subagent spawns to your small or large model and an effort that fits the task, judged by Jev. For each routed sessions_spawn call it sends the task text, condensed to at most 12,000 characters, the spawn's one-line label and the agent's description, cut to 500 characters, with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows, each with its own key. OpenClaw's own default agent sends its description when it has one and a fixed text when it has none. The plugin sets a model only from your small_model and large_model settings, and only after OpenClaw resolves it and holds a credential for it. The scope setting picks the spawns: core routes OpenClaw's own default agent, a spawn that names no other agent; extended also routes other agents that set no model. A key set as an environment variable is visible to every process OpenClaw starts.",
+	"version": "0.16.1",
+	"activation": {
+		"onStartup": true
+	},
+	"contracts": {
+		"tools": ["model_router_config"]
+	},
+	"skills": ["./openclaw-skills"],
+	"configContracts": {
+		"secretInputs": {
+			"paths": [
+				{
+					"path": "api_key",
+					"expected": "string"
+				},
+				{
+					"path": "openrouter_api_key",
+					"expected": "string"
+				}
+			]
+		}
+	},
+	"uiHints": {
+		"provider": {
+			"label": "Jev provider",
+			"help": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe."
+		},
+		"scope": {
+			"label": "Routing scope",
+			"help": "Which spawns are routed. core: OpenClaw's own default agent, a spawn that names no other agent. extended: also other agents that set no model."
+		},
+		"small_model": {
+			"label": "Small model",
+			"help": "The model a spawn gets when Jev rates its task small, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it."
+		},
+		"large_model": {
+			"label": "Large model",
+			"help": "The model a spawn gets when Jev rates its task large, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it."
+		},
+		"api_key": {
+			"label": "TypeSafe API key",
+			"help": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider setting allows TypeSafe. Unset: the plugin reads TYPESAFE_API_KEY from the environment.",
+			"sensitive": true
+		},
+		"openrouter_api_key": {
+			"label": "OpenRouter API key",
+			"help": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the provider setting allows OpenRouter. Unset: the plugin reads OPENROUTER_API_KEY from the environment.",
+			"sensitive": true
+		}
+	},
+	"configSchema": {
+		"type": "object",
+		"additionalProperties": false,
+		"properties": {
+			"provider": {
+				"type": "string",
+				"enum": ["auto", "openrouter-first", "typesafe", "openrouter"],
+				"default": "typesafe"
+			},
+			"scope": {
+				"type": "string",
+				"enum": ["core", "extended"],
+				"default": "core"
+			},
+			"small_model": {
+				"type": "string"
+			},
+			"large_model": {
+				"type": "string"
+			},
+			"api_key": {
+				"type": "string"
+			},
+			"openrouter_api_key": {
+				"type": "string"
+			}
+		}
+	}
+}

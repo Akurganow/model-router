@@ -1,5 +1,12 @@
-// Exactly the JSON Schema 2020-12 keywords that metadata/source.schema.json uses.
-const ANNOTATIONS = ["$schema", "$id", "title", "description", "$defs"];
+// Exactly the JSON Schema 2020-12 keywords that metadata/source.schema.json and the OpenClaw manifest's configSchema use.
+const ANNOTATIONS = [
+	"$schema",
+	"$id",
+	"title",
+	"description",
+	"default",
+	"$defs",
+];
 const SUPPORTED = new Set([
 	...ANNOTATIONS,
 	"$ref",
@@ -11,6 +18,7 @@ const SUPPORTED = new Set([
 	"minItems",
 	"minLength",
 	"pattern",
+	"enum",
 ]);
 const DEFS_PREFIX = "#/$defs/";
 
@@ -25,6 +33,8 @@ export type Schema = {
 	readonly minItems?: number;
 	readonly minLength?: number;
 	readonly pattern?: string;
+	readonly enum?: readonly unknown[];
+	readonly default?: unknown;
 };
 
 type Walk = {
@@ -73,6 +83,8 @@ function check(walk: Walk, schema: Schema, path: string, value: unknown): void {
 		walk.problems.push(`${path}: expected ${schema.type}, got ${kind}`);
 		return;
 	}
+	if (schema.enum !== undefined && !schema.enum.includes(value))
+		walk.problems.push(`${path}: not one of ${schema.enum.join(", ")}`);
 	if (typeof value === "string") checkString(walk, schema, path, value);
 	else if (Array.isArray(value)) checkArray(walk, schema, path, value);
 	else if (kind === "object")

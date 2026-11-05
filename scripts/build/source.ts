@@ -6,7 +6,12 @@ import type { ValueSetting } from "./values.ts";
 export const SOURCE_PATH = "metadata/source.json";
 export const SCHEMA_PATH = "metadata/source.schema.json";
 
-type PerHarness = { readonly claude: string; readonly omp: string };
+type PerHarness = {
+	readonly claude: string;
+	readonly omp: string;
+	readonly openclaw: string;
+};
+type Hint = { readonly label: string; readonly help: string };
 type Secret = {
 	readonly type: string;
 	readonly title: string;
@@ -40,7 +45,7 @@ export type Source = {
 			"claude" | "omp",
 			{ readonly manifest: string; readonly catalogue: string }
 		>
-	>;
+	> & { readonly openclaw: { readonly manifest: string } };
 	readonly options: Readonly<
 		Record<
 			ValueSetting,
@@ -74,6 +79,30 @@ export type Source = {
 		readonly settingType: string;
 		readonly catalogueSource: string;
 		readonly install: Install;
+	};
+	readonly openclaw: {
+		readonly pluginId: string;
+		readonly name: string;
+		readonly settingType: string;
+		readonly extensions: readonly string[];
+		readonly skills: readonly string[];
+		// One OpenClaw version behind compat, build and install.minHostVersion.
+		readonly hostFloor: string;
+		readonly uiHints: {
+			readonly small_model: Hint;
+			readonly large_model: Hint;
+			readonly api_key: Hint & { readonly sensitive: boolean };
+			readonly openrouter_api_key: Hint & { readonly sensitive: boolean };
+		};
+		readonly install: Install;
+	};
+	readonly npm: {
+		readonly name: string;
+		readonly private: boolean;
+		readonly type: string;
+		readonly description: string;
+		readonly keywords: readonly string[];
+		readonly publishConfig: { readonly access: string };
 	};
 };
 

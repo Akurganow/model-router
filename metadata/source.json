@@ -19,7 +19,8 @@
 	],
 	"privacyPolicyUrls": {
 		"claude": "https://github.com/Akurganow/model-router/blob/main/plugins/model-router/PRIVACY.md",
-		"omp": "https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/PRIVACY.md"
+		"omp": "https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/PRIVACY.md",
+		"openclaw": "https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/PRIVACY.md"
 	},
 	"descriptions": {
 		"claude": {
@@ -29,6 +30,9 @@
 		"omp": {
 			"manifest": "Routes Oh My Pi subagents to the smol or slow model role, judged by Jev. It sends the task text, condensed to at most 12,000 characters, and the agent's description, cut to 500 characters, with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows. The bundled task agent sends a fixed text in place of its description. The scope setting picks the agents: core routes the bundled task agent, extended routes every agent whose model you did not set. A project can set scope, and extended there can raise spend on slow. The plugin can store a key you type in its dialog. A key set as an environment variable is visible to every process omp starts.",
 			"catalogue": "Routes each Oh My Pi task subagent to the smol or slow model role, judged by Jev from the redacted task text and the agent's description, which it sends to api.typesafe.ai, openrouter.ai or both, as its provider setting allows. The bundled task agent sends a fixed text in place of its description."
+		},
+		"openclaw": {
+			"manifest": "Routes OpenClaw subagent spawns to your small or large model and an effort that fits the task, judged by Jev. For each routed sessions_spawn call it sends the task text, condensed to at most 12,000 characters, the spawn's one-line label and the agent's description, cut to 500 characters, with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows, each with its own key. OpenClaw's own default agent sends its description when it has one and a fixed text when it has none. The plugin sets a model only from your small_model and large_model settings, and only after OpenClaw resolves it and holds a credential for it. The scope setting picks the spawns: core routes OpenClaw's own default agent, a spawn that names no other agent; extended also routes other agents that set no model. A key set as an environment variable is visible to every process OpenClaw starts."
 		}
 	},
 	"options": {
@@ -37,7 +41,8 @@
 			"title": "Jev provider",
 			"descriptions": {
 				"claude": "Which providers may score a subagent call, and in which order. typesafe: TypeSafe only. openrouter: OpenRouter only. auto: TypeSafe, then OpenRouter if TypeSafe fails. openrouter-first: OpenRouter, then TypeSafe. With auto or openrouter-first and both keys set, one call may reach both companies.",
-				"omp": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe."
+				"omp": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe.",
+				"openclaw": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe."
 			}
 		},
 		"scope": {
@@ -45,7 +50,8 @@
 			"title": "Routing scope",
 			"descriptions": {
 				"claude": "Which Agent calls the plugin routes. core: the built-in agents general-purpose, claude, Explore and Plan only. extended: also any Agent call that passes no model, including plugin and user agents, replacing the model and effort their definition sets. Forks and named calls stay unrouted.",
-				"omp": "Which subagents are routed. core: the task agent only. extended: every agent whose model you did not set, bundled agents included."
+				"omp": "Which subagents are routed. core: the task agent only. extended: every agent whose model you did not set, bundled agents included.",
+				"openclaw": "Which spawns are routed. core: OpenClaw's own default agent, a spawn that names no other agent. extended: also other agents that set no model."
 			}
 		}
 	},
@@ -109,5 +115,59 @@
 			},
 			"ciSystems": ["Ubuntu"]
 		}
+	},
+	"openclaw": {
+		"pluginId": "model-router-openclaw",
+		"name": "Model Router",
+		"settingType": "string",
+		"extensions": ["./index.js"],
+		"skills": ["./openclaw-skills"],
+		"hostFloor": "2026.10.10",
+		"uiHints": {
+			"small_model": {
+				"label": "Small model",
+				"help": "The model a spawn gets when Jev rates its task small, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it."
+			},
+			"large_model": {
+				"label": "Large model",
+				"help": "The model a spawn gets when Jev rates its task large, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it."
+			},
+			"api_key": {
+				"label": "TypeSafe API key",
+				"help": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider setting allows TypeSafe. Unset: the plugin reads TYPESAFE_API_KEY from the environment.",
+				"sensitive": true
+			},
+			"openrouter_api_key": {
+				"label": "OpenRouter API key",
+				"help": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the provider setting allows OpenRouter. Unset: the plugin reads OPENROUTER_API_KEY from the environment.",
+				"sensitive": true
+			}
+		},
+		"install": {
+			"heading": "OpenClaw",
+			"commands": ["openclaw plugins install npm:{package}"],
+			"source": {
+				"publisher": "OpenClaw documentation",
+				"title": "Manage plugins",
+				"url": "https://docs.openclaw.ai/plugins/manage-plugins"
+			},
+			"ciSystems": []
+		}
+	},
+	"npm": {
+		"name": "@akurganow/model-router",
+		"private": false,
+		"type": "module",
+		"description": "Routes subagents to a model and effort that fits the task, judged by Jev. One package for OpenClaw and Oh My Pi.",
+		"keywords": [
+			"openclaw",
+			"oh-my-pi",
+			"omp",
+			"subagents",
+			"model-routing",
+			"typesafe",
+			"jev"
+		],
+		"publishConfig": { "access": "public" }
 	}
 }

@@ -20,7 +20,8 @@ export const installCommands = (
 	install.commands.map((command) =>
 		command
 			.replaceAll("{marketplace}", marketplace)
-			.replaceAll("{plugin}", pluginId(source)),
+			.replaceAll("{plugin}", pluginId(source))
+			.replaceAll("{package}", source.npm.name),
 	);
 
 // GitHub's heading anchor: lower case, punctuation dropped, spaces as hyphens.

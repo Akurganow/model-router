@@ -16,8 +16,15 @@ const VALUES: Readonly<Record<ValueSetting, readonly string[]>> = {
 };
 // The omp provider text explains only the two values that narrow the order.
 const UNNAMED: Readonly<
-	Partial<Record<ValueSetting, Partial<Record<"claude" | "omp", string[]>>>>
-> = { provider: { omp: ["typesafe", "openrouter"] } };
+	Partial<Record<ValueSetting, Partial<Record<Harness, string[]>>>>
+> = {
+	provider: {
+		omp: ["typesafe", "openrouter"],
+		openclaw: ["typesafe", "openrouter"],
+	},
+};
+const HARNESSES = ["claude", "omp", "openclaw"] as const;
+type Harness = (typeof HARNESSES)[number];
 
 // The texts name a value as a lowercase label before a colon: "auto: TypeSafe, then ...".
 const labelsOf = (text: string) =>
@@ -25,7 +32,7 @@ const labelsOf = (text: string) =>
 
 test("each option text names the values of its setting, bar the exceptions listed here", () => {
 	for (const setting of VALUE_SETTINGS)
-		for (const harness of ["claude", "omp"] as const) {
+		for (const harness of HARNESSES) {
 			const unnamed = UNNAMED[setting]?.[harness] ?? [];
 			const expected = VALUES[setting].filter((v) => !unnamed.includes(v));
 			const labels = labelsOf(source.options[setting].descriptions[harness]);

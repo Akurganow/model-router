@@ -32,7 +32,7 @@ import {
 	valueLine,
 } from "./settings.ts";
 
-const TOOL_NAME = "model_router_config";
+export const TOOL_NAME = "model_router_config";
 const COMMAND_PREFIX = "model-router-";
 const ADMIN_SCOPE = "operator.admin";
 const LINE_BREAK = "\n";

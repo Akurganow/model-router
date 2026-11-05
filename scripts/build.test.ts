@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { GENERATED_PATHS, README_OUTPUT } from "./build/outputs.ts";
+import { generatedFiles, listCopies } from "./build/copies.ts";
+import { README_OUTPUT } from "./build/outputs.ts";
 import { loadSource } from "./build/source.ts";
 import {
 	BUNDLES,
@@ -92,6 +93,7 @@ test("the generated paths are what the builder writes", () => {
 		...renderMetadata(loadSource(root)).map(({ path }) => path),
 		README_OUTPUT,
 		...BUNDLES.map(({ out }) => out),
+		...listCopies(root).map(({ to }) => to),
 	];
-	assert.deepEqual([...GENERATED_PATHS].sort(), written.sort());
+	assert.deepEqual(generatedFiles(root).sort(), [...new Set(written)].sort());
 });

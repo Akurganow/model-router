@@ -182,7 +182,7 @@ test("each CI claim matches the install job of the workflow", () => {
 	const workflow = readFileSync(join(ROOT, CI_PATH), "utf8");
 	const block = jobBlock(workflow, "install");
 	const runLines = block.split("\n").map((line) => line.trim());
-	for (const harness of [source.claude, source.omp]) {
+	for (const harness of [source.claude, source.omp, source.openclaw]) {
 		const { ciSystems } = harness.install;
 		for (const system of ciSystems) {
 			assert.ok(SYSTEM_RUNNERS[system], `no runner is known for ${system}`);
@@ -198,4 +198,11 @@ test("each CI claim matches the install job of the workflow", () => {
 				`${CI_PATH} does not run: ${command}`,
 			);
 	}
+});
+
+test("the OpenClaw install command names the npm package and no CI system claims it yet", () => {
+	assert.deepEqual(installCommands(source, source.openclaw.install), [
+		"openclaw plugins install npm:@akurganow/model-router",
+	]);
+	assert.deepEqual(source.openclaw.install.ciSystems, []);
 });

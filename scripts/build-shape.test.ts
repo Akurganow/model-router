@@ -11,12 +11,21 @@ const schema = loadSchema(ROOT);
 const OPTION: Source["options"]["provider"] = {
 	default: "d",
 	title: "t",
-	descriptions: { claude: "c", omp: "o" },
+	descriptions: { claude: "c", omp: "o", openclaw: "w" },
 };
 const SECRET: Source["claude"]["userConfig"]["keys"]["api_key"] = {
 	type: "t",
 	title: "t",
 	description: "d",
+	sensitive: true,
+};
+const HINT: Source["openclaw"]["uiHints"]["small_model"] = {
+	label: "l",
+	help: "h",
+};
+const SECRET_HINT: Source["openclaw"]["uiHints"]["api_key"] = {
+	label: "l",
+	help: "h",
 	sensitive: true,
 };
 const INSTALL: Install = {
@@ -36,8 +45,12 @@ const FIXTURE: Source = {
 	repository: "r",
 	author: { name: "a", url: "u" },
 	keywords: ["k"],
-	privacyPolicyUrls: { claude: "c", omp: "o" },
-	descriptions: { claude: TEXTS, omp: TEXTS },
+	privacyPolicyUrls: { claude: "c", omp: "o", openclaw: "w" },
+	descriptions: {
+		claude: TEXTS,
+		omp: TEXTS,
+		openclaw: { manifest: "m" },
+	},
 	options: { provider: OPTION, scope: OPTION },
 	claude: {
 		skills: ["s"],
@@ -54,6 +67,29 @@ const FIXTURE: Source = {
 		settingType: "t",
 		catalogueSource: "c",
 		install: INSTALL,
+	},
+	openclaw: {
+		pluginId: "p",
+		name: "n",
+		settingType: "t",
+		extensions: ["e"],
+		skills: ["s"],
+		hostFloor: "1.0.0",
+		uiHints: {
+			small_model: HINT,
+			large_model: HINT,
+			api_key: SECRET_HINT,
+			openrouter_api_key: SECRET_HINT,
+		},
+		install: INSTALL,
+	},
+	npm: {
+		name: "n",
+		private: false,
+		type: "t",
+		description: "d",
+		keywords: ["k"],
+		publishConfig: { access: "a" },
 	},
 };
 

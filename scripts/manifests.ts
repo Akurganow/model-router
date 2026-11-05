@@ -9,6 +9,7 @@ type Manifest = {
 
 // The generated manifests that carry a version; the builder writes each from the source.
 // The omp catalog entry declares a version so omp offers upgrades.
+// The tree's OpenClaw manifest is a copy; listing it catches a stale copy.
 export const MANIFESTS: readonly Manifest[] = [
 	{
 		path: "plugins/model-router/.claude-plugin/plugin.json",
@@ -18,6 +19,15 @@ export const MANIFESTS: readonly Manifest[] = [
 	{
 		path: ".omp-plugin/marketplace.json",
 		versionPath: ["plugins", 0, "version"],
+	},
+	{
+		path: "plugins/model-router-openclaw/openclaw.plugin.json",
+		versionPath: ["version"],
+	},
+	{ path: "packages/model-router/package.json", versionPath: ["version"] },
+	{
+		path: "packages/model-router/openclaw.plugin.json",
+		versionPath: ["version"],
 	},
 ];
 

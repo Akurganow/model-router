@@ -1,0 +1,75 @@
+{
+	"name": "@akurganow/model-router",
+	"version": "0.16.1",
+	"private": false,
+	"type": "module",
+	"description": "Routes subagents to a model and effort that fits the task, judged by Jev. One package for OpenClaw and Oh My Pi.",
+	"license": "MIT",
+	"homepage": "https://github.com/Akurganow/model-router",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Akurganow/model-router.git",
+		"directory": "packages/model-router"
+	},
+	"keywords": [
+		"openclaw",
+		"oh-my-pi",
+		"omp",
+		"subagents",
+		"model-routing",
+		"typesafe",
+		"jev"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"extension",
+		"index.js",
+		"openclaw.plugin.json",
+		"skills",
+		"openclaw-skills"
+	],
+	"omp": {
+		"extensions": [
+			"./extension/index.js"
+		],
+		"settings": {
+			"provider": {
+				"type": "enum",
+				"description": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe.",
+				"values": [
+					"auto",
+					"openrouter-first",
+					"typesafe",
+					"openrouter"
+				],
+				"default": "typesafe"
+			},
+			"scope": {
+				"type": "enum",
+				"description": "Which subagents are routed. core: the task agent only. extended: every agent whose model you did not set, bundled agents included.",
+				"values": [
+					"core",
+					"extended"
+				],
+				"default": "core"
+			}
+		}
+	},
+	"openclaw": {
+		"extensions": [
+			"./index.js"
+		],
+		"compat": {
+			"pluginApi": ">=2026.10.10"
+		},
+		"build": {
+			"openclawVersion": "2026.10.10"
+		},
+		"install": {
+			"npmSpec": "@akurganow/model-router",
+			"minHostVersion": ">=2026.10.10"
+		}
+	}
+}

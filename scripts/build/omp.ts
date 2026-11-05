@@ -3,7 +3,7 @@ import { OMP_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";
 import { SETTING_VALUES, VALUE_SETTINGS } from "./values.ts";
 
-const settings = (source: Source): JsonObject =>
+export const ompSettings = (source: Source): JsonObject =>
 	Object.fromEntries(
 		VALUE_SETTINGS.map((setting) => [
 			setting,
@@ -27,7 +27,7 @@ const manifest = (source: Source): JsonObject => ({
 	repository: source.repository,
 	omp: {
 		extensions: [...source.omp.package.extensions],
-		settings: settings(source),
+		settings: ompSettings(source),
 	},
 });
 
