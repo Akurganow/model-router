@@ -47,7 +47,7 @@ jobs:
       # TypeScript files that Node runs directly.
       - uses: ./.github/actions/setup-node
 
-      # The build needs esbuild and the TypeSafe SDK from the lockfile.
+      # The build needs esbuild, Biome and the TypeSafe SDK from the lockfile.
       - name: Install the dev tools
         run: |
           npm ci

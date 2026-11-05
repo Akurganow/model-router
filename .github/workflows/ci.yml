@@ -72,10 +72,6 @@ jobs:
       - name: Lint and check the formatting
         run: npx biome ci --error-on-warnings .
 
-      # --strict fails on warnings too, as the publishing docs say to run it in CI.
-      - name: Validate the plugin
-        run: claude plugin validate --strict plugins/model-router
-
       # Every hook and engine call is a line in the directory's review and in
       # the README. A change here is a decision, not a side effect.
       - name: Check the mod's surface
@@ -88,8 +84,9 @@ jobs:
       - name: Check the versions
         run: node scripts/set-version.ts --check
 
+      # The timeout turns a hung test into a failure that names it.
       - name: Run the source, script and omp tests
-        run: node --test 'src/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-*/tests/*.test.ts'
+        run: node --test --test-timeout=60000 'src/*.test.ts' 'scripts/*.test.ts' 'plugins/model-router-*/tests/*.test.ts'
 
   # A user installs the committed files, so this job runs no build. It proves
   # that each client accepts the manifests and catalogues as they are checked in.
@@ -109,7 +106,8 @@ jobs:
 
       - uses: ./.github/actions/setup-claude-code
 
-      # The second command validates .claude-plugin/marketplace.json.
+      # --strict fails on warnings too, as the publishing docs say to run it in
+      # CI. The second command validates .claude-plugin/marketplace.json.
       - name: Validate the plugin and the catalogue
         run: |
           claude plugin validate --strict plugins/model-router
@@ -142,10 +140,6 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/setup-node
-
-      # The scan imports the build module, which needs esbuild.
-      - name: Install the dev tools
-        run: npm ci
 
       # The base commit comes through env, because a script text built from
       # event data could run injected commands.
