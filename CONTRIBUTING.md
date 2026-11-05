@@ -208,7 +208,9 @@ CI runs these checks:
 - Anthropic's plugin policy scan, with the prompt in `.github/policy/`
 - the generated-file check, on Ubuntu and macOS
 - the install of both plugins from the checkout
-- the owner-setup scan, `node scripts/scan-owner-setup.ts`
+- the owner-setup scan, `node scripts/scan-owner-setup.ts --base <commit>`.
+  Without `--base` it reads the generated files only. To check your change
+  locally, pass `--base origin/main`.
 
 A pull request merges only when all of them pass.
 [docs/design.md](docs/design.md#ci-checks-the-copies-and-the-installation)
