@@ -18,6 +18,7 @@ model-router scores each routed `sessions_spawn` call with Jev, on TypeSafe or O
 - Never take a key through chat. If a key arrives, do not repeat or store it. Tell the person to rotate it.
 - Never display a key or any other credential.
 - Propose no models. Assigning `small_model` and `large_model` is the person's job.
+- Tell the person to write each slot as the full `provider/model` id. A bare model name expands to a ref OpenClaw may not know, and the child then fails.
 - Skip a step the person declines. Name the skipped steps in the closing summary.
 - Keep each message short. Show raw output only when the person needs it.
 
@@ -37,6 +38,8 @@ model-router scores each routed `sessions_spawn` call with Jev, on TypeSafe or O
 5. Report the `provider` line.
 
 The command replies with the new `provider` line. If it replies `provider unchanged: already <value>`, the person kept the current value. If it replies that only the owner can change it, tell the person to run it from an owner session.
+
+The tool can show the old value until OpenClaw replaces the plugin, after running work drains, up to 60 s. Then report the command's reply as the new value, and say that a spawn before the replacement uses the old one.
 
 ## Step 3. Keys
 
@@ -65,6 +68,8 @@ If a key is missing for every allowed provider, say that every call skips with `
 3. Ask the person which value they want, and to type the command.
 4. When they say it is done, call the tool with no setting.
 5. Report the `scope` line.
+
+The tool can show the old value until OpenClaw replaces the plugin, as in Step 2.
 
 [Scope](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#scope) says what each value routes.
 

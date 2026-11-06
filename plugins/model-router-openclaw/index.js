@@ -1142,7 +1142,9 @@ var ADMIN_SCOPE = "operator.admin";
 var LINE_BREAK = "\n";
 var UNSET = "unset";
 var NOT_OWNER = "only the owner can change it";
-var TOOL_DESCRIPTION = `Reads the router's settings. With no input it returns the provider, the scope, both models, and whether each key the provider allows is set. With a setting name (${SETTING_NAMES.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
+var MODEL_SETTINGS = ["small_model", "large_model"];
+var TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
+var TOOL_DESCRIPTION = `Reads the router's settings. With no input it returns the provider, the scope, both models, and whether each key the provider allows is set. With a setting name (${TOOL_SETTINGS.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
 var modelLine = (name, model) => `${name}: ${model ?? UNSET}`;
 function keyLines(providers, keys) {
   return providers.map(
@@ -1158,13 +1160,16 @@ function readAll({ settings, keys }) {
     ...keyLines(order(settings.provider), keys)
   ].join(LINE_BREAK);
 }
+var isModelSetting = (setting) => MODEL_SETTINGS.some((known) => known === setting);
+var modelSettingHelp = (setting) => `${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`;
 function howToChange(setting) {
+  if (isModelSetting(setting)) return modelSettingHelp(setting);
   if (isValueSetting(setting))
     return [
       `Type /${commandName(setting)} <value> in the chat.`,
       useOneOf(setting)
     ].join(LINE_BREAK);
-  return isKeySetting(setting) ? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.` : badCall(SETTING_NAMES);
+  return isKeySetting(setting) ? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.` : badCall(TOOL_SETTINGS);
 }
 function runTool(api, env, params) {
   const { setting } = isRecord(params) ? params : {};
@@ -1201,14 +1206,14 @@ var textOf = (text) => ({
 function failure(err) {
   return `error: ${err instanceof Error ? err.message : String(err)}`;
 }
-function registerConfig(api, env) {
+function registerConfigTool(api, env) {
   api.registerTool({
     name: TOOL_NAME,
     label: TOOL_LABEL,
     description: TOOL_DESCRIPTION,
     parameters: {
       type: "object",
-      properties: { setting: { type: "string", enum: SETTING_NAMES } },
+      properties: { setting: { type: "string", enum: TOOL_SETTINGS } },
       additionalProperties: false
     },
     execute: async (_id, params) => {
@@ -1219,6 +1224,8 @@ function registerConfig(api, env) {
       }
     }
   });
+}
+function registerConfigCommands(api, env) {
   for (const setting of VALUE_SETTINGS)
     api.registerCommand({
       name: commandName(setting),
@@ -1804,22 +1811,32 @@ function warn(api, message) {
   } catch {
   }
 }
+var TOOL_MODES = [
+  "full",
+  "discovery",
+  "tool-discovery"
+];
+var COMMAND_MODES = ["full", "discovery"];
+function registerRouting(api, deps) {
+  const timeout = effectiveTimeout(api.config);
+  const deadline = deadlineFor(timeout);
+  if (deadline < MIN_DEADLINE_MS)
+    warn(
+      api,
+      `the hook timeout is ${timeout} ms, which leaves ${deadline} ms to route; the plugin routes nothing. Set it to ${MIN_TIMEOUT_MS} ms or more.`
+    );
+  api.on(HOOK, createBeforeToolCall(api, deadline, deps), {
+    matcher: [SPAWN_TOOL],
+    priority: 100,
+    timeoutMs: HOOK_TIMEOUT_MS
+  });
+}
 function register(api, deps) {
   try {
-    if (api.registrationMode !== "full") return;
-    const timeout = effectiveTimeout(api.config);
-    const deadline = deadlineFor(timeout);
-    if (deadline < MIN_DEADLINE_MS)
-      warn(
-        api,
-        `the hook timeout is ${timeout} ms, which leaves ${deadline} ms to route; the plugin routes nothing. Set it to ${MIN_TIMEOUT_MS} ms or more.`
-      );
-    registerConfig(api, deps.env);
-    api.on(HOOK, createBeforeToolCall(api, deadline, deps), {
-      matcher: [SPAWN_TOOL],
-      priority: 100,
-      timeoutMs: HOOK_TIMEOUT_MS
-    });
+    const mode = api.registrationMode;
+    if (TOOL_MODES.includes(mode)) registerConfigTool(api, deps.env);
+    if (COMMAND_MODES.includes(mode)) registerConfigCommands(api, deps.env);
+    if (mode === "full") registerRouting(api, deps);
   } catch {
     warn(api, "registration failed; the plugin is inert.");
   }

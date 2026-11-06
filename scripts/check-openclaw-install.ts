@@ -5,6 +5,7 @@ import { COMMAND_NAMES, TOOL_NAME } from "../src/openclaw-config.ts";
 import { createFakeApi } from "../src/openclaw-fakes.ts";
 import { HOOK, SPAWN_TOOL } from "../src/openclaw-router.ts";
 import { PLUGIN_ID } from "../src/openclaw-settings.ts";
+import type { OpenClawApi, RegistrationMode } from "../src/openclaw-types.ts";
 import { nonEmpty } from "../src/part.ts";
 import { NPM_ROOT } from "./build/outputs.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
@@ -72,36 +73,69 @@ export function inspectProblems(
 	return problems;
 }
 
+// Written out apart from the plugin's own mode tables, so a change to those tables fails this check.
+// A Gateway fills the full registry, then the discovery registry that chat dispatch and agent runs read.
+const REGISTRATION_EXPECTATIONS: readonly {
+	mode: RegistrationMode;
+	hook: boolean;
+}[] = [
+	{ mode: "full", hook: true },
+	{ mode: "discovery", hook: false },
+];
+
 /**
- * Lists what the installed bundle's default export fails to register: the
- * routing hook, the config tool and each command. An empty list means it
- * registered all of them. A missing or throwing register function yields one
- * problem. register() runs against the recording api of the unit tests, in full
- * mode (the mode a running Gateway uses). No Gateway runs here. Never throws.
+ * Lists what the plugin fails to register in one mode: the routing hook where
+ * `hook` is set, the config tool and each command. A register function that
+ * throws yields one problem. Each problem names the mode. Never throws.
+ */
+function problemsIn(
+	plugin: unknown,
+	register: (api: OpenClawApi) => void,
+	{ mode, hook: wantHook }: (typeof REGISTRATION_EXPECTATIONS)[number],
+): string[] {
+	const fake = createFakeApi({ registrationMode: mode });
+	try {
+		register.call(plugin, fake.api);
+	} catch (error) {
+		return [
+			`${mode} mode: register threw: ${error instanceof Error ? error.message : error}`,
+		];
+	}
+	const problems: string[] = [];
+	const hook = fake.hooks.find(({ event }) => event === HOOK);
+	if (wantHook && hook === undefined)
+		problems.push(`${mode} mode: no ${HOOK} hook registered`);
+	else if (
+		wantHook &&
+		!JSON.stringify(hook?.options ?? null).includes(SPAWN_TOOL)
+	)
+		problems.push(
+			`${mode} mode: the ${HOOK} hook does not match ${SPAWN_TOOL}`,
+		);
+	if (!fake.tools.some(({ name }) => name === TOOL_NAME))
+		problems.push(`${mode} mode: no ${TOOL_NAME} tool registered`);
+	for (const command of COMMAND_NAMES)
+		if (!fake.commands.some(({ name }) => name === command))
+			problems.push(`${mode} mode: no ${command} command registered`);
+	return problems;
+}
+
+/**
+ * Lists what the installed bundle's default export fails to register: in full
+ * mode the routing hook, the config tool and each command, and in discovery
+ * mode the config tool and each command. Discovery is the pass whose registry
+ * serves chat dispatch and agent runs. An empty list means it registered all of
+ * them. A missing or throwing register function yields one problem per mode.
+ * register() runs against the recording api of the unit tests, with no Gateway.
+ * Never throws.
  */
 export function registrationProblems(plugin: unknown): string[] {
 	const register = fieldsOf<"register">(plugin)?.register;
 	if (typeof register !== "function")
 		return ["the bundle's default export has no register function"];
-	const fake = createFakeApi();
-	try {
-		register.call(plugin, fake.api);
-	} catch (error) {
-		return [
-			`register threw: ${error instanceof Error ? error.message : error}`,
-		];
-	}
-	const problems: string[] = [];
-	const hook = fake.hooks.find(({ event }) => event === HOOK);
-	if (hook === undefined) problems.push(`no ${HOOK} hook registered`);
-	else if (!JSON.stringify(hook.options ?? null).includes(SPAWN_TOOL))
-		problems.push(`the ${HOOK} hook does not match ${SPAWN_TOOL}`);
-	if (!fake.tools.some(({ name }) => name === TOOL_NAME))
-		problems.push(`no ${TOOL_NAME} tool registered`);
-	for (const command of COMMAND_NAMES)
-		if (!fake.commands.some(({ name }) => name === command))
-			problems.push(`no ${command} command registered`);
-	return problems;
+	return REGISTRATION_EXPECTATIONS.flatMap((expected) =>
+		problemsIn(plugin, register as (api: OpenClawApi) => void, expected),
+	);
 }
 
 /**
@@ -132,7 +166,7 @@ export async function main(args: string[], root: string): Promise<number> {
 		for (const problem of problems) console.error(problem);
 		if (problems.length === 0)
 			console.log(
-				`${PLUGIN_ID} ${version} is installed and loaded; it registers ${HOOK}, ${TOOL_NAME} and ${COMMAND_NAMES.join(", ")}.`,
+				`${PLUGIN_ID} ${version} is installed and loaded; it registers ${HOOK}, ${TOOL_NAME} and ${COMMAND_NAMES.join(", ")} in full mode, and ${TOOL_NAME} and the commands in discovery mode.`,
 			);
 		return problems.length === 0 ? 0 : 1;
 	} catch (error) {

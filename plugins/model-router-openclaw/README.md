@@ -9,6 +9,7 @@ An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model an
 - It sets `thinking` from a fixed ladder of efforts, as [Routing](#routing) says.
 - It sets only a model you assigned. It proposes none, and it never sets a model that OpenClaw cannot resolve with a credential.
 - It never overrides a model you chose, nor an effort the spawn or the global config sets. [Which spawns are routed](#which-spawns-are-routed) lists the model rules, and [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the effort rules.
+  Under `extended`, [rule 4](#efforts-the-plugin-keeps) replaces the requester's `subagents.thinking`, which OpenClaw applies to a cross-agent spawn.
 - Under the default `core` scope, it routes only [the spawn of the requesting agent itself](#the-spawn-of-the-requesting-agent-itself). [Scope](#scope) defines the term.
 - It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what OpenClaw can still do.
 - The plugin changes a setting only when the owner types one of its two commands. [Change the options](#change-the-options) lists them.
@@ -17,7 +18,7 @@ An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model an
 
 The install commands are under [OpenClaw](../../README.md#openclaw) in the root README. The notes below explain them.
 
-The npm package is `@akurganow/model-router`. The plugin id is `model-router-openclaw`. The two names differ: OpenClaw notes it in an info line during install and uses the id as the config key. Install with the package name. Enable, configure, update and disable with the id.
+The npm package is `@akurganow/model-router`. The plugin id is `model-router-openclaw`. The two names differ: OpenClaw uses the id as the config key. It prints an info line about the difference only when the CLI runs the install itself, not when a running Gateway installs. Install with the package name. Enable, configure, update and disable with the id.
 
 The install command carries a prefix and two flags:
 
@@ -27,11 +28,11 @@ The install command carries a prefix and two flags:
 
 Drop both flags in a terminal to answer OpenClaw's prompts instead. Review the source before you pass the flags. They skip OpenClaw's prompts.
 
-The `inspect` step shows that OpenClaw installed and enabled the plugin. A good install reads `plugin.status: loaded`, `plugin.imported: true` and `plugin.enabled: true`. The step loads the plugin in tool-discovery mode, where the plugin registers nothing. The report's lists of registered hooks, tools and commands stay empty, and only the manifest's `contracts.tools` names `model_router_config`.
+The `inspect` step shows that OpenClaw installed and enabled the plugin. A good install reads `plugin.status: loaded`, `plugin.imported: true` and `plugin.enabled: true`. The step loads the plugin in tool-discovery mode, where the plugin registers only its `model_router_config` tool. The report lists that tool, and its lists of hooks and commands stay empty.
 
-To see the registration, start or restart the Gateway and read its log with `openclaw logs --follow --plain`. Under verbose logging or file log level `debug`, the log holds `Registered plugin command: /model-router-provider (plugin: model-router-openclaw)`.
+To see the hook and the commands, start or restart the Gateway and read its log with `openclaw logs --follow --plain`. Under verbose logging or file log level `debug`, the log holds `Registered plugin command: /model-router-provider (plugin: model-router-openclaw)`.
 
-A running local Gateway applies the install, the enable and later config changes without a restart. Without a running Gateway, OpenClaw saves the change for the next start.
+A running local Gateway applies the install, the enable and later config changes without a restart. A config change takes effect once OpenClaw replaces the plugin, after running work drains. [Provider](#provider) says what a spawn in that window sees. Without a running Gateway, OpenClaw saves the change for the next start.
 
 [Facts behind this section](../../docs/clients.md#openclaw-install-and-update)
 
@@ -39,7 +40,7 @@ A running local Gateway applies the install, the enable and later config changes
 
 Routing needs a model in a slot and a key. The [setup skill](openclaw-skills/model-router-setup/SKILL.md) walks through them. Ask OpenClaw to run `model-router-setup`.
 
-1. Assign `small_model` and `large_model` in OpenClaw's config. Write each as `provider/model`. A bare name gets the default provider of the agent. Use the Control UI page `/settings/plugins/model-router-openclaw`, or run:
+1. Assign `small_model` and `large_model` in OpenClaw's config. Write each as the full `provider/model` id, because OpenClaw expands a bare name to a ref it may not know, and the child then fails. Use the Control UI page `/settings/plugins/model-router-openclaw`, or run:
 
    ```bash
    openclaw config set plugins.entries.model-router-openclaw.config.small_model <provider/model>
@@ -82,7 +83,7 @@ The `provider` setting picks which providers judge each task, and in which order
 
 With `auto` or `openrouter-first` and only one key, that key's provider judges alone. A value outside the four counts as unset, and the default `typesafe` applies. [PRIVACY.md](PRIVACY.md) says which company receives the task under each value.
 
-Switch it with `/model-router-provider <value>`. The plugin reads the setting at each spawn, so a change reaches the next spawn.
+Switch it with `/model-router-provider <value>`. The plugin reads the setting at each spawn. A change applies once OpenClaw replaces the plugin, after running work drains, up to 60 s. A spawn in that window uses the old value. A spawn that overlaps the replacement can fail with `Gateway requester authority changed`, which is OpenClaw's own error. The same holds for `/model-router-scope` and for the model slots.
 
 ## Scope
 
@@ -113,6 +114,8 @@ Two commands show or change an option:
 
 A bare command prints the current value. A command with a valid value writes it to your OpenClaw config and prints the new value. An invalid value lists the allowed ones. A refused or failed write prints `<setting> unchanged: <reason>`.
 
+A Gateway client without `operator.admin` gets OpenClaw's own `This command requires gateway scope: operator.admin.` before the plugin runs, even for a bare read. The [`requiredScopes` check](../../docs/clients.md#openclaw-commands-and-owner-check) has the source.
+
 Only the owner can write. For anyone else the command prints `<setting> unchanged: only the owner can change it` and the current value.
 
 The read-only `model_router_config` tool returns the `provider` line, the `scope` line, the two model lines, and `<provider> key: set` or `<provider> key: unset` for each provider the `provider` value allows. It never returns a key, its length or any part of it.
@@ -126,7 +129,7 @@ typesafe key: set
 openrouter key: unset
 ```
 
-Given a setting name, the tool returns the command to type. It writes nothing.
+Given `provider` or `scope`, the tool returns the command to type. Given `small_model` or `large_model`, it answers that the slot is set on the plugin's settings page, or with `openclaw config set plugins.entries.model-router-openclaw.config.<name> <provider/model>`. It writes nothing.
 
 [Facts behind this section](../../docs/clients.md#openclaw-commands-and-owner-check)
 

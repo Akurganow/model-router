@@ -9,11 +9,7 @@ import {
 } from "./openclaw-fakes.ts";
 import { SPAWN_TOOL } from "./openclaw-router.ts";
 import { PLUGIN_ID } from "./openclaw-settings.ts";
-import type {
-	OpenClawApi,
-	OpenClawConfig,
-	RegistrationMode,
-} from "./openclaw-types.ts";
+import type { OpenClawApi, OpenClawConfig } from "./openclaw-types.ts";
 import { keyLine } from "./settings.ts";
 
 const SETTINGS = {
@@ -76,22 +72,6 @@ describe("registration", () => {
 		});
 		assert.deepEqual(s.logs, []);
 	});
-
-	for (const mode of [
-		"discovery",
-		"tool-discovery",
-		"setup-only",
-		"setup-runtime",
-		"cli-metadata",
-	] as RegistrationMode[])
-		it(`does nothing in ${mode} mode`, () => {
-			const fake = createFakeApi({ registrationMode: mode });
-			createPlugin().register(fake.api);
-			assert.deepEqual(
-				[fake.hooks, fake.tools, fake.commands, fake.logs],
-				[[], [], [], []],
-			);
-		});
 
 	it("registers the read-only tool and both owner-only commands", () => {
 		const s = install();

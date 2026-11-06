@@ -108,10 +108,10 @@ The OpenClaw pin tracks the latest release, so a Renovate rule raises it with no
 The OpenClaw facts behind these steps are in [OpenClaw install and update](clients.md#openclaw-install-and-update) and [OpenClaw entry and registration](clients.md#openclaw-entry-and-registration).
 
 **Deviation: no Gateway in the package job.**
-The job calls the installed bundle's `register()` on a recording API.
+The job calls the installed bundle's `register()` on a recording API, once in `full` and once in `discovery` mode.
 It does not start a Gateway.
 No Gateway or model provider runs in CI.
-`openclaw plugins inspect --runtime` loads the plugin in `tool-discovery` mode, which lists none of its registrations ([OpenClaw install and update](clients.md#openclaw-install-and-update)).
+`openclaw plugins inspect --runtime` loads the plugin in `tool-discovery` mode, where it registers only its config tool ([OpenClaw install and update](clients.md#openclaw-install-and-update)).
 So the job shows that the bundle registers its hook, tool and commands.
 It does not show that a running Gateway accepts them.
 

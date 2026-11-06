@@ -45,6 +45,44 @@ describe("createFakeApi", () => {
 	});
 });
 
+describe("createFakeApi registration modes", () => {
+	const tool = {
+		name: "model_router_config",
+		label: "Model Router",
+		description: "d",
+		parameters: {},
+		execute: async () => ({ content: [] }),
+	};
+	const command = {
+		name: "model-router-scope",
+		description: "d",
+		handler: async () => ({ text: "" }),
+	};
+
+	for (const mode of ["full", "discovery", "tool-discovery"] as const)
+		it(`records tools, commands and hooks in ${mode} mode`, () => {
+			const fake = createFakeApi({ registrationMode: mode });
+			fake.api.registerTool(tool);
+			fake.api.registerCommand(command);
+			fake.api.on("before_tool_call", async () => undefined);
+			assert.deepEqual(
+				[fake.tools.length, fake.commands.length, fake.hooks.length],
+				[1, 1, 1],
+			);
+			assert.deepEqual(fake.ignored, []);
+		});
+
+	for (const mode of ["setup-only", "setup-runtime", "cli-metadata"] as const)
+		it(`drops tools, commands and hooks in ${mode} mode and lists the calls`, () => {
+			const fake = createFakeApi({ registrationMode: mode });
+			fake.api.registerTool(tool);
+			fake.api.registerCommand(command);
+			fake.api.on("before_tool_call", async () => undefined);
+			assert.deepEqual([fake.tools, fake.commands, fake.hooks], [[], [], []]);
+			assert.deepEqual(fake.ignored, ["registerTool", "registerCommand", "on"]);
+		});
+});
+
 describe("createJevFetch", () => {
 	/** Sends one request with a JSON body to the fake fetch, with the signal only when given. */
 	const send = (

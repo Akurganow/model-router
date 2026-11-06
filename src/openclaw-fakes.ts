@@ -11,6 +11,7 @@ import type {
 	OpenClawApi,
 	OpenClawConfig,
 	PluginRuntime,
+	RegistrationMode,
 	ResolvedModelRef,
 	ToolDefinition,
 } from "./openclaw-types.ts";
@@ -140,12 +141,23 @@ export type RecordedHook = {
 };
 export type LogLine = { level: keyof Logger; message: string };
 
+// The modes in which OpenClaw keeps what a plugin registers with `on`, `registerTool` and
+// `registerCommand`. In the other modes it swaps those members for no-ops
+// (src/plugins/api-builder.ts, src/plugins/registry-api.ts).
+const LIVE_MODES: readonly RegistrationMode[] = [
+	"full",
+	"discovery",
+	"tool-discovery",
+];
+
 export type FakeApiOverrides = Partial<
 	Pick<OpenClawApi, "id" | "registrationMode" | "config" | "pluginConfig">
 > & { runtime?: FakeRuntime };
 
 /**
- * An `api` that records what the plugin registers and logs.
+ * An `api` that records what the plugin registers and logs, as one OpenClaw
+ * registry does for one pass. `registrationMode` defaults to full. In a mode that
+ * drops registrations, the members record the call by name in `ignored` instead.
  * Without a runtime of its own, the api gets one that answers with `config`.
  */
 export function createFakeApi(overrides: FakeApiOverrides = {}) {
@@ -156,6 +168,12 @@ export function createFakeApi(overrides: FakeApiOverrides = {}) {
 	const tools: ToolDefinition[] = [];
 	const commands: CommandDefinition[] = [];
 	const logs: LogLine[] = [];
+	const ignored: string[] = [];
+	/** Runs `keep` when the api's mode keeps registrations, else records `member` in `ignored`. */
+	const register = (member: string, keep: () => void) =>
+		LIVE_MODES.includes(api.registrationMode)
+			? keep()
+			: void ignored.push(member);
 	const line = (level: keyof Logger) => (message: string) => {
 		logs.push({ level, message });
 	};
@@ -173,15 +191,17 @@ export function createFakeApi(overrides: FakeApiOverrides = {}) {
 		},
 		runtime: runtime.runtime,
 		/** Records the hook. The options are recorded only when given. Never throws. */
-		on: (event, handler, options) => {
-			hooks.push(
-				options === undefined
-					? { event, handler }
-					: { event, handler, options },
-			);
-		},
-		registerTool: (tool) => void tools.push(tool),
-		registerCommand: (command) => void commands.push(command),
+		on: (event, handler, options) =>
+			register("on", () =>
+				hooks.push(
+					options === undefined
+						? { event, handler }
+						: { event, handler, options },
+				),
+			),
+		registerTool: (tool) => register("registerTool", () => tools.push(tool)),
+		registerCommand: (command) =>
+			register("registerCommand", () => commands.push(command)),
 	};
 	return {
 		api,
@@ -190,6 +210,7 @@ export function createFakeApi(overrides: FakeApiOverrides = {}) {
 		tools,
 		commands,
 		logs,
+		ignored,
 		/**
 		 * Returns the handler OpenClaw would call for `before_tool_call`: the last
 		 * one registered. Throws when none is registered.

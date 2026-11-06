@@ -302,7 +302,7 @@ The settings-name facts are unchecked on every omp version from 18.12.6 up to 18
 Documentation is the Markdown under `docs/` in `openclaw/openclaw`, published at docs.openclaw.ai.
 Documentation pages below were read on 2026-11-05.
 Every source link is a permalink at commit `d48be80a6379`, which equals tag `v2026.10.10`.
-Every running fact names its OpenClaw version and ran on 2026-11-05.
+Every running fact names its OpenClaw version and the date it ran.
 
 ### OpenClaw install and update
 
@@ -327,16 +327,17 @@ Every running fact names its OpenClaw version and ran on 2026-11-05.
   Without one, they save the change for the next start.
   `openclaw plugins inspect <id> --runtime --json` loads the plugin module.
   The page says the report lists what the plugin registered.
-  That does not hold in `tool-discovery` mode, as the next bullet records.
+  The report lists only what the plugin registers in `tool-discovery` mode, as the next bullet records.
   (documentation: [Manage plugins, Apply changes and inspect](https://docs.openclaw.ai/plugins/manage-plugins#apply-changes-and-inspect))
 - `openclaw plugins inspect <id> --runtime` loads the plugin in `tool-discovery` mode, not in `full` mode.
   The mode list calls `tool-discovery` "capability discovery for executable tools", and `full` "live runtime activation".
-  This plugin registers its hook, tool and commands only when `api.registrationMode` is `full`, so `inspect` has no registration of it to list.
+  In that mode this plugin registers only its config tool, so `inspect` lists `model_router_config` and no hook or command.
   (source: [`plugins-inspect-command.ts` L125–L130](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/cli/plugins-inspect-command.ts#L125-L130),
   [`status.ts` L284](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/status.ts#L284),
   [`loader-registration-plan.ts` L48–L50](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-registration-plan.ts#L48-L50),
   [`plugin-registration.types.ts` L494–L509](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-registration.types.ts#L494-L509);
-  this repository's `src/openclaw.ts` returns from `register` unless the mode is `full`)
+  this repository's `src/openclaw.ts` registers only the tool in `tool-discovery` mode;
+  running: OpenClaw 2026.10.10, `inspect --runtime --json` of the packed tarball listed `tools: ["model_router_config"]`, `hooks: []` and `commands: []`)
 - The `package` job installed the packed tarball and ran `openclaw plugins inspect model-router-openclaw --runtime --json`.
   `scripts/check-openclaw-install.ts` read the report and passed.
   So the report held the plugin id, the package name and the package version, status `loaded`, and `imported` and `enabled` true.
@@ -367,7 +368,14 @@ Every running fact names its OpenClaw version and ran on 2026-11-05.
 - `openclaw plugins disable <id>` toggles the plugin's config entry and leaves the installed files.
   (documentation: [Manage plugins, Enable and disable plugins](https://docs.openclaw.ai/plugins/manage-plugins#enable-and-disable-plugins))
 - When the manifest id differs from the npm package name, install logs an info line and uses the manifest id as the config key.
-  (source: [`install-installed-package.ts` L109–L112](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/install-installed-package.ts#L109-L112))
+  The line reaches the terminal only when the CLI runs the install itself.
+  With a Gateway running, the CLI sends the install to it, and the Gateway's logger carries progress events but no `info` method.
+  The line then appears nowhere.
+  (source: [`install-installed-package.ts` L109–L112](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/install-installed-package.ts#L109-L112),
+  [`plugins-install-command.ts` L65–L69](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/cli/plugins-install-command.ts#L65-L69),
+  [`plugins-mutations.ts` L85–L93](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/gateway/server-methods/plugins-mutations.ts#L85-L93),
+  [`plugins-command-helpers.ts` L7–L15](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/cli/plugins-command-helpers.ts#L7-L15);
+  running: OpenClaw 2026.10.10, an `npm-pack:` install printed no such line, 2026-11-06)
 - `openclaw logs --plain` tails the Gateway log, and `--follow` follows it.
   (documentation: [`openclaw logs`](https://docs.openclaw.ai/cli/logs))
 - `openclaw config set <path> <value>` writes one config key.
@@ -407,6 +415,58 @@ Every running fact names its OpenClaw version and ran on 2026-11-05.
 - `api.registrationMode` read `full` when the Gateway loaded the plugin.
   The plugin registered a second time with `discovery` after an agent turn.
   (running: OpenClaw 2026.10.10, the probe plugin logged `api.registrationMode` on each registration)
+- `api.registrationMode` takes six values: `full`, `discovery`, `tool-discovery`, `setup-only`, `setup-runtime` and `cli-metadata`.
+  (documentation: [Registration mode](https://docs.openclaw.ai/plugins/sdk-entrypoints/registration-mode#registration-mode);
+  source: [`plugin-registration.types.ts` L503–L509](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-registration.types.ts#L503-L509))
+- The loader calls `register(api)` once per load, with the mode of that load's plan.
+  (source: [`loader-runtime-candidate.ts` L610–L619](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-runtime-candidate.ts#L610-L619), [`loader-registration-plan.ts` L39–L64](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-registration-plan.ts#L39-L64))
+- A plugin that is not a channel meets four modes: `cli-metadata` for CLI metadata capture, `tool-discovery` for a scoped tool load, `full` for a load with runtime side effects, and `discovery` for any other load.
+  (source: [`loader-registration-plan.ts` L39–L64](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-registration-plan.ts#L39-L64))
+- Gateway startup loads its plugins in `full` mode, scoped to the startup plugin ids, and then activates that registry.
+  (source: [`server-plugins.ts` L440–L456](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/gateway/server-plugins.ts#L440-L456), [`server-core-runtime.ts` L446–L466](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/gateway/server-core-runtime.ts#L446-L466))
+- Any load with `activate: false` and no `runtimeSideEffects` runs in `discovery` mode and leaves the active registry alone.
+  (source: [`loader-load-context.ts` L229–L231](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-load-context.ts#L229-L231), [`loader.ts` L18–L20](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader.ts#L18-L20))
+- An agent turn reuses the Gateway registry whole when its plugin set and inputs are unchanged.
+  Otherwise it loads its own registry in `discovery` mode and borrows the unchanged plugins from the Gateway registry.
+  (source: [`runtime-plugins.ts` L308–L330](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/runtime-plugins.ts#L308-L330), [`prepared-model-runtime.inbound-registry.ts` L87–L117](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/prepared-model-runtime.inbound-registry.ts#L87-L117), [`loader-runtime-core.ts` L85–L114](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-runtime-core.ts#L85-L114))
+- A plugin that a load borrows from the Gateway registry skips `register` in that load.
+  (source: [`loader-runtime-core.ts` L539–L549](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-runtime-core.ts#L539-L549))
+- Chat dispatch reads plugin commands from the registry of the current registration context, then of the request scope, then the active one.
+  (source: [`plugin-command-registry.ts` L6–L14](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-command-registry.ts#L6-L14), [`plugin-command-runtime.ts` L189–L197](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-command-runtime.ts#L189-L197), [`commands-plugin.ts` L43–L47](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/auto-reply/reply/commands-plugin.ts#L43-L47))
+- A turn that loads its own registry runs inside it as the request scope, so its command dispatch reads that `discovery` registry.
+  (source: [`gateway-request-scope.ts` L184–L203](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/runtime/gateway-request-scope.ts#L184-L203), [`runtime-plugins.ts` L375–L377](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/runtime-plugins.ts#L375-L377))
+- The compatibility command list reads the active registry.
+  (source: [`commands.ts` L45–L58](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/commands.ts#L45-L58))
+- An agent run takes a plugin's tools from the registry that holds them, or cold-loads the plugin in `tool-discovery` mode.
+  (source: [`tools.ts` L452–L509](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/tools.ts#L452-L509))
+- A discovery-registry tool that matches a Gateway-registry tool by declared identity is replaced by the Gateway's tool.
+  (source: [`tool-registry-adoption.ts` L9–L50](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/tool-registry-adoption.ts#L9-L50))
+- `adoptRuntimeToolRegistrations` walks the tools of the discovery registry, so a plugin that registers no tool in `discovery` mode leaves nothing to replace and no tool for the turn.
+  (source: [`tool-registry-adoption.ts` L20–L52](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/tool-registry-adoption.ts#L20-L52))
+- `registerTool` and `registerCommand` are live in `full`, `discovery` and `tool-discovery` modes, as is `on`.
+  (source: [`registry-state.ts` L52–L61](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/registry-state.ts#L52-L61), [`registry-api.ts` L128–L131](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/registry-api.ts#L128-L131))
+- In `setup-only`, `setup-runtime` and `cli-metadata` modes, `registerTool`, `registerCommand` and `on` are no-ops.
+  (source: [`api-builder.ts` L15](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/api-builder.ts#L15), [`api-builder.ts` L53](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/api-builder.ts#L53), [`api-builder.ts` L93](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/api-builder.ts#L93))
+- In `cli-metadata` and `setup-only` modes, any read of `api.runtime` throws.
+  (documentation: [Registration mode](https://docs.openclaw.ai/plugins/sdk-entrypoints/registration-mode#registration-mode);
+  source: [`api-builder.ts` L97–L117](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/api-builder.ts#L97-L117))
+- Each load builds its own registry, so a name registered in two passes never meets itself.
+  (source: [`loader-runtime-core.ts` L267](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-runtime-core.ts#L267), [`registry-state.ts` L98](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/registry-state.ts#L98))
+- A second command with the same name in one registry is rejected with a registration error.
+  (source: [`command-registration.ts` L355–L365](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/command-registration.ts#L355-L365), [`registry-registrars-operations.ts` L449–L452](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/registry-registrars-operations.ts#L449-L452))
+- A second tool with the same name in one registry is kept, then dropped at resolution with a name-conflict error.
+  (source: [`registry-registrars-tools-hooks.ts` L276–L292](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/registry-registrars-tools-hooks.ts#L276-L292), [`tools.ts` L707–L713](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/tools.ts#L707-L713))
+- `registerTool` needs the tool name in the manifest's `contracts.tools`, or the registration is refused.
+  (source: [`registry-registrars-tools-hooks.ts` L228–L275](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/registry-registrars-tools-hooks.ts#L228-L275))
+- Before a tool's `execute`, the agent loop checks the call's arguments against the tool's parameter schema and answers a failed check with a validation error.
+  So in an agent run, a setting name outside the schema's `enum` never reaches `execute`.
+  (source: [`agent-loop.ts` L1037–L1045](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/packages/agent-core/src/agent-loop.ts#L1037-L1045), [`validation.ts` L381–L420](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/packages/llm-core/src/validation.ts#L381-L420))
+- With the tool and the commands registered in `full` and `discovery` mode, `/commands` listed `/model-router-provider` and `/model-router-scope`, and `/model-router-scope extended` wrote `extended` to the config.
+  That held after a fresh Gateway start and after an install into the running Gateway.
+  A build that registered them in `full` mode only also listed them in that run.
+  (running: OpenClaw 2026.10.10, the plugin's npm tarball installed with `npm-pack:`, commands sent through `chat.send` over the Gateway WebSocket)
+- Activating a registry initialises the global hook runner from it.
+  (source: [`loader-shared.ts` L414–L431](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-shared.ts#L414-L431))
 - `api.on("before_tool_call", handler, { matcher: ["sessions_spawn"], priority: 100, timeoutMs: 10000 })` was accepted.
   (running: OpenClaw 2026.10.10, the probe plugin's `register`)
 - `api.pluginConfig` held only `plugins.entries.<id>.config`.
@@ -571,6 +631,18 @@ Every running fact names its OpenClaw version and ran on 2026-11-05.
 - The Gateway ran on Bun.
   `fetch`, `AbortSignal.any` and `AbortSignal.timeout` were functions in the hook and the command handler, and `fetch` reached an external host.
   (running: OpenClaw 2026.10.10, the probe plugin's handlers printed `typeof` of each and fetched `https://api.typesafe.ai/`)
+- A config write under `plugins.entries.<id>` makes the Gateway replace that plugin's runtime instance.
+  The replacement waits for the old instance's retained work to finish, up to a 60 s drain budget.
+  While it waits, the Gateway logs `Plugin replacement queued behind <n> retained work item(s) for plugin <id>; applies when they finish within the 60s drain budget.`
+  It logs `Plugin replacement applied: <id>` when the replacement takes over.
+  Until then the old instance serves every call, and its `api.runtime.config.current()` returns the old config.
+  OpenClaw throws `Gateway requester authority changed` when a request's client authority is no longer current.
+  (source: [`server-plugin-reload-cleanup.ts` L30](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/gateway/server-plugin-reload-cleanup.ts#L30),
+  [L107–L110](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/gateway/server-plugin-reload-cleanup.ts#L107-L110),
+  [L332–L335](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/gateway/server-plugin-reload-cleanup.ts#L332-L335),
+  [`server-plugin-reload.ts` L404](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/gateway/server-plugin-reload.ts#L404),
+  [`http-request-authority.ts` L143–L148](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/gateway/http-request-authority.ts#L143-L148);
+  running: OpenClaw 2026.10.10, a command write at 11:25:22 left a spawn at 11:25:30 under the old scope, and the replacement applied at 11:25:43; three runs showed about 9 s; a spawn that overlapped the replacement could fail with `Gateway requester authority changed`, 2026-11-06)
 - `api.logger` is a scoped logger with `debug`, `info`, `warn` and `error`.
   (documentation: [Plugin SDK overview, Registration API](https://docs.openclaw.ai/plugins/sdk-overview#registration-api))
 - A workspace `.env` is a lower-trust source.

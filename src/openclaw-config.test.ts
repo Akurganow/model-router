@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { NOT_OWNER, registerConfig } from "./openclaw-config.ts";
+import {
+	NOT_OWNER,
+	registerConfigCommands,
+	registerConfigTool,
+} from "./openclaw-config.ts";
 import { createFakeApi } from "./openclaw-fakes.ts";
 import { type Environment, PLUGIN_ID } from "./openclaw-settings.ts";
 import type {
 	CommandContext,
 	CommandDefinition,
+	OpenClawApi,
 	OpenClawConfig,
 	ToolDefinition,
 } from "./openclaw-types.ts";
@@ -21,9 +26,16 @@ import {
 	valueLine,
 } from "./settings.ts";
 
+/** Registers the config tool and the commands on `api`, as the full pass does. */
+function registerConfig(api: OpenClawApi, env: Environment) {
+	registerConfigTool(api, env);
+	registerConfigCommands(api, env);
+}
+
 const TYPESAFE_KEY = "ts-live-key-8f3a91c2d7e4b605";
 const OPENROUTER_KEY = "or-live-key-1d6e77a0c9b3f248";
 const ADMIN = "operator.admin";
+const TOOL_SETTINGS = [...SETTING_NAMES, "small_model", "large_model"];
 const NO_ENV = { TYPESAFE_API_KEY: "", OPENROUTER_API_KEY: "" };
 
 const live = (config: Record<string, unknown>): OpenClawConfig => ({
@@ -128,6 +140,16 @@ describe("registration", () => {
 			fake.command("model-router-scope").description,
 			COMMAND_DESCRIPTIONS.scope,
 		);
+	});
+
+	it("lets the tool schema and description take the model settings", () => {
+		const tool = setup().tool();
+		const { properties } = tool.parameters as {
+			properties: { setting: { enum: readonly string[] } };
+		};
+		assert.deepEqual(properties.setting.enum, TOOL_SETTINGS);
+		for (const setting of TOOL_SETTINGS)
+			assert.ok(tool.description.includes(setting), setting);
 	});
 
 	it("registers no command for the models", () => {
@@ -261,14 +283,22 @@ describe("the tool answers a setting name with the command to type", () => {
 		}
 	});
 
+	it("points the model settings to the settings page and the config command", async () => {
+		for (const setting of ["small_model", "large_model"])
+			assert.equal(
+				await runTool(setup(), { setting }),
+				`${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`,
+			);
+	});
+
 	it("rejects an unknown setting name", async () => {
 		assert.equal(
-			await runTool(setup(), { setting: "small_model" }),
-			badCall(SETTING_NAMES),
+			await runTool(setup(), { setting: "bogus" }),
+			badCall(TOOL_SETTINGS),
 		);
 		assert.equal(
 			await runTool(setup(), { setting: 3 }),
-			badCall(SETTING_NAMES),
+			badCall(TOOL_SETTINGS),
 		);
 	});
 

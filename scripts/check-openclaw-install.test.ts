@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { createPlugin } from "../src/openclaw.ts";
 import { SPAWN_TOOL } from "../src/openclaw-router.ts";
 import type { OpenClawApi } from "../src/openclaw-types.ts";
 import {
@@ -78,14 +79,32 @@ test("the shipped bundle registers the hook, the tool and both commands", async 
 	assert.deepEqual(registrationProblems(plugin), []);
 });
 
-test("a plugin that registers nothing is reported on every count", () => {
+test("a plugin that registers nothing is reported on every count in both modes", () => {
 	const problems = registrationProblems({
 		id: "model-router-openclaw",
 		register: () => {},
 	});
-	assert.equal(problems.length, 4);
-	assert.match(problems.join("\n"), /before_tool_call/);
-	assert.match(problems.join("\n"), /model-router-scope/);
+	assert.equal(problems.length, 7);
+	assert.match(problems.join("\n"), /full mode: no before_tool_call/);
+	assert.match(problems.join("\n"), /discovery mode: no model-router-scope/);
+	assert.doesNotMatch(
+		problems.join("\n"),
+		/discovery mode: no before_tool_call/,
+	);
+});
+
+test("a plugin that registers its tool and commands only in full mode is reported for discovery", () => {
+	const plugin = createPlugin();
+	const problems = registrationProblems({
+		register: (api: OpenClawApi) => {
+			if (api.registrationMode === "full") plugin.register(api);
+		},
+	});
+	assert.deepEqual(problems, [
+		"discovery mode: no model_router_config tool registered",
+		"discovery mode: no model-router-provider command registered",
+		"discovery mode: no model-router-scope command registered",
+	]);
 });
 
 test("a hook without options does not match the spawn tool", () => {
