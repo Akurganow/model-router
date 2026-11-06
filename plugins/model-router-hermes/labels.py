@@ -18,6 +18,7 @@ class OnceLog:
     def info(self, message):
         with self._lock:
             if message in self._seen:
+                self._seen.move_to_end(message)
                 return
             self._seen[message] = None
             if len(self._seen) > self._capacity:
