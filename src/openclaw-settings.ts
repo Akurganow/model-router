@@ -56,7 +56,12 @@ function sources(
 	return [pluginEntry(live)?.config, pluginConfig].filter(isRecord);
 }
 
-// A source whose value does not parse counts as silent, so a later source can still supply the setting.
+/**
+ * Returns the first value that `parse` accepts from the field of each source, in
+ * order, or undefined when none does. A source whose value does not parse counts
+ * as silent, so a later source can still supply the setting. Throws only when
+ * `parse` throws.
+ */
 function firstValid<T>(
 	from: readonly Settings[],
 	field: string,
@@ -69,7 +74,10 @@ function firstValid<T>(
 	return undefined;
 }
 
-// The live config, or undefined when the runtime cannot read it.
+/**
+ * Returns the live config, or undefined when the runtime cannot read it. Never
+ * throws.
+ */
 function readLive(api: OpenClawApi): OpenClawConfig | undefined {
 	try {
 		return api.runtime.config.current();
@@ -91,7 +99,12 @@ export function readSettings(
 	};
 }
 
-// Only the providers the value allows are read. OpenClaw's own provider credentials are never Jev keys.
+/**
+ * Returns the Jev keys of the providers the value allows, each from a source
+ * field or else from its environment variable. A provider with no key is
+ * absent. OpenClaw's own provider credentials are never Jev keys. Throws only
+ * when a source getter throws.
+ */
 export function readKeys(
 	live: OpenClawConfig | undefined,
 	pluginConfig: Settings | undefined,

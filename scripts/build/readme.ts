@@ -41,12 +41,21 @@ const setupLine = ({ heading }: Install): string => {
 	return `[${setup}](#${anchorOf(setup)}) has the next steps.`;
 };
 
+/**
+ * Returns the sentence about CI for one install. The install's own sentence
+ * wins. Otherwise the sentence names the CI systems that install it, or says
+ * that CI does not.
+ */
 const ciLine = ({ ciSystems, ciLine: sentence }: Install): string =>
 	sentence ??
 	(ciSystems.length === 0
 		? "CI does not install it."
 		: `CI installs it on ${ciSystems.join(" and ")}.`);
 
+/**
+ * Returns the README section of one install: its heading, commands, source,
+ * optional note, CI sentence and link to the setup steps.
+ */
 const section = (source: Source, install: Install): string => {
 	const { publisher, title, url } = install.source;
 	const note = install.note

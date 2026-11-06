@@ -51,7 +51,11 @@ const PASS: Gate = { outcome: "pass" };
 const skip = (reason: string): Gate => ({ outcome: "skip", reason });
 const NO_MODEL_VALUE = "default";
 
-// OpenClaw's config is user-written JSON, so every step down it is checked.
+/**
+ * Returns the value at the path inside a value, or undefined when a step is not
+ * an own key of a record. OpenClaw's config is user-written JSON, so every step
+ * down it is checked. Never throws.
+ */
 function at(value: unknown, ...path: string[]): unknown {
 	let node = value;
 	for (const key of path) {
@@ -67,11 +71,20 @@ const agentField = (
 	...path: string[]
 ) => at(findAgent(config, id), ...path);
 
-// OpenClaw's `normalizeToolModelOverride`: trimmed text, where "default" in any case names no model.
+/**
+ * Tells whether a spawn's model names a model: false when undefined or when it
+ * reads "default" in any case. OpenClaw's `normalizeToolModelOverride` gives the
+ * same reading of the trimmed text. Never throws.
+ */
 const namesModel = (model: string | undefined): boolean =>
 	model !== undefined && model.toLowerCase() !== NO_MODEL_VALUE;
 
-// Claude Code passes these calls through, and so does the router.
+/**
+ * Tells whether the router passes the spawn through without a skip reason: it
+ * names a model, uses another runtime or an invalid agent, is visible, forks the
+ * context, opens a session or starts a thread. Claude Code passes these calls
+ * through, and so does the router. Never throws.
+ */
 function passesSilently(spawn: SpawnRequest): boolean {
 	return (
 		namesModel(spawn.model) ||
@@ -84,6 +97,11 @@ function passesSilently(spawn: SpawnRequest): boolean {
 	);
 }
 
+/**
+ * Returns why a spawn of another agent is skipped: the config is unreadable, the
+ * config lacks the agent, or the agent sets its own model. Returns undefined
+ * when the spawn may route. Never throws.
+ */
 function otherAgentSkip(id: string, { config }: GateInput): string | undefined {
 	if (config === undefined) return agentDiscoveryFailed(id);
 	const entry = findAgent(config, id);
@@ -91,6 +109,10 @@ function otherAgentSkip(id: string, { config }: GateInput): string | undefined {
 	return isSet(at(entry, "model")) ? setsOwnModel(id) : undefined;
 }
 
+/**
+ * Tells whether the user already set a subagent model, for the target agent or
+ * in the defaults. Never throws.
+ */
 function subagentModelSet(input: GateInput, target: string | undefined) {
 	return (
 		isSet(agentField(input.config, target, "subagents", "model")) ||
@@ -98,7 +120,13 @@ function subagentModelSet(input: GateInput, target: string | undefined) {
 	);
 }
 
-// The first match decides. Under extended the requester's or target's own value is replaced, which is the ladder effort too.
+/**
+ * Returns whether the router keeps the effort or sets it. The effort stays when
+ * the spawn sets thinking, when the defaults set it, or under core scope when
+ * the requester sets it. The first match decides. Under extended the requester's
+ * or target's own value is replaced, which is the ladder effort too. Never
+ * throws.
+ */
 function effortRule(input: GateInput): EffortRule {
 	const { spawn, config, requester, settings } = input;
 	if (spawn.thinking !== undefined)
@@ -115,13 +143,24 @@ function effortRule(input: GateInput): EffortRule {
 	return kept ? { kind: "keep", label: "config effort" } : { kind: "set" };
 }
 
-// A blank description gives the role of an agent with none: the harness default for the requester, else the neutral line.
+/**
+ * Returns the role text built from the target agent's description, or `blank`
+ * when the description is blank. A blank description gives the role of an agent
+ * with none: the harness default for the requester, else the neutral line. Never
+ * throws.
+ */
 function roleOf(input: GateInput, target: string | undefined, blank: string) {
 	const description = agentField(input.config, target, "description");
 	return nonEmpty(description) === undefined ? blank : roleText(description);
 }
 
-// Order: plugins/model-router-openclaw/README.md#which-spawns-are-routed. Change both.
+/**
+ * Returns the gate outcome of a spawn: pass for a spawn without a task or one
+ * that passes silently, skip with a reason, or route with its target, role,
+ * effort rule, config, task and description. The first failing check decides.
+ * Never throws. Order: plugins/model-router-openclaw/README.md#which-spawns-are-routed.
+ * Change both.
+ */
 export function gateSpawn(input: GateInput): Gate {
 	const { spawn, requester, settings, config } = input;
 	const { task } = spawn;

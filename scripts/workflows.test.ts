@@ -8,8 +8,11 @@ const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const json = (path: string) => JSON.parse(read(path));
 
-// A workflow indents each job two spaces under `jobs:`; the next line at two
-// spaces, comment or job, ends the block.
+/**
+ * Returns the lines of one job in a workflow, from its header to the next line
+ * indented two spaces, comment or job. A workflow indents each job two spaces
+ * under `jobs:`. Fails the test when the job is missing.
+ */
 function jobBlock(workflow: string, job: string): string {
 	const lines = workflow.split("\n");
 	const first = lines.indexOf(`  ${job}:`);

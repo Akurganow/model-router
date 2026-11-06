@@ -26,13 +26,22 @@ const realClock: RouterDeps["clock"] = {
 	},
 };
 
+/**
+ * Tells whether a value is an integer timeout above 0 and at most
+ * HOOK_TIMEOUT_MAX_MS. Never throws.
+ */
 const usable = (value: unknown): value is number =>
 	typeof value === "number" &&
 	Number.isInteger(value) &&
 	value > 0 &&
 	value <= HOOK_TIMEOUT_MAX_MS;
 
-// OpenClaw's precedence: the per-hook timeout, then the timeout of all the plugin's hooks, then the value the plugin registers with.
+/**
+ * Returns the timeout in milliseconds that OpenClaw applies to the hook. The
+ * precedence is the per-hook timeout, then the timeout of all the plugin's
+ * hooks, then the value the plugin registers with. A value that is not usable is
+ * skipped. Never throws.
+ */
 function effectiveTimeout(config: OpenClawConfig): number {
 	const hooks = pluginEntry(config)?.hooks;
 	const perHook = isRecord(hooks?.timeouts)
@@ -41,6 +50,10 @@ function effectiveTimeout(config: OpenClawConfig): number {
 	return [perHook, hooks?.timeoutMs].find(usable) ?? HOOK_TIMEOUT_MS;
 }
 
+/**
+ * Logs a warning under the line prefix. Never throws, because a logger that
+ * throws cannot report anything.
+ */
 function warn(api: OpenClawApi, message: string): void {
 	try {
 		api.logger.warn(LINE_PREFIX + message);
@@ -49,6 +62,11 @@ function warn(api: OpenClawApi, message: string): void {
 	}
 }
 
+/**
+ * Registers the config tool, the commands and the before_tool_call hook, in full
+ * registration mode only. Warns when the hook timeout leaves too little time to
+ * route. Never throws: a failure logs a warning and leaves the plugin inert.
+ */
 function register(api: OpenClawApi, deps: RouterDeps): void {
 	try {
 		if (api.registrationMode !== "full") return;

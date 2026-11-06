@@ -96,6 +96,10 @@ test("each section cites the harness documentation", () => {
 	);
 });
 
+/**
+ * Returns the source with the OpenClaw install's ciLine set to the given text,
+ * or removed when the text is undefined.
+ */
 const withCiLine = (ciLine: string | undefined): Source => {
 	const { ciLine: _dropped, ...rest } = source.openclaw.install;
 	return {

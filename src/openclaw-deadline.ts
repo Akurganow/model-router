@@ -38,7 +38,11 @@ export async function raceDeadline<T>(
 				stop.abort(LIMIT_REACHED);
 				settle(undefined);
 			});
-			// The host's abort settles the race at once, so a hook the host gave up on does not wait for its work.
+			/**
+			 * Settles the race with undefined and cancels the deadline timer. The host's
+			 * abort settles the race at once, so a hook the host gave up on does not wait
+			 * for its work. Never throws: a throwing cancel stays inside.
+			 */
 			const onHostAbort = () => {
 				settle(undefined);
 				try {

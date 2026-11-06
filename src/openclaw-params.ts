@@ -56,6 +56,11 @@ export type SpawnRequest = {
 
 const SUBAGENT_RUNTIME = "subagent";
 
+/**
+ * Reads the agent a spawn names. Returns `invalid` for an id that is set but not
+ * text, `none` for an absent or blank one, and `id` with the trimmed text
+ * otherwise. Never throws.
+ */
 function readAgent(params: Params): SpawnAgent {
 	const raw = readParam(params, "agentId");
 	if (typeof raw !== "string")
@@ -64,12 +69,21 @@ function readAgent(params: Params): SpawnAgent {
 	return id === undefined ? { kind: "none" } : { kind: "id", id };
 }
 
+/**
+ * Reads the runtime of a spawn. Returns undefined when it is unset, `subagent`
+ * for the subagent runtime, and `other` for any other set value. Never throws.
+ */
 function readRuntime(params: Params): SpawnRequest["runtime"] {
 	const { runtime } = params;
 	if (!isSet(runtime)) return undefined;
 	return runtime === SUBAGENT_RUNTIME ? SUBAGENT_RUNTIME : "other";
 }
 
+/**
+ * Reads a `sessions_spawn` call into a SpawnRequest by the tool's own rules. A
+ * field of the wrong type reads as absent, except an agent id that is set but
+ * not text, which reads as `invalid`. Never throws.
+ */
 export function readSpawn(params: Params): SpawnRequest {
 	const { task, taskName, visible, context, mode, thread } = params;
 	return {

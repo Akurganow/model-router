@@ -44,6 +44,11 @@ export type RuntimeAnswers = {
 
 const SLASH = "/";
 
+/**
+ * Returns the resolved ref a raw model string names, split at its first slash
+ * into provider and model. Without a slash the provider is empty. The key is the
+ * raw string. Never throws.
+ */
 function echoRef(raw: string): ResolvedModelRef {
 	const cut = raw.indexOf(SLASH);
 	const ref =
@@ -74,6 +79,7 @@ export function createFakeRuntime(initial: Partial<RuntimeAnswers> = {}) {
 		agentDir: [],
 	};
 	const throwOn = new Set<RuntimeMember>();
+	/** Records a call to a runtime member. Throws when the test added the member to `throwOn`. */
 	const enter = <K extends RuntimeMember>(member: K, call?: Params<K>) => {
 		(calls[member] as unknown[]).push(call);
 		if (throwOn.has(member)) throw new Error(`fake ${member} failure`);
@@ -84,7 +90,12 @@ export function createFakeRuntime(initial: Partial<RuntimeAnswers> = {}) {
 				enter("config");
 				return answers.config;
 			},
-			// Like the writer, it rechecks the caller after the mutation and publishes the draft only if that passes.
+			/**
+			 * Applies `mutate` to a copy of the config and publishes the copy. Like the
+			 * writer, it rechecks the caller after the mutation and publishes the draft
+			 * only if that passes. Rejects when the member is in `throwOn`, when `mutate`
+			 * throws or when the recheck throws, and the config stays as it was.
+			 */
 			mutateConfigFile: async (params) => {
 				enter("mutate", params);
 				const draft = structuredClone(answers.config);
@@ -99,6 +110,7 @@ export function createFakeRuntime(initial: Partial<RuntimeAnswers> = {}) {
 				enter("defaultModel", params);
 				return answers.defaultModel;
 			},
+			/** Returns the `resolved` answer when set, else the ref echoRef gives. Throws when the member is in `throwOn`. */
 			resolveAllowedModelRef: (params) => {
 				enter("allowedRef", params);
 				return answers.resolved ?? echoRef(params.raw);
@@ -160,6 +172,7 @@ export function createFakeApi(overrides: FakeApiOverrides = {}) {
 			error: line("error"),
 		},
 		runtime: runtime.runtime,
+		/** Records the hook. The options are recorded only when given. Never throws. */
 		on: (event, handler, options) => {
 			hooks.push(
 				options === undefined
@@ -177,7 +190,10 @@ export function createFakeApi(overrides: FakeApiOverrides = {}) {
 		tools,
 		commands,
 		logs,
-		// The handler OpenClaw would call for `before_tool_call`: the last one registered.
+		/**
+		 * Returns the handler OpenClaw would call for `before_tool_call`: the last
+		 * one registered. Throws when none is registered.
+		 */
 		beforeToolCall: (): BeforeToolCallHandler => {
 			const hook = hooks.findLast((h) => h.event === "before_tool_call");
 			if (hook === undefined)
@@ -210,6 +226,12 @@ export function createJevFetch(initial: Levels = { tier: 1, work: 1 }) {
 	const levels = { ...initial };
 	const mode: { current: JevMode } = { current: "answer" };
 	const requests: JevRequest[] = [];
+	/**
+	 * Records the request and answers it by `mode`. Rejects with the signal's reason
+	 * when the signal is already aborted. A `hang` mode holds the request until its
+	 * signal aborts, a status mode answers an empty body with that status, and the
+	 * other mode answers the levels. Rejects when the body is not JSON.
+	 */
 	const fetch: Fetch = async (url, init) => {
 		// Like the real fetch, an aborted signal fails before anything is sent.
 		init?.signal?.throwIfAborted();
@@ -241,6 +263,10 @@ export function createFakeClock() {
 			};
 		},
 	};
+	/**
+	 * Runs each timer that is still live once, in the order asked for. Throws when
+	 * a timer callback throws.
+	 */
 	const fire = () => {
 		for (const timer of timers) {
 			if (!timer.live) continue;

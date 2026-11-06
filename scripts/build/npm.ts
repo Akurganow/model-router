@@ -16,7 +16,10 @@ const GIT_SUFFIX = ".git";
 // npm always packs these, so the files list leaves them out.
 const ALWAYS_PACKED = ["package.json", "README.md", "LICENSE"];
 
-// The top-level entries of the tree that the copies fill, in copy order.
+/**
+ * Lists the top-level entries of the npm tree that the copies fill, in copy
+ * order. Files that npm always packs stay out of the list.
+ */
 const filesList = (): string[] => [
 	...new Set(
 		[...NPM_FILE_COPIES, ...NPM_FOLDER_COPIES]

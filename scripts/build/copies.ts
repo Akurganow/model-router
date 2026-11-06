@@ -11,7 +11,11 @@ import {
 	README_OUTPUT,
 } from "./outputs.ts";
 
-// Paths are relative to the folder given, with forward slashes, in a fixed order.
+/**
+ * Lists every file under a folder of the root, descending into subfolders. Each
+ * path starts with the folder, uses forward slashes and comes in a fixed order.
+ * Throws when a folder cannot be read.
+ */
 function filesUnder(root: string, folder: string): string[] {
 	return readdirSync(join(root, folder), { withFileTypes: true })
 		.sort((a, b) => (a.name < b.name ? -1 : 1))
@@ -48,7 +52,11 @@ export const generatedFiles = (root: string): string[] => [
 	]),
 ];
 
-// A folder is removed first, so a file taken out of a plugin folder leaves the tree.
+/**
+ * Copies every file that listCopies names into the npm tree. A copied folder is
+ * removed first, so a file taken out of a plugin folder leaves the tree. Throws
+ * when a source file is missing.
+ */
 export function copyNpmFiles(root: string): void {
 	for (const { to } of NPM_FOLDER_COPIES)
 		rmSync(join(root, to), { recursive: true, force: true });

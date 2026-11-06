@@ -83,7 +83,11 @@ type Slot =
 	| { readonly model: string | undefined }
 	| { readonly skipped: string };
 
-// The middle tier keeps the spawn's own model. An end tier needs its slot set and resolved for the agent.
+/**
+ * Returns the model slot for a tier. The middle tier keeps the spawn's own model
+ * and returns no model. An end tier needs its slot set and resolved for the
+ * agent, or the result names why it is skipped. Never rejects.
+ */
 async function slotFor(
 	runtime: PluginRuntime,
 	settings: OpenClawSettings,
@@ -99,6 +103,12 @@ async function slotFor(
 	return { model };
 }
 
+/**
+ * Returns the params to merge into the spawn, or undefined when the spawn stays
+ * as written. Undefined covers a spawn that passes, a skip, and a route that
+ * sets nothing. Each skip and each route writes one line to the log. An error
+ * from reading the state or scoring propagates to the hook, which catches it.
+ */
 async function routeSpawn(
 	spawn: Spawn,
 ): Promise<BeforeToolCallResult | undefined> {
@@ -153,7 +163,10 @@ export function createBeforeToolCall(
 			const request = readSpawn(event.params);
 			return await raceDeadline(
 				(signal) => {
-					// Once the deadline or the hook's signal ends the work, the work writes no line.
+					/**
+					 * Writes one info line under the line prefix. Once the deadline or the hook's
+					 * signal ends the work, the work writes no line.
+					 */
 					const log = (message: string) => {
 						if (!signal.aborted) api.logger.info(LINE_PREFIX + message);
 					};

@@ -32,6 +32,12 @@ export type Setup = {
 	api?: FakeApiOverrides;
 };
 
+/**
+ * Builds a fake api with the config tool, a Jev fetch, a fake clock and the
+ * before_tool_call handler wired to them, plus a `call` that sends a
+ * `sessions_spawn` event with the task and the given params. Every option has a
+ * default. Never throws.
+ */
 export function setup(options: Setup = {}) {
 	const fake = createFakeApi({
 		config: options.config ?? {},

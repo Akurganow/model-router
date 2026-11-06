@@ -20,6 +20,11 @@ const ALWAYS_PACKED_ROOT_FILE = /^(readme|licen[cs]e)(\..*)?$/i;
 
 type Manifest = { files?: unknown; main?: unknown };
 
+/**
+ * Lists the files an `files` entry packs: the entry itself for a file, or every
+ * file under it for a folder, without the entries npm never packs. Throws when
+ * the path does not exist.
+ */
 const filesIn = (root: string, path: string): string[] => {
 	if (!statSync(join(root, path)).isDirectory()) return [path];
 	return readdirSync(join(root, path))
@@ -27,8 +32,12 @@ const filesIn = (root: string, path: string): string[] => {
 		.flatMap((name) => filesIn(root, join(path, name)));
 };
 
-// What npm packs, worked out from the folder alone: the `files` entries, plus
-// the files npm always packs: package.json, the root README and LICENSE, and `main`.
+/**
+ * Lists the files npm packs for a tree, worked out from the folder alone: the
+ * `files` entries, plus the files npm always packs (package.json, the root
+ * README and LICENSE, and `main`). The list is unique and sorted. Throws when
+ * package.json has no `files` list of strings or an entry does not exist.
+ */
 export function expectedPackedFiles(treeRoot: string): string[] {
 	const manifest: Manifest = JSON.parse(
 		readFileSync(join(treeRoot, "package.json"), "utf8"),
@@ -52,6 +61,11 @@ export function expectedPackedFiles(treeRoot: string): string[] {
 	].sort();
 }
 
+/**
+ * Returns undefined when the expected and the packed files match. Otherwise it
+ * returns a two-line text naming the files missing from the tarball and the
+ * files it holds beyond the expected ones.
+ */
 export function comparePackedFiles(
 	expected: readonly string[],
 	actual: readonly string[],
@@ -68,13 +82,21 @@ export function comparePackedFiles(
 export type Packed = { tarball: string; files: string[] };
 type PackResult = { filename: string; files: { path: string }[] };
 
+/**
+ * Tells whether a value has the shape of one npm pack result: a string
+ * `filename` and a `files` array. Never throws.
+ */
 const isPackResult = (value: unknown): value is PackResult =>
 	typeof value === "object" &&
 	value !== null &&
 	typeof (value as { filename?: unknown }).filename === "string" &&
 	Array.isArray((value as { files?: unknown }).files);
 
-// npm 11 prints a list of results, and npm 12 an object keyed by package name.
+/**
+ * Returns the first npm pack result in the parsed output, or undefined when it
+ * holds none. npm 11 prints a list of results, and npm 12 an object keyed by
+ * package name. Never throws.
+ */
 export function packResult(json: unknown): PackResult | undefined {
 	if (isPackResult(json)) return json;
 	const results = Array.isArray(json)
@@ -85,6 +107,12 @@ export function packResult(json: unknown): PackResult | undefined {
 	return results.find(isPackResult);
 }
 
+/**
+ * Packs the tree into the destination folder and returns the tarball path with
+ * the sorted list of packed files. Creates the destination first, because npm
+ * pack writes into a folder that exists. Throws when npm fails, times out or
+ * prints no result.
+ */
 export function packTree(treeRoot: string, destination: string): Packed {
 	// npm pack writes into a folder that exists and does not create it.
 	mkdirSync(destination, { recursive: true });
@@ -106,7 +134,10 @@ export function packTree(treeRoot: string, destination: string): Packed {
 	};
 }
 
-// Packs the tree and throws when npm packed other files than the tree lists.
+/**
+ * Packs the tree and returns the result. Throws when npm packed other files
+ * than the tree lists, or when packing fails.
+ */
 export function verifyPack(treeRoot: string, destination: string): Packed {
 	const packed = packTree(treeRoot, destination);
 	const difference = comparePackedFiles(
@@ -120,7 +151,11 @@ export function verifyPack(treeRoot: string, destination: string): Packed {
 	return packed;
 }
 
-// Prints the tarball path on success, so a workflow step can read it.
+/**
+ * Returns the exit code of the check: 0 when the pack matches the tree, EXIT_USAGE
+ * without a destination argument, and 1 when verifying fails. Prints the
+ * tarball path on success, so a workflow step can read it. Never throws.
+ */
 export function main(args: string[], root: string): number {
 	const [destination] = args;
 	if (destination === undefined) {

@@ -32,6 +32,11 @@ const live = (config: Record<string, unknown>): OpenClawConfig => ({
 
 type Stored = { provider?: unknown; scope?: unknown; small_model?: unknown };
 
+/**
+ * Registers the config tool and commands on a fake api whose live config holds
+ * `config`. Returns the fake with `command`, `tool` and `stored`. `command` and
+ * `tool` fail the test when the registration is missing.
+ */
 function setup(
 	config: Record<string, unknown> = {},
 	env: Environment = process.env,
@@ -48,12 +53,14 @@ function setup(
 		assert.ok(found, "tool registered");
 		return found;
 	};
+	/** Returns the plugin settings stored in the live config, or an empty object when none is. */
 	const stored = () =>
 		(fake.runtime.answers.config.plugins?.entries?.[PLUGIN_ID]?.config ??
 			{}) as Stored;
 	return { ...fake, command, tool, stored };
 }
 
+/** Returns the context of a command from the owner, with `args` only when given. */
 const ownerContext = (args?: string): CommandContext => ({
 	channel: "webchat",
 	isAuthorizedSender: true,
@@ -76,6 +83,11 @@ const runTool = async (fake: ReturnType<typeof setup>, params?: unknown) =>
 
 const lines = (...parts: string[]) => parts.join("\n");
 
+/**
+ * Runs `run` with the process environment cleared of the Jev key variables and
+ * holding only `values` that are set. Restores the environment afterwards, even
+ * when `run` rejects.
+ */
 async function withEnv(
 	values: Record<string, string | undefined>,
 	run: () => Promise<void>,

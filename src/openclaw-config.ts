@@ -42,10 +42,14 @@ const UNSET = "unset";
 export const NOT_OWNER = "only the owner can change it";
 export const TOOL_DESCRIPTION = `Reads the router's settings. With no input it returns the provider, the scope, both models, and whether each key the provider allows is set. With a setting name (${SETTING_NAMES.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
 
+/** Returns `name: model`, or `name: unset` when the model is undefined. */
 const modelLine = (name: string, model: string | undefined): string =>
 	`${name}: ${model ?? UNSET}`;
 
-// A key is only checked for presence. Nothing about it leaves this function.
+/**
+ * Returns one line per provider that says whether its key is set or unset. A
+ * key is only checked for presence. Nothing about it leaves this function.
+ */
 function keyLines(providers: readonly Provider[], keys: Keys): string[] {
 	return providers.map((name) =>
 		keyLine(name, keys[name] === undefined ? UNSET : "set"),
@@ -62,6 +66,11 @@ function readAll({ settings, keys }: State): string {
 	].join(LINE_BREAK);
 }
 
+/**
+ * Returns how the person changes a setting: the command and its allowed values
+ * for a value setting, the plugin's settings for a key setting, and the list of
+ * setting names for anything else. Never throws.
+ */
 function howToChange(setting: unknown): string {
 	if (isValueSetting(setting))
 		return [
@@ -73,6 +82,11 @@ function howToChange(setting: unknown): string {
 		: badCall(SETTING_NAMES);
 }
 
+/**
+ * Returns the text of one tool call: the full settings read when `params` names
+ * no setting, otherwise how to change that setting. Params that are not an
+ * object count as no input. An error from reading the state propagates.
+ */
 function runTool(api: OpenClawApi, env: Environment, params: unknown): string {
 	const { setting } = isRecord(params) ? params : {};
 	return setting === undefined
@@ -85,8 +99,14 @@ function runTool(api: OpenClawApi, env: Environment, params: unknown): string {
 // src/plugins/plugin-command-execution.ts), so the owner flag is the one check left here.
 const isOwner = (ctx: CommandContext): boolean => ctx.senderIsOwner === true;
 
-// "auto" is the only policy that publishes the write to the runtime snapshot `config.current()` returns,
-// so the next spawn sees the value. "none" skips that, and "restart" would drop the gateway for a setting.
+/**
+ * Writes one setting to the live config and returns its value line, or the
+ * unchanged line with the error message when the write fails. Never rejects. The
+ * write asserts that the owner is still current when the context offers the
+ * check. "auto" is the only policy that publishes the write to the runtime
+ * snapshot `config.current()` returns, so the next spawn sees the value. "none"
+ * skips that, and "restart" would drop the gateway for a setting.
+ */
 async function write(
 	api: OpenClawApi,
 	ctx: CommandContext,
@@ -107,6 +127,12 @@ async function write(
 	}
 }
 
+/**
+ * Returns the reply to a setting command. An empty argument returns the current
+ * value, and an invalid one returns the allowed values. A sender who is not the
+ * owner gets the unchanged line, and so does a value already set. Any other
+ * value is written. An error from reading the state propagates.
+ */
 async function runCommand(
 	api: OpenClawApi,
 	env: Environment,
@@ -129,11 +155,20 @@ const textOf = (text: string): ToolResult => ({
 	content: [{ type: "text", text }],
 });
 
-// A failure must never throw into OpenClaw's command or tool dispatch.
+/**
+ * Returns `error: ` and the message of a thrown value, or its string form. Never
+ * throws, because a failure must never throw into OpenClaw's command or tool
+ * dispatch.
+ */
 function failure(err: unknown): string {
 	return `error: ${err instanceof Error ? err.message : String(err)}`;
 }
 
+/**
+ * Registers the config tool and one command for each value setting. The tool's
+ * execute and each command's handler never reject: a failure comes back as an
+ * `error:` text. Throws only when the api rejects a registration.
+ */
 export function registerConfig(api: OpenClawApi, env: Environment): void {
 	api.registerTool({
 		name: TOOL_NAME,

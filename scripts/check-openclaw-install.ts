@@ -13,14 +13,23 @@ const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 // An object read for the named fields, each of which may be absent or of any type.
 type Fields<K extends string> = Partial<Record<K, unknown>>;
+/**
+ * Returns the value as an object whose named fields may be absent or of any
+ * type, or undefined when it is not an object. Never throws.
+ */
 const fieldsOf = <K extends string>(value: unknown): Fields<K> | undefined =>
 	typeof value === "object" && value !== null
 		? (value as Fields<K>)
 		: undefined;
 
-// `openclaw plugins inspect --runtime` loads the installed package without
-// activating it, so its report proves the install and the module load but
-// lists no hook, tool or command of this plugin. registrationProblems covers those.
+/**
+ * Lists what the report of `openclaw plugins inspect --runtime` gets wrong for
+ * the expected package: the plugin id, name, version, status, import, root
+ * folder, tool contract and diagnostics. An empty list means the report is
+ * clean. The command loads the installed package without activating it, so its
+ * report proves the install and the module load but lists no hook, tool or
+ * command of this plugin. registrationProblems covers those. Never throws.
+ */
 export function inspectProblems(
 	report: unknown,
 	expected: { readonly name: string; readonly version: string },
@@ -39,6 +48,7 @@ export function inspectProblems(
 	if (root === undefined || plugin === undefined)
 		return ["the inspect output has no plugin"];
 	const problems: string[] = [];
+	/** Records a problem when the plugin field differs from the wanted value. */
 	const expect = (field: keyof typeof plugin, want: unknown) => {
 		if (plugin[field] !== want)
 			problems.push(`plugin.${field} is ${plugin[field]}, expected ${want}`);
@@ -62,9 +72,13 @@ export function inspectProblems(
 	return problems;
 }
 
-// Runs the installed bundle's register() against the recording api of the
-// unit tests, in full mode (the mode a running Gateway uses), and lists what it
-// did not register. No Gateway runs here.
+/**
+ * Lists what the installed bundle's default export fails to register: the
+ * routing hook, the config tool and each command. An empty list means it
+ * registered all of them. A missing or throwing register function yields one
+ * problem. register() runs against the recording api of the unit tests, in full
+ * mode (the mode a running Gateway uses). No Gateway runs here. Never throws.
+ */
 export function registrationProblems(plugin: unknown): string[] {
 	const register = fieldsOf<"register">(plugin)?.register;
 	if (typeof register !== "function")
@@ -90,6 +104,12 @@ export function registrationProblems(plugin: unknown): string[] {
 	return problems;
 }
 
+/**
+ * Returns the exit code of the install check: 0 when the inspect output file
+ * shows the package installed and loaded and the bundle registers everything,
+ * EXIT_USAGE without a file argument, and 1 otherwise. Prints each problem.
+ * Never throws.
+ */
 export async function main(args: string[], root: string): Promise<number> {
 	const [file] = args;
 	if (file === undefined) {

@@ -46,6 +46,7 @@ describe("createFakeApi", () => {
 });
 
 describe("createJevFetch", () => {
+	/** Sends one request with a JSON body to the fake fetch, with the signal only when given. */
 	const send = (
 		fetch: ReturnType<typeof createJevFetch>["fetch"],
 		signal?: AbortSignal,
