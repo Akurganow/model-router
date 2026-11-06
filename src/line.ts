@@ -11,7 +11,8 @@ export type RoutedLine = {
 };
 
 export const LINE_PREFIX = "model-router ";
-const NO_CHANGE = "no change";
+export const NO_CHANGE = "no change";
+export const ENTRY_SEPARATOR = " | ";
 
 /**
  * Returns the routing line: the level, the target or "no change", the effort

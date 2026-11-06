@@ -1,5 +1,5 @@
 import { contextText } from "./brief.ts";
-import { LINE_PREFIX, skippedLine } from "./line.ts";
+import { ENTRY_SEPARATOR, LINE_PREFIX, skippedLine } from "./line.ts";
 import { registerConfig, say } from "./omp-config.ts";
 import { checkGates, openBatch, readSettings, resolves } from "./omp-gates.ts";
 import { inScope, TASK } from "./omp-items.ts";
@@ -15,8 +15,6 @@ import type {
 	ToolProgressEvent,
 } from "./omp-types.ts";
 import { isRecord } from "./part.ts";
-
-const ENTRY_SEPARATOR = " | ";
 
 function isEligible(item: unknown): item is TaskItem {
 	if (!isRecord(item)) return false;

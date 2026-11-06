@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { errorText } from "../src/settings.ts";
 import { README_OUTPUT } from "./build/outputs.ts";
 import {
 	anchorOf,
@@ -182,7 +183,7 @@ const failure = (text: string) => {
 	try {
 		renderReadme(text, source);
 	} catch (error) {
-		return String(error instanceof Error ? error.message : error);
+		return errorText(error);
 	}
 	return assert.fail("renderReadme did not throw");
 };

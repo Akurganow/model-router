@@ -1022,6 +1022,7 @@ var PROVIDER_VALUES = [
   "typesafe",
   "openrouter"
 ];
+var PROVIDERS = ["typesafe", "openrouter"];
 var HOSTS = {
   typesafe: "https://api.typesafe.ai",
   openrouter: "https://openrouter.ai/api"
@@ -1043,7 +1044,7 @@ var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
 ]);
 var SERVER_ERRORS = { min: 500, max: 599 };
 var ORDER = {
-  auto: ["typesafe", "openrouter"],
+  auto: PROVIDERS,
   "openrouter-first": ["openrouter", "typesafe"],
   typesafe: ["typesafe"],
   openrouter: ["openrouter"]
@@ -1123,7 +1124,8 @@ var isValue = (setting, value) => TEXTS[setting].values.some((known) => known ==
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
-var unchangedBy = (setting, err) => unchanged(setting, err instanceof Error ? err.message : String(err));
+var errorText = (err) => err instanceof Error ? err.message : String(err);
+var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var KEY_UNSET = "key unset";
 var NO_ANSWER = "no answer from the dialog";

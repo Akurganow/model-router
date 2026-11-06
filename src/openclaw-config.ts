@@ -18,6 +18,7 @@ import {
 	badCall,
 	COMMAND_DESCRIPTIONS,
 	commandName,
+	errorText,
 	isKeySetting,
 	isValue,
 	isValueSetting,
@@ -178,7 +179,7 @@ const textOf = (text: string): ToolResult => ({
  * dispatch.
  */
 function failure(err: unknown): string {
-	return `error: ${err instanceof Error ? err.message : String(err)}`;
+	return `error: ${errorText(err)}`;
 }
 
 /**

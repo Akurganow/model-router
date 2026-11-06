@@ -914,6 +914,7 @@ var PROVIDER_VALUES = [
   "typesafe",
   "openrouter"
 ];
+var PROVIDERS = ["typesafe", "openrouter"];
 var HOSTS = {
   typesafe: "https://api.typesafe.ai",
   openrouter: "https://openrouter.ai/api"
@@ -939,7 +940,7 @@ var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
 ]);
 var SERVER_ERRORS = { min: 500, max: 599 };
 var ORDER = {
-  auto: ["typesafe", "openrouter"],
+  auto: PROVIDERS,
   "openrouter-first": ["openrouter", "typesafe"],
   typesafe: ["typesafe"],
   openrouter: ["openrouter"]
@@ -1059,7 +1060,8 @@ var isValue = (setting, value) => TEXTS[setting].values.some((known) => known ==
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
-var unchangedBy = (setting, err) => unchanged(setting, err instanceof Error ? err.message : String(err));
+var errorText = (err) => err instanceof Error ? err.message : String(err);
+var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var UNREADABLE = "settings unreadable";
 var KEY_UNSET = "key unset";
@@ -1371,7 +1373,7 @@ var textOf = (text) => ({
   content: [{ type: "text", text }]
 });
 function failure(err) {
-  return `error: ${err instanceof Error ? err.message : String(err)}`;
+  return `error: ${errorText(err)}`;
 }
 function registerConfigTool(api, env) {
   api.registerTool({
@@ -1636,6 +1638,7 @@ var LEVEL_SLOTS = {
   0: "small",
   2: "large"
 };
+var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
 var modelUnset = (slot) => `${slot} model unset`;
 var modelUnresolved = (slot) => `${slot} model unresolved`;
 
@@ -1719,7 +1722,6 @@ function gateSpawn(input) {
 // src/openclaw-router.ts
 var SPAWN_TOOL = "sessions_spawn";
 var HOOK = "before_tool_call";
-var MIDDLE_TIER = 1;
 var SLOT_MODELS = {
   small: (s) => s.smallModel,
   large: (s) => s.largeModel
@@ -1740,8 +1742,8 @@ async function score({ deps, signal }, settings, keys, gate) {
   return decide2(decision, tier.key, work.key);
 }
 async function slotFor(runtime, settings, { config, target }, level) {
-  if (level === MIDDLE_TIER) return { model: void 0 };
-  const name = LEVEL_SLOTS[level];
+  const name = slotForLevel(level);
+  if (name === null) return { model: void 0 };
   const model = SLOT_MODELS[name](settings);
   if (model === void 0) return { skipped: modelUnset(name) };
   if (!await slotResolves(runtime, config, target, model))

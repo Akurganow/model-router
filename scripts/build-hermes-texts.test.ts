@@ -2,11 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { setupTexts } from "../src/hermes-setup.ts";
-import {
-	KEY_VARIABLES,
-	PROVIDER_VALUES,
-	type Provider,
-} from "../src/provider.ts";
+import { KEY_VARIABLES, PROVIDER_VALUES, PROVIDERS } from "../src/provider.ts";
 import {
 	alreadyValue,
 	badCall,
@@ -29,7 +25,6 @@ const rendered = renderHermes(source).find(
 	({ path }) => path === HERMES_OUTPUTS.constants,
 );
 const { texts } = JSON.parse(rendered?.text ?? "{}");
-const PROVIDERS: Provider[] = ["typesafe", "openrouter"];
 
 test("the tool and command names and texts equal the src/ values", () => {
 	assert.equal(texts.toolName, TOOL_NAME);

@@ -8,13 +8,12 @@ import { type HermesRequest, readRequest } from "./hermes-request.ts";
 import { effortFor } from "./ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
-import type { Level } from "./part.ts";
 import { plan } from "./provider.ts";
 import {
 	CONFIG_EFFORT,
 	type EndSlot,
-	LEVEL_SLOTS,
 	modelUnset,
+	slotForLevel,
 } from "./reasons.ts";
 
 export type HermesDeps = { readonly fetchFn: Fetch; readonly clock: Clock };
@@ -34,13 +33,6 @@ export const skip = (reason: string): HermesResponse => ({
 	outcome: "skip",
 	line: `${LINE_PREFIX}${skippedLine(reason)}`,
 });
-
-// The slot each level names; the middle level names none.
-const END_SLOTS: Readonly<Record<Level, EndSlot | null>> = {
-	0: LEVEL_SLOTS[0],
-	1: null,
-	2: LEVEL_SLOTS[2],
-};
 
 // Jev is asked once for both parts, with the task and its context under the default role.
 async function score(
@@ -87,7 +79,7 @@ function answer(
 	decided: DecidedWithWork,
 ): HermesResponse {
 	const level = decided.tier;
-	const slot = END_SLOTS[level];
+	const slot = slotForLevel(level);
 	const target = slot === null ? undefined : request.models[slot];
 	if (slot !== null && target === undefined) return skip(modelUnset(slot));
 	const effort = effortFor(level, decided.work);

@@ -46,7 +46,7 @@ const FALLBACK_STATUSES: ReadonlySet<number> = new Set([
 const SERVER_ERRORS = { min: 500, max: 599 };
 
 const ORDER: Readonly<Record<ProviderValue, readonly Provider[]>> = {
-	auto: ["typesafe", "openrouter"],
+	auto: PROVIDERS,
 	"openrouter-first": ["openrouter", "typesafe"],
 	typesafe: ["typesafe"],
 	openrouter: ["openrouter"],

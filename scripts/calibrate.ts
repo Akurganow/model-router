@@ -18,15 +18,12 @@ import {
 	type Provider,
 	plan,
 } from "../src/provider.ts";
+import { PROVIDER_NAMES } from "../src/settings.ts";
 import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";
 
 const AGREEMENT_BAR = 0.85;
 const CASE_HEAD_CHARS = 60;
 const PERCENT = 100;
-const NAMES: Readonly<Record<Provider, string>> = {
-	typesafe: "TypeSafe",
-	openrouter: "OpenRouter",
-};
 const USAGE = `usage: node scripts/calibrate.ts <typesafe|openrouter> [model] [--record <file>]  (typesafe sends the cases to ${HOSTS.typesafe}, openrouter to ${HOSTS.openrouter}; enter that host's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
 
 export type Case = {
@@ -83,7 +80,9 @@ function typeKey(
 	stdin: NodeJS.ReadStream,
 	provider: Provider,
 ): Promise<string> {
-	process.stderr.write(`${NAMES[provider]} API key for ${HOSTS[provider]}: `);
+	process.stderr.write(
+		`${PROVIDER_NAMES[provider]} API key for ${HOSTS[provider]}: `,
+	);
 	stdin.setRawMode(true);
 	stdin.resume();
 	return new Promise((resolve) => {

@@ -108,6 +108,7 @@ function roleText(description) {
 // src/line.ts
 var LINE_PREFIX = "model-router ";
 var NO_CHANGE = "no change";
+var ENTRY_SEPARATOR = " | ";
 function routedLine({
   level,
   target,
@@ -1040,6 +1041,7 @@ var PROVIDER_VALUES = [
   "typesafe",
   "openrouter"
 ];
+var PROVIDERS = ["typesafe", "openrouter"];
 var HOSTS = {
   typesafe: "https://api.typesafe.ai",
   openrouter: "https://openrouter.ai/api"
@@ -1061,7 +1063,7 @@ var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
 ]);
 var SERVER_ERRORS = { min: 500, max: 599 };
 var ORDER = {
-  auto: ["typesafe", "openrouter"],
+  auto: PROVIDERS,
   "openrouter-first": ["openrouter", "typesafe"],
   typesafe: ["typesafe"],
   openrouter: ["openrouter"]
@@ -1147,7 +1149,8 @@ var isValue = (setting, value) => TEXTS[setting].values.some((known) => known ==
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
-var unchangedBy = (setting, err) => unchanged(setting, err instanceof Error ? err.message : String(err));
+var errorText = (err) => err instanceof Error ? err.message : String(err);
+var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
 var UNREADABLE = "settings unreadable";
@@ -1781,7 +1784,6 @@ function createStore() {
 }
 
 // src/omp-router.ts
-var ENTRY_SEPARATOR = " | ";
 function isEligible(item) {
   if (!isRecord(item)) return false;
   const { agent, task } = item;

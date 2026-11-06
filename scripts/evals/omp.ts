@@ -1,4 +1,4 @@
-import { LINE_PREFIX } from "../../src/line.ts";
+import { ENTRY_SEPARATOR, LINE_PREFIX, NO_CHANGE } from "../../src/line.ts";
 import type { Level } from "../../src/part.ts";
 import { get, isRecord, jsonLines } from "./stream.ts";
 import type { Adapter, Evidence } from "./types.ts";
@@ -8,8 +8,6 @@ const SPAWN_TOOL = "task";
 const SETTINGS_OVERLAY = "omp-evals.yml";
 // The extension prints "model-router task <n>: L<level> <role> · p=…" to stderr when omp has no UI.
 // A batch is one line of entries joined by " | ". The role is "no change" when the task keeps its model.
-const ENTRY_SEPARATOR = " | ";
-const NO_CHANGE = "no change";
 const DECISION_ENTRY = new RegExp(
 	`^task \\d+: L(?<tier>[012]) (?<target>@\\w+|${NO_CHANGE}) · p=\\d+(?:\\.\\d+)?`,
 );

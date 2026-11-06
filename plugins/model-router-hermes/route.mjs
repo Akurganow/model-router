@@ -932,7 +932,7 @@ var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
 ]);
 var SERVER_ERRORS = { min: 500, max: 599 };
 var ORDER = {
-  auto: ["typesafe", "openrouter"],
+  auto: PROVIDERS,
   "openrouter-first": ["openrouter", "typesafe"],
   typesafe: ["typesafe"],
   openrouter: ["openrouter"]
@@ -1297,6 +1297,7 @@ var LEVEL_SLOTS = {
   0: "small",
   2: "large"
 };
+var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
 var modelUnset = (slot) => `${slot} model unset`;
 
 // src/hermes-request.ts
@@ -1376,11 +1377,6 @@ var skip2 = (reason) => ({
   outcome: "skip",
   line: `${LINE_PREFIX}${skippedLine(reason)}`
 });
-var END_SLOTS = {
-  0: LEVEL_SLOTS[0],
-  1: null,
-  2: LEVEL_SLOTS[2]
-};
 async function score(request, { fetchFn }, signal) {
   const { keys } = request;
   const decision = await route({
@@ -1406,7 +1402,7 @@ async function scored(request, deps, signal) {
 }
 function answer(request, decided) {
   const level = decided.tier;
-  const slot = END_SLOTS[level];
+  const slot = slotForLevel(level);
   const target = slot === null ? void 0 : request.models[slot];
   if (slot !== null && target === void 0) return skip2(modelUnset(slot));
   const effort = effortFor(level, decided.work);

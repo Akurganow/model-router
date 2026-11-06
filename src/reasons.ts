@@ -1,3 +1,5 @@
+import type { Level } from "./part.ts";
+
 // The skip reasons and the effort label that more than one harness prints.
 export const CONFIG_EFFORT = "config effort";
 export const SUBAGENT_MODEL_SET = "subagent model set";
@@ -12,6 +14,8 @@ export const LEVEL_SLOTS: Readonly<Record<0 | 2, EndSlot>> = {
 	0: "small",
 	2: "large",
 };
+export const slotForLevel = (level: Level): EndSlot | null =>
+	level === 1 ? null : LEVEL_SLOTS[level];
 export type SlotSetting = `${EndSlot}_model`;
 export const slotSetting = (slot: EndSlot): SlotSetting => `${slot}_model`;
 export const modelUnset = (slot: EndSlot): string => `${slot} model unset`;

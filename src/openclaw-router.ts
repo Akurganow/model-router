@@ -28,15 +28,14 @@ import { type Level, nonEmpty } from "./part.ts";
 import { type Keys, plan } from "./provider.ts";
 import {
 	type EndSlot,
-	LEVEL_SLOTS,
 	modelUnresolved,
 	modelUnset,
+	slotForLevel,
 } from "./reasons.ts";
 
 export const SPAWN_TOOL = "sessions_spawn";
 export const HOOK = "before_tool_call";
-const MIDDLE_TIER = 1;
-// The setting that holds each slot's model; LEVEL_SLOTS says which level takes which slot.
+// The setting that holds each slot's model; slotForLevel says which level takes which slot.
 const SLOT_MODELS: Readonly<
 	Record<EndSlot, (s: OpenClawSettings) => string | undefined>
 > = {
@@ -98,8 +97,8 @@ async function slotFor(
 	{ config, target }: Route,
 	level: Level,
 ): Promise<Slot> {
-	if (level === MIDDLE_TIER) return { model: undefined };
-	const name = LEVEL_SLOTS[level];
+	const name = slotForLevel(level);
+	if (name === null) return { model: undefined };
 	const model = SLOT_MODELS[name](settings);
 	if (model === undefined) return { skipped: modelUnset(name) };
 	if (!(await slotResolves(runtime, config, target, model)))

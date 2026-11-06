@@ -7,7 +7,7 @@ import { HOOK, SPAWN_TOOL } from "../src/openclaw-router.ts";
 import { PLUGIN_ID } from "../src/openclaw-settings.ts";
 import type { OpenClawApi, RegistrationMode } from "../src/openclaw-types.ts";
 import { nonEmpty } from "../src/part.ts";
-import { TOOL_NAME } from "../src/settings.ts";
+import { errorText, TOOL_NAME } from "../src/settings.ts";
 import { NPM_ROOT } from "./build/outputs.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 
@@ -127,9 +127,7 @@ function problemsIn(
 	try {
 		register.call(plugin, fake.api);
 	} catch (error) {
-		return [
-			`${mode} mode: register threw: ${error instanceof Error ? error.message : error}`,
-		];
+		return [`${mode} mode: register threw: ${errorText(error)}`];
 	}
 	const hook = fake.hooks.find(({ event }) => event === HOOK);
 	const problems = presence(mode, wantHook, hook !== undefined, `${HOOK} hook`);
