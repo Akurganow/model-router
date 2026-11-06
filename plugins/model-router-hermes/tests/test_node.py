@@ -89,7 +89,8 @@ class EnvironmentTest(unittest.TestCase):
                     "NODE_EXTRA_CA_CERTS",
                     "SSL_CERT_FILE",
                 )
-            },
+            }
+            | {"NODE_USE_ENV_PROXY": "1"},
         )
 
     def test_all_listed_names_are_copied_in_both_cases(self):
@@ -97,10 +98,26 @@ class EnvironmentTest(unittest.TestCase):
         names += [
             n for base in ("HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY") for n in (base, base.lower())
         ]
-        self.assertEqual(node.child_env({n: "v" for n in names}), {n: "v" for n in names})
+        self.assertEqual(
+            node.child_env({n: "v" for n in names}),
+            {n: "v" for n in names} | {"NODE_USE_ENV_PROXY": "1"},
+        )
 
     def test_absent_names_are_left_out(self):
         self.assertEqual(node.child_env({}), {})
+
+    def test_a_proxy_variable_turns_on_nodes_proxy_support(self):
+        # Node's fetch reads the proxy variables only with NODE_USE_ENV_PROXY set.
+        for name in ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"):
+            env = node.child_env({name: "http://proxy.invalid:8080"})
+            self.assertEqual(env.get("NODE_USE_ENV_PROXY"), "1", name)
+
+    def test_no_proxy_alone_leaves_proxy_support_off(self):
+        self.assertNotIn("NODE_USE_ENV_PROXY", node.child_env({"NO_PROXY": "n", "PATH": "/b"}))
+
+    def test_a_set_proxy_switch_passes_as_it_is(self):
+        env = node.child_env({"HTTPS_PROXY": "p", "NODE_USE_ENV_PROXY": "0"})
+        self.assertEqual(env["NODE_USE_ENV_PROXY"], "0")
 
 
 class RunTest(unittest.TestCase):

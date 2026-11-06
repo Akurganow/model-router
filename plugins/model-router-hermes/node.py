@@ -41,8 +41,16 @@ class Route:
     line: str
 
 
+# Node's fetch reads the proxy variables only when this switch is set.
+PROXY_SWITCH = "NODE_USE_ENV_PROXY"
+_PROXY_TARGETS = ("HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy")
+
+
 def child_env(environ):
-    return {name: environ[name] for name in ENV_NAMES if name in environ}
+    env = {name: environ[name] for name in (*ENV_NAMES, PROXY_SWITCH) if name in environ}
+    if PROXY_SWITCH not in env and any(name in env for name in _PROXY_TARGETS):
+        env[PROXY_SWITCH] = "1"
+    return env
 
 
 def _is_level(value):
