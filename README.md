@@ -4,6 +4,8 @@
 [![CI](https://github.com/Akurganow/model-router/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Akurganow/model-router/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/Akurganow/model-router)](LICENSE)
 
+![Gamayun, the prophetic bird-maiden of Slavic folklore, spreads her wings on a golden branch](docs/banner.jpg)
+
 Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For the harnesses in the table.
 
 | Harness | The plugin sets | Questions to Jev | Starts a program | Minimum version | Reference |
