@@ -201,10 +201,22 @@ test("Renovate raises the uv of the setup-hermes action with the actions, after 
 	assert.ok(rules.every((rule) => !("minimumReleaseAge" in rule)));
 });
 
+// A GitHub expression, escaped so it is not read as a template placeholder.
+const RUNNER_TEMP = "\u0024{{ runner.temp }}";
+
 test("no job-level env reads the runner context, which GitHub refuses there", () => {
 	// A refused expression fails the whole run before any job starts.
+	// A blank line may sit inside the env block; a step's env is indented deeper and is allowed.
 	const jobEnvWithRunner =
-		/^ {4}env:\n(?: {6}.*\n)*? {6}[^\n]*\$\{\{\s*runner\./m;
+		/^ {4}env:\n(?:(?: {6}.*|[ \t]*)\n)*? {6}[^\n]*\$\{\{\s*runner\./m;
+	assert.match(
+		`    env:\n      SAFE: value\n\n      TEMP: ${RUNNER_TEMP}\n`,
+		jobEnvWithRunner,
+	);
+	assert.doesNotMatch(
+		`    steps:\n      - run: x\n        env:\n          TEMP: ${RUNNER_TEMP}\n`,
+		jobEnvWithRunner,
+	);
 	for (const workflow of readdirSync(join(ROOT, ".github/workflows")))
 		assert.doesNotMatch(
 			read(`.github/workflows/${workflow}`),
