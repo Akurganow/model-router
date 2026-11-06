@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -199,6 +199,29 @@ test("Renovate raises the uv of the setup-hermes action with the actions, after 
 		["actions"],
 	);
 	assert.ok(rules.every((rule) => !("minimumReleaseAge" in rule)));
+});
+
+test("no job-level env reads the runner context, which GitHub refuses there", () => {
+	// A refused expression fails the whole run before any job starts.
+	const jobEnvWithRunner =
+		/^ {4}env:\n(?: {6}.*\n)*? {6}[^\n]*\$\{\{\s*runner\./m;
+	for (const workflow of readdirSync(join(ROOT, ".github/workflows")))
+		assert.doesNotMatch(
+			read(`.github/workflows/${workflow}`),
+			jobEnvWithRunner,
+			workflow,
+		);
+});
+
+test("the hermes job keeps its Hermes home under the runner's temp folder from its first step", () => {
+	const block = jobBlock(read(".github/workflows/ci.yml"), "hermes");
+	const steps = block.slice(block.indexOf("    steps:"));
+	const first = steps.indexOf("      - ");
+	const second = steps.indexOf("      - ", first + 1);
+	assert.match(
+		steps.slice(first, second),
+		/echo "HERMES_HOME=\$RUNNER_TEMP\/hermes-home" >> "\$GITHUB_ENV"/,
+	);
 });
 
 test("every action the package, hermes and publish jobs use is pinned to a sha", () => {

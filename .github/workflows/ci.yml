@@ -208,9 +208,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      HERMES_HOME: ${{ runner.temp }}/hermes-home
       PYTHONDONTWRITEBYTECODE: "1"
     steps:
+      # The runner context is not available in a job's env, so the first step
+      # sets the home for every later step.
+      - name: Keep the Hermes home under the runner's temp folder
+        run: echo "HERMES_HOME=$RUNNER_TEMP/hermes-home" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
