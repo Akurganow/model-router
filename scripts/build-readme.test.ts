@@ -285,3 +285,23 @@ test("the OpenClaw install commands name the npm package and the plugin id", () 
 		"openclaw plugins inspect model-router-openclaw --runtime --json",
 	]);
 });
+
+// The hermes job installs the plugin's subfolder from the checkout through a
+// file:// route, the local source of the subfolder a user installs, and runs
+// the backend command as the README gives it.
+test("the Hermes CI claim matches the hermes job of the workflow", () => {
+	const { ciSystems } = source.hermes.install;
+	assert.deepEqual(ciSystems, ["Ubuntu"]);
+	const block = jobBlock(readFileSync(join(ROOT, CI_PATH), "utf8"), "hermes");
+	for (const system of ciSystems) assert.match(block, runnerLine(system));
+	const runLines = block.split("\n").map((line) => line.trim());
+	const [install = "", backend = ""] = installCommands(
+		source,
+		source.hermes.install,
+	);
+	const subfolder = `plugins/${source.hermes.pluginName}`;
+	assert.ok(install.endsWith(`/${subfolder} --enable`), install);
+	const local = `hermes plugins install "file://$PWD#${subfolder}" --enable < /dev/null`;
+	assert.ok(runLines.includes(local), `${CI_PATH} does not run: ${local}`);
+	assert.ok(runLines.includes(backend), `${CI_PATH} does not run: ${backend}`);
+});

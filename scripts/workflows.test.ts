@@ -112,9 +112,73 @@ test("Renovate raises the OpenClaw pin with no age delay", () => {
 	assert.ok(rules.indexOf(rule) > npmGroup);
 });
 
-test("every action the package job and the publish job use is pinned to a sha", () => {
+const SETUP_HERMES = ".github/actions/setup-hermes/action.yml";
+
+test("the setup-hermes action installs a pinned tag, checks its commit and builds nothing", () => {
+	const action = read(SETUP_HERMES);
+	assert.match(action, /^ {8}HERMES_TAG: v\d+\.\d+\.\d+$/m);
+	assert.match(action, /^ {8}HERMES_COMMIT: [0-9a-f]{40}$/m);
+	assert.match(action, /RUNNER_TEMP/);
+	assert.match(action, /--branch "\$HERMES_TAG"/);
+	assert.match(action, /rev-parse HEAD\)" = "\$HERMES_COMMIT"/);
+	assert.match(action, /uv sync --frozen --no-dev --no-build/);
+	assert.match(action, /GITHUB_PATH/);
+	assert.match(action, /hermes --version/);
+});
+
+test("Renovate raises the Hermes tag and commit together with no age delay", () => {
+	const config = json(".github/renovate.json");
+	const manager = (
+		config.customManagers as {
+			managerFilePatterns: string[];
+			matchStrings: string[];
+			datasourceTemplate: string;
+			depNameTemplate: string;
+		}[]
+	).find(
+		({ depNameTemplate }) => depNameTemplate === "NousResearch/hermes-agent",
+	);
+	assert.ok(manager, "no custom manager for Hermes");
+	// The tags datasource resolves the commit a new tag points at.
+	assert.equal(manager.datasourceTemplate, "github-tags");
+	const [pattern = ""] = manager.managerFilePatterns;
+	assert.match(SETUP_HERMES, new RegExp(pattern.slice(1, -1)));
+	const action = read(SETUP_HERMES);
+	const [matchString = ""] = manager.matchStrings;
+	const found = new RegExp(matchString).exec(action)?.groups;
+	assert.equal(found?.["currentValue"], /HERMES_TAG: (\S+)/.exec(action)?.[1]);
+	assert.equal(
+		found?.["currentDigest"],
+		/HERMES_COMMIT: (\S+)/.exec(action)?.[1],
+	);
+	const rule = (
+		config.packageRules as {
+			matchPackageNames?: string[];
+			minimumReleaseAge?: unknown;
+			groupName?: string;
+			allowedVersions?: string;
+		}[]
+	).find(({ matchPackageNames }) =>
+		matchPackageNames?.includes("NousResearch/hermes-agent"),
+	);
+	assert.ok(rule, "no rule for Hermes");
+	// Hermes also tags calendar builds such as v2026.9.24, which outrank the releases as versions.
+	const calendar = new RegExp((rule.allowedVersions ?? "").slice(2, -1));
+	assert.equal(rule.allowedVersions?.startsWith("!/"), true);
+	assert.match("v2026.9.24", calendar);
+	assert.doesNotMatch("v0.23.0", calendar);
+	assert.equal(rule.minimumReleaseAge, null);
+	assert.equal(rule.groupName, "hermes");
+});
+
+test("every action the package, hermes and publish jobs use is pinned to a sha", () => {
 	const ci = read(".github/workflows/ci.yml");
-	for (const block of [publish, jobBlock(ci, "package")])
+	for (const block of [
+		publish,
+		jobBlock(ci, "package"),
+		jobBlock(ci, "hermes"),
+		read(SETUP_HERMES),
+	])
 		for (const [, ref = ""] of block.matchAll(/uses: (\S+)/g))
 			assert.match(ref, /^(\.\/|[^@]+@[0-9a-f]{40}$)/, ref);
 });

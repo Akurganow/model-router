@@ -15,6 +15,12 @@ every commit as a [conventional commit](#commits).
 - `plugins/model-router` is the Claude Code plugin.
 - `plugins/model-router-omp` is the omp plugin.
 - `plugins/model-router-openclaw` is the OpenClaw plugin.
+- `plugins/model-router-hermes` is the Hermes Agent plugin: a Python shim
+  that starts the generated Node bundle `route.mjs` once per delegated task.
+  Its Python uses the standard library only, so it has no `pyproject.toml`
+  and no requirements file. The builder writes its `plugin.yaml`,
+  `constants.json` and `route.mjs`; the Python reads every limit, table and
+  text from `constants.json`.
 - `packages/model-router` is the npm package that OpenClaw and omp install.
   The builder writes it, and CI packs the committed tree. Never edit it by
   hand.
@@ -74,7 +80,8 @@ npm run check
 - `npm ci` installs the development tools.
 - `node scripts/build.ts` writes the manifests, the catalogues and the README
   install region from `metadata/source.json`. It also builds the three
-  bundles from `src/` and writes the npm tree. The Claude Code bundle is
+  bundles from `src/` and writes the npm tree and the Hermes plugin's
+  generated files. The Claude Code bundle is
   `plugins/model-router/hooks/register.js`, and its shape is checked. The omp
   bundle is `plugins/model-router-omp/extension/index.js`, the only file omp
   loads. The OpenClaw bundle is `plugins/model-router-openclaw/index.js`, next
@@ -100,6 +107,13 @@ npm run check
 
 The type-check of the plugin tests needs the steps under
 [Type declarations](#type-declarations).
+
+`npm run check` does not run the Hermes plugin's Python tests. Run them with
+any Python from 3.11 to 3.14:
+
+```sh
+python3 -m unittest discover -s plugins/model-router-hermes/tests
+```
 
 ### Try the OpenClaw plugin from a checkout
 
@@ -202,6 +216,7 @@ Renovate (`.github/renovate.json`) keeps every pinned version current:
 - the development tools
 - Claude Code and omp for CI and the evals
 - OpenClaw for CI
+- Hermes Agent for CI
 - Bun
 - the actions
 
@@ -221,6 +236,14 @@ action that installs OpenClaw for CI only:
 The action installs from a copy under the runner's temp folder, because the age
 rule in `.npmrc` would refuse a new version. The lockfile still locks every
 package by digest, and no install script runs.
+
+Hermes Agent is the third exception. The `setup-hermes` action installs it for
+CI only. CI installs the latest Hermes release at its tag and checks the
+commit the tag points at, so a Renovate rule raises the tag and the commit
+together at any time with no age delay. The action clones Hermes under the
+runner's temp folder, and `uv sync --frozen --no-build` installs only the
+wheels that Hermes's own `uv.lock` locks, so no package runs code at install
+time. The `uv` it uses and the action that installs `uv` keep the 14-day rule.
 
 CI fails on any of these:
 
@@ -252,6 +275,9 @@ CI runs these checks:
 - the `package` job: it packs `packages/model-router` and compares the packed
   files with its `files` list, runs `npm publish --dry-run`, and installs the
   tarball into the pinned OpenClaw and omp
+- the `hermes` job: it runs the Hermes plugin's tests on Python 3.11 and 3.14,
+  validates the plugin with the pinned Hermes, installs it from the checkout,
+  and runs the tests again under Hermes's interpreter
 - the owner-setup scan, `node scripts/scan-owner-setup.ts --base <commit>`,
   where CI passes the commit the change starts from. Without `--base` it reads
   what your branch adds over its merge base with `origin/main`, and with no

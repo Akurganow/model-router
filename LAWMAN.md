@@ -30,6 +30,7 @@ contract_version: 3
 - CI installs the Claude Code and omp plugins from the checkout and validates the plugin and the Claude Code catalogue: .github/workflows/ci.yml
 - The `package` job packs the npm tree, checks the packed files against its `files` list, runs a publish dry run, and installs the tarball into OpenClaw and omp: .github/workflows/ci.yml
 - The `publish` job publishes `@akurganow/model-router` after a release, with npm trusted publishing and only when the registry lacks the version: .github/workflows/release.yml
+- The `hermes` job runs the Hermes plugin's tests on Python 3.11 and 3.14 and under the pinned Hermes, validates the plugin and installs it from the checkout: .github/workflows/ci.yml
 - CI scans each change's added lines and every generated file for owner-setup facts: .github/workflows/ci.yml
 
 ## Regression proof
