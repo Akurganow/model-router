@@ -1,0 +1,14 @@
+{
+	"description": "A budget that is not positive is a protocol fault: the failed skip at once, with no request.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "typesafe",
+		"keys": { "typesafe": "typesafe-key" },
+		"budgetMs": 0,
+		"models": { "small": "openai/small", "large": "openai/large" },
+		"configEffort": false
+	},
+	"jev": [],
+	"response": { "outcome": "skip", "line": "model-router skipped, failed" }
+}

@@ -33,7 +33,7 @@ import {
 
 export const TOOL_NAME = "model_router_config";
 const COMMAND_PREFIX = "model-router-";
-const commandName = (setting: ValueSetting): string =>
+export const commandName = (setting: ValueSetting): string =>
 	`${COMMAND_PREFIX}${setting}`;
 export const COMMAND_NAMES: readonly string[] = VALUE_SETTINGS.map(commandName);
 const ADMIN_SCOPE = "operator.admin";

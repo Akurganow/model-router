@@ -24,6 +24,9 @@ import {
 import { KEY_UNSET } from "./settings.ts";
 
 export const ROUTING_LIMIT_MS = 8000;
+// The skip texts for a run past the routing limit and for a failure of no known kind.
+export const TIMEOUT = "timeout";
+export const FAILED = "failed";
 // Adapters abort their signal with this reason when the limit runs out, so a timeout differs from a cancel.
 export const LIMIT_REACHED = Symbol("routing limit reached");
 
@@ -65,12 +68,12 @@ const isCount = (v: unknown): v is number =>
 // The category comes from the error class or status, never from its message: messages can echo the key or the body.
 function skipCategory(err: unknown, signal: AbortSignal): string {
 	if (err instanceof APIUserAbortError)
-		return signal.reason === LIMIT_REACHED ? "timeout" : "cancelled";
+		return signal.reason === LIMIT_REACHED ? TIMEOUT : "cancelled";
 	if (err instanceof APIError) return `HTTP ${err.status}`;
-	if (err instanceof APITimeoutError) return "timeout";
+	if (err instanceof APITimeoutError) return TIMEOUT;
 	if (err instanceof APIConnectionError) return "network error";
 	if (err instanceof TypeSafeError) return "rejected request";
-	return "failed";
+	return FAILED;
 }
 
 /**
@@ -131,8 +134,7 @@ function ask(input: RouteInput, attempt: Attempt): Promise<unknown> {
 // A one-attempt skip keeps the bare reason; two attempts name each provider in order.
 function skip(failed: readonly Failure[]): Skipped {
 	const [first, ...rest] = failed;
-	if (!first || rest.length === 0)
-		return { skipped: first?.reason ?? "failed" };
+	if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
 	return {
 		skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", "),
 	};

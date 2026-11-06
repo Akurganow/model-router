@@ -1,0 +1,14 @@
+{
+	"description": "No key for the provider is skipped before any request.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "typesafe",
+		"keys": {},
+		"budgetMs": 8000,
+		"models": { "small": "openai/small", "large": "openai/large" },
+		"configEffort": false
+	},
+	"jev": [],
+	"response": { "outcome": "skip", "line": "model-router skipped, key unset" }
+}

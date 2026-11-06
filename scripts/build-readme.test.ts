@@ -35,12 +35,13 @@ test("the region holds one section for each harness, in order", () => {
 		"### Claude Code",
 		"### Oh My Pi",
 		"### OpenClaw",
+		"### Hermes Agent",
 	]);
 });
 
 test("each section ends with a link to its setup heading", () => {
 	const text = renderReadme(readme("\nold\n"), source);
-	for (const heading of ["Claude Code", "Oh My Pi", "OpenClaw"])
+	for (const heading of ["Claude Code", "Oh My Pi", "OpenClaw", "Hermes Agent"])
 		assert.ok(
 			text.includes(
 				`[Set up ${heading}](#${anchorOf(`Set up ${heading}`)}) has the next steps.`,
@@ -76,6 +77,8 @@ test("the region names the install commands of every harness", () => {
 		"openclaw plugins install npm:@akurganow/model-router --force --accept-capabilities",
 		"openclaw plugins enable model-router-openclaw",
 		"openclaw plugins inspect model-router-openclaw --runtime --json",
+		"hermes plugins install Akurganow/model-router/plugins/model-router-hermes --enable",
+		"hermes config set delegation.backend model-router",
 	])
 		assert.match(text, new RegExp(`^${command}$`, "m"));
 });
@@ -89,6 +92,10 @@ test("each section cites the harness documentation", () => {
 	assert.match(
 		text,
 		/^Source: OpenClaw documentation, \[Manage plugins\]\(https:\/\/docs\.openclaw\.ai\/plugins\/manage-plugins\)\.$/m,
+	);
+	assert.match(
+		text,
+		/^Source: Hermes Agent documentation, \[Plugins\]\(https:\/\/hermes-agent\.nousresearch\.com\/docs\/user-guide\/features\/plugins\)\.$/m,
 	);
 	assert.match(
 		text,
@@ -113,20 +120,20 @@ const withCiLine = (ciLine: string | undefined): Source => {
 
 test("a harness that CI installs says so, and one that CI skips says so", () => {
 	const installed = renderReadme(readme("\nold\n"), source);
-	assert.equal(installed.match(/^CI installs it on Ubuntu\.$/gm)?.length, 2);
+	assert.equal(installed.match(/^CI installs it on Ubuntu\.$/gm)?.length, 3);
 	assert.doesNotMatch(installed, /CI does not install it/);
 	const skipped = renderReadme(readme("\nold\n"), withoutCi());
 	assert.equal(skipped.match(/^CI does not install it\.$/gm)?.length, 1);
-	assert.equal(skipped.match(/^CI installs it on Ubuntu\.$/gm)?.length, 1);
+	assert.equal(skipped.match(/^CI installs it on Ubuntu\.$/gm)?.length, 2);
 });
 
 test("a harness with its own CI sentence shows it whole, and the others keep the default", () => {
 	const sentence = "CI installs the packed package on Ubuntu.";
 	const custom = renderReadme(readme("\nold\n"), withCiLine(sentence));
 	assert.equal(custom.match(new RegExp(`^${sentence}$`, "m"))?.length, 1);
-	assert.equal(custom.match(/^CI installs it on Ubuntu\.$/gm)?.length, 2);
+	assert.equal(custom.match(/^CI installs it on Ubuntu\.$/gm)?.length, 3);
 	const plain = renderReadme(readme("\nold\n"), withCiLine(undefined));
-	assert.equal(plain.match(/^CI installs it on Ubuntu\.$/gm)?.length, 3);
+	assert.equal(plain.match(/^CI installs it on Ubuntu\.$/gm)?.length, 4);
 });
 
 test("the OpenClaw CI sentence names no tool-internal source scheme", () => {
@@ -277,4 +284,24 @@ test("the OpenClaw install commands name the npm package and the plugin id", () 
 		"openclaw plugins enable model-router-openclaw",
 		"openclaw plugins inspect model-router-openclaw --runtime --json",
 	]);
+});
+
+// The hermes job installs the plugin's subfolder from the checkout through a
+// file:// route, the local source of the subfolder a user installs, and runs
+// the backend command as the README gives it.
+test("the Hermes CI claim matches the hermes job of the workflow", () => {
+	const { ciSystems } = source.hermes.install;
+	assert.deepEqual(ciSystems, ["Ubuntu"]);
+	const block = jobBlock(readFileSync(join(ROOT, CI_PATH), "utf8"), "hermes");
+	for (const system of ciSystems) assert.match(block, runnerLine(system));
+	const runLines = block.split("\n").map((line) => line.trim());
+	const [install = "", backend = ""] = installCommands(
+		source,
+		source.hermes.install,
+	);
+	const subfolder = `plugins/${source.hermes.pluginName}`;
+	assert.ok(install.endsWith(`/${subfolder} --enable`), install);
+	const local = `hermes plugins install "file://$PWD#${subfolder}" --enable < /dev/null`;
+	assert.ok(runLines.includes(local), `${CI_PATH} does not run: ${local}`);
+	assert.ok(runLines.includes(backend), `${CI_PATH} does not run: ${backend}`);
 });

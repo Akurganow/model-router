@@ -22,6 +22,8 @@ const GENERATED = [
 	"plugins/model-router-omp/package.json",
 	".omp-plugin/marketplace.json",
 	"plugins/model-router-openclaw/openclaw.plugin.json",
+	"plugins/model-router-hermes/plugin.yaml",
+	"plugins/model-router-hermes/constants.json",
 	"packages/model-router/package.json",
 	"packages/model-router/README.md",
 ];

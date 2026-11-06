@@ -4,12 +4,14 @@ import { fileURLToPath } from "node:url";
 import { type BuildOptions, build } from "esbuild";
 import { renderClaude } from "./build/claude.ts";
 import { copyNpmFiles } from "./build/copies.ts";
+import { renderHermes } from "./build/hermes.ts";
 import { formatRendered, type Rendered } from "./build/json.ts";
 import { renderNpm } from "./build/npm.ts";
 import { renderOmp } from "./build/omp.ts";
 import { renderOpenclaw } from "./build/openclaw.ts";
 import {
 	CLAUDE_OUTPUTS,
+	HERMES_OUTPUTS,
 	OMP_OUTPUTS,
 	OPENCLAW_OUTPUTS,
 	README_OUTPUT,
@@ -22,13 +24,14 @@ const TIMERS = "src/timers.ts";
 export const MAX_BUNDLE_BYTES = 1048576;
 const TIMER_NAMES = ["setTimeout", "clearTimeout"];
 
-type Harness = "claude" | "omp" | "openclaw";
+type Harness = "claude" | "omp" | "openclaw" | "hermes";
 
-// OpenClaw's bundle keeps no module external except the node: built-ins, which esbuild leaves alone on the node platform.
+// The OpenClaw and Hermes bundles keep no module external except the node: built-ins, which esbuild leaves alone on the node platform.
 const HOST_OPTIONS: Readonly<Record<Harness, BuildOptions>> = {
 	claude: { platform: "neutral", inject: [TIMERS] },
 	omp: { platform: "node", external: ["@oh-my-pi/*"] },
 	openclaw: { platform: "node" },
+	hermes: { platform: "node" },
 };
 
 /**
@@ -109,12 +112,18 @@ export const BUNDLES: readonly {
 		entry: "src/openclaw.ts",
 		out: OPENCLAW_OUTPUTS.bundle,
 	},
+	{
+		harness: "hermes",
+		entry: "src/hermes.ts",
+		out: HERMES_OUTPUTS.bundle,
+	},
 ];
 
 export const renderMetadata = (source: Source): Rendered[] => [
 	...renderClaude(source),
 	...renderOmp(source),
 	...renderOpenclaw(source),
+	...renderHermes(source),
 	...renderNpm(source),
 ];
 

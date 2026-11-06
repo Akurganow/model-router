@@ -34,6 +34,47 @@
 			"minimumReleaseAge": null,
 			"schedule": ["at any time"]
 		},
-		{ "matchManagers": ["github-actions"], "groupName": "actions" }
+		{
+			"description": "CI installs the latest Hermes Agent release, pinned by its tag and commit. The pin skips the 14-day age rule. Hermes also tags calendar builds such as v2026.9.24, which outrank the releases as versions, so they are not allowed.",
+			"matchManagers": ["custom.regex"],
+			"matchPackageNames": ["NousResearch/hermes-agent"],
+			"groupName": "hermes",
+			"allowedVersions": "!/^v20\\d\\d\\./",
+			"minimumReleaseAge": null,
+			"schedule": ["at any time"]
+		},
+		{ "matchManagers": ["github-actions"], "groupName": "actions" },
+		{
+			"description": "The uv that setup-hermes installs moves with the action that installs it.",
+			"matchManagers": ["custom.regex"],
+			"matchPackageNames": ["uv"],
+			"groupName": "actions"
+		}
+	],
+	"customManagers": [
+		{
+			"customType": "regex",
+			"description": "The Hermes Agent tag the setup-hermes action installs and the commit it points at; the tags datasource resolves the commit of a new tag.",
+			"managerFilePatterns": [
+				"/^\\.github/actions/setup-hermes/action\\.yml$/"
+			],
+			"matchStrings": [
+				"HERMES_TAG: (?<currentValue>v\\S+)\\s+HERMES_COMMIT: (?<currentDigest>[0-9a-f]{40})"
+			],
+			"datasourceTemplate": "github-tags",
+			"depNameTemplate": "NousResearch/hermes-agent"
+		},
+		{
+			"customType": "regex",
+			"description": "The uv version the setup-hermes action installs. It keeps the 14-day rule.",
+			"managerFilePatterns": [
+				"/^\\.github/actions/setup-hermes/action\\.yml$/"
+			],
+			"matchStrings": [
+				"astral-sh/setup-uv@[0-9a-f]{40}[^\\n]*\\n\\s+with:\\n\\s+version: \"(?<currentValue>[^\"]+)\""
+			],
+			"datasourceTemplate": "pypi",
+			"depNameTemplate": "uv"
+		}
 	]
 }

@@ -4,6 +4,7 @@ import { isSet, type SpawnRequest } from "./openclaw-params.ts";
 import type { OpenClawSettings } from "./openclaw-settings.ts";
 import type { OpenClawConfig } from "./openclaw-types.ts";
 import { isRecord, nonEmpty } from "./part.ts";
+import { CONFIG_EFFORT, NO_END_MODEL, SUBAGENT_MODEL_SET } from "./reasons.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
@@ -17,7 +18,7 @@ export type EffortRule =
 	| { readonly kind: "set" }
 	| {
 			readonly kind: "keep";
-			readonly label: "caller effort" | "config effort";
+			readonly label: "caller effort" | typeof CONFIG_EFFORT;
 	  };
 
 // A spawn passes silently, is skipped with a reason, or is routed for its target agent with this role and effort rule.
@@ -140,7 +141,7 @@ function effortRule(input: GateInput): EffortRule {
 	);
 	const kept =
 		isSet(global) || (settings.scope === "core" && isSet(requesterThinking));
-	return kept ? { kind: "keep", label: "config effort" } : { kind: "set" };
+	return kept ? { kind: "keep", label: CONFIG_EFFORT } : { kind: "set" };
 }
 
 /**
@@ -174,13 +175,13 @@ export function gateSpawn(input: GateInput): Gate {
 	if (!input.hasKey) return skip(KEY_UNSET);
 	if (!isRequesterSpawn && settings.scope === "core")
 		return skip(outsideCoreScope(named));
-	if (subagentModelSet(input, target)) return skip("subagent model set");
+	if (subagentModelSet(input, target)) return skip(SUBAGENT_MODEL_SET);
 	if (!isRequesterSpawn) {
 		const reason = otherAgentSkip(named, input);
 		if (reason !== undefined) return skip(reason);
 	}
 	if (settings.smallModel === undefined && settings.largeModel === undefined)
-		return skip("no small or large model");
+		return skip(NO_END_MODEL);
 	// Without the config the user's own subagent model and effort cannot be checked.
 	if (config === undefined) return skip(UNREADABLE);
 	return {

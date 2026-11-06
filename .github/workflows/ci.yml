@@ -199,6 +199,51 @@ jobs:
           version=$(node -p 'require("./packages/model-router/package.json").version')
           omp plugin list | grep -F "@akurganow/model-router@$version"
 
+  # The Hermes plugin is Python on the standard library only. Its tests run on
+  # the oldest and the newest Python that Hermes supports, then under the
+  # interpreter of the pinned Hermes release, which also validates the plugin
+  # and installs it from the checkout. Hermes keeps its home under the
+  # runner's temp folder, and no key is set.
+  hermes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      # The runner context is not available in a job's env, so the first step
+      # sets the home for every later step.
+      - name: Keep the Hermes home under the runner's temp folder
+        run: echo "HERMES_HOME=$RUNNER_TEMP/hermes-home" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-hermes
+
+      - name: Run the plugin's tests on Python 3.11 and 3.14
+        run: |
+          for version in 3.11 3.14; do
+            uv run --no-project --python "$version" python -m unittest discover -s plugins/model-router-hermes/tests
+          done
+
+      - name: Validate the plugin
+        run: hermes plugins validate plugins/model-router-hermes
+
+      # The install clones the checkout's own commit through a file:// route,
+      # as a user's install clones the repository's subfolder.
+      - name: Install the plugin from the checkout
+        run: |
+          hermes plugins install "file://$PWD#plugins/model-router-hermes" --enable < /dev/null
+          hermes plugins list --plain --no-bundled | grep -F model-router-hermes
+          hermes config set delegation.backend model-router
+          hermes config get delegation.backend | grep -Fx model-router
+
+      # Under Hermes's interpreter the test that compares the default route
+      # with Hermes's bundled default backend runs too.
+      - name: Run the plugin's tests under Hermes's interpreter
+        run: '"$HERMES_PYTHON" -m unittest discover -s plugins/model-router-hermes/tests'
+
   # Public logs and published files must not carry facts about a contributor's
   # setup. The base is the commit the change started from, so the scan reads
   # only the lines the change adds.

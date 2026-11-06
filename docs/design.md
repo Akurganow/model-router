@@ -11,7 +11,8 @@ The clients read the same facts from different files.
 Claude Code reads `.claude-plugin/plugin.json` and the catalogue `.claude-plugin/marketplace.json` ([Claude Code](clients.md#manifest), [catalogue](clients.md#catalogue)).
 omp reads the `omp` block of `package.json` and the catalogue `.omp-plugin/marketplace.json`, with `.claude-plugin/marketplace.json` as a fallback ([omp manifest](clients.md#omp-manifest-and-settings), [omp catalogue](clients.md#omp-catalogue)).
 OpenClaw reads `openclaw.plugin.json` at the plugin root and the `openclaw` block of `package.json` ([OpenClaw package files](clients.md#openclaw-package-files)).
-So the plugins have five generated manifests and catalogues, and each repeats the name, the licence, the links and a description.
+Hermes Agent reads `plugin.yaml` at the plugin root ([Hermes package files](clients.md#hermes-package-files)).
+So the plugins have six generated manifests and catalogues, and each repeats the name, the licence, the links and a description.
 Anthropic's directory reads the privacy policy URL from `plugin.json` only, and omp's catalogue entry carries its own copy ([Claude Code](clients.md#manifest)).
 The version sits in three of the four files, because omp upgrades only entries that declare one ([omp install and update](clients.md#omp-install-and-update)).
 
@@ -27,8 +28,10 @@ Each character limit in the source states the number `src/brief.ts` enforces.
 `scripts/build.ts` reads the source, and the renderers in `scripts/build/` write each copy.
 It writes the Claude manifest, both catalogues and the omp `package.json`.
 It writes the OpenClaw manifest `plugins/model-router-openclaw/openclaw.plugin.json`.
+It writes the Hermes manifest `plugins/model-router-hermes/plugin.yaml`, which holds JSON text, and `constants.json` beside it.
+The Python shim reads every limit, table and text from `constants.json` and copies none.
 It fills the install region of the root README between `<!-- install:start -->` and `<!-- install:end -->`, with one section for each client.
-It builds the three bundles from `src/`: the Claude Code hooks module, the omp extension and the OpenClaw entry `plugins/model-router-openclaw/index.js`.
+It builds the four bundles from `src/`: the Claude Code hooks module, the omp extension, the OpenClaw entry `plugins/model-router-openclaw/index.js` and the Node program `plugins/model-router-hermes/route.mjs` that the Hermes shim starts.
 Nobody edits a generated file by hand, and [CI](#ci-checks-the-copies-and-the-installation) fails when one differs from the builder's output.
 
 The two clients need their own files, so one file could not serve both.
@@ -64,7 +67,7 @@ So the source holds the version once.
 The builder carries it to every manifest.
 Both commands run as the two `pre_bump_hooks` in `cog.toml`, before `cog bump --auto` makes the version commit.
 The version commit therefore holds the new version in every manifest and a bundle built from the released `src/`.
-One release covers both plugins, so one version fits both.
+One release covers every plugin, so one version fits all.
 
 `node scripts/set-version.ts --check` stays and checks the source and every manifest.
 It catches a manifest changed by hand and a source bumped without a build.
@@ -74,7 +77,7 @@ It catches a manifest changed by hand and a source bumped without a build.
 
 CI runs these checks without a model.
 The `check` job runs on Ubuntu and macOS.
-The `install` job and the `package` job run on Ubuntu.
+The `install` job, the `package` job and the `hermes` job run on Ubuntu.
 The `scan` job runs on every change.
 
 **Regeneration.**
@@ -115,6 +118,15 @@ No Gateway or model provider runs in CI.
 `openclaw plugins inspect --runtime` loads the plugin in `tool-discovery` mode, where it registers only its config tool ([OpenClaw install and update](clients.md#openclaw-install-and-update)).
 So the job shows that the bundle registers its hook, tool and commands in the modes that hold them, and nothing in the others.
 It does not show that a running Gateway accepts them.
+
+**Hermes.**
+The `hermes` job runs on Ubuntu.
+It installs the latest Hermes release at its tag and checks the commit the tag points at ([CONTRIBUTING.md](../CONTRIBUTING.md#dependencies)).
+It runs the plugin's Python tests on Python 3.11 and 3.14, validates the plugin, installs it from the checkout and sets the backend ([Hermes CI](clients.md#hermes-ci)).
+It then runs the tests again under Hermes's own interpreter, where one test compares the plugin's default route with Hermes's bundled default backend.
+The plugin uses Hermes modules that Hermes does not publish for plugins, and the validate step warns about them ([Hermes install scan and validate](clients.md#hermes-install-scan-and-validate)).
+So the job runs against the latest release, to catch a release that moves one.
+No Hermes session or model provider runs in CI, and no key is set.
 
 **Publication.**
 The release workflow's `publish` job runs after a release, with npm trusted publishing and no stored token.

@@ -22,6 +22,15 @@ export const OPENCLAW_OUTPUTS = {
 	bundle: "plugins/model-router-openclaw/index.js",
 } as const;
 
+export const HERMES_DIR = "plugins/model-router-hermes";
+
+// plugin.yaml holds JSON text, which is valid YAML, so Hermes's YAML reader and the version check both read it.
+export const HERMES_OUTPUTS = {
+	manifest: `${HERMES_DIR}/plugin.yaml`,
+	constants: `${HERMES_DIR}/constants.json`,
+	bundle: `${HERMES_DIR}/route.mjs`,
+} as const;
+
 export const README_OUTPUT = "README.md";
 
 // The npm tree serves OpenClaw and omp from one folder. Its package.json and

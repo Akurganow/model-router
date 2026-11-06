@@ -1,0 +1,14 @@
+{
+	"description": "A request that outlasts the budget is skipped as a timeout.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "typesafe",
+		"keys": { "typesafe": "typesafe-key" },
+		"budgetMs": 8000,
+		"models": { "small": "openai/small", "large": "openai/large" },
+		"configEffort": false
+	},
+	"jev": [{ "host": "api.typesafe.ai", "reply": "hang" }],
+	"response": { "outcome": "skip", "line": "model-router skipped, timeout" }
+}

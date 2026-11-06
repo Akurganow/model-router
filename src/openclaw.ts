@@ -1,4 +1,6 @@
+import { realClock } from "./deadline.ts";
 import { streamedFetch } from "./fetch.ts";
+import { LINE_PREFIX } from "./line.ts";
 import {
 	registerConfigCommands,
 	registerConfigTool,
@@ -12,7 +14,6 @@ import {
 import {
 	createBeforeToolCall,
 	HOOK,
-	LINE_PREFIX,
 	type RouterDeps,
 	SPAWN_TOOL,
 } from "./openclaw-router.ts";
@@ -25,13 +26,6 @@ import type {
 import { isRecord } from "./part.ts";
 
 const HOOK_TIMEOUT_MAX_MS = 600000;
-
-const realClock: RouterDeps["clock"] = {
-	after: (ms, fn) => {
-		const timer = setTimeout(fn, ms);
-		return { cancel: () => clearTimeout(timer) };
-	},
-};
 
 /**
  * Tells whether a value is an integer timeout above 0 and at most

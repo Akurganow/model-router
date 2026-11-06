@@ -1,0 +1,33 @@
+name: Set up Hermes Agent
+description: >
+  Installs the Hermes Agent release this file pins, checked out at its tag and
+  checked against its commit, with the Python dependencies its uv.lock locks,
+  and puts `hermes` on the PATH. The pin tracks the latest Hermes release: a
+  Renovate rule raises the tag and the commit together with no age delay
+  (CONTRIBUTING.md, Dependencies).
+runs:
+  using: composite
+  steps:
+    # Pinned to a commit sha; the comment records the release.
+    - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      with:
+        version: "0.13.5"
+
+    # The checkout goes under the runner's temp folder, outside the
+    # repository. A tag can be moved, so the commit is checked after the clone.
+    # uv refuses a lockfile that no longer matches pyproject.toml, and
+    # --no-build installs wheels only, so no package runs code at install time.
+    - name: Install Hermes Agent
+      shell: bash
+      env:
+        HERMES_TAG: v0.23.0
+        HERMES_COMMIT: 2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19
+      run: |
+        dir="$RUNNER_TEMP/setup-hermes"
+        git clone --quiet --depth 1 --branch "$HERMES_TAG" https://github.com/NousResearch/hermes-agent.git "$dir"
+        test "$(git -C "$dir" rev-parse HEAD)" = "$HERMES_COMMIT"
+        cd "$dir"
+        uv sync --frozen --no-dev --no-build --python 3.14
+        echo "$dir/.venv/bin" >> "$GITHUB_PATH"
+        echo "HERMES_PYTHON=$dir/.venv/bin/python" >> "$GITHUB_ENV"
+        .venv/bin/hermes --version | grep -F "Hermes Agent $HERMES_TAG "

@@ -1,0 +1,24 @@
+{
+	"description": "A task or context that is not text counts as empty text.",
+	"request": {
+		"task": 42,
+		"context": null,
+		"provider": "typesafe",
+		"keys": { "typesafe": "typesafe-key" },
+		"budgetMs": 8000,
+		"models": { "small": "openai/small", "large": "openai/large" },
+		"configEffort": false
+	},
+	"jev": [
+		{
+			"host": "api.typesafe.ai",
+			"reply": { "levels": { "tier": 1, "work": 2 } }
+		}
+	],
+	"response": {
+		"outcome": "route",
+		"slot": null,
+		"effort": "high",
+		"line": "model-router L1 no change · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+	}
+}

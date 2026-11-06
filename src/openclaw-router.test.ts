@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { DEFAULT_ROLE, prepareBrief, roleText } from "./brief.ts";
-import { skippedLine } from "./line.ts";
+import { LINE_PREFIX, skippedLine } from "./line.ts";
 import type { Levels } from "./openclaw-fakes.ts";
 import {
 	CONTEXT,
@@ -12,7 +12,7 @@ import {
 	setup,
 	TASK,
 } from "./openclaw-handler-fakes.ts";
-import { LINE_PREFIX, SPAWN_TOOL } from "./openclaw-router.ts";
+import { SPAWN_TOOL } from "./openclaw-router.ts";
 import { PLUGIN_ID } from "./openclaw-settings.ts";
 import type { BeforeToolCallResult } from "./openclaw-types.ts";
 import {

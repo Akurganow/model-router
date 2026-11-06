@@ -1,0 +1,24 @@
+{
+	"description": "An unknown provider value counts as the default.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "bogus",
+		"keys": { "typesafe": "typesafe-key" },
+		"budgetMs": 8000,
+		"models": { "small": "openai/small", "large": "openai/large" },
+		"configEffort": false
+	},
+	"jev": [
+		{
+			"host": "api.typesafe.ai",
+			"reply": { "levels": { "tier": 0, "work": 1 } }
+		}
+	],
+	"response": {
+		"outcome": "route",
+		"slot": "small",
+		"effort": "high",
+		"line": "model-router L0 openai/small · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+	}
+}

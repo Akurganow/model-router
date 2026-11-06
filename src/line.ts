@@ -10,6 +10,7 @@ export type RoutedLine = {
 	readonly suffix: string;
 };
 
+export const LINE_PREFIX = "model-router ";
 const NO_CHANGE = "no change";
 
 /**
@@ -27,4 +28,6 @@ export function routedLine({
 	return `L${level} ${target ?? NO_CHANGE}${effortSegment} · p=${probabilities}${suffix}`;
 }
 
-export const skippedLine = (reason: string): string => `skipped, ${reason}`;
+export const SKIPPED_PREFIX = "skipped, ";
+export const skippedLine = (reason: string): string =>
+	`${SKIPPED_PREFIX}${reason}`;

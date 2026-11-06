@@ -7,7 +7,7 @@ A running fact names the client version and the command, or cites a GitHub Actio
 Install commands and install-time notes are in the [README](../README.md#install).
 The reasons built on these facts are in [About this repository's design](design.md).
 
-Three clients are covered: Claude Code, Oh My Pi (omp) and OpenClaw.
+Four clients are covered: Claude Code, Oh My Pi (omp), OpenClaw and Hermes Agent.
 
 ## Claude Code
 
@@ -722,3 +722,276 @@ No run covers a sandboxed child with a CLI-backend model, or an `outputSchema` s
 The sandbox rule for CLI backends and the collector child's need for tools rest on the documentation cited above.
 The source check of the workspace `.env` list left out variables that an installed provider plugin adds.
 OpenClaw may drop `TYPESAFE_API_KEY` when such a plugin declares it.
+
+## Hermes Agent
+
+Documentation is the Markdown under `website/docs/` in `NousResearch/hermes-agent`, published at hermes-agent.nousresearch.com/docs.
+Documentation pages below were read on 2026-11-06, as Markdown at tag `v0.23.0`.
+Every source link is a permalink at commit `2bd378ed1b8d`, the commit of tag `v0.23.0`, the release CI installs.
+Hermes v0.22.7 is commit `b200f5bc60e3`. Between v0.22.7 and v0.23.0, the delegation, plugin, registrar, manifest, host, constants, runtime-provider, `models_dev` and `secret_scope` files are unchanged. The two exceptions are an additive `delegation.prefix_stagger_seconds` setting in `tools/delegate_tool_config.py` and one entry added to the public-import list. (running: `git diff v0.22.7 v0.23.0` over those files, 2026-11-06)
+Every running fact names its Hermes version and the date it ran.
+The probe facts ran on Hermes v0.22.7 on a fresh Hermes home with a scrubbed environment, through a probe plugin named `probe-router`.
+It was a `DelegationProvider` that records what `route_task` sees and returns a route.
+Its live turns used `hermes -z "<call delegate_task once …>" -m google/gemini-2.5-flash --provider openrouter -t delegation --ignore-rules --usage-file <file>`.
+The other probe calls ran in a Python process of that Hermes with its network functions blocked, or inside such a turn.
+The facts marked Hermes v0.23.0 ran on a fresh Hermes home too, with the `hermes` command of the release CI installs.
+This repository's plugin requires Hermes 0.22.6 or later, set by `requires_hermes` in `plugin.yaml`, and CI pins v0.23.0 in `.github/actions/setup-hermes/action.yml`.
+
+### Hermes install and update
+
+- `hermes plugins install` takes a catalog name, `user/repo`, or a path inside a repository: `owner/repo/path/to/plugin` downloads only that folder's files.
+  Third-party plugins are off until their name is in `plugins.enabled`, and `plugins.disabled` always wins.
+  After an install, Hermes asks `Enable 'name' now? [y/N]`, which defaults to no. `--enable` and `--no-enable` skip the question.
+  (documentation: [Plugins, Plugins are opt-in](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins#plugins-are-opt-in-with-a-few-exceptions),
+  [Managing plugins](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins#managing-plugins))
+- `--ref <40-character commit>` pins an install to one immutable commit. Tags, branches and short hashes are not accepted.
+  `hermes plugins update` refuses to move a pinned plugin. `hermes plugins install <source> --force --ref <new-commit>` moves the pin.
+  (documentation: [Plugins, Plugins are opt-in](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins#plugins-are-opt-in-with-a-few-exceptions))
+- `hermes plugins update <name>` pulls the latest code of a Git-installed plugin and scans it first.
+  (documentation: [Managing plugins](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins#managing-plugins),
+  [Install-time security scanning](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins#install-time-security-scanning))
+- Hermes checks `requires_hermes` before it imports a plugin and blocks the load with `requires hermes <spec>, running <version>`.
+  (source: [`plugins_manifest.py` L502–L510](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/plugins_manifest.py#L502-L510))
+- `ctx.register_delegation_provider(provider)` takes an instance of `DelegationProvider`, and `provider.name` is matched by `delegation.backend`.
+  A registration logs `Plugin '<name>' registered delegation provider: <backend>` at INFO.
+  (source: [`plugins_registrars.py` L85–L90](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/plugins_registrars.py#L85-L90),
+  [`plugins.py` L345–L374](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/plugins.py#L345-L374))
+- A delegation backend change applies from the next session. `/delegation <backend> --now` rebuilds the running session's tools at its next turn.
+  A hand edit of `delegation.backend` changes nothing in a running session.
+  (documentation: [Delegation provider plugins, Picker metadata and switching backends](https://hermes-agent.nousresearch.com/docs/developer-guide/delegation-provider-plugin#picker-metadata-and-switching-backends))
+- A configured backend that no enabled plugin provides fails closed. `delegate_task` returns a tool error that ends in `No subagent was started.` and names `hermes config set delegation.backend default` as the fix.
+  A disabled or removed plugin is such a case.
+  (documentation: [Delegation provider plugins](https://hermes-agent.nousresearch.com/docs/developer-guide/delegation-provider-plugin);
+  source: [`delegation_registry.py` L107–L134](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/delegation_registry.py#L107-L134))
+- `hermes plugins install file://<repo>#plugins/<name> --enable` with standard input closed installed and enabled a plugin from a subfolder with no prompt.
+  The scan gave the verdict `safe`.
+  (running: Hermes v0.22.7, a probe plugin installed from a `file://` clone of a local repository, 2026-11-06;
+  Hermes v0.23.0, this repository's plugin installed the same way, which printed `Plugin model-router-hermes enabled.`, `hermes plugins list --plain --no-bundled` listed `model-router-hermes` as enabled, from the user source, at version 0.18.1, and `hermes config set delegation.backend model-router` followed by `hermes config get delegation.backend` printed `model-router`, 2026-11-06)
+- `hermes plugins capabilities model-router-hermes` printed `declared: (none)`, and `hermes plugins doctor model-router-hermes` passed discovery, manifest, import and registration with `registrations: 1 tool(s), 0 hook(s)`.
+  (running: Hermes v0.23.0, after the install above, 2026-11-06)
+
+### Hermes package files
+
+- A plugin folder holds `plugin.yaml` and `__init__.py` with `register(ctx)`.
+  `plugin.yaml` carries `name`, `version`, `description`, `kind`, `requires_hermes`, `provides_tools` and `config_schema`, among others.
+  `provides_tools` lists the tools the plugin registers and does not decide whether they load.
+  (documentation: [Build a Hermes plugin, Write the manifest](https://hermes-agent.nousresearch.com/docs/developer-guide/plugins#step-2-write-the-manifest),
+  [Manifest v2 reference](https://hermes-agent.nousresearch.com/docs/developer-guide/plugins#manifest-v2-reference))
+- `config_schema` describes the keys under `plugins.entries.<id>.settings`. A mismatch logs a warning and never fails the load.
+  The types are `str`, `int`, `float`, `bool`, `list`, `dict` and `secret`. A `secret` entry names the `.env` variable that stores it with `env:`.
+  (documentation: [Manifest v2 reference](https://hermes-agent.nousresearch.com/docs/developer-guide/plugins#manifest-v2-reference),
+  [Settings form in the Desktop](https://hermes-agent.nousresearch.com/docs/developer-guide/plugins#settings-form-in-the-desktop))
+- This repository's `plugin.yaml` holds JSON text, which is valid YAML. The builder writes it from `metadata/source.json` and `src/`.
+  `hermes plugins validate` parsed it, and reported `requires_hermes — spec '>=0.22.5' parses` for the manifest of that day and `config schema — shape valid`.
+  (running: Hermes v0.23.0, `hermes plugins validate plugins/model-router-hermes`, 2026-11-06)
+- The plugin registers its skill folders with `ctx.register_skill(<folder name>, <SKILL.md>)`. The agent loads a plugin skill as `skill_view("<plugin>:<skill>")`.
+  Plugin skills are read-only, and the system prompt's skill index does not list them.
+  (documentation: [Build a Hermes plugin, Bundle skills](https://hermes-agent.nousresearch.com/docs/developer-guide/plugins#bundle-skills))
+
+### Hermes registration and settings
+
+- `ctx.get_config(key, default)` reads `plugins.entries.<plugin id>.settings.<key>`, and returns `default` when the entry or the key is absent. It applies no `config_schema` default.
+  `ctx.set_config(key, value)` writes one value in that subtree.
+  (source: [`plugins.py` L266–L280](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/plugins.py#L266-L280))
+- `hermes config set plugins.entries.model-router-hermes.settings.small_model '{"provider": "openrouter", "model": "openai/gpt-4.1-mini"}'` stored a mapping with those two fields. `hermes config get` printed them on two lines.
+  (running: Hermes v0.23.0, a fresh Hermes home, 2026-11-06)
+- A `secret` entry never reaches `config.yaml`. The Desktop settings form stores it in `.env` under the entry's `env:` name, and the plugin reads it with `get_secret(NAME)` from `agent.secret_scope`.
+  (documentation: [Settings form in the Desktop](https://hermes-agent.nousresearch.com/docs/developer-guide/plugins#settings-form-in-the-desktop);
+  source: [`secret_scope.py` L230–L261](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/secret_scope.py#L230-L261))
+- `get_secret("TYPESAFE_API_KEY")` returned the value from the Hermes home's `.env`, for a plugin that declared a `config_schema` secret with `env: TYPESAFE_API_KEY`, in process and in the plugin host. The variable was also in the environment of the host and of the gateway.
+  (running: Hermes v0.22.7, a probe plugin, `plugins.isolation: host` and in process, 2026-11-06)
+- `ctx.get_config("probe_setting")` returned the value from `plugins.entries.probe-router.settings`, in process and in the plugin host.
+  (running: Hermes v0.22.7, the probe plugin, 2026-11-06)
+- A plugin slash command's handler runs in the gateway process that owns the session. It can declare `session_id`, `session_key`, `platform` or `source` as keyword arguments, and Hermes passes them.
+  The handler returns its text.
+  (documentation: [Plugins, What plugins can do](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins#what-plugins-can-do))
+- Hermes names `api_server`, `cli`, `codex`, `desktop`, `gateway`, `kanban`, `local`, `msgraph_webhook`, `tool`, `tui` and `webhook` as surfaces that are not a human messaging channel.
+  The plugin's `/model-router-provider` writes only for `local`, `cli`, `tui` and `desktop`, four of those names. `localPlatforms` in `constants.json` lists them.
+  (source: [`session_context.py` L197–L203](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/gateway/session_context.py#L197-L203))
+- With no saved tool selection, a plugin's toolset is on by default. Enabling a plugin puts its toolset back into a saved selection.
+  (documentation: [Plugins, Plugins are opt-in](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins#plugins-are-opt-in-with-a-few-exceptions))
+
+### Hermes routing and refusals
+
+- `DelegationProvider` is an abstract class. A backend implements `name` and the synchronous `route_task(task, config)`. `is_available()` returns true by default, and false fails delegation closed.
+  `config` is the `delegation` section of the active profile's `config.yaml`, and `dict(config)` is the default route.
+  (documentation: [Delegation provider plugins, The interface](https://hermes-agent.nousresearch.com/docs/developer-guide/delegation-provider-plugin#the-interface);
+  source: [`delegation_provider.py` L62–L110](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/delegation_provider.py#L62-L110))
+- `route_task` gets `{goal, context, index}` plus the parameters the backend declared. This plugin declares none, and `context` can be `None`.
+  Nothing else crosses: no role, no agent description, no toolsets, no images and no output schema.
+  (source: [`delegate_tool_routes.py` L299](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L299);
+  running: Hermes v0.22.7, the probe plugin saw the task keys `context, goal, index`, and `context` was `None` when the model gave none, 2026-11-06)
+- The `config` argument held `api_key, api_mode, backend, backends, base_url, child_timeout_seconds, compression_threshold_tokens, fallback_providers, gateway_mode, independent_completions, inherit_mcp_toolsets, max_concurrent_children, max_iterations, max_spawn_depth, max_summary_chars, model, oneshot_max_children, orchestrator_enabled, provider, reasoning_effort, request_overrides, subagent_auto_approve, surface_child_process_notifications`. `backend` was the plugin's backend name.
+  (running: Hermes v0.22.7, the probe plugin, 2026-11-06)
+- A route may carry `model`, `provider`, `base_url`, `api_key`, `api_mode`, `request_overrides`, `reasoning_effort`, `service_tier`, `fallback_providers`, `profile` and `label`. Hermes drops every other key silently.
+  Hermes's own default backend returns the `delegation` section without `service_tier`.
+  (source: [`delegation_provider.py` L51–L54](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/delegation_provider.py#L51-L54),
+  [`delegate_tool_routes.py` L103–L108](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L103-L108),
+  [`plugins/delegation/default/__init__.py` L32–L34](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/plugins/delegation/default/__init__.py#L32-L34);
+  this repository's `router.py` returns the same dict with a `label`, a `model`, a `provider` and a `reasoning_effort` changed on top, so `api_mode` and `request_overrides` stay in every route, also when the provider changes)
+- A returned route resolves through the credential resolver of the `delegation` section. A `provider` runs `resolve_runtime_provider`; an empty route inherits the parent's route.
+  `request_overrides` apply on every branch.
+  (source: [`delegate_tool_routes.py` L233–L238](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L233-L238),
+  [`delegate_tool_config.py` L478–L488](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_config.py#L478-L488))
+- A child's effort is the route's effort, else `delegation.reasoning_effort`, else the parent's level.
+  A backend's `reasoning_effort` outside the known levels refuses the task, except a value equal to `delegation.reasoning_effort`.
+  (source: [`delegate_tool_config.py` L552–L560](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_config.py#L552-L560),
+  [`delegate_tool_routes.py` L255–L265](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L255-L265))
+- A child pinned by provider, endpoint or model gets no fallback providers unless `delegation.fallback_providers` declares them.
+  (source: [`config_defaults.py` L1318–L1322](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/config_defaults.py#L1318-L1322))
+- A raise from `route_task` refuses that task: Hermes logs `delegation provider <name>.route_task() raised` and reports `Task <i>: delegation backend '<name>' failed: <error>`.
+  A return of `None` or of a non-mapping refuses it too. A refusal is per task, and the call is a tool error only when every task is refused.
+  A returned `{}` is not a refusal: the child inherits the parent's route.
+  (documentation: [Delegation provider plugins, Refusals are per task](https://hermes-agent.nousresearch.com/docs/developer-guide/delegation-provider-plugin#refusals-are-per-task);
+  source: [`delegate_tool_routes.py` L103–L108](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L103-L108),
+  [L288–L306](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L288-L306),
+  [L309–L332](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L309-L332))
+- Hermes routes the tasks of a call in one loop, in index order, in the thread that runs the call. It builds the children after the loop ends.
+  `delegate_task` is exempt from the generic sequential tool deadline, so Hermes puts no timeout around `route_task`.
+  (source: [`delegate_tool_routes.py` L325–L331](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L325-L331),
+  [`delegate_tool.py` L613](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool.py#L613),
+  [L654](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool.py#L654),
+  [`tool_executor.py` L856](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/tool_executor.py#L856);
+  running: Hermes v0.22.7, under `plugins.isolation: host`, task 1 started 1747 ms after task 0, which included the host's cold start, 2026-11-06)
+- The main agent's turn is not routed through the provider. Only `delegate_task` tasks are, and internal callers that pass their own credentials bypass the backend.
+  (documentation: [Delegation provider plugins](https://hermes-agent.nousresearch.com/docs/developer-guide/delegation-provider-plugin);
+  source: [`delegate_tool.py` L507–L518](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool.py#L507-L518))
+- `label` is short text shown with the child's progress and result. Every result entry of a task routed by a non-default backend carries `route`: the backend, the label, and what the child ran on.
+  (documentation: [Delegation provider plugins, Result route](https://hermes-agent.nousresearch.com/docs/developer-guide/delegation-provider-plugin#result-route);
+  source: [`delegation_provider.py` L29](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/delegation_provider.py#L29))
+- A delegated task takes the routed model and effort. One in-process task, routed to `openai/gpt-4.1-mini` at effort `low`, ran a child session with `model = openai/gpt-4.1-mini` and `reasoning_config = {enabled: true, effort: low}`.
+  The result entry carried `route: {backend: probe-router, label, model, provider: openrouter, reasoning_effort: low, service_tier: normal}` and the summary `pong`.
+  Under `plugins.isolation: host`, two tasks of one call routed to `openai/gpt-6-luna` at effort `low` ran two child sessions with `model = openai/gpt-6-luna` and effort `low`; the summaries were `ping` and `pong`.
+  (running: Hermes v0.22.7, the probe plugin, `hermes -z "<call delegate_task once …>" -m google/gemini-2.5-flash --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 330 s alarm, once for each turn, 2026-11-06)
+- This repository's plugin routed a real call. One `delegate_task` call held a lookup task and a design task. The provider was `typesafe`, `small_model` was `openrouter openai/gpt-6-luna` and `large_model` was `openrouter openai/gpt-6.1-terra`.
+  In process, the lookup task read `model-router L0 openai/gpt-6-luna · medium · p=0.67/0.99 · jev jev-1.14.0 · 686/30 tok`, and the design task read `model-router L2 openai/gpt-6.1-terra · high · p=1.00/0.60 · jev jev-1.14.0 · 705/30 tok`.
+  The child sessions ran `openai/gpt-6-luna` at effort `medium` and `openai/gpt-6.1-terra` at effort `high`. Each result entry carried the line in `route.label`, and `agent.log` held both lines.
+  After `hermes gateway stop` and `plugins.isolation: host`, the same call gave the same levels, models and efforts, with `p=0.63/0.99` and `p=1.00/0.61`. `route.label` carried both lines, and `agent.log` held no routing line.
+  (running: Hermes v0.22.7, the plugin installed with `hermes plugins install "file://<clone>#plugins/model-router-hermes" --enable` on a fresh Hermes home and set up as its README says, `hermes -z "<call delegate_task once with two tasks …>" -m openai/gpt-6-luna --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 400 s alarm, once for each mode, 2026-11-06, repeated after the request began to key the models by slot and the reply dropped the level)
+- Hermes maps a requested effort that a wire does not support to the nearest weaker supported level, and to the weakest level when none is weaker.
+  (source: [`reasoning_effort.py` L127–L139](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/reasoning_effort.py#L127-L139))
+
+### Hermes model and credential checks
+
+- With sockets blocked in the process, `agent.models_dev.list_provider_models(p, allow_network=False)` read the Hermes home's models.dev cache with zero network attempts.
+  It listed models for openrouter (378), anthropic (17), openai (51), gemini (34), deepseek (4), xai (12), openai-codex (51), zai (18) and minimax (8). It listed none for nous, copilot, custom, ollama, lmstudio, kimi-coding or an unknown id.
+  `openai/gpt-6-luna` and `openai/gpt-4.1-mini` were listed for openrouter. The same call worked in the plugin host.
+  (running: Hermes v0.22.7, 2026-11-06;
+  source: [`models_dev.py` L1–L8](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/models_dev.py#L1-L8), where the module text says hot paths pass `allow_network=False` and never do I/O,
+  [L936–L942](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/models_dev.py#L936-L942))
+- `resolve_runtime_provider(requested=p)` made zero network attempts with sockets blocked, for openrouter, anthropic, openai, gemini, deepseek, nous, openai-codex, xai, qwen-oauth, copilot, minimax-oauth, custom, ollama and an unknown id.
+  None of the OAuth providers had stored credentials, so they raised `AuthError` at once.
+  It checks the provider and its credentials, not that the model exists.
+  (running: Hermes v0.22.7, 2026-11-06;
+  source: [`runtime_provider.py` L1044](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/runtime_provider.py#L1044))
+- `PROVIDER_REGISTRY[p].auth_type` is `api_key` for 69 providers, `oauth_device_code` for nous, `oauth_external` for openai-codex, qwen-oauth, solstice, solstice-oauth and xai-oauth, `oauth_minimax` for minimax-oauth, `aws_sdk` for bedrock and `vertex` for vertex.
+  (running: Hermes v0.22.7, 2026-11-06;
+  source: [`auth.py` L144–L152](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/auth.py#L144-L152), [L242–L243](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/auth.py#L242-L243))
+- `api_key` as an auth type is not enough. `anthropic` is `api_key`-typed, yet with `ANTHROPIC_API_KEY` unset it resolves Claude Code's OAuth credentials, and with `ANTHROPIC_TOKEN` or `CLAUDE_CODE_OAUTH_TOKEN` set it reads them to prefer a refreshable token. The resolve source read `env` in each case.
+  (running: Hermes v0.22.7, 2026-11-06;
+  source: [`anthropic_credentials.py` L700–L718](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/anthropic_credentials.py#L700-L718))
+- `is_refreshable_oauth_provider(p)` is true for the providers in `REFRESHABLE_OAUTH_PROVIDERS` (anthropic and nous among them) and for plugin profiles with a refresh hook.
+  (running: Hermes v0.22.7, 2026-11-06;
+  source: [`auth_plugin_providers.py` L340–L344](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/auth_plugin_providers.py#L340-L344))
+- `PROVIDER_REGISTRY` has no `openrouter` entry: Hermes resolves OpenRouter through its credential pool and its OpenRouter rung, outside the registry. A live `delegate_task` run with two OpenRouter slots left both unresolved while the check required a registry entry.
+  (running: Hermes v0.22.7, 2026-11-06, `hermes -z` with the plugin installed from this repository;
+  source: [`runtime_provider.py` L1044–L1088](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/runtime_provider.py#L1044-L1088))
+- The rule this repository's `checks.py` applies: a provider is checked offline only when `is_refreshable_oauth_provider` is false and the provider is either absent from `PROVIDER_REGISTRY` or listed with the auth type `api_key`; `anthropic` instead needs `ANTHROPIC_API_KEY` set and `ANTHROPIC_TOKEN` and `CLAUDE_CODE_OAUTH_TOKEN` unset. Every other provider reads as unresolved. A custom or local provider passes this rule and then fails the catalogue check, which lists no model for it. A test under Hermes's interpreter reads the real registry: openrouter, gemini and deepseek pass, nous, openai-codex, qwen-oauth, minimax-oauth and bedrock do not.
+- `resolve_runtime_provider` first calls `recover_for_provider`, which can install a left-core provider plugin. The context manager `installs_held()` turns that off, and the plugin resolves inside it.
+  (running: Hermes v0.22.7, 2026-11-06;
+  source: [`left_core_migration.py` L616](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/left_core_migration.py#L616),
+  [L709–L720](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/left_core_migration.py#L709-L720))
+- `resolve_runtime_provider` refreshes no credential for `openrouter`, `custom` or a named custom provider. They read an environment variable, a config key or a credential-pool entry. A pool refreshes an OAuth entry only for `anthropic`, a provider with a refresh hook, `openai-codex` and `xai-oauth`, and never refreshes any other entry. The OAuth runtime rung covers only `nous`, `openai-codex`, `xai-oauth` and `qwen-oauth`. A named custom provider with `key_cmd` runs that command at request time to mint its token. Such a provider reads as unresolved, because the catalogue lists no model for it.
+  (source: [`credential_pool.py` L1943–L1956](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/credential_pool.py#L1943-L1956),
+  [`runtime_provider.py` L829–L838](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/runtime_provider.py#L829-L838),
+  [`runtime_provider_custom.py` L508–L516](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/runtime_provider_custom.py#L508-L516), read 2026-11-06)
+- `installs_held` first appears in Hermes v0.22.6. At v0.22.5 (commit `bf0203a794a0`), `hermes_cli/left_core_migration.py` has neither `installs_held` nor `recover_for_provider`, so the slot check's import fails there and every end level would skip as unresolved. Every other Hermes function, context method, task key and manifest field the plugin uses exists at v0.22.5. The plugin therefore requires v0.22.6.
+  (source: [`left_core_migration.py` L709–L720 at v0.22.6](https://github.com/NousResearch/hermes-agent/blob/f0d94882e89ab8d4098b5bb2f166adfb9ee0a0ab/hermes_cli/left_core_migration.py#L709-L720), read 2026-11-06)
+- Hermes ingests an `OPENROUTER_API_KEY` from the environment into the home's credential pool at start-up and prints one line to standard error. The resolve source then reads `env:OPENROUTER_API_KEY`.
+  (running: Hermes v0.22.7, 2026-11-06)
+
+### Hermes runtime, logs and environment
+
+- A `hermes -z` turn on a home with no gateway starts one, with `python3 -m hermes_cli.main --profile default gateway run --quiet --idle-exit`. On macOS it starts as a one-off launchd job through `osascript`.
+  The provider runs in that gateway process, on a `ThreadPoolExecutor` thread.
+  (running: Hermes v0.22.7, 2026-11-06;
+  source: [`gateway_launchd_runtime.py` L1–L13](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/gateway_launchd_runtime.py#L1-L13))
+- The gateway keeps the plugin loaded between CLI turns. Module state carried over from turn 1 to turn 2: a counter read 1, then 2 and 3, in one process.
+  A change of `plugins.isolation` or of the plugin's code applies after `hermes gateway stop`. The turn that followed a change of `plugins.isolation` without a stop did not run in host mode, so the probe did not count it.
+  `hermes gateway stop` with `HERMES_HOME` set stops the gateway and its plugin host.
+  (running: Hermes v0.22.7, 2026-11-06)
+- Under `plugins.isolation: host`, the provider ran in `python3 -m hermes_cli.plugin_host_child`, a child of the gateway, one per profile. `HERMES_PLUGIN_HOST_PROCESS` was set, the context was `RemotePluginContext`, and the call thread was `plugin-host-rpc`.
+  Module state persisted across the tasks of one call: a counter read 1, then 2, in one host process.
+  (running: Hermes v0.22.7, 2026-11-06;
+  documentation: [Plugins, Running plugins out of process](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins#running-plugins-out-of-process-pluginsisolation),
+  [Delegation provider plugins, Process isolation](https://hermes-agent.nousresearch.com/docs/developer-guide/delegation-provider-plugin#process-isolation))
+- `hermes_constants.find_node_executable("node")` reads the Node that Hermes's package manager selected, and returns `None` when it installed none. It never falls back to the Node on the user's `PATH`.
+  It found Hermes's Node in both modes. A Node round trip (spawn, standard input, standard output) took 63 to 89 ms in process and 376 to 388 ms in the host.
+  `route_task` took 78 to 102 ms in process, 1726 ms for the first task in a fresh host and 401 ms for the next.
+  (running: Hermes v0.22.7, 2026-11-06;
+  source: [`hermes_constants.py` L575–L613](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_constants.py#L575-L613))
+- Hermes writes `agent.log` at INFO and above, in the `logs` folder of the Hermes home. The plugin host sets its own log level from `HERMES_PLUGIN_HOST_LOG_LEVEL`, with `WARNING` as the default, so it drops INFO lines unless the variable says otherwise.
+  (source: [`hermes_logging.py` L3](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_logging.py#L3),
+  [L360–L369](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_logging.py#L360-L369),
+  [L396–L397](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_logging.py#L396-L397),
+  [`plugin_host_child.py` L600–L601](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/plugin_host_child.py#L600-L601))
+- Hermes runs natively on Windows 10 and Windows 11, without WSL. `find_node_executable` has Windows branches.
+  A program started with a replaced environment on Windows needs `SYSTEMROOT`, so the plugin passes it to Node.
+  (documentation: [Windows (Native) Guide](https://hermes-agent.nousresearch.com/docs/user-guide/windows-native), [`windows-native.md` L10](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/website/docs/user-guide/windows-native.md#L10),
+  [Python `subprocess`, Popen constructor](https://docs.python.org/3/library/subprocess.html#popen-constructor);
+  source: [`hermes_constants.py` L585–L586](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_constants.py#L585-L586), [L605–L612](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_constants.py#L605-L612), read 2026-11-06)
+- `NODE_USE_ENV_PROXY=1` makes Node parse `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` at start-up and route requests through the proxy. Node added it in v24.0.0 and v22.21.0.
+  The plugin sets it when `HTTPS_PROXY`, `HTTP_PROXY` or their lower-case forms are present, unless the environment sets it.
+  (documentation: [Node.js command-line API, `NODE_USE_ENV_PROXY=1`](https://nodejs.org/docs/latest/api/cli.html#node_use_env_proxy1), read 2026-11-06)
+
+### Hermes install scan and validate
+
+- Every `hermes plugins install` and `hermes plugins update` scans the plugin tree before it activates it. The verdicts are `safe`, `caution` (confirm, or pass `--force`) and `dangerous` (blocked, and `--force` does not override).
+  Documentation prose cannot make a verdict `dangerous` alone, but a leaked provider key keeps its full severity there, and so does anything under a bundled `skills/` tree.
+  (documentation: [Plugins, Install-time security scanning](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins#install-time-security-scanning);
+  source: [`skills_guard.py` L953–L956](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/skills_guard.py#L953-L956))
+- A medium finding alone is `safe`. The rule `python_subprocess` is medium severity.
+  (source: [`skills_guard.py` L384–L385](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/skills_guard.py#L384-L385),
+  [`plugin_guard.py` L383–L391](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/plugin_guard.py#L383-L391))
+- `scan_plugin` over `plugins/model-router-hermes` gave the verdict `safe` with one finding: `python_subprocess`, severity medium, category execution, at `node.py` line 87.
+  (running: Hermes v0.23.0, `tools.plugin_guard.scan_plugin` over the plugin folder, 2026-11-06)
+- A probe plugin that shipped a copy of the OpenClaw esbuild bundle (71 KB) gave one medium finding, `python_subprocess`, at the `subprocess.run(` line, and none for the bundle. Its first install attempt was blocked as `dangerous` by a key-shaped literal.
+  The rule matches a name containing `secret`, `token`, `api_key` or `password` assigned a quoted value of 20 or more characters. No file of the plugin may hold one outside its `tests/` tree, where the rule caps a finding at medium.
+  (running: Hermes v0.22.7, 2026-11-06;
+  source: [`threat_patterns.py` L102–L104](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/threat_patterns.py#L102-L104))
+- `hermes plugins validate plugins/model-router-hermes` passed with 15 checks marked passed, including `security scan — safe`, and one warning.
+  The warning names `hermes_api.py` lines 39, 46, 52, 53 and 61: `hermes_cli.auth.PROVIDER_REGISTRY`, `hermes_cli.auth_plugin_providers.is_refreshable_oauth_provider`, `hermes_cli.left_core_migration.installs_held`, `hermes_cli.runtime_provider.resolve_runtime_provider` and `agent.models_dev.list_provider_models`.
+  It says these imports can break on any release. CI runs `validate` on the pinned release and a Renovate rule raises the pin, so a break shows in CI ([Hermes CI](#hermes-ci)). It ends with `Isolation — runs in the plugin host (plugins.isolation: host)` and `Validation passed.`
+  (running: Hermes v0.23.0, 2026-11-06)
+- The admission lint lists a plugin's imports of private Hermes modules with file and line. It is a warning and never a refusal. The public list holds `agent.delegation_provider`, `agent.delegation_backends`, `agent.secret_scope` and `hermes_constants`, and none of the five modules above.
+  (source: [`plugin_validate_private_imports.py` L1–L9](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/plugin_validate_private_imports.py#L1-L9),
+  [L27–L68](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/plugin_validate_private_imports.py#L27-L68))
+- A probe plugin's `hermes plugins validate` passed with one warning that listed four private core imports, and a note that the plugin runs in the plugin host under `plugins.isolation: host`. `hermes plugins doctor <name>` passed discovery, manifest, import and registration.
+  (running: Hermes v0.22.7, 2026-11-06)
+
+### Hermes CI
+
+- The `hermes` job runs the plugin's tests on Python 3.11 and 3.14 with `uv`, runs `hermes plugins validate plugins/model-router-hermes`, installs the plugin from the checkout with `hermes plugins install "file://$PWD#plugins/model-router-hermes" --enable < /dev/null`, checks `hermes plugins list --plain --no-bundled`, sets `delegation.backend` to `model-router` and reads it back, and runs the tests again under Hermes's own interpreter.
+  The install clones the checkout's own commit through a `file://` route, as a user's install clones the repository's subfolder.
+  Hermes keeps its home under the runner's temp folder, and no key is set.
+  (source: `.github/workflows/ci.yml`, job `hermes`)
+- The `setup-hermes` action clones the release tag, checks that `HEAD` equals the pinned commit, and runs `uv sync --frozen --no-dev --no-build --python 3.14`, so only the wheels that Hermes's own `uv.lock` locks install. It then checks that `hermes --version` names the tag.
+  It pins `v0.23.0` at commit `2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19`. A Renovate rule raises the tag and the commit together with no age delay.
+  (source: `.github/actions/setup-hermes/action.yml`; [CONTRIBUTING.md, Dependencies](../CONTRIBUTING.md#dependencies))
+- The tests of the plugin call each handler and the router directly with a fake Hermes API. One test file, `plugins/model-router-hermes/tests/test_real_hermes.py`, runs only under Hermes's interpreter. It calls each Hermes function the shim uses, and compares the default route with Hermes's bundled default backend.
+  Its catalogue test writes a one-provider `models_dev_cache.json` into a scratch Hermes home, because Hermes ships no catalogue and reads only that disk cache offline.
+  (source: `plugins/model-router-hermes/tests/`)
+
+### Hermes gaps
+
+Most probes ran a probe plugin, `probe-router`, and not this repository's plugin.
+The probe plugin ran Node on a small script and shipped the OpenClaw bundle for the scanner.
+This repository's plugin passed `validate`, the scan and the `file://` install on Hermes v0.23.0, as the facts above record. It routed one real call of two tasks on Hermes v0.22.7, in process and in the plugin host. No routing run used Hermes v0.23.0 or a fallback between providers.
+The `hermes` job has not run on a pushed commit yet, so this page cites no run of it.
+No run used the repository form `Akurganow/model-router/plugins/model-router-hermes` from the README, a `--ref` pin or `hermes plugins update`.
+No run used native Windows, so the `SYSTEMROOT` rule rests on the Python documentation.
+No run used a proxy, so the proxy behaviour rests on the Node documentation and on the commit that added the switch.
+No run sent two concurrent sessions through one gateway. That they share one budget record follows from the gateway facts above.
+No run checked that Hermes clamps a routed effort for a delegated child. The clamp is read from `reasoning_effort.py`.
+No live session ran `/model-router-provider`, the settings form in Hermes Desktop or the `model_router_config` tool. Their tests call the handlers directly.
+The settings form edits a `dict` slot in a JSON editor, as the documentation says, and no run used it.
