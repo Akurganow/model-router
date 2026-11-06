@@ -2,7 +2,7 @@
 
 model-router is a Claude Code plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-10-24.
+2026-11-06.
 
 ## Where requests go
 
@@ -72,7 +72,7 @@ request is sent when the subagent spawns, after Claude Code decides that the
 Agent call may run. A call that your rules or the auto-mode classifier deny
 never spawns, so the plugin sends no request. A rule on the model the plugin
 picks applies after the request left. That list is the whole request, and
-[the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request).
+[the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#no-telemetry).
 With Claude Code's `--debug` flag, the plugin writes each request body to your
 debug log, in numbered pieces when it is long. No key is ever written.
 

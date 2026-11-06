@@ -435,7 +435,6 @@ privacy policy holds the request:
   rules they share: the fallback, the request, the retries and what the
   providers do with it.
 
-
 [Turn off and uninstall](#turn-off-and-uninstall) says how to stop the
 requests.
 

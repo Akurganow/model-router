@@ -2,7 +2,7 @@
 
 model-router for OpenClaw is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-05.
+2026-11-06.
 
 ## Where requests go
 
@@ -69,16 +69,15 @@ JSON body holds:
   lists them
 
 The `x-typesafe-runtime` header names the Gateway's runtime, the operating
-system and the architecture, in the form `<runtime>/<version> (<os>; <arch>)`.
-It tells the provider which runtime, system and architecture the Gateway runs
-on.
+system and the architecture. It tells the provider which runtime, system and
+architecture the Gateway runs on.
 [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
 lists the other headers, which the bundled SDK builds. The task text holds
 whatever the caller put in it, which can include code. The request is sent when
 OpenClaw runs the `before_tool_call` hook, before the spawn starts. A spawn that
 a later hook or a policy blocks was already sent. That list is the whole
 request, and
-[the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request).
+[the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#no-telemetry).
 
 ## The extended scope
 

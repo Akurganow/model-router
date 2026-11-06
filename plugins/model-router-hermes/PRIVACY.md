@@ -66,7 +66,7 @@ hold whatever the model put in them, which can include code. Hermes routes all
 tasks of a call, one after another, before any child starts, and the plugin
 sends each request during that routing. A task that Hermes later refuses was
 already sent. That list is the whole request, and
-[the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request).
+[the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#no-telemetry).
 
 ## The program the plugin starts
 

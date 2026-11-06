@@ -2,7 +2,7 @@
 
 model-router for Oh My Pi is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-10-24.
+2026-11-06.
 
 ## Where requests go
 
@@ -75,7 +75,7 @@ lists the other headers, which the bundled SDK builds. The task text and the
 context hold whatever the caller put in them, which can include code. The
 request is sent before omp asks for approval of the `task` call. A call you
 later refuse was already sent. That list is the whole request, and
-[the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request).
+[the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#no-telemetry).
 
 ## The extended scope
 

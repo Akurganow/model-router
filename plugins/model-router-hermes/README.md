@@ -1,14 +1,14 @@
 # model-router for Hermes Agent
 
-A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks a model and an effort for each `delegate_task` task. [Jev](https://docs.typesafe.ai), on TypeSafe or OpenRouter, scores the task. The plugin then gives the task's child that model and effort.
+A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks a model and an effort for each `delegate_task` task. It asks [Jev](https://docs.typesafe.ai), on TypeSafe or OpenRouter, how much judgment the task needs and how much work it takes. It then gives the task's child that model and effort.
 
 ## What it does
 
-- It is a delegation backend named `model-router`. It scores each `delegate_task` task for judgment and work through Jev. [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request) lists the two questions.
+- It is a delegation backend named `model-router`. It scores each `delegate_task` task through Jev, using the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - It routes the tasks of `delegate_task` only. The main turn is never routed.
 - Level 0 gives the task your `small_model`. Level 2 gives it your `large_model`. Level 1 leaves the model alone.
 - It sets the effort from a fixed ladder, as [Routing](#routing) says.
-- It sets only a model you assigned and never proposes one. It skips a model that Hermes cannot resolve offline with a credential that needs no network refresh.
+- It sets only a model you assigned. It proposes none, and it never sets a model that Hermes cannot resolve offline with a credential that needs no network refresh.
 - It never overrides a model you chose, nor an effort the `delegation` section sets. [Which tasks are routed](#which-tasks-are-routed) lists the model rules, and [Routing](#routing) lists the effort rules.
 - It starts Hermes's own Node once per task to run the scoring step. [Node](#node) says how.
 - It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what Hermes can still do.
@@ -124,9 +124,9 @@ The plugin does not check a model that the catalogue lists and the provider reje
 | 1 | Bounded judgment | none, no change |
 | 2 | Open judgment | `large_model` |
 
-The plugin stays at level 1 unless an end is clearly more likely, as [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains. At level 1 the child runs on the route Hermes would give it.
+The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors. At level 1 the child runs on the route Hermes would give it.
 
-The work question picks the effort. The ladder is the one in the [Effort section](../model-router/README.md#effort), and the plugin sets `reasoning_effort` to one of `low`, `medium`, `high` or `xhigh`. It never sets `max`, `ultra`, `minimal` or `none`. The small model's row starts at `medium`. [model-choice.md](../model-router/docs/model-choice.md#the-work-question-and-the-arch) says why. Hermes maps an effort that the child's model does not take to the nearest weaker one it takes.
+The work question picks the effort. The ladder is the one in the [Effort section](../model-router/README.md#effort), and the plugin sets `reasoning_effort` to one of `low`, `medium`, `high` or `xhigh`. It never sets `max`, `ultra`, `minimal` or `none`. The small model's row starts at `medium`. [model-choice.md](../model-router/docs/model-choice.md#the-work-question-and-the-arch) gives the reasons. Hermes maps an effort that the child's model does not take to the nearest weaker one it takes.
 
 The routed effort replaces the effort of the calling session. Hermes ranks a route's effort above the parent's level.
 
@@ -194,7 +194,7 @@ model-router L1 no change · config effort · p=0.62/0.70
 model-router skipped, key unset
 ```
 
-A routed line follows [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line). The model is the `model` field of the slot.
+A routed line reads `L<level> <model or no change> · <effort or kept label> · p=<tier>/<work>`. The model is the `model` field of the slot. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else it holds.
 
 A skipped line reads `skipped, <reason>`. [Which tasks are routed](#which-tasks-are-routed) lists the reasons.
 

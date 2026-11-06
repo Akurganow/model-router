@@ -36,7 +36,7 @@ For each provider the [`provider` setting](#provider) allows, the plugin checks 
 - TypeSafe: omp's stored `typesafe` credential, which `/login typesafe` stores, then the `TYPESAFE_API_KEY` environment variable.
 - OpenRouter: omp's stored `openrouter` credential, then the `OPENROUTER_API_KEY` environment variable.
 
-A key counts as set when either place holds a non-empty value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key. With no key for any allowed provider, every batch reports `key unset`.
+A key counts as set when either place holds a non-empty value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key.
 
 Add a key in one of three ways:
 
@@ -152,7 +152,7 @@ The plugin prints one line per batch. The line starts with `model-router`. It go
 model-router task 1: L0 @smol · p=0.91 | task 2: L1 no change · p=0.62 | task 3: skipped, timeout
 ```
 
-A routed entry reads `L<level> <role or no change> · p=<probability>`. The probability belongs to the chosen level. When the reply carries them, the entry also names the Jev model and the token counts. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says how an entry ends after a fallback.
+A routed entry reads `L<level> <role or no change> · p=<probability>`. The probability belongs to the chosen level. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else an entry holds and how it ends after a fallback.
 
 omp's task view shows the same decision as the spawn's routing note, without the item number.
 
@@ -201,9 +201,8 @@ The plugin calls `pi.pi.discoverAgents`, a typed omp API that the docs prose doe
 ## Limits and retries
 
 - One fixed limit of 8 s covers the scoring of a batch, retries and second providers included. At most four items are scored at once.
-- [Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider) gives the attempts at each provider. The SDK retries a timeout too. An item sends at most four requests, and the second provider gets the rest of the limit.
+- [Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider) gives the attempts at each provider.
 - Inside one batch, a provider whose first attempt for an item failed and fell back is passed over: items that start later in that batch go straight to the other provider. The next batch tries both again.
-- The SDK honours a `Retry-After` of up to 60 s. The batch limit still stops the wait at 8 s. A 429 with a long `Retry-After` can hold a batch up to 8 s.
 - Keep `extensionHandlers.toolCallTimeoutMs` at its default of 30 s. omp fails closed when a `tool_call` handler passes that timeout. A value below 8 s can block a task.
 
 Repeated task names, or same-name items in parallel calls in sync mode, may run unrouted, never misrouted. The plugin matches a spawn to its decision by name or by child id. When two decisions share a name, neither matches.
@@ -244,7 +243,7 @@ The request body holds:
 
 Before sending, the plugin condenses the task text. It replaces each fenced code block with a line count. It masks Bearer tokens, `sk-` keys, and values assigned to names that end in KEY, TOKEN, SECRET or PASSWORD.
 
-Under `extended`, your user, project and plugin agents send their descriptions and task text too. The request leaves when omp prepares the `task` call, before omp's approval gate runs. [PRIVACY.md](PRIVACY.md) has the full list, the project scope risks and the key handling.
+Under `extended`, the descriptions and task text of your user, project and plugin agents leave too. The request leaves when omp prepares the `task` call, before omp's approval gate runs. [PRIVACY.md](PRIVACY.md) has the full list, the project scope risks and the key handling.
 
 A failed request leaves the call unchanged. The item skips with its reason, and omp runs it without a model from the plugin.
 

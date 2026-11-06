@@ -257,15 +257,11 @@ plugin agents leave too. [The extended scope](PRIVACY.md#the-extended-scope)
 says what that can expose, and [PRIVACY.md](PRIVACY.md) lists what else the
 mod reads, stores and passes on.
 
-[Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider) gives
-the attempts at each provider. The mod uses the official TypeSafe SDK, which
-backs off for a short time when no `Retry-After` header comes. The second
-provider gets the rest of the 8 s and the retries. One call sends at most four
-requests.
+[Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider)
+gives the attempts at each provider.
 
 One fixed 8 s limit covers the whole call, retries and the second provider
-included. A 429 with a long `Retry-After` can hold a task for up to 8 s. The
-call then runs unchanged.
+included. A call that runs past it runs unchanged.
 [The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing) says what a
 request in flight can cost.
 
@@ -325,11 +321,9 @@ The first runs on `haiku`. For it the log shows:
 model-router L0 haiku · medium · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok
 ```
 
-The second number is the probability of the chosen work index. The tail names
-the Jev model that answered and its input and output tokens. A part the answer
-lacks is left out. After a fallback the line ends with the provider that
-answered and why the first one failed, as
-[The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. A kept caller effort shows as
+The second number is the probability of the chosen work index.
+[The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line)
+says what the tail holds and how a fallback ends the line. A kept caller effort shows as
 `caller effort`, and a `CLAUDE_CODE_EFFORT_LEVEL` that is set shows as
 `env effort`, in place of the ladder label. The pick is logged as the call starts, and a call that
 Claude Code then refuses adds a second line, `denied`.

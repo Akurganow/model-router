@@ -1,10 +1,10 @@
 # model-router for OpenClaw
 
-An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model and an effort for each subagent. [Jev](https://docs.typesafe.ai), on TypeSafe or OpenRouter, scores the task. The plugin then sets the `model` and `thinking` of that `sessions_spawn` call.
+An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model and an effort for each subagent. It asks [Jev](https://docs.typesafe.ai), on TypeSafe or OpenRouter, how much judgment the task needs and how much work it takes. It then sets the `model` and `thinking` of that `sessions_spawn` call.
 
 ## What it does
 
-- It scores each routed `sessions_spawn` call for judgment and work through Jev. [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request) lists the two questions.
+- It scores each routed `sessions_spawn` call through Jev, using the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - Level 0 sets your `small_model`. Level 2 sets your `large_model`. Level 1 leaves the model alone.
 - It sets `thinking` from a fixed ladder of efforts, as [Routing](#routing) says.
 - It sets only a model you assigned. It proposes none, and it never sets a model that OpenClaw cannot resolve with a credential.
@@ -59,7 +59,7 @@ For each provider the [`provider` setting](#provider) allows, the plugin checks 
 - TypeSafe: the plugin's `api_key` setting, then the `TYPESAFE_API_KEY` environment variable.
 - OpenRouter: the plugin's `openrouter_api_key` setting, then the `OPENROUTER_API_KEY` environment variable.
 
-A key counts as set when either place holds a non-empty value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get one and where a key goes. The plugin never uses OpenClaw's own provider credentials as a Jev key. With no key for any allowed provider, every spawn reports `key unset`.
+A key counts as set when either place holds a non-empty value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get one and where a key goes. The plugin never uses OpenClaw's own provider credentials as a Jev key.
 
 Add a key in one of two ways:
 
@@ -141,7 +141,7 @@ Given `provider` or `scope`, the tool returns the command to type. Given `small_
 | 1 | Bounded judgment | none, no change |
 | 2 | Open judgment | `large_model` |
 
-The plugin stays at level 1 unless an end is clearly more likely, as [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains.
+The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors.
 
 The work question picks the effort. The plugin sets `thinking` to one of these values and to no other:
 
@@ -151,7 +151,7 @@ The work question picks the effort. The plugin sets `thinking` to one of these v
 | 1, an ordinary task | `high` | `medium` |
 | 2, a long or delicate task | `xhigh` | `high` |
 
-The plugin never sets `max`, `ultra`, `adaptive`, `minimal` or `off`. The small model's row starts at `medium`. [model-choice.md](../model-router/docs/model-choice.md#the-work-question-and-the-arch) says why.
+The plugin never sets `max`, `ultra`, `adaptive`, `minimal` or `off`. The small model's row starts at `medium`. [model-choice.md](../model-router/docs/model-choice.md#the-work-question-and-the-arch) gives the reasons.
 
 The routed effort replaces the effort you chose in the calling session. The plugin sets `thinking` on the spawn, and OpenClaw would otherwise pass your session's effort to the child.
 
@@ -239,7 +239,7 @@ model-router L1 no change · caller effort · p=0.62/0.70
 model-router skipped, key unset
 ```
 
-A routed line follows [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line). The model is the slot string as you wrote it.
+A routed line reads `L<level> <model or no change> · <effort or kept label> · p=<tier>/<work>`. The model is the slot string as you wrote it. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else it holds.
 
 A skipped line reads `skipped, <reason>`. [Which spawns are routed](#which-spawns-are-routed) lists the reasons. The plugin logs one warning when a hook timeout makes it inert, as [Hook timeout](#hook-timeout) says.
 
@@ -296,7 +296,7 @@ An operator overrides the hook timeout with `plugins.entries.model-router-opencl
 
 ## What leaves the machine
 
-[PRIVACY.md](PRIVACY.md) lists the request, the headers, the providers and the retries.
+[PRIVACY.md](PRIVACY.md) lists the request, the providers and the retries.
 
 [How the plugins use the providers](https://github.com/Akurganow/model-router/blob/main/docs/providers.md) holds what the four plugins share.
 
