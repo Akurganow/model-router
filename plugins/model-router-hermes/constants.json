@@ -32,5 +32,61 @@
 		"largeModelUnresolved": "large model unresolved"
 	},
 	"backend": "model-router",
-	"plugin": "model-router-hermes"
+	"plugin": "model-router-hermes",
+	"texts": {
+		"toolName": "model_router_config",
+		"toolset": "model_router",
+		"toolLabel": "Model Router settings",
+		"toolDescription": "Reads the router's settings. With no input it returns the provider, both models, and whether each key the provider allows is set. With a setting name (provider, typesafe_key, openrouter_key, small_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key.",
+		"settings": [
+			"provider",
+			"typesafe_key",
+			"openrouter_key",
+			"small_model",
+			"large_model"
+		],
+		"slots": ["small_model", "large_model"],
+		"commandName": "model-router-provider",
+		"commandDescription": "Shows or changes which providers score subagent calls: auto, openrouter-first, typesafe, openrouter.",
+		"argsHint": "<auto|openrouter-first|typesafe|openrouter>",
+		"providerLines": {
+			"auto": "provider: auto (typesafe, then openrouter)",
+			"openrouter-first": "provider: openrouter-first (openrouter, then typesafe)",
+			"typesafe": "provider: typesafe (typesafe)",
+			"openrouter": "provider: openrouter (openrouter)"
+		},
+		"useOneOf": "provider: use one of auto, openrouter-first, typesafe, openrouter",
+		"unchangedPrefix": "provider unchanged: ",
+		"already": {
+			"auto": "provider unchanged: already auto",
+			"openrouter-first": "provider unchanged: already openrouter-first",
+			"typesafe": "provider unchanged: already typesafe",
+			"openrouter": "provider unchanged: already openrouter"
+		},
+		"refused": "provider unchanged: only a local session can change it",
+		"localPlatforms": ["local", "cli", "tui", "desktop"],
+		"badCall": "Unknown setting. Pass no setting, or one of: provider, typesafe_key, openrouter_key, small_model, large_model",
+		"keyLines": {
+			"typesafe": {
+				"set": "typesafe key: set",
+				"unset": "typesafe key: unset"
+			},
+			"openrouter": {
+				"set": "openrouter key: set",
+				"unset": "openrouter key: unset"
+			}
+		},
+		"unset": "unset",
+		"modelLine": "{name}: {provider} {model}",
+		"modelUnset": "{name}: unset",
+		"lineBreak": "\n",
+		"errorPrefix": "error: ",
+		"help": {
+			"provider": "Type /model-router-provider <value> in the chat.\nprovider: use one of auto, openrouter-first, typesafe, openrouter",
+			"typesafe_key": "Set TYPESAFE_API_KEY in the .env file of the Hermes home, or enter the key in the plugin's settings form in Hermes Desktop. Never type a key into the chat.",
+			"openrouter_key": "Set OPENROUTER_API_KEY in the .env file of the Hermes home. Never type a key into the chat.",
+			"small_model": "small_model is set in the plugin's settings form in Hermes Desktop, or in config.yaml under plugins.entries.model-router-hermes.settings.small_model, or with: hermes config set plugins.entries.model-router-hermes.settings.small_model '{\"provider\": \"<provider>\", \"model\": \"<model>\"}'",
+			"large_model": "large_model is set in the plugin's settings form in Hermes Desktop, or in config.yaml under plugins.entries.model-router-hermes.settings.large_model, or with: hermes config set plugins.entries.model-router-hermes.settings.large_model '{\"provider\": \"<provider>\", \"model\": \"<model>\"}'"
+		}
+	}
 }

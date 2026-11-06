@@ -35,3 +35,14 @@ def read_slot(ctx, key):
     if not hasattr(value, "get"):
         return Slot("", "")
     return Slot(_text(value.get("provider")), _text(value.get("model")))
+
+
+def found_keys(api, constants, provider):
+    """The keys the provider value allows, by provider; a blank or non-text secret is absent."""
+    providers = constants["providers"]
+    found = {}
+    for name in providers["order"][provider]:
+        value = api.get_secret(providers["keyVariables"][name])
+        if isinstance(value, str) and value.strip():
+            found[name] = value
+    return found

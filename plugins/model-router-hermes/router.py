@@ -9,7 +9,7 @@ from .budget import Budget
 from .constants import CONSTANTS, MS_PER_SECOND, PLUGIN_DIR
 from .hermes_api import live_api
 from .labels import OnceLog
-from .settings import read_provider, read_slot
+from .settings import found_keys, read_provider, read_slot
 
 # An end level takes its model from a slot; the middle level keeps the task's model.
 END_LEVELS = {0: ("small", "smallModelUnresolved"), 2: ("large", "largeModelUnresolved")}
@@ -64,13 +64,7 @@ class Router:
             window.close()
 
     def _keys(self, provider):
-        providers = self._constants["providers"]
-        found = {}
-        for name in providers["order"][provider]:
-            value = self._api.get_secret(providers["keyVariables"][name])
-            if isinstance(value, str) and value.strip():
-                found[name] = value
-        return found
+        return found_keys(self._api, self._constants, provider)
 
     def _decide(self, task, config, base, window):
         provider = read_provider(self._ctx, self._constants)

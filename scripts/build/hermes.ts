@@ -1,4 +1,5 @@
 import { ROUTING_LIMIT_MS } from "../../src/compose.ts";
+import { setupTexts } from "../../src/hermes-setup.ts";
 import { HERMES_TEXTS } from "../../src/hermes-texts.ts";
 import { effortFor } from "../../src/ladder.ts";
 import { LEVELS } from "../../src/part.ts";
@@ -79,6 +80,7 @@ const constants = (source: Source): JsonObject => {
 		skips,
 		backend: source.hermes.backendName,
 		plugin: source.hermes.pluginName,
+		texts: setupTexts(source.hermes.pluginName),
 	};
 };
 

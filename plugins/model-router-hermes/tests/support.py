@@ -102,17 +102,62 @@ def skipped_label(reason_key: str) -> str:
 
 
 class FakeCtx:
-    """The part of the Hermes plugin context the plugin uses."""
+    """The part of the Hermes plugin context the plugin uses.
 
-    def __init__(self, settings: dict[str, Any] | None = None) -> None:
+    `fail` maps a registrar or `set_config` to the exception it raises."""
+
+    def __init__(
+        self, settings: dict[str, Any] | None = None, fail: dict[str, Exception] | None = None
+    ) -> None:
         self.settings = {} if settings is None else settings
+        self.fail = {} if fail is None else fail
         self.registered: list[Any] = []
+        self.tools: list[dict[str, Any]] = []
+        self.commands: list[dict[str, Any]] = []
+        self.skills: list[tuple[str, Path]] = []
+        self.written: list[tuple[str, Any]] = []
+        self.order: list[str] = []
+
+    def _enter(self, what: str) -> None:
+        if what in self.fail:
+            raise self.fail[what]
+        self.order.append(what)
 
     def get_config(self, key: str, default: Any = None) -> Any:
         return self.settings.get(key, default)
 
+    def set_config(self, key: str, value: Any) -> None:
+        if "set_config" in self.fail:
+            raise self.fail["set_config"]
+        self.written.append((key, value))
+        self.settings[key] = value
+
     def register_delegation_provider(self, provider: Any) -> None:
+        self._enter("provider")
         self.registered.append(provider)
+
+    def register_tool(self, name, toolset, schema, handler, **kwargs) -> None:
+        self._enter("tool")
+        self.tools.append(
+            {"name": name, "toolset": toolset, "schema": schema, "handler": handler, **kwargs}
+        )
+
+    def register_command(self, name, handler, description="", args_hint="") -> None:
+        self._enter("command")
+        self.commands.append(
+            {"name": name, "handler": handler, "description": description, "args_hint": args_hint}
+        )
+
+    def register_skill(self, name, path, **kwargs) -> None:
+        self._enter("skill")
+        self.skills.append((name, Path(path)))
+
+
+class UnreadableCtx(FakeCtx):
+    """A context whose settings cannot be read."""
+
+    def get_config(self, key: str, default: Any = None) -> Any:
+        raise ValueError("config unreadable")
 
 
 class FakeClock:
