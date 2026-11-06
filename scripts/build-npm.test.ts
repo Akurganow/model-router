@@ -16,6 +16,7 @@ import {
 } from "./build/outputs.ts";
 import { type Schema, validate } from "./build/schema.ts";
 import { loadSchema, loadSource } from "./build/source.ts";
+import { packResult } from "./check-npm-pack.ts";
 import { anchorsOf } from "./markdown-anchors.ts";
 import { useTempRoot } from "./temp-root.ts";
 
@@ -177,9 +178,9 @@ test("the files list matches what npm packs", () => {
 		encoding: "utf8",
 	});
 	assert.equal(run.status, 0, run.stderr);
-	const packed: string[] = JSON.parse(run.stdout)[0].files.map(
-		(file: { path: string }) => file.path,
-	);
+	const result = packResult(JSON.parse(run.stdout));
+	assert.ok(result, "npm pack printed no result");
+	const packed = result.files.map(({ path }) => path);
 	const inTree = listCopies(ROOT)
 		.map(({ to }) => to.slice(NPM_ROOT.length + 1))
 		.concat(["package.json", "README.md"]);
