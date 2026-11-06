@@ -129,4 +129,4 @@ Each plugin's README gives the exact shape.
 When the reply carries them, the line also names the Jev model and the token counts.
 
 After a fallback, a routed line ends with the provider that answered and why the first one failed, for example ` · via openrouter (typesafe HTTP 503)`.
-After two failed attempts, a skip reason names each provider with its own reason, in attempt order, for example `skipped, typesafe HTTP 503, openrouter timeout`.
+After both providers fail, a skip reason names each provider with its own reason, in the order they were tried, for example `skipped, typesafe HTTP 503, openrouter timeout`.

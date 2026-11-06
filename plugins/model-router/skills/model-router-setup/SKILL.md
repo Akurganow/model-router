@@ -99,7 +99,7 @@ Read the line as follows:
 - After a fallback, it ends with ` · via <provider> (<first provider> <reason>)`.
 - `key unset` points to step 3.
 - `timeout`, `network error` or an HTTP status points to the provider or the network.
-- After two attempts the line names each provider with its reason, for example `skipped, typesafe HTTP 503, openrouter timeout`.
+- After both providers fail, the line names each provider with its reason, for example `skipped, typesafe HTTP 503, openrouter timeout`.
 
 ## Closing summary
 

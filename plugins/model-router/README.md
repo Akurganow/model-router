@@ -336,8 +336,8 @@ Claude Code then refuses adds a second line, `denied`.
   than the four built-ins pass through too. Run `/model-router:scope` to see
   the scope, and [Which calls are routed](#which-calls-are-routed) lists the
   cases. Enable the plugin in `/plugin`.
-- A routed call logs `skipped, <cause>` and runs unchanged. After two
-  attempts the line names each provider with its cause, as
+- A routed call logs `skipped, <cause>` and runs unchanged. After both
+  providers fail, the line names each provider with its cause, as
   [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. The causes are:
   - `key unset`: no provider the `provider` option allows has a key. The
     TypeSafe key comes from `api_key` or `TYPESAFE_API_KEY`, the OpenRouter

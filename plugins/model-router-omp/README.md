@@ -156,7 +156,7 @@ A routed entry reads `L<level> <role or no change> · p=<probability>`. The prob
 
 omp's task view shows the same decision as the spawn's routing note, without the item number.
 
-A skipped entry reads `task <n>: skipped, <reason>`. After two attempts, the reason names each provider, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. The item then runs as omp would run it without the plugin.
+A skipped entry reads `task <n>: skipped, <reason>`. After both providers fail, the reason names each provider, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. The item then runs as omp would run it without the plugin.
 
 ### Gate reasons
 
