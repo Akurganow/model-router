@@ -40,8 +40,12 @@ export async function raceDeadline<T>(
 			});
 			// The host's abort settles the race at once, so a hook the host gave up on does not wait for its work.
 			const onHostAbort = () => {
-				timer.cancel();
 				settle(undefined);
+				try {
+					timer.cancel();
+				} catch {
+					// A throwing cancel must not escape the listener; the race has already settled.
+				}
 			};
 			hostSignal?.addEventListener("abort", onHostAbort, { once: true });
 			if (hostSignal?.aborted) onHostAbort();

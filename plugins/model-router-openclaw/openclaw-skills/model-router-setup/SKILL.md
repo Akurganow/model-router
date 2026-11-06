@@ -54,7 +54,7 @@ The key question has three answers:
 2. "Set the environment variable". The person sets `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` in the Gateway's environment, then restarts the Gateway with `openclaw gateway restart`.
 3. "Do nothing". Skip the key.
 
-[Keys](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#keys) says where the plugin looks for a key and who can read an environment variable. After answer 2, tell the person what it says about the variable.
+[Keys](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#keys) says where the plugin looks for a key. After answer 2, say that a variable in the Gateway's environment reaches every process the Gateway starts.
 
 If a key is missing for every allowed provider, say that every call skips with `key unset` until one exists. With `auto` or `openrouter-first` and one key, say that its provider scores alone.
 

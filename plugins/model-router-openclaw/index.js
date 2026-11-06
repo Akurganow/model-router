@@ -1362,8 +1362,11 @@ async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
         settle(void 0);
       });
       const onHostAbort = () => {
-        timer.cancel();
         settle(void 0);
+        try {
+          timer.cancel();
+        } catch {
+        }
       };
       hostSignal?.addEventListener("abort", onHostAbort, { once: true });
       if (hostSignal?.aborted) onHostAbort();

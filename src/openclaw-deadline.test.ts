@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it, mock } from "node:test";
 import { LIMIT_REACHED, ROUTING_LIMIT_MS } from "./compose.ts";
 import {
+	type Clock,
 	deadlineFor,
 	HOOK_TIMEOUT_MS,
 	MIN_DEADLINE_MS,
@@ -112,6 +113,25 @@ describe("raceDeadline", () => {
 		);
 		assert.equal(await pending, undefined);
 		assert.equal(time.live(), 0);
+	});
+
+	it("settles on a host abort even when cancelling the timer throws", async () => {
+		const throwingCancel: Clock = {
+			after: () => ({
+				cancel: () => {
+					throw new Error("cancel failed");
+				},
+			}),
+		};
+		const host = new AbortController();
+		const pending = raceDeadline(
+			() => new Promise<string>(() => undefined),
+			DEADLINE_MS,
+			throwingCancel,
+			host.signal,
+		);
+		host.abort();
+		assert.equal(await pending, undefined);
 	});
 
 	it("stops listening to the host signal once the work ends", async () => {

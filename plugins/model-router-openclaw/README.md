@@ -27,7 +27,7 @@ The install command carries a prefix and two flags:
 
 Drop both flags in a terminal to answer OpenClaw's prompts instead. Review the source before you pass the flags. They skip OpenClaw's prompts.
 
-The `inspect` step shows that OpenClaw installed and enabled the plugin. A good install reads `status: loaded`, `imported: true` and `enabled: true`. The step loads the plugin in tool-discovery mode, where the plugin registers nothing. The report's lists of registered hooks, tools and commands stay empty, and only the manifest's `contracts.tools` names `model_router_config`.
+The `inspect` step shows that OpenClaw installed and enabled the plugin. A good install reads `plugin.status: loaded`, `plugin.imported: true` and `plugin.enabled: true`. The step loads the plugin in tool-discovery mode, where the plugin registers nothing. The report's lists of registered hooks, tools and commands stay empty, and only the manifest's `contracts.tools` names `model_router_config`.
 
 To see the registration, start or restart the Gateway and read its log with `openclaw logs --follow --plain`. Under verbose logging or file log level `debug`, the log holds `Registered plugin command: /model-router-provider (plugin: model-router-openclaw)`.
 
@@ -172,7 +172,7 @@ At level 1 with a kept effort, there is nothing to set. The plugin returns nothi
 
 A spawn with no `model-router` line in the Gateway log has one of four causes:
 
-- The Gateway has not loaded the plugin. Run `openclaw plugins inspect model-router-openclaw --runtime --json`. `status` must read `loaded` and `enabled` must read `true`. Then restart the Gateway. [Install](#install) has the commands.
+- The Gateway has not loaded the plugin. Run `openclaw plugins inspect model-router-openclaw --runtime --json`. `plugin.status` must read `loaded` and `plugin.enabled` must read `true`. Then restart the Gateway. [Install](#install) has the commands.
 - The spawn [passes without a line](#spawns-that-pass-without-a-line).
 - The spawn takes a [path the hook never sees](#paths-the-hook-never-sees).
 - The routing limit expired, or the hook timeout is too short for the plugin to run. [Hook timeout](#hook-timeout) lists the limits.
