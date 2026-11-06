@@ -105,7 +105,6 @@ test("the constants hold only the keys the Python shim reads", () => {
 		"graceMs",
 		"providers",
 		"efforts",
-		"linePrefix",
 		"skips",
 		"slots",
 		"backend",
@@ -117,7 +116,6 @@ test("the constants hold only the keys the Python shim reads", () => {
 test("the constants hold the values src/ gives", () => {
 	assert.equal(constants.routingLimitMs, ROUTING_LIMIT_MS);
 	assert.equal(constants.graceMs, HERMES_TEXTS.graceMs);
-	assert.equal(constants.linePrefix, HERMES_TEXTS.linePrefix);
 	assert.equal(constants.backend, source.hermes.backendName);
 	assert.deepEqual(constants.providers, {
 		values: [...PROVIDER_VALUES],
@@ -132,15 +130,17 @@ test("the constants hold the values src/ gives", () => {
 		nodeNotFound: "model-router skipped, node not found",
 		timeout: "model-router skipped, timeout",
 		failed: "model-router skipped, failed",
+		smallModelUnresolved: "model-router skipped, small model unresolved",
+		largeModelUnresolved: "model-router skipped, large model unresolved",
 	});
 	assert.deepEqual(constants.slots, {
 		small: {
 			setting: "small_model",
-			unresolved: "model-router skipped, small model unresolved",
+			unresolved: "smallModelUnresolved",
 		},
 		large: {
 			setting: "large_model",
-			unresolved: "model-router skipped, large model unresolved",
+			unresolved: "largeModelUnresolved",
 		},
 	});
 });
@@ -201,8 +201,7 @@ test("the committed bundle answers a request on stdin with one JSON line", () =>
 		provider: "typesafe",
 		keys: {},
 		budgetMs: 1000,
-		smallModel: null,
-		largeModel: null,
+		models: { small: null, large: null },
 		configEffort: false,
 	};
 	const run = spawnSync(process.execPath, [join(ROOT, HERMES_OUTPUTS.bundle)], {
@@ -212,6 +211,6 @@ test("the committed bundle answers a request on stdin with one JSON line", () =>
 	assert.equal(run.status, 0);
 	assert.equal(
 		run.stdout,
-		`${JSON.stringify({ outcome: "skip", line: "skipped, key unset" })}\n`,
+		`${JSON.stringify({ outcome: "skip", line: "model-router skipped, key unset" })}\n`,
 	);
 });

@@ -16,23 +16,24 @@
 		}
 	},
 	"efforts": ["medium", "high", "xhigh", "low"],
-	"linePrefix": "model-router ",
 	"skips": {
 		"keyUnset": "model-router skipped, key unset",
 		"noEndModel": "model-router skipped, no small or large model",
 		"subagentModelSet": "model-router skipped, subagent model set",
 		"nodeNotFound": "model-router skipped, node not found",
 		"timeout": "model-router skipped, timeout",
-		"failed": "model-router skipped, failed"
+		"failed": "model-router skipped, failed",
+		"smallModelUnresolved": "model-router skipped, small model unresolved",
+		"largeModelUnresolved": "model-router skipped, large model unresolved"
 	},
 	"slots": {
 		"small": {
 			"setting": "small_model",
-			"unresolved": "model-router skipped, small model unresolved"
+			"unresolved": "smallModelUnresolved"
 		},
 		"large": {
 			"setting": "large_model",
-			"unresolved": "model-router skipped, large model unresolved"
+			"unresolved": "largeModelUnresolved"
 		}
 	},
 	"backend": "model-router",

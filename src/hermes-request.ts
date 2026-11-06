@@ -1,6 +1,7 @@
 import { contextText } from "./brief.ts";
 import { isRecord, nonEmpty } from "./part.ts";
 import { KEY_VARIABLES, type Keys, type Provider } from "./provider.ts";
+import { type EndSlot, SLOTS } from "./reasons.ts";
 
 // What the Python shim sends, once read.
 export type HermesRequest = {
@@ -11,8 +12,7 @@ export type HermesRequest = {
 	// Undefined unless the budget is a positive finite number.
 	readonly budgetMs: number | undefined;
 	// A blank or missing model is undefined.
-	readonly smallModel: string | undefined;
-	readonly largeModel: string | undefined;
+	readonly models: Readonly<Record<EndSlot, string | undefined>>;
 	readonly configEffort: boolean;
 };
 
@@ -27,6 +27,14 @@ const readKeys = (value: unknown): Keys =>
 		}),
 	);
 
+const readModels = (value: unknown): HermesRequest["models"] =>
+	Object.fromEntries(
+		SLOTS.map((slot) => [
+			slot,
+			isRecord(value) ? nonEmpty(value[slot]) : undefined,
+		]),
+	) as HermesRequest["models"];
+
 const readBudget = (value: unknown): number | undefined =>
 	typeof value === "number" && Number.isFinite(value) && value > 0
 		? value
@@ -39,24 +47,14 @@ const readBudget = (value: unknown): number | undefined =>
  */
 export function readRequest(raw: unknown): HermesRequest | undefined {
 	if (!isRecord(raw) || Array.isArray(raw)) return undefined;
-	const {
-		task,
-		context,
-		provider,
-		keys,
-		budgetMs,
-		smallModel,
-		largeModel,
-		configEffort,
-	} = raw;
+	const { task, context, provider, keys, budgetMs, models, configEffort } = raw;
 	return {
 		task: typeof task === "string" ? task : "",
 		context: contextText(context),
 		provider,
 		keys: readKeys(keys),
 		budgetMs: readBudget(budgetMs),
-		smallModel: nonEmpty(smallModel),
-		largeModel: nonEmpty(largeModel),
+		models: readModels(models),
 		configEffort: configEffort === true,
 	};
 }

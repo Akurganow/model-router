@@ -33,9 +33,9 @@ export async function raceDeadline<T>(
 				settle(undefined);
 			});
 			/**
-			 * Settles the race with undefined and cancels the deadline timer. The host's
-			 * abort settles the race at once, so a hook the host gave up on does not wait
-			 * for its work. Never throws: a throwing cancel stays inside.
+			 * Settles the race with undefined and cancels the deadline timer. The
+			 * caller's abort settles the race at once, so a caller that gave up on its
+			 * work does not wait for it. Never throws: a throwing cancel stays inside.
 			 */
 			const onHostAbort = () => {
 				settle(undefined);
@@ -61,7 +61,7 @@ export async function raceDeadline<T>(
 				.catch(() => undefined);
 		});
 	} catch {
-		// A throwing signal or clock leaves the spawn unrouted.
+		// A throwing signal or clock gives no result.
 		return undefined;
 	}
 }

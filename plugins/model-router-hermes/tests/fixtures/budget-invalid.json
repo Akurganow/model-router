@@ -6,10 +6,9 @@
 		"provider": "typesafe",
 		"keys": { "typesafe": "typesafe-key" },
 		"budgetMs": 0,
-		"smallModel": "openai/small",
-		"largeModel": "openai/large",
+		"models": { "small": "openai/small", "large": "openai/large" },
 		"configEffort": false
 	},
 	"jev": [],
-	"response": { "outcome": "skip", "line": "skipped, failed" }
+	"response": { "outcome": "skip", "line": "model-router skipped, failed" }
 }

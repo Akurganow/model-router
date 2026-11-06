@@ -1293,6 +1293,15 @@ var work = {
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
+// src/reasons.ts
+var CONFIG_EFFORT = "config effort";
+var SLOTS = ["small", "large"];
+var LEVEL_SLOTS = {
+  0: "small",
+  2: "large"
+};
+var modelUnset = (slot) => `${slot} model unset`;
+
 // src/hermes-request.ts
 var PROVIDERS = Object.keys(KEY_VARIABLES);
 var readKeys = (value) => Object.fromEntries(
@@ -1301,27 +1310,23 @@ var readKeys = (value) => Object.fromEntries(
     return key === void 0 ? [] : [[provider, key]];
   })
 );
+var readModels = (value) => Object.fromEntries(
+  SLOTS.map((slot) => [
+    slot,
+    isRecord2(value) ? nonEmpty(value[slot]) : void 0
+  ])
+);
 var readBudget = (value) => typeof value === "number" && Number.isFinite(value) && value > 0 ? value : void 0;
 function readRequest(raw) {
   if (!isRecord2(raw) || Array.isArray(raw)) return void 0;
-  const {
-    task,
-    context,
-    provider,
-    keys,
-    budgetMs,
-    smallModel,
-    largeModel,
-    configEffort
-  } = raw;
+  const { task, context, provider, keys, budgetMs, models, configEffort } = raw;
   return {
     task: typeof task === "string" ? task : "",
     context: contextText(context),
     provider,
     keys: readKeys(keys),
     budgetMs: readBudget(budgetMs),
-    smallModel: nonEmpty(smallModel),
-    largeModel: nonEmpty(largeModel),
+    models: readModels(models),
     configEffort: configEffort === true
   };
 }
@@ -1335,6 +1340,7 @@ var EFFORT_BY_TIER = {
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
 // src/line.ts
+var LINE_PREFIX = "model-router ";
 var NO_CHANGE = "no change";
 function routedLine({
   level,
@@ -1368,20 +1374,16 @@ var tier = {
   pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
 
-// src/reasons.ts
-var CONFIG_EFFORT = "config effort";
-var modelUnset = (slot) => `${slot} model unset`;
-
 // src/hermes-route.ts
-var MIDDLE_TIER = 1;
 var skippedBy = (reason) => ({ skipped: reason });
 var skip2 = (reason) => ({
   outcome: "skip",
-  line: skippedLine(reason)
+  line: `${LINE_PREFIX}${skippedLine(reason)}`
 });
 var END_SLOTS = {
-  0: { name: "small", model: (r) => r.smallModel },
-  2: { name: "large", model: (r) => r.largeModel }
+  0: LEVEL_SLOTS[0],
+  1: null,
+  2: LEVEL_SLOTS[2]
 };
 async function score(request, { fetchFn }, signal) {
   const { keys } = request;
@@ -1408,17 +1410,15 @@ async function scored(request, deps, signal) {
 }
 function answer(request, decided) {
   const level = decided.tier;
-  const slot = level === MIDDLE_TIER ? void 0 : END_SLOTS[level];
-  const target = slot?.model(request);
-  if (slot !== void 0 && target === void 0)
-    return skip2(modelUnset(slot.name));
+  const slot = END_SLOTS[level];
+  const target = slot === null ? void 0 : request.models[slot];
+  if (slot !== null && target === void 0) return skip2(modelUnset(slot));
   const effort = effortFor(level, decided.work);
   return {
     outcome: "route",
-    level,
-    ...slot === void 0 ? {} : { slot: slot.name },
+    slot,
     effort: request.configEffort ? null : effort,
-    line: routedLine({
+    line: LINE_PREFIX + routedLine({
       level,
       target,
       effort: request.configEffort ? CONFIG_EFFORT : effort,

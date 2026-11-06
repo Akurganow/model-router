@@ -6,8 +6,7 @@
 		"provider": "bogus",
 		"keys": { "typesafe": "typesafe-key" },
 		"budgetMs": 8000,
-		"smallModel": "openai/small",
-		"largeModel": "openai/large",
+		"models": { "small": "openai/small", "large": "openai/large" },
 		"configEffort": false
 	},
 	"jev": [
@@ -18,9 +17,8 @@
 	],
 	"response": {
 		"outcome": "route",
-		"level": 0,
 		"slot": "small",
 		"effort": "high",
-		"line": "L0 openai/small · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+		"line": "model-router L0 openai/small · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
 	}
 }

@@ -6,41 +6,40 @@ import { type DecidedWithWork, decide } from "./decide.ts";
 import { work } from "./effort.ts";
 import { type HermesRequest, readRequest } from "./hermes-request.ts";
 import { effortFor } from "./ladder.ts";
-import { routedLine, skippedLine } from "./line.ts";
+import { LINE_PREFIX, routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
 import type { Level } from "./part.ts";
 import { plan } from "./provider.ts";
-import { CONFIG_EFFORT, type EndSlot, modelUnset } from "./reasons.ts";
+import {
+	CONFIG_EFFORT,
+	type EndSlot,
+	LEVEL_SLOTS,
+	modelUnset,
+} from "./reasons.ts";
 
 export type HermesDeps = { readonly fetchFn: Fetch; readonly clock: Clock };
 export type HermesResponse =
 	| {
 			readonly outcome: "route";
-			readonly level: Level;
-			// The slot whose model the level names; absent at the middle level.
-			readonly slot?: EndSlot;
+			// The slot whose model the level names; null at the middle level.
+			readonly slot: EndSlot | null;
 			// Null when the harness config sets the effort.
 			readonly effort: string | null;
 			readonly line: string;
 	  }
 	| { readonly outcome: "skip"; readonly line: string };
 
-const MIDDLE_TIER = 1;
 const skippedBy = (reason: string): Skipped => ({ skipped: reason });
 export const skip = (reason: string): HermesResponse => ({
 	outcome: "skip",
-	line: skippedLine(reason),
+	line: `${LINE_PREFIX}${skippedLine(reason)}`,
 });
 
-// An end tier names its slot in the skip text and the request field that holds its model.
-const END_SLOTS: Readonly<
-	Record<
-		0 | 2,
-		{ name: EndSlot; model: (r: HermesRequest) => string | undefined }
-	>
-> = {
-	0: { name: "small", model: (r) => r.smallModel },
-	2: { name: "large", model: (r) => r.largeModel },
+// The slot each level names; the middle level names none.
+const END_SLOTS: Readonly<Record<Level, EndSlot | null>> = {
+	0: LEVEL_SLOTS[0],
+	1: null,
+	2: LEVEL_SLOTS[2],
 };
 
 // Jev is asked once for both parts, with the task and its context under the default role.
@@ -80,30 +79,31 @@ async function scored(
 
 /**
  * Returns the response for a decided request: a skip when an end tier has no
- * model, else the level, its slot, the effort the ladder gives and the routing line.
+ * model, else the slot the level names, the effort the ladder gives and the
+ * routing line. Every line starts with the line prefix.
  */
 function answer(
 	request: HermesRequest,
 	decided: DecidedWithWork,
 ): HermesResponse {
 	const level = decided.tier;
-	const slot = level === MIDDLE_TIER ? undefined : END_SLOTS[level];
-	const target = slot?.model(request);
-	if (slot !== undefined && target === undefined)
-		return skip(modelUnset(slot.name));
+	const slot = END_SLOTS[level];
+	const target = slot === null ? undefined : request.models[slot];
+	if (slot !== null && target === undefined) return skip(modelUnset(slot));
 	const effort = effortFor(level, decided.work);
 	return {
 		outcome: "route",
-		level,
-		...(slot === undefined ? {} : { slot: slot.name }),
+		slot,
 		effort: request.configEffort ? null : effort,
-		line: routedLine({
-			level,
-			target,
-			effort: request.configEffort ? CONFIG_EFFORT : effort,
-			probabilities: decided.probabilities,
-			suffix: decided.suffix,
-		}),
+		line:
+			LINE_PREFIX +
+			routedLine({
+				level,
+				target,
+				effort: request.configEffort ? CONFIG_EFFORT : effort,
+				probabilities: decided.probabilities,
+				suffix: decided.suffix,
+			}),
 	};
 }
 

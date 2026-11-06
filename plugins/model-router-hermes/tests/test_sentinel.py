@@ -71,7 +71,7 @@ class SentinelTest(unittest.TestCase):
         without_keys = {k: v for k, v in request.items() if k != "keys"}
         self.assertNotIn(TYPESAFE_SENTINEL, json.dumps(without_keys))
         self.assertNotIn(OPENROUTER_SENTINEL, json.dumps(without_keys))
-        for field in ("provider", "smallModel", "largeModel"):
+        for field in ("provider", "models"):
             self.assertNotIn(TASK_SENTINEL, str(request[field]))
 
     def test_config_api_key_never_reaches_node_or_a_log(self):

@@ -117,8 +117,17 @@ class LogTest(unittest.TestCase):
                 log.info(message)
         self.assertEqual([r.getMessage() for r in logs.records], ["a", "b", "c", "a"])
 
-    def test_prefix_is_the_constant(self):
-        self.assertTrue(skipped_label("failed").startswith(PREFIX))
+    def test_a_repeat_hit_keeps_the_message_among_the_most_recent(self):
+        log = submodule("labels").OnceLog(logging.getLogger("test-once"), capacity=2)
+        with self.assertLogs("test-once", level="INFO") as logs:
+            for message in ("a", "b", "a", "c", "a", "b"):
+                log.info(message)
+        # The hit on "a" makes "b" the oldest, so "c" evicts "b" and "a" stays.
+        self.assertEqual([r.getMessage() for r in logs.records], ["a", "b", "c", "b"])
+
+    def test_every_skip_line_starts_with_the_prefix(self):
+        for key, line in CONSTANTS["skips"].items():
+            self.assertTrue(line.startswith(PREFIX), key)
 
 
 if __name__ == "__main__":

@@ -78,6 +78,10 @@ class BudgetTest(unittest.TestCase):
         # Record two idled for 12 s, so a new record opens.
         self.assertEqual(self.budget.open(1).remaining_ms(), LIMIT_MS)
 
+    def test_the_lock_clock_and_limit_are_private(self):
+        for name in ("lock", "clock", "limit_ms"):
+            self.assertFalse(hasattr(self.budget, name), name)
+
     def test_one_record_under_concurrent_first_tasks(self):
         windows = []
         barrier = threading.Barrier(16)

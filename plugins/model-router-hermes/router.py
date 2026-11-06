@@ -9,18 +9,21 @@ from .budget import Budget
 from .constants import CONSTANTS, MS_PER_SECOND, PLUGIN_DIR
 from .hermes_api import live_api
 from .labels import OnceLog
-from .settings import found_keys, read_provider, read_slot
+from .settings import found_keys, read_provider, read_slot, stripped
 
 # Config keys that name a model route of their own; the plugin then leaves the task alone.
 SUBAGENT_ROUTE_KEYS = ("model", "provider", "base_url", "api_key")
 
 
 def _is_set(value):
-    return bool(value.strip()) if isinstance(value, str) else bool(value)
+    # A route key counts as set when it is truthy: blank text, 0 and empty containers do not.
+    text = stripped(value)
+    return bool(value) if text is None else bool(text)
 
 
 def _effort_set(value):
-    return value is not None and not (isinstance(value, str) and not value.strip())
+    # Unlike a route key, any value but None and blank text sets the effort, 0 included.
+    return value is not None and stripped(value) != ""
 
 
 class Router:
@@ -55,14 +58,14 @@ class Router:
     def _decide(self, task, config, base, window):
         provider = read_provider(self._ctx, self._constants)
         keys = found_keys(self._api, self._constants, provider)
-        slots = {
+        slot_settings = {
             name: read_slot(self._ctx, spec["setting"])
             for name, spec in self._constants["slots"].items()
         }
         # These gates read Hermes state, and a skipped task starts no Node.
         if not keys:
             return self._skip(base, "keyUnset")
-        if not any(slot.has_model for slot in slots.values()):
+        if not any(slot.has_model for slot in slot_settings.values()):
             return self._skip(base, "noEndModel")
         if any(_is_set(config.get(key)) for key in SUBAGENT_ROUTE_KEYS):
             return self._skip(base, "subagentModelSet")
@@ -78,39 +81,42 @@ class Router:
             "provider": provider,
             "keys": keys,
             "budgetMs": budget_ms,
-            **{f"{name}Model": slot.model or None for name, slot in slots.items()},
+            "models": {name: slot.model or None for name, slot in slot_settings.items()},
             "configEffort": _effort_set(config.get("reasoning_effort")),
         }
-        return self._ask_node(node_path, request, base, slots, window)
+        return self._ask_node(node_path, request, base, slot_settings, window)
 
-    def _ask_node(self, node_path, request, base, slots, window):
+    def _ask_node(self, node_path, request, base, slot_settings, window):
         timeout_s = (request["budgetMs"] + self._constants["graceMs"]) / MS_PER_SECOND
         try:
-            answer = node.run_node(
-                [node_path, self._script],
-                request,
-                timeout_s,
-                self._constants["efforts"],
-                list(self._constants["slots"]),
-            )
+            answer = node.run_node([node_path, self._script], request, timeout_s)
         except node.NodeTimeout:
             return self._skip(base, "timeout")
         except node.NodeFailed:
             return self._skip(base, "failed")
-        return self._apply(answer, base, slots, window)
+        return self._apply(answer, base, slot_settings, window)
 
-    def _apply(self, answer, base, slots, window):
-        route = {**base, "label": self._constants["linePrefix"] + answer.line}
+    def _in_protocol(self, answer):
+        """Whether a route names a slot and an effort the settings and the ladder hold."""
+        return (answer.slot is None or answer.slot in self._constants["slots"]) and (
+            answer.effort is None or answer.effort in self._constants["efforts"]
+        )
+
+    def _apply(self, answer, base, slot_settings, window):
+        # Node's lines are finished, prefix included.
+        route = {**base, "label": answer.line}
         if isinstance(answer, node.Skip):
             return route
+        if not self._in_protocol(answer):
+            return self._skip(base, "failed")
         if answer.slot is not None:
-            slot = slots[answer.slot]
+            slot = slot_settings[answer.slot]
             wait_s = max(window.remaining_ms(), 0) / MS_PER_SECOND
             resolved = checks.slot_resolved_within(slot, self._api, wait_s)
             if resolved is None:
                 return self._skip(base, "timeout")
             if not resolved:
-                return {**base, "label": self._constants["slots"][answer.slot]["unresolved"]}
+                return self._skip(base, self._constants["slots"][answer.slot]["unresolved"])
             route.update(model=slot.model, provider=slot.provider)
         if answer.effort is not None:
             route["reasoning_effort"] = answer.effort
