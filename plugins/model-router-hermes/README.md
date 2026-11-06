@@ -34,7 +34,7 @@ A gateway keeps a loaded plugin between turns. After a plugin update, or after a
 
 Routing needs the plugin enabled, the backend on, a key and a model in a slot. The [setup skill](skills/model-router-setup/SKILL.md) walks through them. Ask Hermes to load `model-router-hermes:model-router-setup`.
 
-1. Know what the backend replaces. Hermes runs one delegation backend at a time, so `delegation.backend: model-router` replaces `model_map` or any other backend. A backend change applies from the next session. In a running session, type `/delegation model-router --now`.
+1. A backend change applies from the next session. In a running session, type `/delegation model-router --now`.
 2. Add a [key](#keys).
 3. Assign `small_model` and `large_model`, as [Models](#models) says.
 4. Pick the [provider](#provider) if the default does not fit.
@@ -44,17 +44,16 @@ Routing needs the plugin enabled, the backend on, a key and a model in a slot. T
 
 ## Keys
 
-The plugin reads a key only for a provider the [`provider` setting](#provider) allows. It reads each key through Hermes's own secret reader, from one variable:
+The plugin reads a key only for a provider the [`provider` setting](#provider) allows. It reads each key through Hermes's own secret reader, from one variable. A key counts as set when the variable holds non-blank text.
 
-- TypeSafe: `TYPESAFE_API_KEY`.
-- OpenRouter: `OPENROUTER_API_KEY`.
+| Key | Environment variable | Settings secret | Where to set it |
+| --- | --- | --- | --- |
+| `typesafe_key` | `TYPESAFE_API_KEY` | `typesafe_api_key` | The `.env` file of the Hermes home, or the settings form in Hermes Desktop |
+| `openrouter_key` | `OPENROUTER_API_KEY` | none | The `.env` file only |
 
-The TypeSafe key has three forms: the tool argument `typesafe_key`, the settings secret `typesafe_api_key` and the environment variable `TYPESAFE_API_KEY`. A key counts as set when the variable holds non-blank text. Get a key from [TypeSafe](https://console.typesafe.ai/keys) or from [OpenRouter](https://openrouter.ai). Each key goes only to its own provider. The plugin never uses Hermes's own provider credentials as a Jev key. With no key for any allowed provider, every task reports `key unset`.
+The config tool's `setting=typesafe_key` only returns how to set the key, and carries no key. Hermes stores a key from the settings form as `TYPESAFE_API_KEY` in that `.env` file.
 
-Add a key in one of two ways:
-
-- Write the variable into `~/.hermes/.env`, the env file of the Hermes home.
-- For the TypeSafe key, fill the secret field in the plugin's settings form in Hermes Desktop. Hermes stores it as `TYPESAFE_API_KEY` in the same file. The OpenRouter key has no settings field.
+Get a key from [TypeSafe](https://console.typesafe.ai/keys) or from [OpenRouter](https://openrouter.ai). Each key goes only to its own provider. The plugin never uses Hermes's own provider credentials as a Jev key. With no key for any allowed provider, every task reports `key unset`.
 
 Hermes holds a key in the gateway's environment, so the programs Hermes starts can read it. [What the plugin stores](PRIVACY.md#what-the-plugin-stores) says so. Never type a key into the chat.
 

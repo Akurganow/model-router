@@ -139,6 +139,8 @@ CI installs it on Ubuntu.
 
 <!-- install:end -->
 
+The Hermes command `hermes config set delegation.backend model-router` replaces `model_map` or any other delegation backend, because Hermes runs one backend at a time.
+
 [docs/clients.md](docs/clients.md) lists what each client reads, each fact with its source.
 
 ### Set up Claude Code
@@ -290,13 +292,7 @@ eligible item.
 
 **OpenClaw.** OpenClaw shows no line in the chat. Start a subagent, and read the Gateway log with `openclaw logs --follow --plain`. The plugin writes one line per spawn. [The log line](plugins/model-router-openclaw/README.md#the-log-line) shows an example and explains it. [Which spawns are routed](plugins/model-router-openclaw/README.md#which-spawns-are-routed) lists the `skipped` reasons. If no line appears, [No line at all?](plugins/model-router-openclaw/README.md#no-line-at-all) lists the causes.
 
-**Hermes Agent.** Ask Hermes to delegate one small task, such as listing the files in the current folder. The plugin puts its line in the task's `route.label`, and Hermes shows the label with the child's progress and result:
-
-```text
-model-router L0 <model> · medium · p=0.91/0.84 · jev jev-1.14.0 · 812/9 tok
-```
-
-[The label and the log](plugins/model-router-hermes/README.md#the-label-and-the-log) explains the line and says where else it goes. [Which tasks are routed](plugins/model-router-hermes/README.md#which-tasks-are-routed) lists the `skipped` reasons.
+**Hermes Agent.** Ask Hermes to delegate one small task, such as listing the files in the current folder. The plugin puts its line in the task's `route.label`, and Hermes shows the label with the child's progress and result. [The label and the log](plugins/model-router-hermes/README.md#the-label-and-the-log) shows an example, explains the line and says where else it goes. [Which tasks are routed](plugins/model-router-hermes/README.md#which-tasks-are-routed) lists the `skipped` reasons.
 
 ## Update
 
