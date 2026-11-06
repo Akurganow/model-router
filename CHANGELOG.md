@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.18.1 - 2026-11-06
+#### Bug Fixes
+- a seance item with a model keeps the seance reason, and the item model check runs inside the item check (5d6f8ea)
+- an omp task item that sets its own model is skipped, so its spawn keeps that model (4cdfc24)
+
+- - -
+
+
 ## v0.18.0 - 2026-11-06
 #### Features
 - (**omp**) read and write the settings under the installed package name (0409ad7)
