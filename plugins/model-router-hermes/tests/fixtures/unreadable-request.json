@@ -1,0 +1,6 @@
+{
+	"description": "A request that is not an object gives the failed skip.",
+	"request": "not an object",
+	"jev": [],
+	"response": { "outcome": "skip", "line": "skipped, failed" }
+}

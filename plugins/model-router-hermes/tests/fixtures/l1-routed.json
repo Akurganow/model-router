@@ -1,0 +1,25 @@
+{
+	"description": "The middle tier names no model: the line prints no change.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "typesafe",
+		"keys": { "typesafe": "typesafe-key" },
+		"budgetMs": 8000,
+		"smallModel": "openai/small",
+		"largeModel": "openai/large",
+		"configEffort": false
+	},
+	"jev": [
+		{
+			"host": "api.typesafe.ai",
+			"reply": { "levels": { "tier": 1, "work": 1 } }
+		}
+	],
+	"response": {
+		"outcome": "route",
+		"level": 1,
+		"effort": "medium",
+		"line": "L1 no change · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+	}
+}

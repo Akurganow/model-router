@@ -18,6 +18,7 @@
 		"claude",
 		"omp",
 		"openclaw",
+		"hermes",
 		"npm"
 	],
 	"properties": {
@@ -45,11 +46,12 @@
 		"descriptions": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["claude", "omp", "openclaw"],
+			"required": ["claude", "omp", "openclaw", "hermes"],
 			"properties": {
 				"claude": { "$ref": "#/$defs/harnessDescriptions" },
 				"omp": { "$ref": "#/$defs/harnessDescriptions" },
-				"openclaw": { "$ref": "#/$defs/manifestDescription" }
+				"openclaw": { "$ref": "#/$defs/manifestDescription" },
+				"hermes": { "$ref": "#/$defs/manifestDescription" }
 			}
 		},
 		"options": {
@@ -57,7 +59,7 @@
 			"additionalProperties": false,
 			"required": ["provider", "scope"],
 			"properties": {
-				"provider": { "$ref": "#/$defs/option" },
+				"provider": { "$ref": "#/$defs/providerOption" },
 				"scope": { "$ref": "#/$defs/option" }
 			}
 		},
@@ -180,6 +182,34 @@
 				"install": { "$ref": "#/$defs/install" }
 			}
 		},
+		"hermes": {
+			"type": "object",
+			"description": "What only the Hermes plugin manifest and the README install region need. Hermes has no scope setting.",
+			"additionalProperties": false,
+			"required": [
+				"pluginName",
+				"backendName",
+				"requiresHermes",
+				"settings",
+				"install"
+			],
+			"properties": {
+				"pluginName": { "$ref": "#/$defs/text" },
+				"backendName": { "$ref": "#/$defs/text" },
+				"requiresHermes": { "$ref": "#/$defs/text" },
+				"settings": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["small_model", "large_model", "typesafe_api_key"],
+					"properties": {
+						"small_model": { "$ref": "#/$defs/hint" },
+						"large_model": { "$ref": "#/$defs/hint" },
+						"typesafe_api_key": { "$ref": "#/$defs/hint" }
+					}
+				},
+				"install": { "$ref": "#/$defs/install" }
+			}
+		},
 		"npm": {
 			"type": "object",
 			"additionalProperties": false,
@@ -217,11 +247,12 @@
 		"urlPerHarness": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["claude", "omp", "openclaw"],
+			"required": ["claude", "omp", "openclaw", "hermes"],
 			"properties": {
 				"claude": { "$ref": "#/$defs/url" },
 				"omp": { "$ref": "#/$defs/url" },
-				"openclaw": { "$ref": "#/$defs/url" }
+				"openclaw": { "$ref": "#/$defs/url" },
+				"hermes": { "$ref": "#/$defs/url" }
 			}
 		},
 		"manifestDescription": {
@@ -233,7 +264,7 @@
 		},
 		"hint": {
 			"type": "object",
-			"description": "A config field's label and help text in the OpenClaw settings form.",
+			"description": "A config field's label and help text in a harness settings form.",
 			"additionalProperties": false,
 			"required": ["label", "help"],
 			"properties": {
@@ -279,9 +310,30 @@
 				}
 			}
 		},
+		"providerOption": {
+			"type": "object",
+			"description": "The provider option, which Hermes also offers. Hermes has no scope option.",
+			"additionalProperties": false,
+			"required": ["default", "title", "descriptions"],
+			"properties": {
+				"default": { "$ref": "#/$defs/text" },
+				"title": { "$ref": "#/$defs/text" },
+				"descriptions": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["claude", "omp", "openclaw", "hermes"],
+					"properties": {
+						"claude": { "$ref": "#/$defs/text" },
+						"omp": { "$ref": "#/$defs/text" },
+						"openclaw": { "$ref": "#/$defs/text" },
+						"hermes": { "$ref": "#/$defs/text" }
+					}
+				}
+			}
+		},
 		"install": {
 			"type": "object",
-			"description": "What the README install region shows for one harness. A command or a note holds {marketplace}, {plugin}, {package} and {id}, which the builder fills from repository, name, the catalogue name, the npm name and the OpenClaw plugin id. An empty ciSystems list renders as a harness that CI does not install. ciLine replaces the generated CI sentence, for a harness whose CI install differs from a user's; ciSystems still names the runners that the CI check ties to the workflow.",
+			"description": "What the README install region shows for one harness. A command or a note holds {marketplace}, {plugin}, {package}, {id}, {hermes} and {backend}, which the builder fills from repository, name, the catalogue name, the npm name, the OpenClaw plugin id, the Hermes plugin name and the Hermes backend name. An empty ciSystems list renders as a harness that CI does not install. ciLine replaces the generated CI sentence, for a harness whose CI install differs from a user's; ciSystems still names the runners that the CI check ties to the workflow.",
 			"additionalProperties": false,
 			"required": ["heading", "commands", "source", "ciSystems"],
 			"properties": {

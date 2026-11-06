@@ -1,0 +1,20 @@
+{
+	"description": "Level 2 with no large model is skipped.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "typesafe",
+		"keys": { "typesafe": "typesafe-key" },
+		"budgetMs": 8000,
+		"smallModel": "openai/small",
+		"largeModel": "",
+		"configEffort": false
+	},
+	"jev": [
+		{
+			"host": "api.typesafe.ai",
+			"reply": { "levels": { "tier": 2, "work": 1 } }
+		}
+	],
+	"response": { "outcome": "skip", "line": "skipped, large model unset" }
+}

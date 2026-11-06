@@ -13,13 +13,16 @@ export const catalogueId = (source: Source): string =>
 	`${source.name}@${source.name}`;
 
 // The placeholders a command or a note may hold: {marketplace}, {plugin} (the
-// catalogue id), {package} (the npm name) and {id} (the OpenClaw plugin id).
+// catalogue id), {package} (the npm name), {id} (the OpenClaw plugin id),
+// {hermes} (the Hermes plugin name) and {backend} (the Hermes backend name).
 const fill = (source: Source, text: string, marketplace: string): string =>
 	text
 		.replaceAll("{marketplace}", marketplace)
 		.replaceAll("{plugin}", catalogueId(source))
 		.replaceAll("{package}", source.npm.name)
-		.replaceAll("{id}", source.openclaw.pluginId);
+		.replaceAll("{id}", source.openclaw.pluginId)
+		.replaceAll("{hermes}", source.hermes.pluginName)
+		.replaceAll("{backend}", source.hermes.backendName);
 
 export const installCommands = (
 	source: Source,
@@ -109,6 +112,7 @@ export function renderReadme(readme: string, source: Source): string {
 		source.claude.install,
 		source.omp.install,
 		source.openclaw.install,
+		source.hermes.install,
 	]
 		.map((install) => section(source, install))
 		.join("\n\n");

@@ -21,10 +21,11 @@ const UNNAMED: Readonly<
 	provider: {
 		omp: ["typesafe", "openrouter"],
 		openclaw: ["typesafe", "openrouter"],
+		hermes: ["typesafe", "openrouter"],
 	},
 };
 const HARNESSES = ["claude", "omp", "openclaw"] as const;
-type Harness = (typeof HARNESSES)[number];
+type Harness = (typeof HARNESSES)[number] | "hermes";
 
 // The texts name a value as a lowercase label before a colon: "auto: TypeSafe, then ...".
 const labelsOf = (text: string) =>
@@ -32,10 +33,15 @@ const labelsOf = (text: string) =>
 
 test("each option text names the values of its setting, bar the exceptions listed here", () => {
 	for (const setting of VALUE_SETTINGS)
-		for (const harness of HARNESSES) {
+		for (const harness of [
+			...HARNESSES,
+			...(setting === "provider" ? (["hermes"] as const) : []),
+		]) {
 			const unnamed = UNNAMED[setting]?.[harness] ?? [];
 			const expected = VALUES[setting].filter((v) => !unnamed.includes(v));
-			const labels = labelsOf(source.options[setting].descriptions[harness]);
+			const descriptions: Record<string, string> =
+				source.options[setting].descriptions;
+			const labels = labelsOf(descriptions[harness] ?? "");
 			assert.deepEqual(
 				labels.sort(),
 				[...expected].sort(),

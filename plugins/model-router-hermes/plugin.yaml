@@ -1,0 +1,41 @@
+{
+  "name": "model-router-hermes",
+  "version": "0.18.0",
+  "description": "Routes Hermes Agent delegated tasks to your small or large model and an effort that fits the task, judged by Jev. For each routed task it sends the task text, condensed to at most 12,000 characters, and the batch context, shortened to fit, both with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows, each with its own key. It sends a fixed text in place of an agent description. The plugin sets a model only from your small_model and large_model settings. A key set as an environment variable is visible to every process Hermes starts.",
+  "author": "Akurganow",
+  "kind": "backend",
+  "requires_hermes": ">=0.22.5",
+  "provides_tools": [
+    "model_router_config"
+  ],
+  "config_schema": {
+    "provider": {
+      "type": "str",
+      "choices": [
+        "auto",
+        "openrouter-first",
+        "typesafe",
+        "openrouter"
+      ],
+      "default": "typesafe",
+      "label": "Jev provider",
+      "description": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe."
+    },
+    "small_model": {
+      "type": "dict",
+      "label": "Small model",
+      "description": "The model a delegated task gets when Jev rates its task small, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it."
+    },
+    "large_model": {
+      "type": "dict",
+      "label": "Large model",
+      "description": "The model a delegated task gets when Jev rates its task large, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it."
+    },
+    "typesafe_api_key": {
+      "type": "secret",
+      "env": "TYPESAFE_API_KEY",
+      "label": "TypeSafe API key",
+      "description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider setting allows TypeSafe. Unset: the plugin reads TYPESAFE_API_KEY from the environment."
+    }
+  }
+}

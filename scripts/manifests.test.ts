@@ -10,6 +10,7 @@ const claude = "plugins/model-router/.claude-plugin/plugin.json";
 const omp = "plugins/model-router-omp/package.json";
 const catalog = ".omp-plugin/marketplace.json";
 const openclaw = "plugins/model-router-openclaw/openclaw.plugin.json";
+const hermes = "plugins/model-router-hermes/plugin.yaml";
 const tree = "packages/model-router/package.json";
 const treeOpenclaw = "packages/model-router/openclaw.plugin.json";
 
@@ -21,14 +22,22 @@ const box = useTempRoot("manifests-", (put) => {
 	put(claude, '{"version": "0.11.0"}');
 	put(omp, '{"name": "b", "version": "0.11.0"}');
 	put(catalog, catalogWith("0.11.0"));
-	for (const path of [openclaw, tree, treeOpenclaw])
+	for (const path of [openclaw, hermes, tree, treeOpenclaw])
 		put(path, '{"version": "0.11.0"}');
 });
 const { put } = box;
 
 test("the list names every generated manifest that carries the version", () => {
 	const paths = MANIFESTS.map((manifest) => manifest.path);
-	assert.deepEqual(paths, [claude, omp, catalog, openclaw, tree, treeOpenclaw]);
+	assert.deepEqual(paths, [
+		claude,
+		omp,
+		catalog,
+		openclaw,
+		hermes,
+		tree,
+		treeOpenclaw,
+	]);
 });
 
 test("the catalog version sits in its first plugin entry", () => {

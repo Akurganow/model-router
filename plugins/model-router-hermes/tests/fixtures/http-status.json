@@ -1,0 +1,15 @@
+{
+	"description": "A rejected key surfaces its HTTP status.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "typesafe",
+		"keys": { "typesafe": "typesafe-key" },
+		"budgetMs": 8000,
+		"smallModel": "openai/small",
+		"largeModel": "openai/large",
+		"configEffort": false
+	},
+	"jev": [{ "host": "api.typesafe.ai", "reply": { "status": 401 } }],
+	"response": { "outcome": "skip", "line": "skipped, HTTP 401" }
+}

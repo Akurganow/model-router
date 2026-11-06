@@ -11,6 +11,12 @@ type PerHarness = {
 	readonly omp: string;
 	readonly openclaw: string;
 };
+type WithHermes = PerHarness & { readonly hermes: string };
+type Option<Descriptions> = {
+	readonly default: string;
+	readonly title: string;
+	readonly descriptions: Descriptions;
+};
 type Hint = { readonly label: string; readonly help: string };
 type Secret = {
 	readonly type: string;
@@ -43,23 +49,20 @@ export type Source = {
 	readonly repository: string;
 	readonly author: { readonly name: string; readonly url: string };
 	readonly keywords: readonly string[];
-	readonly privacyPolicyUrls: PerHarness;
+	readonly privacyPolicyUrls: WithHermes;
 	readonly descriptions: Readonly<
 		Record<
 			"claude" | "omp",
 			{ readonly manifest: string; readonly catalogue: string }
 		>
-	> & { readonly openclaw: { readonly manifest: string } };
+	> & {
+		readonly openclaw: { readonly manifest: string };
+		readonly hermes: { readonly manifest: string };
+	};
+	// Hermes has the provider option and no scope option.
 	readonly options: Readonly<
-		Record<
-			ValueSetting,
-			{
-				readonly default: string;
-				readonly title: string;
-				readonly descriptions: PerHarness;
-			}
-		>
-	>;
+		Record<Exclude<ValueSetting, "provider">, Option<PerHarness>>
+	> & { readonly provider: Option<WithHermes> };
 	readonly claude: {
 		readonly skills: readonly string[];
 		readonly commandContents: Readonly<Record<ValueSetting, string>>;
@@ -97,6 +100,17 @@ export type Source = {
 			readonly large_model: Hint;
 			readonly api_key: Hint & { readonly sensitive: boolean };
 			readonly openrouter_api_key: Hint & { readonly sensitive: boolean };
+		};
+		readonly install: Install;
+	};
+	readonly hermes: {
+		readonly pluginName: string;
+		readonly backendName: string;
+		readonly requiresHermes: string;
+		readonly settings: {
+			readonly small_model: Hint;
+			readonly large_model: Hint;
+			readonly typesafe_api_key: Hint;
 		};
 		readonly install: Install;
 	};

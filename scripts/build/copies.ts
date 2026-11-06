@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import {
 	CLAUDE_OUTPUTS,
 	type Copy,
+	HERMES_OUTPUTS,
 	NPM_FILE_COPIES,
 	NPM_FOLDER_COPIES,
 	NPM_OUTPUTS,
@@ -46,6 +47,7 @@ export const generatedFiles = (root: string): string[] => [
 		...Object.values(CLAUDE_OUTPUTS),
 		...Object.values(OMP_OUTPUTS),
 		...Object.values(OPENCLAW_OUTPUTS),
+		...Object.values(HERMES_OUTPUTS),
 		README_OUTPUT,
 		...Object.values(NPM_OUTPUTS),
 		...listCopies(root).map(({ to }) => to),

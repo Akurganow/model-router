@@ -1,0 +1,15 @@
+{
+	"description": "A budget that is not positive is a timeout at once, with no request.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "typesafe",
+		"keys": { "typesafe": "typesafe-key" },
+		"budgetMs": 0,
+		"smallModel": "openai/small",
+		"largeModel": "openai/large",
+		"configEffort": false
+	},
+	"jev": [],
+	"response": { "outcome": "skip", "line": "skipped, timeout" }
+}

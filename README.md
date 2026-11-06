@@ -113,6 +113,19 @@ CI installs the packed npm package on Ubuntu and checks that OpenClaw loads it.
 
 [Set up OpenClaw](#set-up-openclaw) has the next steps.
 
+### Hermes Agent
+
+```sh
+hermes plugins install Akurganow/model-router/plugins/model-router-hermes --enable
+hermes config set delegation.backend model-router
+```
+
+Source: Hermes Agent documentation, [Plugins](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins).
+
+CI installs it on Ubuntu.
+
+[Set up Hermes Agent](#set-up-hermes-agent) has the next steps.
+
 <!-- install:end -->
 
 [docs/clients.md](docs/clients.md) lists what each client reads, each fact with its source.
@@ -229,6 +242,10 @@ or `OPENROUTER_API_KEY`. To change the provider or the scope later, open
 ### Set up OpenClaw
 
 After the commands: check the install under [Install](plugins/model-router-openclaw/README.md#install) in the OpenClaw plugin README, then follow [Set up](plugins/model-router-openclaw/README.md#set-up).
+
+### Set up Hermes Agent
+
+After the two commands under [Hermes Agent](#hermes-agent), set `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` in the environment Hermes runs in. Then set the plugin's `small_model` and `large_model`, each as a dict that names a provider and a model. The plugin routes a delegated task only when it has a key and at least one of the two models.
 
 ## Verify
 

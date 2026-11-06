@@ -1,0 +1,36 @@
+{
+	"routingLimitMs": 8000,
+	"graceMs": 1000,
+	"providers": {
+		"values": ["auto", "openrouter-first", "typesafe", "openrouter"],
+		"default": "typesafe",
+		"order": {
+			"auto": ["typesafe", "openrouter"],
+			"openrouter-first": ["openrouter", "typesafe"],
+			"typesafe": ["typesafe"],
+			"openrouter": ["openrouter"]
+		},
+		"keyVariables": {
+			"typesafe": "TYPESAFE_API_KEY",
+			"openrouter": "OPENROUTER_API_KEY"
+		}
+	},
+	"efforts": ["medium", "high", "xhigh", "low"],
+	"linePrefix": "model-router ",
+	"skips": {
+		"skippedPrefix": "skipped, ",
+		"nodeNotFound": "node not found",
+		"keyUnset": "key unset",
+		"timeout": "timeout",
+		"failed": "failed",
+		"configEffort": "config effort",
+		"subagentModelSet": "subagent model set",
+		"noEndModel": "no small or large model",
+		"smallModelUnset": "small model unset",
+		"largeModelUnset": "large model unset",
+		"smallModelUnresolved": "small model unresolved",
+		"largeModelUnresolved": "large model unresolved"
+	},
+	"backend": "model-router",
+	"plugin": "model-router-hermes"
+}

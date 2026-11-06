@@ -8,10 +8,14 @@ import { type Install, loadSchema, type Source } from "./build/source.ts";
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const schema = loadSchema(ROOT);
 
-const OPTION: Source["options"]["provider"] = {
+const OPTION: Source["options"]["scope"] = {
 	default: "d",
 	title: "t",
 	descriptions: { claude: "c", omp: "o", openclaw: "w" },
+};
+const HERMES_OPTION: Source["options"]["provider"] = {
+	...OPTION,
+	descriptions: { claude: "c", omp: "o", openclaw: "w", hermes: "h" },
 };
 const SECRET: Source["claude"]["userConfig"]["keys"]["api_key"] = {
 	type: "t",
@@ -45,13 +49,14 @@ const FIXTURE: Source = {
 	repository: "r",
 	author: { name: "a", url: "u" },
 	keywords: ["k"],
-	privacyPolicyUrls: { claude: "c", omp: "o", openclaw: "w" },
+	privacyPolicyUrls: { claude: "c", omp: "o", openclaw: "w", hermes: "h" },
 	descriptions: {
 		claude: TEXTS,
 		omp: TEXTS,
 		openclaw: { manifest: "m" },
+		hermes: { manifest: "m" },
 	},
-	options: { provider: OPTION, scope: OPTION },
+	options: { provider: HERMES_OPTION, scope: OPTION },
 	claude: {
 		skills: ["s"],
 		commandContents: { provider: "p", scope: "s" },
@@ -81,6 +86,13 @@ const FIXTURE: Source = {
 			api_key: SECRET_HINT,
 			openrouter_api_key: SECRET_HINT,
 		},
+		install: INSTALL,
+	},
+	hermes: {
+		pluginName: "n",
+		backendName: "b",
+		requiresHermes: ">=1.0.0",
+		settings: { small_model: HINT, large_model: HINT, typesafe_api_key: HINT },
 		install: INSTALL,
 	},
 	npm: {
