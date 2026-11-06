@@ -27,6 +27,15 @@ const PROBABILITY_DIGITS = 2;
 export const formatProbability = (p: number): string =>
 	p.toFixed(PROBABILITY_DIGITS);
 
+/**
+ * Returns the trimmed text, or undefined when the value is blank after trimming
+ * or is not text. Never throws.
+ */
+export const nonEmpty = (value: unknown): string | undefined => {
+	const text = typeof value === "string" ? value.trim() : "";
+	return text === "" ? undefined : text;
+};
+
 export const isRecord = (v: unknown): v is Record<string, unknown> =>
 	typeof v === "object" && v !== null;
 

@@ -1,10 +1,4 @@
-import {
-	findKey,
-	PLUGIN,
-	readSettings,
-	type Settings,
-	UNREADABLE,
-} from "./omp-gates.ts";
+import { findKey, readSettings, type Settings } from "./omp-gates.ts";
 import { changeKey } from "./omp-key.ts";
 import type { Context, OmpImports, Pi, ToolReply } from "./omp-types.ts";
 import { isRecord } from "./part.ts";
@@ -25,6 +19,7 @@ import {
 	SETTING_NAMES,
 	TOOL_LABEL,
 	toolDescription,
+	UNREADABLE,
 	unchanged,
 	useOneOf,
 	VALUE_SETTINGS,
@@ -83,7 +78,14 @@ const readAll = (omp: OmpImports, ctx: Context): Promise<string> =>
 		].join(LINE_BREAK);
 	});
 
-// Writes go to the global settings. The effective value is read again, because a project value can win.
+/**
+ * Sets a setting to a value and returns the line to show. Returns the allowed
+ * values when the value is not one of them. Returns an unchanged line when the
+ * settings are unreadable, omp gave no installed name, the value already holds,
+ * or the write fails. Writes go to the global settings. The effective value is
+ * read again, because a project value can win, and the line then names the
+ * override. Never throws.
+ */
 async function apply(
 	omp: OmpImports,
 	ctx: Context,
@@ -91,11 +93,13 @@ async function apply(
 	value: string,
 ): Promise<string> {
 	if (!isValue(setting, value)) return useOneOf(setting);
+	const { plugin } = omp;
 	const before = await readSettings(omp, ctx.cwd);
-	if (before === undefined) return unchanged(setting, UNREADABLE);
+	if (before === undefined || plugin === undefined)
+		return unchanged(setting, UNREADABLE);
 	if (before[setting] === value) return unchanged(setting, alreadyValue(value));
 	try {
-		await omp.writeSetting(ctx.cwd, PLUGIN, setting, value);
+		await omp.writeSetting(ctx.cwd, plugin, setting, value);
 	} catch (err) {
 		return unchanged(setting, err instanceof Error ? err.message : String(err));
 	}

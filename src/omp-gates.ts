@@ -1,9 +1,12 @@
 import { readFile } from "node:fs/promises";
 import type { RouteInput } from "./compose.ts";
 import { type Facts, type Spawning, spawnCheck, TASK } from "./omp-items.ts";
+import { FALLBACK_NAME } from "./omp-name.ts";
 import type { Context, Lookup, OmpImports, Pi } from "./omp-types.ts";
-import { isRecord } from "./part.ts";
+import { isRecord, nonEmpty } from "./part.ts";
 import {
+	KEY_VARIABLES,
+	type Keys,
 	narrow,
 	order,
 	type Provider,
@@ -11,16 +14,9 @@ import {
 	plan,
 } from "./provider.ts";
 import { resolveScope, type Scope } from "./scope.ts";
+import { KEY_UNSET, UNREADABLE } from "./settings.ts";
 
 export const ROLES = { small: "@smol", large: "@slow" } as const;
-
-export const UNREADABLE = "settings unreadable";
-// omp keys plugin settings by the package name.
-export const PLUGIN = "model-router-omp";
-const KEY_VARIABLES: Readonly<Record<Provider, string>> = {
-	typesafe: "TYPESAFE_API_KEY",
-	openrouter: "OPENROUTER_API_KEY",
-};
 
 export type Routing = Pick<RouteInput, "attempts" | "keys">;
 export type Batch = Routing & { readonly facts: Facts };
@@ -45,8 +41,12 @@ export async function checkGates(
 		: { closed: reason };
 }
 
-// The gates that hold for the whole batch. Each fails closed, and the keys are the cheapest check.
-// What each item needs to be judged comes back as facts, read once.
+/**
+ * Returns the routing and the facts for the whole batch, or a closed reason
+ * when a gate shuts it: unreadable settings, an unset key or an unreadable
+ * config. Each gate fails closed, and the keys are the cheapest check. What
+ * each item needs to be judged comes back as facts, read once. Never throws.
+ */
 export async function openBatch(
 	omp: OmpImports,
 	pi: Pi,
@@ -55,7 +55,7 @@ export async function openBatch(
 ): Promise<Batch | Closed> {
 	if (settings === undefined) return { closed: UNREADABLE };
 	const routing = await findKeys(ctx, settings.provider);
-	if (routing.attempts.length === 0) return { closed: "key unset" };
+	if (routing.attempts.length === 0) return { closed: KEY_UNSET };
 	const config = readConfig(omp.lookup, pi.pi.settings);
 	if (config === undefined) return { closed: UNREADABLE };
 	const agents = await discover(pi, ctx);
@@ -66,16 +66,22 @@ export async function openBatch(
 	};
 }
 
-// The effective settings hold the project's value when it sets one and the global value otherwise.
-// A project may only narrow the provider, and its scope wins both ways. Unreadable settings give nothing.
+/**
+ * Returns the effective settings: the project's value when it sets one, and the
+ * global value otherwise. A project may only narrow the provider, and its scope
+ * wins both ways. Returns undefined when the settings are unreadable. When omp
+ * gave no installed name, reads use the catalogue name. Writes still refuse, in
+ * omp-config. Never throws.
+ */
 export async function readSettings(
 	omp: OmpImports,
 	cwd: string,
 ): Promise<Settings | undefined> {
+	const plugin = omp.plugin ?? FALLBACK_NAME;
 	try {
 		const [global, effective] = await Promise.all([
-			readGlobal(omp.getPluginsLockfile()),
-			omp.getPluginSettings(PLUGIN, cwd),
+			readGlobal(omp.getPluginsLockfile(), plugin),
+			omp.getPluginSettings(plugin, cwd),
 		]);
 		const { provider: fromGlobal } = global;
 		const { provider: fromProject, scope } = effective;
@@ -88,8 +94,16 @@ export async function readSettings(
 	}
 }
 
-// omp reads a missing lockfile as empty, and so does this.
-async function readGlobal(path: string): Promise<Record<string, unknown>> {
+/**
+ * Returns the plugin's entry in the lockfile at path. Returns an empty record
+ * when the lockfile is missing, because omp reads a missing lockfile as empty,
+ * and when the file holds no entry for the plugin. Throws on any other read
+ * error and on invalid JSON.
+ */
+async function readGlobal(
+	path: string,
+	plugin: string,
+): Promise<Record<string, unknown>> {
 	let text: string;
 	try {
 		text = await readFile(path, "utf8");
@@ -100,35 +114,41 @@ async function readGlobal(path: string): Promise<Record<string, unknown>> {
 	}
 	const lock: unknown = JSON.parse(text);
 	const { settings } = isRecord(lock) ? lock : {};
-	const mine = isRecord(settings) ? settings[PLUGIN] : undefined;
+	const mine = isRecord(settings) ? settings[plugin] : undefined;
 	return isRecord(mine) ? mine : {};
 }
 
-// Only the providers the value allows are read. omp's own credential comes first, then the variable.
+/**
+ * Returns the attempts and the keys for the providers the value allows. Reads
+ * only those providers. omp's own credential comes first, then the variable.
+ * Returns no attempts when no key is set. Never throws.
+ */
 async function findKeys(ctx: Context, value: string): Promise<Routing> {
-	const keys: Partial<Record<Provider, string>> = {};
+	const keys: Keys = {};
 	for (const provider of order(value)) {
 		const key = await findKey(ctx, provider);
 		if (key !== undefined) keys[provider] = key;
 	}
-	const present = {
-		typesafe: keys.typesafe !== undefined,
-		openrouter: keys.openrouter !== undefined,
-	};
-	return { attempts: plan(value, present), keys };
+	return { attempts: plan(value, keys), keys };
 }
 
+/**
+ * Returns the trimmed key of a provider: omp's own credential first, then the
+ * provider's variable. Returns undefined when neither holds a non-blank value.
+ * Never throws.
+ */
 export async function findKey(
 	ctx: Context,
 	provider: Provider,
 ): Promise<string | undefined> {
 	try {
 		const key = await ctx.modelRegistry.getApiKeyForProvider(provider);
-		if (typeof key === "string" && key !== "") return key;
+		const trimmed = nonEmpty(key);
+		if (trimmed !== undefined) return trimmed;
 	} catch {
 		// A broken credential store falls through to the variable.
 	}
-	return process.env[KEY_VARIABLES[provider]] || undefined;
+	return nonEmpty(process.env[KEY_VARIABLES[provider]]);
 }
 
 export function resolves(ctx: Context, role: string): boolean {

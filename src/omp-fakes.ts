@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, mock } from "node:test";
-import { oneChunk } from "./omp-score.ts";
+import { jevAnswer, streamed } from "./jev-fakes.ts";
 import type {
 	CommandSpec,
 	Context,
@@ -17,16 +17,18 @@ import type {
 	ToolReply,
 	ToolSpec,
 } from "./omp-types.ts";
+import { KEY_VARIABLES } from "./provider.ts";
 
+export { jevAnswer, streamed };
 export const TOOL_NAME = "model_router_config";
 export const KEY = "omp-key-0001";
 export const OR_KEY = "omp-or-key-0003";
 export const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 export const OR_ENDPOINT = "https://openrouter.ai/api/v1/systemone";
 
-export const KEY_VARIABLE = "TYPESAFE_API_KEY";
-export const OR_VARIABLE = "OPENROUTER_API_KEY";
-const VARIABLES = [KEY_VARIABLE, OR_VARIABLE];
+export const KEY_VARIABLE = KEY_VARIABLES.typesafe;
+export const OR_VARIABLE = KEY_VARIABLES.openrouter;
+const VARIABLES = Object.values(KEY_VARIABLES);
 const STORED: Readonly<Record<string, string>> = {
 	typesafe: KEY,
 	openrouter: OR_KEY,
@@ -65,32 +67,6 @@ type Config = {
 	"task.disabledAgents": unknown;
 };
 
-export function streamed(
-	status: number,
-	body: unknown,
-	headers: Record<string, string> = {},
-): Response {
-	const bytes = new TextEncoder().encode(
-		typeof body === "string" ? body : JSON.stringify(body),
-	);
-	return new Response(oneChunk(bytes), {
-		status,
-		headers: { "content-type": "application/json", ...headers },
-	});
-}
-
-const spread = (level: number) => ({
-	0: level === 0 ? 0.9 : 0.05,
-	1: level === 1 ? 0.9 : 0.05,
-	2: level === 2 ? 0.9 : 0.05,
-});
-
-export const jevAnswer = (level: number) => ({
-	model: "jev-1.14.0",
-	usage: { input_tokens: 812, output_tokens: 9 },
-	answers: { tier: { type: "score", probabilities: spread(level) } },
-});
-
 // A task text holding `level0`, `level1` or `level2` gets that level from the fake Jev. Others get level 1.
 const answerByTask: Answer = async ({ body }) => {
 	const { task } = (body as { state: { task: string } }).state;
@@ -122,6 +98,8 @@ const newState = () => ({
 	// Written as JSON, a string is written as is, and undefined leaves no file.
 	lockfile: { plugins: {}, settings: {} } as unknown,
 	project: {} as Record<string, unknown>,
+	// The name omp installed the plugin under; undefined means the name could not be read.
+	plugin: PLUGIN as string | undefined,
 	answer: answerByTask as Answer,
 	hasUI: true,
 	handlers: {} as Record<string, (...args: never[]) => unknown>,
@@ -171,8 +149,17 @@ const lockSettings = (state: State, name: string): unknown => {
 	return (lock as { settings?: Record<string, unknown> })?.settings?.[name];
 };
 
-// Like omp, the effective settings are the lockfile's merged with the project's.
+/**
+ * Returns the omp imports over the fake state. Like omp, the effective settings
+ * are the lockfile's merged with the project's, and the project settings apply
+ * only under the state's plugin name. The lockfile goes to disk as the state
+ * holds it, and a state with no lockfile leaves no file. A write lands in the
+ * lockfile and validates nothing.
+ */
 const buildImports = (state: State, dir: () => string): OmpImports => ({
+	get plugin() {
+		return state.plugin;
+	},
 	lookup: buildLookup(state),
 	getPluginsLockfile: () => {
 		const path = join(dir(), "omp-plugins.lock.json");
@@ -187,7 +174,7 @@ const buildImports = (state: State, dir: () => string): OmpImports => ({
 	},
 	getPluginSettings: async (name) => ({
 		...(lockSettings(state, name) as object),
-		...(name === PLUGIN ? state.project : {}),
+		...(name === state.plugin ? state.project : {}),
 	}),
 	// Like omp, the write lands in the lockfile and validates nothing.
 	writeSetting: async (_cwd, plugin, key, value) => {

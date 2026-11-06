@@ -19,6 +19,21 @@ export const HOSTS: Readonly<Record<Provider, string>> = {
 	openrouter: "https://openrouter.ai/api",
 };
 
+// Every harness reads a provider's key from the same variable.
+export const KEY_VARIABLES: Readonly<Record<Provider, string>> = {
+	typesafe: "TYPESAFE_API_KEY",
+	openrouter: "OPENROUTER_API_KEY",
+};
+
+// The setting name that holds each provider's key, in the harnesses that name one.
+export const KEY_FIELDS = {
+	typesafe: "api_key",
+	openrouter: "openrouter_api_key",
+} as const satisfies Readonly<Record<Provider, string>>;
+
+// The key each provider has, as the harness read it.
+export type Keys = Partial<Record<Provider, string>>;
+
 export const FIRST_ATTEMPT_TIMEOUT_MS = 2000;
 // Both providers resolve this alias to their newest Jev release.
 const MODEL = "jev-latest";
@@ -43,20 +58,37 @@ export type Attempt = {
 	readonly retry?: { readonly maxRetries: number };
 };
 
-export const resolve = (value: unknown): ProviderValue =>
+/**
+ * Returns the value as a provider value when it is a known name, and undefined
+ * for anything else, including non-text and inherited property names. Never
+ * throws.
+ */
+export const parseProvider = (value: unknown): ProviderValue | undefined =>
 	typeof value === "string" && Object.hasOwn(ORDER, value)
 		? (value as ProviderValue)
-		: DEFAULT_VALUE;
+		: undefined;
+
+/**
+ * Returns the value when it is a known provider value, and the default typesafe
+ * otherwise. Never throws.
+ */
+export const resolve = (value: unknown): ProviderValue =>
+	parseProvider(value) ?? DEFAULT_VALUE;
 
 export const order = (value: unknown): readonly Provider[] =>
 	ORDER[resolve(value)];
 
-// Every attempt but the last gives up fast, so the next one gets most of the routing limit.
+/**
+ * Returns one attempt for each provider the value allows whose entry in keys is
+ * set: a key, or true for a caller that holds none. Every attempt but the last
+ * gives up fast, so the next one gets most of the routing limit. Returns no
+ * attempts when no entry is set. Never throws.
+ */
 export function plan(
 	value: unknown,
-	present: Readonly<Record<Provider, boolean>>,
+	keys: Readonly<Partial<Record<Provider, unknown>>>,
 ): Attempt[] {
-	const providers = order(value).filter((p) => present[p]);
+	const providers = order(value).filter((p) => Boolean(keys[p]));
 	return providers.map((provider, i) =>
 		i < providers.length - 1
 			? {

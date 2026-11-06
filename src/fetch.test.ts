@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
-import { streamedFetch } from "./omp-score.ts";
+import { streamedFetch } from "./fetch.ts";
 
 afterEach(() => mock.restoreAll());
 

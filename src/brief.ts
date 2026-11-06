@@ -1,3 +1,5 @@
+import { nonEmpty } from "./part.ts";
+
 export const BUDGET_CHARS = 12000;
 export const ROLE_CAP = 500;
 export const NO_DESCRIPTION = "An agent with no description.";
@@ -58,8 +60,14 @@ export function buildPrompt(task: string, context: string): string {
 	return `${brief}${CONTEXT_LABEL}${prepareBrief(context, budget)}`;
 }
 
+/**
+ * Returns the context unchanged when it is text with a non-blank character, and
+ * an empty string for anything else. Never throws.
+ */
 export function contextText(context: unknown): string {
-	return typeof context === "string" && context.trim() !== "" ? context : "";
+	return typeof context === "string" && nonEmpty(context) !== undefined
+		? context
+		: "";
 }
 
 // Redaction runs before the cut, and the cut drops a lone high surrogate so no half of a pair is sent.

@@ -1,4 +1,5 @@
 import { contextText } from "./brief.ts";
+import { skippedLine } from "./line.ts";
 import { registerConfig, say } from "./omp-config.ts";
 import { checkGates, openBatch, readSettings, resolves } from "./omp-gates.ts";
 import { inScope, TASK } from "./omp-items.ts";
@@ -48,9 +49,21 @@ const eligibleItems = (tasks: unknown[]): Pending[] =>
 		isEligible(item) ? [{ index, item, agent: item.agent ?? TASK }] : [],
 	);
 
+/**
+ * Returns the handlers for tool calls, spawns and progress events, all sharing
+ * one store of decisions. A handler returns nothing, or the model and note for
+ * a spawn, and never changes the tool input. It does not catch errors, so the
+ * caller wraps each handler.
+ */
 function createRouter(omp: OmpImports, pi: Pi) {
 	const store = createStore();
 
+	/**
+	 * Scores the eligible items of a task call and reports one line per item.
+	 * Reports one skip line for every in-scope item when a batch gate closes.
+	 * Returns nothing when the call is not a task call, holds no eligible item,
+	 * or holds none in scope.
+	 */
 	async function onToolCall(event: ToolCallEvent, ctx: Context) {
 		const { input } = event;
 		if (event.toolName !== TASK || !isRecord(input)) return;
@@ -65,7 +78,7 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		if (items.length === 0) return;
 		const gates = await openBatch(omp, pi, ctx, settings);
 		if ("closed" in gates) {
-			const line = `skipped, ${gates.closed}`;
+			const line = skippedLine(gates.closed);
 			return report(
 				ctx,
 				items.map(({ index }) => entry(index, line)),

@@ -10,6 +10,8 @@ import {
 	routedCall,
 	SPAWN,
 } from "./claude-fakes.ts";
+import { skippedLine } from "./line.ts";
+import { KEY_UNSET } from "./settings.ts";
 
 test("a new registration forgets the offers made before it", async () => {
 	const logs: string[] = [];
@@ -37,7 +39,7 @@ test("a new registration forgets the offers made before it", async () => {
 		next,
 	);
 	await fresh[AGENT_CALL]?.($, call, next);
-	assert.deepEqual(logs, ["skipped, key unset"]);
+	assert.deepEqual(logs, [skippedLine(KEY_UNSET)]);
 });
 
 test("an unknown provider value routes as typesafe and reads no OpenRouter key", async () => {

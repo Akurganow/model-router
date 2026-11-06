@@ -1,6 +1,13 @@
 import { DEFAULT_ROLE, roleText } from "./brief.ts";
 import type { DiscoveredAgent } from "./omp-types.ts";
+import { nonEmpty } from "./part.ts";
 import type { Scope } from "./scope.ts";
+import {
+	agentDiscoveryFailed,
+	agentUnknown,
+	outsideCoreScope,
+	setsOwnModel,
+} from "./settings.ts";
 
 export const TASK = "task";
 const BUNDLED = "bundled";
@@ -24,8 +31,14 @@ export type Spawning = {
 	readonly modelRole?: string | undefined;
 };
 
+/**
+ * Returns true for undefined, null and a blank string, and false for any other
+ * value. Never throws.
+ */
 const isEmpty = (v: unknown) =>
-	v === undefined || v === null || (typeof v === "string" && v.trim() === "");
+	v === undefined ||
+	v === null ||
+	(typeof v === "string" && nonEmpty(v) === undefined);
 
 export const inScope = (name: string, scope: Scope) =>
 	scope === "extended" || name === TASK;
@@ -49,13 +62,19 @@ function userChoice(name: string, facts: Facts): string | undefined {
 	return undefined;
 }
 
+/**
+ * Returns the reason to skip an agent, or undefined when the agent may be
+ * routed. A bundled agent passes. Any other agent is skipped in the core scope,
+ * when discovery failed, when the agent is unknown, or when it sets its own
+ * model. Never throws.
+ */
 function agentGate(name: string, facts: Facts): string | undefined {
 	const found = findAgent(name, facts);
 	if (found?.source === BUNDLED) return undefined;
 	if (facts.scope === "core") return CUSTOM_AGENT;
-	if (facts.agents === undefined) return `${name} agent discovery failed`;
-	if (found === undefined) return `${name} agent unknown`;
-	return found.model?.length ? `${name} sets its own model` : undefined;
+	if (facts.agents === undefined) return agentDiscoveryFailed(name);
+	if (found === undefined) return agentUnknown(name);
+	return found.model?.length ? setsOwnModel(name) : undefined;
 }
 
 const seanceGate = (name: string) =>
@@ -63,9 +82,13 @@ const seanceGate = (name: string) =>
 		? `${name} spawns without the hook omp gives plugins, so its model cannot change`
 		: undefined;
 
-// One rule judges every item alone: a reason to skip it, or nothing.
+/**
+ * Judges one item alone and returns the reason to skip it, or undefined when it
+ * may be routed. A scope, a user choice, the seance gate, the agent gate or a
+ * missing model role gives the reason, in that order. Never throws.
+ */
 export function itemCheck(name: string, facts: Facts): string | undefined {
-	if (!inScope(name, facts.scope)) return `${name} is outside the core scope`;
+	if (!inScope(name, facts.scope)) return outsideCoreScope(name);
 	return (
 		userChoice(name, facts) ??
 		seanceGate(name) ??

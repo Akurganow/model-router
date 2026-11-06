@@ -94,6 +94,16 @@ export const alreadyValue = (value: string): string => `already ${value}`;
 export const projectOverrides = (setting: ValueSetting): string =>
 	`A project value for ${setting} overrides it.`;
 
+export const UNREADABLE = "settings unreadable";
+export const KEY_UNSET = "key unset";
+// The skip reasons the omp and OpenClaw spawn checks give. Claude Code uses none of these builders.
+export const outsideCoreScope = (id: string): string =>
+	`${id} is outside the core scope`;
+export const agentDiscoveryFailed = (id: string): string =>
+	`${id} agent discovery failed`;
+export const agentUnknown = (id: string): string => `${id} agent unknown`;
+export const setsOwnModel = (id: string): string => `${id} sets its own model`;
+
 export const NO_ANSWER = "no answer from the dialog";
 export const NOT_OFFERED = "the answer was not one of the offered values";
 export const REFUSED =

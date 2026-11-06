@@ -10,7 +10,6 @@ import {
 	TOOL_NAME,
 	useWorld,
 } from "./omp-fakes.ts";
-import { UNREADABLE } from "./omp-gates.ts";
 import { createExtension } from "./omp-router.ts";
 import type { OmpImports, ToolSpec } from "./omp-types.ts";
 import {
@@ -23,6 +22,7 @@ import {
 	projectOverrides,
 	SETTING_NAMES,
 	toolDescription,
+	UNREADABLE,
 	unchanged,
 	useOneOf,
 	type ValueSetting,
