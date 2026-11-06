@@ -145,12 +145,11 @@ test("Renovate raises the Hermes tag and commit together with no age delay", () 
 	assert.match(SETUP_HERMES, new RegExp(pattern.slice(1, -1)));
 	const action = read(SETUP_HERMES);
 	const [matchString = ""] = manager.matchStrings;
-	const found = new RegExp(matchString).exec(action)?.groups;
-	assert.equal(found?.["currentValue"], /HERMES_TAG: (\S+)/.exec(action)?.[1]);
-	assert.equal(
-		found?.["currentDigest"],
-		/HERMES_COMMIT: (\S+)/.exec(action)?.[1],
-	);
+	const found = new RegExp(matchString).exec(action)?.groups as
+		| { currentValue?: string; currentDigest?: string }
+		| undefined;
+	assert.equal(found?.currentValue, /HERMES_TAG: (\S+)/.exec(action)?.[1]);
+	assert.equal(found?.currentDigest, /HERMES_COMMIT: (\S+)/.exec(action)?.[1]);
 	const rule = (
 		config.packageRules as {
 			matchPackageNames?: string[];
