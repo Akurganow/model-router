@@ -3,6 +3,53 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.18.0 - 2026-11-06
+#### Features
+- (**omp**) read and write the settings under the installed package name (0409ad7)
+- (**openclaw**) route OpenClaw subagent spawns to the small or large model and an effort (686f068)
+- (**openclaw**) decide which subagent spawns are routed, with which role and effort (f84d7e8)
+- build the OpenClaw plugin and one npm package for OpenClaw and omp (3b3d0ef)
+#### Bug Fixes
+- the OpenClaw hook registers in the discovery pass too, so a chat turn scoped to that registry routes its spawns (af4a171)
+- the OpenClaw setup skill goes on past an unset key and reads only the new log line, and the docs state the SecretRef and publish limits (b7c6b6a)
+- the OpenClaw tool and commands register in the discovery passes, and the docs match the live test (5e8feac)
+- the manifests say the one-line description or label goes unmasked, and the pack test reads npm 12's output (de2e487)
+- an OpenClaw host abort settles even when cancelling the timer throws, and the setup skill says what an environment key reaches (eabd016)
+- omp and Claude Code send the batch context as written again, and an OpenClaw host abort settles the hook at once (5eb932d)
+- OpenClaw reads spawn parameters as its sessions_spawn tool does, and carries the config in the route (da2a580)
+- a whitespace-only key counts as unset in Claude Code and omp, and every key is sent trimmed (76bfce2)
+- one term and one copy per passage in the OpenClaw docs and skills, with the facts behind them (721635a)
+- OpenClaw agent lookup by normalised id, owner check on channel commands and a handler that never throws (96108a9)
+- one OpenClaw install recipe, absolute links in the npm tree's skills and no enum in the OpenClaw config schema (d2df649)
+#### Documentation
+- state the contract of each branching function the OpenClaw, builder and CI change touches (a70282e)
+- the OpenClaw install starts with its commands, a missing line is checkable at default logging, and no pointer loops (166224b)
+- one row per harness in the root table, a linear OpenClaw install path and one place for each OpenClaw passage (44fb388)
+- name the OpenClaw plugin and the npm package on every repository surface (660a9b1)
+- describe the OpenClaw plugin, its privacy policy and the OpenClaw client facts (f488381)
+#### Tests
+- add the OpenClaw plugin API types and a typed fake of them (f239e34)
+- pin the decision lines, the effort ladder and the streamed fetch (ab1c575)
+#### Build system
+- a full CI sentence and a review warning for the OpenClaw install region, and the license exemption in CONTRIBUTING (ea59fa1)
+#### Continuous Integration
+- turn off git's automatic maintenance in the policy scan job (e14435a)
+- say why json-schema-typed stays in the license exemption (669d639)
+- exempt by name the OpenClaw packages of the CI install whose license is off the list (a72779b)
+- allow the minimatch advisory of the CI OpenClaw install (ae85a5b)
+- allow the one glob advisory bundled in npm 12.2.2 of the CI OpenClaw install (bf1103b)
+- override OpenClaw's npm with 12.2.2 in the CI install, an exception to the 14-day rule (28420f4)
+- override npm and zod in the OpenClaw install for their advisories (9a150a8)
+- keep OpenClaw's npm off the PATH and read both pack output forms (a93f102)
+- pack and install the npm package in pull requests, and publish it from releases (68e1643)
+#### Refactoring
+- one key-variable table and one trimmed text check, and omp reads under its catalogue name as a fallback (c4ef0ab)
+- keep the settings unreadable reason with the shared wording (ed66bcf)
+- move the effort ladder, the decision line and the streamed fetch into shared modules (c6b7593)
+
+- - -
+
+
 ## v0.17.0 - 2026-11-06
 #### Features
 - shared decision modules for every adapter, omp settings under the installed package name, and trimmed keys (627d13d)
