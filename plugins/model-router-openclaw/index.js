@@ -1632,6 +1632,10 @@ function readSpawn(params) {
 var CONFIG_EFFORT = "config effort";
 var SUBAGENT_MODEL_SET = "subagent model set";
 var NO_END_MODEL = "no small or large model";
+var LEVEL_SLOTS = {
+  0: "small",
+  2: "large"
+};
 var modelUnset = (slot) => `${slot} model unset`;
 var modelUnresolved = (slot) => `${slot} model unresolved`;
 
@@ -1716,9 +1720,9 @@ function gateSpawn(input) {
 var SPAWN_TOOL = "sessions_spawn";
 var HOOK = "before_tool_call";
 var MIDDLE_TIER = 1;
-var END_SLOTS = {
-  0: { name: "small", model: (s) => s.smallModel },
-  2: { name: "large", model: (s) => s.largeModel }
+var SLOT_MODELS = {
+  small: (s) => s.smallModel,
+  large: (s) => s.largeModel
 };
 async function score({ deps, signal }, settings, keys, gate) {
   const decision = await route({
@@ -1737,8 +1741,8 @@ async function score({ deps, signal }, settings, keys, gate) {
 }
 async function slotFor(runtime, settings, { config, target }, level) {
   if (level === MIDDLE_TIER) return { model: void 0 };
-  const { name, model: slot } = END_SLOTS[level];
-  const model = slot(settings);
+  const name = LEVEL_SLOTS[level];
+  const model = SLOT_MODELS[name](settings);
   if (model === void 0) return { skipped: modelUnset(name) };
   if (!await slotResolves(runtime, config, target, model))
     return { skipped: modelUnresolved(name) };

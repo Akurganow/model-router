@@ -26,16 +26,23 @@ import type {
 } from "./openclaw-types.ts";
 import { type Level, nonEmpty } from "./part.ts";
 import { type Keys, plan } from "./provider.ts";
-import { modelUnresolved, modelUnset } from "./reasons.ts";
+import {
+	type EndSlot,
+	LEVEL_SLOTS,
+	modelUnresolved,
+	modelUnset,
+} from "./reasons.ts";
 
 export const SPAWN_TOOL = "sessions_spawn";
 export const HOOK = "before_tool_call";
 const MIDDLE_TIER = 1;
-// An end tier names its slot in the skip text and the setting that holds its model.
-const END_SLOTS = {
-	0: { name: "small", model: (s: OpenClawSettings) => s.smallModel },
-	2: { name: "large", model: (s: OpenClawSettings) => s.largeModel },
-} as const;
+// The setting that holds each slot's model; LEVEL_SLOTS says which level takes which slot.
+const SLOT_MODELS: Readonly<
+	Record<EndSlot, (s: OpenClawSettings) => string | undefined>
+> = {
+	small: (s) => s.smallModel,
+	large: (s) => s.largeModel,
+};
 
 export type RouterDeps = {
 	readonly fetchFn: Fetch;
@@ -92,8 +99,8 @@ async function slotFor(
 	level: Level,
 ): Promise<Slot> {
 	if (level === MIDDLE_TIER) return { model: undefined };
-	const { name, model: slot } = END_SLOTS[level];
-	const model = slot(settings);
+	const name = LEVEL_SLOTS[level];
+	const model = SLOT_MODELS[name](settings);
 	if (model === undefined) return { skipped: modelUnset(name) };
 	if (!(await slotResolves(runtime, config, target, model)))
 		return { skipped: modelUnresolved(name) };

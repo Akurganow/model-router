@@ -1,5 +1,9 @@
-import { PROVIDERS } from "./hermes-request.ts";
-import { KEY_VARIABLES, PROVIDER_VALUES, type Provider } from "./provider.ts";
+import {
+	KEY_VARIABLES,
+	PROVIDER_VALUES,
+	PROVIDERS,
+	type Provider,
+} from "./provider.ts";
 import { SLOTS, type SlotSetting, slotSetting } from "./reasons.ts";
 import {
 	alreadyValue,
