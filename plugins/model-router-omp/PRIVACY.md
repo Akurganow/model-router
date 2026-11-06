@@ -171,9 +171,11 @@ a key.
 
 Every plugin offers the choices in
 [Your choices](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#your-choices).
-Here, set `provider` in `/settings`, under Plugins. Keep `scope` at `core` to
-route the `task` agent only. Remove the keys from omp's credential store and
-from both variables. Disable the plugin and nothing is sent.
+Here, set `provider` in `/settings`, under Plugins. To route the `task` agent
+only, the effective `scope` must stay `core`. A project's `scope` overrides
+yours, as [The extended scope](#the-extended-scope) says. Remove the keys from
+omp's credential store and from both variables. Disable the plugin and nothing
+is sent.
 
 ## Children
 
