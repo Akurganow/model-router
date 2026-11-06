@@ -21,6 +21,7 @@ export type TaskItem = {
 	readonly task: string;
 	readonly name?: unknown;
 	readonly agent?: string;
+	readonly model?: unknown;
 };
 // The agent is the item's own, or the default task agent.
 export type Pending = {
@@ -51,7 +52,7 @@ export async function scoreItems(
 	try {
 		return await mapLimit(items, MAX_PARALLEL, async (pending) => {
 			const { item, agent } = pending;
-			const reason = itemCheck(agent, facts);
+			const reason = itemCheck(agent, facts, item.model);
 			if (reason !== undefined) return { ...pending, stored: skipped(reason) };
 			const routing = {
 				attempts: attempts.filter((a) => !passedOver.has(a.provider)),
