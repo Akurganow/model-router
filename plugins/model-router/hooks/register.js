@@ -1123,6 +1123,7 @@ var isValue = (setting, value) => TEXTS[setting].values.some((known) => known ==
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
+var unchangedBy = (setting, err) => unchanged(setting, err instanceof Error ? err.message : String(err));
 var alreadyValue = (value) => `already ${value}`;
 var KEY_UNSET = "key unset";
 var NO_ANSWER = "no answer from the dialog";
@@ -1184,7 +1185,7 @@ async function write($, setting, value) {
     written[setting] = value;
     return valueLine(setting, value);
   } catch (err) {
-    return unchanged(setting, err instanceof Error ? err.message : String(err));
+    return unchangedBy(setting, err);
   }
 }
 async function choose($, setting, options) {

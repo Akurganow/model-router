@@ -25,6 +25,7 @@ import {
 	REFUSED,
 	toolDescription,
 	unchanged,
+	unchangedBy,
 	useOneOf,
 	VALUE_SETTINGS,
 	type ValueSetting,
@@ -80,7 +81,7 @@ async function write(
 		written[setting] = value;
 		return valueLine(setting, value);
 	} catch (err) {
-		return unchanged(setting, err instanceof Error ? err.message : String(err));
+		return unchangedBy(setting, err);
 	}
 }
 

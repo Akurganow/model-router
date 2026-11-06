@@ -17,6 +17,7 @@ import {
 	alreadyValue,
 	badCall,
 	COMMAND_DESCRIPTIONS,
+	commandName,
 	isKeySetting,
 	isValue,
 	isValueSetting,
@@ -24,17 +25,15 @@ import {
 	keyProvider,
 	SETTING_NAMES,
 	TOOL_LABEL,
+	TOOL_NAME,
 	unchanged,
+	unchangedBy,
 	useOneOf,
 	VALUE_SETTINGS,
 	type ValueSetting,
 	valueLine,
 } from "./settings.ts";
 
-export const TOOL_NAME = "model_router_config";
-const COMMAND_PREFIX = "model-router-";
-export const commandName = (setting: ValueSetting): string =>
-	`${COMMAND_PREFIX}${setting}`;
 export const COMMAND_NAMES: readonly string[] = VALUE_SETTINGS.map(commandName);
 const ADMIN_SCOPE = "operator.admin";
 const LINE_BREAK = "\n";
@@ -141,7 +140,7 @@ async function write(
 		});
 		return valueLine(setting, value);
 	} catch (err) {
-		return unchanged(setting, err instanceof Error ? err.message : String(err));
+		return unchangedBy(setting, err);
 	}
 }
 

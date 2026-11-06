@@ -1,13 +1,14 @@
 import { PROVIDERS } from "./hermes-request.ts";
-import { commandName, TOOL_NAME } from "./openclaw-config.ts";
 import { KEY_VARIABLES, PROVIDER_VALUES, type Provider } from "./provider.ts";
 import { SLOTS, type SlotSetting, slotSetting } from "./reasons.ts";
 import {
 	alreadyValue,
 	badCall,
 	COMMAND_DESCRIPTIONS,
+	commandName,
 	keyLine,
 	TOOL_LABEL,
+	TOOL_NAME,
 	unchanged,
 	useOneOf,
 	valueLine,

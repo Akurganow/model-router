@@ -7,7 +7,6 @@ import {
 	lockfileWith,
 	OR_VARIABLE,
 	setEnv,
-	TOOL_NAME,
 	useWorld,
 } from "./omp-fakes.ts";
 import { createExtension } from "./omp-router.ts";
@@ -21,6 +20,7 @@ import {
 	NOT_OFFERED,
 	projectOverrides,
 	SETTING_NAMES,
+	TOOL_NAME,
 	toolDescription,
 	UNREADABLE,
 	unchanged,

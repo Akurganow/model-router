@@ -14,6 +14,11 @@ export type KeySetting = (typeof KEY_SETTINGS)[number];
 export type SettingName = (typeof SETTING_NAMES)[number];
 export type KeyState = "set" | "unset" | "saved, checking";
 
+export const TOOL_NAME = "model_router_config";
+const COMMAND_PREFIX = "model-router-";
+export const commandName = (setting: ValueSetting): string =>
+	`${COMMAND_PREFIX}${setting}`;
+
 const KEY_PROVIDERS: Readonly<Record<KeySetting, Provider>> = {
 	typesafe_key: "typesafe",
 	openrouter_key: "openrouter",
@@ -88,6 +93,10 @@ export const useOneOf = (setting: ValueSetting): string =>
 
 export const unchanged = (setting: ValueSetting, reason: string): string =>
 	`${setting} unchanged: ${reason}`;
+
+/** Returns the unchanged line for a thrown value, whatever its type. */
+export const unchangedBy = (setting: ValueSetting, err: unknown): string =>
+	unchanged(setting, err instanceof Error ? err.message : String(err));
 
 export const alreadyValue = (value: string): string => `already ${value}`;
 

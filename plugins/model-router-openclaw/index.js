@@ -1021,6 +1021,9 @@ var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 var VALUE_SETTINGS = ["provider", "scope"];
 var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
 var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
+var TOOL_NAME = "model_router_config";
+var COMMAND_PREFIX = "model-router-";
+var commandName = (setting) => `${COMMAND_PREFIX}${setting}`;
 var KEY_PROVIDERS = {
   typesafe_key: "typesafe",
   openrouter_key: "openrouter"
@@ -1056,6 +1059,7 @@ var isValue = (setting, value) => TEXTS[setting].values.some((known) => known ==
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
+var unchangedBy = (setting, err) => unchanged(setting, err instanceof Error ? err.message : String(err));
 var alreadyValue = (value) => `already ${value}`;
 var UNREADABLE = "settings unreadable";
 var KEY_UNSET = "key unset";
@@ -1300,9 +1304,6 @@ function readState(api, env) {
 }
 
 // src/openclaw-config.ts
-var TOOL_NAME = "model_router_config";
-var COMMAND_PREFIX = "model-router-";
-var commandName = (setting) => `${COMMAND_PREFIX}${setting}`;
 var COMMAND_NAMES = VALUE_SETTINGS.map(commandName);
 var ADMIN_SCOPE = "operator.admin";
 var LINE_BREAK = "\n";
@@ -1351,7 +1352,7 @@ async function write(api, ctx, setting, value) {
     });
     return valueLine(setting, value);
   } catch (err) {
-    return unchanged(setting, err instanceof Error ? err.message : String(err));
+    return unchangedBy(setting, err);
   }
 }
 async function runCommand(api, env, ctx, setting) {

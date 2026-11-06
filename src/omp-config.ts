@@ -18,9 +18,11 @@ import {
 	projectOverrides,
 	SETTING_NAMES,
 	TOOL_LABEL,
+	TOOL_NAME,
 	toolDescription,
 	UNREADABLE,
 	unchanged,
+	unchangedBy,
 	useOneOf,
 	VALUE_SETTINGS,
 	type ValueSetting,
@@ -28,7 +30,6 @@ import {
 } from "./settings.ts";
 
 const COMMAND_PREFIX = "model-router:";
-const TOOL_NAME = "model_router_config";
 const LINE_BREAK = "\n";
 
 // A failed report must never block the caller.
@@ -101,7 +102,7 @@ async function apply(
 	try {
 		await omp.writeSetting(ctx.cwd, plugin, setting, value);
 	} catch (err) {
-		return unchanged(setting, err instanceof Error ? err.message : String(err));
+		return unchangedBy(setting, err);
 	}
 	const now = (await readSettings(omp, ctx.cwd))?.[setting] ?? value;
 	const line = valueLine(setting, now);

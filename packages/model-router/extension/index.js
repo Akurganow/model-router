@@ -106,6 +106,7 @@ function roleText(description) {
 }
 
 // src/line.ts
+var LINE_PREFIX = "model-router ";
 var NO_CHANGE = "no change";
 function routedLine({
   level,
@@ -1102,6 +1103,7 @@ var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 var VALUE_SETTINGS = ["provider", "scope"];
 var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
 var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
+var TOOL_NAME = "model_router_config";
 var KEY_PROVIDERS = {
   typesafe_key: "typesafe",
   openrouter_key: "openrouter"
@@ -1145,6 +1147,7 @@ var isValue = (setting, value) => TEXTS[setting].values.some((known) => known ==
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
+var unchangedBy = (setting, err) => unchanged(setting, err instanceof Error ? err.message : String(err));
 var alreadyValue = (value) => `already ${value}`;
 var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
 var UNREADABLE = "settings unreadable";
@@ -1350,7 +1353,6 @@ async function changeKey(ctx, setting) {
 
 // src/omp-config.ts
 var COMMAND_PREFIX = "model-router:";
-var TOOL_NAME = "model_router_config";
 var LINE_BREAK2 = "\n";
 function say(ctx, text) {
   try {
@@ -1397,7 +1399,7 @@ async function apply(omp, ctx, setting, value) {
   try {
     await omp.writeSetting(ctx.cwd, plugin, setting, value);
   } catch (err) {
-    return unchanged(setting, err instanceof Error ? err.message : String(err));
+    return unchangedBy(setting, err);
   }
   const now = (await readSettings(omp, ctx.cwd))?.[setting] ?? value;
   const line = valueLine(setting, now);
@@ -1779,7 +1781,6 @@ function createStore() {
 }
 
 // src/omp-router.ts
-var LINE_PREFIX = "model-router ";
 var ENTRY_SEPARATOR = " | ";
 function isEligible(item) {
   if (!isRecord(item)) return false;

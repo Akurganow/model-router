@@ -5,9 +5,9 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { buildPrompt, DEFAULT_ROLE } from "./brief.ts";
 import { ROUTING_LIMIT_MS } from "./compose.ts";
+import { createFakeClock } from "./fake-clock.ts";
 import { createScriptedJev, type Step } from "./hermes-fakes.ts";
 import { routeRequest } from "./hermes-route.ts";
-import { createFakeClock } from "./openclaw-fakes.ts";
 
 const FIXTURES = join(
 	import.meta.dirname,
