@@ -88,10 +88,9 @@ requests above.
   arguments.
 - The program's environment holds only `PATH`, `HOME`, `TMPDIR`,
   `SYSTEMROOT`, the proxy variables `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`
-  in both cases,
-  `NODE_EXTRA_CA_CERTS`, `SSL_CERT_FILE` and `NODE_USE_ENV_PROXY`. When a proxy
-  variable is set, the plugin sets `NODE_USE_ENV_PROXY=1`, so Node sends the
-  request through that proxy.
+  in both cases, `NODE_EXTRA_CA_CERTS`, `SSL_CERT_FILE` and
+  `NODE_USE_ENV_PROXY`. With `HTTPS_PROXY` or `HTTP_PROXY` present, the plugin
+  turns Node's proxy support on, as [Node](README.md#node) details.
 - The program answers with one line of JSON on standard output. The plugin
   discards its standard error.
 - The program ends after one task.
