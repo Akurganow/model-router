@@ -86,8 +86,9 @@ requests above.
 - The plugin hands the program the task text, the context and the keys on
   standard input. A key never appears in the program's environment or
   arguments.
-- The program's environment holds only `PATH`, `HOME`, `TMPDIR`, the proxy
-  variables `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` in both cases,
+- The program's environment holds only `PATH`, `HOME`, `TMPDIR`,
+  `SYSTEMROOT`, the proxy variables `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`
+  in both cases,
   `NODE_EXTRA_CA_CERTS`, `SSL_CERT_FILE` and `NODE_USE_ENV_PROXY`. When a proxy
   variable is set, the plugin sets `NODE_USE_ENV_PROXY=1`, so Node sends the
   request through that proxy.

@@ -13,6 +13,8 @@ ENV_NAMES = (
     "PATH",
     "HOME",
     "TMPDIR",
+    # Windows needs it in a replaced environment, or the program may not start.
+    "SYSTEMROOT",
     *_PROXY,
     *(name.lower() for name in _PROXY),
     "NODE_EXTRA_CA_CERTS",

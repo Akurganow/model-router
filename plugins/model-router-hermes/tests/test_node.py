@@ -98,8 +98,13 @@ class EnvironmentTest(unittest.TestCase):
             | {"NODE_USE_ENV_PROXY": "1"},
         )
 
+    def test_windows_system_root_passes(self):
+        # Hermes runs natively on Windows, where a child started without SYSTEMROOT may fail.
+        env = node.child_env({"SYSTEMROOT": r"C:\Windows", "PATH": "/b"})
+        self.assertEqual(env, {"SYSTEMROOT": r"C:\Windows", "PATH": "/b"})
+
     def test_all_listed_names_are_copied_in_both_cases(self):
-        names = ["PATH", "HOME", "TMPDIR", "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE"]
+        names = ["PATH", "HOME", "TMPDIR", "SYSTEMROOT", "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE"]
         names += [
             n for base in ("HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY") for n in (base, base.lower())
         ]
