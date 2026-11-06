@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type BuildOptions, build } from "esbuild";
+import { errorText } from "../src/settings.ts";
 import { renderClaude } from "./build/claude.ts";
 import { copyNpmFiles } from "./build/copies.ts";
 import { renderHermes } from "./build/hermes.ts";
@@ -149,7 +150,7 @@ async function main(): Promise<string[]> {
 	try {
 		writeMetadata(ROOT);
 	} catch (error) {
-		return [error instanceof Error ? error.message : String(error)];
+		return [errorText(error)];
 	}
 	const problems: string[] = [];
 	for (const { harness, entry, out } of BUNDLES)

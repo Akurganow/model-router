@@ -2,15 +2,15 @@
 
 model-router for OpenClaw is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-05.
+2026-11-06.
 
 ## Where requests go
 
-The plugin asks Jev to score each `sessions_spawn` call it routes. Under the
-default `core` scope, only
-[the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself)
-routes. [The extended scope](#the-extended-scope) adds the other configured
-agents. Jev answers on one or two providers:
+Each `sessions_spawn` call the plugin routes goes to Jev for scoring. Under the
+default `core` scope, only [the spawn of the requesting agent
+itself](README.md#the-spawn-of-the-requesting-agent-itself) routes, and [the
+extended scope](#the-extended-scope) adds the other configured agents. Jev
+answers on one or two providers:
 
 - TypeSafe, at https://api.typesafe.ai/v1/systemone, with your TypeSafe key
 - OpenRouter, at https://openrouter.ai/api/v1/systemone, with your OpenRouter
@@ -26,28 +26,26 @@ and their keys:
 | `auto` | TypeSafe, with the TypeSafe key | OpenRouter, with the OpenRouter key |
 | `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
 
-An unknown value acts as `typesafe`. With `auto` or `openrouter-first` and one
-key set, the plugin uses that key's provider alone. With both keys set, one
-spawn may reach both companies. The second provider gets the spawn only when
-the first fails with a connection error, a timeout, or HTTP status 401, 402,
-403, 404, 408, 429 or 5xx. It never gets the spawn after 400, 422, a cancel, the
-routing limit or a bad reply.
+With both keys under `auto` or `openrouter-first`, one spawn may reach both companies.
 
-Each key goes only to its own provider's address above. The plugin passes the
-address and the key with every request, so no environment variable moves a key
-to another host. An environment variable can supply a key, and with it the
-account that receives the task text, as
-[What the plugin stores](#what-the-plugin-stores) says.
+[Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
+gives the fallback rules.
+
+Each key goes only to its own provider's address above, as
+[Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
+explains.
+
+The plugin's settings or the Gateway's environment can supply a key, as [What
+the plugin stores](#what-the-plugin-stores) says.
 
 ## What the plugin sends
 
-For every spawn it routes, the plugin sends an HTTPS POST to the provider the
-table above names. The plugin bundles the official TypeSafe SDK,
-`@typesafe-ai/sdk`, which builds the request for both providers. The JSON body
-holds:
+Each routed spawn sends an HTTPS POST to the provider the table above names. The
+JSON body holds:
 
-- the spawn's `task` text, condensed and with token-shaped strings masked.
-  A text over 12,000 characters keeps its start and its end
+- the spawn's `task` text, prepared as
+  [The task text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-task-text)
+  says
 - the agent's role:
   - [the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself)
     sends that agent's `description` from OpenClaw's configuration when one is
@@ -66,27 +64,20 @@ holds:
   It sends the value as is, as the other plugins send the description of a
   call. It masks and cuts nothing in it, so a key or a private name in a label
   leaves your machine
-- the Jev alias `jev-latest`, and two fixed scoring questions, `tier` and
-  `work`, with their three descriptions each, text that ships with the plugin.
+- the Jev alias and the two scoring questions, as
+  [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
+  lists them
 
-The request headers hold:
-
-- `authorization`, with the key of the provider that receives the request
-- `accept` and `content-type`, both `application/json`
-- `user-agent` and `x-typesafe-sdk`, both naming the SDK and its version,
-  `typesafe-sdk/0.7.0`
-- `x-typesafe-runtime`, which names the Gateway's runtime, the operating system
-  and the architecture, in the form `<runtime>/<version> (<os>; <arch>)`
-- `x-typesafe-retry-count`, `1` or `2`, on a retry only.
-
-OpenRouter receives the same headers, the `x-typesafe-*` ones included. The
-runtime header tells the provider which runtime, system and architecture the
-Gateway runs on. The task text holds whatever the caller put in it, which can
-include code. The request is sent when OpenClaw runs the `before_tool_call`
-hook, before the spawn starts. A spawn that a later hook or a policy blocks was
-already sent. That list is the whole request. Each key identifies your account
-to its provider. The plugin sends no telemetry and no other data about you or
-your machine.
+The `x-typesafe-runtime` header names the Gateway's runtime, the operating
+system and the architecture. It tells the provider which runtime, system and
+architecture the Gateway runs on.
+[The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
+lists the other headers, which the bundled SDK builds. The task text holds
+whatever the caller put in it, which can include code. The request is sent when
+OpenClaw runs the `before_tool_call` hook, before the spawn starts. A spawn that
+a later hook or a policy blocks was already sent. That list is the whole
+request, and
+[the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#no-telemetry).
 
 ## The extended scope
 
@@ -94,44 +85,31 @@ Under `extended`, the plugin routes the spawn of every other configured agent
 that does not set its own model, as well as
 [the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself).
 
-- The description and the task text of each such agent leave your machine, as
+- Each such agent's description and task text leave your machine, as
   What the plugin sends describes.
-- A hand-written description can hold private names, such as a client, a
-  product or a team. The plugin masks token-shaped strings only. Read your
-  agents' descriptions before you set `extended`.
+- [Descriptions can hold private names](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#descriptions-and-private-names).
+  Read them before you set `extended`.
 - The plugin can replace an effort you set.
   [Efforts the plugin keeps](README.md#efforts-the-plugin-keeps) lists when.
 
 ## Requests and billing
 
-With one provider, a routed spawn sends one request and up to two retries,
-three attempts in all. The SDK retries a connection error and an HTTP status
-408, 429 or 5xx. It waits for a `Retry-After` header when one comes, within the
-limit. It retries no other status. The retries send the same body as the first
-request.
-
-With two providers, the first provider gets one request and no retry. The
-plugin gives up on it after the [per-provider wait](README.md#hook-timeout). The
-second provider then gets up to three attempts as above. One spawn therefore sends at most four requests.
+One spawn sends at most four requests.
+[Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider)
+gives the attempts at each provider. The plugin gives up on the first provider
+after the [per-provider wait](README.md#hook-timeout).
 
 One routing limit covers the whole spawn, both providers and all retries
-included. [Hook timeout](README.md#hook-timeout) gives the limit. The
-plugin stops waiting at the limit, but it cannot recall a request in flight. A
-request can reach its provider even when its answer never returns. A retry
-after a network failure may be billed more than once. A first request the
-plugin gave up on may still be billed, on top of the second provider's answer.
-Many parallel spawns make as many requests, so a provider's rate limit can
-leave later spawns unrouted. The plugin sends no other request.
+included. [Hook timeout](README.md#hook-timeout) gives the limit.
+[The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing)
+says what a request in flight can cost. Many parallel spawns make as many
+requests, so a provider's rate limit can leave later spawns unrouted. The plugin
+sends no other request.
 
 ## What the providers do with it
 
-Each provider processes the request to answer the scoring questions.
-TypeSafe's handling of request data is set by its privacy policy at
-https://typesafe.ai/legal/privacy-policy. OpenRouter's privacy policy is at
-https://openrouter.ai/privacy. OpenRouter does not document retention or
-training for the System One endpoint. OpenRouter names the answering model
-`typesafe/jev-…`, and the plugin cannot see where OpenRouter passes the
-request on. The plugin author has no access to those requests.
+The providers' privacy policies are linked at
+[What the providers do with it](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-the-providers-do-with-it).
 
 ## What the plugin stores
 
@@ -139,9 +117,9 @@ The plugin keeps no file of its own and no state between spawns.
 
 It reads a key only for a provider the `provider` setting allows.
 [Keys](README.md#keys) says where it looks, in which order, and who can read an
-environment variable. It holds a key in memory only while it checks whether to
-route and while it sends a request. It reads no other environment variable, and
-it runs no program.
+environment variable. The plugin holds a key in memory only while it checks
+whether to route and while it sends a request. It reads no other environment
+variable, and it runs no program.
 
 A `.env` file in the Gateway's working directory can supply either variable.
 The plugin then sends the task text to the account that key belongs to. OpenClaw 2026.10.10 drops `OPENROUTER_API_KEY`
@@ -150,8 +128,9 @@ from such a file but loads `TYPESAFE_API_KEY`, as
 records. The plugin does not depend on that filter. Keep the keys in the
 plugin's settings, or in the Gateway's own environment.
 
-The `model_router_config` tool only reads. It reports whether a key is set and
-never returns the key, its length or any part of it.
+The `model_router_config` tool only reads.
+[The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool)
+says what it reports.
 
 The commands `/model-router-provider` and `/model-router-scope` write the
 plugin's `provider` or `scope` setting into OpenClaw's configuration. They
@@ -175,10 +154,10 @@ no task text, no description and no key.
 
 ## Fails open
 
-The plugin fails open. That means the plugin itself never blocks a spawn, never
-asks for approval and never throws into OpenClaw. A missing key, a closed gate,
-an error, a timeout or a failed check returns nothing, and the spawn runs as
-OpenClaw would run it without the plugin.
+The plugin fails open, as
+[Fails open](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#fails-open)
+defines it. It never blocks a spawn and never asks for approval. When it fails
+open, it returns nothing to OpenClaw.
 
 The plugin cannot promise more than that:
 
@@ -188,12 +167,12 @@ The plugin cannot promise more than that:
 
 ## Your choices
 
-Set `provider` to `typesafe` or `openrouter` to keep each spawn with one
-company. Keep `scope` at `core` to route only
+Every plugin offers the choices in
+[Your choices](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#your-choices).
+Here, keep `scope` at `core` to route only
 [the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself).
-Remove the keys from the plugin's settings and from both variables, and the
-plugin skips routing. Disable the plugin, as
-[Turn it off](README.md#turn-it-off) says, and nothing is sent.
+Remove the keys from the plugin's settings and from both variables. Disable the
+plugin, as [Turn it off](README.md#turn-it-off) says, and nothing is sent.
 
 ## Children
 

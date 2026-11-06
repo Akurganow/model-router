@@ -1,12 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import { createFakeClock } from "./fake-clock.ts";
 import plugin, { createPlugin } from "./openclaw.ts";
-import {
-	createFakeApi,
-	createFakeClock,
-	createJevFetch,
-} from "./openclaw-fakes.ts";
+import { createFakeApi, createJevFetch } from "./openclaw-fakes.ts";
 import { SPAWN_TOOL } from "./openclaw-router.ts";
 import { PLUGIN_ID } from "./openclaw-settings.ts";
 import type { OpenClawApi, OpenClawConfig } from "./openclaw-types.ts";

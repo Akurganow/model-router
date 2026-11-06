@@ -18,9 +18,9 @@ import type {
 	ToolSpec,
 } from "./omp-types.ts";
 import { KEY_VARIABLES } from "./provider.ts";
+import { TOOL_NAME } from "./settings.ts";
 
 export { jevAnswer, streamed };
-export const TOOL_NAME = "model_router_config";
 export const KEY = "omp-key-0001";
 export const OR_KEY = "omp-or-key-0003";
 export const ENDPOINT = "https://api.typesafe.ai/v1/systemone";

@@ -4,11 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { pathToFileURL } from "node:url";
-import { lockfileWith, TOOL_NAME, useWorld } from "./omp-fakes.ts";
+import { lockfileWith, useWorld } from "./omp-fakes.ts";
 import { checkGates, readSettings } from "./omp-gates.ts";
 import { readInstalledName } from "./omp-name.ts";
 import { createExtension } from "./omp-router.ts";
-import { ask, UNREADABLE, unchanged } from "./settings.ts";
+import { ask, TOOL_NAME, UNREADABLE, unchanged } from "./settings.ts";
 
 const CATALOGUE = "model-router-omp";
 const SCOPED = "@akurganow/model-router";

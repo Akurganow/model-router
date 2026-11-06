@@ -14,11 +14,17 @@ export type KeySetting = (typeof KEY_SETTINGS)[number];
 export type SettingName = (typeof SETTING_NAMES)[number];
 export type KeyState = "set" | "unset" | "saved, checking";
 
+export const TOOL_NAME = "model_router_config";
+// The dash form is the one OpenClaw and Hermes use; omp and Claude Code name their commands with "model-router:".
+const COMMAND_PREFIX = "model-router-";
+export const commandName = (setting: ValueSetting): string =>
+	`${COMMAND_PREFIX}${setting}`;
+
 const KEY_PROVIDERS: Readonly<Record<KeySetting, Provider>> = {
 	typesafe_key: "typesafe",
 	openrouter_key: "openrouter",
 };
-const PROVIDER_NAMES: Readonly<Record<Provider, string>> = {
+export const PROVIDER_NAMES: Readonly<Record<Provider, string>> = {
 	typesafe: "TypeSafe",
 	openrouter: "OpenRouter",
 };
@@ -88,6 +94,14 @@ export const useOneOf = (setting: ValueSetting): string =>
 
 export const unchanged = (setting: ValueSetting, reason: string): string =>
 	`${setting} unchanged: ${reason}`;
+
+/** Returns the message of an Error, or the string form of any other thrown value. */
+export const errorText = (err: unknown): string =>
+	err instanceof Error ? err.message : String(err);
+
+/** Returns the unchanged line for a thrown value, whatever its type. */
+export const unchangedBy = (setting: ValueSetting, err: unknown): string =>
+	unchanged(setting, errorText(err));
 
 export const alreadyValue = (value: string): string => `already ${value}`;
 

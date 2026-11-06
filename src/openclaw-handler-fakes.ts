@@ -1,6 +1,6 @@
+import { createFakeClock } from "./fake-clock.ts";
 import {
 	createFakeApi,
-	createFakeClock,
 	createJevFetch,
 	type FakeApiOverrides,
 	type Levels,

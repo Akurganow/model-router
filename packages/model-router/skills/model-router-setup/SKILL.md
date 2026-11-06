@@ -110,7 +110,7 @@ Read the entry as follows:
 - `key unset` points to step 3.
 - A gate or item reason points to step 5.
 - `timeout`, `network error` or an HTTP status points to the provider or the network.
-- After two attempts the entry names each provider with its reason, for example `skipped, typesafe HTTP 503, openrouter timeout`.
+- After both providers fail, the entry names each provider with its reason, for example `skipped, typesafe HTTP 503, openrouter timeout`.
 
 ## Closing summary
 

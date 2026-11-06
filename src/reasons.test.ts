@@ -11,6 +11,7 @@ import {
 	NODE_NOT_FOUND,
 	SLOTS,
 	SUBAGENT_MODEL_SET,
+	slotForLevel,
 } from "./reasons.ts";
 
 test("the shared reasons keep the texts the harnesses print", () => {
@@ -27,6 +28,12 @@ test("the shared reasons keep the texts the harnesses print", () => {
 test("level 0 names the small slot, level 2 the large slot, and the middle none", () => {
 	assert.deepEqual(LEVEL_SLOTS, { 0: "small", 2: "large" });
 	assert.deepEqual(Object.values(LEVEL_SLOTS), [...SLOTS]);
+});
+
+test("slotForLevel gives the end levels their slot and the middle level none", () => {
+	assert.equal(slotForLevel(0), "small");
+	assert.equal(slotForLevel(1), null);
+	assert.equal(slotForLevel(2), "large");
 });
 
 test("no other source file spells a shared reason", () => {

@@ -54,12 +54,12 @@ Routing needs a model in a slot and a key. The [setup skill](openclaw-skills/mod
 
 ## Keys
 
-The plugin reads a key only for a provider the [`provider` setting](#provider) allows. For each one it checks two places, in this order:
+For each provider the [`provider` setting](#provider) allows, the plugin checks two places, in this order:
 
 - TypeSafe: the plugin's `api_key` setting, then the `TYPESAFE_API_KEY` environment variable.
 - OpenRouter: the plugin's `openrouter_api_key` setting, then the `OPENROUTER_API_KEY` environment variable.
 
-A key counts as set when either place holds a non-empty value. Get a key from [TypeSafe](https://console.typesafe.ai/keys) or from [OpenRouter](https://openrouter.ai). Each key goes only to its own provider. The plugin never uses OpenClaw's own provider credentials as a Jev key. With no key for any allowed provider, every spawn reports `key unset`.
+A key counts as set when either place holds a non-empty value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get one and where a key goes. The plugin never uses OpenClaw's own provider credentials as a Jev key.
 
 Add a key in one of two ways:
 
@@ -81,7 +81,7 @@ The `provider` setting picks which providers judge each task, and in which order
 | `auto` | TypeSafe, then OpenRouter |
 | `openrouter-first` | OpenRouter, then TypeSafe |
 
-With `auto` or `openrouter-first` and only one key, that key's provider judges alone. A value outside the four counts as unset, and the default `typesafe` applies. [PRIVACY.md](PRIVACY.md) says which company receives the task under each value.
+Fallback rules: [Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task). Who receives a spawn's task under each value: [PRIVACY.md](PRIVACY.md).
 
 Switch it with `/model-router-provider <value>`. The plugin reads the setting at each spawn. A change applies once OpenClaw replaces the plugin, after running work drains, up to 60 s. A spawn in that window uses the old value. A spawn that overlaps the replacement can fail with `Gateway requester authority changed`, which is OpenClaw's own error. The same holds for `/model-router-scope` and for the model slots.
 
@@ -112,13 +112,13 @@ Two commands show or change an option:
 - `/model-router-provider [auto|openrouter-first|typesafe|openrouter]`
 - `/model-router-scope [core|extended]`
 
-A bare command prints the current value. A command with a valid value writes it to your OpenClaw config and prints the new value. An invalid value lists the allowed ones. A refused or failed write prints `<setting> unchanged: <reason>`.
+[The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a command prints. A command with a valid value writes it to your OpenClaw config.
 
 A Gateway client without `operator.admin` gets OpenClaw's own `This command requires gateway scope: operator.admin.` before the plugin runs, even for a bare read. The [`requiredScopes` check](../../docs/clients.md#openclaw-commands-and-owner-check) has the source.
 
 Only the owner can write. For anyone else the command prints `<setting> unchanged: only the owner can change it` and the current value.
 
-The read-only `model_router_config` tool returns the `provider` line, the `scope` line, the two model lines, and `<provider> key: set` or `<provider> key: unset` for each provider the `provider` value allows. It never returns a key, its length or any part of it.
+The read-only `model_router_config` tool returns the `provider` line, the `scope` line, the two model lines and the key lines. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show.
 
 ```text
 provider: auto (typesafe, then openrouter)
@@ -151,7 +151,7 @@ The work question picks the effort. The plugin sets `thinking` to one of these v
 | 1, an ordinary task | `high` | `medium` |
 | 2, a long or delicate task | `xhigh` | `high` |
 
-The plugin never sets `max`, `ultra`, `adaptive`, `minimal` or `off`. The small model's row starts at `medium`, because a small model stops early on agentic prompts at `low`. [model-choice.md](../model-router/docs/model-choice.md#the-work-question-and-the-arch) gives the reasons.
+The plugin never sets `max`, `ultra`, `adaptive`, `minimal` or `off`. The small model's row starts at `medium`. [model-choice.md](../model-router/docs/model-choice.md#the-work-question-and-the-arch) gives the reasons.
 
 The routed effort replaces the effort you chose in the calling session. The plugin sets `thinking` on the spawn, and OpenClaw would otherwise pass your session's effort to the child.
 
@@ -213,7 +213,7 @@ A scored spawn can still skip:
 
 - `small model unset` or `large model unset`: the level picked a slot you left empty.
 - `small model unresolved` or `large model unresolved`: OpenClaw cannot resolve the slot's string for the target agent, or holds no credential for its provider. The check makes no network request. The plugin then sets neither model nor effort.
-- `timeout`, `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer in time or at all. `timeout` means Jev's own timeout only. [Hook timeout](#hook-timeout) says what the routing limit does. After two providers, the reason names each, for example `typesafe HTTP 503, openrouter timeout`.
+- `timeout`, `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer in time or at all. `timeout` means Jev's own timeout only. [Hook timeout](#hook-timeout) says what the routing limit does. After two providers, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 ### How the plugin reads a spawn
 
@@ -239,7 +239,7 @@ model-router L1 no change · caller effort · p=0.62/0.70
 model-router skipped, key unset
 ```
 
-A routed line reads `L<level> <model or no change> · <effort or kept label> · p=<tier>/<work>`. The model is the slot string as you wrote it. The two probabilities belong to the chosen levels of the two questions. When the reply carries them, the line also names the Jev model and the token counts. After a fallback, it ends with the provider that answered and why the first one failed, for example ` · via openrouter (typesafe HTTP 503)`.
+A routed line reads `L<level> <model or no change> · <effort or kept label> · p=<tier>/<work>`. The model is the slot string as you wrote it. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else it holds.
 
 A skipped line reads `skipped, <reason>`. [Which spawns are routed](#which-spawns-are-routed) lists the reasons. The plugin logs one warning when a hook timeout makes it inert, as [Hook timeout](#hook-timeout) says.
 
@@ -296,7 +296,9 @@ An operator overrides the hook timeout with `plugins.entries.model-router-opencl
 
 ## What leaves the machine
 
-[PRIVACY.md](PRIVACY.md) is the one copy of this passage. It lists the request, the headers, the providers and the retries.
+[PRIVACY.md](PRIVACY.md) lists the request, the providers and the retries.
+
+[How the plugins use the providers](https://github.com/Akurganow/model-router/blob/main/docs/providers.md) holds what the four plugins share.
 
 ## Turn it off
 

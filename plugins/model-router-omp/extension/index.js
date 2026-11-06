@@ -106,7 +106,9 @@ function roleText(description) {
 }
 
 // src/line.ts
+var LINE_PREFIX = "model-router ";
 var NO_CHANGE = "no change";
+var ENTRY_SEPARATOR = " | ";
 function routedLine({
   level,
   target,
@@ -1039,6 +1041,7 @@ var PROVIDER_VALUES = [
   "typesafe",
   "openrouter"
 ];
+var PROVIDERS = ["typesafe", "openrouter"];
 var HOSTS = {
   typesafe: "https://api.typesafe.ai",
   openrouter: "https://openrouter.ai/api"
@@ -1060,7 +1063,7 @@ var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
 ]);
 var SERVER_ERRORS = { min: 500, max: 599 };
 var ORDER = {
-  auto: ["typesafe", "openrouter"],
+  auto: PROVIDERS,
   "openrouter-first": ["openrouter", "typesafe"],
   typesafe: ["typesafe"],
   openrouter: ["openrouter"]
@@ -1102,6 +1105,7 @@ var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 var VALUE_SETTINGS = ["provider", "scope"];
 var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
 var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
+var TOOL_NAME = "model_router_config";
 var KEY_PROVIDERS = {
   typesafe_key: "typesafe",
   openrouter_key: "openrouter"
@@ -1145,6 +1149,8 @@ var isValue = (setting, value) => TEXTS[setting].values.some((known) => known ==
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
+var errorText = (err) => err instanceof Error ? err.message : String(err);
+var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
 var UNREADABLE = "settings unreadable";
@@ -1350,7 +1356,6 @@ async function changeKey(ctx, setting) {
 
 // src/omp-config.ts
 var COMMAND_PREFIX = "model-router:";
-var TOOL_NAME = "model_router_config";
 var LINE_BREAK2 = "\n";
 function say(ctx, text) {
   try {
@@ -1397,7 +1402,7 @@ async function apply(omp, ctx, setting, value) {
   try {
     await omp.writeSetting(ctx.cwd, plugin, setting, value);
   } catch (err) {
-    return unchanged(setting, err instanceof Error ? err.message : String(err));
+    return unchangedBy(setting, err);
   }
   const now = (await readSettings(omp, ctx.cwd))?.[setting] ?? value;
   const line = valueLine(setting, now);
@@ -1779,8 +1784,6 @@ function createStore() {
 }
 
 // src/omp-router.ts
-var LINE_PREFIX = "model-router ";
-var ENTRY_SEPARATOR = " | ";
 function isEligible(item) {
   if (!isRecord(item)) return false;
   const { agent, task } = item;

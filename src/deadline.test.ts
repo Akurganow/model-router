@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it, mock } from "node:test";
 import { LIMIT_REACHED } from "./compose.ts";
 import { type Clock, raceDeadline } from "./deadline.ts";
-import { createFakeClock } from "./openclaw-fakes.ts";
+import { createFakeClock } from "./fake-clock.ts";
 
 describe("raceDeadline", () => {
 	const DEADLINE_MS = 5000;

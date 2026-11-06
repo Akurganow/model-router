@@ -11,7 +11,9 @@ export const PROVIDER_VALUES = [
 	"openrouter",
 ] as const;
 export type ProviderValue = (typeof PROVIDER_VALUES)[number];
-export type Provider = "typesafe" | "openrouter";
+// The one list of providers; every table keyed by provider follows it.
+export const PROVIDERS = ["typesafe", "openrouter"] as const;
+export type Provider = (typeof PROVIDERS)[number];
 
 // The SDK appends /v1/systemone to the host.
 export const HOSTS: Readonly<Record<Provider, string>> = {
@@ -44,7 +46,7 @@ const FALLBACK_STATUSES: ReadonlySet<number> = new Set([
 const SERVER_ERRORS = { min: 500, max: 599 };
 
 const ORDER: Readonly<Record<ProviderValue, readonly Provider[]>> = {
-	auto: ["typesafe", "openrouter"],
+	auto: PROVIDERS,
 	"openrouter-first": ["openrouter", "typesafe"],
 	typesafe: ["typesafe"],
 	openrouter: ["openrouter"],

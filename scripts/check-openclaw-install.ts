@@ -1,12 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { COMMAND_NAMES, TOOL_NAME } from "../src/openclaw-config.ts";
+import { COMMAND_NAMES } from "../src/openclaw-config.ts";
 import { createFakeApi } from "../src/openclaw-fakes.ts";
 import { HOOK, SPAWN_TOOL } from "../src/openclaw-router.ts";
 import { PLUGIN_ID } from "../src/openclaw-settings.ts";
 import type { OpenClawApi, RegistrationMode } from "../src/openclaw-types.ts";
 import { nonEmpty } from "../src/part.ts";
+import { errorText, TOOL_NAME } from "../src/settings.ts";
 import { NPM_ROOT } from "./build/outputs.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 
@@ -126,9 +127,7 @@ function problemsIn(
 	try {
 		register.call(plugin, fake.api);
 	} catch (error) {
-		return [
-			`${mode} mode: register threw: ${error instanceof Error ? error.message : error}`,
-		];
+		return [`${mode} mode: register threw: ${errorText(error)}`];
 	}
 	const hook = fake.hooks.find(({ event }) => event === HOOK);
 	const problems = presence(mode, wantHook, hook !== undefined, `${HOOK} hook`);

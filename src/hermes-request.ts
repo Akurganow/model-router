@@ -1,6 +1,6 @@
 import { contextText } from "./brief.ts";
 import { isRecord, nonEmpty } from "./part.ts";
-import { KEY_VARIABLES, type Keys, type Provider } from "./provider.ts";
+import { type Keys, PROVIDERS } from "./provider.ts";
 import { type EndSlot, SLOTS } from "./reasons.ts";
 
 // What the Python shim sends, once read.
@@ -15,9 +15,6 @@ export type HermesRequest = {
 	readonly models: Readonly<Record<EndSlot, string | undefined>>;
 	readonly configEffort: boolean;
 };
-
-// The one list of providers the Hermes plugin reads a key for, keyed like KEY_VARIABLES.
-export const PROVIDERS = Object.keys(KEY_VARIABLES) as Provider[];
 
 const readKeys = (value: unknown): Keys =>
 	Object.fromEntries(

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, test } from "node:test";
 import { noul } from "@typesafe-ai/sdk";
 import { createClient } from "./client.ts";
 import { streamed } from "./omp-fakes.ts";
+import { PROVIDERS } from "./provider.ts";
 
 const KEY = "test-key";
 const MODEL = "jev-test";
@@ -48,7 +49,6 @@ const ENDPOINTS = {
 	typesafe: "https://api.typesafe.ai/v1/systemone",
 	openrouter: "https://openrouter.ai/api/v1/systemone",
 } as const;
-const PROVIDERS = ["typesafe", "openrouter"] as const;
 
 test("posts plain JSON with the explicit model to the provider's endpoint", async () => {
 	for (const provider of PROVIDERS) {
