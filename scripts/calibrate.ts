@@ -11,7 +11,13 @@ import {
 import { work } from "../src/effort.ts";
 import { tier } from "../src/model.ts";
 import { formatProbability } from "../src/part.ts";
-import { type Attempt, HOSTS, type Provider, plan } from "../src/provider.ts";
+import {
+	type Attempt,
+	HOSTS,
+	type Keys,
+	type Provider,
+	plan,
+} from "../src/provider.ts";
 import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";
 
 const AGREEMENT_BAR = 0.85;
@@ -38,7 +44,7 @@ export const caseHead = (text: string): string =>
 export async function runCase(
 	c: Case,
 	attempts: readonly Attempt[],
-	keys: Readonly<Partial<Record<Provider, string>>>,
+	keys: Keys,
 	fetchFn: Fetch,
 ): Promise<Decision | Skipped> {
 	const limit = new AbortController();
@@ -158,10 +164,10 @@ export async function main(
 		console.error(USAGE);
 		return EXIT_USAGE;
 	}
-	const attempts = plan(provider, {
-		typesafe: provider === "typesafe",
-		openrouter: provider === "openrouter",
-	}).map((a) => ({ ...a, model: model ?? a.model }));
+	const attempts = plan(provider, { [provider]: key }).map((a) => ({
+		...a,
+		model: model ?? a.model,
+	}));
 	const cases: Case[] = readFileSync(
 		new URL("../calibration.jsonl", import.meta.url),
 		"utf8",

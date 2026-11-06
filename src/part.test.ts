@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatProbability, parseProbabilities } from "./part.ts";
+import { formatProbability, nonEmpty, parseProbabilities } from "./part.ts";
 
 const dist = (p: Record<string, unknown>) => ({
 	type: "score",
@@ -62,4 +62,14 @@ test("a probability prints with two decimals", () => {
 	assert.equal(formatProbability(0.9), "0.90");
 	assert.equal(formatProbability(0.126), "0.13");
 	assert.equal(formatProbability(1), "1.00");
+});
+
+test("nonEmpty gives a string trimmed", () => {
+	assert.equal(nonEmpty("key"), "key");
+	assert.equal(nonEmpty("  key \n"), "key");
+});
+
+test("nonEmpty gives nothing for blank text or anything that is not a string", () => {
+	for (const value of ["", "  ", "\t\n", undefined, null, 7, true, {}, ["a"]])
+		assert.equal(nonEmpty(value), undefined);
 });

@@ -1,10 +1,4 @@
-import {
-	findKey,
-	PLUGIN,
-	readSettings,
-	type Settings,
-	UNREADABLE,
-} from "./omp-gates.ts";
+import { findKey, readSettings, type Settings } from "./omp-gates.ts";
 import { changeKey } from "./omp-key.ts";
 import type { Context, OmpImports, Pi, ToolReply } from "./omp-types.ts";
 import { isRecord } from "./part.ts";
@@ -25,6 +19,7 @@ import {
 	SETTING_NAMES,
 	TOOL_LABEL,
 	toolDescription,
+	UNREADABLE,
 	unchanged,
 	useOneOf,
 	VALUE_SETTINGS,
@@ -91,11 +86,13 @@ async function apply(
 	value: string,
 ): Promise<string> {
 	if (!isValue(setting, value)) return useOneOf(setting);
+	const { plugin } = omp;
 	const before = await readSettings(omp, ctx.cwd);
-	if (before === undefined) return unchanged(setting, UNREADABLE);
+	if (before === undefined || plugin === undefined)
+		return unchanged(setting, UNREADABLE);
 	if (before[setting] === value) return unchanged(setting, alreadyValue(value));
 	try {
-		await omp.writeSetting(ctx.cwd, PLUGIN, setting, value);
+		await omp.writeSetting(ctx.cwd, plugin, setting, value);
 	} catch (err) {
 		return unchanged(setting, err instanceof Error ? err.message : String(err));
 	}

@@ -19,6 +19,7 @@ import {
 	useWorld,
 } from "./omp-fakes.ts";
 import { createExtension } from "./omp-router.ts";
+import { KEY_UNSET, UNREADABLE } from "./settings.ts";
 
 const world = useWorld();
 afterEach(() => mock.timers.reset());
@@ -203,8 +204,8 @@ test("other tools, other shapes and nothing eligible send and say nothing", asyn
 });
 
 const closed: [string, string, () => void][] = [
-	["key unset", "key", () => (world.credential = async () => undefined)],
-	["settings unreadable", "settings", () => (world.lockfile = "{")],
+	[KEY_UNSET, "key", () => (world.credential = async () => undefined)],
+	[UNREADABLE, "settings", () => (world.lockfile = "{")],
 	[
 		"task model role set",
 		"role",

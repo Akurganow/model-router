@@ -1,18 +1,9 @@
 import type { Engine, Options } from "./claude-host.ts";
-import { order, type Provider } from "./provider.ts";
-
-export type Keys = Partial<Record<Provider, string>>;
-
-// The sensitive option comes first. The desktop app reads it back empty after a restart, so the variable stands in.
-export const KEY_OPTIONS: Readonly<Record<Provider, keyof Options>> = {
-	typesafe: "api_key",
-	openrouter: "openrouter_api_key",
-};
-
-const nonEmpty = (v: unknown): string | undefined =>
-	typeof v === "string" && v !== "" ? v : undefined;
+import { nonEmpty } from "./part.ts";
+import { KEY_FIELDS, type Keys, order, type Provider } from "./provider.ts";
 
 // Each key goes only to its own provider. The key of a provider the value leaves out is never read.
+// The sensitive option comes first. The desktop app reads it back empty after a restart, so the variable stands in.
 export async function readKeys(
 	$: Engine,
 	options: Options,
@@ -21,7 +12,7 @@ export async function readKeys(
 	const keys: Keys = {};
 	for (const name of order(provider)) {
 		const key =
-			nonEmpty(options[KEY_OPTIONS[name]]) ??
+			nonEmpty(options[KEY_FIELDS[name]]) ??
 			nonEmpty(await keyVariable($, name));
 		if (key !== undefined) keys[name] = key;
 	}

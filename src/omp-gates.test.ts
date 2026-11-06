@@ -13,6 +13,14 @@ import {
 } from "./omp-fakes.ts";
 import { checkGates, readSettings } from "./omp-gates.ts";
 import { plan } from "./provider.ts";
+import {
+	agentDiscoveryFailed,
+	agentUnknown,
+	KEY_UNSET,
+	outsideCoreScope,
+	setsOwnModel,
+	UNREADABLE,
+} from "./settings.ts";
 
 const world = useWorld();
 const ENV_KEY = "env-key-0002";
@@ -72,14 +80,31 @@ for (const [name, credential] of [
 		assert.deepEqual(await gates(), openOr(OR_ENV_KEY));
 	});
 
+test("a whitespace-only credential or variable counts as unset", async () => {
+	setEnv(KEY_VARIABLE, ENV_KEY);
+	world.credential = async () => " \n";
+	assert.deepEqual(await gates(), open(ENV_KEY));
+	world.credential = async () => undefined;
+	setEnv(KEY_VARIABLE, "   ");
+	assert.deepEqual(await gates(), { closed: KEY_UNSET });
+});
+
+test("a key is used trimmed, from omp's credential and from the variable", async () => {
+	world.credential = async () => ` ${KEY}\n`;
+	assert.deepEqual(await gates(), open());
+	world.credential = async () => undefined;
+	setEnv(KEY_VARIABLE, `\t${ENV_KEY} `);
+	assert.deepEqual(await gates(), open(ENV_KEY));
+});
+
 test("no credential and no variable close the gate", async () => {
 	world.credential = async () => undefined;
-	assert.deepEqual(await gates(), { closed: "key unset" });
+	assert.deepEqual(await gates(), { closed: KEY_UNSET });
 	setEnv(KEY_VARIABLE, "");
-	assert.deepEqual(await gates(), { closed: "key unset" });
+	assert.deepEqual(await gates(), { closed: KEY_UNSET });
 	world.lockfile = lockfileWith("openrouter");
 	setEnv(KEY_VARIABLE, ENV_KEY);
-	assert.deepEqual(await gates(), { closed: "key unset" });
+	assert.deepEqual(await gates(), { closed: KEY_UNSET });
 });
 
 test("the default reads no OpenRouter credential and no OpenRouter variable", async () => {
@@ -159,10 +184,10 @@ test("a missing lockfile or a value stored under another name means typesafe", a
 test("a settings read that throws closes the gate and reads no key", async () => {
 	for (const imports of unreadable())
 		assert.deepEqual(await checkGates(imports, world.pi, ctx()), {
-			closed: "settings unreadable",
+			closed: UNREADABLE,
 		});
 	world.lockfile = "{ not json";
-	assert.deepEqual(await gates(), { closed: "settings unreadable" });
+	assert.deepEqual(await gates(), { closed: UNREADABLE });
 	assert.deepEqual(world.asked, []);
 });
 
@@ -195,17 +220,17 @@ const closers: [string, string, () => void][] = [
 	],
 	[
 		"a model role value of the wrong type",
-		"settings unreadable",
+		UNREADABLE,
 		() => (world.config.modelRoles = "x"),
 	],
 	[
 		"an unknown settings id",
-		"settings unreadable",
+		UNREADABLE,
 		() => (world.config["task.agentModelOverrides"] = undefined),
 	],
 	[
 		"a disabled list of the wrong type",
-		"settings unreadable",
+		UNREADABLE,
 		() => (world.config["task.disabledAgents"] = "task"),
 	],
 	[
@@ -236,7 +261,7 @@ test("a throwing lookup, discovery or resolver closes the gate", async () => {
 	const lookup = () => ({ get: throws });
 	assert.deepEqual(
 		await checkGates({ ...world.imports, lookup }, world.pi, ctx()),
-		{ closed: "settings unreadable" },
+		{ closed: UNREADABLE },
 	);
 	const pi = { ...world.pi, pi: { ...world.pi.pi, discoverAgents: throws } };
 	assert.deepEqual(await checkGates(world.imports, pi, ctx()), {
@@ -303,7 +328,7 @@ for (const name of [
 	});
 
 const skips: [string, string, () => void][] = [
-	["pinned", "pinned sets its own model", () => undefined],
+	["pinned", setsOwnModel("pinned"), () => undefined],
 	[
 		"scout",
 		"scout model override set",
@@ -324,7 +349,7 @@ const skips: [string, string, () => void][] = [
 		"sonic agent disabled",
 		() => (world.config["task.disabledAgents"] = ["sonic"]),
 	],
-	["ghost", "ghost agent unknown", () => undefined],
+	["ghost", agentUnknown("ghost"), () => undefined],
 	["scout", "no @smol or @slow model", () => world.resolvable.clear()],
 ];
 for (const [name, reason, close] of skips)
@@ -338,7 +363,7 @@ test("extended: a failed discovery skips with its own reason", async () => {
 	extend(world);
 	const pi = { ...world.pi, pi: { ...world.pi.pi, discoverAgents: throws } };
 	const result = await checkGates(world.imports, pi, ctx(), { agent: "scout" });
-	assert.deepEqual(result, { closed: "scout agent discovery failed" });
+	assert.deepEqual(result, { closed: agentDiscoveryFailed("scout") });
 });
 
 test("extended: a user's model for one agent leaves the others routed", async () => {
@@ -352,7 +377,7 @@ test("extended: a user's model for one agent leaves the others routed", async ()
 test("an agent outside the core scope is skipped", async () => {
 	world.agents = [...AGENTS];
 	assert.deepEqual(await forAgent("scout"), {
-		closed: "scout is outside the core scope",
+		closed: outsideCoreScope("scout"),
 	});
 });
 

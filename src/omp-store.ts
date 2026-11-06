@@ -1,4 +1,4 @@
-import { isRecord } from "./part.ts";
+import { isRecord, nonEmpty } from "./part.ts";
 
 export const STORE_MAX = 64;
 
@@ -70,7 +70,8 @@ export function createStore() {
 			c.entries.add(entry);
 			c.awaitingId.set(call, (c.awaitingId.get(call) ?? new Set()).add(entry));
 			link(c, entry, `${call}:${index}`);
-			if (typeof name === "string" && name.trim() !== "") link(c, entry, name);
+			if (typeof name === "string" && nonEmpty(name) !== undefined)
+				link(c, entry, name);
 		},
 
 		// Progress names each running child. Its id is the spawn key in async mode, so it replaces the guesses.

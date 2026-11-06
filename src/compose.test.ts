@@ -12,6 +12,7 @@ import { work } from "./effort.ts";
 import { tier } from "./model.ts";
 import { streamed } from "./omp-fakes.ts";
 import { type Attempt, plan } from "./provider.ts";
+import { KEY_UNSET } from "./settings.ts";
 
 const KEY = "test-key";
 const OR_KEY = "test-openrouter-key";
@@ -212,7 +213,7 @@ test("a request the SDK rejects locally is a rejected request with no fetch", as
 test("no attempt is key unset and makes no request", async () => {
 	const { bodies, fetchFn } = answering(VALID);
 	assert.deepEqual(await run(fetchFn, { attempts: [] }), {
-		skipped: "key unset",
+		skipped: KEY_UNSET,
 	});
 	assert.equal(bodies.length, 0);
 });

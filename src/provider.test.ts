@@ -16,6 +16,7 @@ import {
 	narrow,
 	order,
 	PROVIDER_VALUES,
+	parseProvider,
 	plan,
 } from "./provider.ts";
 
@@ -23,10 +24,10 @@ const T = { provider: "typesafe", model: "jev-latest" };
 const O = { provider: "openrouter", model: "jev-latest" };
 const FIRST = { timeout: 2000, retry: { maxRetries: 0 } };
 
-const NONE = { typesafe: false, openrouter: false };
-const TS = { typesafe: true, openrouter: false };
-const OR = { typesafe: false, openrouter: true };
-const BOTH = { typesafe: true, openrouter: true };
+const NONE = {};
+const TS = { typesafe: "ts-key" };
+const OR = { openrouter: "or-key" };
+const BOTH = { typesafe: "ts-key", openrouter: "or-key" };
 
 test("exports four values, two hosts and a 2000 ms first attempt", () => {
 	assert.deepEqual(PROVIDER_VALUES, [
@@ -62,6 +63,12 @@ test("plan orders the attempts for each value and set of keys", () => {
 				expected[name],
 				`${String(value)} with ${name}`,
 			);
+});
+
+test("plan attempts only the providers whose key is set", () => {
+	assert.deepEqual(plan("auto", { typesafe: "", openrouter: "or-key" }), [O]);
+	assert.deepEqual(plan("auto", { typesafe: undefined, openrouter: "k" }), [O]);
+	assert.deepEqual(plan("auto", { typesafe: false, openrouter: true }), [O]);
 });
 
 test("order lists the providers a value allows, without keys", () => {
@@ -122,4 +129,11 @@ test("a project only narrows auto or openrouter-first to one provider", () => {
 				`${String(global)} narrowed by ${String(project)}`,
 			);
 		});
+});
+
+test("parseProvider keeps a known value and drops anything else", () => {
+	for (const value of PROVIDER_VALUES)
+		assert.equal(parseProvider(value), value);
+	for (const value of ["", "Auto", "toString", 4, null, undefined, {}])
+		assert.equal(parseProvider(value), undefined, String(value));
 });
