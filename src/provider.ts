@@ -11,7 +11,9 @@ export const PROVIDER_VALUES = [
 	"openrouter",
 ] as const;
 export type ProviderValue = (typeof PROVIDER_VALUES)[number];
-export type Provider = "typesafe" | "openrouter";
+// The one list of providers; every other list derives from it or is keyed by it.
+export const PROVIDERS = ["typesafe", "openrouter"] as const;
+export type Provider = (typeof PROVIDERS)[number];
 
 // The SDK appends /v1/systemone to the host.
 export const HOSTS: Readonly<Record<Provider, string>> = {

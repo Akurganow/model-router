@@ -1,7 +1,7 @@
 import { FAILED } from "./compose.ts";
+import { realClock } from "./deadline.ts";
 import { streamedFetch } from "./fetch.ts";
 import { routeRequest, skip } from "./hermes-route.ts";
-import { realClock } from "./openclaw-deadline.ts";
 
 async function readStdin(): Promise<string> {
 	const chunks: Buffer[] = [];

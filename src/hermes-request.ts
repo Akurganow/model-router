@@ -1,6 +1,6 @@
 import { contextText } from "./brief.ts";
 import { isRecord, nonEmpty } from "./part.ts";
-import { KEY_VARIABLES, type Keys, type Provider } from "./provider.ts";
+import { type Keys, PROVIDERS } from "./provider.ts";
 
 // What the Python shim sends, once read.
 export type HermesRequest = {
@@ -15,8 +15,6 @@ export type HermesRequest = {
 	readonly largeModel: string | undefined;
 	readonly configEffort: boolean;
 };
-
-const PROVIDERS = Object.keys(KEY_VARIABLES) as Provider[];
 
 const readKeys = (value: unknown): Keys =>
 	Object.fromEntries(

@@ -17,6 +17,8 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+from node_stub import NodeStub, make_node_stub  # noqa: F401  (re-exported for the tests)
+
 PLUGIN_DIR = Path(__file__).resolve().parent.parent
 FIXTURES = sorted((PLUGIN_DIR / "tests" / "fixtures").glob("*.json"))
 # Hermes accepts these efforts for a delegated task.
@@ -94,11 +96,14 @@ def submodule(stem: str, plugin: types.ModuleType = PLUGIN) -> types.ModuleType:
 
 CONSTANTS = json.loads((PLUGIN_DIR / "constants.json").read_text(encoding="utf-8"))
 PREFIX = CONSTANTS["linePrefix"]
-SKIPPED = PREFIX + CONSTANTS["skips"]["skippedPrefix"]
 
 
 def skipped_label(reason_key: str) -> str:
-    return SKIPPED + CONSTANTS["skips"][reason_key]
+    return CONSTANTS["skips"][reason_key]
+
+
+def unresolved_label(slot: str) -> str:
+    return CONSTANTS["slots"][slot]["unresolved"]
 
 
 class FakeCtx:
@@ -200,48 +205,6 @@ def short_constants(routing_ms: int = 1000, grace_ms: int = 2000) -> dict[str, A
     return {**CONSTANTS, "routingLimitMs": routing_ms, "graceMs": grace_ms}
 
 
-@dataclasses.dataclass
-class NodeStub:
-    script: Path
-    capture: Path
-
-    def captured(self) -> dict[str, Any]:
-        return json.loads(self.capture.read_text(encoding="utf-8"))
-
-
-_STUB_SOURCE = """\
-import json, os, sys, time
-data = sys.stdin.read()
-with open({capture!r}, "w") as handle:
-    json.dump({{"stdin": data, "env": dict(os.environ), "argv": sys.argv,
-               "pid": os.getpid()}}, handle)
-time.sleep({sleep!r})
-sys.stdout.write({out!r})
-sys.exit({code!r})
-"""
-
-
-def make_node_stub(
-    directory: Path,
-    *,
-    reply: Any = None,
-    raw: str | None = None,
-    exit_code: int = 0,
-    sleep: float = 0.0,
-    name: str = "stub",
-) -> NodeStub:
-    """Writes a script that records its stdin, environment and arguments, then
-    answers like route.mjs: one JSON line, or `raw` verbatim."""
-    out = raw if raw is not None else json.dumps(reply) + "\n"
-    script = directory / f"{name}.py"
-    capture = directory / f"{name}.json"
-    script.write_text(
-        _STUB_SOURCE.format(capture=str(capture), sleep=sleep, out=out, code=exit_code),
-        encoding="utf-8",
-    )
-    return NodeStub(script, capture)
-
-
 def temp_dir() -> tempfile.TemporaryDirectory:
     return tempfile.TemporaryDirectory(prefix="mr-hermes-test-")
 
@@ -268,8 +231,11 @@ def default_route(config: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in config.items() if k != "service_tier"}
 
 
-def route_reply(level: int, effort: str | None, line: str = "L1 test line") -> dict[str, Any]:
-    return {"outcome": "route", "level": level, "effort": effort, "line": line}
+def route_reply(slot: str | None, effort: str | None, line: str = "L1 test line") -> dict[str, Any]:
+    reply: dict[str, Any] = {"outcome": "route", "effort": effort, "line": line}
+    if slot is not None:
+        reply["slot"] = slot
+    return reply
 
 
 def skip_reply(line: str = "skipped, test") -> dict[str, Any]:

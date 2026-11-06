@@ -84,6 +84,7 @@ const REQUEST = {
 	largeModel: "openai/large",
 	configEffort: false,
 };
+const FAILED_SKIP = { outcome: "skip", line: "skipped, failed" };
 const ONE = [
 	{ host: "api.typesafe.ai", reply: { levels: { tier: 1, work: 1 } } },
 ] satisfies Step[];
@@ -151,14 +152,38 @@ describe("failures", () => {
 	});
 
 	for (const budgetMs of [0, -5, Number.NaN, Number.POSITIVE_INFINITY, "8000"])
-		it(`a budget of ${String(budgetMs)} is a timeout with no request`, async () => {
+		it(`a budget of ${String(budgetMs)} is a protocol fault with no request`, async () => {
 			const { response, jev } = run({ ...REQUEST, budgetMs }, ONE);
-			assert.deepEqual(await response, {
-				outcome: "skip",
-				line: "skipped, timeout",
-			});
+			assert.deepEqual(await response, FAILED_SKIP);
 			assert.deepEqual(jev.hosts, []);
 		});
+
+	it("a missing budget is a protocol fault with no request", async () => {
+		const { budgetMs: _omitted, ...withoutBudget } = REQUEST;
+		const { response, jev } = run(withoutBudget, ONE);
+		assert.deepEqual(await response, FAILED_SKIP);
+		assert.deepEqual(jev.hosts, []);
+	});
+
+	it("gives the failed skip, not a timeout, when scoring rejects", async () => {
+		const deps = {
+			clock: createFakeClock().clock,
+			get fetchFn(): never {
+				throw new Error("fetch unavailable");
+			},
+		};
+		assert.deepEqual(await routeRequest(REQUEST, deps), FAILED_SKIP);
+	});
+
+	it("gives the timeout skip when the run outlasts the budget", async () => {
+		const { response } = run(REQUEST, [
+			{ host: "api.typesafe.ai", reply: "hang" },
+		]);
+		assert.deepEqual(await response, {
+			outcome: "skip",
+			line: "skipped, timeout",
+		});
+	});
 
 	it("never lets a key reach the response", async () => {
 		const { response } = run({ ...REQUEST, keys: { typesafe: "k-9f3" } }, [

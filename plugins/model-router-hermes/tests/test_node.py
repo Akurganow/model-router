@@ -10,27 +10,32 @@ from support import CONSTANTS, make_node_stub, route_reply, skip_reply, submodul
 
 node = submodule("node")
 EFFORTS = CONSTANTS["efforts"]
+SLOTS = list(CONSTANTS["slots"])
 
 
 def run(stub, request=None, timeout=5):
     return node.run_node(
-        [sys.executable, str(stub.script)], request or {"task": "t"}, timeout, EFFORTS
+        [sys.executable, str(stub.script)], request or {"task": "t"}, timeout, EFFORTS, SLOTS
     )
 
 
 class ResponseTest(unittest.TestCase):
     def parse(self, value):
-        return node.parse_response(json.dumps(value) + "\n", EFFORTS)
+        return node.parse_response(json.dumps(value) + "\n", EFFORTS, SLOTS)
 
     def test_skip(self):
         self.assertEqual(self.parse(skip_reply("skipped, x")), node.Skip("skipped, x"))
 
-    def test_route_at_each_level_and_effort(self):
-        for level in (0, 1, 2):
+    def test_route_at_each_slot_and_effort(self):
+        for slot in (None, *SLOTS):
             for effort in (None, *EFFORTS):
                 self.assertEqual(
-                    self.parse(route_reply(level, effort, "L")), node.Route(level, effort, "L")
+                    self.parse(route_reply(slot, effort, "L")), node.Route(slot, effort, "L")
                 )
+
+    def test_the_level_is_not_read(self):
+        reply = {**route_reply("small", "low"), "level": "anything"}
+        self.assertEqual(self.parse(reply), node.Route("small", "low", "L1 test line"))
 
     def test_outside_the_protocol_fails(self):
         bad = [
@@ -40,16 +45,16 @@ class ResponseTest(unittest.TestCase):
             {"outcome": "skip"},
             {"outcome": "skip", "line": 3},
             {"outcome": "other", "line": "x"},
-            route_reply(3, "low"),
-            route_reply(-1, "low"),
-            route_reply(True, "low"),
-            route_reply(1.0, "low"),
-            route_reply("1", "low"),
-            route_reply(1, "max"),
-            route_reply(1, "ultra"),
-            route_reply(1, 5),
-            route_reply(1, "low", 3),
-            {"outcome": "route", "level": 1, "line": "x"},
+            route_reply("medium", "low"),
+            route_reply("Small", "low"),
+            route_reply(1, "low"),
+            route_reply(None, "max"),
+            route_reply(None, "ultra"),
+            route_reply(None, 5),
+            route_reply(None, "low", 3),
+            {"outcome": "route", "line": "x"},
+            {"outcome": "route", "slot": "small", "line": "x"},
+            {"outcome": "route", "slot": None, "effort": None, "line": "x"},
         ]
         for value in bad:
             with self.assertRaises(node.NodeFailed, msg=value):
@@ -58,7 +63,7 @@ class ResponseTest(unittest.TestCase):
     def test_not_one_json_object_fails(self):
         for text in ("", "not json", "{", '{"outcome":"skip","line":"a"}\n{"x":1}', "null"):
             with self.assertRaises(node.NodeFailed, msg=text):
-                node.parse_response(text, EFFORTS)
+                node.parse_response(text, EFFORTS, SLOTS)
 
 
 class EnvironmentTest(unittest.TestCase):
@@ -127,9 +132,9 @@ class RunTest(unittest.TestCase):
         self.addCleanup(self._dir.cleanup)
 
     def test_request_goes_on_stdin_and_the_reply_comes_back(self):
-        stub = make_node_stub(self.dir, reply=route_reply(0, "low"))
+        stub = make_node_stub(self.dir, reply=route_reply("small", "low"))
         result = run(stub, {"task": "t", "keys": {"typesafe": "k-one"}})
-        self.assertEqual(result, node.Route(0, "low", "L1 test line"))
+        self.assertEqual(result, node.Route("small", "low", "L1 test line"))
         captured = stub.captured()
         self.assertEqual(json.loads(captured["stdin"])["keys"], {"typesafe": "k-one"})
         self.assertEqual(captured["argv"], [str(stub.script)])
@@ -146,7 +151,7 @@ class RunTest(unittest.TestCase):
     def test_run_is_a_list_without_a_shell(self):
         with mock.patch("subprocess.run") as fake:
             fake.return_value = mock.Mock(returncode=0, stdout=json.dumps(skip_reply()).encode())
-            node.run_node(["node", "route.mjs"], {"task": "t"}, 2.5, EFFORTS)
+            node.run_node(["node", "route.mjs"], {"task": "t"}, 2.5, EFFORTS, SLOTS)
         args, kwargs = fake.call_args
         self.assertEqual(args[0], ["node", "route.mjs"])
         self.assertIs(kwargs.get("shell", False), False)
@@ -176,13 +181,13 @@ class RunTest(unittest.TestCase):
 
     def test_os_error_fails(self):
         with self.assertRaises(node.NodeFailed):
-            node.run_node([str(self.dir / "missing")], {}, 2, EFFORTS)
+            node.run_node([str(self.dir / "missing")], {}, 2, EFFORTS, SLOTS)
 
     def test_output_that_is_not_utf8_fails(self):
         with mock.patch("subprocess.run") as fake:
             fake.return_value = mock.Mock(returncode=0, stdout=b"\xff\xfe")
             with self.assertRaises(node.NodeFailed):
-                node.run_node(["node"], {}, 2, EFFORTS)
+                node.run_node(["node"], {}, 2, EFFORTS, SLOTS)
 
 
 if __name__ == "__main__":

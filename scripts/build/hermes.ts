@@ -2,6 +2,7 @@ import { ROUTING_LIMIT_MS } from "../../src/compose.ts";
 import { setupTexts } from "../../src/hermes-setup.ts";
 import { HERMES_TEXTS } from "../../src/hermes-texts.ts";
 import { effortFor } from "../../src/ladder.ts";
+import { LINE_PREFIX, skippedLine } from "../../src/line.ts";
 import { LEVELS } from "../../src/part.ts";
 import {
 	KEY_VARIABLES,
@@ -9,6 +10,7 @@ import {
 	PROVIDER_VALUES,
 	resolve as resolveProvider,
 } from "../../src/provider.ts";
+import { modelUnresolved, SLOTS, slotSetting } from "../../src/reasons.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";
@@ -63,9 +65,12 @@ const efforts = (): string[] => [
 	...new Set(LEVELS.flatMap((t) => LEVELS.map((w) => effortFor(t, w)))),
 ];
 
-// What the Python shim needs and must not retype: the limits, the provider rules, the efforts and the skip texts.
+const skipLine = (reason: string): string =>
+	`${LINE_PREFIX}${skippedLine(reason)}`;
+
+// What the Python shim needs and must not retype: the limits, the provider rules, the efforts and the finished skip lines.
 const constants = (source: Source): JsonObject => {
-	const { linePrefix, graceMs, ...skips } = HERMES_TEXTS;
+	const { linePrefix, graceMs, reasons } = HERMES_TEXTS;
 	return {
 		routingLimitMs: ROUTING_LIMIT_MS,
 		graceMs,
@@ -77,9 +82,19 @@ const constants = (source: Source): JsonObject => {
 		},
 		efforts: efforts(),
 		linePrefix,
-		skips,
+		skips: Object.fromEntries(
+			Object.entries(reasons).map(([key, reason]) => [key, skipLine(reason)]),
+		),
+		slots: Object.fromEntries(
+			SLOTS.map((slot) => [
+				slot,
+				{
+					setting: slotSetting(slot),
+					unresolved: skipLine(modelUnresolved(slot)),
+				},
+			]),
+		),
 		backend: source.hermes.backendName,
-		plugin: source.hermes.pluginName,
 		texts: setupTexts(source.hermes.pluginName),
 	};
 };

@@ -914,13 +914,10 @@ var PROVIDER_VALUES = [
   "typesafe",
   "openrouter"
 ];
+var PROVIDERS = ["typesafe", "openrouter"];
 var HOSTS = {
   typesafe: "https://api.typesafe.ai",
   openrouter: "https://openrouter.ai/api"
-};
-var KEY_VARIABLES = {
-  typesafe: "TYPESAFE_API_KEY",
-  openrouter: "OPENROUTER_API_KEY"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
 var MODEL = "jev-latest";
@@ -1052,7 +1049,6 @@ var COMMAND_DESCRIPTIONS = {
 };
 
 // src/compose.ts
-var ROUTING_LIMIT_MS = 8e3;
 var TIMEOUT = "timeout";
 var FAILED = "failed";
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
@@ -1141,6 +1137,46 @@ function decisionSuffix({
   const input = usage?.input_tokens;
   const output = usage?.output_tokens;
   return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
+}
+
+// src/deadline.ts
+var realClock = {
+  after: (ms, fn) => {
+    const timer = setTimeout(fn, ms);
+    return { cancel: () => clearTimeout(timer) };
+  }
+};
+async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
+  try {
+    const stop = new AbortController();
+    const signal = AbortSignal.any(
+      hostSignal ? [stop.signal, hostSignal] : [stop.signal]
+    );
+    return await new Promise((settle) => {
+      const timer = clock.after(deadlineMs, () => {
+        stop.abort(LIMIT_REACHED);
+        settle(void 0);
+      });
+      const onHostAbort = () => {
+        settle(void 0);
+        try {
+          timer.cancel();
+        } catch {
+        }
+      };
+      hostSignal?.addEventListener("abort", onHostAbort, { once: true });
+      if (hostSignal?.aborted) onHostAbort();
+      work2(signal).then(
+        (result) => signal.aborted ? void 0 : result,
+        () => void 0
+      ).then(settle).finally(() => {
+        timer.cancel();
+        hostSignal?.removeEventListener("abort", onHostAbort);
+      }).catch(() => void 0);
+    });
+  } catch {
+    return void 0;
+  }
 }
 
 // src/fetch.ts
@@ -1255,7 +1291,6 @@ var work = {
 };
 
 // src/hermes-request.ts
-var PROVIDERS = Object.keys(KEY_VARIABLES);
 var readKeys = (value) => Object.fromEntries(
   PROVIDERS.flatMap((provider) => {
     const key = isRecord2(value) ? nonEmpty(value[provider]) : void 0;
@@ -1329,56 +1364,13 @@ var tier = {
   pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
 
-// src/openclaw-deadline.ts
-var HOOK_MARGIN_MS = 2e3;
-var HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HOOK_MARGIN_MS;
-var MIN_DEADLINE_MS = 1e3;
-var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HOOK_MARGIN_MS;
-var realClock = {
-  after: (ms, fn) => {
-    const timer = setTimeout(fn, ms);
-    return { cancel: () => clearTimeout(timer) };
-  }
-};
-async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
-  try {
-    const stop = new AbortController();
-    const signal = AbortSignal.any(
-      hostSignal ? [stop.signal, hostSignal] : [stop.signal]
-    );
-    return await new Promise((settle) => {
-      const timer = clock.after(deadlineMs, () => {
-        stop.abort(LIMIT_REACHED);
-        settle(void 0);
-      });
-      const onHostAbort = () => {
-        settle(void 0);
-        try {
-          timer.cancel();
-        } catch {
-        }
-      };
-      hostSignal?.addEventListener("abort", onHostAbort, { once: true });
-      if (hostSignal?.aborted) onHostAbort();
-      work2(signal).then(
-        (result) => signal.aborted ? void 0 : result,
-        () => void 0
-      ).then(settle).finally(() => {
-        timer.cancel();
-        hostSignal?.removeEventListener("abort", onHostAbort);
-      }).catch(() => void 0);
-    });
-  } catch {
-    return void 0;
-  }
-}
-
 // src/reasons.ts
 var CONFIG_EFFORT = "config effort";
 var modelUnset = (slot) => `${slot} model unset`;
 
 // src/hermes-route.ts
 var MIDDLE_TIER = 1;
+var skippedBy = (reason) => ({ skipped: reason });
 var skip2 = (reason) => ({
   outcome: "skip",
   line: skippedLine(reason)
@@ -1403,6 +1395,13 @@ async function score(request, { fetchFn }, signal) {
   });
   return decide2(decision, tier.key, work.key);
 }
+async function scored(request, deps, signal) {
+  try {
+    return await score(request, deps, signal);
+  } catch {
+    return skippedBy(FAILED);
+  }
+}
 function answer(request, decided) {
   const level = decided.tier;
   const slot = level === MIDDLE_TIER ? void 0 : END_SLOTS[level];
@@ -1413,6 +1412,7 @@ function answer(request, decided) {
   return {
     outcome: "route",
     level,
+    ...slot === void 0 ? {} : { slot: slot.name },
     effort: request.configEffort ? null : effort,
     line: routedLine({
       level,
@@ -1427,9 +1427,9 @@ async function routeRequest(raw, deps) {
   try {
     const request = readRequest(raw);
     if (request === void 0) return skip2(FAILED);
-    if (request.budgetMs === void 0) return skip2(TIMEOUT);
+    if (request.budgetMs === void 0) return skip2(FAILED);
     const decided = await raceDeadline(
-      (signal) => score(request, deps, signal),
+      (signal) => scored(request, deps, signal),
       request.budgetMs,
       deps.clock,
       void 0

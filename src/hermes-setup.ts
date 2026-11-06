@@ -1,25 +1,30 @@
-import { commandName, TOOL_NAME } from "./openclaw-config.ts";
-import { KEY_VARIABLES, PROVIDER_VALUES, type Provider } from "./provider.ts";
+import {
+	KEY_VARIABLES,
+	PROVIDER_VALUES,
+	PROVIDERS,
+	type Provider,
+} from "./provider.ts";
+import { SLOTS, type SlotSetting, slotSetting } from "./reasons.ts";
 import {
 	alreadyValue,
 	badCall,
 	COMMAND_DESCRIPTIONS,
+	commandName,
 	keyLine,
 	TOOL_LABEL,
+	TOOL_NAME,
 	unchanged,
 	useOneOf,
 	valueLine,
 } from "./settings.ts";
 
-const SLOTS = ["small_model", "large_model"] as const;
-type Slot = (typeof SLOTS)[number];
+const SLOT_SETTINGS = SLOTS.map(slotSetting);
 const SETTINGS = [
 	"provider",
 	"typesafe_key",
 	"openrouter_key",
-	...SLOTS,
+	...SLOT_SETTINGS,
 ] as const;
-const PROVIDERS: readonly Provider[] = ["typesafe", "openrouter"];
 
 // Hermes puts a plugin tool in a toolset of its own, and a plugin toolset is on in a default session.
 const TOOLSET = "model_router";
@@ -41,7 +46,7 @@ const typesafeKeyHelp = (): string =>
 const openrouterKeyHelp = (): string =>
 	`Set ${KEY_VARIABLES.openrouter} ${ENV_FILE}. ${NEVER_IN_CHAT}`;
 
-const slotHelp = (slot: Slot, pluginName: string): string =>
+const slotHelp = (slot: SlotSetting, pluginName: string): string =>
 	`${slot} is set in the plugin's settings form in Hermes Desktop, or in config.yaml under plugins.entries.${pluginName}.settings.${slot}, or with: hermes config set plugins.entries.${pluginName}.settings.${slot} '{"provider": "<provider>", "model": "<model>"}'`;
 
 const providerHelp = (): string =>
@@ -67,7 +72,6 @@ export function setupTexts(pluginName: string) {
 		toolLabel: TOOL_LABEL,
 		toolDescription: toolDescription(),
 		settings: [...SETTINGS],
-		slots: [...SLOTS],
 		commandName: commandName("provider"),
 		commandDescription: COMMAND_DESCRIPTIONS.provider,
 		argsHint: `<${PROVIDER_VALUES.join("|")}>`,
@@ -95,8 +99,9 @@ export function setupTexts(pluginName: string) {
 			provider: providerHelp(),
 			typesafe_key: typesafeKeyHelp(),
 			openrouter_key: openrouterKeyHelp(),
-			small_model: slotHelp("small_model", pluginName),
-			large_model: slotHelp("large_model", pluginName),
+			...Object.fromEntries(
+				SLOT_SETTINGS.map((slot) => [slot, slotHelp(slot, pluginName)]),
+			),
 		},
 	};
 }

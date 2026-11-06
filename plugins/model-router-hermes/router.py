@@ -11,8 +11,6 @@ from .hermes_api import live_api
 from .labels import OnceLog
 from .settings import found_keys, read_provider, read_slot
 
-# An end level takes its model from a slot; the middle level keeps the task's model.
-END_LEVELS = {0: ("small", "smallModelUnresolved"), 2: ("large", "largeModelUnresolved")}
 # Config keys that name a model route of their own; the plugin then leaves the task alone.
 SUBAGENT_ROUTE_KEYS = ("model", "provider", "base_url", "api_key")
 
@@ -39,40 +37,29 @@ class Router:
         try:
             base = {k: v for k, v in config.items() if k != "service_tier"}
         except Exception:
-            return self._logged({"label": self._skipped("failed")})
+            return self._logged(self._skip({}, "failed"))
         try:
-            return self._logged(self._routed(task, config, base))
+            with self._budget.open(task.get("index")) as window:
+                route = self._decide(task, config, base, window)
         except Exception:
-            return self._logged(self._skip(base, "failed"))
+            route = self._skip(base, "failed")
+        return self._logged(route)
 
     def _logged(self, route):
         self._log.info(route["label"])
         return route
 
-    def _skipped(self, reason):
-        skips = self._constants["skips"]
-        return self._constants["linePrefix"] + skips["skippedPrefix"] + skips[reason]
-
     def _skip(self, base, reason):
-        return {**base, "label": self._skipped(reason)}
-
-    def _routed(self, task, config, base):
-        window = self._budget.open(task.get("index"))
-        try:
-            return self._decide(task, config, base, window)
-        finally:
-            window.close()
-
-    def _keys(self, provider):
-        return found_keys(self._api, self._constants, provider)
+        return {**base, "label": self._constants["skips"][reason]}
 
     def _decide(self, task, config, base, window):
         provider = read_provider(self._ctx, self._constants)
-        keys = self._keys(provider)
+        keys = found_keys(self._api, self._constants, provider)
         slots = {
-            "small": read_slot(self._ctx, "small_model"),
-            "large": read_slot(self._ctx, "large_model"),
+            name: read_slot(self._ctx, spec["setting"])
+            for name, spec in self._constants["slots"].items()
         }
+        # These gates read Hermes state, and a skipped task starts no Node.
         if not keys:
             return self._skip(base, "keyUnset")
         if not any(slot.has_model for slot in slots.values()):
@@ -91,8 +78,7 @@ class Router:
             "provider": provider,
             "keys": keys,
             "budgetMs": budget_ms,
-            "smallModel": slots["small"].model or None,
-            "largeModel": slots["large"].model or None,
+            **{f"{name}Model": slot.model or None for name, slot in slots.items()},
             "configEffort": _effort_set(config.get("reasoning_effort")),
         }
         return self._ask_node(node_path, request, base, slots, window)
@@ -101,7 +87,11 @@ class Router:
         timeout_s = (request["budgetMs"] + self._constants["graceMs"]) / MS_PER_SECOND
         try:
             answer = node.run_node(
-                [node_path, self._script], request, timeout_s, self._constants["efforts"]
+                [node_path, self._script],
+                request,
+                timeout_s,
+                self._constants["efforts"],
+                list(self._constants["slots"]),
             )
         except node.NodeTimeout:
             return self._skip(base, "timeout")
@@ -113,12 +103,14 @@ class Router:
         route = {**base, "label": self._constants["linePrefix"] + answer.line}
         if isinstance(answer, node.Skip):
             return route
-        if answer.level in END_LEVELS:
-            name, unresolved = END_LEVELS[answer.level]
-            slot = slots[name]
+        if answer.slot is not None:
+            slot = slots[answer.slot]
             wait_s = max(window.remaining_ms(), 0) / MS_PER_SECOND
-            if not checks.slot_resolved_within(slot, self._api, wait_s):
-                return self._skip(base, unresolved)
+            resolved = checks.slot_resolved_within(slot, self._api, wait_s)
+            if resolved is None:
+                return self._skip(base, "timeout")
+            if not resolved:
+                return {**base, "label": self._constants["slots"][answer.slot]["unresolved"]}
             route.update(model=slot.model, provider=slot.provider)
         if answer.effort is not None:
             route["reasoning_effort"] = answer.effort

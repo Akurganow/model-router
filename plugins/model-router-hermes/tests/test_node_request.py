@@ -116,6 +116,7 @@ class BudgetHandoffTest(RouterCase):
         self.assertEqual(second.args[1]["budgetMs"], 5500)
         self.assertEqual(second.args[2], 6.5)
         self.assertEqual(first.args[3], CONSTANTS["efforts"])
+        self.assertEqual(first.args[4], list(CONSTANTS["slots"]))
 
     def test_budget_is_whole_milliseconds(self):
         clock = FakeClock()

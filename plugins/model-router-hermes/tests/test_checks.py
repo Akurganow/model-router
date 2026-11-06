@@ -104,12 +104,12 @@ class AnthropicTest(unittest.TestCase):
 
 class WaitTest(unittest.TestCase):
     def test_resolved_slot_within_the_wait(self):
-        self.assertTrue(checks.slot_resolved_within(GOOD, api(), 2))
+        self.assertIs(checks.slot_resolved_within(GOOD, api(), 2), True)
 
     def test_unresolved_slot_within_the_wait(self):
-        self.assertFalse(checks.slot_resolved_within(GOOD, api(list_models=lambda p: []), 2))
+        self.assertIs(checks.slot_resolved_within(GOOD, api(list_models=lambda p: []), 2), False)
 
-    def test_a_wait_that_runs_out_is_unresolved(self):
+    def test_a_wait_that_runs_out_is_not_an_answer(self):
         gate = threading.Event()
         self.addCleanup(gate.set)
 
@@ -118,12 +118,12 @@ class WaitTest(unittest.TestCase):
             return ["small-model"]
 
         started = time.monotonic()
-        self.assertFalse(checks.slot_resolved_within(GOOD, api(list_models=slow), 0.2))
+        self.assertIsNone(checks.slot_resolved_within(GOOD, api(list_models=slow), 0.2))
         self.assertLess(time.monotonic() - started, 5)
 
-    def test_no_wait_left_is_unresolved(self):
-        self.assertFalse(checks.slot_resolved_within(GOOD, api(), 0))
-        self.assertFalse(checks.slot_resolved_within(GOOD, api(), -1))
+    def test_no_wait_left_is_not_an_answer(self):
+        self.assertIsNone(checks.slot_resolved_within(GOOD, api(), 0))
+        self.assertIsNone(checks.slot_resolved_within(GOOD, api(), -1))
 
     def test_checks_run_in_a_daemon_thread_with_the_callers_context(self):
         var = contextvars.ContextVar("scope", default="unset")
@@ -143,8 +143,9 @@ class WaitTest(unittest.TestCase):
         def broken(provider, model):
             raise RuntimeError("no")
 
-        self.assertFalse(
-            checks.slot_resolved_within(GOOD, dataclasses.replace(api(), resolve_runtime=broken), 2)
+        self.assertIs(
+            checks.slot_resolved_within(GOOD, dataclasses.replace(api(), resolve_runtime=broken), 2),
+            False,
         )
 
 

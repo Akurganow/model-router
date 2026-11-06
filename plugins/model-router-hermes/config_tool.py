@@ -19,10 +19,11 @@ def _slot_line(texts, name, slot):
 
 def _read_all(ctx, api, constants):
     texts = constants["texts"]
+    settings = [spec["setting"] for spec in constants["slots"].values()]
     provider = read_provider(ctx, constants)
     keys = found_keys(api, constants, provider)
     lines = [texts["providerLines"][provider]]
-    lines += [_slot_line(texts, name, read_slot(ctx, name)) for name in texts["slots"]]
+    lines += [_slot_line(texts, name, read_slot(ctx, name)) for name in settings]
     lines += [
         texts["keyLines"][name]["set" if name in keys else "unset"]
         for name in constants["providers"]["order"][provider]

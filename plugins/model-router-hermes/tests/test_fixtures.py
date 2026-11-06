@@ -22,12 +22,10 @@ class FixtureReplayTest(RouterCase):
         base = default_route(config)
         if response["outcome"] == "skip":
             return {**base, "label": PREFIX + response["line"]}
-        level, effort = response["level"], response["effort"]
+        slot, effort = response.get("slot"), response["effort"]
         route = {**base, "label": PREFIX + response["line"]}
-        if level != 1:
-            route.update(
-                model="small-model" if level == 0 else "large-model", provider="openrouter"
-            )
+        if slot is not None:
+            route.update(model=f"{slot}-model", provider="openrouter")
         if effort is not None:
             route["reasoning_effort"] = effort
         return route
@@ -58,6 +56,7 @@ class RealBundleTest(unittest.TestCase):
                     fixture["request"],
                     20,
                     CONSTANTS["efforts"],
+                    list(CONSTANTS["slots"]),
                 )
                 self.assertEqual(result, node.Skip(fixture["response"]["line"]))
 

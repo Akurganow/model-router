@@ -156,6 +156,10 @@ export const toolDescription = (names: readonly string[]): string =>
 	`Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
 
 export const TOOL_LABEL = "Model Router settings";
+export const TOOL_NAME = "model_router_config";
+const COMMAND_PREFIX = "model-router-";
+export const commandName = (setting: ValueSetting): string =>
+	`${COMMAND_PREFIX}${setting}`;
 
 export const badCall = (names: readonly string[]): string =>
 	`Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;

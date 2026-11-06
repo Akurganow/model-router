@@ -99,12 +99,26 @@ test("the models are dict settings and the key is a secret read from its variabl
 	assert.equal(schema.typesafe_api_key.env, KEY_VARIABLES.typesafe);
 });
 
+test("the constants hold only the keys the Python shim reads", () => {
+	assert.deepEqual(Object.keys(constants), [
+		"routingLimitMs",
+		"graceMs",
+		"providers",
+		"efforts",
+		"linePrefix",
+		"skips",
+		"slots",
+		"backend",
+		"texts",
+	]);
+	assert.equal(constants.texts.slots, undefined);
+});
+
 test("the constants hold the values src/ gives", () => {
 	assert.equal(constants.routingLimitMs, ROUTING_LIMIT_MS);
 	assert.equal(constants.graceMs, HERMES_TEXTS.graceMs);
 	assert.equal(constants.linePrefix, HERMES_TEXTS.linePrefix);
 	assert.equal(constants.backend, source.hermes.backendName);
-	assert.equal(constants.plugin, source.hermes.pluginName);
 	assert.deepEqual(constants.providers, {
 		values: [...PROVIDER_VALUES],
 		default: resolveProvider(undefined),
@@ -112,18 +126,22 @@ test("the constants hold the values src/ gives", () => {
 		keyVariables: KEY_VARIABLES,
 	});
 	assert.deepEqual(constants.skips, {
-		skippedPrefix: HERMES_TEXTS.skippedPrefix,
-		nodeNotFound: HERMES_TEXTS.nodeNotFound,
-		keyUnset: HERMES_TEXTS.keyUnset,
-		timeout: HERMES_TEXTS.timeout,
-		failed: HERMES_TEXTS.failed,
-		configEffort: HERMES_TEXTS.configEffort,
-		subagentModelSet: HERMES_TEXTS.subagentModelSet,
-		noEndModel: HERMES_TEXTS.noEndModel,
-		smallModelUnset: HERMES_TEXTS.smallModelUnset,
-		largeModelUnset: HERMES_TEXTS.largeModelUnset,
-		smallModelUnresolved: HERMES_TEXTS.smallModelUnresolved,
-		largeModelUnresolved: HERMES_TEXTS.largeModelUnresolved,
+		keyUnset: "model-router skipped, key unset",
+		noEndModel: "model-router skipped, no small or large model",
+		subagentModelSet: "model-router skipped, subagent model set",
+		nodeNotFound: "model-router skipped, node not found",
+		timeout: "model-router skipped, timeout",
+		failed: "model-router skipped, failed",
+	});
+	assert.deepEqual(constants.slots, {
+		small: {
+			setting: "small_model",
+			unresolved: "model-router skipped, small model unresolved",
+		},
+		large: {
+			setting: "large_model",
+			unresolved: "model-router skipped, large model unresolved",
+		},
 	});
 });
 

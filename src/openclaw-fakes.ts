@@ -1,6 +1,6 @@
 import type { Fetch } from "@typesafe-ai/sdk";
+import type { Clock } from "./deadline.ts";
 import { jevAnswer, streamed } from "./jev-fakes.ts";
-import type { Clock } from "./openclaw-deadline.ts";
 import type {
 	BeforeToolCallHandler,
 	CommandDefinition,

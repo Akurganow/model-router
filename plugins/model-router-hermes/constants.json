@@ -18,21 +18,24 @@
 	"efforts": ["medium", "high", "xhigh", "low"],
 	"linePrefix": "model-router ",
 	"skips": {
-		"skippedPrefix": "skipped, ",
-		"nodeNotFound": "node not found",
-		"keyUnset": "key unset",
-		"timeout": "timeout",
-		"failed": "failed",
-		"configEffort": "config effort",
-		"subagentModelSet": "subagent model set",
-		"noEndModel": "no small or large model",
-		"smallModelUnset": "small model unset",
-		"largeModelUnset": "large model unset",
-		"smallModelUnresolved": "small model unresolved",
-		"largeModelUnresolved": "large model unresolved"
+		"keyUnset": "model-router skipped, key unset",
+		"noEndModel": "model-router skipped, no small or large model",
+		"subagentModelSet": "model-router skipped, subagent model set",
+		"nodeNotFound": "model-router skipped, node not found",
+		"timeout": "model-router skipped, timeout",
+		"failed": "model-router skipped, failed"
+	},
+	"slots": {
+		"small": {
+			"setting": "small_model",
+			"unresolved": "model-router skipped, small model unresolved"
+		},
+		"large": {
+			"setting": "large_model",
+			"unresolved": "model-router skipped, large model unresolved"
+		}
 	},
 	"backend": "model-router",
-	"plugin": "model-router-hermes",
 	"texts": {
 		"toolName": "model_router_config",
 		"toolset": "model_router",
@@ -45,7 +48,6 @@
 			"small_model",
 			"large_model"
 		],
-		"slots": ["small_model", "large_model"],
 		"commandName": "model-router-provider",
 		"commandDescription": "Shows or changes which providers score subagent calls: auto, openrouter-first, typesafe, openrouter.",
 		"argsHint": "<auto|openrouter-first|typesafe|openrouter>",

@@ -1,8 +1,8 @@
-import { TOOL_NAME } from "../../src/openclaw-config.ts";
 import { KEY_FIELDS, PROVIDER_VALUES } from "../../src/provider.ts";
 import { SCOPE_VALUES } from "../../src/scope.ts";
 import {
 	COMMAND_DESCRIPTIONS,
+	TOOL_NAME,
 	VALUE_SETTINGS,
 	type ValueSetting,
 } from "../../src/settings.ts";

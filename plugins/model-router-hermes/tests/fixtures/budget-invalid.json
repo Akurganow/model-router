@@ -1,5 +1,5 @@
 {
-	"description": "A budget that is not positive is a timeout at once, with no request.",
+	"description": "A budget that is not positive is a protocol fault: the failed skip at once, with no request.",
 	"request": {
 		"task": "Rename the helper in util.ts and run the tests.",
 		"context": "",
@@ -11,5 +11,5 @@
 		"configEffort": false
 	},
 	"jev": [],
-	"response": { "outcome": "skip", "line": "skipped, timeout" }
+	"response": { "outcome": "skip", "line": "skipped, failed" }
 }

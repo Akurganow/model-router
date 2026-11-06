@@ -46,7 +46,7 @@ class SentinelTest(unittest.TestCase):
         return route, stub, "\n".join(r.getMessage() + str(r.args) for r in logs.records)
 
     def test_routed_task_keeps_secrets_and_text_where_they_belong(self):
-        route, stub, logs = self.route({"api_mode": "chat"}, route_reply(0, "low"))
+        route, stub, logs = self.route({"api_mode": "chat"}, route_reply("small", "low"))
         captured = stub.captured()
         request = json.loads(captured["stdin"])
         self.assertEqual(
@@ -76,7 +76,7 @@ class SentinelTest(unittest.TestCase):
 
     def test_config_api_key_never_reaches_node_or_a_log(self):
         config = {"api_key": CONFIG_API_SENTINEL, "api_mode": "chat"}
-        route, stub, logs = self.route(config, route_reply(0, "low"))
+        route, stub, logs = self.route(config, route_reply("small", "low"))
         self.assertFalse(stub.capture.exists())  # the subagent-model gate answers first
         self.assertNotIn(CONFIG_API_SENTINEL, logs)
         self.assertNotIn(TASK_SENTINEL, logs)

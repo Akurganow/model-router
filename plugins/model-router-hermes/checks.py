@@ -38,9 +38,9 @@ def slot_resolves(slot, api):
 
 
 def slot_resolved_within(slot, api, timeout_s):
-    """Runs the checks in a daemon thread; a wait that runs out is False."""
+    """Runs the checks in a daemon thread. True or False when they finish in time, else None."""
     if timeout_s <= 0:
-        return False
+        return None
     outcome = []
     worker = threading.Thread(
         target=contextvars.copy_context().run,
@@ -49,4 +49,4 @@ def slot_resolved_within(slot, api, timeout_s):
     )
     worker.start()
     worker.join(timeout_s)
-    return outcome == [True]
+    return outcome[0] if outcome else None

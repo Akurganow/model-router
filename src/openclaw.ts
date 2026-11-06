@@ -1,4 +1,6 @@
+import { realClock } from "./deadline.ts";
 import { streamedFetch } from "./fetch.ts";
+import { LINE_PREFIX } from "./line.ts";
 import {
 	registerConfigCommands,
 	registerConfigTool,
@@ -8,12 +10,10 @@ import {
 	HOOK_TIMEOUT_MS,
 	MIN_DEADLINE_MS,
 	MIN_TIMEOUT_MS,
-	realClock,
 } from "./openclaw-deadline.ts";
 import {
 	createBeforeToolCall,
 	HOOK,
-	LINE_PREFIX,
 	type RouterDeps,
 	SPAWN_TOOL,
 } from "./openclaw-router.ts";

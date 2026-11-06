@@ -1,13 +1,13 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { buildPrompt, DEFAULT_ROLE } from "./brief.ts";
-import { FAILED, route, TIMEOUT } from "./compose.ts";
+import { FAILED, route, type Skipped, TIMEOUT } from "./compose.ts";
+import { type Clock, raceDeadline } from "./deadline.ts";
 import { type DecidedWithWork, decide } from "./decide.ts";
 import { work } from "./effort.ts";
 import { type HermesRequest, readRequest } from "./hermes-request.ts";
 import { effortFor } from "./ladder.ts";
 import { routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
-import { type Clock, raceDeadline } from "./openclaw-deadline.ts";
 import type { Level } from "./part.ts";
 import { plan } from "./provider.ts";
 import { CONFIG_EFFORT, type EndSlot, modelUnset } from "./reasons.ts";
@@ -17,6 +17,8 @@ export type HermesResponse =
 	| {
 			readonly outcome: "route";
 			readonly level: Level;
+			// The slot whose model the level names; absent at the middle level.
+			readonly slot?: EndSlot;
 			// Null when the harness config sets the effort.
 			readonly effort: string | null;
 			readonly line: string;
@@ -24,6 +26,7 @@ export type HermesResponse =
 	| { readonly outcome: "skip"; readonly line: string };
 
 const MIDDLE_TIER = 1;
+const skippedBy = (reason: string): Skipped => ({ skipped: reason });
 export const skip = (reason: string): HermesResponse => ({
 	outcome: "skip",
 	line: skippedLine(reason),
@@ -62,9 +65,22 @@ async function score(
 	return decide(decision, tier.key, work.key);
 }
 
+// A rejected score is a failure of no known kind, not a run past the budget.
+async function scored(
+	request: HermesRequest,
+	deps: HermesDeps,
+	signal: AbortSignal,
+): Promise<Awaited<ReturnType<typeof score>>> {
+	try {
+		return await score(request, deps, signal);
+	} catch {
+		return skippedBy(FAILED);
+	}
+}
+
 /**
  * Returns the response for a decided request: a skip when an end tier has no
- * model, else the level, the effort the ladder gives and the routing line.
+ * model, else the level, its slot, the effort the ladder gives and the routing line.
  */
 function answer(
 	request: HermesRequest,
@@ -79,6 +95,7 @@ function answer(
 	return {
 		outcome: "route",
 		level,
+		...(slot === undefined ? {} : { slot: slot.name }),
 		effort: request.configEffort ? null : effort,
 		line: routedLine({
 			level,
@@ -91,9 +108,11 @@ function answer(
 }
 
 /**
- * Returns the response to one parsed request. The budget bounds the whole run;
- * a run past it is a timeout skip. Any other failure is the failed skip.
- * Never throws.
+ * Returns the response to one parsed request. The budget bounds the whole run,
+ * and only a run past it is a timeout skip. A budget that is missing or not a
+ * positive finite number is a protocol fault, since Python skips a spent budget
+ * itself and never sends it. That fault, a score that rejects and any other
+ * failure give the failed skip. Never throws.
  */
 export async function routeRequest(
 	raw: unknown,
@@ -102,9 +121,9 @@ export async function routeRequest(
 	try {
 		const request = readRequest(raw);
 		if (request === undefined) return skip(FAILED);
-		if (request.budgetMs === undefined) return skip(TIMEOUT);
+		if (request.budgetMs === undefined) return skip(FAILED);
 		const decided = await raceDeadline(
-			(signal) => score(request, deps, signal),
+			(signal) => scored(request, deps, signal),
 			request.budgetMs,
 			deps.clock,
 			undefined,

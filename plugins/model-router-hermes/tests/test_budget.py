@@ -15,6 +15,11 @@ class BudgetTest(unittest.TestCase):
         self.clock = FakeClock()
         self.budget = make_budget(self.clock)
 
+    def finish(self, index):
+        """Opens a task's window and leaves it, as a routed task does."""
+        with self.budget.open(index) as window:
+            return window
+
     def test_first_task_gets_the_whole_limit(self):
         window = self.budget.open(0)
         self.assertEqual(window.remaining_ms(), LIMIT_MS)
@@ -25,13 +30,13 @@ class BudgetTest(unittest.TestCase):
         self.assertEqual(window.remaining_ms(), 6500)
 
     def test_later_task_shares_the_record_of_the_call(self):
-        self.budget.open(0).close()
+        self.finish(0)
         self.clock.advance(3)
         later = self.budget.open(1)
         self.assertEqual(later.remaining_ms(), 5000)
 
     def test_index_zero_opens_a_new_record(self):
-        self.budget.open(0).close()
+        self.finish(0)
         self.clock.advance(3)
         self.assertEqual(self.budget.open(0).remaining_ms(), LIMIT_MS)
 
@@ -40,35 +45,35 @@ class BudgetTest(unittest.TestCase):
         self.assertEqual(self.budget.open(None).remaining_ms(), LIMIT_MS)
 
     def test_idle_record_is_dropped(self):
-        self.budget.open(0).close()
+        self.finish(0)
         self.clock.advance(8.5)
         self.assertEqual(self.budget.open(1).remaining_ms(), LIMIT_MS)
 
     def test_record_idle_exactly_the_limit_is_kept(self):
-        self.budget.open(0).close()
+        self.finish(0)
         self.clock.advance(8)
         self.assertEqual(self.budget.open(1).remaining_ms(), 0)
 
     def test_idle_counts_from_the_last_end_not_the_start(self):
-        self.budget.open(0).close()
+        self.finish(0)
         self.clock.advance(7)
-        self.budget.open(1).close()
+        self.finish(1)
         self.clock.advance(7)
         self.assertEqual(self.budget.open(2).remaining_ms(), LIMIT_MS - 14000)
 
     def test_spent_budget_is_not_positive(self):
-        self.budget.open(0).close()
+        self.finish(0)
         self.clock.advance(7.5)
-        self.budget.open(1).close()
+        self.finish(1)
         self.clock.advance(1)
         self.assertLess(self.budget.open(2).remaining_ms(), 0)
 
     def test_close_updates_the_record_the_task_opened(self):
-        first = self.budget.open(0)
-        self.clock.advance(5)
-        self.budget.open(0)  # a new call replaces the record
-        self.clock.advance(5)
-        first.close()  # must not keep the new record alive
+        with self.budget.open(0):
+            self.clock.advance(5)
+            self.budget.open(0)  # a new call replaces the record
+            self.clock.advance(5)
+        # Leaving the first window must not keep the new record alive.
         self.clock.advance(7)
         # Record two idled for 12 s, so a new record opens.
         self.assertEqual(self.budget.open(1).remaining_ms(), LIMIT_MS)
@@ -87,7 +92,17 @@ class BudgetTest(unittest.TestCase):
         for thread in threads:
             thread.join()
         self.assertEqual(len(windows), 16)
-        self.assertEqual({window.started for window in windows}, {self.clock()})
+        self.assertEqual(len(set(map(id, (w._record for w in windows)))), 1)
+        self.assertIs(windows[0]._record, self.budget._record)
+
+    def test_a_window_closes_when_its_block_raises(self):
+        with self.assertRaises(RuntimeError):
+            with self.budget.open(0):
+                self.clock.advance(7)
+                raise RuntimeError("task failed")
+        self.clock.advance(7)
+        # The failed task closed at 7 s, so 7 s of idle keeps the record.
+        self.assertEqual(self.budget.open(1).remaining_ms(), LIMIT_MS - 14000)
 
     def test_concurrent_open_and_close_do_not_raise(self):
         errors = []
@@ -95,7 +110,7 @@ class BudgetTest(unittest.TestCase):
         def work(index):
             try:
                 for step in range(200):
-                    self.budget.open(index if step % 7 == 0 else None).close()
+                    self.finish(index if step % 7 == 0 else None)
             except Exception as error:  # pragma: no cover - failure path
                 errors.append(error)
 

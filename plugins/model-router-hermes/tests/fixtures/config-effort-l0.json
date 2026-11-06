@@ -19,6 +19,7 @@
 	"response": {
 		"outcome": "route",
 		"level": 0,
+		"slot": "small",
 		"effort": null,
 		"line": "L0 openai/small · config effort · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
 	}

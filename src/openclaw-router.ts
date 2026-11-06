@@ -1,17 +1,14 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { prepareBrief } from "./brief.ts";
 import { route } from "./compose.ts";
+import { type Clock, raceDeadline } from "./deadline.ts";
 import { decide } from "./decide.ts";
 import { work } from "./effort.ts";
 import { effortFor } from "./ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
 import { slotResolves } from "./openclaw-checks.ts";
-import {
-	type Clock,
-	MIN_DEADLINE_MS,
-	raceDeadline,
-} from "./openclaw-deadline.ts";
+import { MIN_DEADLINE_MS } from "./openclaw-deadline.ts";
 import { type Gate, gateSpawn } from "./openclaw-gates.ts";
 import { readSpawn, type SpawnRequest } from "./openclaw-params.ts";
 import {
@@ -31,7 +28,6 @@ import { type Level, nonEmpty } from "./part.ts";
 import { type Keys, plan } from "./provider.ts";
 import { modelUnresolved, modelUnset } from "./reasons.ts";
 
-export { LINE_PREFIX };
 export const SPAWN_TOOL = "sessions_spawn";
 export const HOOK = "before_tool_call";
 const MIDDLE_TIER = 1;

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { setupTexts } from "../src/hermes-setup.ts";
-import { commandName, TOOL_NAME } from "../src/openclaw-config.ts";
 import {
 	KEY_VARIABLES,
 	PROVIDER_VALUES,
@@ -12,8 +11,10 @@ import {
 	alreadyValue,
 	badCall,
 	COMMAND_DESCRIPTIONS,
+	commandName,
 	keyLine,
 	TOOL_LABEL,
+	TOOL_NAME,
 	unchanged,
 	useOneOf,
 	valueLine,
@@ -43,7 +44,6 @@ test("the tool and command names and texts equal the src/ values", () => {
 		"small_model",
 		"large_model",
 	]);
-	assert.deepEqual(texts.slots, ["small_model", "large_model"]);
 });
 
 test("the tool description names every setting, changes nothing and returns no key", () => {
@@ -92,7 +92,7 @@ test("the help texts say where each setting changes and never ask for a key in c
 		assert.ok(help.includes(KEY_VARIABLES[name]), name);
 		assert.match(help, /Never type a key into the chat\./);
 	}
-	for (const slot of texts.slots) {
+	for (const slot of ["small_model", "large_model"]) {
 		const help = texts.help[slot];
 		assert.ok(
 			help.includes(
