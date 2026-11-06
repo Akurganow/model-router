@@ -1192,7 +1192,6 @@ var BUNDLED = "bundled";
 var ROLE_MARK = "@";
 var SEANCE = "seance";
 var CUSTOM_AGENT = "custom task agent";
-var ITEM_MODEL = setsOwnModel("the item");
 var isEmpty = (v) => v === void 0 || v === null || typeof v === "string" && nonEmpty(v) === void 0;
 var inScope = (name, scope) => scope === "extended" || name === TASK;
 var findAgent = (name, { agents }) => agents?.find((agent) => agent.name === name);
@@ -1214,11 +1213,11 @@ function agentGate(name, facts) {
   return found.model?.length ? setsOwnModel(name) : void 0;
 }
 var seanceGate = (name) => name === SEANCE ? `${name} spawns without the hook omp gives plugins, so its model cannot change` : void 0;
-function itemCheck(name, facts) {
+var modelGate = (model) => model === void 0 ? void 0 : setsOwnModel("the item");
+function itemCheck(name, facts, model) {
   if (!inScope(name, facts.scope)) return outsideCoreScope(name);
-  return userChoice(name, facts) ?? seanceGate(name) ?? agentGate(name, facts) ?? facts.noModels;
+  return userChoice(name, facts) ?? seanceGate(name) ?? modelGate(model) ?? agentGate(name, facts) ?? facts.noModels;
 }
-var itemModelCheck = ({ model }) => model === void 0 ? void 0 : ITEM_MODEL;
 function spawnCheck({ agent, modelRole }, facts) {
   const reason = itemCheck(agent, facts);
   if (reason !== void 0) return reason;
@@ -1641,7 +1640,7 @@ async function scoreItems(items, context, { attempts, keys, facts }) {
   try {
     return await mapLimit(items, MAX_PARALLEL, async (pending) => {
       const { item, agent } = pending;
-      const reason = itemModelCheck(item) ?? itemCheck(agent, facts);
+      const reason = itemCheck(agent, facts, item.model);
       if (reason !== void 0) return { ...pending, stored: skipped(reason) };
       const routing = {
         attempts: attempts.filter((a) => !passedOver.has(a.provider)),

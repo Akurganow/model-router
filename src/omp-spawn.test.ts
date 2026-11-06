@@ -155,6 +155,27 @@ test("an item that sets its own model is skipped, sends nothing and keeps its mo
 	assert.equal(await world.spawn("c:1"), undefined);
 });
 
+test("an empty model still counts as the item's own", async () => {
+	install();
+	await world.toolCall("c", { tasks: [{ task: "level2 a", model: "" }] });
+	assert.deepEqual(world.notes, [
+		"model-router task 1: skipped, the item sets its own model",
+	]);
+});
+
+// omp takes a seance item's model as the source session's model, so the seance reason holds.
+test("extended: a seance item with a model gets the seance reason", async () => {
+	world.project = { scope: "extended" };
+	world.agents = [...AGENTS];
+	install();
+	await world.toolCall("c", {
+		tasks: [{ task: "level2 a", agent: "seance", model: "p/m" }],
+	});
+	assert.deepEqual(world.notes, [
+		"model-router task 1: skipped, seance spawns without the hook omp gives plugins, so its model cannot change",
+	]);
+});
+
 test("an item with its own model leaves a sibling without one routed", async () => {
 	install();
 	await world.toolCall("c", {

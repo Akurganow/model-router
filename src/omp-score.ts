@@ -12,7 +12,7 @@ import { streamedFetch } from "./fetch.ts";
 import { routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
 import { type Batch, ROLES } from "./omp-gates.ts";
-import { itemCheck, itemModelCheck, roleOf } from "./omp-items.ts";
+import { itemCheck, roleOf } from "./omp-items.ts";
 import type { Stored } from "./omp-store.ts";
 import type { Level } from "./part.ts";
 import type { Provider } from "./provider.ts";
@@ -52,7 +52,7 @@ export async function scoreItems(
 	try {
 		return await mapLimit(items, MAX_PARALLEL, async (pending) => {
 			const { item, agent } = pending;
-			const reason = itemModelCheck(item) ?? itemCheck(agent, facts);
+			const reason = itemCheck(agent, facts, item.model);
 			if (reason !== undefined) return { ...pending, stored: skipped(reason) };
 			const routing = {
 				attempts: attempts.filter((a) => !passedOver.has(a.provider)),

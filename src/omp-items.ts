@@ -15,7 +15,6 @@ const ROLE_MARK = "@";
 // omp 18.12.6 sends the bundled seance agent no before_subagent_spawn event, so a role cannot reach it.
 const SEANCE = "seance";
 const CUSTOM_AGENT = "custom task agent";
-const ITEM_MODEL = setsOwnModel("the item");
 
 // What one batch reads once and judges every item against. No agents means discovery failed.
 export type Facts = {
@@ -83,32 +82,34 @@ const seanceGate = (name: string) =>
 		? `${name} spawns without the hook omp gives plugins, so its model cannot change`
 		: undefined;
 
+// The batch reads the tool input, because the spawn event's patterns hold the agent's default when the item sets no model.
+// Source: docs/clients.md#omp-per-call-model.
+const modelGate = (model: unknown) =>
+	model === undefined ? undefined : setsOwnModel("the item");
+
 /**
  * Judges one item alone and returns the reason to skip it, or undefined when it
- * may be routed. A scope, a user choice, the seance gate, the agent gate or a
- * missing model role gives the reason, in that order. Never throws.
+ * may be routed. A scope, a user choice, the seance gate, the item's own model,
+ * the agent gate or a missing model role gives the reason, in that order. Never
+ * throws.
  */
-export function itemCheck(name: string, facts: Facts): string | undefined {
+export function itemCheck(
+	name: string,
+	facts: Facts,
+	model?: unknown,
+): string | undefined {
 	if (!inScope(name, facts.scope)) return outsideCoreScope(name);
 	return (
 		userChoice(name, facts) ??
 		seanceGate(name) ??
+		modelGate(model) ??
 		agentGate(name, facts) ??
 		facts.noModels
 	);
 }
 
-/**
- * Returns the reason to skip an item that carries a `model`, or undefined when
- * it carries none. omp runs that item on its model when `task.perCallModel` is
- * on, and otherwise fails the whole call before any spawn. The check reads the
- * tool input, because the spawn event's patterns hold the agent's default when
- * the item sets no model. Never throws. Source: docs/clients.md#omp-per-call-model.
- */
-export const itemModelCheck = ({ model }: { readonly model?: unknown }) =>
-	model === undefined ? undefined : ITEM_MODEL;
-
 // A spawn that names a role other than the agent's own is the user's or the harness's choice.
+// It passes no model: an item skipped for its model stores no role, so onSpawn returns before checkGates.
 export function spawnCheck(
 	{ agent, modelRole }: Spawning,
 	facts: Facts,
