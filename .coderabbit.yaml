@@ -7,5 +7,9 @@ reviews:
     - "!plugins/model-router/hooks/register.js"
     - "!plugins/model-router-omp/extension/index.js"
     - "!plugins/model-router-openclaw/index.js"
+    # The Hermes plugin's manifest, constants and Node bundle are generated from src/ and metadata/, so the review reads those.
+    - "!plugins/model-router-hermes/route.mjs"
+    - "!plugins/model-router-hermes/plugin.yaml"
+    - "!plugins/model-router-hermes/constants.json"
     # The npm tree is generated from the plugin folders, so the review reads their sources.
     - "!packages/model-router/**"

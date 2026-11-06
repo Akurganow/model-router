@@ -12,6 +12,7 @@ contract_version: 3
 - plugins/model-router/docs/model-choice.md
 - plugins/model-router-omp/README.md
 - plugins/model-router-openclaw/README.md
+- plugins/model-router-hermes/README.md
 - docs/design.md
 
 ## Departments
@@ -20,6 +21,7 @@ contract_version: 3
 - privacy: judged by plugins/model-router/PRIVACY.md
 - privacy: judged by plugins/model-router-omp/PRIVACY.md
 - privacy: judged by plugins/model-router-openclaw/PRIVACY.md
+- privacy: judged by plugins/model-router-hermes/PRIVACY.md
 
 ## Fence
 
@@ -50,6 +52,9 @@ contract_version: 3
 - plugins/model-router-omp/extension/index.js
 - plugins/model-router-openclaw/openclaw.plugin.json
 - plugins/model-router-openclaw/index.js
+- plugins/model-router-hermes/plugin.yaml
+- plugins/model-router-hermes/constants.json
+- plugins/model-router-hermes/route.mjs
 - packages/model-router, the generated npm tree
 - the README install region, between `<!-- install:start -->` and `<!-- install:end -->`
 

@@ -143,11 +143,15 @@ sends that agent's description when one is set, and the fixed text otherwise.
 This departs from the fixed-text rule of the other harnesses. This was not
 measured.
 
+Hermes Agent sends the same fixed text for every task. Hermes passes a
+delegation backend only the goal, the context and the index of a task, so the
+plugin has no description to send.
+
 The harnesses word their descriptions differently, and a release can reword
 them again. A reworded role moves Jev's picks. `Explore`, `Plan` and omp's other
 agents keep their harness descriptions, so a harness rewording can still shift
-their picks. This was not measured. The fixed text keeps the Claude Code and omp
-plugins on the input the calibration used. In `calibration.jsonl`, 115 of the 122
+their picks. This was not measured. The fixed text keeps the Claude Code, omp and
+Hermes plugins on the input the calibration used. In `calibration.jsonl`, 115 of the 122
 `general-purpose` cases carry it exactly. The other 7 come from sst/opencode's
 general agent, as their `source` field shows.
 
