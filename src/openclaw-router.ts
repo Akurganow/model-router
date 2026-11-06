@@ -4,7 +4,7 @@ import { route } from "./compose.ts";
 import { decide } from "./decide.ts";
 import { work } from "./effort.ts";
 import { effortFor } from "./ladder.ts";
-import { routedLine, skippedLine } from "./line.ts";
+import { LINE_PREFIX, routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
 import { slotResolves } from "./openclaw-checks.ts";
 import {
@@ -29,8 +29,9 @@ import type {
 } from "./openclaw-types.ts";
 import { type Level, nonEmpty } from "./part.ts";
 import { type Keys, plan } from "./provider.ts";
+import { modelUnresolved, modelUnset } from "./reasons.ts";
 
-export const LINE_PREFIX = "model-router ";
+export { LINE_PREFIX };
 export const SPAWN_TOOL = "sessions_spawn";
 export const HOOK = "before_tool_call";
 const MIDDLE_TIER = 1;
@@ -97,9 +98,9 @@ async function slotFor(
 	if (level === MIDDLE_TIER) return { model: undefined };
 	const { name, model: slot } = END_SLOTS[level];
 	const model = slot(settings);
-	if (model === undefined) return { skipped: `${name} model unset` };
+	if (model === undefined) return { skipped: modelUnset(name) };
 	if (!(await slotResolves(runtime, config, target, model)))
-		return { skipped: `${name} model unresolved` };
+		return { skipped: modelUnresolved(name) };
 	return { model };
 }
 

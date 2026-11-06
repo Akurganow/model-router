@@ -1262,17 +1262,19 @@ function createClient(provider, apiKey, model, fetchFn) {
 
 // src/compose.ts
 var ROUTING_LIMIT_MS = 8e3;
+var TIMEOUT = "timeout";
+var FAILED = "failed";
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 var MODEL_CHARS_MAX = 40;
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 function skipCategory(err, signal) {
   if (err instanceof APIUserAbortError)
-    return signal.reason === LIMIT_REACHED ? "timeout" : "cancelled";
+    return signal.reason === LIMIT_REACHED ? TIMEOUT : "cancelled";
   if (err instanceof APIError) return `HTTP ${err.status}`;
-  if (err instanceof APITimeoutError) return "timeout";
+  if (err instanceof APITimeoutError) return TIMEOUT;
   if (err instanceof APIConnectionError) return "network error";
   if (err instanceof TypeSafeError) return "rejected request";
-  return "failed";
+  return FAILED;
 }
 async function route(input) {
   const { parts, attempts, signal } = input;
@@ -1321,8 +1323,7 @@ function ask(input, attempt) {
 }
 function skip(failed) {
   const [first, ...rest] = failed;
-  if (!first || rest.length === 0)
-    return { skipped: first?.reason ?? "failed" };
+  if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
   return {
     skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
   };
@@ -1357,6 +1358,12 @@ var HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HOOK_MARGIN_MS;
 var MIN_DEADLINE_MS = 1e3;
 var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HOOK_MARGIN_MS;
 var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HOOK_MARGIN_MS);
+var realClock = {
+  after: (ms, fn) => {
+    const timer = setTimeout(fn, ms);
+    return { cancel: () => clearTimeout(timer) };
+  }
+};
 async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
   try {
     const stop = new AbortController();
@@ -1487,6 +1494,7 @@ var EFFORT_BY_TIER = {
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
 // src/line.ts
+var LINE_PREFIX = "model-router ";
 var NO_CHANGE = "no change";
 function routedLine({
   level,
@@ -1498,7 +1506,8 @@ function routedLine({
   const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
   return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
 }
-var skippedLine = (reason) => `skipped, ${reason}`;
+var SKIPPED_PREFIX = "skipped, ";
+var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 
 // src/model.ts
 var TIER_DOWN = 2 ** 0.25;
@@ -1616,6 +1625,13 @@ function readSpawn(params) {
   };
 }
 
+// src/reasons.ts
+var CONFIG_EFFORT = "config effort";
+var SUBAGENT_MODEL_SET = "subagent model set";
+var NO_END_MODEL = "no small or large model";
+var modelUnset = (slot) => `${slot} model unset`;
+var modelUnresolved = (slot) => `${slot} model unresolved`;
+
 // src/openclaw-gates.ts
 var PASS = { outcome: "pass" };
 var skip2 = (reason) => ({ outcome: "skip", reason });
@@ -1654,7 +1670,7 @@ function effortRule(input) {
     "thinking"
   );
   const kept = isSet(global) || settings.scope === "core" && isSet(requesterThinking);
-  return kept ? { kind: "keep", label: "config effort" } : { kind: "set" };
+  return kept ? { kind: "keep", label: CONFIG_EFFORT } : { kind: "set" };
 }
 function roleOf(input, target, blank) {
   const description = agentField(input.config, target, "description");
@@ -1670,13 +1686,13 @@ function gateSpawn(input) {
   if (!input.hasKey) return skip2(KEY_UNSET);
   if (!isRequesterSpawn && settings.scope === "core")
     return skip2(outsideCoreScope(named));
-  if (subagentModelSet(input, target)) return skip2("subagent model set");
+  if (subagentModelSet(input, target)) return skip2(SUBAGENT_MODEL_SET);
   if (!isRequesterSpawn) {
     const reason = otherAgentSkip(named, input);
     if (reason !== void 0) return skip2(reason);
   }
   if (settings.smallModel === void 0 && settings.largeModel === void 0)
-    return skip2("no small or large model");
+    return skip2(NO_END_MODEL);
   if (config === void 0) return skip2(UNREADABLE);
   return {
     outcome: "route",
@@ -1694,7 +1710,6 @@ function gateSpawn(input) {
 }
 
 // src/openclaw-router.ts
-var LINE_PREFIX = "model-router ";
 var SPAWN_TOOL = "sessions_spawn";
 var HOOK = "before_tool_call";
 var MIDDLE_TIER = 1;
@@ -1721,9 +1736,9 @@ async function slotFor(runtime, settings, { config, target }, level) {
   if (level === MIDDLE_TIER) return { model: void 0 };
   const { name, model: slot } = END_SLOTS[level];
   const model = slot(settings);
-  if (model === void 0) return { skipped: `${name} model unset` };
+  if (model === void 0) return { skipped: modelUnset(name) };
   if (!await slotResolves(runtime, config, target, model))
-    return { skipped: `${name} model unresolved` };
+    return { skipped: modelUnresolved(name) };
   return { model };
 }
 async function routeSpawn(spawn) {
@@ -1793,12 +1808,6 @@ function createBeforeToolCall(api, deadlineMs, deps) {
 
 // src/openclaw.ts
 var HOOK_TIMEOUT_MAX_MS = 6e5;
-var realClock = {
-  after: (ms, fn) => {
-    const timer = setTimeout(fn, ms);
-    return { cancel: () => clearTimeout(timer) };
-  }
-};
 var usable = (value) => typeof value === "number" && Number.isInteger(value) && value > 0 && value <= HOOK_TIMEOUT_MAX_MS;
 function effectiveTimeout(config) {
   const hooks = pluginEntry(config)?.hooks;

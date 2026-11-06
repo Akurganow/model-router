@@ -1254,17 +1254,19 @@ function createClient(provider, apiKey, model, fetchFn) {
 
 // src/compose.ts
 var ROUTING_LIMIT_MS = 8e3;
+var TIMEOUT = "timeout";
+var FAILED = "failed";
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 var MODEL_CHARS_MAX = 40;
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 function skipCategory(err, signal) {
   if (err instanceof APIUserAbortError)
-    return signal.reason === LIMIT_REACHED ? "timeout" : "cancelled";
+    return signal.reason === LIMIT_REACHED ? TIMEOUT : "cancelled";
   if (err instanceof APIError) return `HTTP ${err.status}`;
-  if (err instanceof APITimeoutError) return "timeout";
+  if (err instanceof APITimeoutError) return TIMEOUT;
   if (err instanceof APIConnectionError) return "network error";
   if (err instanceof TypeSafeError) return "rejected request";
-  return "failed";
+  return FAILED;
 }
 async function route(input) {
   const { parts, attempts, signal } = input;
@@ -1313,8 +1315,7 @@ function ask2(input, attempt) {
 }
 function skip(failed) {
   const [first, ...rest] = failed;
-  if (!first || rest.length === 0)
-    return { skipped: first?.reason ?? "failed" };
+  if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
   return {
     skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
   };
@@ -1408,7 +1409,8 @@ function routedLine({
   const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
   return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
 }
-var skippedLine = (reason) => `skipped, ${reason}`;
+var SKIPPED_PREFIX = "skipped, ";
+var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 
 // src/model.ts
 var TIER_DOWN = 2 ** 0.25;

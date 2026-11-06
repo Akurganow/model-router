@@ -8,6 +8,7 @@ import {
 	HOOK_TIMEOUT_MS,
 	MIN_DEADLINE_MS,
 	MIN_TIMEOUT_MS,
+	realClock,
 } from "./openclaw-deadline.ts";
 import {
 	createBeforeToolCall,
@@ -25,13 +26,6 @@ import type {
 import { isRecord } from "./part.ts";
 
 const HOOK_TIMEOUT_MAX_MS = 600000;
-
-const realClock: RouterDeps["clock"] = {
-	after: (ms, fn) => {
-		const timer = setTimeout(fn, ms);
-		return { cancel: () => clearTimeout(timer) };
-	},
-};
 
 /**
  * Tells whether a value is an integer timeout above 0 and at most
