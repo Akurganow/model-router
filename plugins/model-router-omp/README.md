@@ -78,6 +78,7 @@ Under `extended`, the plugin judges each batch item on its own. Bundled agents r
 
 The plugin skips an item, with the reason in the [batch line](#the-batch-line), when any of these holds:
 
+- The item sets its own `model`.
 - You set the agent's model: `task.agentModelOverrides` has an entry for it, or the `task` model role is set and the agent is `task`.
 - `task.disabledAgents` lists the agent.
 - The agent is not bundled and declares its own model.
@@ -173,6 +174,7 @@ After the gates pass, the plugin judges each item alone. The first reason that h
 - `<agent> model override set`: `task.agentModelOverrides` has an entry for the agent, such as `task model override set`.
 - `<agent> agent disabled`: `task.disabledAgents` lists the agent.
 - `seance spawns without the hook omp gives plugins, so its model cannot change`: under `extended`, omp sends the bundled `seance` agent no `before_subagent_spawn` event (checked on omp 18.12.6), so the plugin cannot set its model.
+- `the item sets its own model`: the item carries `model`. The plugin leaves the item's model alone and sends nothing for it. [omp per-call model](../../docs/clients.md#omp-per-call-model) has the source.
 - `custom task agent`: under `core`, the `task` agent is not omp's bundled one, or omp's agent discovery fails.
 - `<agent> agent discovery failed`: under `extended`, omp's agent discovery fails.
 - `<agent> agent unknown`: under `extended`, omp's agent list does not hold the agent.

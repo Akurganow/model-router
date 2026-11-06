@@ -169,7 +169,7 @@ They give none for free `setTimeout` globals or for a size limit on the module.
 ## Oh My Pi
 
 Documentation is the Markdown under `docs/` in `can1357/oh-my-pi`, and source is the TypeScript under `packages/`.
-Every link is a permalink at commit `96e4d8e`, the head of `main` on 2026-11-05.
+A link is a permalink at commit `96e4d8e`, the head of `main` on 2026-11-05, unless its section names another commit.
 The evals workflow pins omp 18.12.6 in `evals/omp/package.json`, and the README asks for that version or later.
 
 ### omp manifest and settings
@@ -285,6 +285,35 @@ No documentation page was read for them.
 - The settings read of an extension covers the user scope lockfile only.
   A plugin installed with `--scope project` keeps its lockfile under the project, and that read does not see it.
   (source: `@oh-my-pi/pi-coding-agent@18.16.0`, `src/extensibility/plugins/loader.ts` L489–L491, not run)
+
+### omp per-call model
+
+These facts hold for omp 18.16.0.
+Links point at commit `650f3a1`, tag `v18.16.0`, whose `packages/coding-agent` is `@oh-my-pi/pi-coding-agent@18.16.0`.
+
+- A `task` item may carry `model`, one exact `provider/model-id` selector.
+  omp accepts it only when `task.perCallModel` is `on`, and the setting defaults to `off`.
+  (documentation: [`task.md` L50](https://github.com/can1357/oh-my-pi/blob/650f3a108229ee11bf68ba3377f4e8c3391cd424/docs/tools/task.md#L50))
+- Every item `model` other than `undefined` passes the per-call check before any spawn, unless the item's agent is `seance`.
+  With `task.perCallModel` off, or with a value that is not one exact selector, the whole call fails.
+  A role alias such as `@smol` fails too.
+  (source: [`task/index.ts` L330–L331](https://github.com/can1357/oh-my-pi/blob/650f3a108229ee11bf68ba3377f4e8c3391cd424/packages/coding-agent/src/task/index.ts#L330-L331);
+  [`structured-subagent.ts` L363–L373](https://github.com/can1357/oh-my-pi/blob/650f3a108229ee11bf68ba3377f4e8c3391cd424/packages/coding-agent/src/task/structured-subagent.ts#L363-L373))
+- An item whose agent is `seance`, named or by default, skips that check.
+  The bundled `seance` agent takes `model` as its source session's model, and omp sends it as `seanceModel`, not as a per-call model.
+  An agent that shadows the name takes it as a per-call model, checked once the name resolves.
+  (source: [`task/index.ts` L360–L372](https://github.com/can1357/oh-my-pi/blob/650f3a108229ee11bf68ba3377f4e8c3391cd424/packages/coding-agent/src/task/index.ts#L360-L372),
+  [L374–L379](https://github.com/can1357/oh-my-pi/blob/650f3a108229ee11bf68ba3377f4e8c3391cd424/packages/coding-agent/src/task/index.ts#L374-L379))
+- An accepted per-call model replaces the agent's own model and the task role.
+  It becomes the spawn's only model pattern, and the spawn has no model role.
+  (documentation: [`task.md` L129](https://github.com/can1357/oh-my-pi/blob/650f3a108229ee11bf68ba3377f4e8c3391cd424/docs/tools/task.md#L129);
+  source: [`structured-subagent.ts` L595–L597](https://github.com/can1357/oh-my-pi/blob/650f3a108229ee11bf68ba3377f4e8c3391cd424/packages/coding-agent/src/task/structured-subagent.ts#L595-L597))
+- `before_subagent_spawn` sends those patterns as `patterns`, or the agent's own patterns when the item sets no model.
+  A `model` the hook returns replaces them, a per-call model included.
+  (source: [`structured-subagent.ts` L658–L674](https://github.com/can1357/oh-my-pi/blob/650f3a108229ee11bf68ba3377f4e8c3391cd424/packages/coding-agent/src/task/structured-subagent.ts#L658-L674))
+- Plugin 0.17.0 returned a role for an item that set its own model, and the spawn ran on that role, not on the item's model.
+  A level 0 item that named a large model got `@smol`, and a level 2 item that named a small one got `@slow`.
+  (running: omp 18.16.0, 2026-11-06, with `task.perCallModel` set to `on` and one `task` call of those two items, each `model` a `provider/model-id`; the batch line showed `L0 @smol` for task 1 and `L2 @slow` for task 2)
 
 ### omp gaps
 

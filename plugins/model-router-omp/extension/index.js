@@ -1213,9 +1213,10 @@ function agentGate(name, facts) {
   return found.model?.length ? setsOwnModel(name) : void 0;
 }
 var seanceGate = (name) => name === SEANCE ? `${name} spawns without the hook omp gives plugins, so its model cannot change` : void 0;
-function itemCheck(name, facts) {
+var modelGate = (model) => model === void 0 ? void 0 : setsOwnModel("the item");
+function itemCheck(name, facts, model) {
   if (!inScope(name, facts.scope)) return outsideCoreScope(name);
-  return userChoice(name, facts) ?? seanceGate(name) ?? agentGate(name, facts) ?? facts.noModels;
+  return userChoice(name, facts) ?? seanceGate(name) ?? modelGate(model) ?? agentGate(name, facts) ?? facts.noModels;
 }
 function spawnCheck({ agent, modelRole }, facts) {
   const reason = itemCheck(agent, facts);
@@ -1639,7 +1640,7 @@ async function scoreItems(items, context, { attempts, keys, facts }) {
   try {
     return await mapLimit(items, MAX_PARALLEL, async (pending) => {
       const { item, agent } = pending;
-      const reason = itemCheck(agent, facts);
+      const reason = itemCheck(agent, facts, item.model);
       if (reason !== void 0) return { ...pending, stored: skipped(reason) };
       const routing = {
         attempts: attempts.filter((a) => !passedOver.has(a.provider)),
