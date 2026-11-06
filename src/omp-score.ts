@@ -12,7 +12,7 @@ import { streamedFetch } from "./fetch.ts";
 import { routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
 import { type Batch, ROLES } from "./omp-gates.ts";
-import { itemCheck, roleOf } from "./omp-items.ts";
+import { itemCheck, itemModelCheck, roleOf } from "./omp-items.ts";
 import type { Stored } from "./omp-store.ts";
 import type { Level } from "./part.ts";
 import type { Provider } from "./provider.ts";
@@ -21,6 +21,7 @@ export type TaskItem = {
 	readonly task: string;
 	readonly name?: unknown;
 	readonly agent?: string;
+	readonly model?: unknown;
 };
 // The agent is the item's own, or the default task agent.
 export type Pending = {
@@ -51,7 +52,7 @@ export async function scoreItems(
 	try {
 		return await mapLimit(items, MAX_PARALLEL, async (pending) => {
 			const { item, agent } = pending;
-			const reason = itemCheck(agent, facts);
+			const reason = itemModelCheck(item) ?? itemCheck(agent, facts);
 			if (reason !== undefined) return { ...pending, stored: skipped(reason) };
 			const routing = {
 				attempts: attempts.filter((a) => !passedOver.has(a.provider)),

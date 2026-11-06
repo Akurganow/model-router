@@ -78,6 +78,7 @@ Under `extended`, the plugin judges each batch item on its own. Bundled agents r
 
 The plugin skips an item, with the reason in the [batch line](#the-batch-line), when any of these holds:
 
+- The item sets its own `model`, which omp accepts when `task.perCallModel` is on.
 - You set the agent's model: `task.agentModelOverrides` has an entry for it, or the `task` model role is set and the agent is `task`.
 - `task.disabledAgents` lists the agent.
 - The agent is not bundled and declares its own model.
@@ -169,6 +170,7 @@ A closed gate skips every item the scope covers with the same reason. The gates 
 
 After the gates pass, the plugin judges each item alone. The first reason that holds skips the item:
 
+- `the item sets its own model`: the item carries `model`. omp runs the item on that model when `task.perCallModel` is on, and fails the whole call otherwise. The plugin sends nothing for the item. [omp per-call model](../../docs/clients.md#omp-per-call-model) has the source.
 - `task model role set`: the `task` model role is set. omp's own routing decides. Only a `task` item gets this reason.
 - `<agent> model override set`: `task.agentModelOverrides` has an entry for the agent, such as `task model override set`.
 - `<agent> agent disabled`: `task.disabledAgents` lists the agent.

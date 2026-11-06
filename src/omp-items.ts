@@ -15,6 +15,7 @@ const ROLE_MARK = "@";
 // omp 18.12.6 sends the bundled seance agent no before_subagent_spawn event, so a role cannot reach it.
 const SEANCE = "seance";
 const CUSTOM_AGENT = "custom task agent";
+const ITEM_MODEL = setsOwnModel("the item");
 
 // What one batch reads once and judges every item against. No agents means discovery failed.
 export type Facts = {
@@ -96,6 +97,16 @@ export function itemCheck(name: string, facts: Facts): string | undefined {
 		facts.noModels
 	);
 }
+
+/**
+ * Returns the reason to skip an item that carries a `model`, or undefined when
+ * it carries none. omp runs that item on its model when `task.perCallModel` is
+ * on, and otherwise fails the whole call before any spawn. The check reads the
+ * tool input, because the spawn event's patterns hold the agent's default when
+ * the item sets no model. Never throws. Source: docs/clients.md#omp-per-call-model.
+ */
+export const itemModelCheck = ({ model }: { readonly model?: unknown }) =>
+	model === undefined ? undefined : ITEM_MODEL;
 
 // A spawn that names a role other than the agent's own is the user's or the harness's choice.
 export function spawnCheck(

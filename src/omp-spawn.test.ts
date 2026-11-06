@@ -138,6 +138,33 @@ test("a spawn that sets its own model role is left alone", async () => {
 	assert.equal(await world.spawn("c:0", { modelRole: "task" }), undefined);
 });
 
+// The live case: omp's task.perCallModel is on, and each item names a model the plugin would replace.
+test("an item that sets its own model is skipped, sends nothing and keeps its model", async () => {
+	install();
+	await world.toolCall("c", {
+		tasks: [
+			{ task: "level0 a", model: "p/slow-model" },
+			{ task: "level2 b", model: "p/small-model" },
+		],
+	});
+	assert.deepEqual(world.notes, [
+		"model-router task 1: skipped, the item sets its own model | task 2: skipped, the item sets its own model",
+	]);
+	assert.equal(world.sent.length, 0);
+	assert.equal(await world.spawn("c:0"), undefined);
+	assert.equal(await world.spawn("c:1"), undefined);
+});
+
+test("an item with its own model leaves a sibling without one routed", async () => {
+	install();
+	await world.toolCall("c", {
+		tasks: [{ task: "level0 a", model: "p/m" }, { task: "level2 b" }],
+	});
+	assert.equal(world.sent.length, 1);
+	assert.equal(await world.spawn("c:0"), undefined);
+	assert.equal((await world.spawn("c:1"))?.model, "@slow");
+});
+
 test("a spawn without a key finds nothing", async () => {
 	install();
 	await world.toolCall("c", { tasks: [{ task: "level2 a" }] });
