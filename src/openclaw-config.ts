@@ -17,7 +17,6 @@ import {
 	alreadyValue,
 	badCall,
 	COMMAND_DESCRIPTIONS,
-	commandName,
 	isKeySetting,
 	isValue,
 	isValueSetting,
@@ -25,7 +24,6 @@ import {
 	keyProvider,
 	SETTING_NAMES,
 	TOOL_LABEL,
-	TOOL_NAME,
 	unchanged,
 	useOneOf,
 	VALUE_SETTINGS,
@@ -33,6 +31,10 @@ import {
 	valueLine,
 } from "./settings.ts";
 
+export const TOOL_NAME = "model_router_config";
+const COMMAND_PREFIX = "model-router-";
+export const commandName = (setting: ValueSetting): string =>
+	`${COMMAND_PREFIX}${setting}`;
 export const COMMAND_NAMES: readonly string[] = VALUE_SETTINGS.map(commandName);
 const ADMIN_SCOPE = "operator.admin";
 const LINE_BREAK = "\n";

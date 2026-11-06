@@ -1,5 +1,5 @@
 import { contextText } from "./brief.ts";
-import { LINE_PREFIX, skippedLine } from "./line.ts";
+import { skippedLine } from "./line.ts";
 import { registerConfig, say } from "./omp-config.ts";
 import { checkGates, openBatch, readSettings, resolves } from "./omp-gates.ts";
 import { inScope, TASK } from "./omp-items.ts";
@@ -16,6 +16,7 @@ import type {
 } from "./omp-types.ts";
 import { isRecord } from "./part.ts";
 
+const LINE_PREFIX = "model-router ";
 const ENTRY_SEPARATOR = " | ";
 
 function isEligible(item: unknown): item is TaskItem {

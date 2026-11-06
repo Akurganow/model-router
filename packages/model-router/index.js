@@ -1065,9 +1065,6 @@ var agentUnknown = (id) => `${id} agent unknown`;
 var setsOwnModel = (id) => `${id} sets its own model`;
 var keyLine = (provider, state) => `${provider} key: ${state}`;
 var TOOL_LABEL = "Model Router settings";
-var TOOL_NAME = "model_router_config";
-var COMMAND_PREFIX = "model-router-";
-var commandName = (setting) => `${COMMAND_PREFIX}${setting}`;
 var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
 function describeCommand(setting) {
   const { about, values } = TEXTS[setting];
@@ -1303,6 +1300,9 @@ function readState(api, env) {
 }
 
 // src/openclaw-config.ts
+var TOOL_NAME = "model_router_config";
+var COMMAND_PREFIX = "model-router-";
+var commandName = (setting) => `${COMMAND_PREFIX}${setting}`;
 var COMMAND_NAMES = VALUE_SETTINGS.map(commandName);
 var ADMIN_SCOPE = "operator.admin";
 var LINE_BREAK = "\n";

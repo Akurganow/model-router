@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { setupTexts } from "../src/hermes-setup.ts";
+import { commandName, TOOL_NAME } from "../src/openclaw-config.ts";
 import {
 	KEY_VARIABLES,
 	PROVIDER_VALUES,
@@ -11,10 +12,8 @@ import {
 	alreadyValue,
 	badCall,
 	COMMAND_DESCRIPTIONS,
-	commandName,
 	keyLine,
 	TOOL_LABEL,
-	TOOL_NAME,
 	unchanged,
 	useOneOf,
 	valueLine,

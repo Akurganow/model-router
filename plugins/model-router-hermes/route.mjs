@@ -914,10 +914,13 @@ var PROVIDER_VALUES = [
   "typesafe",
   "openrouter"
 ];
-var PROVIDERS = ["typesafe", "openrouter"];
 var HOSTS = {
   typesafe: "https://api.typesafe.ai",
   openrouter: "https://openrouter.ai/api"
+};
+var KEY_VARIABLES = {
+  typesafe: "TYPESAFE_API_KEY",
+  openrouter: "OPENROUTER_API_KEY"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
 var MODEL = "jev-latest";
@@ -1291,6 +1294,7 @@ var work = {
 };
 
 // src/hermes-request.ts
+var PROVIDERS = Object.keys(KEY_VARIABLES);
 var readKeys = (value) => Object.fromEntries(
   PROVIDERS.flatMap((provider) => {
     const key = isRecord2(value) ? nonEmpty(value[provider]) : void 0;

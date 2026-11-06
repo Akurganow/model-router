@@ -106,7 +106,6 @@ function roleText(description) {
 }
 
 // src/line.ts
-var LINE_PREFIX = "model-router ";
 var NO_CHANGE = "no change";
 function routedLine({
   level,
@@ -1178,7 +1177,6 @@ function keyFrom(answer) {
 var keyQuestion = (provider, replaces) => `Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's credential store.${replaces ? " It replaces the key that is set now." : ""}`;
 var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
 var TOOL_LABEL = "Model Router settings";
-var TOOL_NAME = "model_router_config";
 var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
 function describeCommand(setting) {
   const { about, values } = TEXTS[setting];
@@ -1352,6 +1350,7 @@ async function changeKey(ctx, setting) {
 
 // src/omp-config.ts
 var COMMAND_PREFIX = "model-router:";
+var TOOL_NAME = "model_router_config";
 var LINE_BREAK2 = "\n";
 function say(ctx, text) {
   try {
@@ -1780,6 +1779,7 @@ function createStore() {
 }
 
 // src/omp-router.ts
+var LINE_PREFIX = "model-router ";
 var ENTRY_SEPARATOR = " | ";
 function isEligible(item) {
   if (!isRecord(item)) return false;

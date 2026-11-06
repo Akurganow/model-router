@@ -18,7 +18,6 @@ import {
 	projectOverrides,
 	SETTING_NAMES,
 	TOOL_LABEL,
-	TOOL_NAME,
 	toolDescription,
 	UNREADABLE,
 	unchanged,
@@ -29,6 +28,7 @@ import {
 } from "./settings.ts";
 
 const COMMAND_PREFIX = "model-router:";
+const TOOL_NAME = "model_router_config";
 const LINE_BREAK = "\n";
 
 // A failed report must never block the caller.
