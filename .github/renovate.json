@@ -43,7 +43,13 @@
 			"minimumReleaseAge": null,
 			"schedule": ["at any time"]
 		},
-		{ "matchManagers": ["github-actions"], "groupName": "actions" }
+		{ "matchManagers": ["github-actions"], "groupName": "actions" },
+		{
+			"description": "The uv that setup-hermes installs moves with the action that installs it.",
+			"matchManagers": ["custom.regex"],
+			"matchPackageNames": ["uv"],
+			"groupName": "actions"
+		}
 	],
 	"customManagers": [
 		{
@@ -57,6 +63,18 @@
 			],
 			"datasourceTemplate": "github-tags",
 			"depNameTemplate": "NousResearch/hermes-agent"
+		},
+		{
+			"customType": "regex",
+			"description": "The uv version the setup-hermes action installs. It keeps the 14-day rule.",
+			"managerFilePatterns": [
+				"/^\\.github/actions/setup-hermes/action\\.yml$/"
+			],
+			"matchStrings": [
+				"astral-sh/setup-uv@[0-9a-f]{40}[^\\n]*\\n\\s+with:\\n\\s+version: \"(?<currentValue>[^\"]+)\""
+			],
+			"datasourceTemplate": "pypi",
+			"depNameTemplate": "uv"
 		}
 	]
 }

@@ -170,6 +170,37 @@ test("Renovate raises the Hermes tag and commit together with no age delay", () 
 	assert.equal(rule.groupName, "hermes");
 });
 
+test("Renovate raises the uv of the setup-hermes action with the actions, after the age rule", () => {
+	const config = json(".github/renovate.json");
+	const manager = (
+		config.customManagers as {
+			matchStrings: string[];
+			datasourceTemplate: string;
+			depNameTemplate: string;
+		}[]
+	).find(({ depNameTemplate }) => depNameTemplate === "uv");
+	assert.ok(manager, "no custom manager for uv");
+	assert.equal(manager.datasourceTemplate, "pypi");
+	const action = read(SETUP_HERMES);
+	const [matchString = ""] = manager.matchStrings;
+	const found = new RegExp(matchString).exec(action)?.groups as
+		| { currentValue?: string }
+		| undefined;
+	assert.equal(found?.currentValue, /version: "([^"]+)"/.exec(action)?.[1]);
+	const rules = (
+		config.packageRules as {
+			matchPackageNames?: string[];
+			minimumReleaseAge?: unknown;
+			groupName?: string;
+		}[]
+	).filter(({ matchPackageNames }) => matchPackageNames?.includes("uv"));
+	assert.deepEqual(
+		rules.map(({ groupName }) => groupName),
+		["actions"],
+	);
+	assert.ok(rules.every((rule) => !("minimumReleaseAge" in rule)));
+});
+
 test("every action the package, hermes and publish jobs use is pinned to a sha", () => {
 	const ci = read(".github/workflows/ci.yml");
 	for (const block of [

@@ -219,7 +219,7 @@ Renovate (`.github/renovate.json`) keeps every pinned version current:
 - OpenClaw for CI
 - Hermes Agent for CI
 - Bun
-- the actions
+- the actions, and the `uv` that `setup-hermes` installs
 
 Renovate proposes updates after the same 14 days, one pull request a week per
 group. It proposes security fixes at once.
