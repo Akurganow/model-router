@@ -191,6 +191,19 @@ test("an empty or non-string key is ignored and the variable applies", () => {
 		);
 });
 
+test("a SecretRef in the live config yields to the resolved key in the plugin config", () => {
+	const ref = { source: "env", provider: "default", id: "TYPESAFE_API_KEY" };
+	assert.deepEqual(
+		readKeys(
+			live({ api_key: ref }),
+			{ api_key: "resolved-key" },
+			"typesafe",
+			{},
+		),
+		{ typesafe: "resolved-key" },
+	);
+});
+
 test("an empty variable is no key", () => {
 	assert.deepEqual(
 		readKeys(undefined, undefined, "auto", { TYPESAFE_API_KEY: "" }),

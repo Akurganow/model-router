@@ -63,7 +63,7 @@ A key counts as set when either place holds a non-empty value. Get a key from [T
 
 Add a key in one of two ways:
 
-- Fill the secret field in the plugin's settings page in the Control UI. Enter a plain text key. A SecretRef object is not read.
+- Fill the secret field in the plugin's settings page in the Control UI, with a plain text key or a SecretRef. OpenClaw's documentation says a plugin receives a SecretRef's resolved value, and the plugin reads that value. No live run has checked a SecretRef. The [secret inputs fact](../../docs/clients.md#openclaw-runtime-logs-and-environment) has the source.
 - Set the environment variable in the Gateway's own environment, then restart the Gateway. The variable is visible to every process the Gateway starts. [What the plugin stores](PRIVACY.md#what-the-plugin-stores) covers a `.env` file.
 
 Never type a key into the chat.

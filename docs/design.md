@@ -100,7 +100,8 @@ The install does: omp reads `.omp-plugin/marketplace.json` before the Claude cat
 **Package.**
 The npm tree is committed, so the `package` job packs it as it stands.
 It compares the files in the tarball with the `files` list of the tree.
-It runs `npm publish --dry-run`, which goes through every publish check and sends nothing.
+It runs `npm publish --dry-run`, which packs and checks the package and sends nothing.
+The dry run passes without a registry login, so it does not show that the registry would accept a publish.
 It then installs the tarball into a pinned OpenClaw, and checks the install report and that the installed bundle registers its hook, tool and commands against a recording `api`.
 It unpacks the tarball and installs the folder into a pinned omp, because omp installs a registry name, a git spec or a folder, not a tarball.
 Both harnesses keep their state and config under the runner's temp folder.
@@ -117,7 +118,8 @@ It does not show that a running Gateway accepts them.
 
 **Publication.**
 The release workflow's `publish` job runs after a release, with npm trusted publishing and no stored token.
-It publishes only when the registry lacks the version, so a rerun does nothing ([CONTRIBUTING.md](../CONTRIBUTING.md#publishing-to-npm)).
+It publishes only while the `NPM_PUBLISH` variable is `true` and the registry lacks the version, so a rerun does nothing.
+[Publishing to npm](../CONTRIBUTING.md#publishing-to-npm) has the conditions and the first publication by hand.
 
 **Owner-setup scan.**
 The repository is public.

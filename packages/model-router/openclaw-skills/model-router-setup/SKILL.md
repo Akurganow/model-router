@@ -47,7 +47,7 @@ The tool can show the old value until OpenClaw replaces the plugin, after runnin
 2. Note each provider that reports `key: unset`.
 3. For each such provider, ask the key question below, once.
 4. When the person says the key is in place, call the tool with no setting.
-5. Report the key line. Continue only when it reads `key: set`.
+5. Report the key line. If it still reads `key: unset`, say so in one line and go on.
 
 Skip this step when every allowed provider reports `key: set`.
 
@@ -84,12 +84,14 @@ For each reason that holds, tell the person which setting to change, and where. 
 1. If the plugin was just enabled or installed, or a key variable changed, ask the person to restart the Gateway. Then return to this step.
 2. Ask the routing-check question with the answers "Check" and "Skip".
 3. On Skip, record "routing check: skipped" and go to the closing summary.
-4. On Check, call `sessions_spawn` with the task "Reply with the single word ok." Pass no `agentId`, `model` or `thinking`.
+4. On Check, note the current time. Then call `sessions_spawn` with the task "Reply with the single word ok." Pass no `agentId`, `model` or `thinking`.
 5. Read the spawn result. Note `resolvedModel` and any model the spawn reports.
-6. OpenClaw shows no chat line. Read the newest `model-router` line in the Gateway log with `openclaw logs --plain`, or ask the person to read it.
-7. Check that the line names a level, a model or `no change`, and an effort.
-8. If the line names a skip reason, stop and report it.
-9. Check `resolvedModel` against the line. Report the result in one line.
+6. OpenClaw shows no chat line. Read the Gateway log with `openclaw logs --plain`, or ask the person to read it.
+7. Take the first `model-router` line logged after the noted time. An older line belongs to another spawn.
+8. If no such line exists, report it and check each cause on the [No line at all?](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#no-line-at-all) list.
+9. Check that the line names a level, a model or `no change`, and an effort.
+10. If the line names a skip reason, stop and report it.
+11. Check `resolvedModel` against the line. Report the result in one line.
 
 The routing-check question reads: "To check routing I will spawn one small subagent. It spends a little model usage."
 
