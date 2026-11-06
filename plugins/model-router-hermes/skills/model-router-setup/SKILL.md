@@ -55,6 +55,8 @@ The command replies with the new `provider` line. If it replies `provider unchan
 
 ## Step 4. Keys
 
+The TypeSafe key is the plugin secret `typesafe_api_key`. Hermes stores it as `TYPESAFE_API_KEY` in its `.env` file. The person enters it in the plugin's settings form in Hermes Desktop, or writes the line themselves. The OpenRouter key is read from `OPENROUTER_API_KEY` and is not a plugin setting.
+
 1. Call the tool with no setting.
 2. Note each provider that reports `key: unset`.
 3. For each such provider, call the tool with `typesafe_key` or `openrouter_key`.
@@ -63,8 +65,6 @@ The command replies with the new `provider` line. If it replies `provider unchan
 6. Report the key line. If it still reads `key: unset`, ask the person to start a new session, then say so in one line and go on.
 
 Skip this step when every allowed provider reports `key: set`.
-
-The TypeSafe key is the plugin secret `typesafe_api_key`. Hermes stores it as `TYPESAFE_API_KEY` in its `.env` file. The person enters it in the plugin's settings form in Hermes Desktop, or writes the line themselves. The OpenRouter key is read from `OPENROUTER_API_KEY` and is not a plugin setting.
 
 If a key is missing for every allowed provider, say that every task skips with `key unset` until one exists. With `auto` or `openrouter-first` and one key, say that its provider scores alone. A key in the environment is visible to every process Hermes starts.
 
@@ -81,15 +81,14 @@ The plugin resolves a slot before it uses it. It skips the slot when the provide
 
 ## Step 6. List the reasons routing is off
 
-Check each reason below and report every one that holds, not only the first. The label of a skipped task reads `model-router skipped, <reason>`.
+Check each reason below and report every one that holds, not only the first. The label of a skipped task reads `model-router skipped, <reason>`. [Which tasks are routed](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#which-tasks-are-routed) explains each reason.
 
-- `key unset`: no allowed provider has a key. Step 4 fixes it.
-- `no small or large model`: both slots are unset. Step 5 fixes it.
-- `small model unset` or `large model unset`: the task needs a slot that is empty. Step 5 fixes it.
-- `small model unresolved` or `large model unresolved`: the slot's provider or model does not resolve offline. Ask the person to check the slot against Hermes's provider list.
-- `subagent model set`: the `delegation` section of Hermes's config sets `model`, `provider`, `base_url` or `api_key`. That route is the person's own, so the plugin leaves every task on it.
-- `node not found`: Hermes has no Node.js to run the scoring step. The person installs one for Hermes.
-- `timeout`, `failed`, or an HTTP status: the provider or the network. The plugin keeps Hermes's own route.
+- `key unset`: Step 4.
+- `no small or large model`, `small model unset` or `large model unset`: Step 5.
+- `small model unresolved` or `large model unresolved`: Step 5. Ask the person to check the slot against Hermes's provider list.
+- `subagent model set`: the person's `delegation` section. The person decides whether to clear it.
+- `node not found`: the person installs a Node for Hermes.
+- `timeout`, `failed`, or an HTTP status: no setting fixes it.
 
 For each reason that holds, tell the person which setting to change, and where. The person runs the change. This skill changes none of them.
 

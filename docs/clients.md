@@ -735,7 +735,7 @@ It was a `DelegationProvider` that records what `route_task` sees and returns a 
 Its live turns used `hermes -z "<call delegate_task once …>" -m google/gemini-2.5-flash --provider openrouter -t delegation --ignore-rules --usage-file <file>`.
 The other probe calls ran in a Python process of that Hermes with its network functions blocked, or inside such a turn.
 The facts marked Hermes v0.23.0 ran on a fresh Hermes home too, with the `hermes` command of the release CI installs.
-This repository's plugin requires Hermes 0.22.5 or later, set by `requires_hermes` in `plugin.yaml`, and CI pins v0.23.0 in `.github/actions/setup-hermes/action.yml`.
+This repository's plugin requires Hermes 0.22.6 or later, set by `requires_hermes` in `plugin.yaml`, and CI pins v0.23.0 in `.github/actions/setup-hermes/action.yml`.
 
 ### Hermes install and update
 
@@ -782,7 +782,7 @@ This repository's plugin requires Hermes 0.22.5 or later, set by `requires_herme
   (documentation: [Manifest v2 reference](https://hermes-agent.nousresearch.com/docs/developer-guide/plugins#manifest-v2-reference),
   [Settings form in the Desktop](https://hermes-agent.nousresearch.com/docs/developer-guide/plugins#settings-form-in-the-desktop))
 - This repository's `plugin.yaml` holds JSON text, which is valid YAML. The builder writes it from `metadata/source.json` and `src/`.
-  `hermes plugins validate` parsed it, and reported `requires_hermes — spec '>=0.22.5' parses` and `config schema — shape valid`.
+  `hermes plugins validate` parsed it, and reported `requires_hermes — spec '>=0.22.5' parses` for the manifest of that day and `config schema — shape valid`.
   (running: Hermes v0.23.0, `hermes plugins validate plugins/model-router-hermes`, 2026-11-06)
 - The plugin registers its skill folders with `ctx.register_skill(<folder name>, <SKILL.md>)`. The agent loads a plugin skill as `skill_view("<plugin>:<skill>")`.
   Plugin skills are read-only, and the system prompt's skill index does not list them.
@@ -864,10 +864,10 @@ This repository's plugin requires Hermes 0.22.5 or later, set by `requires_herme
   Under `plugins.isolation: host`, two tasks of one call routed to `openai/gpt-6-luna` at effort `low` ran two child sessions with `model = openai/gpt-6-luna` and effort `low`; the summaries were `ping` and `pong`.
   (running: Hermes v0.22.7, the probe plugin, `hermes -z "<call delegate_task once …>" -m google/gemini-2.5-flash --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 330 s alarm, once for each turn, 2026-11-06)
 - This repository's plugin routed a real call. One `delegate_task` call held a lookup task and a design task. The provider was `typesafe`, `small_model` was `openrouter openai/gpt-6-luna` and `large_model` was `openrouter openai/gpt-6.1-terra`.
-  In process, the lookup task read `model-router L0 openai/gpt-6-luna · medium · p=0.67/0.99 · jev jev-1.14.0 · 686/30 tok`, and the design task read `model-router L2 openai/gpt-6.1-terra · high · p=1.00/0.63 · jev jev-1.14.0 · 705/30 tok`.
+  In process, the lookup task read `model-router L0 openai/gpt-6-luna · medium · p=0.67/0.98 · jev jev-1.14.0 · 686/30 tok`, and the design task read `model-router L2 openai/gpt-6.1-terra · high · p=1.00/0.63 · jev jev-1.14.0 · 705/30 tok`.
   The child sessions ran `openai/gpt-6-luna` at effort `medium` and `openai/gpt-6.1-terra` at effort `high`. Each result entry carried the line in `route.label`, and `agent.log` held both lines.
-  After `hermes gateway stop` and `plugins.isolation: host`, the same call gave the same levels, models and efforts, with `p=0.69/0.98` and `p=1.00/0.58`. `route.label` carried both lines, and `agent.log` held no routing line.
-  (running: Hermes v0.22.7, the plugin installed with `hermes plugins install "file://<clone>#plugins/model-router-hermes" --enable` on a fresh Hermes home and set up as its README says, `hermes -z "<call delegate_task once with two tasks …>" -m openai/gpt-6-luna --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 400 s alarm, once for each mode, 2026-11-06)
+  After `hermes gateway stop` and `plugins.isolation: host`, the same call gave the same levels, models and efforts, with `p=0.67/0.97` and `p=1.00/0.61`. `route.label` carried both lines, and `agent.log` held no routing line.
+  (running: Hermes v0.22.7, the plugin installed with `hermes plugins install "file://<clone>#plugins/model-router-hermes" --enable` on a fresh Hermes home and set up as its README says, `hermes -z "<call delegate_task once with two tasks …>" -m openai/gpt-6-luna --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 400 s alarm, once for each mode, 2026-11-06, repeated after the reply began to name the slot)
 - Hermes maps a requested effort that a wire does not support to the nearest weaker supported level, and to the weakest level when none is weaker.
   (source: [`reasoning_effort.py` L127–L139](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/reasoning_effort.py#L127-L139))
 
@@ -901,6 +901,12 @@ This repository's plugin requires Hermes 0.22.5 or later, set by `requires_herme
   (running: Hermes v0.22.7, 2026-11-06;
   source: [`left_core_migration.py` L616](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/left_core_migration.py#L616),
   [L709–L720](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/left_core_migration.py#L709-L720))
+- `resolve_runtime_provider` refreshes no credential for `openrouter`, `custom` or a named custom provider. They read an environment variable, a config key or a credential-pool entry. A pool refreshes an OAuth entry only for `anthropic`, a provider with a refresh hook, `openai-codex` and `xai-oauth`, and never refreshes any other entry. The OAuth runtime rung covers only `nous`, `openai-codex`, `xai-oauth` and `qwen-oauth`. A named custom provider with `key_cmd` runs that command at request time to mint its token. Such a provider reads as unresolved, because the catalogue lists no model for it.
+  (source: [`credential_pool.py` L1943–L1956](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/credential_pool.py#L1943-L1956),
+  [`runtime_provider.py` L829–L838](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/runtime_provider.py#L829-L838),
+  [`runtime_provider_custom.py` L508–L516](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/runtime_provider_custom.py#L508-L516), read 2026-11-06)
+- `installs_held` first appears in Hermes v0.22.6. At v0.22.5 (commit `bf0203a794a0`), `hermes_cli/left_core_migration.py` has neither `installs_held` nor `recover_for_provider`, so the slot check's import fails there and every end level would skip as unresolved. Every other Hermes function, context method, task key and manifest field the plugin uses exists at v0.22.5. The plugin therefore requires v0.22.6.
+  (source: [`left_core_migration.py` L709–L720 at v0.22.6](https://github.com/NousResearch/hermes-agent/blob/f0d94882e89ab8d4098b5bb2f166adfb9ee0a0ab/hermes_cli/left_core_migration.py#L709-L720), read 2026-11-06)
 - Hermes ingests an `OPENROUTER_API_KEY` from the environment into the home's credential pool at start-up and prints one line to standard error. The resolve source then reads `env:OPENROUTER_API_KEY`.
   (running: Hermes v0.22.7, 2026-11-06)
 
@@ -929,6 +935,11 @@ This repository's plugin requires Hermes 0.22.5 or later, set by `requires_herme
   [L360–L369](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_logging.py#L360-L369),
   [L396–L397](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_logging.py#L396-L397),
   [`plugin_host_child.py` L600–L601](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/plugin_host_child.py#L600-L601))
+- Hermes runs natively on Windows 10 and Windows 11, without WSL. `find_node_executable` has Windows branches.
+  A program started with a replaced environment on Windows needs `SYSTEMROOT`, so the plugin passes it to Node.
+  (documentation: [Windows (Native) Guide](https://hermes-agent.nousresearch.com/docs/user-guide/windows-native), [`windows-native.md` L10](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/website/docs/user-guide/windows-native.md#L10),
+  [Python `subprocess`, Popen constructor](https://docs.python.org/3/library/subprocess.html#popen-constructor);
+  source: [`hermes_constants.py` L585–L586](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_constants.py#L585-L586), [L605–L612](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_constants.py#L605-L612), read 2026-11-06)
 - `NODE_USE_ENV_PROXY=1` makes Node parse `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` at start-up and route requests through the proxy. Node added it in v24.0.0 and v22.21.0.
   The plugin sets it when `HTTPS_PROXY`, `HTTP_PROXY` or their lower-case forms are present, unless the environment sets it.
   (documentation: [Node.js command-line API, `NODE_USE_ENV_PROXY=1`](https://nodejs.org/docs/latest/api/cli.html#node_use_env_proxy1), read 2026-11-06)
@@ -950,7 +961,7 @@ This repository's plugin requires Hermes 0.22.5 or later, set by `requires_herme
   source: [`threat_patterns.py` L102–L104](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/threat_patterns.py#L102-L104))
 - `hermes plugins validate plugins/model-router-hermes` passed with 15 checks marked passed, including `security scan — safe`, and one warning.
   The warning names `hermes_api.py` lines 39, 46, 52, 53 and 61: `hermes_cli.auth.PROVIDER_REGISTRY`, `hermes_cli.auth_plugin_providers.is_refreshable_oauth_provider`, `hermes_cli.left_core_migration.installs_held`, `hermes_cli.runtime_provider.resolve_runtime_provider` and `agent.models_dev.list_provider_models`.
-  It says these imports can break on any release. It ends with `Isolation — runs in the plugin host (plugins.isolation: host)` and `Validation passed.`
+  It says these imports can break on any release. CI runs `validate` on the pinned release and a Renovate rule raises the pin, so a break shows in CI ([Hermes CI](#hermes-ci)). It ends with `Isolation — runs in the plugin host (plugins.isolation: host)` and `Validation passed.`
   (running: Hermes v0.23.0, 2026-11-06)
 - The admission lint lists a plugin's imports of private Hermes modules with file and line. It is a warning and never a refusal. The public list holds `agent.delegation_provider`, `agent.delegation_backends`, `agent.secret_scope` and `hermes_constants`, and none of the five modules above.
   (source: [`plugin_validate_private_imports.py` L1–L9](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/plugin_validate_private_imports.py#L1-L9),
@@ -977,6 +988,7 @@ The probe plugin ran Node on a small script and shipped the OpenClaw bundle for 
 This repository's plugin passed `validate`, the scan and the `file://` install on Hermes v0.23.0, as the facts above record. It routed one real call of two tasks on Hermes v0.22.7, in process and in the plugin host. No routing run used Hermes v0.23.0 or a fallback between providers.
 The `hermes` job has not run on a pushed commit yet, so this page cites no run of it.
 No run used the repository form `Akurganow/model-router/plugins/model-router-hermes` from the README, a `--ref` pin or `hermes plugins update`.
+No run used native Windows, so the `SYSTEMROOT` rule rests on the Python documentation.
 No run used a proxy, so the proxy behaviour rests on the Node documentation and on the commit that added the switch.
 No run sent two concurrent sessions through one gateway. That they share one budget record follows from the gateway facts above.
 No run checked that Hermes clamps a routed effort for a delegated child. The clamp is read from `reasoning_effort.py`.

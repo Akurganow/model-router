@@ -18,15 +18,13 @@ A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks
 
 The install commands are under [Hermes Agent](../../README.md#hermes-agent) in the root README. The notes below explain them.
 
-Hermes 0.22.5 or later is required. The manifest declares `requires_hermes: ">=0.22.5"`, and Hermes refuses an older version before it loads the plugin. A Hermes core that does not check that field and has no delegation providers loads the plugin, logs a warning and leaves it off.
+Hermes 0.22.6 or later is required, because the offline slot check uses a function that 0.22.6 added. The manifest declares `requires_hermes: ">=0.22.6"`, and Hermes refuses an older version before it loads the plugin. A Hermes core that does not check that field and has no delegation providers loads the plugin, logs a warning and leaves it off.
 
-The install command takes the repository's subfolder, `Akurganow/model-router/plugins/model-router-hermes`. `--enable` enables the plugin without Hermes's prompt. The plugin is then on, and the backend is still off. [Set up](#set-up) turns the backend on.
+The install command takes the repository's subfolder, `Akurganow/model-router/plugins/model-router-hermes`. `--enable` enables the plugin without Hermes's prompt. The root README's install block also sets `delegation.backend` to `model-router`, so the plugin and its backend are both on after install.
 
 Update with `hermes plugins update model-router-hermes`. Pin an install to one commit by adding `--ref <commit>` with the full 40-character commit hash to the install command. Hermes refuses to update a pinned plugin. To move the pin, run the install again with `--force --ref <new-commit>`.
 
 Hermes scans a plugin before it activates it, on install and on update. The verdict for this plugin is `safe`. The scan reports one informational finding of medium severity, `python_subprocess`, for the line that starts Node.
-
-`hermes plugins validate plugins/model-router-hermes` passes with one warning. The warning lists five imports of Hermes modules that Hermes does not publish for plugins. They are in `hermes_api.py`. They can break on a Hermes release. CI runs the plugin against the latest Hermes release to catch that.
 
 A gateway keeps a loaded plugin between turns. After a plugin update, or after a change of `plugins.isolation`, run `hermes gateway stop`. Hermes then loads the new code on its next start.
 
@@ -36,13 +34,7 @@ A gateway keeps a loaded plugin between turns. After a plugin update, or after a
 
 Routing needs the plugin enabled, the backend on, a key and a model in a slot. The [setup skill](skills/model-router-setup/SKILL.md) walks through them. Ask Hermes to load `model-router-hermes:model-router-setup`.
 
-1. Opt in twice. The install command enables the plugin. The second opt-in turns the backend on:
-
-   ```bash
-   hermes config set delegation.backend model-router
-   ```
-
-   Hermes runs one delegation backend at a time. This replaces `model_map` or any other backend. A backend change applies from the next session. In a running session, type `/delegation model-router --now`.
+1. Know what the backend replaces. Hermes runs one delegation backend at a time, so `delegation.backend: model-router` replaces `model_map` or any other backend. A backend change applies from the next session. In a running session, type `/delegation model-router --now`.
 2. Add a [key](#keys).
 3. Assign `small_model` and `large_model`, as [Models](#models) says.
 4. Pick the [provider](#provider) if the default does not fit.
@@ -57,7 +49,7 @@ The plugin reads a key only for a provider the [`provider` setting](#provider) a
 - TypeSafe: `TYPESAFE_API_KEY`.
 - OpenRouter: `OPENROUTER_API_KEY`.
 
-A key counts as set when the variable holds non-blank text. Get a key from [TypeSafe](https://console.typesafe.ai/keys) or from [OpenRouter](https://openrouter.ai). Each key goes only to its own provider. The plugin never uses Hermes's own provider credentials as a Jev key. With no key for any allowed provider, every task reports `key unset`.
+The TypeSafe key has three forms: the tool argument `typesafe_key`, the settings secret `typesafe_api_key` and the environment variable `TYPESAFE_API_KEY`. A key counts as set when the variable holds non-blank text. Get a key from [TypeSafe](https://console.typesafe.ai/keys) or from [OpenRouter](https://openrouter.ai). Each key goes only to its own provider. The plugin never uses Hermes's own provider credentials as a Jev key. With no key for any allowed provider, every task reports `key unset`.
 
 Add a key in one of two ways:
 
@@ -135,7 +127,7 @@ The plugin does not check a model that the catalogue lists and the provider reje
 
 The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors. At level 1 the child runs on the route Hermes would give it.
 
-The work question picks the effort. The ladder is the one the [OpenClaw plugin lists](../model-router-openclaw/README.md#routing), and the plugin sets `reasoning_effort` to one of `low`, `medium`, `high` or `xhigh`. It never sets `max`, `ultra`, `minimal` or `none`. The small model's row starts at `medium`, because a small model stops early on agentic prompts at `low`. [model-choice.md](../model-router/docs/model-choice.md#the-work-question-and-the-arch) gives the reasons. Hermes maps an effort that the child's model does not take to the nearest weaker one it takes.
+The work question picks the effort. The ladder is the one in the [Effort section](../model-router/README.md#effort), and the plugin sets `reasoning_effort` to one of `low`, `medium`, `high` or `xhigh`. It never sets `max`, `ultra`, `minimal` or `none`. The small model's row starts at `medium`, because a small model stops early on agentic prompts at `low`. [model-choice.md](../model-router/docs/model-choice.md#the-work-question-and-the-arch) gives the reasons. Hermes maps an effort that the child's model does not take to the nearest weaker one it takes.
 
 The routed effort replaces the effort of the calling session. Hermes ranks a route's effort above the parent's level.
 
@@ -165,8 +157,9 @@ Every task meets these gates in order. The first that fails skips the task with 
 A scored task can still skip:
 
 - `small model unset` or `large model unset`: the level picked a slot you left empty.
-- `small model unresolved` or `large model unresolved`: the slot fails the [offline checks](#models), or they did not finish within the time left.
-- `timeout`, `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer in time or at all, or the Node step failed. `failed` also covers any error in the plugin. After two providers, the reason names each, for example `typesafe HTTP 503, openrouter timeout`.
+- `small model unresolved` or `large model unresolved`: the slot fails the [offline checks](#models).
+- `timeout`: Jev did not answer within the budget, or the offline checks did not finish within the time left.
+- `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer at all, or the Node step failed. `failed` also covers any error in the plugin. After two providers, the reason names each, for example `typesafe HTTP 503, openrouter timeout`.
 
 [Facts behind this section](../../docs/clients.md#hermes-routing-and-refusals)
 
@@ -187,6 +180,8 @@ The budget record lives in the process that holds the plugin: the gateway, or th
 The plugin runs the scoring step in Node. It uses only Hermes's own Node. It never uses a Node on `PATH`, and it reports `node not found` when Hermes has none. It starts the program `route.mjs` once per task. It writes the request to the program's standard input and reads one line of JSON back. Keys travel on standard input only.
 
 The program sees a short list of environment variables. [The program the plugin starts](PRIVACY.md#the-program-the-plugin-starts) lists them. The list holds the proxy variables. Node's `fetch` reads `HTTPS_PROXY` and `HTTP_PROXY` only when `NODE_USE_ENV_PROXY=1` is set. When a proxy variable is present, the plugin sets that switch, unless the environment sets it already. `NO_PROXY` alone turns nothing on.
+
+Node reads the switch from 22.21.0 on the 22 line, and from 24.0.0. An older Node ignores the switch and connects directly.
 
 [Facts behind this section](../../docs/clients.md#hermes-runtime-logs-and-environment)
 
