@@ -3,6 +3,42 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.17.0 - 2026-11-06
+#### Features
+- shared decision modules for every adapter, omp settings under the installed package name, and trimmed keys (627d13d)
+#### Documentation
+- state the contract of each branching function the shared and omp change touches (e4598be)
+- document the contract of each function this change touches (a01dcef)
+- give the scan command its --base argument in CONTRIBUTING (9f45fad)
+- name the two claude lines in the README setup opener (ab2d2e8)
+- state what the checks guarantee and cite every client fact (686dac2)
+- state the omp upgrade scope as its documentation does (3cfac8a)
+- describe the metadata source and the new CI checks (bdf1127)
+- add the client facts and the reasons for the build (8b55220)
+#### Tests
+- copy only regular files in the hook test and bound each hook below the timeout (8cbcbb5)
+- wait for the second omp dialog by condition, not by a tick count (4ef04c1)
+- keep the scan test's sample file in a temporary folder (75f36d5)
+#### Build system
+- scan from the merge base with origin/main when no --base is given (31aacb1)
+- keep every output path in scripts/build/outputs.ts (a496d36)
+- fail the scan on unreadable headers, escaped Windows paths and git errors (d970d6f)
+- link each README install section to its setup steps (3817d38)
+- hold the source texts, the schema and the version line to the code (8037c2d)
+- tighten the owner-setup scan and keep the output list in one module (af441a6)
+- scan the last commit when the base is not in the clone (7921436)
+- write the version into metadata/source.json (74859b7)
+- generate the README install region from the metadata (d92cc04)
+- list the generated files and scan them for owner-setup facts (45bc494)
+- render the manifests and catalogues from metadata/source.json (2883d64)
+#### Continuous Integration
+- run the tests through one npm test script (8ad7d03)
+- time-limit the tests and validate the plugin in the install job only (37e2da3)
+- check the generated files, install both plugins and scan each change (620f72f)
+
+- - -
+
+
 ## v0.16.1 - 2026-11-05
 #### Bug Fixes
 - send one fixed role for each harness's default agent (f5e7784)
