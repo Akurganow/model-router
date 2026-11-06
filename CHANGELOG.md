@@ -3,6 +3,46 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.19.0 - 2026-11-06
+#### Features
+- (**hermes**) a read-only settings tool, a provider command for local sessions and a setup skill (95179f7)
+- (**hermes**) route each delegate_task task through a Python delegation provider that never refuses a task (85fbea5)
+- (**hermes**) decide each delegated task's route in a Node program and build the Hermes plugin files (0f2d36e)
+#### Bug Fixes
+- (**hermes**) a repeated log line counts as the most recent, so the once-log drops the oldest (fa27627)
+- (**hermes**) pass SYSTEMROOT to Node, which Windows needs in a replaced environment (65de158)
+- (**hermes**) require Hermes 0.22.6, the first release with the function the offline slot check imports (f6fd2a1)
+- (**hermes**) a failed score or a bad budget reads failed, and a slot check out of time reads timeout (ebdf4c3)
+- (**hermes**) an OpenRouter slot passes the offline credential check, as Hermes resolves OpenRouter outside its provider registry (af583e7)
+- (**hermes**) the scoring request goes through the proxy that the environment names (6ef6d01)
+#### Documentation
+- (**hermes**) name the proxy variables that turn Node's proxy support on, and keep the full rule in the README (0d55ac8)
+- (**hermes**) record the live run after the protocol keyed the models by slot (221c490)
+- (**hermes**) a keys table, the backend warning beside the install block, and one copy of the sample label (9e98a5d)
+- (**hermes**) one copy of the skip reasons, the backend on at install, and the Hermes floor, credential and Windows facts (e4a23b7)
+- (**hermes**) record the live run that routed a real call in process and in the plugin host (fff4f26)
+- (**hermes**) install, setup, routing, privacy and the client facts behind them (dc712b0)
+#### Tests
+- (**hermes**) the config tool's output ignores key length, and the provider command runs through Hermes's dispatcher (7aac5a5)
+- (**hermes**) the catalogue test reads a written disk cache, and installs_held has a test of its own (0ca4d40)
+- (**hermes**) call each Hermes function the shim uses on the real Hermes, so a rename fails CI (359ecee)
+- (**hermes**) mask a key-variable string in the task, which the owner-setup scan does not read as a key (3523e08)
+- the runner-context guard sees past a blank line in a job's env (2ca4255)
+- read the Hermes pin groups through a typed match (379591f)
+#### Build system
+- carry the merged version into the Hermes plugin manifest (a5a74a3)
+#### Continuous Integration
+- set the Hermes home in the hermes job's first step, as a job env cannot read the runner context (8e666f0)
+- Renovate raises the uv that setup-hermes installs, with the actions and after the age rule (f665402)
+- test, validate and install the Hermes plugin against the latest Hermes release, pinned by tag and commit (89fe7c4)
+#### Refactoring
+- (**hermes**) the Node protocol keys models by slot, drops the level and returns finished lines (3aea73a)
+- keep the tool name in the OpenClaw config and the provider list in the Hermes request (a3b3f1b)
+- one source for the skip reasons, the line prefixes and the timer clock that more than one adapter prints (be36528)
+
+- - -
+
+
 ## v0.18.1 - 2026-11-06
 #### Bug Fixes
 - a seance item with a model keeps the seance reason, and the item model check runs inside the item check (5d6f8ea)
