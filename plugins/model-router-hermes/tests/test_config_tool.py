@@ -92,13 +92,21 @@ class SettingHelpTest(unittest.TestCase):
 
 
 class NoKeyLeakTest(unittest.TestCase):
-    def test_no_output_holds_a_key_or_its_length(self):
-        handler = handler_for(good_settings(provider="auto"), SECRETS)
-        outputs = [handler({})] + [handler({"setting": s}) for s in (*TEXTS["settings"], "x")]
-        for raw in outputs:
+    @staticmethod
+    def outputs(secrets):
+        handler = handler_for(good_settings(provider="auto"), secrets)
+        return [handler({})] + [handler({"setting": s}) for s in (*TEXTS["settings"], "x")]
+
+    def test_no_output_holds_a_key(self):
+        for raw in self.outputs(SECRETS):
             for secret in SECRETS.values():
                 self.assertNotIn(secret, raw)
-                self.assertNotIn(str(len(secret)), raw)
+
+    def test_no_output_changes_with_a_key_length(self):
+        baseline = self.outputs(SECRETS)
+        for name, secret in SECRETS.items():
+            with self.subTest(name):
+                self.assertEqual(self.outputs({**SECRETS, name: secret + "x" * 17}), baseline)
 
     def test_a_failure_message_holds_no_key(self):
         def boom(name):

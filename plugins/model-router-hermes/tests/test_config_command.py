@@ -1,6 +1,6 @@
 import unittest
 
-from support import CONSTANTS, FakeCtx, UnreadableCtx, good_settings, submodule
+from support import CONSTANTS, REAL_HERMES, FakeCtx, UnreadableCtx, good_settings, submodule
 
 TEXTS = CONSTANTS["texts"]
 LINES = TEXTS["lineBreak"]
@@ -120,13 +120,30 @@ class RegistrationTest(unittest.TestCase):
         self.assertEqual(entry["description"], TEXTS["commandDescription"])
         self.assertEqual(entry["args_hint"], TEXTS["argsHint"])
 
-    def test_hermes_passes_only_the_keywords_the_signature_names(self):
-        import inspect
 
-        _, handler = command()
-        names = inspect.signature(handler).parameters
-        self.assertIn("platform", names)
-        self.assertIn("raw_args", names)
+
+@unittest.skipUnless(REAL_HERMES, "the real Hermes modules do not import here")
+class HermesDispatchTest(unittest.TestCase):
+    """The command runs through Hermes's own dispatcher, with the context a session passes."""
+
+    def dispatch(self, platform):
+        from hermes_cli.plugin_command_dispatch import invoke_plugin_command
+
+        ctx, handler = command(good_settings(provider="auto"))
+        reply = invoke_plugin_command(
+            handler, "openrouter", source=None, session_id="s", session_key="s", platform=platform
+        )
+        return ctx, reply
+
+    def test_a_cli_session_writes_the_provider(self):
+        ctx, reply = self.dispatch("cli")
+        self.assertEqual(reply, TEXTS["providerLines"]["openrouter"])
+        self.assertEqual(ctx.written, [("provider", "openrouter")])
+
+    def test_a_messaging_platform_is_refused(self):
+        ctx, reply = self.dispatch("telegram")
+        self.assertTrue(reply.startswith(TEXTS["refused"]))
+        self.assertEqual(ctx.written, [])
 
 
 if __name__ == "__main__":
