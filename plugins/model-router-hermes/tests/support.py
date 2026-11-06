@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from node_stub import NodeStub, make_node_stub  # noqa: F401  (re-exported for the tests)
+from node_stub import make_node_stub
 
 PLUGIN_DIR = Path(__file__).resolve().parent.parent
 FIXTURES = sorted((PLUGIN_DIR / "tests" / "fixtures").glob("*.json"))
@@ -95,7 +95,8 @@ def submodule(stem: str, plugin: types.ModuleType = PLUGIN) -> types.ModuleType:
 
 
 CONSTANTS = json.loads((PLUGIN_DIR / "constants.json").read_text(encoding="utf-8"))
-PREFIX = CONSTANTS["linePrefix"]
+# Node returns finished lines, so every line a test stub answers starts with this.
+PREFIX = "model-router "
 
 
 def skipped_label(reason_key: str) -> str:
@@ -103,7 +104,7 @@ def skipped_label(reason_key: str) -> str:
 
 
 def unresolved_label(slot: str) -> str:
-    return CONSTANTS["slots"][slot]["unresolved"]
+    return CONSTANTS["skips"][CONSTANTS["slots"][slot]["unresolved"]]
 
 
 class FakeCtx:
@@ -231,14 +232,13 @@ def default_route(config: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in config.items() if k != "service_tier"}
 
 
-def route_reply(slot: str | None, effort: str | None, line: str = "L1 test line") -> dict[str, Any]:
-    reply: dict[str, Any] = {"outcome": "route", "effort": effort, "line": line}
-    if slot is not None:
-        reply["slot"] = slot
-    return reply
+def route_reply(
+    slot: str | None, effort: str | None, line: str = PREFIX + "L1 test line"
+) -> dict[str, Any]:
+    return {"outcome": "route", "slot": slot, "effort": effort, "line": line}
 
 
-def skip_reply(line: str = "skipped, test") -> dict[str, Any]:
+def skip_reply(line: str = PREFIX + "skipped, test") -> dict[str, Any]:
     return {"outcome": "skip", "line": line}
 
 

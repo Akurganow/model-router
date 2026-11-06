@@ -39,7 +39,7 @@ class RouteConstructionTest(RouterCase):
             with self.subTest(slot):
                 route, _ = self.route(
                     {k: v for k, v in self.CONFIG.items() if k != "reasoning_effort"},
-                    reply=route_reply(slot, "medium", "L-line"),
+                    reply=route_reply(slot, "medium", PREFIX + "L-line"),
                 )
                 self.assertEqual(
                     route,
@@ -55,18 +55,18 @@ class RouteConstructionTest(RouterCase):
                 )
 
     def test_no_slot_changes_only_the_effort(self):
-        route, _ = self.route(reply=route_reply(None, "xhigh", "L1 no change"))
+        route, _ = self.route(reply=route_reply(None, "xhigh", PREFIX + "L1 no change"))
         self.assertEqual(route, {"reasoning_effort": "xhigh", "label": PREFIX + "L1 no change"})
 
     def test_config_effort_stays_when_the_response_has_none(self):
         for slot in (None, *CONSTANTS["slots"]):
             with self.subTest(slot):
-                route, _ = self.route(self.CONFIG, reply=route_reply(slot, None, "L"))
+                route, _ = self.route(self.CONFIG, reply=route_reply(slot, None, PREFIX + "L"))
                 self.assertEqual(route["reasoning_effort"], "high")
                 self.assertEqual(route["label"], PREFIX + "L")
 
     def test_no_effort_and_no_config_effort_sets_no_key(self):
-        route, _ = self.route(reply=route_reply(None, None, "L"))
+        route, _ = self.route(reply=route_reply(None, None, PREFIX + "L"))
         self.assertEqual(route, {"label": PREFIX + "L"})
 
     def test_every_effort_is_valid_for_hermes_and_max_is_absent(self):
@@ -105,6 +105,22 @@ class RouteConstructionTest(RouterCase):
                     route, {**self.expected_base(), "label": unresolved_label(slot)}
                 )
 
+    def test_a_slot_the_settings_do_not_hold_is_a_failed_skip(self):
+        calls = []
+        api = fake_api(list_models=lambda provider: calls.append(provider) or ["small-model"])
+        route, _ = self.route(self.CONFIG, reply=route_reply("medium", "low"), api=api)
+        self.assertEqual(route, {**self.expected_base(), "label": skipped_label("failed")})
+        self.assertEqual(calls, [])
+
+    def test_an_effort_the_ladder_does_not_give_is_a_failed_skip(self):
+        for effort in ("max", "ultra", "Low", ""):
+            for slot in (None, "small"):
+                with self.subTest(effort=effort, slot=slot):
+                    route, _ = self.route(self.CONFIG, reply=route_reply(slot, effort))
+                    self.assertEqual(
+                        route, {**self.expected_base(), "label": skipped_label("failed")}
+                    )
+
     def test_slot_check_runs_only_for_a_named_slot(self):
         calls = []
         api = fake_api(list_models=lambda provider: calls.append(provider) or [])
@@ -133,7 +149,7 @@ class RouteConstructionTest(RouterCase):
 
         def spend_the_budget(*_args):
             clock.advance(9)
-            return node.Route("small", "low", "L")
+            return node.Route("small", "low", PREFIX + "L")
 
         api = fake_api(list_models=lambda provider: calls.append(provider) or ["small-model"])
         with mock.patch.object(node, "run_node", spend_the_budget):

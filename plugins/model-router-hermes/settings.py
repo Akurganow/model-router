@@ -17,8 +17,13 @@ class Slot:
         return bool(self.model)
 
 
+def stripped(value):
+    """The trimmed text of a string; None when the value is not text."""
+    return value.strip() if isinstance(value, str) else None
+
+
 def _text(value):
-    return value.strip() if isinstance(value, str) else ""
+    return stripped(value) or ""
 
 
 def read_provider(ctx, constants):
@@ -43,6 +48,6 @@ def found_keys(api, constants, provider):
     found = {}
     for name in providers["order"][provider]:
         value = api.get_secret(providers["keyVariables"][name])
-        if isinstance(value, str) and value.strip():
+        if stripped(value):
             found[name] = value
     return found

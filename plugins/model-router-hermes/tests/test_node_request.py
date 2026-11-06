@@ -36,8 +36,7 @@ class NodeRequestTest(RouterCase):
                 "provider": "typesafe",
                 "keys": {"typesafe": "typesafe-secret-one"},
                 "budgetMs": 1000,
-                "smallModel": "small-model",
-                "largeModel": "large-model",
+                "models": {"small": "small-model", "large": "large-model"},
                 "configEffort": False,
             },
         )
@@ -80,7 +79,7 @@ class NodeRequestTest(RouterCase):
                 large_model={"provider": "p", "model": " l "},
             )
         )
-        self.assertEqual((request["smallModel"], request["largeModel"]), (None, "l"))
+        self.assertEqual(request["models"], {"small": None, "large": "l"})
 
     def test_config_effort_flag(self):
         for value, flag in (
@@ -115,8 +114,7 @@ class BudgetHandoffTest(RouterCase):
         self.assertEqual(first.args[2], 9.0)
         self.assertEqual(second.args[1]["budgetMs"], 5500)
         self.assertEqual(second.args[2], 6.5)
-        self.assertEqual(first.args[3], CONSTANTS["efforts"])
-        self.assertEqual(first.args[4], list(CONSTANTS["slots"]))
+        self.assertEqual(len(first.args), 3)
 
     def test_budget_is_whole_milliseconds(self):
         clock = FakeClock()

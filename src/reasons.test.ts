@@ -4,9 +4,12 @@ import { join } from "node:path";
 import { test } from "node:test";
 import {
 	CONFIG_EFFORT,
+	LEVEL_SLOTS,
 	modelUnresolved,
 	modelUnset,
 	NO_END_MODEL,
+	NODE_NOT_FOUND,
+	SLOTS,
 	SUBAGENT_MODEL_SET,
 } from "./reasons.ts";
 
@@ -14,10 +17,16 @@ test("the shared reasons keep the texts the harnesses print", () => {
 	assert.equal(CONFIG_EFFORT, "config effort");
 	assert.equal(SUBAGENT_MODEL_SET, "subagent model set");
 	assert.equal(NO_END_MODEL, "no small or large model");
+	assert.equal(NODE_NOT_FOUND, "node not found");
 	assert.equal(modelUnset("small"), "small model unset");
 	assert.equal(modelUnset("large"), "large model unset");
 	assert.equal(modelUnresolved("small"), "small model unresolved");
 	assert.equal(modelUnresolved("large"), "large model unresolved");
+});
+
+test("level 0 names the small slot, level 2 the large slot, and the middle none", () => {
+	assert.deepEqual(LEVEL_SLOTS, { 0: "small", 2: "large" });
+	assert.deepEqual(Object.values(LEVEL_SLOTS), [...SLOTS]);
 });
 
 test("no other source file spells a shared reason", () => {
@@ -25,6 +34,7 @@ test("no other source file spells a shared reason", () => {
 		CONFIG_EFFORT,
 		SUBAGENT_MODEL_SET,
 		NO_END_MODEL,
+		NODE_NOT_FOUND,
 		" model unset",
 		" model unresolved",
 	];

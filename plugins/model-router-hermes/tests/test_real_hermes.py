@@ -1,7 +1,10 @@
 import inspect
+import json
 import os
 import socket
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from support import REAL_HERMES, fake_api, make_router, submodule, task
@@ -92,20 +95,33 @@ class HermesApiOnHermesTest(unittest.TestCase):
         self.assertEqual(hermes_api.live_api().find_node(), found)
 
     def test_list_models_reads_the_catalogue_offline(self):
-        with mock.patch.object(socket.socket, "connect", _no_network), mock.patch.object(
-            socket, "create_connection", _no_network
+        # Hermes ships no catalogue; offline it reads only the home's disk cache, so the test writes one.
+        import agent.models_dev as models_dev
+
+        cache = {"deepseek": {"id": "deepseek", "models": {"deepseek-chat": {"id": "deepseek-chat"}}}}
+        home = tempfile.TemporaryDirectory()
+        self.addCleanup(home.cleanup)
+        Path(home.name, "models_dev_cache.json").write_text(json.dumps(cache), encoding="utf-8")
+        with (
+            mock.patch.dict(os.environ, {"HERMES_HOME": home.name}),
+            mock.patch.object(models_dev, "_models_dev_cache", {}),
+            mock.patch.object(socket.socket, "connect", _no_network),
+            mock.patch.object(socket, "create_connection", _no_network),
         ):
             models = hermes_api.live_api().list_models("deepseek")
-        self.assertIsInstance(models, list)
+        self.assertEqual(models, ["deepseek-chat"])
 
     def test_resolve_runtime_provider_takes_the_keywords_the_shim_passes(self):
-        from hermes_cli.left_core_migration import installs_held
         from hermes_cli.runtime_provider import resolve_runtime_provider
 
         parameters = inspect.signature(resolve_runtime_provider).parameters
         for name in ("requested", "target_model"):
             with self.subTest(name):
                 self.assertEqual(parameters[name].kind, inspect.Parameter.KEYWORD_ONLY)
+
+    def test_installs_held_is_a_context_manager(self):
+        from hermes_cli.left_core_migration import installs_held
+
         with installs_held():
             pass
 

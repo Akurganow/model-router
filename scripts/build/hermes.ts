@@ -10,7 +10,12 @@ import {
 	PROVIDER_VALUES,
 	resolve as resolveProvider,
 } from "../../src/provider.ts";
-import { modelUnresolved, SLOTS, slotSetting } from "../../src/reasons.ts";
+import {
+	type EndSlot,
+	modelUnresolved,
+	SLOTS,
+	slotSetting,
+} from "../../src/reasons.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";
@@ -68,9 +73,12 @@ const efforts = (): string[] => [
 const skipLine = (reason: string): string =>
 	`${LINE_PREFIX}${skippedLine(reason)}`;
 
-// What the Python shim needs and must not retype: the limits, the provider rules, the efforts and the finished skip lines.
+// The skips key of the line a slot gives when its model does not resolve.
+const unresolvedKey = (slot: EndSlot): string => `${slot}ModelUnresolved`;
+
+// What the Python shim needs and must not retype: the limits, the provider rules, the efforts and the finished skip lines. A slot names the skip line it gives, never holds one.
 const constants = (source: Source): JsonObject => {
-	const { linePrefix, graceMs, reasons } = HERMES_TEXTS;
+	const { graceMs, reasons } = HERMES_TEXTS;
 	return {
 		routingLimitMs: ROUTING_LIMIT_MS,
 		graceMs,
@@ -81,16 +89,22 @@ const constants = (source: Source): JsonObject => {
 			keyVariables: { ...KEY_VARIABLES },
 		},
 		efforts: efforts(),
-		linePrefix,
-		skips: Object.fromEntries(
-			Object.entries(reasons).map(([key, reason]) => [key, skipLine(reason)]),
-		),
+		skips: Object.fromEntries([
+			...Object.entries(reasons).map(([key, reason]) => [
+				key,
+				skipLine(reason),
+			]),
+			...SLOTS.map((slot) => [
+				unresolvedKey(slot),
+				skipLine(modelUnresolved(slot)),
+			]),
+		]),
 		slots: Object.fromEntries(
 			SLOTS.map((slot) => [
 				slot,
 				{
 					setting: slotSetting(slot),
-					unresolved: skipLine(modelUnresolved(slot)),
+					unresolved: unresolvedKey(slot),
 				},
 			]),
 		),

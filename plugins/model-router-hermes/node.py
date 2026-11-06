@@ -37,7 +37,9 @@ class Skip:
 
 @dataclass(frozen=True)
 class Route:
-    """slot names the model slot the route takes; None leaves the task's own model."""
+    """slot names the model slot the route takes; None leaves the task's own model.
+
+    This module checks only the shape: whether a slot or an effort exists is the router's to say."""
 
     slot: object
     effort: object
@@ -56,39 +58,36 @@ def child_env(environ):
     return env
 
 
-def _is_slot(value, slots):
-    return isinstance(value, str) and value in slots
+def _is_text_or_none(value):
+    return value is None or isinstance(value, str)
 
 
-def _is_effort(value, efforts):
-    return value is None or (isinstance(value, str) and value in efforts)
-
-
-def _checked(reply, efforts, slots):
+def _checked(reply):
     if not isinstance(reply, dict) or not isinstance(reply.get("line"), str):
         raise NodeFailed("reply has no line")
     if reply.get("outcome") == "skip":
         return Skip(reply["line"])
     if (
         reply.get("outcome") == "route"
-        and ("slot" not in reply or _is_slot(reply["slot"], slots))
+        and "slot" in reply
         and "effort" in reply
-        and _is_effort(reply["effort"], efforts)
+        and _is_text_or_none(reply["slot"])
+        and _is_text_or_none(reply["effort"])
     ):
-        return Route(reply.get("slot"), reply["effort"], reply["line"])
+        return Route(reply["slot"], reply["effort"], reply["line"])
     raise NodeFailed("reply is outside the protocol")
 
 
-def parse_response(text, efforts, slots):
+def parse_response(text):
     """Reads Node's stdout. Raises NodeFailed unless it is one protocol object."""
     try:
         reply = json.loads(text)
     except ValueError:
         raise NodeFailed("reply is not one JSON object") from None
-    return _checked(reply, efforts, slots)
+    return _checked(reply)
 
 
-def run_node(command, request, timeout_s, efforts, slots):
+def run_node(command, request, timeout_s):
     """Runs `command` (a list, no shell) with the request on stdin; returns a Skip or a Route."""
     try:
         done = subprocess.run(
@@ -107,6 +106,6 @@ def run_node(command, request, timeout_s, efforts, slots):
     if done.returncode != 0:
         raise NodeFailed("node exited non-zero")
     try:
-        return parse_response(done.stdout.decode("utf-8"), efforts, slots)
+        return parse_response(done.stdout.decode("utf-8"))
     except UnicodeDecodeError:
         raise NodeFailed("reply is not text") from None

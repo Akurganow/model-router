@@ -23,6 +23,8 @@ model-router scores each `delegate_task` task with Jev, on TypeSafe or OpenRoute
 
 ## Step 1. Enable the plugin and the backend
 
+If the install block ran, confirm both settings and go to Step 2.
+
 The person opts in twice. Ask them to run both commands, then confirm:
 
 ```sh
@@ -32,7 +34,7 @@ hermes config set delegation.backend model-router
 
 [Hermes Agent](https://github.com/Akurganow/model-router/blob/main/README.md#hermes-agent) shows the install and the two commands.
 
-Hermes runs one delegation backend at a time. Setting `delegation.backend` to `model-router` replaces `model_map` or any other backend. Say so before the person runs the second command.
+Setting `delegation.backend` to `model-router` replaces `model_map` or any other backend. Say so before the person runs the second command.
 
 A backend change applies from the next session. In a running session the person types `/delegation model-router --now`.
 
@@ -55,7 +57,7 @@ The command replies with the new `provider` line. If it replies `provider unchan
 
 ## Step 4. Keys
 
-The TypeSafe key is the plugin secret `typesafe_api_key`. Hermes stores it as `TYPESAFE_API_KEY` in its `.env` file. The person enters it in the plugin's settings form in Hermes Desktop, or writes the line themselves. The OpenRouter key is read from `OPENROUTER_API_KEY` and is not a plugin setting.
+[The keys table](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#keys) lists each key, its variable and where to set it.
 
 1. Call the tool with no setting.
 2. Note each provider that reports `key: unset`.
@@ -77,7 +79,7 @@ If a key is missing for every allowed provider, say that every task skips with `
 
 Each slot is a mapping with two fields. `provider` is a Hermes provider id, such as `openrouter`. `model` is an id from Hermes's offline model list for that provider. A slot with no `model` counts as unset.
 
-The plugin resolves a slot before it uses it. It skips the slot when the provider needs a network call to refresh its credentials, or when the model is not in the offline list. [Set up Hermes Agent](https://github.com/Akurganow/model-router/blob/main/README.md#set-up-hermes-agent) says what the plugin needs.
+The plugin resolves a slot before it uses it. It skips the slot when the provider needs a network call to refresh its credentials, or when the model is not in the offline list. [Models](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#models) says what the plugin needs.
 
 ## Step 6. List the reasons routing is off
 

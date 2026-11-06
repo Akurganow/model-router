@@ -6,8 +6,7 @@
 		"provider": "auto",
 		"keys": { "typesafe": "typesafe-key", "openrouter": "openrouter-key" },
 		"budgetMs": 8000,
-		"smallModel": "openai/small",
-		"largeModel": "openai/large",
+		"models": { "small": "openai/small", "large": "openai/large" },
 		"configEffort": false
 	},
 	"jev": [
@@ -16,8 +15,8 @@
 	],
 	"response": {
 		"outcome": "route",
-		"level": 1,
+		"slot": null,
 		"effort": "low",
-		"line": "L1 no change · low · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok · via openrouter (typesafe HTTP 500)"
+		"line": "model-router L1 no change · low · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok · via openrouter (typesafe HTTP 500)"
 	}
 }

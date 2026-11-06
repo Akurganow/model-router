@@ -20,7 +20,7 @@ node = submodule("node")
 class DefaultRouteTest(RouterCase):
     def test_skip_returns_the_default_route_plus_label(self):
         config = {"reasoning_effort": "low", "api_mode": "chat", "service_tier": "fast", "x": 1}
-        route, _ = self.route(config, reply=skip_reply("skipped, test"))
+        route, _ = self.route(config, reply=skip_reply(PREFIX + "skipped, test"))
         self.assertEqual(
             route,
             {

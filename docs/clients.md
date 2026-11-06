@@ -864,10 +864,10 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
   Under `plugins.isolation: host`, two tasks of one call routed to `openai/gpt-6-luna` at effort `low` ran two child sessions with `model = openai/gpt-6-luna` and effort `low`; the summaries were `ping` and `pong`.
   (running: Hermes v0.22.7, the probe plugin, `hermes -z "<call delegate_task once …>" -m google/gemini-2.5-flash --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 330 s alarm, once for each turn, 2026-11-06)
 - This repository's plugin routed a real call. One `delegate_task` call held a lookup task and a design task. The provider was `typesafe`, `small_model` was `openrouter openai/gpt-6-luna` and `large_model` was `openrouter openai/gpt-6.1-terra`.
-  In process, the lookup task read `model-router L0 openai/gpt-6-luna · medium · p=0.67/0.98 · jev jev-1.14.0 · 686/30 tok`, and the design task read `model-router L2 openai/gpt-6.1-terra · high · p=1.00/0.63 · jev jev-1.14.0 · 705/30 tok`.
+  In process, the lookup task read `model-router L0 openai/gpt-6-luna · medium · p=0.67/0.99 · jev jev-1.14.0 · 686/30 tok`, and the design task read `model-router L2 openai/gpt-6.1-terra · high · p=1.00/0.60 · jev jev-1.14.0 · 705/30 tok`.
   The child sessions ran `openai/gpt-6-luna` at effort `medium` and `openai/gpt-6.1-terra` at effort `high`. Each result entry carried the line in `route.label`, and `agent.log` held both lines.
-  After `hermes gateway stop` and `plugins.isolation: host`, the same call gave the same levels, models and efforts, with `p=0.67/0.97` and `p=1.00/0.61`. `route.label` carried both lines, and `agent.log` held no routing line.
-  (running: Hermes v0.22.7, the plugin installed with `hermes plugins install "file://<clone>#plugins/model-router-hermes" --enable` on a fresh Hermes home and set up as its README says, `hermes -z "<call delegate_task once with two tasks …>" -m openai/gpt-6-luna --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 400 s alarm, once for each mode, 2026-11-06, repeated after the reply began to name the slot)
+  After `hermes gateway stop` and `plugins.isolation: host`, the same call gave the same levels, models and efforts, with `p=0.63/0.99` and `p=1.00/0.61`. `route.label` carried both lines, and `agent.log` held no routing line.
+  (running: Hermes v0.22.7, the plugin installed with `hermes plugins install "file://<clone>#plugins/model-router-hermes" --enable` on a fresh Hermes home and set up as its README says, `hermes -z "<call delegate_task once with two tasks …>" -m openai/gpt-6-luna --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 400 s alarm, once for each mode, 2026-11-06, repeated after the request began to key the models by slot and the reply dropped the level)
 - Hermes maps a requested effort that a wire does not support to the nearest weaker supported level, and to the weakest level when none is weaker.
   (source: [`reasoning_effort.py` L127–L139](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/reasoning_effort.py#L127-L139))
 
@@ -978,7 +978,8 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
 - The `setup-hermes` action clones the release tag, checks that `HEAD` equals the pinned commit, and runs `uv sync --frozen --no-dev --no-build --python 3.14`, so only the wheels that Hermes's own `uv.lock` locks install. It then checks that `hermes --version` names the tag.
   It pins `v0.23.0` at commit `2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19`. A Renovate rule raises the tag and the commit together with no age delay.
   (source: `.github/actions/setup-hermes/action.yml`; [CONTRIBUTING.md, Dependencies](../CONTRIBUTING.md#dependencies))
-- The tests of the plugin call each handler and the router directly with a fake Hermes API. One test, `test_real_hermes.py`, compares the plugin's default route with Hermes's bundled default backend and runs only under Hermes's interpreter.
+- The tests of the plugin call each handler and the router directly with a fake Hermes API. One test file, `plugins/model-router-hermes/tests/test_real_hermes.py`, runs only under Hermes's interpreter. It calls each Hermes function the shim uses, and compares the default route with Hermes's bundled default backend.
+  Its catalogue test writes a one-provider `models_dev_cache.json` into a scratch Hermes home, because Hermes ships no catalogue and reads only that disk cache offline.
   (source: `plugins/model-router-hermes/tests/`)
 
 ### Hermes gaps

@@ -4,10 +4,8 @@ import unittest
 
 from support import (
     default_route,
-    CONSTANTS,
     FIXTURES,
     PLUGIN_DIR,
-    PREFIX,
     RouterCase,
     submodule,
 )
@@ -21,9 +19,9 @@ class FixtureReplayTest(RouterCase):
     def expected(self, response, config):
         base = default_route(config)
         if response["outcome"] == "skip":
-            return {**base, "label": PREFIX + response["line"]}
-        slot, effort = response.get("slot"), response["effort"]
-        route = {**base, "label": PREFIX + response["line"]}
+            return {**base, "label": response["line"]}
+        slot, effort = response["slot"], response["effort"]
+        route = {**base, "label": response["line"]}
         if slot is not None:
             route.update(model=f"{slot}-model", provider="openrouter")
         if effort is not None:
@@ -55,8 +53,6 @@ class RealBundleTest(unittest.TestCase):
                     [node_path, str(PLUGIN_DIR / "route.mjs")],
                     fixture["request"],
                     20,
-                    CONSTANTS["efforts"],
-                    list(CONSTANTS["slots"]),
                 )
                 self.assertEqual(result, node.Skip(fixture["response"]["line"]))
 

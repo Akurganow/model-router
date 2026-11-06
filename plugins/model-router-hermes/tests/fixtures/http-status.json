@@ -6,10 +6,9 @@
 		"provider": "typesafe",
 		"keys": { "typesafe": "typesafe-key" },
 		"budgetMs": 8000,
-		"smallModel": "openai/small",
-		"largeModel": "openai/large",
+		"models": { "small": "openai/small", "large": "openai/large" },
 		"configEffort": false
 	},
 	"jev": [{ "host": "api.typesafe.ai", "reply": { "status": 401 } }],
-	"response": { "outcome": "skip", "line": "skipped, HTTP 401" }
+	"response": { "outcome": "skip", "line": "model-router skipped, HTTP 401" }
 }

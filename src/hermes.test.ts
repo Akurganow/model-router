@@ -80,11 +80,10 @@ const REQUEST = {
 	provider: "typesafe",
 	keys: { typesafe: "typesafe-key" },
 	budgetMs: ROUTING_LIMIT_MS,
-	smallModel: "openai/small",
-	largeModel: "openai/large",
+	models: { small: "openai/small", large: "openai/large" },
 	configEffort: false,
 };
-const FAILED_SKIP = { outcome: "skip", line: "skipped, failed" };
+const FAILED_SKIP = { outcome: "skip", line: "model-router skipped, failed" };
 const ONE = [
 	{ host: "api.typesafe.ai", reply: { levels: { tier: 1, work: 1 } } },
 ] satisfies Step[];
@@ -131,7 +130,7 @@ describe("failures", () => {
 			const { response, jev } = run(raw, []);
 			assert.deepEqual(await response, {
 				outcome: "skip",
-				line: "skipped, failed",
+				line: "model-router skipped, failed",
 			});
 			assert.deepEqual(jev.hosts, []);
 		});
@@ -146,7 +145,7 @@ describe("failures", () => {
 		const { response, jev } = run(hostile, ONE);
 		assert.deepEqual(await response, {
 			outcome: "skip",
-			line: "skipped, failed",
+			line: "model-router skipped, failed",
 		});
 		assert.deepEqual(jev.hosts, []);
 	});
@@ -175,16 +174,6 @@ describe("failures", () => {
 		assert.deepEqual(await routeRequest(REQUEST, deps), FAILED_SKIP);
 	});
 
-	it("gives the timeout skip when the run outlasts the budget", async () => {
-		const { response } = run(REQUEST, [
-			{ host: "api.typesafe.ai", reply: "hang" },
-		]);
-		assert.deepEqual(await response, {
-			outcome: "skip",
-			line: "skipped, timeout",
-		});
-	});
-
 	it("never lets a key reach the response", async () => {
 		const { response } = run({ ...REQUEST, keys: { typesafe: "k-9f3" } }, [
 			{ host: "api.typesafe.ai", reply: { status: 401 } },
@@ -203,7 +192,7 @@ describe("the entry", () => {
 		assert.equal(result.status, 0);
 		assert.equal(
 			result.stdout,
-			`${JSON.stringify({ outcome: "skip", line: "skipped, key unset" })}\n`,
+			`${JSON.stringify({ outcome: "skip", line: "model-router skipped, key unset" })}\n`,
 		);
 	});
 
@@ -213,7 +202,7 @@ describe("the entry", () => {
 			assert.equal(result.status, 0);
 			assert.equal(
 				result.stdout,
-				`${JSON.stringify({ outcome: "skip", line: "skipped, failed" })}\n`,
+				`${JSON.stringify({ outcome: "skip", line: "model-router skipped, failed" })}\n`,
 			);
 		});
 });

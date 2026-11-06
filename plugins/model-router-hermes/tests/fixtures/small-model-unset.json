@@ -6,8 +6,7 @@
 		"provider": "typesafe",
 		"keys": { "typesafe": "typesafe-key" },
 		"budgetMs": 8000,
-		"smallModel": null,
-		"largeModel": "openai/large",
+		"models": { "small": null, "large": "openai/large" },
 		"configEffort": false
 	},
 	"jev": [
@@ -16,5 +15,8 @@
 			"reply": { "levels": { "tier": 0, "work": 0 } }
 		}
 	],
-	"response": { "outcome": "skip", "line": "skipped, small model unset" }
+	"response": {
+		"outcome": "skip",
+		"line": "model-router skipped, small model unset"
+	}
 }
