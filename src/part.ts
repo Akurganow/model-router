@@ -27,7 +27,10 @@ const PROBABILITY_DIGITS = 2;
 export const formatProbability = (p: number): string =>
 	p.toFixed(PROBABILITY_DIGITS);
 
-// Text that is blank after trimming, and anything that is not text, counts as unset.
+/**
+ * Returns the trimmed text, or undefined when the value is blank after trimming
+ * or is not text. Never throws.
+ */
 export const nonEmpty = (value: unknown): string | undefined => {
 	const text = typeof value === "string" ? value.trim() : "";
 	return text === "" ? undefined : text;

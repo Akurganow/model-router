@@ -47,8 +47,13 @@ function remove(c: Collections, entry: Entry): void {
 	c.entries.delete(entry);
 }
 
-// A decision waits here for the spawn that omp makes later. Every key is bound to its call, so a
-// key left by a call whose spawn never came cannot reach the next call that reuses a name.
+/**
+ * Returns a store of decisions that wait for the spawn omp makes later. Every
+ * key is bound to its call, so a key left by a call whose spawn never came
+ * cannot reach the next call that reuses a name. The store holds at most
+ * STORE_MAX entries and drops the oldest first. The add method keys a decision
+ * by call and index, and by item name when the name is a non-blank string.
+ */
 export function createStore() {
 	const c: Collections = {
 		entries: new Set(),

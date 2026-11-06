@@ -41,8 +41,12 @@ export async function checkGates(
 		: { closed: reason };
 }
 
-// The gates that hold for the whole batch. Each fails closed, and the keys are the cheapest check.
-// What each item needs to be judged comes back as facts, read once.
+/**
+ * Returns the routing and the facts for the whole batch, or a closed reason
+ * when a gate shuts it: unreadable settings, an unset key or an unreadable
+ * config. Each gate fails closed, and the keys are the cheapest check. What
+ * each item needs to be judged comes back as facts, read once. Never throws.
+ */
 export async function openBatch(
 	omp: OmpImports,
 	pi: Pi,
@@ -62,9 +66,13 @@ export async function openBatch(
 	};
 }
 
-// The effective settings hold the project's value when it sets one and the global value otherwise.
-// A project may only narrow the provider, and its scope wins both ways. Unreadable settings give nothing.
-// When omp gave no installed name, reads use the catalogue name. Writes still refuse, in omp-config.
+/**
+ * Returns the effective settings: the project's value when it sets one, and the
+ * global value otherwise. A project may only narrow the provider, and its scope
+ * wins both ways. Returns undefined when the settings are unreadable. When omp
+ * gave no installed name, reads use the catalogue name. Writes still refuse, in
+ * omp-config. Never throws.
+ */
 export async function readSettings(
 	omp: OmpImports,
 	cwd: string,
@@ -86,7 +94,12 @@ export async function readSettings(
 	}
 }
 
-// omp reads a missing lockfile as empty, and so does this.
+/**
+ * Returns the plugin's entry in the lockfile at path. Returns an empty record
+ * when the lockfile is missing, because omp reads a missing lockfile as empty,
+ * and when the file holds no entry for the plugin. Throws on any other read
+ * error and on invalid JSON.
+ */
 async function readGlobal(
 	path: string,
 	plugin: string,
@@ -105,7 +118,11 @@ async function readGlobal(
 	return isRecord(mine) ? mine : {};
 }
 
-// Only the providers the value allows are read. omp's own credential comes first, then the variable.
+/**
+ * Returns the attempts and the keys for the providers the value allows. Reads
+ * only those providers. omp's own credential comes first, then the variable.
+ * Returns no attempts when no key is set. Never throws.
+ */
 async function findKeys(ctx: Context, value: string): Promise<Routing> {
 	const keys: Keys = {};
 	for (const provider of order(value)) {
@@ -115,6 +132,11 @@ async function findKeys(ctx: Context, value: string): Promise<Routing> {
 	return { attempts: plan(value, keys), keys };
 }
 
+/**
+ * Returns the trimmed key of a provider: omp's own credential first, then the
+ * provider's variable. Returns undefined when neither holds a non-blank value.
+ * Never throws.
+ */
 export async function findKey(
 	ctx: Context,
 	provider: Provider,

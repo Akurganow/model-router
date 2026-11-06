@@ -149,7 +149,13 @@ const lockSettings = (state: State, name: string): unknown => {
 	return (lock as { settings?: Record<string, unknown> })?.settings?.[name];
 };
 
-// Like omp, the effective settings are the lockfile's merged with the project's.
+/**
+ * Returns the omp imports over the fake state. Like omp, the effective settings
+ * are the lockfile's merged with the project's, and the project settings apply
+ * only under the state's plugin name. The lockfile goes to disk as the state
+ * holds it, and a state with no lockfile leaves no file. A write lands in the
+ * lockfile and validates nothing.
+ */
 const buildImports = (state: State, dir: () => string): OmpImports => ({
 	get plugin() {
 		return state.plugin;

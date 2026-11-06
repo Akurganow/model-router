@@ -133,6 +133,13 @@ function hit(
 	return false;
 }
 
+/**
+ * Runs the calibration and returns the process exit code. Returns EXIT_USAGE
+ * for bad arguments, an unwritable record file or a missing key. Returns 0 when
+ * tier and work agreement both meet the bar, and 1 otherwise. Expects the
+ * provider first, then an optional model and an optional --record file. Throws
+ * when calibration.jsonl is unreadable or holds invalid JSON.
+ */
 export async function main(
 	args: readonly string[],
 	stdin: NodeJS.ReadStream,

@@ -23,6 +23,11 @@ const scores = (level: number) => ({
 	probabilities: { 0: 0.05, 1: 0.05, 2: 0.05, [level]: 0.9 },
 });
 
+/**
+ * Returns the fake Jev reply with status 200. Its body holds a tier answer when
+ * tier is given, a work answer when work is given, and the model and usage as
+ * passed.
+ */
 const answer = ({ tier, work, model, usage }: Answers): Reply => ({
 	status: 200,
 	ok: true,
@@ -48,7 +53,12 @@ type Run = {
 	reply: (url: string) => Reply;
 };
 
-// Runs one routed spawn and returns the logged lines, the spawn the engine received and the effort its model requests carry.
+/**
+ * Runs one routed spawn and returns the logged lines, the spawn the engine
+ * received and the effort its model requests carry. Sends a caller effort with
+ * the tool call when callerEffort is true. The logged lines leave out what goes
+ * to the debug log.
+ */
 async function spawnOnce({ options, env = {}, callerEffort, reply }: Run) {
 	const logs: string[] = [];
 	const $ = {

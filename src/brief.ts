@@ -60,6 +60,10 @@ export function buildPrompt(task: string, context: string): string {
 	return `${brief}${CONTEXT_LABEL}${prepareBrief(context, budget)}`;
 }
 
+/**
+ * Returns the context unchanged when it is text with a non-blank character, and
+ * an empty string for anything else. Never throws.
+ */
 export function contextText(context: unknown): string {
 	return typeof context === "string" && nonEmpty(context) !== undefined
 		? context

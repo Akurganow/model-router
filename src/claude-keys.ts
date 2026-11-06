@@ -2,8 +2,13 @@ import type { Engine, Options } from "./claude-host.ts";
 import { nonEmpty } from "./part.ts";
 import { KEY_FIELDS, type Keys, order, type Provider } from "./provider.ts";
 
-// Each key goes only to its own provider. The key of a provider the value leaves out is never read.
-// The sensitive option comes first. The desktop app reads it back empty after a restart, so the variable stands in.
+/**
+ * Returns the trimmed keys of the providers the value allows. Each key goes
+ * only to its own provider, and the key of a provider the value leaves out is
+ * never read. The sensitive option comes first. The desktop app reads it back
+ * empty after a restart, so the variable stands in. A provider with no
+ * non-blank key has no entry. A rejected variable lookup passes through.
+ */
 export async function readKeys(
 	$: Engine,
 	options: Options,
