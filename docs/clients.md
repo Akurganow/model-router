@@ -301,7 +301,8 @@ The settings-name facts are unchecked on every omp version from 18.12.6 up to 18
 
 Documentation is the Markdown under `docs/` in `openclaw/openclaw`, published at docs.openclaw.ai.
 Documentation pages below were read on 2026-11-05.
-Every source link is a permalink at commit `d48be80a6379`, which equals tag `v2026.10.10`.
+Every source link is a permalink at commit `d48be80a6379`, the commit `openclaw --version` of the 2026.10.10 release prints.
+It is two commits after tag `v2026.10.10` (`7dc3350cb9f0`), and the two change only `scripts/lib/update-compat-inventory.json`.
 Every running fact names its OpenClaw version and the date it ran.
 
 ### OpenClaw install and update
@@ -429,14 +430,20 @@ Every running fact names its OpenClaw version and the date it ran.
 - An agent turn reuses the Gateway registry whole when its plugin set and inputs are unchanged.
   Otherwise it loads its own registry in `discovery` mode and borrows the unchanged plugins from the Gateway registry.
   (source: [`runtime-plugins.ts` L308–L330](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/runtime-plugins.ts#L308-L330), [`prepared-model-runtime.inbound-registry.ts` L87–L117](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/prepared-model-runtime.inbound-registry.ts#L87-L117), [`loader-runtime-core.ts` L85–L114](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-runtime-core.ts#L85-L114))
+- A prepared turn borrows from the Gateway registry only when the turn may bind Gateway subagents, passes no environment of its own, runs in a Gateway request scope, and uses the same `workspaceDir` as that registry.
+  A plugin is borrowed only when its load inputs match the lent record's.
+  Otherwise the turn's `discovery` load calls the plugin's `register`.
+  (source: [`prepared-model-runtime.inbound-registry.ts` L63–L78](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/prepared-model-runtime.inbound-registry.ts#L63-L78), [`loader-runtime-core.ts` L105–L113](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-runtime-core.ts#L105-L113), [`loader-runtime-core.ts` L479](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-runtime-core.ts#L479))
 - A plugin that a load borrows from the Gateway registry skips `register` in that load.
-  (source: [`loader-runtime-core.ts` L539–L549](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-runtime-core.ts#L539-L549))
+  `projectPluginContributions` copies its `tools`, `typedHooks` and `commands`, among other arrays, into the borrowing registry.
+  (source: [`loader-runtime-core.ts` L539–L549](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-runtime-core.ts#L539-L549), [`registry-contributions.ts` L38–L99](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/registry-contributions.ts#L38-L99), [`registry-empty.ts` L4–L59](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/registry-empty.ts#L4-L59))
 - Chat dispatch reads plugin commands from the registry of the current registration context, then of the request scope, then the active one.
   (source: [`plugin-command-registry.ts` L6–L14](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-command-registry.ts#L6-L14), [`plugin-command-runtime.ts` L189–L197](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-command-runtime.ts#L189-L197), [`commands-plugin.ts` L43–L47](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/auto-reply/reply/commands-plugin.ts#L43-L47))
 - A turn that loads its own registry runs inside it as the request scope, so its command dispatch reads that `discovery` registry.
-  (source: [`gateway-request-scope.ts` L184–L203](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/runtime/gateway-request-scope.ts#L184-L203), [`runtime-plugins.ts` L375–L377](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/runtime-plugins.ts#L375-L377))
-- The compatibility command list reads the active registry.
-  (source: [`commands.ts` L45–L58](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/commands.ts#L45-L58))
+  A Gateway chat turn takes its prepared inbound registry, or loads one, and dispatches inside that registry's scope.
+  (source: [`gateway-request-scope.ts` L184–L203](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/runtime/gateway-request-scope.ts#L184-L203), [`runtime-plugins.ts` L375–L377](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/runtime-plugins.ts#L375-L377), [`dispatch-from-config.ts` L207](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/auto-reply/reply/dispatch-from-config.ts#L207), [`dispatch-from-config.gather.ts` L535–L547](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/auto-reply/reply/dispatch-from-config.gather.ts#L535-L547))
+- `/commands` reads the same registry as chat dispatch: `listPluginCommands` takes `requireActivePluginRegistry`, which returns the registration-context registry, then the request-scope registry, then the active one.
+  (source: [`commands.ts` L52](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/commands.ts#L52), [`runtime.ts` L499–L503](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/runtime.ts#L499-L503), [`gateway-request-scope.ts` L291–L299](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/runtime/gateway-request-scope.ts#L291-L299))
 - An agent run takes a plugin's tools from the registry that holds them, or cold-loads the plugin in `tool-discovery` mode.
   (source: [`tools.ts` L452–L509](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/tools.ts#L452-L509))
 - A discovery-registry tool that matches a Gateway-registry tool by declared identity is replaced by the Gateway's tool.
@@ -461,10 +468,19 @@ Every running fact names its OpenClaw version and the date it ran.
 - Before a tool's `execute`, the agent loop checks the call's arguments against the tool's parameter schema and answers a failed check with a validation error.
   So in an agent run, a setting name outside the schema's `enum` never reaches `execute`.
   (source: [`agent-loop.ts` L1037–L1045](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/packages/agent-core/src/agent-loop.ts#L1037-L1045), [`validation.ts` L381–L420](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/packages/llm-core/src/validation.ts#L381-L420))
-- With the tool and the commands registered in `full` and `discovery` mode, `/commands` listed `/model-router-provider` and `/model-router-scope`, and `/model-router-scope extended` wrote `extended` to the config.
+- With the tool and the commands registered in `full` and `discovery` mode (before the hook joined `discovery`), `/commands` listed `/model-router-provider` and `/model-router-scope`, and `/model-router-scope extended` wrote `extended` to the config.
   That held after a fresh Gateway start and after an install into the running Gateway.
   A build that registered them in `full` mode only also listed them in that run.
-  (running: OpenClaw 2026.10.10, the plugin's npm tarball installed with `npm-pack:`, commands sent through `chat.send` over the Gateway WebSocket)
+  (running: OpenClaw 2026.10.10, the plugin's npm tarball installed with `npm-pack:`, commands sent through `chat.send` over the Gateway WebSocket, 2026-11-06)
+- With the hook registered in `full` and `discovery` mode, a Gateway chat turn on `openrouter/openai/gpt-4.1` called `sessions_spawn` with a task alone.
+  The plugin logged `model-router L0 openrouter/openai/gpt-4.1-mini · medium · p=0.97/1.00 · jev jev-1.14.0 · 676/30 tok`.
+  The child session ran on `openai/gpt-4.1-mini` through OpenRouter with thinking level `medium`.
+  (running: OpenClaw 2026.10.10, the plugin's npm tarball installed with `npm-pack:`, one `chat.send` turn over the Gateway WebSocket, 2026-11-06)
+- A Gateway chat turn with a prepared plugin generation runs inside that generation's scope, and its hook runner then reads hooks from that registry alone, with no overlay of the Gateway registry.
+  `before_tool_call` always runs through that hook runner.
+  So a plugin that registers its `before_tool_call` hook only in `full` mode routes no `sessions_spawn` of a turn whose `discovery` load called its `register`.
+  A plugin is borrowed or registered in one registry, never both, and the overlay keys typed hooks by plugin id and hook name, so a hook in `full` and `discovery` runs once per call.
+  (source: [`agent-command.ts` L692–L699](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/agent-command.ts#L692-L699), [`hook-runner-global-state.ts` L123–L127](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hook-runner-global-state.ts#L123-L127), [`agent-tools.before-tool-call.policy.ts` L145–L146](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/agent-tools.before-tool-call.policy.ts#L145-L146), [`hook-runner-global-state.ts` L79–L81](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hook-runner-global-state.ts#L79-L81), [`hook-runner-global-state.ts` L109–L114](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hook-runner-global-state.ts#L109-L114))
 - Activating a registry initialises the global hook runner from it.
   (source: [`loader-shared.ts` L414–L431](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-shared.ts#L414-L431))
 - `api.on("before_tool_call", handler, { matcher: ["sessions_spawn"], priority: 100, timeoutMs: 10000 })` was accepted.

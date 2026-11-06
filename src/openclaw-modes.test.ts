@@ -12,10 +12,11 @@ const NOTHING: string[] = [];
 // What register adds in each mode, and why. OpenClaw drops a tool, a command or a hook
 // in the three setup and CLI modes, so the plugin registers nothing there. The tool is
 // read by agent runs in all three live modes. The commands are read by chat dispatch from
-// the full and discovery registries only. The hook belongs to the live runtime alone.
+// the full and discovery registries only. A chat turn scoped to a discovery registry runs
+// its hooks from that registry alone, so the hook goes into full and discovery.
 const EXPECTED: [RegistrationMode, string[], string[], boolean][] = [
 	["full", TOOL, COMMANDS, true],
-	["discovery", TOOL, COMMANDS, false],
+	["discovery", TOOL, COMMANDS, true],
 	["tool-discovery", TOOL, NOTHING, false],
 	["setup-only", NOTHING, NOTHING, false],
 	["setup-runtime", NOTHING, NOTHING, false],
@@ -61,6 +62,14 @@ describe("what register adds in each registration mode", () => {
 			assert.ok(unique(fake.commands.map((c) => c.name)), `${mode} commands`);
 			assert.ok(fake.hooks.length <= 1, `${mode} hooks`);
 		}
+	});
+
+	it("gives the discovery pass exactly one spawn hook, with the options of the full pass", () => {
+		const [full, discovery] = [registerIn("full"), registerIn("discovery")];
+		assert.equal(discovery.hooks.length, 1);
+		assert.equal(discovery.hooks[0]?.event, "before_tool_call");
+		assert.deepEqual(discovery.hooks[0]?.options, full.hooks[0]?.options);
+		assert.deepEqual(discovery.hooks[0]?.options?.matcher, ["sessions_spawn"]);
 	});
 
 	it("keeps the registry of the full pass and the registry of the discovery pass apart", () => {

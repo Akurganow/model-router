@@ -72,19 +72,26 @@ function warn(api: OpenClawApi, message: string): void {
 // A Gateway registers a plugin once per pass, and each pass fills its own registry. An agent run
 // reads the tool from the full, discovery and tool-discovery registries. Chat dispatch reads
 // the commands from the full and discovery registries, and the discovery one wins inside a
-// turn. In the setup and CLI modes OpenClaw drops all three registrations.
+// turn. A chat turn scoped to a discovery registry runs its hooks from that registry alone,
+// so the hook goes into full and discovery. In the setup and CLI modes OpenClaw drops all
+// three registrations.
 const TOOL_MODES: readonly RegistrationMode[] = [
 	"full",
 	"discovery",
 	"tool-discovery",
 ];
 const COMMAND_MODES: readonly RegistrationMode[] = ["full", "discovery"];
+const HOOK_MODES: readonly RegistrationMode[] = ["full", "discovery"];
 
-/** Registers the before_tool_call hook, after warning when its timeout leaves too little time to route. */
+/**
+ * Registers the before_tool_call hook. In the full pass it first warns when the
+ * hook timeout leaves too little time to route, so the warning comes once per
+ * Gateway start and not once per discovery pass.
+ */
 function registerRouting(api: OpenClawApi, deps: RouterDeps): void {
 	const timeout = effectiveTimeout(api.config);
 	const deadline = deadlineFor(timeout);
-	if (deadline < MIN_DEADLINE_MS)
+	if (api.registrationMode === "full" && deadline < MIN_DEADLINE_MS)
 		warn(
 			api,
 			`the hook timeout is ${timeout} ms, which leaves ${deadline} ms to route; the plugin routes nothing. Set it to ${MIN_TIMEOUT_MS} ms or more.`,
@@ -98,10 +105,11 @@ function registerRouting(api: OpenClawApi, deps: RouterDeps): void {
 
 /**
  * Registers what the registration mode keeps. The config tool goes into the full,
- * discovery and tool-discovery passes, and the two commands into the full and
- * discovery passes, so no registry holds a name twice. The before_tool_call hook and its
- * timeout warning belong to the full pass alone. The setup and CLI modes register
- * nothing. Never throws: a failure logs a warning and leaves the plugin inert.
+ * discovery and tool-discovery passes, and the two commands and the
+ * before_tool_call hook into the full and discovery passes, so no registry holds a
+ * name twice. The timeout warning belongs to the full pass alone. The setup and CLI
+ * modes register nothing. Never throws: a failure logs a warning and leaves the
+ * plugin inert.
  */
 function register(api: OpenClawApi, deps: RouterDeps): void {
 	try {
@@ -109,7 +117,7 @@ function register(api: OpenClawApi, deps: RouterDeps): void {
 		// The config tool and the commands register before the hook, so a throw leaves routing off.
 		if (TOOL_MODES.includes(mode)) registerConfigTool(api, deps.env);
 		if (COMMAND_MODES.includes(mode)) registerConfigCommands(api, deps.env);
-		if (mode === "full") registerRouting(api, deps);
+		if (HOOK_MODES.includes(mode)) registerRouting(api, deps);
 	} catch {
 		warn(api, "registration failed; the plugin is inert.");
 	}

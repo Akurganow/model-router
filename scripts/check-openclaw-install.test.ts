@@ -79,21 +79,22 @@ test("the shipped bundle registers the hook, the tool and both commands", async 
 	assert.deepEqual(registrationProblems(plugin), []);
 });
 
-test("a plugin that registers nothing is reported on every count in both modes", () => {
+test("a plugin that registers nothing is reported on every count in the live modes", () => {
 	const problems = registrationProblems({
 		id: "model-router-openclaw",
 		register: () => {},
 	});
-	assert.equal(problems.length, 7);
+	assert.equal(problems.length, 9);
 	assert.match(problems.join("\n"), /full mode: no before_tool_call/);
+	assert.match(problems.join("\n"), /discovery mode: no before_tool_call/);
 	assert.match(problems.join("\n"), /discovery mode: no model-router-scope/);
-	assert.doesNotMatch(
+	assert.match(
 		problems.join("\n"),
-		/discovery mode: no before_tool_call/,
+		/tool-discovery mode: no model_router_config tool/,
 	);
 });
 
-test("a plugin that registers its tool and commands only in full mode is reported for discovery", () => {
+test("a plugin that registers only in full mode is reported for discovery and tool-discovery", () => {
 	const plugin = createPlugin();
 	const problems = registrationProblems({
 		register: (api: OpenClawApi) => {
@@ -101,9 +102,30 @@ test("a plugin that registers its tool and commands only in full mode is reporte
 		},
 	});
 	assert.deepEqual(problems, [
+		"discovery mode: no before_tool_call hook registered",
 		"discovery mode: no model_router_config tool registered",
 		"discovery mode: no model-router-provider command registered",
 		"discovery mode: no model-router-scope command registered",
+		"tool-discovery mode: no model_router_config tool registered",
+	]);
+});
+
+test("a plugin that registers everything in every mode is reported where a mode should not hold it", () => {
+	const plugin = createPlugin();
+	const problems = registrationProblems({
+		register: (api: OpenClawApi) =>
+			plugin.register(
+				Object.assign(Object.create(api), { registrationMode: "full" }),
+			),
+	});
+	assert.deepEqual(problems, [
+		"tool-discovery mode: before_tool_call hook registered, which this mode should not hold",
+		"tool-discovery mode: model-router-provider command registered, which this mode should not hold",
+		"tool-discovery mode: model-router-scope command registered, which this mode should not hold",
+		...["setup-only", "setup-runtime", "cli-metadata"].map(
+			(mode) =>
+				`${mode} mode: calls registerTool, registerCommand, on, which OpenClaw drops in this mode`,
+		),
 	]);
 });
 

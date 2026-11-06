@@ -1817,10 +1817,11 @@ var TOOL_MODES = [
   "tool-discovery"
 ];
 var COMMAND_MODES = ["full", "discovery"];
+var HOOK_MODES = ["full", "discovery"];
 function registerRouting(api, deps) {
   const timeout = effectiveTimeout(api.config);
   const deadline = deadlineFor(timeout);
-  if (deadline < MIN_DEADLINE_MS)
+  if (api.registrationMode === "full" && deadline < MIN_DEADLINE_MS)
     warn(
       api,
       `the hook timeout is ${timeout} ms, which leaves ${deadline} ms to route; the plugin routes nothing. Set it to ${MIN_TIMEOUT_MS} ms or more.`
@@ -1836,7 +1837,7 @@ function register(api, deps) {
     const mode = api.registrationMode;
     if (TOOL_MODES.includes(mode)) registerConfigTool(api, deps.env);
     if (COMMAND_MODES.includes(mode)) registerConfigCommands(api, deps.env);
-    if (mode === "full") registerRouting(api, deps);
+    if (HOOK_MODES.includes(mode)) registerRouting(api, deps);
   } catch {
     warn(api, "registration failed; the plugin is inert.");
   }
