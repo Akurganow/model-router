@@ -168,7 +168,7 @@
 	"hermes": {
 		"pluginName": "model-router-hermes",
 		"backendName": "model-router",
-		"requiresHermes": ">=0.22.5",
+		"requiresHermes": ">=0.22.6",
 		"settings": {
 			"small_model": {
 				"label": "Small model",

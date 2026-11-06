@@ -11,7 +11,7 @@ Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For th
 | Claude Code | `model` and `effort` | 2 | no | v2.1.308 | [plugin README](plugins/model-router/README.md) |
 | Oh My Pi | the `smol` or `slow` role | 1 | no | v18.12.6 | [plugin README](plugins/model-router-omp/README.md) |
 | OpenClaw | `model` and `thinking` | 2 | no | 2026.10.10 | [plugin README](plugins/model-router-openclaw/README.md) |
-| Hermes Agent | `model`, `provider` and `reasoning_effort` | 2 | yes, Node once per task | 0.22.5 | [plugin README](plugins/model-router-hermes/README.md) |
+| Hermes Agent | `model`, `provider` and `reasoning_effort` | 2 | yes, Node once per task | 0.22.6 | [plugin README](plugins/model-router-hermes/README.md) |
 
 Claude Code, Oh My Pi and OpenClaw each have a `scope` setting. It takes `core` (the default) or `extended` and picks the agents the plugin routes. The plugin README says how. Hermes Agent has no `scope` setting: the plugin routes every `delegate_task` task and never the main turn.
 
