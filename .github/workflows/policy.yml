@@ -26,6 +26,14 @@ jobs:
     name: scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # git fetch starts a detached `git maintenance run --auto` that keeps
+    # writing into .git/objects after fetch returns. The scan action deletes
+    # its clone right after the fetch, and that race fails its `rm -rf` with
+    # "Directory not empty" before any scan. maintenance.auto=false stops it.
+    env:
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: maintenance.auto
+      GIT_CONFIG_VALUE_0: "false"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
