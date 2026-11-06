@@ -1,6 +1,9 @@
 import unittest
 
-from support import REAL_HERMES, fake_api, make_router, task
+from support import REAL_HERMES, fake_api, make_router, submodule, task
+
+checks = submodule("checks")
+hermes_api = submodule("hermes_api")
 
 
 @unittest.skipUnless(REAL_HERMES, "the real Hermes modules do not import here")
@@ -41,6 +44,20 @@ class DefaultRouteMatchesHermesTest(unittest.TestCase):
                     if k in ROUTE_KEYS and k != "label"
                 }
                 self.assertEqual(ours, expected)
+
+
+@unittest.skipUnless(REAL_HERMES, "the real Hermes modules do not import here")
+class CredentialRuleOnHermesTest(unittest.TestCase):
+    """The offline credential rule, read through Hermes's own registry and refresh check."""
+
+    def test_api_key_providers_pass_and_login_providers_do_not(self):
+        api = hermes_api.live_api()
+        for provider in ("openrouter", "gemini", "deepseek"):
+            with self.subTest(provider):
+                self.assertTrue(checks.credentials_stay_offline(provider, api))
+        for provider in ("nous", "openai-codex", "qwen-oauth", "minimax-oauth", "bedrock"):
+            with self.subTest(provider):
+                self.assertFalse(checks.credentials_stay_offline(provider, api))
 
 
 if __name__ == "__main__":

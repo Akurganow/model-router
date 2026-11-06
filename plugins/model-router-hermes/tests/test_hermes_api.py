@@ -98,6 +98,7 @@ class LiveFunctionsTest(unittest.TestCase):
             self.assertEqual(api.get_secret("NAME"), "v-NAME")
             self.assertEqual(api.find_node(), "/bin/node")
             self.assertEqual(api.auth_type("openrouter"), "api_key")
+            self.assertIsNone(api.auth_type("outside-the-registry"))
             self.assertTrue(api.is_refreshable("x"))
             api.resolve_runtime("openrouter", "m")
             self.assertEqual(api.list_models("openrouter"), ["m"])

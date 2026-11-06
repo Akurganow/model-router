@@ -13,12 +13,15 @@ ANTHROPIC_API_KEY = "ANTHROPIC_API_KEY"
 ANTHROPIC_OAUTH_VARIABLES = ("ANTHROPIC_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN")
 
 
-def _credentials_stay_offline(provider, api):
+def credentials_stay_offline(provider, api):
+    """True when Hermes reads the provider's credentials without a network refresh."""
     if provider == ANTHROPIC:
         return bool(api.get_secret(ANTHROPIC_API_KEY)) and not any(
             api.get_secret(name) for name in ANTHROPIC_OAUTH_VARIABLES
         )
-    return api.auth_type(provider) == API_KEY_AUTH and not api.is_refreshable(provider)
+    # A provider outside the registry, such as OpenRouter, has no login type of its own.
+    auth = api.auth_type(provider)
+    return auth in (None, API_KEY_AUTH) and not api.is_refreshable(provider)
 
 
 def slot_resolves(slot, api):
@@ -26,7 +29,7 @@ def slot_resolves(slot, api):
     if not (slot.provider and slot.model):
         return False
     try:
-        if not _credentials_stay_offline(slot.provider, api):
+        if not credentials_stay_offline(slot.provider, api):
             return False
         api.resolve_runtime(slot.provider, slot.model)
         return slot.model in (api.list_models(slot.provider) or [])

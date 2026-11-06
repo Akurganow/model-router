@@ -12,6 +12,7 @@ class HermesApi:
     get_secret: Callable[[str], Optional[str]]
     # Hermes's own Node, never the one on PATH; None when it has none.
     find_node: Callable[[], Optional[str]]
+    # None for a provider Hermes resolves outside its registry, as it does OpenRouter.
     auth_type: Callable[[str], Optional[str]]
     is_refreshable: Callable[[str], bool]
     # Raises when the provider has no credentials that resolve without the network.
@@ -37,7 +38,8 @@ def _find_node():
 def _auth_type(provider):
     from hermes_cli.auth import PROVIDER_REGISTRY
 
-    return PROVIDER_REGISTRY[provider].auth_type
+    entry = PROVIDER_REGISTRY.get(provider)
+    return None if entry is None else entry.auth_type
 
 
 def _is_refreshable(provider):

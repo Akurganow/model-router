@@ -28,7 +28,14 @@ class SlotChecksTest(unittest.TestCase):
 
     def test_other_auth_types_are_unresolved(self):
         self.assertFalse(self.resolves(auth_type=lambda provider: "oauth_device_code"))
-        self.assertFalse(self.resolves(auth_type=lambda provider: None))
+        self.assertFalse(self.resolves(auth_type=lambda provider: "aws_sdk"))
+
+    def test_a_provider_outside_the_registry_needs_only_the_refresh_check(self):
+        # Hermes resolves OpenRouter outside its provider registry.
+        self.assertTrue(self.resolves(auth_type=lambda provider: None))
+        self.assertFalse(
+            self.resolves(auth_type=lambda provider: None, is_refreshable=lambda provider: True)
+        )
 
     def test_unknown_provider_is_unresolved(self):
         def unknown(provider):
