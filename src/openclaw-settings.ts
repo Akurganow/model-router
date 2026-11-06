@@ -3,8 +3,8 @@ import { isRecord, nonEmpty } from "./part.ts";
 import {
 	KEY_FIELDS,
 	KEY_VARIABLES,
+	type Keys,
 	order,
-	type Provider,
 	type ProviderValue,
 	parseProvider,
 	resolve,
@@ -19,17 +19,41 @@ export type OpenClawSettings = {
 	readonly smallModel: string | undefined;
 	readonly largeModel: string | undefined;
 };
-export type Keys = Readonly<Partial<Record<Provider, string>>>;
 export type Environment = Readonly<Record<string, string | undefined>>;
 type Settings = Record<string, unknown>;
+
+type PluginEntry = NonNullable<
+	NonNullable<OpenClawConfig["plugins"]>["entries"]
+>[string];
+
+/** The plugin's own entry in the config: its hook timeouts and its settings. */
+export const pluginEntry = (
+	config: OpenClawConfig | undefined,
+): PluginEntry | undefined => config?.plugins?.entries?.[PLUGIN_ID];
+
+/** Stores one setting in the plugin's entry of a config draft and keeps everything else in it. */
+export function withPluginSetting(
+	draft: OpenClawConfig,
+	setting: string,
+	value: string,
+): void {
+	const plugins = draft.plugins ?? {};
+	const entries = plugins.entries ?? {};
+	const entry = entries[PLUGIN_ID] ?? {};
+	const config: Settings = entry.config ?? {};
+	config[setting] = value;
+	draft.plugins = {
+		...plugins,
+		entries: { ...entries, [PLUGIN_ID]: { ...entry, config } },
+	};
+}
 
 // The live config holds a command's write. The plugin config is what OpenClaw read at start-up.
 function sources(
 	live: OpenClawConfig | undefined,
 	pluginConfig: Settings | undefined,
 ): readonly Settings[] {
-	const entry = live?.plugins?.entries?.[PLUGIN_ID]?.config;
-	return [entry, pluginConfig].filter(isRecord);
+	return [pluginEntry(live)?.config, pluginConfig].filter(isRecord);
 }
 
 // A source whose value does not parse counts as silent, so a later source can still supply the setting.
@@ -75,10 +99,10 @@ export function readKeys(
 	env: Environment,
 ): Keys {
 	const from = sources(live, pluginConfig);
-	const keys: Partial<Record<Provider, string>> = {};
+	const keys: Keys = {};
 	for (const provider of order(providerValue)) {
 		const key =
-			from.map((s) => nonEmpty(s[KEY_FIELDS[provider]])).find(Boolean) ??
+			firstValid(from, KEY_FIELDS[provider], nonEmpty) ??
 			nonEmpty(env[KEY_VARIABLES[provider]]);
 		if (key !== undefined) keys[provider] = key;
 	}

@@ -13,10 +13,9 @@ import {
 	raceDeadline,
 } from "./openclaw-deadline.ts";
 import { type Gate, gateSpawn } from "./openclaw-gates.ts";
-import { readStringParam } from "./openclaw-params.ts";
+import { readSpawn, type SpawnRequest } from "./openclaw-params.ts";
 import {
 	type Environment,
-	type Keys,
 	type OpenClawSettings,
 	readState,
 } from "./openclaw-settings.ts";
@@ -26,11 +25,10 @@ import type {
 	BeforeToolCallResult,
 	OpenClawApi,
 	PluginRuntime,
-	SpawnParams,
 	ToolContext,
 } from "./openclaw-types.ts";
 import { type Level, nonEmpty } from "./part.ts";
-import { plan } from "./provider.ts";
+import { type Keys, plan } from "./provider.ts";
 
 export const LINE_PREFIX = "model-router ";
 export const SPAWN_TOOL = "sessions_spawn";
@@ -54,14 +52,14 @@ type Spawn = {
 	readonly api: OpenClawApi;
 	readonly deps: RouterDeps;
 	readonly signal: AbortSignal;
-	readonly params: SpawnParams;
+	readonly request: SpawnRequest;
 	readonly requester: string | undefined;
 	readonly log: (message: string) => void;
 };
 
 // Jev is asked once for both parts. The picked levels come back as a line and the slot to set.
 async function score(
-	{ deps, signal, params }: Spawn,
+	{ deps, signal }: Spawn,
 	settings: OpenClawSettings,
 	keys: Keys,
 	gate: Route,
@@ -70,14 +68,10 @@ async function score(
 		parts: [tier, work],
 		state: {
 			role: gate.role,
-			description:
-				readStringParam(params, "label") ?? nonEmpty(params.taskName) ?? "",
+			description: gate.description,
 			task: prepareBrief(gate.task),
 		},
-		attempts: plan(settings.provider, {
-			typesafe: keys.typesafe !== undefined,
-			openrouter: keys.openrouter !== undefined,
-		}),
+		attempts: plan(settings.provider, keys),
 		keys,
 		fetchFn: deps.fetchFn,
 		signal,
@@ -108,10 +102,10 @@ async function slotFor(
 async function routeSpawn(
 	spawn: Spawn,
 ): Promise<BeforeToolCallResult | undefined> {
-	const { api, deps, params, requester, log } = spawn;
+	const { api, deps, request, requester, log } = spawn;
 	const { config, settings, keys } = readState(api, deps.env);
 	const gate = gateSpawn({
-		params,
+		spawn: request,
 		requester,
 		config,
 		settings,
@@ -156,7 +150,7 @@ export function createBeforeToolCall(
 			if (deadlineMs < MIN_DEADLINE_MS || event?.toolName !== SPAWN_TOOL)
 				return undefined;
 			const requester = nonEmpty(ctx?.agentId);
-			const { params } = event;
+			const request = readSpawn(event.params);
 			return await raceDeadline(
 				(signal) => {
 					// Once the deadline or the hook's signal ends the work, the work writes no line.
@@ -167,7 +161,7 @@ export function createBeforeToolCall(
 						api,
 						deps,
 						signal,
-						params,
+						request,
 						requester,
 						log,
 					});

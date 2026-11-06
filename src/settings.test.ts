@@ -16,6 +16,7 @@ import {
 	isValueSetting,
 	KEY_MAX_LENGTH,
 	KEY_SETTINGS,
+	KEY_UNSET,
 	keyFrom,
 	keyLine,
 	keyNotSaved,
@@ -31,6 +32,7 @@ import {
 	setsOwnModel,
 	TOOL_LABEL,
 	toolDescription,
+	UNREADABLE,
 	unchanged,
 	useOneOf,
 	VALUE_SETTINGS,
@@ -300,7 +302,9 @@ test("the tool label names the router", () => {
 	assert.match(TOOL_LABEL, /Model Router/);
 });
 
-test("the four skip reasons read as they do in the log", () => {
+test("the fixed skip reasons read as they do in the log", () => {
+	assert.equal(KEY_UNSET, "key unset");
+	assert.equal(UNREADABLE, "settings unreadable");
 	assert.equal(outsideCoreScope("scout"), "scout is outside the core scope");
 	assert.equal(agentDiscoveryFailed("scout"), "scout agent discovery failed");
 	assert.equal(agentUnknown("scout"), "scout agent unknown");

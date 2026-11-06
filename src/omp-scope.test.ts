@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DEFAULT_ROLE, roleText } from "./brief.ts";
+import { skippedLine } from "./line.ts";
 import { AGENTS, extend } from "./omp-fake-agents.ts";
 import { lockfileScoped, useWorld } from "./omp-fakes.ts";
 import { createExtension } from "./omp-router.ts";
+import {
+	agentDiscoveryFailed,
+	agentUnknown,
+	KEY_UNSET,
+	setsOwnModel,
+	UNREADABLE,
+} from "./settings.ts";
 
 const world = useWorld();
 const PREFIX = "model-router ";
@@ -89,10 +97,10 @@ test("extended: each skipped item names its reason and the rest are still scored
 	});
 	assert.equal(world.sent.length, 1);
 	assert.deepEqual(heads(), [
-		"task 1: skipped, pinned sets its own model",
+		`task 1: ${skippedLine(setsOwnModel("pinned"))}`,
 		"task 2: skipped, sonic model override set",
 		"task 3: skipped, seance agent disabled",
-		"task 4: skipped, ghost agent unknown",
+		`task 4: ${skippedLine(agentUnknown("ghost"))}`,
 		"task 5: L2 @slow",
 	]);
 });
@@ -123,8 +131,8 @@ test("extended: a failed discovery skips every item with its reason", async () =
 	await world.toolCall("c", BATCH);
 	assert.equal(world.sent.length, 0);
 	assert.deepEqual(entriesOf(), [
-		"task 1: skipped, scout agent discovery failed",
-		"task 2: skipped, task agent discovery failed",
+		`task 1: ${skippedLine(agentDiscoveryFailed("scout"))}`,
+		`task 2: ${skippedLine(agentDiscoveryFailed("task"))}`,
 	]);
 });
 
@@ -134,8 +142,8 @@ test("extended: a batch gate closes every item", async () => {
 	install();
 	await world.toolCall("c", BATCH);
 	assert.deepEqual(entriesOf(), [
-		"task 1: skipped, key unset",
-		"task 2: skipped, key unset",
+		`task 1: ${skippedLine(KEY_UNSET)}`,
+		`task 2: ${skippedLine(KEY_UNSET)}`,
 	]);
 });
 
@@ -181,7 +189,7 @@ test("unreadable settings close the batch for the task items and drop the rest",
 	install();
 	await world.toolCall("c", BATCH);
 	assert.equal(world.sent.length, 0);
-	assert.deepEqual(entriesOf(), ["task 2: skipped, settings unreadable"]);
+	assert.deepEqual(entriesOf(), [`task 2: ${skippedLine(UNREADABLE)}`]);
 });
 
 test("an agent that is not a string is not eligible", async () => {

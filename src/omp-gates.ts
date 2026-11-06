@@ -6,6 +6,7 @@ import type { Context, Lookup, OmpImports, Pi } from "./omp-types.ts";
 import { isRecord, nonEmpty } from "./part.ts";
 import {
 	KEY_VARIABLES,
+	type Keys,
 	narrow,
 	order,
 	type Provider,
@@ -13,7 +14,7 @@ import {
 	plan,
 } from "./provider.ts";
 import { resolveScope, type Scope } from "./scope.ts";
-import { UNREADABLE } from "./settings.ts";
+import { KEY_UNSET, UNREADABLE } from "./settings.ts";
 
 export const ROLES = { small: "@smol", large: "@slow" } as const;
 
@@ -50,7 +51,7 @@ export async function openBatch(
 ): Promise<Batch | Closed> {
 	if (settings === undefined) return { closed: UNREADABLE };
 	const routing = await findKeys(ctx, settings.provider);
-	if (routing.attempts.length === 0) return { closed: "key unset" };
+	if (routing.attempts.length === 0) return { closed: KEY_UNSET };
 	const config = readConfig(omp.lookup, pi.pi.settings);
 	if (config === undefined) return { closed: UNREADABLE };
 	const agents = await discover(pi, ctx);
@@ -106,16 +107,12 @@ async function readGlobal(
 
 // Only the providers the value allows are read. omp's own credential comes first, then the variable.
 async function findKeys(ctx: Context, value: string): Promise<Routing> {
-	const keys: Partial<Record<Provider, string>> = {};
+	const keys: Keys = {};
 	for (const provider of order(value)) {
 		const key = await findKey(ctx, provider);
 		if (key !== undefined) keys[provider] = key;
 	}
-	const present = {
-		typesafe: keys.typesafe !== undefined,
-		openrouter: keys.openrouter !== undefined,
-	};
-	return { attempts: plan(value, present), keys };
+	return { attempts: plan(value, keys), keys };
 }
 
 export async function findKey(

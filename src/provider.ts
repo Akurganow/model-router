@@ -31,6 +31,9 @@ export const KEY_FIELDS = {
 	openrouter: "openrouter_api_key",
 } as const satisfies Readonly<Record<Provider, string>>;
 
+// The key each provider has, as the harness read it.
+export type Keys = Partial<Record<Provider, string>>;
+
 export const FIRST_ATTEMPT_TIMEOUT_MS = 2000;
 // Both providers resolve this alias to their newest Jev release.
 const MODEL = "jev-latest";
@@ -66,12 +69,13 @@ export const resolve = (value: unknown): ProviderValue =>
 export const order = (value: unknown): readonly Provider[] =>
 	ORDER[resolve(value)];
 
+// A provider is attempted when its entry is set: a key, or `true` for a caller that holds none.
 // Every attempt but the last gives up fast, so the next one gets most of the routing limit.
 export function plan(
 	value: unknown,
-	present: Readonly<Record<Provider, boolean>>,
+	keys: Readonly<Partial<Record<Provider, unknown>>>,
 ): Attempt[] {
-	const providers = order(value).filter((p) => present[p]);
+	const providers = order(value).filter((p) => Boolean(keys[p]));
 	return providers.map((provider, i) =>
 		i < providers.length - 1
 			? {

@@ -15,7 +15,13 @@ import {
 	type Probabilities,
 	parseProbabilities,
 } from "./part.ts";
-import { type Attempt, fallsBack, type Provider } from "./provider.ts";
+import {
+	type Attempt,
+	fallsBack,
+	type Keys,
+	type Provider,
+} from "./provider.ts";
+import { KEY_UNSET } from "./settings.ts";
 
 export const ROUTING_LIMIT_MS = 8000;
 // Adapters abort their signal with this reason when the limit runs out, so a timeout differs from a cancel.
@@ -47,7 +53,7 @@ export type RouteInput = {
 	readonly parts: readonly Part[];
 	readonly state: RoutingState;
 	readonly attempts: readonly Attempt[];
-	readonly keys: Readonly<Partial<Record<Provider, string>>>;
+	readonly keys: Keys;
 	readonly fetchFn: Fetch;
 	readonly signal: AbortSignal;
 	readonly onFallback?: (provider: Provider) => void;
@@ -70,7 +76,7 @@ function skipCategory(err: unknown, signal: AbortSignal): string {
 // One signal covers every attempt, so the routing limit also ends a fallback.
 export async function route(input: RouteInput): Promise<Decision | Skipped> {
 	const { parts, attempts, signal } = input;
-	if (attempts.length === 0) return { skipped: "key unset" };
+	if (attempts.length === 0) return { skipped: KEY_UNSET };
 	const failed: Failure[] = [];
 	for (const [i, attempt] of attempts.entries()) {
 		let result: unknown;

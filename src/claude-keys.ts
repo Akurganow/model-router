@@ -1,8 +1,6 @@
 import type { Engine, Options } from "./claude-host.ts";
 import { nonEmpty } from "./part.ts";
-import { KEY_FIELDS, order, type Provider } from "./provider.ts";
-
-export type Keys = Partial<Record<Provider, string>>;
+import { KEY_FIELDS, type Keys, order, type Provider } from "./provider.ts";
 
 // Each key goes only to its own provider. The key of a provider the value leaves out is never read.
 // The sensitive option comes first. The desktop app reads it back empty after a restart, so the variable stands in.

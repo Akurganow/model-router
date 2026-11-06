@@ -3,9 +3,11 @@ import { test } from "node:test";
 import { createFakeApi } from "./openclaw-fakes.ts";
 import {
 	PLUGIN_ID,
+	pluginEntry,
 	readKeys,
 	readSettings,
 	readState,
+	withPluginSetting,
 } from "./openclaw-settings.ts";
 import type { OpenClawConfig } from "./openclaw-types.ts";
 
@@ -237,4 +239,49 @@ test("readState falls back to the plugin config and the environment when the liv
 	assert.equal(state.config, undefined);
 	assert.equal(state.settings.provider, "auto");
 	assert.deepEqual(state.keys, { openrouter: "env" });
+});
+
+test("pluginEntry is the plugin's own entry in the config, or nothing", () => {
+	const entry = { config: { scope: "core" }, hooks: { timeoutMs: 9000 } };
+	const config = {
+		plugins: { entries: { other: {}, [PLUGIN_ID]: entry } },
+	};
+	assert.equal(pluginEntry(config), entry);
+	assert.equal(pluginEntry({ plugins: { entries: { other: {} } } }), undefined);
+	assert.equal(pluginEntry({}), undefined);
+	assert.equal(pluginEntry(undefined), undefined);
+});
+
+test("withPluginSetting stores one setting and keeps every other entry and field", () => {
+	const draft: OpenClawConfig = {
+		plugins: {
+			entries: {
+				other: { config: { scope: "x" } },
+				[PLUGIN_ID]: {
+					hooks: { timeoutMs: 9000 },
+					config: { provider: "auto" },
+				},
+			},
+		},
+	};
+	withPluginSetting(draft, "scope", "extended");
+	assert.deepEqual(draft, {
+		plugins: {
+			entries: {
+				other: { config: { scope: "x" } },
+				[PLUGIN_ID]: {
+					hooks: { timeoutMs: 9000 },
+					config: { provider: "auto", scope: "extended" },
+				},
+			},
+		},
+	});
+});
+
+test("withPluginSetting creates the missing path", () => {
+	const draft: OpenClawConfig = {};
+	withPluginSetting(draft, "provider", "auto");
+	assert.deepEqual(draft, {
+		plugins: { entries: { [PLUGIN_ID]: { config: { provider: "auto" } } } },
+	});
 });

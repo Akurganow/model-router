@@ -180,10 +180,7 @@ async function routeSpawn(
 	const keys = await readKeys($, options, options.provider);
 	const decision = await scored($, next.signal, {
 		state,
-		attempts: plan(options.provider, {
-			typesafe: keys.typesafe !== undefined,
-			openrouter: keys.openrouter !== undefined,
-		}),
+		attempts: plan(options.provider, keys),
 		keys,
 	});
 	const picked = pick(decision);

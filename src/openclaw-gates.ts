@@ -1,12 +1,13 @@
-import { DEFAULT_ROLE, roleText } from "./brief.ts";
+import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "./brief.ts";
 import { findAgent, sameAgent } from "./openclaw-agents.ts";
-import { readParam, readStringParam } from "./openclaw-params.ts";
+import { isSet, type SpawnRequest } from "./openclaw-params.ts";
 import type { OpenClawSettings } from "./openclaw-settings.ts";
-import type { OpenClawConfig, SpawnParams } from "./openclaw-types.ts";
+import type { OpenClawConfig } from "./openclaw-types.ts";
 import { isRecord, nonEmpty } from "./part.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
+	KEY_UNSET,
 	outsideCoreScope,
 	setsOwnModel,
 	UNREADABLE,
@@ -32,10 +33,12 @@ export type Gate =
 			// The live config the checks read. A route has one, because the gate skips an unreadable config.
 			readonly config: OpenClawConfig;
 			readonly task: string;
+			// The spawn's label, else its task name, else empty.
+			readonly description: string;
 	  };
 
 export type GateInput = {
-	readonly params: SpawnParams;
+	readonly spawn: SpawnRequest;
 	readonly requester: string | undefined;
 	// Undefined when the live config could not be read.
 	readonly config: OpenClawConfig | undefined;
@@ -46,7 +49,6 @@ export type GateInput = {
 
 const PASS: Gate = { outcome: "pass" };
 const skip = (reason: string): Gate => ({ outcome: "skip", reason });
-const SUBAGENT_RUNTIME = "subagent";
 const NO_MODEL_VALUE = "default";
 
 // OpenClaw's config is user-written JSON, so every step down it is checked.
@@ -59,12 +61,6 @@ function at(value: unknown, ...path: string[]): unknown {
 	return node;
 }
 
-// Config values may be objects, such as a model with fallbacks, so only text is checked for blankness.
-const isSet = (v: unknown): boolean =>
-	typeof v === "string"
-		? nonEmpty(v) !== undefined
-		: v !== undefined && v !== null;
-
 const agentField = (
 	config: OpenClawConfig | undefined,
 	id: string | undefined,
@@ -72,23 +68,19 @@ const agentField = (
 ) => at(findAgent(config, id), ...path);
 
 // OpenClaw's `normalizeToolModelOverride`: trimmed text, where "default" in any case names no model.
-function namesModel(params: SpawnParams): boolean {
-	const model = readStringParam(params, "model");
-	return model !== undefined && model.toLowerCase() !== NO_MODEL_VALUE;
-}
+const namesModel = (model: string | undefined): boolean =>
+	model !== undefined && model.toLowerCase() !== NO_MODEL_VALUE;
 
 // Claude Code passes these calls through, and so does the router.
-function passesSilently(params: SpawnParams): boolean {
-	const { runtime } = params;
-	const agentId = readParam(params, "agentId");
+function passesSilently(spawn: SpawnRequest): boolean {
 	return (
-		namesModel(params) ||
-		(isSet(runtime) && runtime !== SUBAGENT_RUNTIME) ||
-		(isSet(agentId) && typeof agentId !== "string") ||
-		params.visible === true ||
-		params.context === "fork" ||
-		params.mode === "session" ||
-		params.thread === true
+		namesModel(spawn.model) ||
+		spawn.runtime === "other" ||
+		spawn.agent.kind === "invalid" ||
+		spawn.visible ||
+		spawn.context === "fork" ||
+		spawn.mode === "session" ||
+		spawn.thread
 	);
 }
 
@@ -108,8 +100,8 @@ function subagentModelSet(input: GateInput, target: string | undefined) {
 
 // The first match decides. Under extended the requester's or target's own value is replaced, which is the ladder effort too.
 function effortRule(input: GateInput): EffortRule {
-	const { params, config, requester, settings } = input;
-	if (readStringParam(params, "thinking") !== undefined)
+	const { spawn, config, requester, settings } = input;
+	if (spawn.thinking !== undefined)
 		return { kind: "keep", label: "caller effort" };
 	const global = at(config, "agents", "defaults", "subagents", "thinking");
 	const requesterThinking = agentField(
@@ -123,30 +115,28 @@ function effortRule(input: GateInput): EffortRule {
 	return kept ? { kind: "keep", label: "config effort" } : { kind: "set" };
 }
 
-function roleOf(input: GateInput, target: string | undefined, own: boolean) {
+// A blank description gives the role of an agent with none: the harness default for the requester, else the neutral line.
+function roleOf(input: GateInput, target: string | undefined, blank: string) {
 	const description = agentField(input.config, target, "description");
-	if (!own) return roleText(description);
-	return nonEmpty(description) === undefined
-		? DEFAULT_ROLE
-		: roleText(description);
+	return nonEmpty(description) === undefined ? blank : roleText(description);
 }
 
 // Order: plugins/model-router-openclaw/README.md#which-spawns-are-routed. Change both.
 export function gateSpawn(input: GateInput): Gate {
-	const { params, requester, settings, config } = input;
-	const { task } = params;
-	if (typeof task !== "string" || passesSilently(params)) return PASS;
-	const named = readStringParam(params, "agentId");
+	const { spawn, requester, settings, config } = input;
+	const { task } = spawn;
+	if (task === undefined || passesSilently(spawn)) return PASS;
+	const named = spawn.agent.kind === "id" ? spawn.agent.id : undefined;
 	// "The spawn of the requesting agent itself": no agent id, or the requester's own id.
-	const own =
+	const isRequesterSpawn =
 		named === undefined ||
 		(requester !== undefined && sameAgent(named, requester));
-	const target = own ? requester : named;
-	// omp's order: the key gate, the scope, the user's own model choice, the agent, the model slots.
-	if (!input.hasKey) return skip("key unset");
-	if (!own && settings.scope === "core") return skip(outsideCoreScope(named));
+	const target = isRequesterSpawn ? requester : named;
+	if (!input.hasKey) return skip(KEY_UNSET);
+	if (!isRequesterSpawn && settings.scope === "core")
+		return skip(outsideCoreScope(named));
 	if (subagentModelSet(input, target)) return skip("subagent model set");
-	if (!own) {
+	if (!isRequesterSpawn) {
 		const reason = otherAgentSkip(named, input);
 		if (reason !== undefined) return skip(reason);
 	}
@@ -157,9 +147,14 @@ export function gateSpawn(input: GateInput): Gate {
 	return {
 		outcome: "route",
 		target,
-		role: roleOf(input, target, own),
+		role: roleOf(
+			input,
+			target,
+			isRequesterSpawn ? DEFAULT_ROLE : NO_DESCRIPTION,
+		),
 		effort: effortRule(input),
 		config,
 		task,
+		description: spawn.description,
 	};
 }

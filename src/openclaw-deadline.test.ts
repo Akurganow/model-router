@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it, mock } from "node:test";
 import { LIMIT_REACHED, ROUTING_LIMIT_MS } from "./compose.ts";
 import {
 	deadlineFor,
+	HOOK_TIMEOUT_MS,
 	MIN_DEADLINE_MS,
 	MIN_TIMEOUT_MS,
 	raceDeadline,
@@ -13,6 +14,11 @@ describe("deadlineFor", () => {
 	it("leaves the minimum deadline at the minimum hook timeout", () => {
 		assert.equal(deadlineFor(MIN_TIMEOUT_MS), MIN_DEADLINE_MS);
 		assert.ok(deadlineFor(MIN_TIMEOUT_MS - 1) < MIN_DEADLINE_MS);
+	});
+
+	it("gives the registered hook timeout the full routing limit", () => {
+		assert.equal(deadlineFor(HOOK_TIMEOUT_MS), ROUTING_LIMIT_MS);
+		assert.ok(deadlineFor(HOOK_TIMEOUT_MS - 1) < ROUTING_LIMIT_MS);
 	});
 
 	it("caps the deadline at the routing limit", () => {
@@ -80,6 +86,51 @@ describe("raceDeadline", () => {
 		host.abort();
 		release("late");
 		assert.equal(await pending, undefined);
+	});
+
+	it("settles at once when the host aborts, without waiting for the work or the deadline", async () => {
+		const time = createFakeClock();
+		const host = new AbortController();
+		const pending = raceDeadline(
+			() => new Promise<string>(() => undefined),
+			DEADLINE_MS,
+			time.clock,
+			host.signal,
+		);
+		host.abort();
+		assert.equal(await pending, undefined);
+		assert.equal(time.live(), 0);
+	});
+
+	it("settles at once when the host signal is already aborted", async () => {
+		const time = createFakeClock();
+		const pending = raceDeadline(
+			() => new Promise<string>(() => undefined),
+			DEADLINE_MS,
+			time.clock,
+			AbortSignal.abort(),
+		);
+		assert.equal(await pending, undefined);
+		assert.equal(time.live(), 0);
+	});
+
+	it("stops listening to the host signal once the work ends", async () => {
+		const time = createFakeClock();
+		const host = new AbortController();
+		const added = mock.method(host.signal, "addEventListener");
+		const removed = mock.method(host.signal, "removeEventListener");
+		await raceDeadline(
+			async () => "done",
+			DEADLINE_MS,
+			time.clock,
+			host.signal,
+		);
+		assert.equal(added.mock.calls[0]?.arguments[0], "abort");
+		assert.equal(removed.mock.calls[0]?.arguments[0], "abort");
+		assert.equal(
+			removed.mock.calls[0]?.arguments[1],
+			added.mock.calls[0]?.arguments[1],
+		);
 	});
 
 	it("returns nothing when the clock or the signal throws", async () => {

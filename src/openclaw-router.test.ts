@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { DEFAULT_ROLE, prepareBrief, roleText } from "./brief.ts";
+import { skippedLine } from "./line.ts";
 import type { Levels } from "./openclaw-fakes.ts";
 import {
 	CONTEXT,
@@ -11,9 +12,15 @@ import {
 	setup,
 	TASK,
 } from "./openclaw-handler-fakes.ts";
-import { SPAWN_TOOL } from "./openclaw-router.ts";
+import { LINE_PREFIX, SPAWN_TOOL } from "./openclaw-router.ts";
 import { PLUGIN_ID } from "./openclaw-settings.ts";
 import type { BeforeToolCallResult } from "./openclaw-types.ts";
+import {
+	KEY_UNSET,
+	outsideCoreScope,
+	setsOwnModel,
+	UNREADABLE,
+} from "./settings.ts";
 
 // The `DECISION_LINE` pattern of scripts/evals/claude.ts, which the evals read the decision line with.
 const DECISION_LINE =
@@ -204,6 +211,9 @@ describe("what Jev is asked", () => {
 	});
 });
 
+// The gate tests pin each reason. These tests pin that the router reaches the gate and logs its reason.
+const skippedLog = (reason: string) => [LINE_PREFIX + skippedLine(reason)];
+
 describe("gates and skips", () => {
 	it("passes a spawn silently: no request, no line", async () => {
 		const s = setup();
@@ -225,7 +235,7 @@ describe("gates and skips", () => {
 	it("skips with no key", async () => {
 		const s = setup({ settings: { api_key: "" } });
 		assert.equal(await s.call(), undefined);
-		assert.deepEqual(lines(s), ["model-router skipped, key unset"]);
+		assert.deepEqual(lines(s), [`model-router skipped, ${KEY_UNSET}`]);
 		assert.equal(s.jev.requests.length, 0);
 	});
 
@@ -240,17 +250,20 @@ describe("gates and skips", () => {
 	it("skips with neither model slot set", async () => {
 		const s = setup({ settings: { small_model: "", large_model: "" } });
 		assert.equal(await s.call(), undefined);
-		assert.deepEqual(lines(s), [
-			"model-router skipped, no small or large model",
-		]);
+		assert.deepEqual(lines(s), skippedLog("no small or large model"));
+	});
+
+	it("skips another agent with no key before the scope, so the key is the reason", async () => {
+		const s = setup({ settings: { api_key: "" } });
+		assert.equal(await s.call({ agentId: "writer" }), undefined);
+		assert.deepEqual(lines(s), skippedLog(KEY_UNSET));
+		assert.equal(s.jev.requests.length, 0);
 	});
 
 	it("skips another agent under core", async () => {
 		const s = setup();
 		assert.equal(await s.call({ agentId: "writer" }), undefined);
-		assert.deepEqual(lines(s), [
-			"model-router skipped, writer is outside the core scope",
-		]);
+		assert.deepEqual(lines(s), skippedLog(outsideCoreScope("writer")));
 	});
 
 	it("skips a spawn that names its agent as agent_id, as the tool reads it", async () => {
@@ -259,9 +272,7 @@ describe("gates and skips", () => {
 			config: { agents: { entries: { worker: { model: "own/model" } } } },
 		});
 		assert.equal(await s.call({ agent_id: "worker" }), undefined);
-		assert.deepEqual(lines(s), [
-			"model-router skipped, worker sets its own model",
-		]);
+		assert.deepEqual(lines(s), skippedLog(setsOwnModel("worker")));
 		assert.equal(s.jev.requests.length, 0);
 	});
 
@@ -271,7 +282,7 @@ describe("gates and skips", () => {
 			await s.call({ agentId: REQUESTER }, { toolName: SPAWN_TOOL }),
 			undefined,
 		);
-		assert.match(lines(s)[0] ?? "", /main is outside the core scope/);
+		assert.deepEqual(lines(s), skippedLog(outsideCoreScope(REQUESTER)));
 	});
 
 	it("skips when the configured subagent model is set", async () => {
@@ -279,14 +290,14 @@ describe("gates and skips", () => {
 			config: { agents: { defaults: { subagents: { model: "x/y" } } } },
 		});
 		assert.equal(await s.call(), undefined);
-		assert.deepEqual(lines(s), ["model-router skipped, subagent model set"]);
+		assert.deepEqual(lines(s), skippedLog("subagent model set"));
 	});
 
 	it("skips and logs the category when Jev fails", async () => {
 		const s = setup();
 		s.jev.mode.current = { status: 401 };
 		assert.equal(await s.call(), undefined);
-		assert.deepEqual(lines(s), ["model-router skipped, HTTP 401"]);
+		assert.deepEqual(lines(s), skippedLog("HTTP 401"));
 	});
 
 	it("skips when the picked slot is unset, and only then", async () => {
@@ -295,13 +306,13 @@ describe("gates and skips", () => {
 			settings: { small_model: "" },
 		});
 		assert.equal(await small.call(), undefined);
-		assert.deepEqual(lines(small), ["model-router skipped, small model unset"]);
+		assert.deepEqual(lines(small), skippedLog("small model unset"));
 		const large = setup({
 			levels: { tier: 2, work: 1 },
 			settings: { large_model: "" },
 		});
 		assert.equal(await large.call(), undefined);
-		assert.deepEqual(lines(large), ["model-router skipped, large model unset"]);
+		assert.deepEqual(lines(large), skippedLog("large model unset"));
 		const level1 = setup({
 			levels: { tier: 1, work: 1 },
 			settings: { small_model: "", large_model: "x/y" },
@@ -313,7 +324,7 @@ describe("gates and skips", () => {
 		const s = setup();
 		s.runtime.throwOn.add("config");
 		assert.equal(await s.call(), undefined);
-		assert.deepEqual(lines(s), ["model-router skipped, settings unreadable"]);
+		assert.deepEqual(lines(s), skippedLog(UNREADABLE));
 	});
 });
 
@@ -322,18 +333,14 @@ describe("model checks", () => {
 		const s = setup({ levels: { tier: 0, work: 1 } });
 		s.runtime.answers.resolved = { error: "not allowed" };
 		assert.equal(await s.call(), undefined);
-		assert.deepEqual(lines(s), [
-			"model-router skipped, small model unresolved",
-		]);
+		assert.deepEqual(lines(s), skippedLog("small model unresolved"));
 	});
 
 	it("leaves the call alone when the credential reads false, for the large slot too", async () => {
 		const s = setup({ levels: { tier: 2, work: 1 } });
 		s.runtime.answers.credential = false;
 		assert.equal(await s.call(), undefined);
-		assert.deepEqual(lines(s), [
-			"model-router skipped, large model unresolved",
-		]);
+		assert.deepEqual(lines(s), skippedLog("large model unresolved"));
 	});
 
 	it("checks for the requester with its agent directory", async () => {
@@ -341,6 +348,16 @@ describe("model checks", () => {
 		await s.call();
 		assert.equal(s.runtime.calls.defaultModel[0]?.agentId, REQUESTER);
 		assert.equal(s.runtime.calls.credential[0]?.agentDir, "/agents/main");
+	});
+
+	it("checks every model against the live config it gated on", async () => {
+		const config = { agents: { entries: { [REQUESTER]: {} } } };
+		const s = setup({ levels: { tier: 0, work: 1 }, config });
+		assert.ok(await s.call());
+		const { defaultModel, allowedRef, credential } = s.runtime.calls;
+		assert.equal(defaultModel[0]?.cfg, config);
+		assert.equal(allowedRef[0]?.cfg, config);
+		assert.equal(credential[0]?.cfg, config);
 	});
 
 	it("passes no agent id and no directory when the context has none", async () => {

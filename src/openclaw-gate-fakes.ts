@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { type Gate, type GateInput, gateSpawn } from "./openclaw-gates.ts";
+import { readSpawn } from "./openclaw-params.ts";
 import type { OpenClawSettings } from "./openclaw-settings.ts";
 import type { OpenClawConfig } from "./openclaw-types.ts";
 
@@ -12,9 +13,17 @@ export const SETTINGS: OpenClawSettings = {
 export const REQUESTER = "main";
 export const OTHER = "writer";
 
-export const gate = (overrides: Partial<GateInput> = {}): Gate =>
+// A test writes the spawn as the raw params the tool receives.
+export type GateOptions = Omit<Partial<GateInput>, "spawn"> & {
+	params?: Record<string, unknown>;
+};
+
+export const gate = ({
+	params = { task: "do the work" },
+	...overrides
+}: GateOptions = {}): Gate =>
 	gateSpawn({
-		params: { task: "do the work" },
+		spawn: readSpawn(params),
 		requester: REQUESTER,
 		config: {},
 		settings: SETTINGS,

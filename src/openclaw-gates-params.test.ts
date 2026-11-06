@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
 	effort,
 	extended,
+	type GateOptions,
 	gate,
 	known,
 	OTHER,
@@ -12,27 +13,22 @@ import {
 	skipped,
 	withParams,
 } from "./openclaw-gate-fakes.ts";
-import type { GateInput } from "./openclaw-gates.ts";
 import type { OpenClawSettings } from "./openclaw-settings.ts";
+import { outsideCoreScope, setsOwnModel } from "./settings.ts";
 
 // The sessions_spawn tool reads agentId, label, model and thinking with readToolStringParam: the own key, else the snake-case key, text only, trimmed, empty counted as absent.
 const SCOPES: [string, OpenClawSettings][] = [
 	["core", SETTINGS],
 	["extended", extended],
 ];
-const spawnWith = (
-	params: Record<string, unknown>,
-	over: Partial<GateInput> = {},
-) => gate({ params: { task: "t", ...params }, ...over });
+const spawnWith = (params: Record<string, unknown>, over: GateOptions = {}) =>
+	gate({ params: { task: "t", ...params }, ...over });
 
 for (const [scope, settings] of SCOPES) {
 	test(`under ${scope} an agent_id alone names the target agent`, () => {
 		const params = { agent_id: OTHER };
 		if (scope === "core")
-			return assert.equal(
-				skipped(spawnWith(params)),
-				`${OTHER} is outside the core scope`,
-			);
+			return assert.equal(skipped(spawnWith(params)), outsideCoreScope(OTHER));
 		assert.equal(
 			routed(spawnWith(params, { config: known({}), settings })).target,
 			OTHER,
@@ -48,9 +44,7 @@ for (const [scope, settings] of SCOPES) {
 		);
 		assert.equal(
 			reason,
-			scope === "core"
-				? `${OTHER} is outside the core scope`
-				: `${OTHER} sets its own model`,
+			scope === "core" ? outsideCoreScope(OTHER) : setsOwnModel(OTHER),
 		);
 	});
 
@@ -82,7 +76,7 @@ for (const [scope, settings] of SCOPES) {
 			{ config, settings },
 		);
 		if (scope === "core")
-			assert.equal(skipped(winner), `${OTHER} is outside the core scope`);
+			assert.equal(skipped(winner), outsideCoreScope(OTHER));
 		else assert.equal(routed(winner).target, OTHER);
 	});
 

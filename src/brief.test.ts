@@ -204,8 +204,8 @@ test("with no context the prompt is the task alone", () => {
 	assert.equal(buildPrompt("Do it", ""), "Do it");
 });
 
-test("contextText sends a non-blank string trimmed", () => {
-	assert.equal(contextText("  Shared notes\n"), "Shared notes");
+test("contextText keeps a non-blank string as it is", () => {
+	assert.equal(contextText("  Shared notes\n"), "  Shared notes\n");
 });
 
 test("contextText drops a blank string and any value that is not a string", () => {

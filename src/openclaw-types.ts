@@ -102,21 +102,6 @@ export type PluginRuntime = {
 	agent: { resolveAgentDir: (cfg: OpenClawConfig, agentId: string) => string };
 };
 
-// src/agents/tools/sessions-spawn-tool.ts: the `sessions_spawn` parameters the adapter reads.
-export type SpawnParams = {
-	task?: unknown;
-	agentId?: unknown;
-	model?: unknown;
-	thinking?: unknown;
-	runtime?: unknown;
-	visible?: unknown;
-	context?: unknown;
-	mode?: unknown;
-	thread?: unknown;
-	label?: unknown;
-	taskName?: unknown;
-};
-
 // src/plugins/hook-types.ts: `PluginHookBeforeToolCallEvent`.
 export type BeforeToolCallEvent = {
 	toolName: string;

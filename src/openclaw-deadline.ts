@@ -1,7 +1,9 @@
 import { LIMIT_REACHED, ROUTING_LIMIT_MS } from "./compose.ts";
 
 // The hook gets this much beyond the routing limit before OpenClaw times it out.
-export const HOOK_MARGIN_MS = 2000;
+const HOOK_MARGIN_MS = 2000;
+// The timeout the plugin registers its hook with: the routing limit plus the margin.
+export const HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HOOK_MARGIN_MS;
 // Below this the deadline leaves too little time for one Jev request.
 export const MIN_DEADLINE_MS = 1000;
 // The shortest hook timeout that still leaves the minimum deadline.
@@ -36,13 +38,23 @@ export async function raceDeadline<T>(
 				stop.abort(LIMIT_REACHED);
 				settle(undefined);
 			});
+			// The host's abort settles the race at once, so a hook the host gave up on does not wait for its work.
+			const onHostAbort = () => {
+				timer.cancel();
+				settle(undefined);
+			};
+			hostSignal?.addEventListener("abort", onHostAbort, { once: true });
+			if (hostSignal?.aborted) onHostAbort();
 			work(signal)
 				.then(
 					(result) => (signal.aborted ? undefined : result),
 					() => undefined,
 				)
 				.then(settle)
-				.finally(() => timer.cancel())
+				.finally(() => {
+					timer.cancel();
+					hostSignal?.removeEventListener("abort", onHostAbort);
+				})
 				// A cancel that throws must not become an unhandled rejection.
 				.catch(() => undefined);
 		});

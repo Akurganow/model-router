@@ -5,6 +5,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { TOOL_NAME } from "../src/openclaw-config.ts";
 import { PLUGIN_ID, readKeys, readSettings } from "../src/openclaw-settings.ts";
+import { KEY_FIELDS } from "../src/provider.ts";
 import { SCOPE_VALUES } from "../src/scope.ts";
 import { formatJson } from "./build/json.ts";
 import { renderOpenclaw } from "./build/openclaw.ts";
@@ -86,8 +87,17 @@ test("a value outside the lists reads as the default", () => {
 	assert.equal(bad.scope, settings.scope);
 });
 
+test("the key names in the source are the setting names the code reads", () => {
+	const names = Object.values(KEY_FIELDS).sort();
+	assert.deepEqual(Object.keys(source.claude.userConfig.keys).sort(), names);
+	const hinted = Object.entries(source.openclaw.uiHints)
+		.filter(([, hint]) => "sensitive" in hint)
+		.map(([name]) => name);
+	assert.deepEqual(hinted.sort(), names);
+});
+
 test("both keys are sensitive secret inputs, and the slots are not", () => {
-	const keys = ["api_key", "openrouter_api_key"];
+	const keys = Object.values(KEY_FIELDS);
 	for (const key of keys) assert.equal(manifest.uiHints[key].sensitive, true);
 	for (const slot of ["small_model", "large_model"])
 		assert.equal(manifest.uiHints[slot].sensitive, undefined);

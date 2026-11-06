@@ -95,7 +95,7 @@ function buildPrompt(task, context) {
   return `${brief}${CONTEXT_LABEL}${prepareBrief(context, budget)}`;
 }
 function contextText(context) {
-  return nonEmpty(context) ?? "";
+  return typeof context === "string" && nonEmpty(context) !== void 0 ? context : "";
 }
 function roleText(description) {
   if (typeof description !== "string") return NO_DESCRIPTION;
@@ -1068,8 +1068,8 @@ var NARROWABLE = ["auto", "openrouter-first"];
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
-function plan(value, present) {
-  const providers = order(value).filter((p) => present[p]);
+function plan(value, keys) {
+  const providers = order(value).filter((p) => Boolean(keys[p]));
   return providers.map(
     (provider, i) => i < providers.length - 1 ? {
       provider,
@@ -1147,6 +1147,7 @@ var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var alreadyValue = (value) => `already ${value}`;
 var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
 var UNREADABLE = "settings unreadable";
+var KEY_UNSET = "key unset";
 var outsideCoreScope = (id) => `${id} is outside the core scope`;
 var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
 var agentUnknown = (id) => `${id} agent unknown`;
@@ -1237,7 +1238,7 @@ async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
 async function openBatch(omp, pi, ctx, settings) {
   if (settings === void 0) return { closed: UNREADABLE };
   const routing = await findKeys(ctx, settings.provider);
-  if (routing.attempts.length === 0) return { closed: "key unset" };
+  if (routing.attempts.length === 0) return { closed: KEY_UNSET };
   const config = readConfig(omp.lookup, pi.pi.settings);
   if (config === void 0) return { closed: UNREADABLE };
   const agents = await discover(pi, ctx);
@@ -1284,11 +1285,7 @@ async function findKeys(ctx, value) {
     const key = await findKey(ctx, provider);
     if (key !== void 0) keys[provider] = key;
   }
-  const present = {
-    typesafe: keys.typesafe !== void 0,
-    openrouter: keys.openrouter !== void 0
-  };
-  return { attempts: plan(value, present), keys };
+  return { attempts: plan(value, keys), keys };
 }
 async function findKey(ctx, provider) {
   try {
@@ -1491,7 +1488,7 @@ function skipCategory(err, signal) {
 }
 async function route(input) {
   const { parts, attempts, signal } = input;
-  if (attempts.length === 0) return { skipped: "key unset" };
+  if (attempts.length === 0) return { skipped: KEY_UNSET };
   const failed = [];
   for (const [i, attempt2] of attempts.entries()) {
     let result;

@@ -1,3 +1,47 @@
+// src/fetch.ts
+var oneChunk = (bytes) => new ReadableStream({
+  start(controller) {
+    controller.enqueue(bytes);
+    controller.close();
+  }
+});
+var streamedFetch = async (url, init) => {
+  const reply = await globalThis.fetch(url, init);
+  const bytes = new TextEncoder().encode(await reply.text());
+  return new Response(oneChunk(bytes), {
+    status: reply.status,
+    statusText: reply.statusText,
+    headers: reply.headers
+  });
+};
+
+// src/part.ts
+var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
+};
+var PROBABILITY_DIGITS = 2;
+var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+var isRecord = (v) => typeof v === "object" && v !== null;
+function parseProbabilities(answers, key) {
+  const a = isRecord(answers) ? answers[key] : void 0;
+  if (!isRecord(a)) return void 0;
+  const { type, probabilities } = a;
+  if (type !== "score" || !isRecord(probabilities)) return void 0;
+  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
+  const { 0: p0, 1: p1, 2: p2 } = probabilities;
+  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
 var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
 var APIPromise = class APIPromise2 extends Promise {
@@ -100,21 +144,21 @@ var TypeSafeError = class extends Error {
     this.name = new.target.name;
   }
 };
-var isRecord = (value) => typeof value === "object" && value !== null;
+var isRecord2 = (value) => typeof value === "object" && value !== null;
 var extractMessage = (body) => {
   if (typeof body === "string") return body || void 0;
-  if (!isRecord(body)) return void 0;
+  if (!isRecord2(body)) return void 0;
   const { error, message, detail } = body;
   if (typeof error === "string") return error;
-  if (isRecord(error) && typeof error.message === "string") return error.message;
+  if (isRecord2(error) && typeof error.message === "string") return error.message;
   if (typeof message === "string") return message;
   if (typeof detail === "string") return detail;
-  if (isRecord(detail) && typeof detail.message === "string") return detail.message;
+  if (isRecord2(detail) && typeof detail.message === "string") return detail.message;
   if (Array.isArray(detail)) return describeValidationErrors(detail);
 };
 var describeValidationErrors = (errors) => {
   const parts = errors.flatMap((e) => {
-    if (!isRecord(e) || typeof e.msg !== "string") return [];
+    if (!isRecord2(e) || typeof e.msg !== "string") return [];
     const loc = Array.isArray(e.loc) ? e.loc.filter((x) => x !== "body").join(".") : "";
     return [loc ? `${loc}: ${e.msg}` : e.msg];
   });
@@ -947,8 +991,8 @@ var ORDER = {
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
-function plan(value, present) {
-  const providers = order(value).filter((p) => present[p]);
+function plan(value, keys) {
+  const providers = order(value).filter((p) => Boolean(keys[p]));
   return providers.map(
     (provider, i) => i < providers.length - 1 ? {
       provider,
@@ -966,159 +1010,6 @@ function fallsBack(err) {
   return FALLBACK_STATUSES.has(status) || status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
 }
 
-// src/client.ts
-function createClient(provider, apiKey, model, fetchFn) {
-  if (!Object.hasOwn(HOSTS, provider))
-    throw new Error(`createClient: no host for ${provider}`);
-  if (!apiKey)
-    throw new Error(
-      `createClient: no ${provider} key. Pass a non-empty key for ${provider}.`
-    );
-  return new TypeSafeClient({
-    apiKey,
-    baseURL: HOSTS[provider],
-    logLevel: "off",
-    defaultModel: model,
-    compression: false,
-    fetch: fetchFn
-  });
-}
-
-// src/part.ts
-var LEVELS = [0, 1, 2];
-var fromMiddle = (down, up) => (p) => {
-  const low = p[0] > down * p[1];
-  const high = p[2] > up * p[1];
-  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
-  return low ? 0 : high ? 2 : 1;
-};
-var PROBABILITY_DIGITS = 2;
-var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
-};
-var isRecord2 = (v) => typeof v === "object" && v !== null;
-function parseProbabilities(answers, key) {
-  const a = isRecord2(answers) ? answers[key] : void 0;
-  if (!isRecord2(a)) return void 0;
-  const { type, probabilities } = a;
-  if (type !== "score" || !isRecord2(probabilities)) return void 0;
-  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
-  const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
-    return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
-}
-
-// src/compose.ts
-var ROUTING_LIMIT_MS = 8e3;
-var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
-var MODEL_CHARS_MAX = 40;
-var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
-function skipCategory(err, signal) {
-  if (err instanceof APIUserAbortError)
-    return signal.reason === LIMIT_REACHED ? "timeout" : "cancelled";
-  if (err instanceof APIError) return `HTTP ${err.status}`;
-  if (err instanceof APITimeoutError) return "timeout";
-  if (err instanceof APIConnectionError) return "network error";
-  if (err instanceof TypeSafeError) return "rejected request";
-  return "failed";
-}
-async function route(input) {
-  const { parts, attempts, signal } = input;
-  if (attempts.length === 0) return { skipped: "key unset" };
-  const failed = [];
-  for (const [i, attempt] of attempts.entries()) {
-    let result;
-    try {
-      result = await ask(input, attempt);
-    } catch (err) {
-      failed.push({
-        provider: attempt.provider,
-        reason: skipCategory(err, signal)
-      });
-      if (!fallsBack(err)) break;
-      if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
-      continue;
-    }
-    const decision = decide(parts, result);
-    if ("skipped" in decision) {
-      failed.push({ provider: attempt.provider, reason: decision.skipped });
-      break;
-    }
-    const [first] = failed;
-    if (!first) return decision;
-    const via = {
-      provider: attempt.provider,
-      first: first.provider,
-      reason: first.reason
-    };
-    return { ...decision, via };
-  }
-  return skip(failed);
-}
-function ask(input, attempt) {
-  const { parts, state, keys, fetchFn, signal } = input;
-  const { provider, model, ...overrides } = attempt;
-  return createClient(provider, keys[provider], model, fetchFn).systemOne(
-    {
-      state,
-      model,
-      questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
-    },
-    { ...overrides, signal }
-  );
-}
-function skip(failed) {
-  const [first, ...rest] = failed;
-  if (!first || rest.length === 0)
-    return { skipped: first?.reason ?? "failed" };
-  return {
-    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
-  };
-}
-function decide(parts, result) {
-  const { answers, model, usage } = isRecord2(result) ? result : {};
-  const decided = {};
-  for (const part of parts) {
-    const probabilities = parseProbabilities(answers, part.key);
-    if (!probabilities) return { skipped: "bad reply" };
-    decided[part.key] = { level: part.pick(probabilities), probabilities };
-  }
-  return {
-    parts: decided,
-    model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
-    usage: isRecord2(usage) ? usage : void 0
-  };
-}
-function decisionSuffix({
-  model,
-  usage,
-  via
-}) {
-  const input = usage?.input_tokens;
-  const output = usage?.output_tokens;
-  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
-}
-
-// src/fetch.ts
-var oneChunk = (bytes) => new ReadableStream({
-  start(controller) {
-    controller.enqueue(bytes);
-    controller.close();
-  }
-});
-var streamedFetch = async (url, init) => {
-  const reply = await globalThis.fetch(url, init);
-  const bytes = new TextEncoder().encode(await reply.text());
-  return new Response(oneChunk(bytes), {
-    status: reply.status,
-    statusText: reply.statusText,
-    headers: reply.headers
-  });
-};
-
 // src/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
@@ -1127,9 +1018,20 @@ var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/openclaw-settings.ts
 var PLUGIN_ID = "model-router-openclaw";
+var pluginEntry = (config) => config?.plugins?.entries?.[PLUGIN_ID];
+function withPluginSetting(draft, setting, value) {
+  const plugins = draft.plugins ?? {};
+  const entries = plugins.entries ?? {};
+  const entry = entries[PLUGIN_ID] ?? {};
+  const config = entry.config ?? {};
+  config[setting] = value;
+  draft.plugins = {
+    ...plugins,
+    entries: { ...entries, [PLUGIN_ID]: { ...entry, config } }
+  };
+}
 function sources(live, pluginConfig) {
-  const entry = live?.plugins?.entries?.[PLUGIN_ID]?.config;
-  return [entry, pluginConfig].filter(isRecord2);
+  return [pluginEntry(live)?.config, pluginConfig].filter(isRecord);
 }
 function firstValid(from, field, parse) {
   for (const settings of from) {
@@ -1158,7 +1060,7 @@ function readKeys(live, pluginConfig, providerValue, env) {
   const from = sources(live, pluginConfig);
   const keys = {};
   for (const provider of order(providerValue)) {
-    const key = from.map((s) => nonEmpty(s[KEY_FIELDS[provider]])).find(Boolean) ?? nonEmpty(env[KEY_VARIABLES[provider]]);
+    const key = firstValid(from, KEY_FIELDS[provider], nonEmpty) ?? nonEmpty(env[KEY_VARIABLES[provider]]);
     if (key !== void 0) keys[provider] = key;
   }
   return keys;
@@ -1214,6 +1116,7 @@ var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var alreadyValue = (value) => `already ${value}`;
 var UNREADABLE = "settings unreadable";
+var KEY_UNSET = "key unset";
 var outsideCoreScope = (id) => `${id} is outside the core scope`;
 var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
 var agentUnknown = (id) => `${id} agent unknown`;
@@ -1264,27 +1167,16 @@ function howToChange(setting) {
   return isKeySetting(setting) ? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.` : badCall(SETTING_NAMES);
 }
 function runTool(api, env, params) {
-  const { setting } = isRecord2(params) ? params : {};
+  const { setting } = isRecord(params) ? params : {};
   return setting === void 0 ? readAll(readState(api, env)) : howToChange(setting);
 }
 var isOwner = (ctx) => ctx.senderIsOwner === true;
-function store(draft, setting, value) {
-  const plugins = draft.plugins ?? {};
-  const entries = plugins.entries ?? {};
-  const entry = entries[PLUGIN_ID] ?? {};
-  const config = entry.config ?? {};
-  config[setting] = value;
-  draft.plugins = {
-    ...plugins,
-    entries: { ...entries, [PLUGIN_ID]: { ...entry, config } }
-  };
-}
 async function write(api, ctx, setting, value) {
   try {
     await api.runtime.config.mutateConfigFile({
       afterWrite: { mode: "auto" },
       ...ctx.assertOwnerCurrent ? { writeOptions: { assertCurrent: ctx.assertOwnerCurrent } } : {},
-      mutate: (draft) => store(draft, setting, value)
+      mutate: (draft) => withPluginSetting(draft, setting, value)
     });
     return valueLine(setting, value);
   } catch (err) {
@@ -1343,8 +1235,118 @@ function registerConfig(api, env) {
     });
 }
 
+// src/client.ts
+function createClient(provider, apiKey, model, fetchFn) {
+  if (!Object.hasOwn(HOSTS, provider))
+    throw new Error(`createClient: no host for ${provider}`);
+  if (!apiKey)
+    throw new Error(
+      `createClient: no ${provider} key. Pass a non-empty key for ${provider}.`
+    );
+  return new TypeSafeClient({
+    apiKey,
+    baseURL: HOSTS[provider],
+    logLevel: "off",
+    defaultModel: model,
+    compression: false,
+    fetch: fetchFn
+  });
+}
+
+// src/compose.ts
+var ROUTING_LIMIT_MS = 8e3;
+var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
+var MODEL_CHARS_MAX = 40;
+var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+function skipCategory(err, signal) {
+  if (err instanceof APIUserAbortError)
+    return signal.reason === LIMIT_REACHED ? "timeout" : "cancelled";
+  if (err instanceof APIError) return `HTTP ${err.status}`;
+  if (err instanceof APITimeoutError) return "timeout";
+  if (err instanceof APIConnectionError) return "network error";
+  if (err instanceof TypeSafeError) return "rejected request";
+  return "failed";
+}
+async function route(input) {
+  const { parts, attempts, signal } = input;
+  if (attempts.length === 0) return { skipped: KEY_UNSET };
+  const failed = [];
+  for (const [i, attempt] of attempts.entries()) {
+    let result;
+    try {
+      result = await ask(input, attempt);
+    } catch (err) {
+      failed.push({
+        provider: attempt.provider,
+        reason: skipCategory(err, signal)
+      });
+      if (!fallsBack(err)) break;
+      if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
+      continue;
+    }
+    const decision = decide(parts, result);
+    if ("skipped" in decision) {
+      failed.push({ provider: attempt.provider, reason: decision.skipped });
+      break;
+    }
+    const [first] = failed;
+    if (!first) return decision;
+    const via = {
+      provider: attempt.provider,
+      first: first.provider,
+      reason: first.reason
+    };
+    return { ...decision, via };
+  }
+  return skip(failed);
+}
+function ask(input, attempt) {
+  const { parts, state, keys, fetchFn, signal } = input;
+  const { provider, model, ...overrides } = attempt;
+  return createClient(provider, keys[provider], model, fetchFn).systemOne(
+    {
+      state,
+      model,
+      questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
+    },
+    { ...overrides, signal }
+  );
+}
+function skip(failed) {
+  const [first, ...rest] = failed;
+  if (!first || rest.length === 0)
+    return { skipped: first?.reason ?? "failed" };
+  return {
+    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
+  };
+}
+function decide(parts, result) {
+  const { answers, model, usage } = isRecord(result) ? result : {};
+  const decided = {};
+  for (const part of parts) {
+    const probabilities = parseProbabilities(answers, part.key);
+    if (!probabilities) return { skipped: "bad reply" };
+    decided[part.key] = { level: part.pick(probabilities), probabilities };
+  }
+  return {
+    parts: decided,
+    model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
+    usage: isRecord(usage) ? usage : void 0
+  };
+}
+function decisionSuffix({
+  model,
+  usage,
+  via
+}) {
+  const input = usage?.input_tokens;
+  const output = usage?.output_tokens;
+  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
+}
+
 // src/openclaw-deadline.ts
 var HOOK_MARGIN_MS = 2e3;
+var HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HOOK_MARGIN_MS;
 var MIN_DEADLINE_MS = 1e3;
 var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HOOK_MARGIN_MS;
 var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HOOK_MARGIN_MS);
@@ -1359,10 +1361,19 @@ async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
         stop.abort(LIMIT_REACHED);
         settle(void 0);
       });
+      const onHostAbort = () => {
+        timer.cancel();
+        settle(void 0);
+      };
+      hostSignal?.addEventListener("abort", onHostAbort, { once: true });
+      if (hostSignal?.aborted) onHostAbort();
       work2(signal).then(
         (result) => signal.aborted ? void 0 : result,
         () => void 0
-      ).then(settle).finally(() => timer.cancel()).catch(() => void 0);
+      ).then(settle).finally(() => {
+        timer.cancel();
+        hostSignal?.removeEventListener("abort", onHostAbort);
+      }).catch(() => void 0);
     });
   } catch {
     return void 0;
@@ -1543,18 +1554,18 @@ function normalizeAgentId(value) {
 var sameAgent = (a, b) => normalizeAgentId(a) === normalizeAgentId(b);
 function findAgent(config, id) {
   const agents = config?.agents;
-  if (id === void 0 || !isRecord2(agents)) return void 0;
+  if (id === void 0 || !isRecord(agents)) return void 0;
   const wanted = normalizeAgentId(id);
   const { entries, list } = agents;
   if (entries !== void 0) {
-    if (!isRecord2(entries)) return void 0;
+    if (!isRecord(entries)) return void 0;
     const key = Object.keys(entries).find(
-      (candidate) => isRecord2(entries[candidate]) && normalizeAgentId(candidate) === wanted
+      (candidate) => isRecord(entries[candidate]) && normalizeAgentId(candidate) === wanted
     );
     return key === void 0 ? void 0 : entries[key];
   }
   if (!Array.isArray(list)) return void 0;
-  return list.filter(isRecord2).find(({ id: itemId }) => normalizeAgentId(itemId) === wanted);
+  return list.filter(isRecord).find(({ id: itemId }) => normalizeAgentId(itemId) === wanted);
 }
 
 // src/openclaw-params.ts
@@ -1565,30 +1576,52 @@ function readParam(params, key) {
   return Object.hasOwn(params, snake) ? params[snake] : void 0;
 }
 var readStringParam = (params, key) => nonEmpty(readParam(params, key));
+var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
+var SUBAGENT_RUNTIME = "subagent";
+function readAgent(params) {
+  const raw = readParam(params, "agentId");
+  if (typeof raw !== "string")
+    return isSet(raw) ? { kind: "invalid" } : { kind: "none" };
+  const id = nonEmpty(raw);
+  return id === void 0 ? { kind: "none" } : { kind: "id", id };
+}
+function readRuntime(params) {
+  const { runtime } = params;
+  if (!isSet(runtime)) return void 0;
+  return runtime === SUBAGENT_RUNTIME ? SUBAGENT_RUNTIME : "other";
+}
+function readSpawn(params) {
+  const { task, taskName, visible, context, mode, thread } = params;
+  return {
+    task: typeof task === "string" ? task : void 0,
+    agent: readAgent(params),
+    model: readStringParam(params, "model"),
+    thinking: readStringParam(params, "thinking"),
+    description: readStringParam(params, "label") ?? nonEmpty(taskName) ?? "",
+    runtime: readRuntime(params),
+    visible: visible === true,
+    context: context === "fork" || context === "isolated" ? context : void 0,
+    mode: mode === "run" || mode === "session" ? mode : void 0,
+    thread: thread === true
+  };
+}
 
 // src/openclaw-gates.ts
 var PASS = { outcome: "pass" };
 var skip2 = (reason) => ({ outcome: "skip", reason });
-var SUBAGENT_RUNTIME = "subagent";
 var NO_MODEL_VALUE = "default";
 function at(value, ...path) {
   let node = value;
   for (const key of path) {
-    if (!isRecord2(node) || !Object.hasOwn(node, key)) return void 0;
+    if (!isRecord(node) || !Object.hasOwn(node, key)) return void 0;
     node = node[key];
   }
   return node;
 }
-var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
 var agentField = (config, id, ...path) => at(findAgent(config, id), ...path);
-function namesModel(params) {
-  const model = readStringParam(params, "model");
-  return model !== void 0 && model.toLowerCase() !== NO_MODEL_VALUE;
-}
-function passesSilently(params) {
-  const { runtime } = params;
-  const agentId = readParam(params, "agentId");
-  return namesModel(params) || isSet(runtime) && runtime !== SUBAGENT_RUNTIME || isSet(agentId) && typeof agentId !== "string" || params.visible === true || params.context === "fork" || params.mode === "session" || params.thread === true;
+var namesModel = (model) => model !== void 0 && model.toLowerCase() !== NO_MODEL_VALUE;
+function passesSilently(spawn) {
+  return namesModel(spawn.model) || spawn.runtime === "other" || spawn.agent.kind === "invalid" || spawn.visible || spawn.context === "fork" || spawn.mode === "session" || spawn.thread;
 }
 function otherAgentSkip(id, { config }) {
   if (config === void 0) return agentDiscoveryFailed(id);
@@ -1600,8 +1633,8 @@ function subagentModelSet(input, target) {
   return isSet(agentField(input.config, target, "subagents", "model")) || isSet(at(input.config, "agents", "defaults", "subagents", "model"));
 }
 function effortRule(input) {
-  const { params, config, requester, settings } = input;
-  if (readStringParam(params, "thinking") !== void 0)
+  const { spawn, config, requester, settings } = input;
+  if (spawn.thinking !== void 0)
     return { kind: "keep", label: "caller effort" };
   const global = at(config, "agents", "defaults", "subagents", "thinking");
   const requesterThinking = agentField(
@@ -1613,22 +1646,22 @@ function effortRule(input) {
   const kept = isSet(global) || settings.scope === "core" && isSet(requesterThinking);
   return kept ? { kind: "keep", label: "config effort" } : { kind: "set" };
 }
-function roleOf(input, target, own) {
+function roleOf(input, target, blank) {
   const description = agentField(input.config, target, "description");
-  if (!own) return roleText(description);
-  return nonEmpty(description) === void 0 ? DEFAULT_ROLE : roleText(description);
+  return nonEmpty(description) === void 0 ? blank : roleText(description);
 }
 function gateSpawn(input) {
-  const { params, requester, settings, config } = input;
-  const { task } = params;
-  if (typeof task !== "string" || passesSilently(params)) return PASS;
-  const named = readStringParam(params, "agentId");
-  const own = named === void 0 || requester !== void 0 && sameAgent(named, requester);
-  const target = own ? requester : named;
-  if (!input.hasKey) return skip2("key unset");
-  if (!own && settings.scope === "core") return skip2(outsideCoreScope(named));
+  const { spawn, requester, settings, config } = input;
+  const { task } = spawn;
+  if (task === void 0 || passesSilently(spawn)) return PASS;
+  const named = spawn.agent.kind === "id" ? spawn.agent.id : void 0;
+  const isRequesterSpawn = named === void 0 || requester !== void 0 && sameAgent(named, requester);
+  const target = isRequesterSpawn ? requester : named;
+  if (!input.hasKey) return skip2(KEY_UNSET);
+  if (!isRequesterSpawn && settings.scope === "core")
+    return skip2(outsideCoreScope(named));
   if (subagentModelSet(input, target)) return skip2("subagent model set");
-  if (!own) {
+  if (!isRequesterSpawn) {
     const reason = otherAgentSkip(named, input);
     if (reason !== void 0) return skip2(reason);
   }
@@ -1638,10 +1671,15 @@ function gateSpawn(input) {
   return {
     outcome: "route",
     target,
-    role: roleOf(input, target, own),
+    role: roleOf(
+      input,
+      target,
+      isRequesterSpawn ? DEFAULT_ROLE : NO_DESCRIPTION
+    ),
     effort: effortRule(input),
     config,
-    task
+    task,
+    description: spawn.description
   };
 }
 
@@ -1654,18 +1692,15 @@ var END_SLOTS = {
   0: { name: "small", model: (s) => s.smallModel },
   2: { name: "large", model: (s) => s.largeModel }
 };
-async function score({ deps, signal, params }, settings, keys, gate) {
+async function score({ deps, signal }, settings, keys, gate) {
   const decision = await route({
     parts: [tier, work],
     state: {
       role: gate.role,
-      description: readStringParam(params, "label") ?? nonEmpty(params.taskName) ?? "",
+      description: gate.description,
       task: prepareBrief(gate.task)
     },
-    attempts: plan(settings.provider, {
-      typesafe: keys.typesafe !== void 0,
-      openrouter: keys.openrouter !== void 0
-    }),
+    attempts: plan(settings.provider, keys),
     keys,
     fetchFn: deps.fetchFn,
     signal
@@ -1682,10 +1717,10 @@ async function slotFor(runtime, settings, { config, target }, level) {
   return { model };
 }
 async function routeSpawn(spawn) {
-  const { api, deps, params, requester, log } = spawn;
+  const { api, deps, request, requester, log } = spawn;
   const { config, settings, keys } = readState(api, deps.env);
   const gate = gateSpawn({
-    params,
+    spawn: request,
     requester,
     config,
     settings,
@@ -1721,7 +1756,7 @@ function createBeforeToolCall(api, deadlineMs, deps) {
       if (deadlineMs < MIN_DEADLINE_MS || event?.toolName !== SPAWN_TOOL)
         return void 0;
       const requester = nonEmpty(ctx?.agentId);
-      const { params } = event;
+      const request = readSpawn(event.params);
       return await raceDeadline(
         (signal) => {
           const log = (message) => {
@@ -1731,7 +1766,7 @@ function createBeforeToolCall(api, deadlineMs, deps) {
             api,
             deps,
             signal,
-            params,
+            request,
             requester,
             log
           });
@@ -1748,7 +1783,6 @@ function createBeforeToolCall(api, deadlineMs, deps) {
 
 // src/openclaw.ts
 var HOOK_TIMEOUT_MAX_MS = 6e5;
-var PLUGIN_HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HOOK_MARGIN_MS;
 var realClock = {
   after: (ms, fn) => {
     const timer = setTimeout(fn, ms);
@@ -1757,9 +1791,9 @@ var realClock = {
 };
 var usable = (value) => typeof value === "number" && Number.isInteger(value) && value > 0 && value <= HOOK_TIMEOUT_MAX_MS;
 function effectiveTimeout(config) {
-  const hooks = config.plugins?.entries?.[PLUGIN_ID]?.hooks;
-  const perHook = isRecord2(hooks?.timeouts) ? hooks.timeouts.before_tool_call : void 0;
-  return [perHook, hooks?.timeoutMs].find(usable) ?? PLUGIN_HOOK_TIMEOUT_MS;
+  const hooks = pluginEntry(config)?.hooks;
+  const perHook = isRecord(hooks?.timeouts) ? hooks.timeouts.before_tool_call : void 0;
+  return [perHook, hooks?.timeoutMs].find(usable) ?? HOOK_TIMEOUT_MS;
 }
 function warn(api, message) {
   try {
@@ -1781,7 +1815,7 @@ function register(api, deps) {
     api.on(HOOK, createBeforeToolCall(api, deadline, deps), {
       matcher: [SPAWN_TOOL],
       priority: 100,
-      timeoutMs: PLUGIN_HOOK_TIMEOUT_MS
+      timeoutMs: HOOK_TIMEOUT_MS
     });
   } catch {
     warn(api, "registration failed; the plugin is inert.");

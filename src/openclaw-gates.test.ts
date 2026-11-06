@@ -15,7 +15,14 @@ import {
 	withParams,
 } from "./openclaw-gate-fakes.ts";
 import type { OpenClawConfig } from "./openclaw-types.ts";
-import { UNREADABLE } from "./settings.ts";
+import {
+	agentDiscoveryFailed,
+	agentUnknown,
+	KEY_UNSET,
+	outsideCoreScope,
+	setsOwnModel,
+	UNREADABLE,
+} from "./settings.ts";
 
 test("a plain spawn of the requesting agent itself is routed", () => {
 	assert.deepEqual(gate(), {
@@ -25,7 +32,21 @@ test("a plain spawn of the requesting agent itself is routed", () => {
 		effort: { kind: "set" },
 		config: {},
 		task: "do the work",
+		description: "",
 	});
+});
+
+test("the route carries the live config it was checked against", () => {
+	const config = { agents: { entries: { [REQUESTER]: {} } } };
+	assert.equal(routed(gate({ config })).config, config);
+});
+
+test("the route describes the spawn by its label, else its task name", () => {
+	assert.equal(
+		routed(withParams({ label: " docs ", taskName: "write" })).description,
+		"docs",
+	);
+	assert.equal(routed(withParams({ taskName: "write" })).description, "write");
 });
 
 // Silent pass: no line, as Claude Code passes such calls through.
@@ -40,7 +61,7 @@ const SILENT: readonly [string, Record<string, unknown>][] = [
 	["an agent id that is not a string", { agentId: 4 }],
 	["a snake-case agent id that is not a string", { agent_id: 4 }],
 	[
-		"an own agent id that is not a string beside a snake-case one",
+		"an agentId that is not text beside an agent_id",
 		{ agentId: 4, agent_id: "writer" },
 	],
 ];
@@ -96,15 +117,15 @@ test("a named agent without a requester id counts as another agent", () => {
 		skipped(
 			gate({ params: { task: "t", agentId: OTHER }, requester: undefined }),
 		),
-		`${OTHER} is outside the core scope`,
+		outsideCoreScope(OTHER),
 	);
-	assert.equal(skipped(result), `${OTHER} is outside the core scope`);
+	assert.equal(skipped(result), outsideCoreScope(OTHER));
 });
 
 test("under core another agent is outside the scope even when unknown", () => {
 	assert.equal(
 		skipped(withParams({ agentId: OTHER })),
-		`${OTHER} is outside the core scope`,
+		outsideCoreScope(OTHER),
 	);
 });
 
@@ -119,15 +140,12 @@ const other = (
 	});
 
 test("an unreadable config gives agent discovery failed", () => {
-	assert.equal(skipped(other(undefined)), `${OTHER} agent discovery failed`);
+	assert.equal(skipped(other(undefined)), agentDiscoveryFailed(OTHER));
 });
 
 test("an agent that is not configured is unknown", () => {
-	assert.equal(skipped(other({})), `${OTHER} agent unknown`);
-	assert.equal(
-		skipped(other(agents({ entries: {} }))),
-		`${OTHER} agent unknown`,
-	);
+	assert.equal(skipped(other({})), agentUnknown(OTHER));
+	assert.equal(skipped(other(agents({ entries: {} }))), agentUnknown(OTHER));
 });
 
 test("an inherited property name is not a configured agent", () => {
@@ -136,17 +154,14 @@ test("an inherited property name is not a configured agent", () => {
 		config: agents({ entries: {} }),
 		settings: extended,
 	});
-	assert.equal(skipped(result), "constructor agent unknown");
+	assert.equal(skipped(result), agentUnknown("constructor"));
 });
 
 test("an agent that sets its own model is skipped", () => {
-	assert.equal(
-		skipped(other(known({ model: "x/y" }))),
-		`${OTHER} sets its own model`,
-	);
+	assert.equal(skipped(other(known({ model: "x/y" }))), setsOwnModel(OTHER));
 	assert.equal(
 		skipped(other(known({ model: { primary: "x/y" } }))),
-		`${OTHER} sets its own model`,
+		setsOwnModel(OTHER),
 	);
 });
 
@@ -160,10 +175,13 @@ test("another agent under extended is routed with its own id", () => {
 });
 
 test("the target's subagent model skips the spawn", () => {
-	const own = agents({
+	const requesterConfig = agents({
 		entries: { [REQUESTER]: { subagents: { model: "a/b" } } },
 	});
-	assert.equal(skipped(gate({ config: own })), "subagent model set");
+	assert.equal(
+		skipped(gate({ config: requesterConfig })),
+		"subagent model set",
+	);
 	const cfg = known({ subagents: { model: "a/b" } });
 	assert.equal(skipped(other(cfg)), "subagent model set");
 });
@@ -194,7 +212,7 @@ test("another agent's subagent model does not skip the requester", () => {
 });
 
 test("no key for any allowed provider skips with key unset", () => {
-	assert.equal(skipped(gate({ hasKey: false })), "key unset");
+	assert.equal(skipped(gate({ hasKey: false })), KEY_UNSET);
 });
 
 test("neither model slot set skips with no small or large model", () => {
@@ -217,17 +235,17 @@ test("key unset comes before no small or large model", () => {
 		smallModel: undefined,
 		largeModel: undefined,
 	};
-	assert.equal(skipped(gate({ hasKey: false, settings })), "key unset");
+	assert.equal(skipped(gate({ hasKey: false, settings })), KEY_UNSET);
 });
 
 test("key unset comes before every other skip, as in omp", () => {
 	const config = agents({ defaults: { subagents: { model: "a/b" } } });
-	assert.equal(skipped(gate({ config, hasKey: false })), "key unset");
+	assert.equal(skipped(gate({ config, hasKey: false })), KEY_UNSET);
 	assert.equal(
 		skipped(
 			gate({ params: { task: "t", agentId: OTHER }, config, hasKey: false }),
 		),
-		"key unset",
+		KEY_UNSET,
 	);
 });
 
@@ -235,7 +253,7 @@ test("the core scope comes before subagent model set", () => {
 	const config = agents({ defaults: { subagents: { model: "a/b" } } });
 	assert.equal(
 		skipped(gate({ params: { task: "t", agentId: OTHER }, config })),
-		`${OTHER} is outside the core scope`,
+		outsideCoreScope(OTHER),
 	);
 });
 
@@ -379,11 +397,8 @@ test("an unreadable config skips the route with settings unreadable", () => {
 	assert.equal(skipped(gate({ config: undefined })), UNREADABLE);
 });
 
-test("settings unreadable comes after every other skip of the own agent", () => {
-	assert.equal(
-		skipped(gate({ config: undefined, hasKey: false })),
-		"key unset",
-	);
+test("settings unreadable comes after every other skip of the spawn of the requesting agent itself", () => {
+	assert.equal(skipped(gate({ config: undefined, hasKey: false })), KEY_UNSET);
 	const noModels = {
 		...SETTINGS,
 		smallModel: undefined,
@@ -407,12 +422,9 @@ test("an agent in the list roster is known, and its own model skips the spawn", 
 	routed(other(listed({ id: OTHER })));
 	assert.equal(
 		skipped(other(listed({ id: OTHER, model: "x/y" }))),
-		`${OTHER} sets its own model`,
+		setsOwnModel(OTHER),
 	);
-	assert.equal(
-		skipped(other(listed({ id: "else" }))),
-		`${OTHER} agent unknown`,
-	);
+	assert.equal(skipped(other(listed({ id: "else" }))), agentUnknown(OTHER));
 });
 
 test("an agent in the list roster sends its description as the role", () => {
@@ -422,7 +434,7 @@ test("an agent in the list roster sends its description as the role", () => {
 
 test("the list roster is read only when entries is absent", () => {
 	const config = agents({ entries: {}, list: [{ id: OTHER }] });
-	assert.equal(skipped(other(config)), `${OTHER} agent unknown`);
+	assert.equal(skipped(other(config)), agentUnknown(OTHER));
 });
 
 test("an agent id matches its entry key in any case", () => {
@@ -434,7 +446,7 @@ test("an agent id matches its entry key in any case", () => {
 				agentId: "writer",
 			}),
 		),
-		"writer sets its own model",
+		setsOwnModel("writer"),
 	);
 });
 

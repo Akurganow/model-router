@@ -1,19 +1,17 @@
 import {
 	type Environment,
-	type Keys,
-	PLUGIN_ID,
 	readState,
 	type State,
+	withPluginSetting,
 } from "./openclaw-settings.ts";
 import type {
 	CommandContext,
 	CommandResult,
 	OpenClawApi,
-	OpenClawConfig,
 	ToolResult,
 } from "./openclaw-types.ts";
 import { isRecord } from "./part.ts";
-import { order, type Provider } from "./provider.ts";
+import { type Keys, order, type Provider } from "./provider.ts";
 import {
 	alreadyValue,
 	badCall,
@@ -43,8 +41,6 @@ const UNSET = "unset";
 
 export const NOT_OWNER = "only the owner can change it";
 export const TOOL_DESCRIPTION = `Reads the router's settings. With no input it returns the provider, the scope, both models, and whether each key the provider allows is set. With a setting name (${SETTING_NAMES.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
-
-type Settings = Record<string, unknown>;
 
 const modelLine = (name: string, model: string | undefined): string =>
 	`${name}: ${model ?? UNSET}`;
@@ -89,18 +85,6 @@ function runTool(api: OpenClawApi, env: Environment, params: unknown): string {
 // src/plugins/plugin-command-execution.ts), so the owner flag is the one check left here.
 const isOwner = (ctx: CommandContext): boolean => ctx.senderIsOwner === true;
 
-function store(draft: OpenClawConfig, setting: ValueSetting, value: string) {
-	const plugins = draft.plugins ?? {};
-	const entries = plugins.entries ?? {};
-	const entry = entries[PLUGIN_ID] ?? {};
-	const config: Settings = entry.config ?? {};
-	config[setting] = value;
-	draft.plugins = {
-		...plugins,
-		entries: { ...entries, [PLUGIN_ID]: { ...entry, config } },
-	};
-}
-
 // "auto" is the only policy that publishes the write to the runtime snapshot `config.current()` returns,
 // so the next spawn sees the value. "none" skips that, and "restart" would drop the gateway for a setting.
 async function write(
@@ -115,7 +99,7 @@ async function write(
 			...(ctx.assertOwnerCurrent
 				? { writeOptions: { assertCurrent: ctx.assertOwnerCurrent } }
 				: {}),
-			mutate: (draft) => store(draft, setting, value),
+			mutate: (draft) => withPluginSetting(draft, setting, value),
 		});
 		return valueLine(setting, value);
 	} catch (err) {

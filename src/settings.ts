@@ -95,7 +95,8 @@ export const projectOverrides = (setting: ValueSetting): string =>
 	`A project value for ${setting} overrides it.`;
 
 export const UNREADABLE = "settings unreadable";
-// The skip reasons a spawn check gives. Every harness words them the same.
+export const KEY_UNSET = "key unset";
+// The skip reasons the omp and OpenClaw spawn checks give. Claude Code uses none of these builders.
 export const outsideCoreScope = (id: string): string =>
 	`${id} is outside the core scope`;
 export const agentDiscoveryFailed = (id: string): string =>

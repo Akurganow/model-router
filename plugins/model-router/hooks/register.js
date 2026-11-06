@@ -1051,8 +1051,8 @@ var ORDER = {
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
-function plan(value, present) {
-  const providers = order(value).filter((p) => present[p]);
+function plan(value, keys) {
+  const providers = order(value).filter((p) => Boolean(keys[p]));
   return providers.map(
     (provider, i) => i < providers.length - 1 ? {
       provider,
@@ -1124,6 +1124,7 @@ var valueLine = (setting, value) => setting === "provider" ? `provider: ${value}
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var alreadyValue = (value) => `already ${value}`;
+var KEY_UNSET = "key unset";
 var NO_ANSWER = "no answer from the dialog";
 var NOT_OFFERED = "the answer was not one of the offered values";
 var REFUSED = "Permission rules deny this tool, so nothing was read or changed.";
@@ -1267,7 +1268,7 @@ function skipCategory(err, signal) {
 }
 async function route(input) {
   const { parts, attempts, signal } = input;
-  if (attempts.length === 0) return { skipped: "key unset" };
+  if (attempts.length === 0) return { skipped: KEY_UNSET };
   const failed = [];
   for (const [i, attempt] of attempts.entries()) {
     let result;
@@ -1533,10 +1534,7 @@ async function routeSpawn($, spawn, next, options) {
   const keys = await readKeys($, options, options.provider);
   const decision = await scored($, next.signal, {
     state,
-    attempts: plan(options.provider, {
-      typesafe: keys.typesafe !== void 0,
-      openrouter: keys.openrouter !== void 0
-    }),
+    attempts: plan(options.provider, keys),
     keys
   });
   const picked = pick2(decision);
