@@ -1,4 +1,8 @@
+import inspect
+import os
+import socket
 import unittest
+from unittest import mock
 
 from support import REAL_HERMES, fake_api, make_router, submodule, task
 
@@ -58,6 +62,52 @@ class CredentialRuleOnHermesTest(unittest.TestCase):
         for provider in ("nous", "openai-codex", "qwen-oauth", "minimax-oauth", "bedrock"):
             with self.subTest(provider):
                 self.assertFalse(checks.credentials_stay_offline(provider, api))
+
+
+def _no_network(*_args, **_kwargs):
+    raise AssertionError("the call reached the network")
+
+
+@unittest.skipUnless(REAL_HERMES, "the real Hermes modules do not import here")
+class HermesApiOnHermesTest(unittest.TestCase):
+    """Each Hermes function the shim calls keeps the name and the shape the shim uses.
+
+    The live functions import lazily and some swallow errors, so only a call on
+    the real Hermes shows a rename."""
+
+    VARIABLE = "MODEL_ROUTER_PROBE_VARIABLE"
+
+    def test_get_secret_reads_a_variable_and_returns_none_for_an_absent_one(self):
+        api = hermes_api.live_api()
+        with mock.patch.dict(os.environ, {self.VARIABLE: "probe-value"}):
+            self.assertEqual(api.get_secret(self.VARIABLE), "probe-value")
+        self.assertIsNone(api.get_secret(self.VARIABLE))
+
+    def test_find_node_matches_hermes_and_names_a_file_or_nothing(self):
+        # The shim's wrapper turns any error into None, so the test calls Hermes directly too.
+        from hermes_constants import find_node_executable
+
+        found = find_node_executable("node")
+        self.assertTrue(found is None or os.path.isfile(found), found)
+        self.assertEqual(hermes_api.live_api().find_node(), found)
+
+    def test_list_models_reads_the_catalogue_offline(self):
+        with mock.patch.object(socket.socket, "connect", _no_network), mock.patch.object(
+            socket, "create_connection", _no_network
+        ):
+            models = hermes_api.live_api().list_models("deepseek")
+        self.assertIsInstance(models, list)
+
+    def test_resolve_runtime_provider_takes_the_keywords_the_shim_passes(self):
+        from hermes_cli.left_core_migration import installs_held
+        from hermes_cli.runtime_provider import resolve_runtime_provider
+
+        parameters = inspect.signature(resolve_runtime_provider).parameters
+        for name in ("requested", "target_model"):
+            with self.subTest(name):
+                self.assertEqual(parameters[name].kind, inspect.Parameter.KEYWORD_ONLY)
+        with installs_held():
+            pass
 
 
 if __name__ == "__main__":
