@@ -251,6 +251,12 @@ type Picked = {
 	suffix: string;
 };
 
+/**
+ * Returns the model, effort, level, probabilities and suffix for a decision
+ * that holds the tier and work parts. Returns the skip unchanged when the
+ * decision is a skip, and a bad-reply skip when a part is missing. Never
+ * throws.
+ */
 function pick(decision: Decision | Skipped): Picked | Skipped {
 	const decided = decide(decision, tier.key, work.key);
 	if ("skipped" in decided) return decided;
@@ -263,6 +269,10 @@ function pick(decision: Decision | Skipped): Picked | Skipped {
 	};
 }
 
+/**
+ * Returns the routing line for a pick. A kept effort replaces the picked
+ * effort. Never throws.
+ */
 function decisionLine(picked: Picked, kept: string | undefined): string {
 	return routedLine({
 		level: picked.level,

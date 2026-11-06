@@ -12,6 +12,10 @@ export type RoutedLine = {
 
 const NO_CHANGE = "no change";
 
+/**
+ * Returns the routing line: the level, the target or "no change", the effort
+ * when given, the probabilities and the suffix. Never throws.
+ */
 export function routedLine({
 	level,
 	target,

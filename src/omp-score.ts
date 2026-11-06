@@ -97,6 +97,11 @@ const skipped = (reason: string): Stored => ({
 	line: skippedLine(reason),
 });
 
+/**
+ * Returns the stored entry for a decision that holds the tier part: the role of
+ * the picked level with its routing line. Returns an entry with no role and a
+ * skip line when the decision is a skip or lacks the part. Never throws.
+ */
 function toStored(decision: Decision | Skipped): Stored {
 	const decided = decide(decision, tier.key);
 	if ("skipped" in decided) return skipped(decided.skipped);

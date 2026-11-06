@@ -31,6 +31,10 @@ export type Spawning = {
 	readonly modelRole?: string | undefined;
 };
 
+/**
+ * Returns true for undefined, null and a blank string, and false for any other
+ * value. Never throws.
+ */
 const isEmpty = (v: unknown) =>
 	v === undefined ||
 	v === null ||
@@ -58,6 +62,12 @@ function userChoice(name: string, facts: Facts): string | undefined {
 	return undefined;
 }
 
+/**
+ * Returns the reason to skip an agent, or undefined when the agent may be
+ * routed. A bundled agent passes. Any other agent is skipped in the core scope,
+ * when discovery failed, when the agent is unknown, or when it sets its own
+ * model. Never throws.
+ */
 function agentGate(name: string, facts: Facts): string | undefined {
 	const found = findAgent(name, facts);
 	if (found?.source === BUNDLED) return undefined;
@@ -72,7 +82,11 @@ const seanceGate = (name: string) =>
 		? `${name} spawns without the hook omp gives plugins, so its model cannot change`
 		: undefined;
 
-// One rule judges every item alone: a reason to skip it, or nothing.
+/**
+ * Judges one item alone and returns the reason to skip it, or undefined when it
+ * may be routed. A scope, a user choice, the seance gate, the agent gate or a
+ * missing model role gives the reason, in that order. Never throws.
+ */
 export function itemCheck(name: string, facts: Facts): string | undefined {
 	if (!inScope(name, facts.scope)) return outsideCoreScope(name);
 	return (

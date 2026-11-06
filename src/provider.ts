@@ -58,19 +58,32 @@ export type Attempt = {
 	readonly retry?: { readonly maxRetries: number };
 };
 
+/**
+ * Returns the value as a provider value when it is a known name, and undefined
+ * for anything else, including non-text and inherited property names. Never
+ * throws.
+ */
 export const parseProvider = (value: unknown): ProviderValue | undefined =>
 	typeof value === "string" && Object.hasOwn(ORDER, value)
 		? (value as ProviderValue)
 		: undefined;
 
+/**
+ * Returns the value when it is a known provider value, and the default typesafe
+ * otherwise. Never throws.
+ */
 export const resolve = (value: unknown): ProviderValue =>
 	parseProvider(value) ?? DEFAULT_VALUE;
 
 export const order = (value: unknown): readonly Provider[] =>
 	ORDER[resolve(value)];
 
-// A provider is attempted when its entry is set: a key, or `true` for a caller that holds none.
-// Every attempt but the last gives up fast, so the next one gets most of the routing limit.
+/**
+ * Returns one attempt for each provider the value allows whose entry in keys is
+ * set: a key, or true for a caller that holds none. Every attempt but the last
+ * gives up fast, so the next one gets most of the routing limit. Returns no
+ * attempts when no entry is set. Never throws.
+ */
 export function plan(
 	value: unknown,
 	keys: Readonly<Partial<Record<Provider, unknown>>>,

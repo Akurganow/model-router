@@ -78,7 +78,14 @@ const readAll = (omp: OmpImports, ctx: Context): Promise<string> =>
 		].join(LINE_BREAK);
 	});
 
-// Writes go to the global settings. The effective value is read again, because a project value can win.
+/**
+ * Sets a setting to a value and returns the line to show. Returns the allowed
+ * values when the value is not one of them. Returns an unchanged line when the
+ * settings are unreadable, omp gave no installed name, the value already holds,
+ * or the write fails. Writes go to the global settings. The effective value is
+ * read again, because a project value can win, and the line then names the
+ * override. Never throws.
+ */
 async function apply(
 	omp: OmpImports,
 	ctx: Context,
