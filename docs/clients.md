@@ -863,6 +863,11 @@ This repository's plugin requires Hermes 0.22.5 or later, set by `requires_herme
   The result entry carried `route: {backend: probe-router, label, model, provider: openrouter, reasoning_effort: low, service_tier: normal}` and the summary `pong`.
   Under `plugins.isolation: host`, two tasks of one call routed to `openai/gpt-6-luna` at effort `low` ran two child sessions with `model = openai/gpt-6-luna` and effort `low`; the summaries were `ping` and `pong`.
   (running: Hermes v0.22.7, the probe plugin, `hermes -z "<call delegate_task once …>" -m google/gemini-2.5-flash --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 330 s alarm, once for each turn, 2026-11-06)
+- This repository's plugin routed a real call. One `delegate_task` call held a lookup task and a design task. The provider was `typesafe`, `small_model` was `openrouter openai/gpt-6-luna` and `large_model` was `openrouter openai/gpt-6.1-terra`.
+  In process, the lookup task read `model-router L0 openai/gpt-6-luna · medium · p=0.67/0.99 · jev jev-1.14.0 · 686/30 tok`, and the design task read `model-router L2 openai/gpt-6.1-terra · high · p=1.00/0.63 · jev jev-1.14.0 · 705/30 tok`.
+  The child sessions ran `openai/gpt-6-luna` at effort `medium` and `openai/gpt-6.1-terra` at effort `high`. Each result entry carried the line in `route.label`, and `agent.log` held both lines.
+  After `hermes gateway stop` and `plugins.isolation: host`, the same call gave the same levels, models and efforts, with `p=0.69/0.98` and `p=1.00/0.58`. `route.label` carried both lines, and `agent.log` held no routing line.
+  (running: Hermes v0.22.7, the plugin installed with `hermes plugins install "file://<clone>#plugins/model-router-hermes" --enable` on a fresh Hermes home and set up as its README says, `hermes -z "<call delegate_task once with two tasks …>" -m openai/gpt-6-luna --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 400 s alarm, once for each mode, 2026-11-06)
 - Hermes maps a requested effort that a wire does not support to the nearest weaker supported level, and to the weakest level when none is weaker.
   (source: [`reasoning_effort.py` L127–L139](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/reasoning_effort.py#L127-L139))
 
@@ -967,12 +972,11 @@ This repository's plugin requires Hermes 0.22.5 or later, set by `requires_herme
 
 ### Hermes gaps
 
-The probes ran a probe plugin, `probe-router`, and not this repository's plugin.
+Most probes ran a probe plugin, `probe-router`, and not this repository's plugin.
 The probe plugin ran Node on a small script and shipped the OpenClaw bundle for the scanner.
-This repository's plugin passed `validate`, the scan and the `file://` install on Hermes v0.23.0, as the facts above record. No run has routed a real task through it.
+This repository's plugin passed `validate`, the scan and the `file://` install on Hermes v0.23.0, as the facts above record. It routed one real call of two tasks on Hermes v0.22.7, in process and in the plugin host. No routing run used Hermes v0.23.0 or a fallback between providers.
 The `hermes` job has not run on a pushed commit yet, so this page cites no run of it.
 No run used the repository form `Akurganow/model-router/plugins/model-router-hermes` from the README, a `--ref` pin or `hermes plugins update`.
-No run read the label in `route.label` under `plugins.isolation: host`. The host fact rests on the documentation that says everything crossing the interface is plain JSON.
 No run used a proxy, so the proxy behaviour rests on the Node documentation and on the commit that added the switch.
 No run sent two concurrent sessions through one gateway. That they share one budget record follows from the gateway facts above.
 No run checked that Hermes clamps a routed effort for a delegated child. The clamp is read from `reasoning_effort.py`.
