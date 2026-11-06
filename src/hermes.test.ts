@@ -107,11 +107,11 @@ describe("the request to Jev", () => {
 
 	it("masks a key shaped string in the task", async () => {
 		const { response, jev } = run(
-			{ ...REQUEST, task: "use sk-abcdefghij0123456789", context: "" },
+			{ ...REQUEST, task: "use API_KEY=Zq9fK2mTvvQ8 here", context: "" },
 			ONE,
 		);
 		await response;
-		assert.doesNotMatch(JSON.stringify(jev.bodies), /abcdefghij/);
+		assert.doesNotMatch(JSON.stringify(jev.bodies), /Zq9fK2mTvvQ8/);
 	});
 
 	it("does not send a key for a provider the value forbids", async () => {
