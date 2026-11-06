@@ -23,28 +23,26 @@ and their keys:
 | `auto` | TypeSafe, with the TypeSafe key | OpenRouter, with the OpenRouter key |
 | `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
 
-An unknown value acts as `typesafe`. With `auto` or `openrouter-first` and one
-key set, the plugin uses that key's provider alone. With both keys set, one
-task may reach both companies. The second provider gets the task only when the
-first fails with a connection error, a timeout, or HTTP status 401, 402, 403,
-404, 408, 429 or 5xx. It never gets the task after 400, 422, a cancel, the
-routing limit or a bad reply.
+With both keys under `auto` or `openrouter-first`, one task may reach both companies.
 
-Each key goes only to its own provider's address above. The plugin passes the
-address and the key with every request, so no environment variable moves a key
-to another host. An environment variable can supply a key, and with it the
-account that receives the task text, as
-[What the plugin stores](#what-the-plugin-stores) says.
+[Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
+gives the fallback rules.
+
+Each key goes only to its own provider's address above, as
+[Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
+explains.
+
+Hermes's env file or environment can supply a key, as [What the plugin
+stores](#what-the-plugin-stores) says.
 
 ## What the plugin sends
 
-For every task it routes, the plugin sends an HTTPS POST to the provider the
-table above names. The plugin bundles the official TypeSafe SDK,
-`@typesafe-ai/sdk`, which builds the request for both providers. The JSON body
-holds:
+Each routed task sends an HTTPS POST to the provider the table above names. The
+JSON body holds:
 
-- the task's `goal` text, condensed and with token-shaped strings masked. A
-  text over 12,000 characters keeps its start and its end
+- the task's `goal` text, prepared as
+  [The task text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-task-text)
+  says
 - the task's `context` text, when the task has one. It follows the goal, at
   most 3,000 characters, prepared the same way. Goal and context together stay
   within 12,000 characters, and the context is left out when less than 500
@@ -55,27 +53,20 @@ holds:
   [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent)
   says why the text is fixed
 - an empty description, because Hermes passes no label or name
-- the Jev alias `jev-latest`, and two fixed scoring questions, `tier` and
-  `work`, with their three descriptions each, text that ships with the plugin.
+- the Jev alias and the two scoring questions, as
+  [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
+  lists them
 
-The request headers hold:
-
-- `authorization`, with the key of the provider that receives the request
-- `accept` and `content-type`, both `application/json`
-- `user-agent` and `x-typesafe-sdk`, both naming the SDK and its version,
-  `typesafe-sdk/0.7.0`
-- `x-typesafe-runtime`, which names the runtime, the operating system and the
-  architecture, in the form `node/<version> (<os>; <arch>)`
-- `x-typesafe-retry-count`, `1` or `2`, on a retry only.
-
-OpenRouter receives the same headers, the `x-typesafe-*` ones included. The
-runtime header tells the provider which Node, system and architecture Hermes
-runs the plugin on. The task text and the context hold whatever the model put
-in them, which can include code. Hermes routes all tasks of a call, one after
-another, before any child starts, and the plugin sends each request during that
-routing. A task that Hermes later refuses was already sent. That list is the
-whole request. Each key identifies your account to its provider. The plugin
-sends no telemetry and no other data about you or your machine.
+The `x-typesafe-runtime` header reads `node/<version> (<os>; <arch>)`, and it
+tells the provider which Node, system and architecture Hermes runs the plugin
+on.
+[The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
+lists the other headers, which the bundled SDK builds. The goal and the context
+hold whatever the model put in them, which can include code. Hermes routes all
+tasks of a call, one after another, before any child starts, and the plugin
+sends each request during that routing. A task that Hermes later refuses was
+already sent. That list is the whole request, and
+[the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request).
 
 ## The program the plugin starts
 
@@ -98,35 +89,22 @@ requests above.
 
 ## Requests and billing
 
-With one provider, a routed task sends one request and up to two retries,
-three attempts in all. The SDK retries a connection error and an HTTP status
-408, 429 or 5xx. It waits for a `Retry-After` header when one comes, within the
-limit. It retries no other status. The retries send the same body as the first
-request.
+One task sends at most four requests, as
+[Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider)
+explains.
 
-With two providers, the first provider gets one request and no retry. The
-plugin gives up on it after 2 s. The second provider then gets up to three
-attempts as above. One task therefore sends at most four requests.
-
-One routing limit covers all tasks of a `delegate_task` call, both providers
-and all retries included. [Sequential routing and the shared budget](README.md#sequential-routing-and-the-shared-budget)
-gives the limit. A task that starts after the limit has passed sends nothing,
-so a call can send fewer requests than it has tasks. The plugin stops waiting
-at the limit, but it cannot recall a request in flight. A request can reach its
-provider even when its answer never returns. A retry after a network failure
-may be billed more than once. A first request the plugin gave up on may still be
-billed, on top of the second provider's answer. The plugin sends no other
-request.
+One routing limit covers all tasks of a `delegate_task` call, both providers and
+all retries included.
+[Sequential routing and the shared budget](README.md#sequential-routing-and-the-shared-budget)
+gives the limit. A task that starts after the limit has passed sends nothing, so
+a call can send fewer requests than it has tasks.
+[The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing)
+says what a request in flight can cost. The plugin sends no other request.
 
 ## What the providers do with it
 
-Each provider processes the request to answer the scoring questions.
-TypeSafe's handling of request data is set by its privacy policy at
-https://typesafe.ai/legal/privacy-policy. OpenRouter's privacy policy is at
-https://openrouter.ai/privacy. OpenRouter does not document retention or
-training for the System One endpoint. OpenRouter names the answering model
-`typesafe/jev-…`, and the plugin cannot see where OpenRouter passes the
-request on. The plugin author has no access to those requests.
+The providers' privacy policies are linked at
+[What the providers do with it](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-the-providers-do-with-it).
 
 ## What the plugin stores
 
@@ -160,11 +138,12 @@ provider and to list the provider's models from Hermes's cached catalogue. For a
 `anthropic`, it reads whether `ANTHROPIC_API_KEY`, `ANTHROPIC_TOKEN` and
 `CLAUDE_CODE_OAUTH_TOKEN` are set, to decide whether the credential stays
 offline. It never sends them. These calls make no network request and refresh
-no credential. Nothing from these reads leaves your machine, except the role
-text the request carries as described above.
+no credential. Of these reads, only the role text leaves your machine, in the
+request, as described above.
 
-The `model_router_config` tool only reads. It reports whether a key is set and
-never returns the key, its length or any part of it.
+The `model_router_config` tool only reads.
+[The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool)
+says what it reports.
 
 The command `/model-router-provider` writes the plugin's `provider` setting
 into Hermes's configuration. It writes only from a local session, which is a
@@ -180,10 +159,10 @@ holds no task text, no context and no key.
 
 ## Fails open
 
-The plugin fails open. That means the plugin itself never refuses a task and
-never throws into Hermes. A missing key, a closed gate, an error, a timeout or
-a failed check returns the route Hermes's default backend would give the task,
-and the task runs as Hermes would run it without the plugin.
+The plugin fails open, as
+[Fails open](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#fails-open)
+defines it. It never refuses a task. When it fails open, it returns the route
+Hermes's default backend would give the task.
 
 The plugin cannot promise more than that:
 
@@ -200,10 +179,11 @@ The plugin cannot promise more than that:
 
 ## Your choices
 
-Set `provider` to `typesafe` or `openrouter` to keep each task with one
-company. Remove the keys from Hermes's env file and from the environment, and
-the plugin skips routing. Set `delegation.backend` back to `default`, and
-nothing is sent. [Turn it off](README.md#turn-it-off) says how.
+Every plugin offers the choices in
+[Your choices](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#your-choices).
+Here, remove the keys from Hermes's env file and from the environment. Set
+`delegation.backend` back to `default`, and nothing is sent.
+[Turn it off](README.md#turn-it-off) says how.
 
 ## Children
 

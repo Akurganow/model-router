@@ -6,8 +6,8 @@ what the plugin sends, where it goes, and what the plugin keeps. Effective
 
 ## Where requests go
 
-The plugin asks Jev to score each batch item it routes. Under the default
-`core` scope, only `task` items route. [The extended scope](#the-extended-scope)
+The plugin asks Jev to score each routed batch item. Only `task` items route
+under the default `core` scope, and [the extended scope](#the-extended-scope)
 adds the others. Jev answers on one or two providers:
 
 - TypeSafe, at https://api.typesafe.ai/v1/systemone, with your TypeSafe key
@@ -24,12 +24,10 @@ and their keys:
 | `auto` | TypeSafe, with the TypeSafe key | OpenRouter, with the OpenRouter key |
 | `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
 
-An unknown value acts as `typesafe`. With `auto` or `openrouter-first` and one
-key set, the plugin uses that key's provider alone. With both keys set, one
-item may reach both companies. The second provider gets the item only when the
-first fails with a connection error, a timeout, or HTTP status 401, 402, 403,
-404, 408, 429 or 5xx. It never gets the item after 400, 422, a cancel, the
-routing limit or a bad reply.
+With both keys under `auto` or `openrouter-first`, one item may reach both companies.
+
+[Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
+gives the fallback rules.
 
 A project can set two plugin settings. For `provider`, its value may only
 narrow `auto` or `openrouter-first` to one of the two providers. It cannot add
@@ -37,20 +35,21 @@ a provider, swap one or change the order. For `scope`, its value overrides yours
 in both directions. A project can also supply a key through its `.env` file, as
 [What the plugin stores](#what-the-plugin-stores) says.
 
-Each key goes only to its own provider's address above. The plugin passes the
-address and the key with every request, so no environment variable moves a key
-to another host. An environment variable can supply a key, and with it the
-account that receives the task text, as [What the plugin stores](#what-the-plugin-stores)
-says.
+Each key goes only to its own provider's address above, as
+[Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
+explains.
+
+omp's credential store or an environment variable can supply a key, as [What the
+plugin stores](#what-the-plugin-stores) says.
 
 ## What the plugin sends
 
-For every batch item it routes, the plugin sends an HTTPS POST to the
-provider the table above names. The plugin bundles the official TypeSafe SDK,
-`@typesafe-ai/sdk`, which builds the request for both providers. The JSON body
-holds:
+Each routed batch item sends an HTTPS POST to the provider the table above
+names. The JSON body holds:
 
-- the item's task text, condensed and with token-shaped strings masked
+- the item's task text, prepared as
+  [The task text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-task-text)
+  says
 - a capped part of the batch `context`, at most 3000 characters, prepared the
   same way and placed after the task text. Task text and context together stay
   within 12,000 characters
@@ -65,26 +64,18 @@ holds:
     says why the text is fixed
 - the item's `name` as the description, or an empty description when it has
   none
-- the Jev alias `jev-latest`, and one fixed scoring question, `tier`, with
-  its three descriptions, text that ships with the plugin.
+- the Jev alias and one scoring question, `tier`, as
+  [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
+  lists them
 
-The request headers hold:
-
-- `authorization`, with the key of the provider that receives the request
-- `accept` and `content-type`, both `application/json`
-- `user-agent` and `x-typesafe-sdk`, both naming the SDK and its version,
-  `typesafe-sdk/0.7.0`
-- `x-typesafe-runtime`, which names the runtime, the operating system and the
-  architecture, in the form `bun/<version> (<os>; <arch>)`
-- `x-typesafe-retry-count`, `1` or `2`, on a retry only.
-
-OpenRouter receives the same headers, the `x-typesafe-*` ones included. The
-runtime header tells the provider which runtime, system and architecture omp
-runs on. The task text and the context hold whatever the caller put in them,
-which can include code. The request is sent before omp asks for approval of
-the `task` call. A call you later refuse was already sent. That list is the
-whole request. Each key identifies your account to its provider. The plugin
-sends no telemetry and no other data about you or your machine.
+The `x-typesafe-runtime` header reads `bun/<version> (<os>; <arch>)`. It tells
+the provider the runtime, system and architecture omp runs on.
+[The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
+lists the other headers, which the bundled SDK builds. The task text and the
+context hold whatever the caller put in them, which can include code. The
+request is sent before omp asks for approval of the `task` call. A call you
+later refuse was already sent. That list is the whole request, and
+[the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request).
 
 ## The extended scope
 
@@ -93,11 +84,10 @@ That includes the bundled agents `task`, `scout`, `sonic`, `reviewer`
 and `security-reviewer`, and your own user, project and plugin agents
 that declare no model.
 
-- The agent text and the task text of each such agent leave your machine, as
+- Each such agent sends its agent text and task text, as
   What the plugin sends describes.
-- A hand-written description can hold private names, such as a client, a
-  product or a team. The plugin masks token-shaped strings only. Read your
-  agents' descriptions before you set `extended`.
+- [Descriptions can hold private names](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#descriptions-and-private-names).
+  Read them before you set `extended`.
 - A project can set `scope` in its plugin settings, and its value overrides
   yours. A project that sets `extended` sends the descriptions and task text of
   your agents to your provider without your choice, and it can raise spend,
@@ -110,33 +100,20 @@ not routed and sends nothing. An item that starts after the batch's 8 s limit
 has passed sends nothing either, so a batch can send fewer requests than it
 has routed items.
 
-With one provider, the SDK retries a connection error and an HTTP status 408,
-429 or 5xx, up to three attempts in all. It waits for a `Retry-After` header
-when one comes, within the limit. The retries send the same body as the first
-request.
+One item sends at most four requests.
+[Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider)
+gives the attempts at each provider. Once an item falls back, items that start
+later in the same batch skip the failed provider.
 
-With two providers, the first provider gets one request and no retry. The
-plugin gives up on it after 2 s. The second provider then gets up to three
-attempts as above. One item therefore sends at most four requests. Once an
-item falls back, items that start later in the same batch skip the failed
-provider.
-
-One fixed 8 s limit covers the scoring of a whole batch, both providers and
-all retries included. The plugin stops waiting at the limit, but it cannot
-recall a request in flight. A request can reach its provider even when its
-answer never returns. A retry after a network failure may be billed more than
-once. A first request the plugin gave up on may still be billed, on top of the
-second provider's answer. The plugin sends no other request.
+[The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing)
+says what a request in flight can cost. One fixed 8 s limit covers the scoring
+of a whole batch, both providers and all retries included. The plugin sends no
+other request.
 
 ## What the providers do with it
 
-Each provider processes the request to answer the scoring question.
-TypeSafe's handling of request data is set by its privacy policy at
-https://typesafe.ai/legal/privacy-policy. OpenRouter's privacy policy is at
-https://openrouter.ai/privacy. OpenRouter does not document retention or
-training for the System One endpoint. OpenRouter names the answering model
-`typesafe/jev-…`, and the plugin cannot see where OpenRouter passes the
-request on. The plugin author has no access to those requests.
+The providers' privacy policies are linked at
+[What the providers do with it](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-the-providers-do-with-it).
 
 ## What the plugin stores
 
@@ -192,11 +169,11 @@ a key.
 
 ## Your choices
 
-Set `provider` to `typesafe` or `openrouter` in `/settings`, under Plugins, to
-keep each item with one company. Keep `scope` at `core` to route the `task`
-agent only. Remove the keys from omp's credential store
-and from both variables, and the plugin skips routing. Disable the plugin and
-nothing is sent.
+Every plugin offers the choices in
+[Your choices](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#your-choices).
+Here, set `provider` in `/settings`, under Plugins. Keep `scope` at `core` to
+route the `task` agent only. Remove the keys from omp's credential store and
+from both variables. Disable the plugin and nothing is sent.
 
 ## Children
 

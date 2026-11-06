@@ -1,14 +1,14 @@
 # model-router for Hermes Agent
 
-A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks a model and an effort for each `delegate_task` task. It asks [Jev](https://docs.typesafe.ai), on TypeSafe or OpenRouter, how much judgment the task needs and how much work it takes. It then gives the task's child that model and effort.
+A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks a model and an effort for each `delegate_task` task. [Jev](https://docs.typesafe.ai), on TypeSafe or OpenRouter, scores the task. The plugin then gives the task's child that model and effort.
 
 ## What it does
 
-- It is a delegation backend named `model-router`. It scores each `delegate_task` task through Jev, using the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
+- It is a delegation backend named `model-router`. It scores each `delegate_task` task for judgment and work through Jev. [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request) lists the two questions.
 - It routes the tasks of `delegate_task` only. The main turn is never routed.
 - Level 0 gives the task your `small_model`. Level 2 gives it your `large_model`. Level 1 leaves the model alone.
 - It sets the effort from a fixed ladder, as [Routing](#routing) says.
-- It sets only a model you assigned. It proposes none, and it never sets a model that Hermes cannot resolve offline with a credential that needs no network refresh.
+- It sets only a model you assigned and never proposes one. It skips a model that Hermes cannot resolve offline with a credential that needs no network refresh.
 - It never overrides a model you chose, nor an effort the `delegation` section sets. [Which tasks are routed](#which-tasks-are-routed) lists the model rules, and [Routing](#routing) lists the effort rules.
 - It starts Hermes's own Node once per task to run the scoring step. [Node](#node) says how.
 - It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what Hermes can still do.
@@ -49,7 +49,7 @@ The plugin reads a key only for a provider the [`provider` setting](#provider) a
 - TypeSafe: `TYPESAFE_API_KEY`.
 - OpenRouter: `OPENROUTER_API_KEY`.
 
-The TypeSafe key has three forms: the tool argument `typesafe_key`, the settings secret `typesafe_api_key` and the environment variable `TYPESAFE_API_KEY`. A key counts as set when the variable holds non-blank text. Get a key from [TypeSafe](https://console.typesafe.ai/keys) or from [OpenRouter](https://openrouter.ai). Each key goes only to its own provider. The plugin never uses Hermes's own provider credentials as a Jev key. With no key for any allowed provider, every task reports `key unset`.
+The TypeSafe key has three forms: the tool argument `typesafe_key`, the settings secret `typesafe_api_key` and the environment variable `TYPESAFE_API_KEY`. A key counts as set when the variable holds non-blank text. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get one and where it goes. With no key for any allowed provider, every task reports `key unset`. The plugin never uses Hermes's own provider credentials as a Jev key.
 
 Add a key in one of two ways:
 
@@ -71,15 +71,15 @@ The `provider` setting picks which providers judge each task, and in which order
 | `auto` | TypeSafe, then OpenRouter |
 | `openrouter-first` | OpenRouter, then TypeSafe |
 
-With `auto` or `openrouter-first` and only one key, that key's provider judges alone. A value outside the four counts as unset, and the default `typesafe` applies. [PRIVACY.md](PRIVACY.md) says which company receives the task under each value.
+Fallback rules: [Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task). Who receives a task under each value: [PRIVACY.md](PRIVACY.md).
 
 Switch it with `/model-router-provider <value>`. The plugin reads the setting at each task.
 
 ## Change the options
 
-`/model-router-provider [auto|openrouter-first|typesafe|openrouter]` shows or changes the provider. A bare command prints the current value. An invalid value lists the allowed ones. The command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, it prints `provider unchanged: only a local session can change it` and the current value. A failed write prints `provider unchanged: <reason>`.
+`/model-router-provider [auto|openrouter-first|typesafe|openrouter]` shows or changes the provider. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. The command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, it prints `provider unchanged: only a local session can change it` and the current value.
 
-The read-only `model_router_config` tool returns the `provider` line, the two model lines, and `<provider> key: set` or `<provider> key: unset` for each provider the `provider` value allows. It never returns a key, its length or any part of it. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
+The read-only `model_router_config` tool returns the `provider` line, the two model lines and the key lines. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
 
 ```text
 provider: auto (typesafe, then openrouter)
@@ -125,9 +125,9 @@ The plugin does not check a model that the catalogue lists and the provider reje
 | 1 | Bounded judgment | none, no change |
 | 2 | Open judgment | `large_model` |
 
-The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors. At level 1 the child runs on the route Hermes would give it.
+The plugin stays at level 1 unless an end is clearly more likely, as [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains. At level 1 the child runs on the route Hermes would give it.
 
-The work question picks the effort. The ladder is the one in the [Effort section](../model-router/README.md#effort), and the plugin sets `reasoning_effort` to one of `low`, `medium`, `high` or `xhigh`. It never sets `max`, `ultra`, `minimal` or `none`. The small model's row starts at `medium`, because a small model stops early on agentic prompts at `low`. [model-choice.md](../model-router/docs/model-choice.md#the-work-question-and-the-arch) gives the reasons. Hermes maps an effort that the child's model does not take to the nearest weaker one it takes.
+The work question picks the effort. The ladder is the one in the [Effort section](../model-router/README.md#effort), and the plugin sets `reasoning_effort` to one of `low`, `medium`, `high` or `xhigh`. It never sets `max`, `ultra`, `minimal` or `none`. The small model's row starts at `medium`. [model-choice.md](../model-router/docs/model-choice.md#the-work-question-and-the-arch) says why. Hermes maps an effort that the child's model does not take to the nearest weaker one it takes.
 
 The routed effort replaces the effort of the calling session. Hermes ranks a route's effort above the parent's level.
 
@@ -159,7 +159,7 @@ A scored task can still skip:
 - `small model unset` or `large model unset`: the level picked a slot you left empty.
 - `small model unresolved` or `large model unresolved`: the slot fails the [offline checks](#models).
 - `timeout`: Jev did not answer within the budget, or the offline checks did not finish within the time left.
-- `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer at all, or the Node step failed. `failed` also covers any error in the plugin. After two providers, the reason names each, for example `typesafe HTTP 503, openrouter timeout`.
+- `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer at all, or the Node step failed. `failed` also covers any error in the plugin. After two providers, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 [Facts behind this section](../../docs/clients.md#hermes-routing-and-refusals)
 
@@ -195,7 +195,7 @@ model-router L1 no change · config effort · p=0.62/0.70
 model-router skipped, key unset
 ```
 
-A routed line reads `L<level> <model or no change> · <effort or kept label> · p=<tier>/<work>`. The model is the `model` field of the slot. The two probabilities belong to the chosen levels of the two questions. When the reply carries them, the line also names the Jev model and the token counts. After a fallback, it ends with the provider that answered and why the first one failed, for example ` · via openrouter (typesafe HTTP 503)`.
+A routed line follows [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line). The model is the `model` field of the slot.
 
 A skipped line reads `skipped, <reason>`. [Which tasks are routed](#which-tasks-are-routed) lists the reasons.
 
@@ -209,7 +209,9 @@ Under `plugins.isolation: host`, the plugin host drops INFO lines by default, so
 
 ## What leaves the machine
 
-[PRIVACY.md](PRIVACY.md) is the one copy of this passage. It lists the request, the headers, the providers, the retries and the Node program.
+[PRIVACY.md](PRIVACY.md) lists the request, the providers, the retries and the Node program.
+
+[How the plugins use the providers](https://github.com/Akurganow/model-router/blob/main/docs/providers.md) holds what the four plugins share.
 
 ## Turn it off
 

@@ -73,12 +73,9 @@ You need:
 
 The `provider` option picks who scores each task: `typesafe` (the default),
 `openrouter`, `auto` (TypeSafe, then OpenRouter) or `openrouter-first`
-(OpenRouter, then TypeSafe). With one key, `auto` and `openrouter-first` use
-that key's provider alone. The [Claude Code](plugins/model-router/README.md),
-[Oh My Pi](plugins/model-router-omp/README.md),
-[OpenClaw](plugins/model-router-openclaw/README.md) and
-[Hermes Agent](plugins/model-router-hermes/README.md) READMEs say when the
-second provider takes over.
+(OpenRouter, then TypeSafe).
+[Which provider gets a task](docs/providers.md#which-provider-gets-a-task) says
+what one key does and when the second provider takes over.
 
 <!-- install:start -->
 
@@ -438,6 +435,10 @@ privacy policy holds the request:
   [What the plugin sends](plugins/model-router-hermes/PRIVACY.md#what-the-plugin-sends),
   [The program the plugin starts](plugins/model-router-hermes/PRIVACY.md#the-program-the-plugin-starts),
   [PRIVACY.md](plugins/model-router-hermes/PRIVACY.md)
+- All four: [How the plugins use the providers](docs/providers.md) holds the
+  rules they share: the fallback, the request, the retries and what the
+  providers do with it.
+
 
 [Turn off and uninstall](#turn-off-and-uninstall) says how to stop the
 requests.
@@ -455,6 +456,8 @@ requests.
   reasons.
 - [model-choice.md](plugins/model-router/docs/model-choice.md): why the model
   tiers and the effort ladder are what they are.
+- [How the plugins use the providers](docs/providers.md): the fallback rules,
+  the request, the retries and what the providers do with it.
 - [Claude Code privacy policy](plugins/model-router/PRIVACY.md)
 - [Oh My Pi privacy policy](plugins/model-router-omp/PRIVACY.md)
 - [OpenClaw privacy policy](plugins/model-router-openclaw/PRIVACY.md)

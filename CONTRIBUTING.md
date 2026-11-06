@@ -46,6 +46,7 @@ every commit as a [conventional commit](#commits).
   [Continuous integration](#continuous-integration).
 - `docs/clients.md` cites how each client loads a package.
   `docs/design.md` gives the reasons for this layout and for the CI checks.
+  `docs/providers.md` holds what the four plugins do the same way when they ask Jev.
 - `evals/` and `scripts/evals.ts` run real clients against the plugins.
 
 ### Generated files

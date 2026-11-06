@@ -25,28 +25,26 @@ and their keys:
 | `auto` | TypeSafe, with the TypeSafe key | OpenRouter, with the OpenRouter key |
 | `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
 
-An unknown value acts as `typesafe`. With `auto` or `openrouter-first` and one
-key set, the plugin uses that key's provider alone. With both keys set, one
-call may reach both companies. The second provider gets the call only when the
-first fails with a connection error, a timeout, or HTTP status 401, 402, 403,
-404, 408, 429 or 5xx. It never gets the call after 400, 422, a cancel, the
-routing limit or a bad reply.
+With both keys under `auto` or `openrouter-first`, one call may reach both companies.
 
-Each key goes only to its own provider's address above. The plugin passes the
-address and the key with every request, so no environment variable moves a key
-to another host. An environment variable can supply a key, and with it the
-account that receives the task text, as [What the plugin stores](#what-the-plugin-stores)
-says.
+[Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
+gives the fallback rules.
+
+Each key goes only to its own provider's address above, as
+[Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
+explains.
+
+The plugin options or an environment variable can supply a key, as [What the
+plugin stores](#what-the-plugin-stores) says.
 
 ## What the plugin sends
 
-On every Agent tool call it routes, the plugin sends an HTTPS POST to the
-provider the table above names. The plugin bundles the official TypeSafe SDK,
-`@typesafe-ai/sdk`, which builds the request for both providers. The JSON body
-holds:
+An HTTPS POST goes to the provider the table above names on every Agent tool
+call the plugin routes. The JSON body holds:
 
-- the subagent's task text, condensed and with token-shaped strings masked.
-  A text over 12,000 characters keeps its start and its end
+- the subagent's task text, prepared as
+  [The task text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-task-text)
+  says
 - the agent's role:
   - the built-in `general-purpose` and `claude` agents send one fixed text that
     ships with the plugin
@@ -60,72 +58,51 @@ holds:
   - [The role of the default agent](docs/model-choice.md#the-role-of-the-default-agent)
     says why the text is fixed
 - the caller's one-line description of the task
-- the Jev alias `jev-latest`, and two fixed scoring questions, `tier` and
-  `work`, with their three descriptions each, text that ships with the plugin.
+- the Jev alias and the two scoring questions, as
+  [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
+  lists them
 
-The request headers hold:
-
-- `authorization`, with the key of the provider that receives the request
-- `accept` and `content-type`, both `application/json`
-- `user-agent` and `x-typesafe-sdk`, both naming the SDK and its version,
-  `typesafe-sdk/0.7.0`
-- `x-typesafe-runtime`, which reads `unknown` under Claude Code
-- `x-typesafe-retry-count`, `1` or `2`, on a retry only.
-
-OpenRouter receives the same headers, the `x-typesafe-*` ones included. Claude
-Code adds the transport headers, such as `host` and `content-length`.
+The `x-typesafe-runtime` header reads `unknown` under Claude Code.
+[The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
+lists the other headers, which the bundled SDK builds. Claude Code adds the
+transport headers, such as `host` and `content-length`.
 
 The task text holds whatever the caller put in it, which can include code. The
 request is sent when the subagent spawns, after Claude Code decides that the
 Agent call may run. A call that your rules or the auto-mode classifier deny
 never spawns, so the plugin sends no request. A rule on the model the plugin
-picks applies after the request left. That list is the whole request. Each
-key identifies your account to its provider. The plugin sends no telemetry and
-no identifier of you or your machine. With Claude Code's `--debug` flag, the
-plugin writes each request body to your debug log, in numbered pieces when it
-is long. No key is ever written.
+picks applies after the request left. That list is the whole request, and
+[the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request).
+With Claude Code's `--debug` flag, the plugin writes each request body to your
+debug log, in numbered pieces when it is long. No key is ever written.
 
 ## The extended scope
 
 Under `extended`, the plugin routes every Agent call that passes no model and
 no name, except a fork. That includes your user, project and plugin agents.
 
-- The role and the task text of each such agent leave your machine, as
+- Each such agent's role and task text leave your machine, as
   What the plugin sends describes.
-- A hand-written description can hold private names, such as a client, a
-  product or a team. The plugin masks token-shaped strings only. Read your
-  agents' descriptions before you set `extended`.
+- [Descriptions can hold private names](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#descriptions-and-private-names).
+  Read them before you set `extended`.
 - The plugin replaces the model and effort that an agent's definition sets,
   because Claude Code does not expose them.
 
 ## Requests and billing
 
-With one provider, a routed call sends one request and up to two retries,
-three attempts in all. The SDK retries a connection error and an HTTP status
-408, 429 or 5xx. It waits for a `Retry-After` header when one comes, within the
-limit. It retries no other status. The retries send the same body as the first
-request.
-
-With two providers, the first provider gets one request and no retry. The
-plugin gives up on it after 2 s. The second provider then gets up to three
-attempts as above. One call therefore sends at most four requests.
+One call sends at most four requests, as
+[Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider)
+explains.
 
 One fixed 8 s limit covers the whole call, both providers and all retries
-included. The plugin stops waiting at the limit, but it cannot recall a
-request in flight. A request can reach its provider even when its answer never
-returns. A retry after a network failure may be billed more than once. A first
-request the plugin gave up on may still be billed, on top of the second
-provider's answer.
+included.
+[The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing)
+says what a request in flight can cost.
 
 ## What the providers do with it
 
-Each provider processes the request to answer the scoring questions.
-TypeSafe's handling of request data is set by its privacy policy at
-https://typesafe.ai/legal/privacy-policy. OpenRouter's privacy policy is at
-https://openrouter.ai/privacy. OpenRouter does not document retention or
-training for the System One endpoint. OpenRouter names the answering model
-`typesafe/jev-…`, and the plugin cannot see where OpenRouter passes the
-request on. The plugin author has no access to those requests.
+The providers' privacy policies are linked at
+[What the providers do with it](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-the-providers-do-with-it).
 
 ## What the plugin stores
 
@@ -142,10 +119,11 @@ option is empty, it reads `OPENROUTER_API_KEY`. A key in either variable stays
 wherever you set it, for example in plaintext in a settings file. It is
 visible to every process Claude Code starts.
 
-The plugin reads one more environment variable, `CLAUDE_CODE_EFFORT_LEVEL`,
-only to see whether it is set. It never sends or logs the value. It reads no
-other environment variable. The `config` tool reports only
-whether a key is set, never the key, its length or any part of it.
+The plugin reads one more environment variable, `CLAUDE_CODE_EFFORT_LEVEL`, only
+to see whether it is set. It never sends or logs the value. It reads no other
+environment variable.
+[The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool)
+says what the `config` tool reports.
 
 A project can set either variable in the `env` block of its Claude Code
 project settings. When the matching key option is empty, the plugin then sends
@@ -163,11 +141,11 @@ The lines the plugin prints per call go to your own transcript and, with
 
 ## Your choices
 
-Set `provider` to `typesafe` or `openrouter` to keep each call with one
-company. Keep `scope` at `core` to route the four built-in agents only.
-Remove the keys from the plugin's configuration and from both
-variables, and the plugin skips routing. Disable the plugin and nothing is
-sent.
+Every plugin offers the choices in
+[Your choices](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#your-choices).
+Here, keep `scope` at `core` to route the four built-in agents only. Remove the
+keys from the plugin's configuration and from both variables. Disable the plugin
+and nothing is sent.
 
 ## Children
 

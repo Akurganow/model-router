@@ -133,9 +133,10 @@ Jev reads the agent's role with the task. Claude Code's `general-purpose` and
 their harness's description. The text is `DEFAULT_ROLE` in `src/brief.ts`.
 
 Under Claude Code's `extended` scope, a `general-purpose` or `claude` agent you
-define sends its own description once Claude Code has offered it. Before that
-offer it sends the fixed text. In omp, only the bundled `task` agent sends the
-fixed text. A `task` agent you define sends its description.
+define sends its own description, as
+[What the plugin sends](../PRIVACY.md#what-the-plugin-sends) says. In omp, only
+the bundled `task` agent sends the fixed text. A `task` agent you define sends
+its description.
 
 OpenClaw has no built-in general agent.
 [The spawn of the requesting agent itself](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#the-spawn-of-the-requesting-agent-itself)

@@ -31,12 +31,12 @@ Installing both the git plugin and the npm package is not advised. omp keeps the
 
 ## Key
 
-The plugin reads a key only for a provider the [`provider` setting](#provider) allows. For each one it checks two places, in this order:
+For each provider the [`provider` setting](#provider) allows, the plugin checks two places, in this order:
 
 - TypeSafe: omp's stored `typesafe` credential, which `/login typesafe` stores, then the `TYPESAFE_API_KEY` environment variable.
 - OpenRouter: omp's stored `openrouter` credential, then the `OPENROUTER_API_KEY` environment variable.
 
-A key counts as set when either place holds a non-empty value. Get a key from [TypeSafe](https://console.typesafe.ai/keys) or from [OpenRouter](https://openrouter.ai). Each key goes only to its own provider. With no key for any allowed provider, every batch reports `key unset`.
+A key counts as set when either place holds a non-empty value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key. With no key for any allowed provider, every batch reports `key unset`.
 
 Add a key in one of three ways:
 
@@ -55,7 +55,7 @@ The `provider` plugin setting picks which providers judge each task, and in whic
 | `auto` | TypeSafe, then OpenRouter |
 | `openrouter-first` | OpenRouter, then TypeSafe |
 
-With `auto` or `openrouter-first` and only one key, that key's provider judges alone. A value outside the four counts as `typesafe`. [PRIVACY.md](PRIVACY.md) says which company receives the task under each value.
+Fallback rules: [Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task). Who receives a batch item under each value: [PRIVACY.md](PRIVACY.md).
 
 Switch it with `/model-router:provider`, or in omp's `/settings` → Plugins, under the name omp installed it with: `model-router-omp` from the git catalogue, `@akurganow/model-router` from npm. The plugin reads the setting on every batch, so a change reaches the next batch with no reload.
 
@@ -96,11 +96,11 @@ Two commands show or change an option:
 - `/model-router:provider [auto|openrouter-first|typesafe|openrouter]`
 - `/model-router:scope [core|extended]`
 
-A bare command prints the current value. A command with a valid value writes it to your global plugin settings and prints the new value. An invalid value lists the allowed ones. A refused or failed write prints `<setting> unchanged: <reason>`. When a project value wins over the new global one, the output says `A project value for <setting> overrides it.` Without a UI, a command prints to standard error.
+[The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a command prints. A command with a valid value writes it to your global plugin settings. When a project value wins over the new global one, the output says `A project value for <setting> overrides it.` Without a UI, a command prints to standard error.
 
 The `model_router_config` tool takes one optional input, `setting`: `provider`, `scope`, `typesafe_key` or `openrouter_key`. The tool loads as essential and omp treats it as a write tool.
 
-- **No setting:** the tool returns the `provider` line, the `scope` line, and `<provider> key: set` or `<provider> key: unset` for each provider the `provider` value allows. It never returns a key, its length or any part of it.
+- **No setting:** the tool returns the `provider` line, the `scope` line and the key lines. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show.
 
   ```text
   provider: auto (typesafe, then openrouter)
@@ -152,11 +152,11 @@ The plugin prints one line per batch. The line starts with `model-router`. It go
 model-router task 1: L0 @smol · p=0.91 | task 2: L1 no change · p=0.62 | task 3: skipped, timeout
 ```
 
-A routed entry reads `L<level> <role or no change> · p=<probability>`. The probability belongs to the chosen level. When the reply carries them, the entry also names the Jev model and the token counts. After a fallback, the entry ends with the provider that answered and why the first one failed, for example ` · via openrouter (typesafe HTTP 503)`.
+A routed entry reads `L<level> <role or no change> · p=<probability>`. The probability belongs to the chosen level. When the reply carries them, the entry also names the Jev model and the token counts. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says how an entry ends after a fallback.
 
 omp's task view shows the same decision as the spawn's routing note, without the item number.
 
-A skipped entry reads `task <n>: skipped, <reason>`. After two attempts, the reason names each provider with its own reason, in attempt order, for example `skipped, typesafe HTTP 503, openrouter timeout`. The item then runs as omp would run it without the plugin.
+A skipped entry reads `task <n>: skipped, <reason>`. After two attempts, the reason names each provider, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. The item then runs as omp would run it without the plugin.
 
 ### Gate reasons
 
@@ -201,8 +201,7 @@ The plugin calls `pi.pi.discoverAgents`, a typed omp API that the docs prose doe
 ## Limits and retries
 
 - One fixed limit of 8 s covers the scoring of a batch, retries and second providers included. At most four items are scored at once.
-- With one provider, the SDK retries HTTP 408, 429 and 5xx responses, connection errors and timeouts. It makes up to three attempts in all.
-- With two providers, an item's first attempt gets 2 s and no retries. The plugin moves to the second provider after a connection error, a timeout, or HTTP 401, 402, 403, 404, 408, 429 or 5xx. It never moves after HTTP 400 or 422, the 8 s limit or a bad reply. The second provider gets the rest of the limit and the SDK's retries. An item therefore sends at most four requests.
+- [Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider) gives the attempts at each provider. The SDK retries a timeout too. An item sends at most four requests, and the second provider gets the rest of the limit.
 - Inside one batch, a provider whose first attempt for an item failed and fell back is passed over: items that start later in that batch go straight to the other provider. The next batch tries both again.
 - The SDK honours a `Retry-After` of up to 60 s. The batch limit still stops the wait at 8 s. A 429 with a long `Retry-After` can hold a batch up to 8 s.
 - Keep `extensionHandlers.toolCallTimeoutMs` at its default of 30 s. omp fails closed when a `tool_call` handler passes that timeout. A value below 8 s can block a task.
@@ -245,7 +244,7 @@ The request body holds:
 
 Before sending, the plugin condenses the task text. It replaces each fenced code block with a line count. It masks Bearer tokens, `sk-` keys, and values assigned to names that end in KEY, TOKEN, SECRET or PASSWORD.
 
-Under `extended`, the descriptions and task text of your user, project and plugin agents leave too. The request leaves when omp prepares the `task` call, before omp's approval gate runs. [PRIVACY.md](PRIVACY.md) has the full list, the project scope risks and the key handling.
+Under `extended`, your user, project and plugin agents send their descriptions and task text too. The request leaves when omp prepares the `task` call, before omp's approval gate runs. [PRIVACY.md](PRIVACY.md) has the full list, the project scope risks and the key handling.
 
 A failed request leaves the call unchanged. The item skips with its reason, and omp runs it without a model from the plugin.
 
