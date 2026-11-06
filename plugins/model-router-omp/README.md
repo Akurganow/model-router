@@ -18,6 +18,17 @@ The [repository README](../../README.md#oh-my-pi) gives the install steps.
 
 The catalog is `.omp-plugin/marketplace.json` at the repository root. It lists this plugin only.
 
+omp also installs the plugin from npm, as `@akurganow/model-router`. The package serves omp and [OpenClaw](../model-router-openclaw/README.md):
+
+```bash
+omp plugin install @akurganow/model-router
+omp plugin upgrade @akurganow/model-router
+```
+
+The git catalogue route stays. It installs `model-router-omp`, and `omp plugin upgrade model-router@model-router` upgrades it. omp keys the plugin's settings by the package name it installed. The git route uses `model-router-omp`, and the npm route uses `@akurganow/model-router`. The plugin reads and writes its settings under the name it was installed with. Existing git installs keep their settings.
+
+Installing both the git plugin and the npm package is not advised. omp keeps their settings under different names, so each copy needs its own `provider` and `scope` ([omp install names](../../docs/clients.md#omp-install-names)). With both installed, change each in its own entry of `/settings` → Plugins.
+
 ## Key
 
 The plugin reads a key only for a provider the [`provider` setting](#provider) allows. For each one it checks two places, in this order:
@@ -46,7 +57,7 @@ The `provider` plugin setting picks which providers judge each task, and in whic
 
 With `auto` or `openrouter-first` and only one key, that key's provider judges alone. A value outside the four counts as `typesafe`. [PRIVACY.md](PRIVACY.md) says which company receives the task under each value.
 
-Switch it with `/model-router:provider`, or in omp's `/settings` → Plugins, under `model-router-omp`. The plugin reads the setting on every batch, so a change reaches the next batch with no reload.
+Switch it with `/model-router:provider`, or in omp's `/settings` → Plugins, under the name omp installed it with: `model-router-omp` from the git catalogue, `@akurganow/model-router` from npm. The plugin reads the setting on every batch, so a change reaches the next batch with no reload.
 
 A project's plugin settings may only narrow your global `provider` value: from `auto` or `openrouter-first` to `typesafe` or `openrouter`. The plugin ignores any other project value and uses the global one.
 

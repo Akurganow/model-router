@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { GENERATED_PATHS } from "./build/outputs.ts";
+import { generatedFiles } from "./build/copies.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 
 // The two key shapes are the ones the redaction in src/brief.ts masks, and the
@@ -290,7 +290,7 @@ if (import.meta.main) {
 	const plan = planScan(ROOT, base);
 	if (plan.note) console.error(plan.note);
 	const hits = [
-		...scanFiles(ROOT, GENERATED_PATHS),
+		...scanFiles(ROOT, generatedFiles(ROOT)),
 		...(plan.range === undefined ? [] : scanDiff(ROOT, plan.range)),
 	];
 	for (const hit of hits) console.error(formatHit(hit));

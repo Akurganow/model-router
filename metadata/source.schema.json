@@ -16,12 +16,14 @@
 		"descriptions",
 		"options",
 		"claude",
-		"omp"
+		"omp",
+		"openclaw",
+		"npm"
 	],
 	"properties": {
 		"$schema": { "type": "string" },
 		"name": { "$ref": "#/$defs/text" },
-		"version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+		"version": { "$ref": "#/$defs/version" },
 		"license": { "$ref": "#/$defs/text" },
 		"homepage": { "$ref": "#/$defs/url" },
 		"repository": { "$ref": "#/$defs/url" },
@@ -43,10 +45,11 @@
 		"descriptions": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["claude", "omp"],
+			"required": ["claude", "omp", "openclaw"],
 			"properties": {
 				"claude": { "$ref": "#/$defs/harnessDescriptions" },
-				"omp": { "$ref": "#/$defs/harnessDescriptions" }
+				"omp": { "$ref": "#/$defs/harnessDescriptions" },
+				"openclaw": { "$ref": "#/$defs/manifestDescription" }
 			}
 		},
 		"options": {
@@ -128,18 +131,124 @@
 				"catalogueSource": { "$ref": "#/$defs/text" },
 				"install": { "$ref": "#/$defs/install" }
 			}
+		},
+		"openclaw": {
+			"type": "object",
+			"description": "What only the OpenClaw manifest and the npm tree's OpenClaw blocks need. hostFloor is the one OpenClaw version behind compat, build and install.minHostVersion.",
+			"additionalProperties": false,
+			"required": [
+				"pluginId",
+				"name",
+				"settingType",
+				"extensions",
+				"skills",
+				"hostFloor",
+				"uiHints",
+				"install"
+			],
+			"properties": {
+				"pluginId": { "$ref": "#/$defs/text" },
+				"name": { "$ref": "#/$defs/text" },
+				"settingType": { "$ref": "#/$defs/text" },
+				"extensions": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "$ref": "#/$defs/text" }
+				},
+				"skills": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "$ref": "#/$defs/text" }
+				},
+				"hostFloor": { "$ref": "#/$defs/version" },
+				"uiHints": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"small_model",
+						"large_model",
+						"api_key",
+						"openrouter_api_key"
+					],
+					"properties": {
+						"small_model": { "$ref": "#/$defs/hint" },
+						"large_model": { "$ref": "#/$defs/hint" },
+						"api_key": { "$ref": "#/$defs/secretHint" },
+						"openrouter_api_key": { "$ref": "#/$defs/secretHint" }
+					}
+				},
+				"install": { "$ref": "#/$defs/install" }
+			}
+		},
+		"npm": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"name",
+				"private",
+				"type",
+				"description",
+				"keywords",
+				"publishConfig"
+			],
+			"properties": {
+				"name": { "$ref": "#/$defs/text" },
+				"private": { "type": "boolean" },
+				"type": { "$ref": "#/$defs/text" },
+				"description": { "$ref": "#/$defs/text" },
+				"keywords": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "$ref": "#/$defs/text" }
+				},
+				"publishConfig": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["access"],
+					"properties": { "access": { "$ref": "#/$defs/text" } }
+				}
+			}
 		}
 	},
 	"$defs": {
 		"text": { "type": "string", "minLength": 1 },
 		"url": { "type": "string", "pattern": "^https://" },
+		"version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
 		"urlPerHarness": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["claude", "omp"],
+			"required": ["claude", "omp", "openclaw"],
 			"properties": {
 				"claude": { "$ref": "#/$defs/url" },
-				"omp": { "$ref": "#/$defs/url" }
+				"omp": { "$ref": "#/$defs/url" },
+				"openclaw": { "$ref": "#/$defs/url" }
+			}
+		},
+		"manifestDescription": {
+			"type": "object",
+			"description": "A harness whose store lists no catalogue entry needs the manifest text only.",
+			"additionalProperties": false,
+			"required": ["manifest"],
+			"properties": { "manifest": { "$ref": "#/$defs/text" } }
+		},
+		"hint": {
+			"type": "object",
+			"description": "A config field's label and help text in the OpenClaw settings form.",
+			"additionalProperties": false,
+			"required": ["label", "help"],
+			"properties": {
+				"label": { "$ref": "#/$defs/text" },
+				"help": { "$ref": "#/$defs/text" }
+			}
+		},
+		"secretHint": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["label", "help", "sensitive"],
+			"properties": {
+				"label": { "$ref": "#/$defs/text" },
+				"help": { "$ref": "#/$defs/text" },
+				"sensitive": { "type": "boolean" }
 			}
 		},
 		"harnessDescriptions": {
@@ -161,17 +270,18 @@
 				"descriptions": {
 					"type": "object",
 					"additionalProperties": false,
-					"required": ["claude", "omp"],
+					"required": ["claude", "omp", "openclaw"],
 					"properties": {
 						"claude": { "$ref": "#/$defs/text" },
-						"omp": { "$ref": "#/$defs/text" }
+						"omp": { "$ref": "#/$defs/text" },
+						"openclaw": { "$ref": "#/$defs/text" }
 					}
 				}
 			}
 		},
 		"install": {
 			"type": "object",
-			"description": "What the README install region shows for one harness. A command holds {marketplace} and {plugin}, which the builder fills from repository, name and the catalogue name. An empty ciSystems list renders as a harness that CI does not install.",
+			"description": "What the README install region shows for one harness. A command or a note holds {marketplace}, {plugin}, {package} and {id}, which the builder fills from repository, name, the catalogue name, the npm name and the OpenClaw plugin id. An empty ciSystems list renders as a harness that CI does not install. ciLine replaces the generated CI sentence, for a harness whose CI install differs from a user's; ciSystems still names the runners that the CI check ties to the workflow.",
 			"additionalProperties": false,
 			"required": ["heading", "commands", "source", "ciSystems"],
 			"properties": {
@@ -194,7 +304,9 @@
 				"ciSystems": {
 					"type": "array",
 					"items": { "$ref": "#/$defs/text" }
-				}
+				},
+				"ciLine": { "$ref": "#/$defs/text" },
+				"note": { "$ref": "#/$defs/text" }
 			}
 		},
 		"secret": {

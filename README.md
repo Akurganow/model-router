@@ -4,18 +4,15 @@
 [![CI](https://github.com/Akurganow/model-router/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Akurganow/model-router/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/Akurganow/model-router)](LICENSE)
 
-Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For Claude Code and Oh My Pi.
+Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For the harnesses in the table.
 
-| | Claude Code | Oh My Pi |
-| --- | --- | --- |
-| Routes | Under `core`, Agent tool calls to the four built-in agents. Under `extended`, every Agent call that passes no model and no name, except a fork ([details](plugins/model-router/README.md#which-calls-are-routed)) | Under `core`, `task` batch items. Under `extended`, every batch item whose agent's model you did not set, except `seance` and the [item reasons](plugins/model-router-omp/README.md#item-reasons) |
-| Sets | `model` and `effort` | the `smol` or `slow` role |
-| Asks Jev | two questions | one question |
-| Needs | Claude Code v2.1.308 or later | Oh My Pi v18.12.6 or later |
-| Keys live in | the system's secure storage, or `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY` | omp's TypeSafe and OpenRouter credentials, or `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY` |
-| Provider is set in | the install dialog, `/config`, `/model-router:provider` or the `config` tool | `/settings` → Plugins, `/model-router:provider` or the `model_router_config` tool |
-| Scope | `core` (default) or `extended`. Set in the install dialog, `/config` or `/model-router:scope` | `core` (default) or `extended`. Set in `/settings` → Plugins or `/model-router:scope`. A project may set it |
-| Reference | [plugin README](plugins/model-router/README.md) | [plugin README](plugins/model-router-omp/README.md) |
+| Harness | The plugin sets | Questions to Jev | Minimum version | Reference |
+| --- | --- | --- | --- | --- |
+| Claude Code | `model` and `effort` | 2 | v2.1.308 | [plugin README](plugins/model-router/README.md) |
+| Oh My Pi | the `smol` or `slow` role | 1 | v18.12.6 | [plugin README](plugins/model-router-omp/README.md) |
+| OpenClaw | `model` and `thinking` | 2 | 2026.10.10 | [plugin README](plugins/model-router-openclaw/README.md) |
+
+Claude Code, Oh My Pi and OpenClaw each have a `scope` setting. It takes `core` (the default) or `extended` and picks the agents the plugin routes. The plugin README says how.
 
 [Install](#install) · [Verify](#verify) · [Update](#update) · [Turn off and uninstall](#turn-off-and-uninstall) · [What leaves the machine](#what-leaves-the-machine)
 
@@ -44,11 +41,21 @@ you point `smol` and `slow` at.
 The `scope` setting picks the agents. [Scope](plugins/model-router-omp/README.md#scope)
 holds the rules.
 
+**OpenClaw.** The plugin scores each routed `sessions_spawn` call with Jev, then
+sets `model` from your `small_model` or `large_model` and `thinking` from a
+fixed ladder. [Routing](plugins/model-router-openclaw/README.md#routing) has the
+levels, and [Which spawns are routed](plugins/model-router-openclaw/README.md#which-spawns-are-routed)
+has the rules.
+
+The npm package `@akurganow/model-router` carries the OpenClaw plugin. Oh My Pi
+can install the same package as a second route, as [its README](plugins/model-router-omp/README.md)
+says.
+
 ## Install
 
 You need:
 
-- Claude Code v2.1.308 or later, or Oh My Pi v18.12.6 or later.
+- A harness at or above the minimum version in the table.
 - A TypeSafe API key from https://console.typesafe.ai/keys, an OpenRouter API
   key from https://openrouter.ai/settings/keys, or both.
 - For Claude Code, the `claude` command-line tool. Every `claude plugin` line
@@ -57,10 +64,10 @@ You need:
 The `provider` option picks who scores each task: `typesafe` (the default),
 `openrouter`, `auto` (TypeSafe, then OpenRouter) or `openrouter-first`
 (OpenRouter, then TypeSafe). With one key, `auto` and `openrouter-first` use
-that key's provider alone. The [Claude Code](plugins/model-router/README.md)
-and [Oh My Pi](plugins/model-router-omp/README.md) READMEs say when the second
-provider takes over. The `scope` option picks the agents the plugin routes:
-`core` (the default) or `extended`.
+that key's provider alone. The [Claude Code](plugins/model-router/README.md),
+[Oh My Pi](plugins/model-router-omp/README.md) and
+[OpenClaw](plugins/model-router-openclaw/README.md) READMEs say when the second
+provider takes over.
 
 <!-- install:start -->
 
@@ -89,6 +96,22 @@ Source: Oh My Pi documentation, [marketplace.md, lines 20 to 25](https://github.
 CI installs it on Ubuntu.
 
 [Set up Oh My Pi](#set-up-oh-my-pi) has the next steps.
+
+### OpenClaw
+
+```sh
+openclaw plugins install npm:@akurganow/model-router --force --accept-capabilities
+openclaw plugins enable model-router-openclaw
+openclaw plugins inspect model-router-openclaw --runtime --json
+```
+
+Source: OpenClaw documentation, [Manage plugins](https://docs.openclaw.ai/plugins/manage-plugins).
+
+The npm package `@akurganow/model-router` exists only after its first publication. Review the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`.
+
+CI installs the packed npm package on Ubuntu and checks that OpenClaw loads it.
+
+[Set up OpenClaw](#set-up-openclaw) has the next steps.
 
 <!-- install:end -->
 
@@ -203,6 +226,10 @@ or `OPENROUTER_API_KEY`. To change the provider or the scope later, open
 `/model-router:scope`.
 [Set up](plugins/model-router-omp/README.md#set-up) says what the skill checks.
 
+### Set up OpenClaw
+
+After the commands: check the install under [Install](plugins/model-router-openclaw/README.md#install) in the OpenClaw plugin README, then follow [Set up](plugins/model-router-openclaw/README.md#set-up).
+
 ## Verify
 
 **Claude Code.** Send this prompt in a new session:
@@ -233,6 +260,8 @@ model-router task 1: L0 @smol · p=0.91 | task 2: L1 no change · p=0.62 | task 
 `skipped` entry. No line prints when `task.batch` is off or the batch has no
 eligible item.
 
+**OpenClaw.** OpenClaw shows no line in the chat. Start a subagent, and read the Gateway log with `openclaw logs --follow --plain`. The plugin writes one line per spawn. [The log line](plugins/model-router-openclaw/README.md#the-log-line) shows an example and explains it. [Which spawns are routed](plugins/model-router-openclaw/README.md#which-spawns-are-routed) lists the `skipped` reasons. If no line appears, [No line at all?](plugins/model-router-openclaw/README.md#no-line-at-all) lists the causes.
+
 ## Update
 
 **Claude Code.** Claude Code turns auto-update off by default for a
@@ -255,6 +284,13 @@ omp plugin upgrade model-router@model-router
 ```
 
 Then restart omp.
+
+**OpenClaw.** Run these lines in a shell, then restart the Gateway:
+
+```sh
+openclaw plugins update model-router-openclaw
+openclaw gateway restart
+```
 
 ## Turn off and uninstall
 
@@ -282,6 +318,16 @@ run this line:
 omp plugin uninstall model-router@model-router
 ```
 
+**OpenClaw.** To turn routing off, run this line in a shell:
+
+```sh
+openclaw plugins disable model-router-openclaw
+```
+
+The plugin sends nothing while it is disabled. Removing the key of every
+provider the `provider` setting allows also stops routing, and every spawn then
+reports `key unset`.
+
 ## What leaves the machine
 
 > [!IMPORTANT]
@@ -298,14 +344,17 @@ omp plugin uninstall model-router@model-router
 > OpenRouter.
 >
 > Each request also carries the agent text. The built-in `general-purpose` and
-> `claude` agents, and omp's bundled `task` agent, send a fixed text. Every
-> other agent sends its description, masked and cut to 500 characters.
+> `claude` agents, and omp's bundled `task` agent, send a fixed text. In
+> OpenClaw, [the spawn of the requesting agent itself](plugins/model-router-openclaw/README.md#the-spawn-of-the-requesting-agent-itself)
+> sends that agent's description when it has one, and a fixed text otherwise.
+> Every other agent sends its description, masked and cut to 500 characters.
 > [model-choice.md](plugins/model-router/docs/model-choice.md#the-role-of-the-default-agent)
 > says why. Under `extended`, the descriptions and task text of your other
 > agents leave the machine too.
 
-Each plugin README lists the full request, and each privacy policy states the
-same in policy form:
+The Claude Code and Oh My Pi READMEs list the full request, and each privacy
+policy states the same in policy form. For OpenClaw, the privacy policy holds
+the request:
 
 - Claude Code:
   [What leaves the machine](plugins/model-router/README.md#what-leaves-the-machine),
@@ -314,6 +363,10 @@ same in policy form:
   [What leaves the machine](plugins/model-router-omp/README.md#what-leaves-the-machine),
   [PRIVACY.md](plugins/model-router-omp/PRIVACY.md),
   [The extended scope](plugins/model-router-omp/PRIVACY.md#the-extended-scope)
+- OpenClaw:
+  [What the plugin sends](plugins/model-router-openclaw/PRIVACY.md#what-the-plugin-sends),
+  [PRIVACY.md](plugins/model-router-openclaw/PRIVACY.md),
+  [The extended scope](plugins/model-router-openclaw/PRIVACY.md#the-extended-scope)
 
 [Turn off and uninstall](#turn-off-and-uninstall) says how to stop the
 requests.
@@ -324,10 +377,13 @@ requests.
   can reach, routing, the effort ladder and troubleshooting.
 - [Oh My Pi plugin README](plugins/model-router-omp/README.md): the key, the
   setup skill, routing and the skip reasons.
+- [OpenClaw plugin README](plugins/model-router-openclaw/README.md): the
+  install, the model slots, the keys, routing and the skip reasons.
 - [model-choice.md](plugins/model-router/docs/model-choice.md): why the model
   tiers and the effort ladder are what they are.
 - [Claude Code privacy policy](plugins/model-router/PRIVACY.md)
 - [Oh My Pi privacy policy](plugins/model-router-omp/PRIVACY.md)
+- [OpenClaw privacy policy](plugins/model-router-openclaw/PRIVACY.md)
 
 ## Contributing
 

@@ -58,6 +58,17 @@ export const serialize = (value: JsonValue): string => `${lines(value, "")}\n`;
 const BIOME_TIMEOUT_MS = 30_000;
 
 /**
+ * Returns the text of a file ready to write. JSON comes back formatted by
+ * Biome. Any other file, such as a README, keeps the text the renderer wrote.
+ * Throws when Biome fails on a JSON file.
+ */
+export const formatRendered = (
+	path: string,
+	text: string,
+	root: string,
+): string => (path.endsWith(".json") ? formatJson(path, text, root) : text);
+
+/**
  * Formats JSON text with the repository's own Biome, so a file written here
  * passes biome ci. Throws when Biome fails or runs past its time limit.
  */

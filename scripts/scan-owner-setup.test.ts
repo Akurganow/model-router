@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { GENERATED_PATHS } from "./build/outputs.ts";
+import { generatedFiles } from "./build/copies.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 import {
 	addedLines,
@@ -345,5 +345,5 @@ test("--base without a commit is a usage error", () => {
 });
 
 test("the generated files carry no marker", () => {
-	assert.deepEqual(scanFiles(ROOT, GENERATED_PATHS), []);
+	assert.deepEqual(scanFiles(ROOT, generatedFiles(ROOT)), []);
 });

@@ -4,8 +4,14 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { README_OUTPUT } from "./build/outputs.ts";
-import { anchorOf, installCommands, renderReadme } from "./build/readme.ts";
+import {
+	anchorOf,
+	catalogueId,
+	installCommands,
+	renderReadme,
+} from "./build/readme.ts";
 import { loadSource, type Source } from "./build/source.ts";
+import { anchorsOf } from "./markdown-anchors.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const source = loadSource(ROOT);
@@ -25,12 +31,16 @@ const withoutCi = (): Source => ({
 test("the region holds one section for each harness, in order", () => {
 	const text = renderReadme(readme("\nold\n"), source);
 	const headings = text.match(/^### .+$/gm);
-	assert.deepEqual(headings, ["### Claude Code", "### Oh My Pi"]);
+	assert.deepEqual(headings, [
+		"### Claude Code",
+		"### Oh My Pi",
+		"### OpenClaw",
+	]);
 });
 
 test("each section ends with a link to its setup heading", () => {
 	const text = renderReadme(readme("\nold\n"), source);
-	for (const heading of ["Claude Code", "Oh My Pi"])
+	for (const heading of ["Claude Code", "Oh My Pi", "OpenClaw"])
 		assert.ok(
 			text.includes(
 				`[Set up ${heading}](#${anchorOf(`Set up ${heading}`)}) has the next steps.`,
@@ -38,39 +48,6 @@ test("each section ends with a link to its setup heading", () => {
 			heading,
 		);
 });
-
-const FENCE = /^(```|~~~)/;
-const HEADING = /^#{1,6} (.+)$/;
-/**
- * Lists the heading titles of a Markdown text. A line inside a fenced code
- * block, such as a shell comment, is not a heading.
- */
-const headingsOf = (markdown: string): string[] => {
-	let inFence = false;
-	const titles: string[] = [];
-	for (const line of markdown.split("\n")) {
-		if (FENCE.test(line)) inFence = !inFence;
-		const title = inFence ? undefined : HEADING.exec(line)?.[1];
-		if (title !== undefined) titles.push(title);
-	}
-	return titles;
-};
-
-/**
- * Returns the anchors GitHub gives the headings. GitHub suffixes a repeated
- * heading's anchor with -1, -2 and so on.
- */
-const anchorsOf = (markdown: string): Set<string> => {
-	const seen = new Map<string, number>();
-	const anchors = new Set<string>();
-	for (const title of headingsOf(markdown)) {
-		const anchor = anchorOf(title);
-		const count = seen.get(anchor) ?? 0;
-		anchors.add(count === 0 ? anchor : `${anchor}-${count}`);
-		seen.set(anchor, count + 1);
-	}
-	return anchors;
-};
 
 test("a heading sign inside a fenced code block makes no anchor", () => {
 	const markdown = "# Real\n\n```sh\n# not a heading\n```\n";
@@ -89,13 +66,16 @@ test("an anchor drops punctuation and joins words with hyphens", () => {
 	assert.equal(anchorOf("Turn off and `uninstall`!"), "turn-off-and-uninstall");
 });
 
-test("the region names the install commands of both harnesses", () => {
+test("the region names the install commands of every harness", () => {
 	const text = renderReadme(readme("\nold\n"), source);
 	for (const command of [
 		"claude plugin marketplace add Akurganow/model-router",
 		"claude plugin install model-router@model-router",
 		"omp plugin marketplace add Akurganow/model-router",
 		"omp plugin install model-router@model-router",
+		"openclaw plugins install npm:@akurganow/model-router --force --accept-capabilities",
+		"openclaw plugins enable model-router-openclaw",
+		"openclaw plugins inspect model-router-openclaw --runtime --json",
 	])
 		assert.match(text, new RegExp(`^${command}$`, "m"));
 });
@@ -108,9 +88,28 @@ test("each section cites the harness documentation", () => {
 	);
 	assert.match(
 		text,
+		/^Source: OpenClaw documentation, \[Manage plugins\]\(https:\/\/docs\.openclaw\.ai\/plugins\/manage-plugins\)\.$/m,
+	);
+	assert.match(
+		text,
 		/^Source: Oh My Pi documentation, \[.+\]\(https:\/\/github\.com\/can1357\/oh-my-pi\/blob\/96e4d8eb5ba1212d2d6018f242de266284cffab9\/docs\/marketplace\.md#L\d+-L\d+\)\.$/m,
 	);
 });
+
+/**
+ * Returns the source with the OpenClaw install's ciLine set to the given text,
+ * or removed when the text is undefined.
+ */
+const withCiLine = (ciLine: string | undefined): Source => {
+	const { ciLine: _dropped, ...rest } = source.openclaw.install;
+	return {
+		...source,
+		openclaw: {
+			...source.openclaw,
+			install: ciLine === undefined ? rest : { ...rest, ciLine },
+		},
+	};
+};
 
 test("a harness that CI installs says so, and one that CI skips says so", () => {
 	const installed = renderReadme(readme("\nold\n"), source);
@@ -119,6 +118,41 @@ test("a harness that CI installs says so, and one that CI skips says so", () => 
 	const skipped = renderReadme(readme("\nold\n"), withoutCi());
 	assert.equal(skipped.match(/^CI does not install it\.$/gm)?.length, 1);
 	assert.equal(skipped.match(/^CI installs it on Ubuntu\.$/gm)?.length, 1);
+});
+
+test("a harness with its own CI sentence shows it whole, and the others keep the default", () => {
+	const sentence = "CI installs the packed package on Ubuntu.";
+	const custom = renderReadme(readme("\nold\n"), withCiLine(sentence));
+	assert.equal(custom.match(new RegExp(`^${sentence}$`, "m"))?.length, 1);
+	assert.equal(custom.match(/^CI installs it on Ubuntu\.$/gm)?.length, 2);
+	const plain = renderReadme(readme("\nold\n"), withCiLine(undefined));
+	assert.equal(plain.match(/^CI installs it on Ubuntu\.$/gm)?.length, 3);
+});
+
+test("the OpenClaw CI sentence names no tool-internal source scheme", () => {
+	const text = renderReadme(readme("\nold\n"), source);
+	assert.doesNotMatch(text, /npm-pack/);
+});
+
+test("the catalogue id repeats the name on both sides of the at sign", () => {
+	assert.equal(catalogueId(source), `${source.name}@${source.name}`);
+});
+
+test("the OpenClaw note warns to review the source before the commands run", () => {
+	const text = renderReadme(readme("\nold\n"), source);
+	assert.match(
+		text,
+		/Review the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`\./,
+	);
+});
+
+test("a note renders under the source line, with the package name filled in", () => {
+	const text = renderReadme(readme("\nold\n"), source);
+	assert.match(
+		text,
+		/^Source: OpenClaw documentation, .+\n\nThe npm package `@akurganow\/model-router` exists only after its first publication\. .+\n\nCI installs/m,
+	);
+	assert.equal(text.match(/first publication/g)?.length, 1);
 });
 
 test("only the region changes, and the rest keeps its bytes", () => {
@@ -191,6 +225,9 @@ const jobBlock = (workflow: string, job: string): string => {
 		.join("\n");
 };
 
+const runnerLine = (system: string) =>
+	new RegExp(`^ {4}runs-on: ${SYSTEM_RUNNERS[system]}$`, "m");
+
 test("each CI claim matches the install job of the workflow", () => {
 	const workflow = readFileSync(join(ROOT, CI_PATH), "utf8");
 	const block = jobBlock(workflow, "install");
@@ -199,10 +236,7 @@ test("each CI claim matches the install job of the workflow", () => {
 		const { ciSystems } = harness.install;
 		for (const system of ciSystems) {
 			assert.ok(SYSTEM_RUNNERS[system], `no runner is known for ${system}`);
-			assert.match(
-				block,
-				new RegExp(`^ {4}runs-on: ${SYSTEM_RUNNERS[system]}$`, "m"),
-			);
+			assert.match(block, runnerLine(system));
 		}
 		if (ciSystems.length === 0) continue;
 		for (const command of installCommands(source, harness.install, '"$PWD"'))
@@ -211,4 +245,36 @@ test("each CI claim matches the install job of the workflow", () => {
 				`${CI_PATH} does not run: ${command}`,
 			);
 	}
+});
+
+// The package job installs the packed tarball, a local source of the same package.
+test("the OpenClaw CI claim matches the package job of the workflow", () => {
+	const { ciSystems, ciLine = "" } = source.openclaw.install;
+	assert.deepEqual(ciSystems, ["Ubuntu"]);
+	for (const system of ciSystems) assert.ok(ciLine.includes(system), ciLine);
+	const block = jobBlock(readFileSync(join(ROOT, CI_PATH), "utf8"), "package");
+	for (const system of ciSystems) assert.match(block, runnerLine(system));
+	const runLines = block.split("\n").map((line) => line.trim());
+	const [install = "", , inspect = ""] = installCommands(
+		source,
+		source.openclaw.install,
+	);
+	assert.ok(
+		runLines.includes(
+			install.replace(`npm:${source.npm.name}`, '"npm-pack:$TARBALL"'),
+		),
+		install,
+	);
+	assert.ok(
+		runLines.some((line) => line.startsWith(`${inspect} > `)),
+		inspect,
+	);
+});
+
+test("the OpenClaw install commands name the npm package and the plugin id", () => {
+	assert.deepEqual(installCommands(source, source.openclaw.install), [
+		"openclaw plugins install npm:@akurganow/model-router --force --accept-capabilities",
+		"openclaw plugins enable model-router-openclaw",
+		"openclaw plugins inspect model-router-openclaw --runtime --json",
+	]);
 });

@@ -6,10 +6,10 @@ import { fileURLToPath } from "node:url";
 import { resolve as resolveProvider } from "../src/provider.ts";
 import { resolveScope } from "../src/scope.ts";
 import { VALUE_SETTINGS } from "../src/settings.ts";
-import { formatJson } from "./build/json.ts";
+import { formatRendered } from "./build/json.ts";
 import { renderReadme } from "./build/readme.ts";
 import { loadSource } from "./build/source.ts";
-import { buildBundle, renderMetadata } from "./build.ts";
+import { BUNDLES, buildBundle, renderMetadata } from "./build.ts";
 import { useTempRoot } from "./temp-root.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -21,16 +21,19 @@ const GENERATED = [
 	".claude-plugin/marketplace.json",
 	"plugins/model-router-omp/package.json",
 	".omp-plugin/marketplace.json",
+	"plugins/model-router-openclaw/openclaw.plugin.json",
+	"packages/model-router/package.json",
+	"packages/model-router/README.md",
 ];
 
-test("the source renders the four manifests and catalogues", () => {
+test("the source renders the manifests, the catalogues and the npm files", () => {
 	const files = renderMetadata(source);
 	assert.deepEqual(files.map(({ path }) => path).sort(), [...GENERATED].sort());
 });
 
 test("each rendered file equals the committed file byte for byte", () => {
 	for (const { path, text } of renderMetadata(source))
-		assert.equal(formatJson(path, text, ROOT), read(path), path);
+		assert.equal(formatRendered(path, text, ROOT), read(path), path);
 });
 
 test("a rendered file holds no absolute path", () => {
@@ -40,19 +43,12 @@ test("a rendered file holds no absolute path", () => {
 
 const box = useTempRoot("build-metadata-");
 
-test("both bundles equal the committed bundles byte for byte", async () => {
-	const claude = join(box.root, "claude.js");
-	const omp = join(box.root, "omp.js");
-	assert.deepEqual(await buildBundle("claude", "src/claude.ts", claude), []);
-	assert.deepEqual(await buildBundle("omp", "src/omp.ts", omp), []);
-	assert.equal(
-		readFileSync(claude, "utf8"),
-		read("plugins/model-router/hooks/register.js"),
-	);
-	assert.equal(
-		readFileSync(omp, "utf8"),
-		read("plugins/model-router-omp/extension/index.js"),
-	);
+test("the bundles equal the committed bundles byte for byte", async () => {
+	for (const { harness, entry, out } of BUNDLES) {
+		const built = join(box.root, `${harness}.js`);
+		assert.deepEqual(await buildBundle(harness, entry, built), []);
+		assert.equal(readFileSync(built, "utf8"), read(out), out);
+	}
 });
 
 test("the source defaults are the defaults the code applies", () => {

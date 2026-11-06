@@ -11,7 +11,10 @@ name: dependency-review
 # and no copyleft license is on it. deny-licenses is deprecated, so the
 # policy is an allow list. Claude Code and its platform packages are exempt
 # by name: .github/actions/setup-claude-code installs them in CI only, and
-# no plugin carries them.
+# no plugin carries them. The OpenClaw packages whose license is off the list
+# are exempt by name for the same reason: .github/actions/setup-openclaw
+# installs them in CI only. json-schema-typed is BSD-2-Clause in its
+# package.json; GitHub reads it as BSD-2-Clause AND JSON.
 on:
   pull_request:
 
@@ -34,6 +37,16 @@ jobs:
           allow-licenses: >-
             MIT, MIT-0, ISC, 0BSD, BSD-2-Clause, BSD-3-Clause, Apache-2.0,
             Unlicense, CC0-1.0, BlueOak-1.0.0, Zlib, Python-2.0
+          # Two advisories are allowed, both in the CI-only OpenClaw install of
+          # .github/actions/setup-openclaw, which no plugin ships.
+          # GHSA-3g3m-2fjr-6pw4: glob 13.0.6, bundled inside npm 12.2.2. A
+          # bundled package cannot be overridden, and no npm release bundles
+          # the fixed glob yet. Remove it once an npm release bundles glob
+          # 14.0.2 or later.
+          # GHSA-g3hv-75wg-m249: minimatch in two copies, 10.2.6 from
+          # OpenClaw's exact pin and 10.2.5 bundled inside npm 12.2.2. Remove
+          # it once OpenClaw and npm both move to minimatch 11.0.1 or later.
+          allow-ghsas: GHSA-3g3m-2fjr-6pw4, GHSA-g3hv-75wg-m249
           allow-dependencies-licenses: >-
             pkg:npm/@anthropic-ai/claude-code,
             pkg:npm/@anthropic-ai/claude-code-darwin-arm64,
@@ -43,4 +56,43 @@ jobs:
             pkg:npm/@anthropic-ai/claude-code-linux-x64,
             pkg:npm/@anthropic-ai/claude-code-linux-x64-musl,
             pkg:npm/@anthropic-ai/claude-code-win32-arm64,
-            pkg:npm/@anthropic-ai/claude-code-win32-x64
+            pkg:npm/@anthropic-ai/claude-code-win32-x64,
+            pkg:npm/@resvg/resvg-js,
+            pkg:npm/@resvg/resvg-js-android-arm-eabi,
+            pkg:npm/@resvg/resvg-js-android-arm64,
+            pkg:npm/@resvg/resvg-js-darwin-arm64,
+            pkg:npm/@resvg/resvg-js-darwin-x64,
+            pkg:npm/@resvg/resvg-js-linux-arm-gnueabihf,
+            pkg:npm/@resvg/resvg-js-linux-arm64-gnu,
+            pkg:npm/@resvg/resvg-js-linux-arm64-musl,
+            pkg:npm/@resvg/resvg-js-linux-x64-gnu,
+            pkg:npm/@resvg/resvg-js-linux-x64-musl,
+            pkg:npm/@resvg/resvg-js-win32-arm64-msvc,
+            pkg:npm/@resvg/resvg-js-win32-ia32-msvc,
+            pkg:npm/@resvg/resvg-js-win32-x64-msvc,
+            pkg:npm/@trycua/cua-driver-darwin-arm64,
+            pkg:npm/@trycua/cua-driver-darwin-x64,
+            pkg:npm/@trycua/cua-driver-linux-arm64-gnu,
+            pkg:npm/@trycua/cua-driver-linux-x64-gnu,
+            pkg:npm/@trycua/cua-driver-win32-arm64-msvc,
+            pkg:npm/@trycua/cua-driver-win32-x64-msvc,
+            pkg:npm/@ubjs/core,
+            pkg:npm/@ubjs/node,
+            pkg:npm/@ubjs/node-darwin-arm64,
+            pkg:npm/@ubjs/node-darwin-x64,
+            pkg:npm/@ubjs/node-linux-arm64-gnu,
+            pkg:npm/@ubjs/node-linux-arm64-musl,
+            pkg:npm/@ubjs/node-linux-x64-gnu,
+            pkg:npm/@ubjs/node-linux-x64-musl,
+            pkg:npm/@ubjs/node-win32-arm64-msvc,
+            pkg:npm/@ubjs/node-win32-x64-msvc,
+            pkg:npm/json-schema-typed,
+            pkg:npm/npm,
+            pkg:npm/spdx-exceptions,
+            pkg:npm/sqlite-vec,
+            pkg:npm/sqlite-vec-darwin-arm64,
+            pkg:npm/sqlite-vec-darwin-x64,
+            pkg:npm/sqlite-vec-linux-arm64,
+            pkg:npm/sqlite-vec-linux-x64,
+            pkg:npm/sqlite-vec-windows-x64,
+            pkg:npm/web-push

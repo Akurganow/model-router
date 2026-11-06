@@ -9,6 +9,9 @@ import { useTempRoot } from "./temp-root.ts";
 const claude = "plugins/model-router/.claude-plugin/plugin.json";
 const omp = "plugins/model-router-omp/package.json";
 const catalog = ".omp-plugin/marketplace.json";
+const openclaw = "plugins/model-router-openclaw/openclaw.plugin.json";
+const tree = "packages/model-router/package.json";
+const treeOpenclaw = "packages/model-router/openclaw.plugin.json";
 
 const catalogWith = (version?: string) =>
 	JSON.stringify({ plugins: [{ name: "a", version }] });
@@ -18,12 +21,14 @@ const box = useTempRoot("manifests-", (put) => {
 	put(claude, '{"version": "0.11.0"}');
 	put(omp, '{"name": "b", "version": "0.11.0"}');
 	put(catalog, catalogWith("0.11.0"));
+	for (const path of [openclaw, tree, treeOpenclaw])
+		put(path, '{"version": "0.11.0"}');
 });
 const { put } = box;
 
-test("the list names the Claude Code and omp manifests and the omp catalog", () => {
+test("the list names every generated manifest that carries the version", () => {
 	const paths = MANIFESTS.map((manifest) => manifest.path);
-	assert.deepEqual(paths, [claude, omp, catalog]);
+	assert.deepEqual(paths, [claude, omp, catalog, openclaw, tree, treeOpenclaw]);
 });
 
 test("the catalog version sits in its first plugin entry", () => {
@@ -85,4 +90,14 @@ test("check fails on a missing manifest, naming it", () => {
 		{ path: "plugins/none/plugin.json", versionPath: ["version"] },
 	]);
 	assert.deepEqual(problems, ["plugins/none/plugin.json is missing"]);
+});
+
+test("check fails when the tree's OpenClaw manifest differs, naming it", () => {
+	put(treeOpenclaw, '{"version": "0.10.0"}');
+	const problems = checkVersions(box.root);
+	assert.equal(problems.length, 1);
+	assert.match(
+		problems[0] ?? "",
+		/packages\/model-router\/openclaw\.plugin\.json/,
+	);
 });

@@ -14,6 +14,10 @@ every commit as a [conventional commit](#commits).
   and `src/effort.ts` both build on it.
 - `plugins/model-router` is the Claude Code plugin.
 - `plugins/model-router-omp` is the omp plugin.
+- `plugins/model-router-openclaw` is the OpenClaw plugin.
+- `packages/model-router` is the npm package that OpenClaw and omp install.
+  The builder writes it, and CI packs the committed tree. Never edit it by
+  hand.
 - `.claude-plugin/marketplace.json` is the Claude Code catalog.
 - `.omp-plugin/marketplace.json` is the omp catalog. Each harness reads only
   its own catalog.
@@ -21,7 +25,7 @@ every commit as a [conventional commit](#commits).
   catalogues and the README install region. `metadata/source.json` is the
   source, and `metadata/source.schema.json` checks it.
 - `scripts/build.ts` reads the source and writes every generated file. It also
-  builds the bundle of each plugin from `src/`. Both bundles inline the
+  builds the bundle of each plugin from `src/`. Every bundle inlines the
   TypeSafe SDK, so each plugin runs on its own.
 - `scripts/build/` holds the renderers, one for each harness's manifest and
   catalogue and one for the README install region, and their shared helpers:
@@ -43,7 +47,7 @@ every commit as a [conventional commit](#commits).
 Edit metadata only in `metadata/source.json`. Then run
 `node scripts/build.ts` and commit the generated files with the change.
 Never edit a generated file by hand. CI fails when one differs from the
-builder's output. `GENERATED_PATHS` in `scripts/build/outputs.ts` lists the
+builder's output. `generatedFiles` in `scripts/build/copies.ts` lists the
 generated files. In the README only the region between
 `<!-- install:start -->` and `<!-- install:end -->` is generated.
 
@@ -69,11 +73,13 @@ npm run check
 
 - `npm ci` installs the development tools.
 - `node scripts/build.ts` writes the manifests, the catalogues and the README
-  install region from `metadata/source.json`. It also builds both bundles
-  from `src/`. The Claude Code bundle is
+  install region from `metadata/source.json`. It also builds the three
+  bundles from `src/` and writes the npm tree. The Claude Code bundle is
   `plugins/model-router/hooks/register.js`, and its shape is checked. The omp
   bundle is `plugins/model-router-omp/extension/index.js`, the only file omp
-  loads. Build before you validate or test.
+  loads. The OpenClaw bundle is `plugins/model-router-openclaw/index.js`, next
+  to the generated manifest `openclaw.plugin.json`. Build before you validate
+  or test.
 - `claude plugin validate --strict plugins/model-router` lists the hooks and
   engine calls of the mod. `--strict` fails on warnings too.
 - `node scripts/check-surface.ts` compares that list with
@@ -94,6 +100,20 @@ npm run check
 
 The type-check of the plugin tests needs the steps under
 [Type declarations](#type-declarations).
+
+### Try the OpenClaw plugin from a checkout
+
+Link the plugin folder in place of installing from npm:
+
+```bash
+openclaw plugins install --link ./plugins/model-router-openclaw --force --accept-capabilities
+```
+
+The link adds the folder to `plugins.load.paths`. The folder holds the generated
+manifest and bundle, so run `node scripts/build.ts` before you link and after
+each edit of `src/`. Then run `openclaw plugins reload model-router-openclaw`.
+[docs/clients.md](docs/clients.md#openclaw-install-and-update) cites the
+link and reload commands.
 
 ## Type declarations
 
@@ -181,11 +201,26 @@ Renovate (`.github/renovate.json`) keeps every pinned version current:
 
 - the development tools
 - Claude Code and omp for CI and the evals
+- OpenClaw for CI
 - Bun
 - the actions
 
 Renovate proposes updates after the same 14 days, one pull request a week per
 group. It proposes security fixes at once.
+
+Two pins are exceptions to the 14-day rule, both in the `setup-openclaw`
+action that installs OpenClaw for CI only:
+
+- OpenClaw itself. CI installs the latest OpenClaw release, so a Renovate rule
+  raises the pin at any time with no age delay.
+- The npm that OpenClaw bundles there. OpenClaw pins an exact npm, and the
+  action overrides it with a newer npm release when the pinned one carries
+  advisories. A Renovate rule raises that override with no age delay too. No
+  other package and no other npm in the repository has this exception.
+
+The action installs from a copy under the runner's temp folder, because the age
+rule in `.npmrc` would refuse a new version. The lockfile still locks every
+package by digest, and no install script runs.
 
 CI fails on any of these:
 
@@ -194,6 +229,12 @@ CI fails on any of these:
 - a pull request that adds a vulnerable dependency
 - a pull request that adds a license outside the permissive list in
   `.github/workflows/dependency-review.yml`
+
+The license check exempts some packages by name: Claude Code and its platform
+packages, and the packages of the OpenClaw install whose license is off the
+list. Only CI installs them, in `.github/actions/setup-claude-code` and
+`.github/actions/setup-openclaw`, and no plugin ships them. Any other package
+with an off-list license still fails the check.
 
 ## Continuous integration
 
@@ -208,6 +249,9 @@ CI runs these checks:
 - Anthropic's plugin policy scan, with the prompt in `.github/policy/`
 - the generated-file check, on Ubuntu and macOS
 - the install of both plugins from the checkout
+- the `package` job: it packs `packages/model-router` and compares the packed
+  files with its `files` list, runs `npm publish --dry-run`, and installs the
+  tarball into the pinned OpenClaw and omp
 - the owner-setup scan, `node scripts/scan-owner-setup.ts --base <commit>`,
   where CI passes the commit the change starts from. Without `--base` it reads
   what your branch adds over its merge base with `origin/main`, and with no
@@ -215,10 +259,27 @@ CI runs these checks:
 
 A pull request merges only when all of them pass.
 [docs/design.md](docs/design.md#ci-checks-the-copies-and-the-installation)
-says what the last three check and why. A test that needs a home path or a
+says what the last four check and why. A test that needs a home path or a
 key-shaped sample builds it at run time, so the scan does not flag the test.
 
 A new hook or engine call changes what Anthropic's directory and users see.
 Update `tools/surface.json` and the surface table in
 [plugins/model-router/README.md](plugins/model-router/README.md) in the same
 change.
+
+## Publishing to npm
+
+The release workflow publishes `@akurganow/model-router` with npm trusted
+publishing, so no token is stored. The `publish` job runs after a release, and
+only when the repository variable `NPM_PUBLISH` is `true`.
+
+The owner publishes the first version by hand from its tag, because npm
+accepts a trusted publisher only for a package that exists. Then, within 2
+days before a release that publishes:
+
+1. Set a trusted publisher in the package's settings on npmjs.com for this
+   repository and the workflow file `release.yml`.
+2. Set `NPM_PUBLISH` to `true`.
+
+A trusted publisher that sees no publication within 2 days of its setup
+expires. Set it again if that happens. Every later version publishes from CI.

@@ -9,19 +9,24 @@ const marketplaceArgument = (source: Source): string =>
 	new URL(source.repository).pathname.slice(1);
 
 // The catalogue and the plugin carry the same name, so the id repeats it.
-export const pluginId = (source: Source): string =>
+export const catalogueId = (source: Source): string =>
 	`${source.name}@${source.name}`;
+
+// The placeholders a command or a note may hold: {marketplace}, {plugin} (the
+// catalogue id), {package} (the npm name) and {id} (the OpenClaw plugin id).
+const fill = (source: Source, text: string, marketplace: string): string =>
+	text
+		.replaceAll("{marketplace}", marketplace)
+		.replaceAll("{plugin}", catalogueId(source))
+		.replaceAll("{package}", source.npm.name)
+		.replaceAll("{id}", source.openclaw.pluginId);
 
 export const installCommands = (
 	source: Source,
 	install: Install,
 	marketplace: string = marketplaceArgument(source),
 ): string[] =>
-	install.commands.map((command) =>
-		command
-			.replaceAll("{marketplace}", marketplace)
-			.replaceAll("{plugin}", pluginId(source)),
-	);
+	install.commands.map((command) => fill(source, command, marketplace));
 
 // GitHub's heading anchor: lower case, punctuation dropped, spaces as hyphens.
 export const anchorOf = (heading: string): string =>
@@ -36,13 +41,26 @@ const setupLine = ({ heading }: Install): string => {
 	return `[${setup}](#${anchorOf(setup)}) has the next steps.`;
 };
 
-const ciLine = ({ ciSystems }: Install): string =>
-	ciSystems.length === 0
+/**
+ * Returns the sentence about CI for one install. The install's own sentence
+ * wins. Otherwise the sentence names the CI systems that install it, or says
+ * that CI does not.
+ */
+const ciLine = ({ ciSystems, ciLine: sentence }: Install): string =>
+	sentence ??
+	(ciSystems.length === 0
 		? "CI does not install it."
-		: `CI installs it on ${ciSystems.join(" and ")}.`;
+		: `CI installs it on ${ciSystems.join(" and ")}.`);
 
+/**
+ * Returns the README section of one install: its heading, commands, source,
+ * optional note, CI sentence and link to the setup steps.
+ */
 const section = (source: Source, install: Install): string => {
 	const { publisher, title, url } = install.source;
+	const note = install.note
+		? [fill(source, install.note, marketplaceArgument(source)), ""]
+		: [];
 	return [
 		`### ${install.heading}`,
 		"",
@@ -52,6 +70,7 @@ const section = (source: Source, install: Install): string => {
 		"",
 		`Source: ${publisher}, [${title}](${url}).`,
 		"",
+		...note,
 		ciLine(install),
 		"",
 		setupLine(install),
@@ -86,7 +105,11 @@ function checkMarkers(readme: string): void {
 // Returns the README with the text between the install markers replaced.
 export function renderReadme(readme: string, source: Source): string {
 	checkMarkers(readme);
-	const body = [source.claude.install, source.omp.install]
+	const body = [
+		source.claude.install,
+		source.omp.install,
+		source.openclaw.install,
+	]
 		.map((install) => section(source, install))
 		.join("\n\n");
 	const head = readme.slice(0, readme.indexOf(START) + START.length);

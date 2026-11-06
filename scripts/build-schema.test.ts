@@ -95,3 +95,14 @@ test("an additionalProperties that is not a boolean is a schema error", () => {
 	} as unknown as Schema;
 	assert.throws(() => validate(odd, {}), /additionalProperties.*boolean/);
 });
+
+test("an enum lists the allowed values and a value outside it fails", () => {
+	const schema = { type: "string", enum: ["a", "b"] } as Schema;
+	assert.deepEqual(validate(schema, "a"), []);
+	assert.deepEqual(validate(schema, "c"), ["$: not one of a, b"]);
+});
+
+test("a default is an annotation and does not constrain the value", () => {
+	const schema = { type: "string", default: "a" } as Schema;
+	assert.deepEqual(validate(schema, "z"), []);
+});

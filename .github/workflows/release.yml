@@ -12,6 +12,14 @@ name: release
 # this workflow stops, while ci and policy check the released commit once
 # more.
 #
+# The publish job sends @akurganow/model-router to npm through npm trusted
+# publishing: the job gets a short-lived identity token from GitHub and no
+# token is stored anywhere. It runs only when the repository variable
+# NPM_PUBLISH is "true". Before it can run, the owner publishes the first
+# version by hand from its tag and sets a trusted publisher for this
+# repository and this workflow file in the package's settings on npmjs.com.
+# A publisher that sees no publication within 2 days of its setup expires.
+#
 # A release runs no evals. They cost model usage, so they run only on manual
 # dispatch of evals.yml.
 on:
@@ -32,6 +40,9 @@ jobs:
     # Pushing the commit and the tag and creating the release need contents: write.
     permissions:
       contents: write
+    outputs:
+      released: ${{ steps.bump.outputs.released }}
+      tag: ${{ steps.bump.outputs.tag }}
     steps:
       # Pinned to a commit sha; the comment records the release. ref: main
       # takes the newest main; fetch-depth: 0 brings the history and the tags.
@@ -118,3 +129,51 @@ jobs:
             [ -s "$notes" ] || { echo "::error::no changelog section for $tag"; exit 1; }
             gh release create "$tag" --verify-tag --title "$tag" --notes-file "$notes"
           done
+
+  # Trusted publishing needs npm 11.5.1 or later, which Node 24 bundles; the
+  # first step checks it. The job reads contents and gets an identity token,
+  # so nothing in it can push.
+  publish:
+    needs: release
+    if: needs.release.outputs.released == 'true' && vars.NPM_PUBLISH == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-node
+
+      - name: Check that npm supports trusted publishing
+        run: |
+          npm_version=$(npm --version)
+          [ "$(printf '%s\n%s\n' 11.5.1 "$npm_version" | sort -V | head -n 1)" = 11.5.1 ] || {
+            echo "::error::npm $npm_version is older than 11.5.1, which trusted publishing needs."
+            exit 1
+          }
+
+      # Only a 404 means the version is free. Any other failure stops the job.
+      - name: Look for the version on the registry
+        id: registry
+        working-directory: packages/model-router
+        run: |
+          spec="$(node -p 'require("./package.json").name')@$(node -p 'require("./package.json").version')"
+          if output=$(npm view "$spec" version 2>&1); then
+            echo "$spec is already on the registry; nothing to publish."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          elif grep -q E404 <<< "$output"; then
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "$output"
+            exit 1
+          fi
+
+      - name: Publish to npm
+        if: steps.registry.outputs.published == 'false'
+        working-directory: packages/model-router
+        run: npm publish --provenance --access public --ignore-scripts

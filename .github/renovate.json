@@ -17,6 +17,23 @@
 			"semanticCommitType": "fix"
 		},
 		{ "matchManagers": ["bun"], "groupName": "omp" },
+		{
+			"description": "CI installs the latest OpenClaw release. The pin skips the 14-day age rule, and a rule here overrides the npm group above.",
+			"matchManagers": ["npm"],
+			"matchPackageNames": ["openclaw"],
+			"groupName": "openclaw",
+			"minimumReleaseAge": null,
+			"schedule": ["at any time"]
+		},
+		{
+			"description": "The CI-only OpenClaw install overrides the npm OpenClaw bundles when the pinned one carries advisories. That override also skips the 14-day age rule; no other npm does.",
+			"matchManagers": ["npm"],
+			"matchFileNames": [".github/actions/setup-openclaw/package.json"],
+			"matchPackageNames": ["npm"],
+			"groupName": "openclaw",
+			"minimumReleaseAge": null,
+			"schedule": ["at any time"]
+		},
 		{ "matchManagers": ["github-actions"], "groupName": "actions" }
 	]
 }

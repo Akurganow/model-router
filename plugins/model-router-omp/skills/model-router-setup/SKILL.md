@@ -36,7 +36,7 @@ The tool returns the `provider` line, the `scope` line, and `<provider> key: set
 1. Call the tool with setting `provider`.
 2. Report the line it returns.
 
-The [Provider](../../README.md#provider) section of the README lists the values. If the line reads `provider unchanged: already <value>`, the user kept the current value. If the output adds `A project value for provider overrides it.`, tell the user.
+The [Provider](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#provider) section of the README lists the values. If the line reads `provider unchanged: already <value>`, the user kept the current value. If the output adds `A project value for provider overrides it.`, tell the user.
 
 ## Step 3. Keys
 
@@ -73,7 +73,7 @@ If a key is missing for every allowed provider, say that every call skips with `
 1. Call the tool with setting `scope`.
 2. Report the line it returns.
 
-The [Scope](../../README.md#scope) section of the README says what each value routes. If the output adds `A project value for scope overrides it.`, tell the user.
+The [Scope](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#scope) section of the README says what each value routes. If the output adds `A project value for scope overrides it.`, tell the user.
 
 ## Step 5. List the reasons routing is off
 
@@ -81,8 +81,8 @@ Check each reason below. Report every reason that holds, not only the first.
 
 - The plugin is disabled. No line appears.
 - `task.batch` is off. The call has no `tasks` list, so the plugin prints no line.
-- A batch gate is closed, as [Gate reasons](../../README.md#gate-reasons) lists. Every item skips with the gate's reason.
-- An item check fails, as [Item reasons](../../README.md#item-reasons) lists. That item skips with its own reason.
+- A batch gate is closed, as [Gate reasons](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#gate-reasons) lists. Every item skips with the gate's reason.
+- An item check fails, as [Item reasons](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#item-reasons) lists. That item skips with its own reason.
 - Neither `smol` nor `slow` resolves. The reason is `no @smol or @slow model`.
 
 Check whether `smol` and `slow` resolve, not only whether they are set. An unset role can still resolve through omp's `default` role or its built-in list. Level 0 needs `smol`. Level 2 needs `slow`.
