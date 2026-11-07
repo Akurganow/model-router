@@ -45,6 +45,10 @@ jobs:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The reuse step reads the head's policy runs.
+    permissions:
+      contents: read
+      actions: read
     # git fetch starts a detached `git maintenance run --auto` that keeps
     # writing into .git/objects after fetch returns. The scan action deletes
     # its clone right after the fetch, and that race fails its `rm -rf` with
@@ -86,18 +90,27 @@ jobs:
           path: .scan/verdict.json
           key: ${{ steps.target.outputs.cache-key }}
 
-      # The merged pull request's head had the same plugin tree and policy,
-      # and its required scan check passed on that tree. A merge commit's
-      # second parent is that head. A squash merge has none and scans fresh.
+      # The merged pull request's head had the same plugin tree and policy.
+      # A merge commit's second parent is that head. A squash merge has none
+      # and scans fresh. A skipped draft job also satisfies the required
+      # check, so the head must have a policy run whose scan job succeeded.
+      # That job passed on a fresh or a cached verdict for this same tree.
       - name: Reuse the head's verdict
         id: reuse
         if: steps.cache.outputs.cache-hit != 'true' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
-          if git rev-parse --verify --quiet 'HEAD^2' > /dev/null \
-            && git diff --quiet HEAD^2 HEAD -- plugins/model-router .github/policy; then
-            printf '{"passes": true, "violations": []}\n' > .scan/verdict.json
-            echo "reused=true" >> "$GITHUB_OUTPUT"
-          fi
+          head=$(git rev-parse --verify --quiet 'HEAD^2') || exit 0
+          git diff --quiet "$head" HEAD -- plugins/model-router .github/policy || exit 0
+          for run in $(gh api "repos/$REPO/actions/workflows/policy.yml/runs?head_sha=$head&per_page=100" --jq '.workflow_runs[].id'); do
+            if gh api "repos/$REPO/actions/runs/$run/jobs" --jq '.jobs[] | select(.name == "scan" and .conclusion == "success") | .id' | grep -q .; then
+              printf '{"passes": true, "violations": []}\n' > .scan/verdict.json
+              echo "reused=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
 
       # The scan action skips without a key. This step keeps the check from
       # passing for that reason.

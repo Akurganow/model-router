@@ -272,8 +272,14 @@ test("a push to main reuses the merged head's verdict when plugin and policy are
 	assert.match(reuse, /github\.event_name == 'push'/);
 	assert.match(
 		reuse,
-		/git diff --quiet HEAD\^2 HEAD -- plugins\/model-router \.github\/policy/,
+		/git diff --quiet "\$head" HEAD -- plugins\/model-router \.github\/policy/,
 	);
+	assert.match(reuse, /actions\/workflows\/policy\.yml\/runs\?head_sha=\$head/);
+	assert.match(
+		reuse,
+		/select\(\.name == "scan" and \.conclusion == "success"\)/,
+	);
+	assert.match(scan, /^ {6}actions: read$/m);
 	for (const name of [
 		"Require the API key",
 		"Read the Claude Code version",
