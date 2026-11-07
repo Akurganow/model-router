@@ -247,3 +247,50 @@ test("every action the package, hermes and publish jobs use is pinned to a sha",
 		for (const [, ref = ""] of block.matchAll(/uses: (\S+)/g))
 			assert.match(ref, /^(\.\/|[^@]+@[0-9a-f]{40}$)/, ref);
 });
+
+const policy = read(".github/workflows/policy.yml");
+const scan = jobBlock(policy, "scan");
+
+test("the policy scan skips drafts and cancels stale pull request runs", () => {
+	assert.match(
+		policy,
+		/^ {2}pull_request:\n {4}types: \[opened, synchronize, reopened, ready_for_review\]$/m,
+	);
+	assert.match(
+		policy,
+		/^concurrency:\n {2}group: policy-\$\{\{ github\.event\.pull_request\.number \|\| github\.sha \}\}\n {2}cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}$/m,
+	);
+	assert.match(
+		scan,
+		/^ {4}if: github\.event_name != 'pull_request' \|\| !github\.event\.pull_request\.draft$/m,
+	);
+});
+
+test("a push to main reuses the merged head's verdict when plugin and policy are unchanged", () => {
+	const reuse = scan.slice(scan.indexOf("- name: Reuse the head's verdict"));
+	assert.match(reuse, /steps\.cache\.outputs\.cache-hit != 'true'/);
+	assert.match(reuse, /github\.event_name == 'push'/);
+	assert.match(
+		reuse,
+		/git diff --quiet "\$head" HEAD -- plugins\/model-router \.github\/policy/,
+	);
+	assert.match(reuse, /actions\/workflows\/policy\.yml\/runs\?head_sha=\$head/);
+	assert.match(
+		reuse,
+		/select\(\.name == "scan" and \.conclusion == "success"\)/,
+	);
+	assert.match(scan, /^ {6}actions: read$/m);
+	for (const name of [
+		"Require the API key",
+		"Read the Claude Code version",
+		"Record the verdict",
+	]) {
+		const step = scan.slice(scan.indexOf(`- name: ${name}`));
+		const header = step.slice(0, step.indexOf("run:"));
+		assert.match(header, /steps\.reuse\.outputs\.reused != 'true'/, name);
+	}
+});
+
+test("the policy scan runs on Sonnet 5.5", () => {
+	assert.match(scan, /^ {6}ANTHROPIC_MODEL: claude-sonnet-5-5$/m);
+});

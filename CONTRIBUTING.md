@@ -187,6 +187,22 @@ bar.
 The masked prompt keeps the key out of command lines and shell history. Pipe
 the key only from a source that keeps it out of the command line.
 
+## Paid runs
+
+A run that calls a paid model needs a question that no free check answers.
+Jev calls, such as calibration, are cheap and exempt.
+
+- Look in [docs/clients.md](docs/clients.md) first. Skip the run when it
+  records the fact with a cited run on the same client version.
+- Run one case on the cheapest model that shows the behaviour: `haiku` in
+  Claude Code, the omp case's model from `evals/cases.json` in omp. Cap the
+  turns, for example with `--max-turns` in Claude Code.
+- Record the result in `docs/clients.md` with the client version, the date and
+  the command, so the fact needs no second run.
+- Run the evals workflow by hand only after a change to `src/`, a plugin
+  folder or a pinned client version. Run it only for the clients that change
+  touches, with its `clients` input.
+
 ## Commits
 
 Every commit is a [conventional commit](https://www.conventionalcommits.org),
@@ -271,7 +287,8 @@ CI runs these checks:
   calls of the mod match `tools/surface.json`
 - `tsc -p src` and `tsc -p scripts`
 - `biome ci`
-- Anthropic's plugin policy scan, with the prompt in `.github/policy/`
+- Anthropic's plugin policy scan, with the prompt in `.github/policy/`. It skips
+  drafts, so keep a pull request as a draft while it changes.
 - the generated-file check, on Ubuntu and macOS
 - the install of both plugins from the checkout
 - the `package` job: it packs `packages/model-router` and compares the packed

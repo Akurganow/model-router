@@ -27,7 +27,7 @@ contract_version: 3
 
 - CI validates the plugin, runs its tests, and checks the mod's surface: .github/workflows/ci.yml
 - A pull request with an open advisory or an invalid registry signature fails: .github/workflows/ci.yml
-- Anthropic's plugin policy scan runs on every pull request and push: .github/workflows/policy.yml
+- Anthropic's plugin policy scan runs on every pull request that is not a draft and on every push to main, and a merge reuses the head's verdict when the plugin and the policy are unchanged: .github/workflows/policy.yml
 - CI rebuilds every generated file on Ubuntu and macOS and fails on any difference: .github/workflows/ci.yml
 - CI installs the Claude Code and omp plugins from the checkout and validates the plugin and the Claude Code catalogue: .github/workflows/ci.yml
 - The `package` job packs the npm tree, checks the packed files against its `files` list, runs a publish dry run, and installs the tarball into OpenClaw and omp: .github/workflows/ci.yml

@@ -4,19 +4,36 @@ name: policy
 # every pull request. It reads the plugin at this commit against the prompt
 # in .github/policy/ and fails on a finding.
 #
+# A draft is not scanned. Leaving draft fires ready_for_review, which scans.
+# A newer commit cancels the scan that runs on the pull request. Each push to
+# main gets its own group, so no merge drops another merge's run and every
+# main tree gets its cache entry.
+#
 # The verdict is a model's, so the same content can get a different verdict
 # on another run. As in anthropics/claude-plugins-official, each plugin tree
 # is scanned at most once: the verdict is cached under the policy hash and
 # the hash of the plugin folder's tree, a cached verdict gates later runs,
 # and a re-run, a force-push of the same content or a commit outside the
 # plugin folder never scans again. A pull request from Renovate changes
-# the root only, so it reuses main's verdict and runs no scan. A cached
-# fail still fails; the fix is a commit that changes the plugin. A scan that returns no verdict is an
-# infrastructure error: it fails the job and caches nothing.
+# the root only, so it reuses main's verdict and runs no scan.
+#
+# A merge reuses the head's verdict. When the plugin folder and the policy
+# match the merged head, the push to main writes that verdict and scans
+# nothing. The pull request's required scan passed on the same tree, and
+# main's cache cannot read caches that pull-request runs saved.
+#
+# A cached fail still fails; the fix is a commit that changes the plugin.
+# A scan that returns no verdict is an infrastructure error: it fails the
+# job and caches nothing.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
+
+concurrency:
+  group: policy-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -24,13 +41,24 @@ permissions:
 jobs:
   scan:
     name: scan
+    # A job skipped by its condition reports success to the required check.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The reuse step reads the head's policy runs.
+    permissions:
+      contents: read
+      actions: read
     # git fetch starts a detached `git maintenance run --auto` that keeps
     # writing into .git/objects after fetch returns. The scan action deletes
     # its clone right after the fetch, and that race fails its `rm -rf` with
     # "Directory not empty" before any scan. maintenance.auto=false stops it.
+    #
+    # The scan passes no --model, so ANTHROPIC_MODEL picks it. On 2026-11-07
+    # Sonnet 5.5 gave the default model's verdict on two passing plugin trees
+    # and on two trees with a planted violation, at about a fifth of its cost.
     env:
+      ANTHROPIC_MODEL: claude-sonnet-5-5
       GIT_CONFIG_COUNT: "1"
       GIT_CONFIG_KEY_0: maintenance.auto
       GIT_CONFIG_VALUE_0: "false"
@@ -62,10 +90,32 @@ jobs:
           path: .scan/verdict.json
           key: ${{ steps.target.outputs.cache-key }}
 
+      # The merged pull request's head had the same plugin tree and policy.
+      # A merge commit's second parent is that head. A squash merge has none
+      # and scans fresh. A skipped draft job also satisfies the required
+      # check, so the head must have a policy run whose scan job succeeded.
+      # That job passed on a fresh or a cached verdict for this same tree.
+      - name: Reuse the head's verdict
+        id: reuse
+        if: steps.cache.outputs.cache-hit != 'true' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          head=$(git rev-parse --verify --quiet 'HEAD^2') || exit 0
+          git diff --quiet "$head" HEAD -- plugins/model-router .github/policy || exit 0
+          for run in $(gh api "repos/$REPO/actions/workflows/policy.yml/runs?head_sha=$head&per_page=100" --jq '.workflow_runs[].id'); do
+            if gh api "repos/$REPO/actions/runs/$run/jobs" --jq '.jobs[] | select(.name == "scan" and .conclusion == "success") | .id' | grep -q .; then
+              printf '{"passes": true, "violations": []}\n' > .scan/verdict.json
+              echo "reused=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
       # The scan action skips without a key. This step keeps the check from
       # passing for that reason.
       - name: Require the API key
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.cache.outputs.cache-hit != 'true' && steps.reuse.outputs.reused != 'true'
         env:
           KEY_SET: ${{ secrets.ANTHROPIC_API_KEY != '' }}
         run: |
@@ -77,13 +127,13 @@ jobs:
       # The scan installs Claude Code itself, at the version that
       # .github/actions/setup-claude-code pins for CI and the evals.
       - name: Read the Claude Code version
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.cache.outputs.cache-hit != 'true' && steps.reuse.outputs.reused != 'true'
         id: claude
         run: echo "version=$(node -p 'require("./.github/actions/setup-claude-code/package.json").dependencies["@anthropic-ai/claude-code"]')" >> "$GITHUB_OUTPUT"
 
       # The verdict, not the action's exit code, gates the job below.
       - uses: anthropics/claude-plugins-community/.github/actions/scan-plugins@06ec7b6a0a82bdc4bec44bd82d4368c42f20d7c1 # main, 2026-10-13
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.cache.outputs.cache-hit != 'true' && steps.reuse.outputs.reused != 'true'
         id: scan
         continue-on-error: true
         with:
@@ -97,7 +147,7 @@ jobs:
       # The action warns and moves on when Claude returns no verdict. This
       # step requires exactly one verdict and keeps it for the cache.
       - name: Record the verdict
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.cache.outputs.cache-hit != 'true' && steps.reuse.outputs.reused != 'true'
         env:
           SCANNED: ${{ steps.scan.outputs.scanned }}
         run: |
@@ -117,7 +167,7 @@ jobs:
 
       - name: Require a passing verdict
         env:
-          SOURCE: ${{ steps.cache.outputs.cache-hit == 'true' && 'cached' || 'fresh' }}
+          SOURCE: ${{ steps.cache.outputs.cache-hit == 'true' && 'cached' || steps.reuse.outputs.reused == 'true' && 'reused' || 'fresh' }}
         run: |
           echo "verdict: $SOURCE"
           jq '{passes, violations}' .scan/verdict.json
