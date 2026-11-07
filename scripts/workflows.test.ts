@@ -284,3 +284,7 @@ test("a push to main reuses the merged head's verdict when plugin and policy are
 		assert.match(header, /steps\.reuse\.outputs\.reused != 'true'/, name);
 	}
 });
+
+test("the policy scan runs on Haiku 5.5", () => {
+	assert.match(scan, /^ {6}ANTHROPIC_MODEL: claude-haiku-5-5$/m);
+});
