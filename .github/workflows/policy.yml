@@ -5,8 +5,9 @@ name: policy
 # in .github/policy/ and fails on a finding.
 #
 # A draft is not scanned. Leaving draft fires ready_for_review, which scans.
-# A newer commit cancels the scan that runs on the pull request. A push to
-# main always finishes, so that its cache entry gets saved.
+# A newer commit cancels the scan that runs on the pull request. Each push to
+# main gets its own group, so no merge drops another merge's run and every
+# main tree gets its cache entry.
 #
 # The verdict is a model's, so the same content can get a different verdict
 # on another run. As in anthropics/claude-plugins-official, each plugin tree
@@ -31,7 +32,7 @@ on:
     branches: [main]
 
 concurrency:
-  group: policy-${{ github.event.pull_request.number || github.ref }}
+  group: policy-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -40,8 +41,7 @@ permissions:
 jobs:
   scan:
     name: scan
-    # A skipped job reports success to the required check. A draft cannot
-    # merge, and leaving draft fires ready_for_review, which scans.
+    # A job skipped by its condition reports success to the required check.
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 15

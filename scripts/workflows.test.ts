@@ -258,7 +258,7 @@ test("the policy scan skips drafts and cancels stale pull request runs", () => {
 	);
 	assert.match(
 		policy,
-		/^concurrency:\n {2}group: policy-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\n {2}cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}$/m,
+		/^concurrency:\n {2}group: policy-\$\{\{ github\.event\.pull_request\.number \|\| github\.sha \}\}\n {2}cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}$/m,
 	);
 	assert.match(
 		scan,
