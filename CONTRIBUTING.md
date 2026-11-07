@@ -271,7 +271,8 @@ CI runs these checks:
   calls of the mod match `tools/surface.json`
 - `tsc -p src` and `tsc -p scripts`
 - `biome ci`
-- Anthropic's plugin policy scan, with the prompt in `.github/policy/`
+- Anthropic's plugin policy scan, with the prompt in `.github/policy/`. It skips
+  drafts, so keep a pull request as a draft while it changes.
 - the generated-file check, on Ubuntu and macOS
 - the install of both plugins from the checkout
 - the `package` job: it packs `packages/model-router` and compares the packed
