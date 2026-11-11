@@ -72,12 +72,12 @@ the ladder's effort. In
 [Hermes](../../model-router-hermes/README.md#routing), it keeps the model the
 harness would pick and sets the ladder's effort. In
 [omp](../../model-router-omp/README.md#routing), it changes nothing. The
-router suggests the small model or the slow one only on clear evidence. The harnesses and
-routers surveyed in the
+router suggests the small model or the slow one only on clear evidence. The
+harnesses and routers surveyed in the
 [findings record](https://github.com/Akurganow/model-router/issues/57#issuecomment-6626365731)
-match this. Harnesses keep the user's model as the root, send side jobs down and
-send review or planning up. No source found routes with a middle default and
-picks the ends on demand, so the factors rest on measurement.
+match this. Harnesses keep the user's model as the root, send side jobs down
+and send review or planning up. No source found routes with a middle default
+and picks the ends on demand, so the factors rest on measurement.
 
 | question | down, to level 0 | up, to level 2 |
 | --- | --- | --- |
