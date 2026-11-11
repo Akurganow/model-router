@@ -9,6 +9,7 @@ import {
 import {
 	type AgentCall,
 	type AgentSpawn,
+	EFFORTS_MAX,
 	type Engine,
 	type HttpReply,
 	type Next,
@@ -67,6 +68,7 @@ const offered = new Map<string, { source: string; description: string }>();
 // Agent calls whose caller set an effort, by tool_use_id. The spawn input carries no effort.
 const callerEffort = new Set<string>();
 // The effort routed for each started subagent, applied to its model requests.
+// A message resumes a finished subagent under its id, so the entry outlives its run, up to EFFORTS_MAX entries.
 const efforts = new Map<string, string>();
 // Spawns that have not named their agent yet: a subagent's first request can come before its spawn settles.
 const starting = new Set<Promise<unknown>>();
@@ -91,10 +93,7 @@ export function register(on: On, options: Options): void {
 	);
 	on("turn.step", stepEffort).catch(passStep);
 	on("turn.complete", (_, e, next) => {
-		if (e.agentId !== undefined) {
-			efforts.delete(e.agentId);
-			waited.delete(e.agentId);
-		}
+		if (e.agentId !== undefined) waited.delete(e.agentId);
 		return next(e);
 	}).catch(passOn);
 	resetConfig();
@@ -206,7 +205,11 @@ async function routeSpawn(
 function track(started: Promise<Started>, effort: string): void {
 	const settled = started.then(
 		({ agentId }) => {
-			if (agentId !== undefined) efforts.set(agentId, effort);
+			if (agentId === undefined) return;
+			const leastRecent = efforts.keys().next();
+			if (efforts.size >= EFFORTS_MAX && !leastRecent.done)
+				efforts.delete(leastRecent.value);
+			efforts.set(agentId, effort);
 		},
 		() => undefined,
 	);
@@ -224,9 +227,19 @@ async function* stepEffort($: Engine, e: TurnStep, next: StepNext): StepStream {
 		waited.add(e.agentId);
 		await spawnsSettled($);
 	}
-	const effort = e.agentId === undefined ? undefined : efforts.get(e.agentId);
+	const effort = routedEffort(e.agentId);
 	if (effort === undefined || e.effort === undefined) return yield* next(e);
 	return yield* next({ ...e, effort });
+}
+
+// A read moves the entry to the end, so the full store drops the least recently used agent first.
+function routedEffort(agentId: string | undefined): string | undefined {
+	if (agentId === undefined) return undefined;
+	const effort = efforts.get(agentId);
+	if (effort === undefined) return undefined;
+	efforts.delete(agentId);
+	efforts.set(agentId, effort);
+	return effort;
 }
 
 // The step cannot tell which spawn is its own, so it waits for them all, for a short time at most.

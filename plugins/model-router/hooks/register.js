@@ -89,6 +89,7 @@ function roleText(description) {
 }
 
 // src/claude-host.ts
+var EFFORTS_MAX = 1024;
 function passOn(_, e, next) {
   return next(e);
 }
@@ -1476,10 +1477,7 @@ function register(on, options) {
   );
   on("turn.step", stepEffort).catch(passStep);
   on("turn.complete", (_, e, next) => {
-    if (e.agentId !== void 0) {
-      efforts.delete(e.agentId);
-      waited.delete(e.agentId);
-    }
+    if (e.agentId !== void 0) waited.delete(e.agentId);
     return next(e);
   }).catch(passOn);
   resetConfig();
@@ -1562,7 +1560,11 @@ async function routeSpawn($, spawn, next, options) {
 function track(started, effort) {
   const settled = started.then(
     ({ agentId }) => {
-      if (agentId !== void 0) efforts.set(agentId, effort);
+      if (agentId === void 0) return;
+      const leastRecent = efforts.keys().next();
+      if (efforts.size >= EFFORTS_MAX && !leastRecent.done)
+        efforts.delete(leastRecent.value);
+      efforts.set(agentId, effort);
     },
     () => void 0
   );
@@ -1574,9 +1576,17 @@ async function* stepEffort($, e, next) {
     waited.add(e.agentId);
     await spawnsSettled($);
   }
-  const effort = e.agentId === void 0 ? void 0 : efforts.get(e.agentId);
+  const effort = routedEffort(e.agentId);
   if (effort === void 0 || e.effort === void 0) return yield* next(e);
   return yield* next({ ...e, effort });
+}
+function routedEffort(agentId) {
+  if (agentId === void 0) return void 0;
+  const effort = efforts.get(agentId);
+  if (effort === void 0) return void 0;
+  efforts.delete(agentId);
+  efforts.set(agentId, effort);
+  return effort;
 }
 async function spawnsSettled($) {
   if (starting.size === 0) return;
