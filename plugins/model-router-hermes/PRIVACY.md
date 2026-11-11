@@ -54,9 +54,10 @@ JSON body holds:
   [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent)
   says why the text is fixed
 - the task's `description` parameter, when the delegating model sets one, or
-  an empty description. It sends the value as is, as the other plugins send
-  the description of a call. It masks and cuts nothing in it, so a key or a
-  private name in a description leaves your machine
+  an empty description. The plugin masks its token-shaped strings as it masks
+  the task text, turns each run of whitespace into one space, and cuts it to
+  500 characters. A private name in a description, such as a client, a
+  product or a team, still leaves your machine
 - the Jev alias and the two scoring questions, as
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them

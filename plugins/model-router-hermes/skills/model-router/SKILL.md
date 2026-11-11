@@ -18,7 +18,7 @@ Each `tasks[]` item takes three parameters of this plugin:
 
 - `description`: one line that says what the task is. Set it on every task. Jev reads it with the goal.
 - `reasoning_effort`: one of `low`, `medium`, `high` or `xhigh`. The child runs at it, and the plugin still picks the model.
-- `level`: `0`, `1` or `2`. The child runs on that level's model, and Jev scores nothing. Such a task carries no `route.label`.
+- `level`: `0`, `1` or `2`. The child runs on that level's model, and Jev scores nothing. Such a task carries no `route.label` when its model is set, and a skip label when the pin fails.
 
 Leave `reasoning_effort` and `level` unset on a first dispatch. Set them only to escalate.
 
@@ -27,9 +27,9 @@ Leave `reasoning_effort` and `level` unset on a first dispatch. Set them only to
 Escalate when a delegated task reports BLOCKED, fails the check its goal names, or two fix rounds in a row make no progress.
 
 1. Read the failed task's `route`: the `L<level>` in its label, its `model` and its `reasoning_effort`. A task you pinned has the level you set. A skipped task counts as level 1.
-2. If the report shows skipped steps (a file not read, tests not run), re-dispatch at the same `level` with `reasoning_effort` one step up the ladder.
-3. Otherwise re-dispatch with `level` one above, and a goal that states what failed. Level 0 goes up on its first failure, skipped steps included.
-4. At level 2, raise `reasoning_effort` to `high`, then to `xhigh`.
+2. At level 1 or 2, if the report shows skipped steps (a file not read, tests not run), re-dispatch at the same `level` with `reasoning_effort` one step above the failed task's effort.
+3. Otherwise, at level 0 or 1, re-dispatch with `level` one above, and a goal that states what failed. Level 0 goes up on its first failure, skipped steps included.
+4. When a level 2 task fails, re-dispatch it at level 2 with `reasoning_effort` one step above the failed task's effort, up to `xhigh`.
 5. If `xhigh` at level 2 also fails, stop and report to the person.
 
 ## Re-dispatch
