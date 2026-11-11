@@ -141,6 +141,13 @@ The documentation pages were read on 2026-11-11.
   A per-invocation `model` and `effort` stay in effect on the resumed run, and `CLAUDE_CODE_EFFORT_LEVEL` outranks the effort.
   (documentation: [Create custom subagents, Resume subagents](https://code.claude.com/docs/en/sub-agents#resume-subagents),
   [Choose an effort level](https://code.claude.com/docs/en/sub-agents#choose-an-effort-level))
+- A model that a hook sets at `agent.spawn` stays on the run that `SendMessage` resumes.
+  The debug log held one router line, `L0 haiku · medium · p=0.60/0.99 · jev jev-1.14.0`, so the resume was not scored again.
+  The subagent's messages carried `message.model` `claude-haiku-5-5` on its first run and on the resumed run.
+  The session's own messages carried `claude-sonnet-5-5`.
+  The stream carries no request's effort, so the run does not show the effort of the resumed request.
+  A run with `--model haiku` routed the same task to `haiku`, so it could not tell the two models apart.
+  (running: Claude Code 2.1.318, 2026-11-11, `claude -p --model sonnet --output-format stream-json --verbose` with the plugin at commit `a1de08d` loaded by `--plugin-dir`, one `general-purpose` Agent call, then one `SendMessage` to its agent id)
 - `turn.complete` carries a subagent's `agentId` once for each run of its loop.
   No event marks a subagent as gone: an agent that completed, failed or was stopped can still resume under its id.
   (documentation: the declarations Claude Code 2.1.308 writes beside a loaded mod, `TurnCompleteFields.agentId` and `AgentStatus`)
@@ -191,8 +198,6 @@ No source read here settles three points.
 The [Mods reference](https://code.claude.com/docs/en/plugins/mods/reference) and the other pages above give no rule for the declaration form of `register` in a hooks module.
 They give none for free `setTimeout` globals or for a size limit on the module.
 `checkClaudeBundle` and `MAX_BUNDLE_BYTES` in `scripts/build.ts` check those three anyway.
-
-No source read here says whether a model that a hook sets at `agent.spawn` counts as the per-invocation `model` that a resumed run keeps.
 
 ## Oh My Pi
 
