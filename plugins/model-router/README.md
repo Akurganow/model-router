@@ -296,8 +296,9 @@ The router never sets Haiku below `medium`, because Anthropic measured early
 stops at `low`. `max` is never set. A call that names an effort gets a model
 and keeps its effort. A call that names a model is not routed, so it keeps
 both. A subagent that Claude resumes with `SendMessage` keeps its routed
-effort. The mod keeps the efforts of its last 1024 routed subagents in memory,
-so a reload of the mod or a restart of Claude Code forgets them.
+effort. The mod keeps in memory the efforts of the 1024 routed subagents it
+used most recently, so a reload of the mod or a restart of Claude Code forgets
+them.
 `CLAUDE_CODE_EFFORT_LEVEL` outranks either, as
 [Precedence](#precedence) says. Claude Code reads the per-invocation effort
 from v2.1.292. Under the `extended` scope the ladder also replaces an effort

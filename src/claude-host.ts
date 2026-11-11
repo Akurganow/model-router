@@ -1,6 +1,6 @@
 // The mods API and hook types this adapter uses. The bundle must not depend on the generated declarations.
 export type Timer = { cancel(): void };
-// The most routed efforts the adapter keeps for finished subagents. The oldest start goes first.
+// The most routed efforts the adapter keeps for finished subagents. The least recently used goes first.
 export const EFFORTS_MAX = 1024;
 export type HttpInit = {
 	method?: string | undefined;

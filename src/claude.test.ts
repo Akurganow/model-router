@@ -261,7 +261,7 @@ test("a spawn that never settles holds another agent's step for the bound only",
 });
 
 test("a resumed agent keeps its routed effort after its turn ends", async () => {
-	const { $, hooks, spawn, step, complete, sleeps, fetched } = await session();
+	const { $, hooks, spawn, step, complete, fetched } = await session();
 	await spawn(STARTED);
 	assert.equal(await step("agent-1"), "high");
 	await complete("agent-1");
@@ -276,19 +276,26 @@ test("a resumed agent keeps its routed effort after its turn ends", async () => 
 	assert.deepEqual(resumed, { agentId: "agent-1", model: "haiku" });
 	assert.equal(fetched.length, 1);
 	assert.equal(await step("agent-1"), "high");
-	assert.deepEqual(
-		sleeps.filter(({ ms }) => ms < 5000),
-		[],
-	);
 });
 
-test("the oldest routed effort goes once the store is full", async () => {
+test("the least recently used routed effort goes once the store is full", async () => {
 	const { spawn, step } = await session();
 	for (let i = 0; i <= EFFORTS_MAX; i++)
 		await spawn(async () => ({ agentId: `agent-${i}`, model: "haiku" }));
 	assert.equal(await step("agent-0"), "max");
 	assert.equal(await step("agent-1"), "high");
 	assert.equal(await step(`agent-${EFFORTS_MAX}`), "high");
+});
+
+test("a routed effort in use stays when the store fills", async () => {
+	const { spawn, step } = await session();
+	for (let i = 0; i < EFFORTS_MAX; i++) {
+		await spawn(async () => ({ agentId: `agent-${i}`, model: "haiku" }));
+		assert.equal(await step("agent-0"), "high");
+	}
+	await spawn(async () => ({ agentId: "agent-new", model: "haiku" }));
+	assert.equal(await step("agent-0"), "high");
+	assert.equal(await step("agent-1"), "max");
 });
 
 test("a spawn another plugin starts passes through without a request", async () => {

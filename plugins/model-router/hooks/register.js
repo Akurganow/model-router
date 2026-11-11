@@ -1558,9 +1558,9 @@ function track(started, effort) {
   const settled = started.then(
     ({ agentId }) => {
       if (agentId === void 0) return;
-      const oldest = efforts.keys().next();
-      if (efforts.size >= EFFORTS_MAX && !oldest.done)
-        efforts.delete(oldest.value);
+      const leastRecent = efforts.keys().next();
+      if (efforts.size >= EFFORTS_MAX && !leastRecent.done)
+        efforts.delete(leastRecent.value);
       efforts.set(agentId, effort);
     },
     () => void 0
@@ -1573,9 +1573,17 @@ async function* stepEffort($, e, next) {
     waited.add(e.agentId);
     await spawnsSettled($);
   }
-  const effort = e.agentId === void 0 ? void 0 : efforts.get(e.agentId);
+  const effort = routedEffort(e.agentId);
   if (effort === void 0 || e.effort === void 0) return yield* next(e);
   return yield* next({ ...e, effort });
+}
+function routedEffort(agentId) {
+  if (agentId === void 0) return void 0;
+  const effort = efforts.get(agentId);
+  if (effort === void 0) return void 0;
+  efforts.delete(agentId);
+  efforts.set(agentId, effort);
+  return effort;
 }
 async function spawnsSettled($) {
   if (starting.size === 0) return;
