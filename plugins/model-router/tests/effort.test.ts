@@ -198,3 +198,50 @@ test(
 		expect(h.spawnRuns).toBe(1);
 	},
 );
+
+test(
+	"a subagent resumed after its turn ended keeps its routed effort",
+	KEYED,
+	async ($, on) => {
+		const h = harness(on);
+		on("turn.complete", () => ({ text: "" }));
+		await offerAll($);
+		const { agentId } = await $.agent.spawn({
+			tool_use_id: "toolu_r",
+			prompt: "Fix the named defect and run the given test.",
+			description: "fix",
+			subagentType: "general-purpose",
+			fork: false,
+		} as never);
+		const step = async () => {
+			for await (const _ of $.turn.step({
+				turnId: "turn",
+				index: 0,
+				model: "haiku",
+				effort: SESSION,
+				messageCount: 1,
+				agentId,
+			} as never));
+		};
+		await step();
+		await $.turn.complete({
+			answer: "done",
+			durationMs: 1,
+			isAborted: false,
+			turnId: "turn",
+			agentId,
+			reason: "answer",
+		} as never);
+		await $.agent.spawn({
+			tool_use_id: "toolu_s",
+			prompt: "Go on.",
+			description: "fix",
+			subagentType: "general-purpose",
+			fork: false,
+			resume: { agentId },
+		} as never);
+		await step();
+		expect(h.fetched).toBe(1);
+		expect(h.steps).toEqual(["high", "high"]);
+	},
+);

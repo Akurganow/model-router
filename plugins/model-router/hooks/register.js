@@ -89,6 +89,7 @@ function roleText(description) {
 }
 
 // src/claude-host.ts
+var EFFORTS_MAX = 1024;
 function passOn(_, e, next) {
   return next(e);
 }
@@ -1473,10 +1474,7 @@ function register(on, options) {
   );
   on("turn.step", stepEffort).catch(passStep);
   on("turn.complete", (_, e, next) => {
-    if (e.agentId !== void 0) {
-      efforts.delete(e.agentId);
-      waited.delete(e.agentId);
-    }
+    if (e.agentId !== void 0) waited.delete(e.agentId);
     return next(e);
   }).catch(passOn);
   resetConfig();
@@ -1559,7 +1557,11 @@ async function routeSpawn($, spawn, next, options) {
 function track(started, effort) {
   const settled = started.then(
     ({ agentId }) => {
-      if (agentId !== void 0) efforts.set(agentId, effort);
+      if (agentId === void 0) return;
+      const oldest = efforts.keys().next();
+      if (efforts.size >= EFFORTS_MAX && !oldest.done)
+        efforts.delete(oldest.value);
+      efforts.set(agentId, effort);
     },
     () => void 0
   );

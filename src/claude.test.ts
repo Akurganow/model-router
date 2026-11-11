@@ -10,6 +10,7 @@ import {
 	routedCall,
 	SPAWN,
 } from "./claude-fakes.ts";
+import { EFFORTS_MAX } from "./claude-host.ts";
 import { skippedLine } from "./line.ts";
 import { KEY_UNSET } from "./settings.ts";
 
@@ -259,16 +260,35 @@ test("a spawn that never settles holds another agent's step for the bound only",
 	assert.equal(effort, "max");
 });
 
-test("the end of an agent's turn drops its effort", async () => {
-	const { spawn, step, complete, sleeps } = await session();
+test("a resumed agent keeps its routed effort after its turn ends", async () => {
+	const { $, hooks, spawn, step, complete, sleeps, fetched } = await session();
 	await spawn(STARTED);
 	assert.equal(await step("agent-1"), "high");
 	await complete("agent-1");
-	assert.equal(await step("agent-1"), "max");
+	const resumed = await hooks[SPAWN_HOOK]?.(
+		$,
+		{ ...SPAWN, tool_use_id: "toolu_2", resume: { agentId: "agent-1" } },
+		Object.assign(async () => ({ agentId: "agent-1", model: "haiku" }), {
+			signal: new AbortController().signal,
+			origin: { plugin: "engine" },
+		}),
+	);
+	assert.deepEqual(resumed, { agentId: "agent-1", model: "haiku" });
+	assert.equal(fetched.length, 1);
+	assert.equal(await step("agent-1"), "high");
 	assert.deepEqual(
 		sleeps.filter(({ ms }) => ms < 5000),
 		[],
 	);
+});
+
+test("the oldest routed effort goes once the store is full", async () => {
+	const { spawn, step } = await session();
+	for (let i = 0; i <= EFFORTS_MAX; i++)
+		await spawn(async () => ({ agentId: `agent-${i}`, model: "haiku" }));
+	assert.equal(await step("agent-0"), "max");
+	assert.equal(await step("agent-1"), "high");
+	assert.equal(await step(`agent-${EFFORTS_MAX}`), "high");
 });
 
 test("a spawn another plugin starts passes through without a request", async () => {

@@ -9,6 +9,7 @@ import {
 import {
 	type AgentCall,
 	type AgentSpawn,
+	EFFORTS_MAX,
 	type Engine,
 	type HttpReply,
 	type Next,
@@ -66,7 +67,7 @@ const DEBUG_PIECE_CHARS = 9000;
 const offered = new Map<string, { source: string; description: string }>();
 // Agent calls whose caller set an effort, by tool_use_id. The spawn input carries no effort.
 const callerEffort = new Set<string>();
-// The effort routed for each started subagent, applied to its model requests.
+// The effort routed for each started subagent, applied to its model requests. A message resumes a finished subagent under its id, so the entry outlives its run.
 const efforts = new Map<string, string>();
 // Spawns that have not named their agent yet: a subagent's first request can come before its spawn settles.
 const starting = new Set<Promise<unknown>>();
@@ -91,10 +92,7 @@ export function register(on: On, options: Options): void {
 	);
 	on("turn.step", stepEffort).catch(passStep);
 	on("turn.complete", (_, e, next) => {
-		if (e.agentId !== undefined) {
-			efforts.delete(e.agentId);
-			waited.delete(e.agentId);
-		}
+		if (e.agentId !== undefined) waited.delete(e.agentId);
 		return next(e);
 	}).catch(passOn);
 	resetConfig();
@@ -206,7 +204,11 @@ async function routeSpawn(
 function track(started: Promise<Started>, effort: string): void {
 	const settled = started.then(
 		({ agentId }) => {
-			if (agentId !== undefined) efforts.set(agentId, effort);
+			if (agentId === undefined) return;
+			const oldest = efforts.keys().next();
+			if (efforts.size >= EFFORTS_MAX && !oldest.done)
+				efforts.delete(oldest.value);
+			efforts.set(agentId, effort);
 		},
 		() => undefined,
 	);
