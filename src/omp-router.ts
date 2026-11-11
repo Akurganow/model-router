@@ -71,6 +71,8 @@ function createRouter(omp: OmpImports, pi: Pi) {
 	 * scope.
 	 */
 	async function onToolCall(event: ToolCallEvent, ctx: Context) {
+		// omp's timeout runs from the handler's start, so every read below spends the deadline.
+		const started = Date.now();
 		const { input } = event;
 		if (event.toolName !== TASK || !isRecord(input)) return;
 		const { tasks, context } = input;
@@ -96,7 +98,7 @@ function createRouter(omp: OmpImports, pi: Pi) {
 			items,
 			contextText(context),
 			gates,
-			budget.deadline,
+			budget.deadline - (Date.now() - started),
 		);
 		for (const { index, item, agent, stored } of scored)
 			store.add(event.toolCallId, index, item.name, agent, {

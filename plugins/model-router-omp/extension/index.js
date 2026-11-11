@@ -1661,6 +1661,7 @@ var ROLE_BY_LEVEL = {
 };
 async function scoreItems(items, context, { attempts, keys, facts }, deadline = ROUTING_LIMIT_MS) {
   const limit = new AbortController();
+  if (deadline <= 0) limit.abort(LIMIT_REACHED);
   const timer = setTimeout(() => limit.abort(LIMIT_REACHED), deadline);
   const passedOver = /* @__PURE__ */ new Set();
   try {
@@ -1825,6 +1826,7 @@ var eligibleItems = (tasks) => tasks.flatMap(
 function createRouter(omp, pi) {
   const store = createStore();
   async function onToolCall(event, ctx) {
+    const started = Date.now();
     const { input } = event;
     if (event.toolName !== TASK || !isRecord(input)) return;
     const { tasks, context } = input;
@@ -1847,7 +1849,7 @@ function createRouter(omp, pi) {
       items,
       contextText(context),
       gates,
-      budget.deadline
+      budget.deadline - (Date.now() - started)
     );
     for (const { index, item, agent, stored } of scored)
       store.add(event.toolCallId, index, item.name, agent, {
