@@ -450,3 +450,28 @@ test("Renovate raises the latest omp pin at once and the minimum only on approva
 		),
 	);
 });
+
+test("Renovate titles bumps of CI-only pins ci, so they release nothing", () => {
+	const rules: {
+		matchFileNames?: string[];
+		matchPackageNames?: string[];
+		semanticCommitType?: string;
+		groupName?: string;
+	}[] = json(".github/renovate.json").packageRules;
+	const ci = rules.findIndex(
+		({ matchFileNames, semanticCommitType }) =>
+			matchFileNames?.includes(".github/actions/**") &&
+			semanticCommitType === "ci",
+	);
+	assert.notEqual(ci, -1, "no rule gives the CI pins the ci type");
+	// A later rule overrides an earlier one, so the type rule must follow every group rule.
+	const lastGroup = rules.findLastIndex(
+		({ groupName }) => groupName !== undefined,
+	);
+	assert.ok(ci > lastGroup, "a group rule follows the ci type rule");
+	// The SDK ships inside every bundle, so its bump releases a version.
+	const sdk = rules.find(({ matchPackageNames }) =>
+		matchPackageNames?.includes("@typesafe-ai/sdk"),
+	);
+	assert.equal(sdk?.semanticCommitType, "fix");
+});

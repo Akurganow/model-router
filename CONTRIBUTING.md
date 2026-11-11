@@ -241,7 +241,9 @@ Renovate (`.github/renovate.json`) keeps every pinned version current:
 - the actions, and the `uv` that `setup-hermes` installs
 
 Renovate proposes updates after the same 14 days, one pull request a week per
-group. It proposes security fixes at once.
+group. It proposes security fixes at once. A bump of a pin under
+`.github/actions/` is a `ci` commit and releases no version, because only CI
+and the evals install those pins.
 
 Two pins are exceptions to the 14-day rule, both in the `setup-openclaw`
 action that installs OpenClaw for CI only:
