@@ -1,7 +1,13 @@
 import { contextText } from "./brief.ts";
 import { ENTRY_SEPARATOR, LINE_PREFIX, skippedLine } from "./line.ts";
 import { registerConfig, say } from "./omp-config.ts";
-import { checkGates, openBatch, readSettings, resolves } from "./omp-gates.ts";
+import {
+	checkGates,
+	noModel,
+	openBatch,
+	readSettings,
+	resolves,
+} from "./omp-gates.ts";
 import { inScope, TASK } from "./omp-items.ts";
 import { type Pending, scoreItems, type TaskItem } from "./omp-score.ts";
 import { createStore } from "./omp-store.ts";
@@ -83,13 +89,33 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		}
 		const scored = await scoreItems(items, contextText(context), gates);
 		for (const { index, item, agent, stored } of scored)
-			store.add(event.toolCallId, index, item.name, agent, stored);
+			store.add(event.toolCallId, index, item.name, agent, {
+				...stored,
+				index,
+			});
 		report(
 			ctx,
 			scored.map(({ index, stored }) => entry(index, stored.line)),
 		);
 	}
 
+	// A gate that closed since the batch, or a role that stopped resolving, drops the decision.
+	async function spawnReason(
+		event: SpawnEvent,
+		ctx: Context,
+		role: string,
+	): Promise<string | undefined> {
+		const gates = await checkGates(omp, pi, ctx, event);
+		if ("closed" in gates) return gates.closed;
+		return resolves(ctx, role) ? undefined : noModel(role);
+	}
+
+	/**
+	 * Returns the stored role and its line for a task spawn. Returns nothing when
+	 * the spawn is not a task spawn, no decision matches, or the decision holds no
+	 * role. When a gate closes or the role stopped resolving since the batch, it
+	 * reports a skip line for the item and returns nothing.
+	 */
 	async function onSpawn(
 		event: SpawnEvent,
 		ctx: Context,
@@ -97,9 +123,13 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		if (event.invocationKind !== TASK) return;
 		const stored = store.take(event.spawnKey, event.agent);
 		if (!stored?.role) return;
-		if ("closed" in (await checkGates(omp, pi, ctx, event))) return;
-		if (!resolves(ctx, stored.role)) return;
-		return { model: stored.role, note: LINE_PREFIX + stored.line };
+		const reason = await spawnReason(event, ctx, stored.role);
+		if (reason === undefined)
+			return { model: stored.role, note: LINE_PREFIX + stored.line };
+		// omp drops a note that comes without a model, so the skip goes out like the batch line.
+		if (stored.index !== undefined)
+			report(ctx, [entry(stored.index, skippedLine(reason))]);
+		return undefined;
 	}
 
 	function learn({ toolName, toolCallId }: ToolProgressEvent, result: unknown) {

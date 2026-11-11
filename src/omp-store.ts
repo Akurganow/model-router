@@ -5,6 +5,8 @@ export const STORE_MAX = 64;
 export type Stored = {
 	readonly role: string | undefined;
 	readonly line: string;
+	// The item's place in its call, kept by the router to number a spawn-time line.
+	readonly index?: number;
 };
 type Entry = {
 	readonly stored: Stored;

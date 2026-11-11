@@ -186,8 +186,10 @@ async function discover(pi: Pi, ctx: Context): Promise<Facts["agents"]> {
 	}
 }
 
+export const noModel = (role: string) => `no ${role} model`;
+
 function modelsGate(ctx: Context): string | undefined {
 	return Object.values(ROLES).some((role) => resolves(ctx, role))
 		? undefined
-		: `no ${ROLES.small} or ${ROLES.large} model`;
+		: noModel(`${ROLES.small} or ${ROLES.large}`);
 }

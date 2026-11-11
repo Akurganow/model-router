@@ -1331,8 +1331,9 @@ async function discover(pi, ctx) {
     return void 0;
   }
 }
+var noModel = (role) => `no ${role} model`;
 function modelsGate(ctx) {
-  return Object.values(ROLES).some((role) => resolves(ctx, role)) ? void 0 : `no ${ROLES.small} or ${ROLES.large} model`;
+  return Object.values(ROLES).some((role) => resolves(ctx, role)) ? void 0 : noModel(`${ROLES.small} or ${ROLES.large}`);
 }
 
 // src/omp-key.ts
@@ -1826,19 +1827,30 @@ function createRouter(omp, pi) {
     }
     const scored = await scoreItems(items, contextText(context), gates);
     for (const { index, item, agent, stored } of scored)
-      store.add(event.toolCallId, index, item.name, agent, stored);
+      store.add(event.toolCallId, index, item.name, agent, {
+        ...stored,
+        index
+      });
     report(
       ctx,
       scored.map(({ index, stored }) => entry(index, stored.line))
     );
   }
+  async function spawnReason(event, ctx, role) {
+    const gates = await checkGates(omp, pi, ctx, event);
+    if ("closed" in gates) return gates.closed;
+    return resolves(ctx, role) ? void 0 : noModel(role);
+  }
   async function onSpawn(event, ctx) {
     if (event.invocationKind !== TASK) return;
     const stored = store.take(event.spawnKey, event.agent);
     if (!stored?.role) return;
-    if ("closed" in await checkGates(omp, pi, ctx, event)) return;
-    if (!resolves(ctx, stored.role)) return;
-    return { model: stored.role, note: LINE_PREFIX + stored.line };
+    const reason = await spawnReason(event, ctx, stored.role);
+    if (reason === void 0)
+      return { model: stored.role, note: LINE_PREFIX + stored.line };
+    if (stored.index !== void 0)
+      report(ctx, [entry(stored.index, skippedLine(reason))]);
+    return void 0;
   }
   function learn({ toolName, toolCallId }, result) {
     if (toolName !== TASK) return;

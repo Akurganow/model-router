@@ -10,6 +10,9 @@ const install = () => createExtension(world.imports)(world.pi);
 const twoTasks = () =>
 	world.toolCall("c", { tasks: [{ task: "level0 a" }, { task: "level2 b" }] });
 const LINE = "L2 @slow · p=0.90 · jev jev-1.14.0 · 812/9 tok";
+// The spawn-time line for one item, after its batch line.
+const skipAt = (n: number, reason: string) =>
+	`model-router task ${n}: skipped, ${reason}`;
 
 test("sync mode: an unnamed item is found by its call and index", async () => {
 	install();
@@ -129,6 +132,7 @@ test("an eval spawn and another agent are skipped and keep the decision", async 
 	await world.toolCall("c", { tasks: [{ task: "level2 a" }] });
 	assert.equal(await world.spawn("c:0", { invocationKind: "eval" }), undefined);
 	assert.equal(await world.spawn("c:0", { agent: "explore" }), undefined);
+	assert.equal(world.notes.length, 1);
 	assert.equal((await world.spawn("c:0"))?.model, "@slow");
 });
 
@@ -136,6 +140,10 @@ test("a spawn that sets its own model role is left alone", async () => {
 	install();
 	await world.toolCall("c", { tasks: [{ task: "level2 a" }] });
 	assert.equal(await world.spawn("c:0", { modelRole: "task" }), undefined);
+	assert.equal(
+		world.notes.at(-1),
+		skipAt(1, "task spawns with another model role"),
+	);
 });
 
 // The live case: omp's task.perCallModel is on, and each item names a model the plugin would replace.
@@ -153,6 +161,7 @@ test("an item that sets its own model is skipped, sends nothing and keeps its mo
 	assert.equal(world.sent.length, 0);
 	assert.equal(await world.spawn("c:0"), undefined);
 	assert.equal(await world.spawn("c:1"), undefined);
+	assert.equal(world.notes.length, 1);
 });
 
 test("an empty model still counts as the item's own", async () => {
@@ -190,12 +199,15 @@ test("a spawn without a key finds nothing", async () => {
 	install();
 	await world.toolCall("c", { tasks: [{ task: "level2 a" }] });
 	assert.equal(await world.spawn(undefined), undefined);
+	assert.equal(await world.spawn("other"), undefined);
+	assert.equal(world.notes.length, 1);
 });
 
 test("level 1 returns nothing", async () => {
 	install();
 	await world.toolCall("c", { tasks: [{ task: "level1 a" }] });
 	assert.equal(await world.spawn("c:0"), undefined);
+	assert.equal(world.notes.length, 1);
 });
 
 test("a role that does not resolve is not returned", async () => {
@@ -203,23 +215,34 @@ test("a role that does not resolve is not returned", async () => {
 	await twoTasks();
 	world.resolvable.delete("@slow");
 	assert.equal(await world.spawn("c:1"), undefined);
+	assert.deepEqual(world.notes.slice(1), [skipAt(2, "no @slow model")]);
 	assert.equal((await world.spawn("c:0"))?.model, "@smol");
 });
 
-for (const [name, close] of [
-	["a task model role", () => (world.config.modelRoles = { task: "m" })],
+for (const [name, close, reason] of [
+	[
+		"a task model role",
+		() => (world.config.modelRoles = { task: "m" }),
+		"task model role set",
+	],
 	[
 		"a disabled task agent",
 		() => (world.config["task.disabledAgents"] = ["task"]),
+		"task agent disabled",
 	],
-	["a custom task agent", () => (world.agents = [])],
-	["a missing key", () => (world.credential = async () => undefined)],
+	["a custom task agent", () => (world.agents = []), "custom task agent"],
+	[
+		"a missing key",
+		() => (world.credential = async () => undefined),
+		"key unset",
+	],
 ] as const)
-	test(`${name} at spawn time stops the decision`, async () => {
+	test(`${name} at spawn time stops the decision and says why`, async () => {
 		install();
 		await world.toolCall("c", { tasks: [{ task: "level2 a" }] });
 		close();
 		assert.equal(await world.spawn("c:0"), undefined);
+		assert.deepEqual(world.notes.slice(1), [skipAt(1, reason)]);
 	});
 
 test("the store keeps 64 decisions and drops the oldest", async () => {
@@ -272,6 +295,9 @@ test("a scout spawn without a model role is routed too", async () => {
 test("a spawn whose model role differs from the agent's own is left alone", async () => {
 	await scoutBatch();
 	assert.equal(await scout({ modelRole: "slow" }), undefined);
+	assert.deepEqual(world.notes.slice(1), [
+		skipAt(1, "scout spawns with another model role"),
+	]);
 });
 
 test("an agent with no own role is left alone when its spawn carries a model role", async () => {
@@ -280,6 +306,9 @@ test("an agent with no own role is left alone when its spawn carries a model rol
 		await world.spawn("c:1", { agent: "helper", modelRole: "smol" }),
 		undefined,
 	);
+	assert.deepEqual(world.notes.slice(1), [
+		skipAt(2, "helper spawns with another model role"),
+	]);
 });
 
 test("an agent with no own role is routed when its spawn carries none", async () => {
@@ -294,22 +323,37 @@ test("a decision belongs to its agent: another agent takes nothing and leaves it
 	assert.equal((await scout({ modelRole: "smol" }))?.model, "@slow");
 });
 
-for (const [name, close] of [
+for (const [name, close, reason] of [
 	[
 		"a model override",
 		() => (world.config["task.agentModelOverrides"] = { scout: "m" }),
+		"scout model override set",
 	],
-	["a disabled agent", () => (world.config["task.disabledAgents"] = ["scout"])],
-	["an agent gone from the list", () => (world.agents = [])],
+	[
+		"a disabled agent",
+		() => (world.config["task.disabledAgents"] = ["scout"]),
+		"scout agent disabled",
+	],
+	[
+		"an agent gone from the list",
+		() => (world.agents = []),
+		"scout agent unknown",
+	],
 	[
 		"an agent that now sets its own model",
 		() =>
 			(world.agents = [{ name: "scout", source: "user", model: ["@smol"] }]),
+		"scout sets its own model",
 	],
-	["the core scope", () => (world.project = { scope: "core" })],
+	[
+		"the core scope",
+		() => (world.project = { scope: "core" }),
+		"scout is outside the core scope",
+	],
 ] as const)
-	test(`${name} added before the spawn leaves it alone`, async () => {
+	test(`${name} added before the spawn leaves it alone and says why`, async () => {
 		await scoutBatch();
 		close();
 		assert.equal(await scout({ modelRole: "smol" }), undefined);
+		assert.deepEqual(world.notes.slice(1), [skipAt(1, reason)]);
 	});
