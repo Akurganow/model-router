@@ -1,10 +1,13 @@
-"""route_task: the default route, or the default route moved to a model and an effort."""
+"""route_task: the default route, or the default route moved to a model and an effort.
+
+The delegating model may set an effort or pin a level on a task. The delegation
+section outranks both: its effort beats the caller's, and its model beats a level."""
 
 import logging
 import math
 import time
 
-from . import checks, node
+from . import checks, node, params
 from .budget import Budget
 from .constants import CONSTANTS, MS_PER_SECOND, PLUGIN_DIR
 from .hermes_api import live_api
@@ -26,6 +29,10 @@ def _effort_set(value):
     return value is not None and stripped(value) != ""
 
 
+def _subagent_model_set(config):
+    return any(_is_set(config.get(key)) for key in SUBAGENT_ROUTE_KEYS)
+
+
 class Router:
     def __init__(self, ctx, *, api=None, clock=time.monotonic, script=None, constants=None):
         self._ctx = ctx
@@ -36,11 +43,12 @@ class Router:
         self._log = OnceLog(logging.getLogger(__name__))
 
     def route(self, task, config):
-        """Never raises; the result is never empty."""
+        """Never raises. The result carries a label unless the task pins its level."""
         try:
             base = {k: v for k, v in config.items() if k != "service_tier"}
         except Exception:
-            return self._logged(self._skip({}, "failed"))
+            return self._logged(self._skip(self._with_caller_effort({}, task), "failed"))
+        base = self._with_caller_effort(base, task)
         try:
             with self._budget.open(task.get("index")) as window:
                 route = self._decide(task, config, base, window)
@@ -48,26 +56,40 @@ class Router:
             route = self._skip(base, "failed")
         return self._logged(route)
 
+    def _with_caller_effort(self, base, task):
+        """The base with the caller's effort, unless the delegation section sets one.
+
+        The other harnesses keep a caller's effort even when the plugin skips, so every route carries it."""
+        effort = params.caller_effort(task, self._constants)
+        if effort is None or _effort_set(base.get("reasoning_effort")):
+            return base
+        return {**base, "reasoning_effort": effort}
+
     def _logged(self, route):
-        self._log.info(route["label"])
+        # A pinned task carries no label, as other harnesses print no line for a caller's model.
+        if "label" in route:
+            self._log.info(route["label"])
         return route
 
     def _skip(self, base, reason):
         return {**base, "label": self._constants["skips"][reason]}
 
     def _decide(self, task, config, base, window):
-        provider = read_provider(self._ctx, self._constants)
-        keys = found_keys(self._api, self._constants, provider)
         slot_settings = {
             name: read_slot(self._ctx, spec["setting"])
             for name, spec in self._constants["slots"].items()
         }
+        level = params.level(task, self._constants)
+        if level is not None:
+            return self._pinned(level, config, base, slot_settings, window)
+        provider = read_provider(self._ctx, self._constants)
+        keys = found_keys(self._api, self._constants, provider)
         # These gates read Hermes state, and a skipped task starts no Node.
         if not keys:
             return self._skip(base, "keyUnset")
         if not any(slot.has_model for slot in slot_settings.values()):
             return self._skip(base, "noEndModel")
-        if any(_is_set(config.get(key)) for key in SUBAGENT_ROUTE_KEYS):
+        if _subagent_model_set(config):
             return self._skip(base, "subagentModelSet")
         node_path = self._api.find_node()
         if not node_path:
@@ -83,8 +105,34 @@ class Router:
             "budgetMs": budget_ms,
             "models": {name: slot.model or None for name, slot in slot_settings.items()},
             "configEffort": _effort_set(config.get("reasoning_effort")),
+            "callerEffort": params.caller_effort(task, self._constants) is not None,
+            "description": params.description(task),
         }
         return self._ask_node(node_path, request, base, slot_settings, window)
+
+    def _pinned(self, level, config, base, slot_settings, window):
+        """The pass-through of a pinned level: no Jev call and no label, as on the other harnesses."""
+        if _subagent_model_set(config):
+            return self._skip(base, "subagentModelSet")
+        name = self._constants["levelSlots"].get(str(level))
+        if name is None:
+            return dict(base)
+        slot = slot_settings[name]
+        failure = self._slot_failure(name, slot, window)
+        if failure is not None:
+            return self._skip(base, failure)
+        return {**base, "model": slot.model, "provider": slot.provider}
+
+    def _slot_failure(self, name, slot, window):
+        """None when the slot's model resolves offline in time, else the skips key that says why not."""
+        spec = self._constants["slots"][name]
+        if not slot.has_model:
+            return spec["unset"]
+        wait_s = max(window.remaining_ms(), 0) / MS_PER_SECOND
+        resolved = checks.slot_resolved_within(slot, self._api, wait_s)
+        if resolved is None:
+            return "timeout"
+        return None if resolved else spec["unresolved"]
 
     def _ask_node(self, node_path, request, base, slot_settings, window):
         timeout_s = (request["budgetMs"] + self._constants["graceMs"]) / MS_PER_SECOND
@@ -111,12 +159,9 @@ class Router:
             return self._skip(base, "failed")
         if answer.slot is not None:
             slot = slot_settings[answer.slot]
-            wait_s = max(window.remaining_ms(), 0) / MS_PER_SECOND
-            resolved = checks.slot_resolved_within(slot, self._api, wait_s)
-            if resolved is None:
-                return self._skip(base, "timeout")
-            if not resolved:
-                return self._skip(base, self._constants["slots"][answer.slot]["unresolved"])
+            failure = self._slot_failure(answer.slot, slot, window)
+            if failure is not None:
+                return self._skip(base, failure)
             route.update(model=slot.model, provider=slot.provider)
         if answer.effort is not None:
             route["reasoning_effort"] = answer.effort

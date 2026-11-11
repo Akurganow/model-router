@@ -5,8 +5,12 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { ROUTING_LIMIT_MS } from "../src/compose.ts";
-import { HERMES_TEXTS } from "../src/hermes-texts.ts";
-import { effortFor } from "../src/ladder.ts";
+import {
+	ESCALATION_SKILL,
+	HERMES_TEXTS,
+	taskParameterTexts,
+} from "../src/hermes-texts.ts";
+import { EFFORTS, effortFor } from "../src/ladder.ts";
 import { LEVELS } from "../src/part.ts";
 import {
 	KEY_VARIABLES,
@@ -14,6 +18,7 @@ import {
 	PROVIDER_VALUES,
 	resolve as resolveProvider,
 } from "../src/provider.ts";
+import { LEVEL_SLOTS } from "../src/reasons.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { formatJson } from "./build/json.ts";
 import { HERMES_OUTPUTS } from "./build/outputs.ts";
@@ -107,6 +112,10 @@ test("the constants hold only the keys the Python shim reads", () => {
 		"efforts",
 		"skips",
 		"slots",
+		"levels",
+		"levelSlots",
+		"taskParameters",
+		"delegationAddendum",
 		"backend",
 		"texts",
 	]);
@@ -130,19 +139,49 @@ test("the constants hold the values src/ gives", () => {
 		nodeNotFound: "model-router skipped, node not found",
 		timeout: "model-router skipped, timeout",
 		failed: "model-router skipped, failed",
+		smallModelUnset: "model-router skipped, small model unset",
 		smallModelUnresolved: "model-router skipped, small model unresolved",
+		largeModelUnset: "model-router skipped, large model unset",
 		largeModelUnresolved: "model-router skipped, large model unresolved",
 	});
 	assert.deepEqual(constants.slots, {
 		small: {
 			setting: "small_model",
+			unset: "smallModelUnset",
 			unresolved: "smallModelUnresolved",
 		},
 		large: {
 			setting: "large_model",
+			unset: "largeModelUnset",
 			unresolved: "largeModelUnresolved",
 		},
 	});
+	assert.deepEqual(constants.levels, [...LEVELS]);
+	assert.deepEqual(constants.levelSlots, { 0: "small", 2: "large" });
+	assert.deepEqual(constants.levelSlots, LEVEL_SLOTS);
+});
+
+test("the task parameters are the texts src/ gives, with the ladder and the levels as enums", () => {
+	const texts = taskParameterTexts(source.hermes.pluginName);
+	assert.deepEqual(constants.taskParameters, texts.taskParameters);
+	assert.equal(constants.delegationAddendum, texts.delegationAddendum);
+	const { description, reasoning_effort, level } = constants.taskParameters;
+	assert.equal(description.type, "string");
+	assert.deepEqual(reasoning_effort.enum, [...EFFORTS]);
+	assert.deepEqual(level, { ...level, type: "integer", enum: [0, 1, 2] });
+	assert.ok(
+		constants.delegationAddendum.includes(
+			`${source.hermes.pluginName}:${ESCALATION_SKILL}`,
+		),
+	);
+});
+
+test("the ladder's effort list holds every effort the ladder gives, weakest first", () => {
+	const given = new Set(
+		LEVELS.flatMap((t) => LEVELS.map((w) => effortFor(t, w))),
+	);
+	assert.deepEqual([...EFFORTS].sort(), [...given].sort());
+	assert.deepEqual([...EFFORTS], ["low", "medium", "high", "xhigh"]);
 });
 
 test("the efforts are every value the ladder returns, all valid in Hermes, none of max or ultra", () => {

@@ -38,6 +38,8 @@ class NodeRequestTest(RouterCase):
                 "budgetMs": 1000,
                 "models": {"small": "small-model", "large": "large-model"},
                 "configEffort": False,
+                "callerEffort": False,
+                "description": "",
             },
         )
 

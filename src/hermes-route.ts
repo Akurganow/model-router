@@ -10,6 +10,7 @@ import { LINE_PREFIX, routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
 import { plan } from "./provider.ts";
 import {
+	CALLER_EFFORT,
 	CONFIG_EFFORT,
 	type EndSlot,
 	modelUnset,
@@ -22,7 +23,7 @@ export type HermesResponse =
 			readonly outcome: "route";
 			// The slot whose model the level names; null at the middle level.
 			readonly slot: EndSlot | null;
-			// Null when the harness config sets the effort.
+			// Null when the harness config or the delegating model sets the effort.
 			readonly effort: string | null;
 			readonly line: string;
 	  }
@@ -34,7 +35,7 @@ export const skip = (reason: string): HermesResponse => ({
 	line: `${LINE_PREFIX}${skippedLine(reason)}`,
 });
 
-// Jev is asked once for both parts, with the task and its context under the default role.
+// Jev is asked once for both parts, with the task, its context and its description under the default role.
 async function score(
 	request: HermesRequest,
 	{ fetchFn }: HermesDeps,
@@ -45,7 +46,7 @@ async function score(
 		parts: [tier, work],
 		state: {
 			role: DEFAULT_ROLE,
-			description: "",
+			description: request.description,
 			task: buildPrompt(request.task, request.context),
 		},
 		attempts: plan(request.provider, keys),
@@ -72,7 +73,9 @@ async function scored(
 /**
  * Returns the response for a decided request: a skip when an end tier has no
  * model, else the slot the level names, the effort the ladder gives and the
- * routing line. Every line starts with the line prefix.
+ * routing line. An effort the delegation section or the delegating model sets
+ * replaces the ladder's, and the section's wins.
+ * Every line starts with the line prefix.
  */
 function answer(
 	request: HermesRequest,
@@ -83,16 +86,21 @@ function answer(
 	const target = slot === null ? undefined : request.models[slot];
 	if (slot !== null && target === undefined) return skip(modelUnset(slot));
 	const effort = effortFor(level, decided.work);
+	const kept = request.configEffort
+		? CONFIG_EFFORT
+		: request.callerEffort
+			? CALLER_EFFORT
+			: undefined;
 	return {
 		outcome: "route",
 		slot,
-		effort: request.configEffort ? null : effort,
+		effort: kept === undefined ? effort : null,
 		line:
 			LINE_PREFIX +
 			routedLine({
 				level,
 				target,
-				effort: request.configEffort ? CONFIG_EFFORT : effort,
+				effort: kept ?? effort,
 				probabilities: decided.probabilities,
 				suffix: decided.suffix,
 			}),

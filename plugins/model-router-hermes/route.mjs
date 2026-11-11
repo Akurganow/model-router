@@ -1291,6 +1291,7 @@ var work = {
 };
 
 // src/reasons.ts
+var CALLER_EFFORT = "caller effort";
 var CONFIG_EFFORT = "config effort";
 var SLOTS = ["small", "large"];
 var LEVEL_SLOTS = {
@@ -1316,7 +1317,17 @@ var readModels = (value) => Object.fromEntries(
 var readBudget = (value) => typeof value === "number" && Number.isFinite(value) && value > 0 ? value : void 0;
 function readRequest(raw) {
   if (!isRecord2(raw) || Array.isArray(raw)) return void 0;
-  const { task, context, provider, keys, budgetMs, models, configEffort } = raw;
+  const {
+    task,
+    context,
+    provider,
+    keys,
+    budgetMs,
+    models,
+    configEffort,
+    callerEffort,
+    description
+  } = raw;
   return {
     task: typeof task === "string" ? task : "",
     context: contextText(context),
@@ -1324,7 +1335,9 @@ function readRequest(raw) {
     keys: readKeys(keys),
     budgetMs: readBudget(budgetMs),
     models: readModels(models),
-    configEffort: configEffort === true
+    configEffort: configEffort === true,
+    callerEffort: callerEffort === true,
+    description: typeof description === "string" ? description : ""
   };
 }
 
@@ -1383,7 +1396,7 @@ async function score(request, { fetchFn }, signal) {
     parts: [tier, work],
     state: {
       role: DEFAULT_ROLE,
-      description: "",
+      description: request.description,
       task: buildPrompt(request.task, request.context)
     },
     attempts: plan(request.provider, keys),
@@ -1406,14 +1419,15 @@ function answer(request, decided) {
   const target = slot === null ? void 0 : request.models[slot];
   if (slot !== null && target === void 0) return skip2(modelUnset(slot));
   const effort = effortFor(level, decided.work);
+  const kept = request.configEffort ? CONFIG_EFFORT : request.callerEffort ? CALLER_EFFORT : void 0;
   return {
     outcome: "route",
     slot,
-    effort: request.configEffort ? null : effort,
+    effort: kept === void 0 ? effort : null,
     line: LINE_PREFIX + routedLine({
       level,
       target,
-      effort: request.configEffort ? CONFIG_EFFORT : effort,
+      effort: kept ?? effort,
       probabilities: decided.probabilities,
       suffix: decided.suffix
     })

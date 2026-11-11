@@ -14,6 +14,10 @@ export type HermesRequest = {
 	// A blank or missing model is undefined.
 	readonly models: Readonly<Record<EndSlot, string | undefined>>;
 	readonly configEffort: boolean;
+	// The delegating model set the task's effort; an effort in the delegation section still wins.
+	readonly callerEffort: boolean;
+	// The task's description parameter, or empty text.
+	readonly description: string;
 };
 
 const readKeys = (value: unknown): Keys =>
@@ -40,11 +44,21 @@ const readBudget = (value: unknown): number | undefined =>
 /**
  * Reads a parsed request. Returns undefined when it is not an object. A field of
  * the wrong type reads as its empty value: no text, no key, no model, no budget,
- * the effort flag off. Never throws.
+ * the effort flags off. Never throws.
  */
 export function readRequest(raw: unknown): HermesRequest | undefined {
 	if (!isRecord(raw) || Array.isArray(raw)) return undefined;
-	const { task, context, provider, keys, budgetMs, models, configEffort } = raw;
+	const {
+		task,
+		context,
+		provider,
+		keys,
+		budgetMs,
+		models,
+		configEffort,
+		callerEffort,
+		description,
+	} = raw;
 	return {
 		task: typeof task === "string" ? task : "",
 		context: contextText(context),
@@ -53,5 +67,7 @@ export function readRequest(raw: unknown): HermesRequest | undefined {
 		budgetMs: readBudget(budgetMs),
 		models: readModels(models),
 		configEffort: configEffort === true,
+		callerEffort: callerEffort === true,
+		description: typeof description === "string" ? description : "",
 	};
 }

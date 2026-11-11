@@ -4,6 +4,9 @@ from support import CONSTANTS, PLUGIN_DIR, FakeCtx, good_settings, load_plugin
 
 SKILLS_DIR = PLUGIN_DIR / "skills"
 TEXTS = CONSTANTS["texts"]
+SKILL_COUNT = sum(1 for path in SKILLS_DIR.iterdir() if path.is_dir())
+# Each skill folder registers once, so a failing registrar stops at its first skill.
+STEPS = ["provider", "tool", "command", *["skill"] * SKILL_COUNT]
 
 
 def register(**fail):
@@ -16,7 +19,7 @@ class OrderTest(unittest.TestCase):
     def test_setup_registers_after_the_provider(self):
         ctx, plugin = register()
         plugin.register(ctx)
-        self.assertEqual(ctx.order, ["provider", "tool", "command", "skill"])
+        self.assertEqual(ctx.order, STEPS)
 
     def test_the_tool_and_command_carry_the_texts_from_constants(self):
         ctx, plugin = register()
@@ -32,9 +35,7 @@ class IsolationTest(unittest.TestCase):
             plugin.register(ctx)
         self.assertEqual(len(logs.records), 1)
         self.assertIn(f"no {failed}", logs.records[0].getMessage())
-        self.assertEqual(
-            ctx.order, [name for name in ("provider", "tool", "command", "skill") if name != failed]
-        )
+        self.assertEqual(ctx.order, [name for name in STEPS if name != failed])
 
     def test_a_failing_tool_registration_stops_nothing_else(self):
         self.assertOneWarningAndRest("tool")
@@ -67,7 +68,7 @@ class IsolationTest(unittest.TestCase):
 class SkillTest(unittest.TestCase):
     def test_each_skill_folder_registers_under_its_folder_name(self):
         folders = sorted(path for path in SKILLS_DIR.iterdir() if path.is_dir())
-        self.assertEqual([f.name for f in folders], ["model-router-setup"])
+        self.assertEqual([f.name for f in folders], ["model-router", "model-router-setup"])
         ctx, plugin = register()
         plugin.register(ctx)
         self.assertEqual(
@@ -77,11 +78,13 @@ class SkillTest(unittest.TestCase):
             self.assertTrue(path.is_file(), path)
 
     def test_the_skill_front_matter_names_the_folder_and_describes_the_use(self):
-        text = (SKILLS_DIR / "model-router-setup" / "SKILL.md").read_text(encoding="utf-8")
-        self.assertTrue(text.startswith("---\n"))
-        front = text.split("---\n")[1]
-        self.assertIn("name: model-router-setup\n", front)
-        self.assertIn("description:", front)
+        for folder in ("model-router", "model-router-setup"):
+            with self.subTest(folder):
+                text = (SKILLS_DIR / folder / "SKILL.md").read_text(encoding="utf-8")
+                self.assertTrue(text.startswith("---\n"))
+                front = text.split("---\n")[1]
+                self.assertIn(f"name: {folder}\n", front)
+                self.assertIn("description:", front)
 
     def test_the_skill_names_the_tool_and_the_command_the_plugin_registers(self):
         text = (SKILLS_DIR / "model-router-setup" / "SKILL.md").read_text(encoding="utf-8")
@@ -91,9 +94,20 @@ class SkillTest(unittest.TestCase):
         self.assertIn("delegation.backend", text)
 
     def test_the_skill_holds_no_key_shaped_text(self):
-        text = (SKILLS_DIR / "model-router-setup" / "SKILL.md").read_text(encoding="utf-8")
-        self.assertNotRegex(text, r"\bsk-[A-Za-z0-9_-]{8,}")
-        self.assertNotIn("/Users/", text)
+        for folder in ("model-router", "model-router-setup"):
+            with self.subTest(folder):
+                text = (SKILLS_DIR / folder / "SKILL.md").read_text(encoding="utf-8")
+                self.assertNotRegex(text, r"\bsk-[A-Za-z0-9_-]{8,}")
+                self.assertNotIn("/Users/", text)
+
+    def test_the_escalation_skill_names_the_parameters_and_the_ladder(self):
+        text = (SKILLS_DIR / "model-router" / "SKILL.md").read_text(encoding="utf-8")
+        for name in CONSTANTS["taskParameters"]:
+            self.assertIn(f"`{name}`", text)
+        for effort in CONSTANTS["efforts"]:
+            self.assertIn(f"`{effort}`", text)
+        self.assertIn("/delegation default", text)
+        self.assertIn("model-router-hermes:model-router-setup", text)
 
 
 if __name__ == "__main__":

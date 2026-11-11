@@ -1,6 +1,6 @@
 import { ROUTING_LIMIT_MS } from "../../src/compose.ts";
 import { setupTexts } from "../../src/hermes-setup.ts";
-import { HERMES_TEXTS } from "../../src/hermes-texts.ts";
+import { HERMES_TEXTS, taskParameterTexts } from "../../src/hermes-texts.ts";
 import { effortFor } from "../../src/ladder.ts";
 import { LINE_PREFIX, skippedLine } from "../../src/line.ts";
 import { LEVELS } from "../../src/part.ts";
@@ -12,7 +12,9 @@ import {
 } from "../../src/provider.ts";
 import {
 	type EndSlot,
+	LEVEL_SLOTS,
 	modelUnresolved,
+	modelUnset,
 	SLOTS,
 	slotSetting,
 } from "../../src/reasons.ts";
@@ -73,7 +75,8 @@ const efforts = (): string[] => [
 const skipLine = (reason: string): string =>
 	`${LINE_PREFIX}${skippedLine(reason)}`;
 
-// The skips key of the line a slot gives when its model does not resolve.
+// The skips keys of the lines a slot gives when its model is unset or does not resolve.
+const unsetKey = (slot: EndSlot): string => `${slot}ModelUnset`;
 const unresolvedKey = (slot: EndSlot): string => `${slot}ModelUnresolved`;
 
 // What the Python shim needs and must not retype: the limits, the provider rules, the efforts and the finished skip lines. A slot names the skip line it gives, never holds one.
@@ -94,9 +97,9 @@ const constants = (source: Source): JsonObject => {
 				key,
 				skipLine(reason),
 			]),
-			...SLOTS.map((slot) => [
-				unresolvedKey(slot),
-				skipLine(modelUnresolved(slot)),
+			...SLOTS.flatMap((slot) => [
+				[unsetKey(slot), skipLine(modelUnset(slot))] as const,
+				[unresolvedKey(slot), skipLine(modelUnresolved(slot))] as const,
 			]),
 		]),
 		slots: Object.fromEntries(
@@ -104,10 +107,14 @@ const constants = (source: Source): JsonObject => {
 				slot,
 				{
 					setting: slotSetting(slot),
+					unset: unsetKey(slot),
 					unresolved: unresolvedKey(slot),
 				},
 			]),
 		),
+		levels: [...LEVELS],
+		levelSlots: { ...LEVEL_SLOTS },
+		...taskParameterTexts(source.hermes.pluginName),
 		backend: source.hermes.backendName,
 		texts: setupTexts(source.hermes.pluginName),
 	};

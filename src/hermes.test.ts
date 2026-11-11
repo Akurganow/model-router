@@ -55,6 +55,9 @@ describe("protocol fixtures", () => {
 			"bad-reply",
 			"timeout",
 			"fallback-auto",
+			"caller-effort-l2",
+			"caller-effort-over-config",
+			"description-sent",
 		])
 			assert.ok(names.includes(wanted), wanted);
 	});
@@ -82,6 +85,8 @@ const REQUEST = {
 	budgetMs: ROUTING_LIMIT_MS,
 	models: { small: "openai/small", large: "openai/large" },
 	configEffort: false,
+	callerEffort: false,
+	description: "Rename one helper",
 };
 const FAILED_SKIP = { outcome: "skip", line: "model-router skipped, failed" };
 const ONE = [
@@ -100,10 +105,18 @@ describe("the request to Jev", () => {
 		assert.deepEqual(Object.keys(body?.questions ?? {}), ["tier", "work"]);
 		assert.deepEqual(body?.state, {
 			role: DEFAULT_ROLE,
-			description: "",
+			description: REQUEST.description,
 			task: buildPrompt(REQUEST.task, REQUEST.context),
 		});
 	});
+
+	for (const description of [undefined, null, 7, ["a"], { a: 1 }])
+		it(`sends an empty description for a description of ${JSON.stringify(description)}`, async () => {
+			const { response, jev } = run({ ...REQUEST, description }, ONE);
+			await response;
+			const [body] = jev.bodies as { state: { description: unknown } }[];
+			assert.equal(body?.state.description, "");
+		});
 
 	it("masks a key shaped string in the task", async () => {
 		const { response, jev } = run(
@@ -122,6 +135,23 @@ describe("the request to Jev", () => {
 		await response;
 		assert.deepEqual(jev.hosts, ["api.typesafe.ai"]);
 	});
+});
+
+describe("the caller effort flag", () => {
+	const L2 = [
+		{ host: "api.typesafe.ai", reply: { levels: { tier: 2, work: 2 } } },
+	] satisfies Step[];
+
+	for (const callerEffort of [undefined, "true", 1, null])
+		it(`reads ${JSON.stringify(callerEffort)} as no caller effort`, async () => {
+			const { response } = run({ ...REQUEST, callerEffort }, L2);
+			assert.deepEqual(await response, {
+				outcome: "route",
+				slot: "large",
+				effort: "high",
+				line: "model-router L2 openai/large · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+			});
+		});
 });
 
 describe("failures", () => {
