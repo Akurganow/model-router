@@ -60,11 +60,13 @@ type Answer = (
 	signal: AbortSignal,
 ) => Promise<Response>;
 
-// The fake settings hold the three values the gates read. Setting a key to undefined makes it unreadable.
+// The fake settings hold the values the gates read. Setting a key to undefined makes it unreadable.
+// The tool call timeout starts unset, so omp's default applies.
 type Config = {
 	modelRoles: unknown;
 	"task.agentModelOverrides": unknown;
 	"task.disabledAgents": unknown;
+	"extensionHandlers.toolCallTimeoutMs"?: unknown;
 };
 
 // A task text holding `level0`, `level1` or `level2` gets that level from the fake Jev. Others get level 1.

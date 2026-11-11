@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import type { RouteInput } from "./compose.ts";
+import { usableTimeout } from "./omp-deadline.ts";
 import { type Facts, type Spawning, spawnCheck, TASK } from "./omp-items.ts";
 import { FALLBACK_NAME } from "./omp-name.ts";
 import type { Context, Lookup, OmpImports, Pi } from "./omp-types.ts";
@@ -166,6 +167,10 @@ function read(lookup: Lookup, id: string, settings: unknown): unknown {
 		return undefined;
 	}
 }
+
+// omp reads this setting on every tool call and times out a tool_call handler that runs longer.
+export const readTimeout = (lookup: Lookup, settings: unknown): number =>
+	usableTimeout(read(lookup, "extensionHandlers.toolCallTimeoutMs", settings));
 
 type Config = Pick<Facts, "roles" | "overrides" | "disabled">;
 

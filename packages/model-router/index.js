@@ -1411,12 +1411,14 @@ function registerConfigCommands(api, env) {
     });
 }
 
-// src/openclaw-deadline.ts
-var HOOK_MARGIN_MS = 2e3;
-var HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HOOK_MARGIN_MS;
+// src/handler-deadline.ts
+var HANDLER_MARGIN_MS = 2e3;
 var MIN_DEADLINE_MS = 1e3;
-var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HOOK_MARGIN_MS;
-var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HOOK_MARGIN_MS);
+var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
+var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
+
+// src/openclaw-deadline.ts
+var HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HANDLER_MARGIN_MS;
 
 // src/brief.ts
 var BUDGET_CHARS = 12e3;

@@ -1,11 +1,14 @@
 import { contextText } from "./brief.ts";
+import { deadlineFor, MIN_DEADLINE_MS } from "./handler-deadline.ts";
 import { ENTRY_SEPARATOR, LINE_PREFIX, skippedLine } from "./line.ts";
 import { registerConfig, say } from "./omp-config.ts";
+import { timeoutTooShort } from "./omp-deadline.ts";
 import {
 	checkGates,
 	noModel,
 	openBatch,
 	readSettings,
+	readTimeout,
 	resolves,
 } from "./omp-gates.ts";
 import { inScope, TASK } from "./omp-items.ts";
@@ -63,9 +66,10 @@ function createRouter(omp: OmpImports, pi: Pi) {
 
 	/**
 	 * Scores the eligible items of a task call and reports one line per item.
-	 * Reports one skip line for every in-scope item when a batch gate closes.
-	 * Returns nothing when the call is not a task call, holds no eligible item,
-	 * or holds none in scope.
+	 * Reports one skip line for every in-scope item when a batch gate closes or
+	 * omp's tool call timeout leaves too little time to score. Returns nothing
+	 * when the call is not a task call, holds no eligible item, or holds none in
+	 * scope.
 	 */
 	async function onToolCall(event: ToolCallEvent, ctx: Context) {
 		const { input } = event;
@@ -79,7 +83,13 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		const scope = settings?.scope ?? "core";
 		const items = eligible.filter(({ agent }) => inScope(agent, scope));
 		if (items.length === 0) return;
-		const gates = await openBatch(omp, pi, ctx, settings);
+		const timeout = readTimeout(omp.lookup, pi.pi.settings);
+		const deadline = deadlineFor(timeout);
+		// A timeout too short to score closes the batch before any key or agent is read.
+		const gates =
+			deadline < MIN_DEADLINE_MS
+				? { closed: timeoutTooShort(timeout, deadline) }
+				: await openBatch(omp, pi, ctx, settings);
 		if ("closed" in gates) {
 			const line = skippedLine(gates.closed);
 			return report(
@@ -87,7 +97,12 @@ function createRouter(omp: OmpImports, pi: Pi) {
 				items.map(({ index }) => entry(index, line)),
 			);
 		}
-		const scored = await scoreItems(items, contextText(context), gates);
+		const scored = await scoreItems(
+			items,
+			contextText(context),
+			gates,
+			deadline,
+		);
 		for (const { index, item, agent, stored } of scored)
 			store.add(event.toolCallId, index, item.name, agent, {
 				...stored,

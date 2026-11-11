@@ -38,16 +38,17 @@ const ROLE_BY_LEVEL: Record<Level, string | undefined> = {
 	2: ROLES.large,
 };
 
-// One limit covers the batch. Aborting also ends the SDK's retry wait, so no request follows a skip.
+// One deadline covers the batch. Aborting also ends the SDK's retry wait, so no request follows a skip.
 // A provider passed over once is dropped for items that start later, and only within this batch.
 // An item the check skips sends nothing, and its reason is its line.
 export async function scoreItems(
 	items: readonly Pending[],
 	context: string,
 	{ attempts, keys, facts }: Batch,
+	deadline: number = ROUTING_LIMIT_MS,
 ): Promise<Scored[]> {
 	const limit = new AbortController();
-	const timer = setTimeout(() => limit.abort(LIMIT_REACHED), ROUTING_LIMIT_MS);
+	const timer = setTimeout(() => limit.abort(LIMIT_REACHED), deadline);
 	const passedOver = new Set<Provider>();
 	try {
 		return await mapLimit(items, MAX_PARALLEL, async (pending) => {

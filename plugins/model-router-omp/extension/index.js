@@ -105,26 +105,6 @@ function roleText(description) {
   return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
 }
 
-// src/line.ts
-var LINE_PREFIX = "model-router ";
-var NO_CHANGE = "no change";
-var ENTRY_SEPARATOR = " | ";
-function routedLine({
-  level,
-  target,
-  effort,
-  probabilities,
-  suffix
-}) {
-  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
-}
-var SKIPPED_PREFIX = "skipped, ";
-var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
-
-// src/omp-gates.ts
-import { readFile } from "node:fs/promises";
-
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
 var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
 var APIPromise = class APIPromise2 extends Promise {
@@ -1095,6 +1075,24 @@ function narrow(global, project) {
   return NARROWABLE.includes(value) && (project === "typesafe" || project === "openrouter") ? project : value;
 }
 
+// src/client.ts
+function createClient(provider, apiKey, model, fetchFn) {
+  if (!Object.hasOwn(HOSTS, provider))
+    throw new Error(`createClient: no host for ${provider}`);
+  if (!apiKey)
+    throw new Error(
+      `createClient: no ${provider} key. Pass a non-empty key for ${provider}.`
+    );
+  return new TypeSafeClient({
+    apiKey,
+    baseURL: HOSTS[provider],
+    logLevel: "off",
+    defaultModel: model,
+    compression: false,
+    fetch: fetchFn
+  });
+}
+
 // src/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
@@ -1192,6 +1190,129 @@ var COMMAND_DESCRIPTIONS = {
   provider: describeCommand("provider"),
   scope: describeCommand("scope")
 };
+
+// src/compose.ts
+var ROUTING_LIMIT_MS = 8e3;
+var TIMEOUT = "timeout";
+var FAILED = "failed";
+var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
+var MODEL_CHARS_MAX = 40;
+var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+function skipCategory(err, signal) {
+  if (err instanceof APIUserAbortError)
+    return signal.reason === LIMIT_REACHED ? TIMEOUT : "cancelled";
+  if (err instanceof APIError) return `HTTP ${err.status}`;
+  if (err instanceof APITimeoutError) return TIMEOUT;
+  if (err instanceof APIConnectionError) return "network error";
+  if (err instanceof TypeSafeError) return "rejected request";
+  return FAILED;
+}
+async function route(input) {
+  const { parts, attempts, signal } = input;
+  if (attempts.length === 0) return { skipped: KEY_UNSET };
+  const failed = [];
+  for (const [i, attempt2] of attempts.entries()) {
+    let result;
+    try {
+      result = await ask2(input, attempt2);
+    } catch (err) {
+      failed.push({
+        provider: attempt2.provider,
+        reason: skipCategory(err, signal)
+      });
+      if (!fallsBack(err)) break;
+      if (i < attempts.length - 1) input.onFallback?.(attempt2.provider);
+      continue;
+    }
+    const decision = decide(parts, result);
+    if ("skipped" in decision) {
+      failed.push({ provider: attempt2.provider, reason: decision.skipped });
+      break;
+    }
+    const [first] = failed;
+    if (!first) return decision;
+    const via = {
+      provider: attempt2.provider,
+      first: first.provider,
+      reason: first.reason
+    };
+    return { ...decision, via };
+  }
+  return skip(failed);
+}
+function ask2(input, attempt2) {
+  const { parts, state, keys, fetchFn, signal } = input;
+  const { provider, model, ...overrides } = attempt2;
+  return createClient(provider, keys[provider], model, fetchFn).systemOne(
+    {
+      state,
+      model,
+      questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
+    },
+    { ...overrides, signal }
+  );
+}
+function skip(failed) {
+  const [first, ...rest] = failed;
+  if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
+  return {
+    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
+  };
+}
+function decide(parts, result) {
+  const { answers, model, usage } = isRecord(result) ? result : {};
+  const decided = {};
+  for (const part of parts) {
+    const probabilities = parseProbabilities(answers, part.key);
+    if (!probabilities) return { skipped: "bad reply" };
+    decided[part.key] = { level: part.pick(probabilities), probabilities };
+  }
+  return {
+    parts: decided,
+    model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
+    usage: isRecord(usage) ? usage : void 0
+  };
+}
+function decisionSuffix({
+  model,
+  usage,
+  via
+}) {
+  const input = usage?.input_tokens;
+  const output = usage?.output_tokens;
+  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
+}
+
+// src/handler-deadline.ts
+var HANDLER_MARGIN_MS = 2e3;
+var MIN_DEADLINE_MS = 1e3;
+var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
+var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
+
+// src/line.ts
+var LINE_PREFIX = "model-router ";
+var NO_CHANGE = "no change";
+var ENTRY_SEPARATOR = " | ";
+function routedLine({
+  level,
+  target,
+  effort,
+  probabilities,
+  suffix
+}) {
+  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
+  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+}
+var SKIPPED_PREFIX = "skipped, ";
+var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
+
+// src/omp-gates.ts
+import { readFile } from "node:fs/promises";
+
+// src/omp-deadline.ts
+var DEFAULT_TIMEOUT_MS = 3e4;
+var usableTimeout = (value) => typeof value === "number" && Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS;
+var timeoutTooShort = (timeout, deadline) => `tool call timeout ${timeout} ms leaves ${Math.max(0, deadline)} ms to route`;
 
 // src/omp-items.ts
 var TASK = "task";
@@ -1318,6 +1439,7 @@ function read(lookup2, id, settings) {
     return void 0;
   }
 }
+var readTimeout = (lookup2, settings) => usableTimeout(read(lookup2, "extensionHandlers.toolCallTimeoutMs", settings));
 function readConfig(lookup2, settings) {
   const roles = read(lookup2, "modelRoles", settings);
   const overrides = read(lookup2, "task.agentModelOverrides", settings);
@@ -1462,116 +1584,6 @@ function registerConfig(omp, pi) {
   });
 }
 
-// src/client.ts
-function createClient(provider, apiKey, model, fetchFn) {
-  if (!Object.hasOwn(HOSTS, provider))
-    throw new Error(`createClient: no host for ${provider}`);
-  if (!apiKey)
-    throw new Error(
-      `createClient: no ${provider} key. Pass a non-empty key for ${provider}.`
-    );
-  return new TypeSafeClient({
-    apiKey,
-    baseURL: HOSTS[provider],
-    logLevel: "off",
-    defaultModel: model,
-    compression: false,
-    fetch: fetchFn
-  });
-}
-
-// src/compose.ts
-var ROUTING_LIMIT_MS = 8e3;
-var TIMEOUT = "timeout";
-var FAILED = "failed";
-var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
-var MODEL_CHARS_MAX = 40;
-var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
-function skipCategory(err, signal) {
-  if (err instanceof APIUserAbortError)
-    return signal.reason === LIMIT_REACHED ? TIMEOUT : "cancelled";
-  if (err instanceof APIError) return `HTTP ${err.status}`;
-  if (err instanceof APITimeoutError) return TIMEOUT;
-  if (err instanceof APIConnectionError) return "network error";
-  if (err instanceof TypeSafeError) return "rejected request";
-  return FAILED;
-}
-async function route(input) {
-  const { parts, attempts, signal } = input;
-  if (attempts.length === 0) return { skipped: KEY_UNSET };
-  const failed = [];
-  for (const [i, attempt2] of attempts.entries()) {
-    let result;
-    try {
-      result = await ask2(input, attempt2);
-    } catch (err) {
-      failed.push({
-        provider: attempt2.provider,
-        reason: skipCategory(err, signal)
-      });
-      if (!fallsBack(err)) break;
-      if (i < attempts.length - 1) input.onFallback?.(attempt2.provider);
-      continue;
-    }
-    const decision = decide(parts, result);
-    if ("skipped" in decision) {
-      failed.push({ provider: attempt2.provider, reason: decision.skipped });
-      break;
-    }
-    const [first] = failed;
-    if (!first) return decision;
-    const via = {
-      provider: attempt2.provider,
-      first: first.provider,
-      reason: first.reason
-    };
-    return { ...decision, via };
-  }
-  return skip(failed);
-}
-function ask2(input, attempt2) {
-  const { parts, state, keys, fetchFn, signal } = input;
-  const { provider, model, ...overrides } = attempt2;
-  return createClient(provider, keys[provider], model, fetchFn).systemOne(
-    {
-      state,
-      model,
-      questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
-    },
-    { ...overrides, signal }
-  );
-}
-function skip(failed) {
-  const [first, ...rest] = failed;
-  if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
-  return {
-    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
-  };
-}
-function decide(parts, result) {
-  const { answers, model, usage } = isRecord(result) ? result : {};
-  const decided = {};
-  for (const part of parts) {
-    const probabilities = parseProbabilities(answers, part.key);
-    if (!probabilities) return { skipped: "bad reply" };
-    decided[part.key] = { level: part.pick(probabilities), probabilities };
-  }
-  return {
-    parts: decided,
-    model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
-    usage: isRecord(usage) ? usage : void 0
-  };
-}
-function decisionSuffix({
-  model,
-  usage,
-  via
-}) {
-  const input = usage?.input_tokens;
-  const output = usage?.output_tokens;
-  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
-}
-
 // src/decide.ts
 var BAD_REPLY = { skipped: "bad reply" };
 var levelOf = (decision, key) => {
@@ -1641,9 +1653,9 @@ var ROLE_BY_LEVEL = {
   1: void 0,
   2: ROLES.large
 };
-async function scoreItems(items, context, { attempts, keys, facts }) {
+async function scoreItems(items, context, { attempts, keys, facts }, deadline = ROUTING_LIMIT_MS) {
   const limit = new AbortController();
-  const timer = setTimeout(() => limit.abort(LIMIT_REACHED), ROUTING_LIMIT_MS);
+  const timer = setTimeout(() => limit.abort(LIMIT_REACHED), deadline);
   const passedOver = /* @__PURE__ */ new Set();
   try {
     return await mapLimit(items, MAX_PARALLEL, async (pending) => {
@@ -1817,7 +1829,9 @@ function createRouter(omp, pi) {
     const scope = settings?.scope ?? "core";
     const items = eligible.filter(({ agent }) => inScope(agent, scope));
     if (items.length === 0) return;
-    const gates = await openBatch(omp, pi, ctx, settings);
+    const timeout = readTimeout(omp.lookup, pi.pi.settings);
+    const deadline = deadlineFor(timeout);
+    const gates = deadline < MIN_DEADLINE_MS ? { closed: timeoutTooShort(timeout, deadline) } : await openBatch(omp, pi, ctx, settings);
     if ("closed" in gates) {
       const line = skippedLine(gates.closed);
       return report(
@@ -1825,7 +1839,12 @@ function createRouter(omp, pi) {
         items.map(({ index }) => entry(index, line))
       );
     }
-    const scored = await scoreItems(items, contextText(context), gates);
+    const scored = await scoreItems(
+      items,
+      contextText(context),
+      gates,
+      deadline
+    );
     for (const { index, item, agent, stored } of scored)
       store.add(event.toolCallId, index, item.name, agent, {
         ...stored,
