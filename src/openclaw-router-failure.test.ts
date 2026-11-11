@@ -244,12 +244,19 @@ describe("deadline", () => {
 		assert.deepEqual(lines(s), []);
 	});
 
-	it("writes one line when the deadline passes after a routed line", async () => {
+	it("writes one line when the hook's signal aborts after a routed line", async () => {
 		const s = setup();
-		assert.ok(await s.call());
-		s.time.fire();
+		const hook = new AbortController();
+		const info = s.api.logger.info;
+		// The abort lands while the work still runs, between the routed line and the end of the work.
+		s.api.logger.info = (message) => {
+			info(message);
+			hook.abort();
+		};
+		await s.call({}, { ...CONTEXT, abortSignal: hook.signal });
 		await settle();
 		assert.equal(lines(s).length, 1);
+		assert.match(lines(s)[0] ?? "", /^model-router L/);
 	});
 
 	it("writes no line and throws nothing when the logger throws at the deadline", async () => {
