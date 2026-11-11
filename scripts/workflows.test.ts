@@ -400,7 +400,8 @@ test("the setup-omp action installs the chosen pin outside the checkout with scr
 	assert.match(action, /bun install --frozen-lockfile --ignore-scripts/);
 	assert.match(action, /GITHUB_PATH/);
 	assert.match(action, /omp --version \| grep -F/);
-	assert.match(action, /bun-version: "1\.4\.4"/);
+	// Renovate raises the Bun version, so the test asks for an exact version, not which one.
+	assert.match(action, /bun-version: "\d+\.\d+\.\d+"/);
 });
 
 test("the evals workflow installs the latest omp unless the dispatch picks the minimum", () => {
@@ -416,13 +417,30 @@ test("the evals workflow installs the latest omp unless the dispatch picks the m
 	);
 });
 
-test("Renovate raises the latest omp pin at once and the minimum only on approval", () => {
+test("the evals omp job stops when the ref predates the omp pin it picked", () => {
+	const block = jobBlock(read(".github/workflows/evals.yml"), "omp");
+	const setup = block.indexOf("- uses: ./.github/actions/setup-omp");
+	const guard = block.lastIndexOf("      - name: ", setup);
+	assert.ok(guard !== -1, "no step before setup-omp");
+	const step = block.slice(guard, setup);
+	// An older setup-omp ignores the pin input and installs its one pin, so the run would test another omp.
+	assert.match(step, /^ {10}PIN: \$\{\{ inputs\.omp \}\}$/m);
+	assert.match(
+		step,
+		/if \[ ! -f "\.github\/actions\/setup-omp\/\$PIN\/package\.json" \]; then/,
+	);
+	assert.match(step, /::error::/);
+	assert.match(step, /exit 1/);
+});
+
+test("Renovate raises the latest omp pin at once and leaves the minimum to a person", () => {
 	type Rule = {
 		matchManagers?: string[];
 		matchFileNames?: string[];
 		minimumReleaseAge?: unknown;
 		schedule?: string[];
 		dependencyDashboardApproval?: boolean;
+		enabled?: boolean;
 		groupName?: string;
 	};
 	const rules: Rule[] = json(".github/renovate.json").packageRules;
@@ -439,9 +457,9 @@ test("Renovate raises the latest omp pin at once and the minimum only on approva
 	);
 	assert.ok(minimum, "no rule for the minimum omp pin");
 	assert.equal(moreMinimum.length, 0);
-	assert.equal(minimum.dependencyDashboardApproval, true);
-	assert.ok(!("minimumReleaseAge" in minimum));
-	assert.equal(minimum.groupName, "omp minimum");
+	// A person raises the minimum together with the README; Renovate proposes nothing for it.
+	assert.equal(minimum.enabled, false);
+	assert.ok(!("dependencyDashboardApproval" in minimum));
 	assert.ok(
 		rules.every(
 			({ matchFileNames, groupName }) =>

@@ -25,11 +25,10 @@
 			"schedule": ["at any time"]
 		},
 		{
-			"description": "The minimum omp the README names. It moves only when a person approves the update on the Dependency Dashboard, and the README moves with it.",
+			"description": "The minimum omp the README names. Renovate proposes no update for it: a person raises the pin by hand, in the same pull request as the README.",
 			"matchManagers": ["bun"],
 			"matchFileNames": [".github/actions/setup-omp/minimum/package.json"],
-			"groupName": "omp minimum",
-			"dependencyDashboardApproval": true
+			"enabled": false
 		},
 		{
 			"description": "CI installs the latest OpenClaw release. The pin skips the 14-day age rule, and a rule here overrides the npm group above.",

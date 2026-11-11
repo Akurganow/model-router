@@ -273,12 +273,11 @@ every package by digest:
 
 - `latest/` pins the latest omp release. A Renovate rule raises it at any time
   with no age delay.
-- `minimum/` pins the oldest omp the README supports. It keeps the 14-day rule,
-  and Renovate opens its pull request only after a person approves the update
-  on the Dependency Dashboard. That pull request also raises the version in
-  the README's harness table and in its omp setup steps, and a test fails when
-  they differ. A security update can skip the approval, so merge one only when
-  it raises the README too.
+- `minimum/` pins the oldest omp the README supports, and Renovate leaves it
+  alone. To raise it, a person edits `minimum/package.json`, runs
+  `bun install --ignore-scripts` in that folder to refresh `bun.lock`, and
+  raises the version in the README's harness table and omp setup steps in the
+  same pull request. A test fails when the pin and the README differ.
 
 The Bun that both pins run on keeps the 14-day rule. When a new omp needs a
 newer Bun, its pull request fails at `omp --version` with omp's own message,
