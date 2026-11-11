@@ -145,7 +145,7 @@ describe("deadline", () => {
 		assert.deepEqual(s.time.delays(), [MIN_DEADLINE_MS]);
 	});
 
-	it("aborts a late scorer at the deadline, settles with nothing and logs nothing", async () => {
+	it("aborts a late scorer at the deadline, settles with nothing and logs one timeout line", async () => {
 		const s = setup();
 		s.jev.mode.current = "hang";
 		const pending = s.call();
@@ -155,8 +155,9 @@ describe("deadline", () => {
 		s.time.fire();
 		assert.equal(await pending, undefined);
 		assert.equal(s.jev.requests[0]?.signal?.aborted, true);
+		assert.deepEqual(lines(s), ["model-router skipped, timeout"]);
 		await settle();
-		assert.deepEqual(lines(s), []);
+		assert.deepEqual(lines(s), ["model-router skipped, timeout"]);
 	});
 
 	it("aborts the request with the limit reason", async () => {
@@ -169,7 +170,7 @@ describe("deadline", () => {
 		assert.equal(s.jev.requests[0]?.signal?.reason, LIMIT_REACHED);
 	});
 
-	it("stops a request when the hook's own signal aborts, and logs nothing", async () => {
+	it("stops a request when the hook's own signal aborts, and logs one cancelled line", async () => {
 		const s = setup();
 		s.jev.mode.current = "hang";
 		const hook = new AbortController();
@@ -178,7 +179,9 @@ describe("deadline", () => {
 		hook.abort();
 		assert.equal(await pending, undefined);
 		assert.equal(s.jev.requests[0]?.signal?.aborted, true);
-		assert.deepEqual(lines(s), []);
+		assert.deepEqual(lines(s), ["model-router skipped, cancelled"]);
+		await settle();
+		assert.deepEqual(lines(s), ["model-router skipped, cancelled"]);
 	});
 
 	it("covers the model checks: a result that arrives late is dropped", async () => {
@@ -195,7 +198,79 @@ describe("deadline", () => {
 		assert.equal(await pending, undefined);
 		release(true);
 		await settle();
+		assert.deepEqual(lines(s), ["model-router skipped, timeout"]);
+	});
+
+	it("writes the timeout line at the deadline, before the handler settles", async () => {
+		const s = setup();
+		s.jev.mode.current = "hang";
+		const pending = s.call();
+		await settle();
+		s.time.fire();
+		assert.deepEqual(lines(s), ["model-router skipped, timeout"]);
+		await pending;
+	});
+
+	it("writes one cancelled line when the hook's signal is already aborted", async () => {
+		const s = setup();
+		const hook = new AbortController();
+		hook.abort();
+		assert.equal(
+			await s.call({}, { ...CONTEXT, abortSignal: hook.signal }),
+			undefined,
+		);
+		await settle();
+		assert.deepEqual(lines(s), ["model-router skipped, cancelled"]);
+	});
+
+	it("writes no line for a passing spawn when the hook's signal is already aborted", async () => {
+		const s = setup();
+		const hook = new AbortController();
+		hook.abort();
+		await s.call(
+			{ model: "acme/own" },
+			{ ...CONTEXT, abortSignal: hook.signal },
+		);
+		await settle();
 		assert.deepEqual(lines(s), []);
+	});
+
+	it("writes no timeout line for a spawn that passes", async () => {
+		const s = setup();
+		const pending = s.call({ model: "acme/own" });
+		s.time.fire();
+		assert.equal(await pending, undefined);
+		await settle();
+		assert.deepEqual(lines(s), []);
+	});
+
+	it("writes one line when the deadline passes after a routed line", async () => {
+		const s = setup();
+		assert.ok(await s.call());
+		s.time.fire();
+		await settle();
+		assert.equal(lines(s).length, 1);
+	});
+
+	it("writes no line and throws nothing when the logger throws at the deadline", async () => {
+		const s = setup();
+		s.jev.mode.current = "hang";
+		const errors: unknown[] = [];
+		const record = (err: unknown) => errors.push(err);
+		process.on("uncaughtException", record);
+		try {
+			s.api.logger.info = () => {
+				throw new Error("logger");
+			};
+			const pending = s.call();
+			await settle();
+			s.time.fire();
+			assert.equal(await pending, undefined);
+			await settle();
+			assert.deepEqual(errors, []);
+		} finally {
+			process.off("uncaughtException", record);
+		}
 	});
 
 	it("cancels its timer when the work ends first", async () => {
@@ -218,7 +293,8 @@ describe("deadline", () => {
 		hook.abort();
 		release();
 		assert.equal(await pending, undefined);
-		assert.deepEqual(lines(s), []);
+		await settle();
+		assert.deepEqual(lines(s), ["model-router skipped, cancelled"]);
 	});
 
 	it("leaves no unhandled rejection when cancelling the timer throws", async () => {

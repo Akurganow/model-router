@@ -1085,12 +1085,13 @@ var COMMAND_DESCRIPTIONS = {
 var ROUTING_LIMIT_MS = 8e3;
 var TIMEOUT = "timeout";
 var FAILED = "failed";
+var CANCELLED = "cancelled";
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 var MODEL_CHARS_MAX = 40;
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 function skipCategory(err, signal) {
   if (err instanceof APIUserAbortError)
-    return signal.reason === LIMIT_REACHED ? TIMEOUT : "cancelled";
+    return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
   if (err instanceof APIError) return `HTTP ${err.status}`;
   if (err instanceof APITimeoutError) return TIMEOUT;
   if (err instanceof APIConnectionError) return "network error";
@@ -1726,6 +1727,33 @@ var SLOT_MODELS = {
   small: (s) => s.smallModel,
   large: (s) => s.largeModel
 };
+function spawnLine(api, signal) {
+  let open = true;
+  const onAbort = () => {
+    if (!open) return;
+    open = false;
+    const reason = signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
+    try {
+      api.logger.info(LINE_PREFIX + skippedLine(reason));
+    } catch {
+    }
+  };
+  return {
+    log: (message) => {
+      if (!open || signal.aborted) return;
+      open = false;
+      api.logger.info(LINE_PREFIX + message);
+    },
+    watch: () => {
+      if (signal.aborted) onAbort();
+      else signal.addEventListener("abort", onAbort, { once: true });
+    },
+    close: () => {
+      open = false;
+      signal.removeEventListener("abort", onAbort);
+    }
+  };
+}
 async function score({ deps, signal }, settings, keys, gate) {
   const decision = await route({
     parts: [tier, work],
@@ -1751,7 +1779,7 @@ async function slotFor(runtime, settings, { config, target }, level) {
   return { model };
 }
 async function routeSpawn(spawn) {
-  const { api, deps, request, requester, log } = spawn;
+  const { api, deps, request, requester, log, watch } = spawn;
   const { config, settings, keys } = readState(api, deps.env);
   const gate = gateSpawn({
     spawn: request,
@@ -1761,6 +1789,7 @@ async function routeSpawn(spawn) {
     hasKey: Object.keys(keys).length > 0
   });
   if (gate.outcome === "pass") return void 0;
+  watch();
   if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
   const decided = await score(spawn, settings, keys, gate);
   if ("skipped" in decided) return void log(skippedLine(decided.skipped));
@@ -1793,17 +1822,16 @@ function createBeforeToolCall(api, deadlineMs, deps) {
       const request = readSpawn(event.params);
       return await raceDeadline(
         (signal) => {
-          const log = (message) => {
-            if (!signal.aborted) api.logger.info(LINE_PREFIX + message);
-          };
+          const { log, watch, close } = spawnLine(api, signal);
           return routeSpawn({
             api,
             deps,
             signal,
             request,
             requester,
-            log
-          });
+            log,
+            watch
+          }).finally(close);
         },
         deadlineMs,
         deps.clock,

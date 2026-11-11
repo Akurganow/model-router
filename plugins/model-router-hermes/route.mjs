@@ -1051,12 +1051,13 @@ var COMMAND_DESCRIPTIONS = {
 // src/compose.ts
 var TIMEOUT = "timeout";
 var FAILED = "failed";
+var CANCELLED = "cancelled";
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 var MODEL_CHARS_MAX = 40;
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 function skipCategory(err, signal) {
   if (err instanceof APIUserAbortError)
-    return signal.reason === LIMIT_REACHED ? TIMEOUT : "cancelled";
+    return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
   if (err instanceof APIError) return `HTTP ${err.status}`;
   if (err instanceof APITimeoutError) return TIMEOUT;
   if (err instanceof APIConnectionError) return "network error";

@@ -1,6 +1,6 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { prepareBrief } from "./brief.ts";
-import { route } from "./compose.ts";
+import { CANCELLED, LIMIT_REACHED, route, TIMEOUT } from "./compose.ts";
 import { type Clock, raceDeadline } from "./deadline.ts";
 import { decide } from "./decide.ts";
 import { work } from "./effort.ts";
@@ -51,6 +51,7 @@ export type RouterDeps = {
 
 type Route = Extract<Gate, { outcome: "route" }>;
 // What the handler needs for one spawn. `log` writes nothing once the deadline or the hook's signal has ended the work.
+// `watch` makes that end write the spawn's skip line.
 type Spawn = {
 	readonly api: OpenClawApi;
 	readonly deps: RouterDeps;
@@ -58,7 +59,46 @@ type Spawn = {
 	readonly request: SpawnRequest;
 	readonly requester: string | undefined;
 	readonly log: (message: string) => void;
+	readonly watch: () => void;
 };
+
+type SpawnLine = Pick<Spawn, "log" | "watch"> & { readonly close: () => void };
+
+/**
+ * Returns the writer of a spawn's one line. `log` writes while the signal is
+ * live and throws what the logger throws. After `watch`, the signal's abort
+ * writes `skipped, timeout` for the routing limit and `skipped, cancelled` for
+ * the host's cancel, and swallows a logger error. The first line or `close`
+ * ends the writer, so a spawn gets one line at most and none after the work ends.
+ */
+function spawnLine(api: OpenClawApi, signal: AbortSignal): SpawnLine {
+	let open = true;
+	const onAbort = () => {
+		if (!open) return;
+		open = false;
+		const reason = signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
+		try {
+			api.logger.info(LINE_PREFIX + skippedLine(reason));
+		} catch {
+			// A throw inside an abort listener would escape as an uncaught exception.
+		}
+	};
+	return {
+		log: (message) => {
+			if (!open || signal.aborted) return;
+			open = false;
+			api.logger.info(LINE_PREFIX + message);
+		},
+		watch: () => {
+			if (signal.aborted) onAbort();
+			else signal.addEventListener("abort", onAbort, { once: true });
+		},
+		close: () => {
+			open = false;
+			signal.removeEventListener("abort", onAbort);
+		},
+	};
+}
 
 // Jev is asked once for both parts. The picked levels come back as a line and the slot to set.
 async function score(
@@ -115,7 +155,7 @@ async function slotFor(
 async function routeSpawn(
 	spawn: Spawn,
 ): Promise<BeforeToolCallResult | undefined> {
-	const { api, deps, request, requester, log } = spawn;
+	const { api, deps, request, requester, log, watch } = spawn;
 	const { config, settings, keys } = readState(api, deps.env);
 	const gate = gateSpawn({
 		spawn: request,
@@ -125,6 +165,7 @@ async function routeSpawn(
 		hasKey: Object.keys(keys).length > 0,
 	});
 	if (gate.outcome === "pass") return undefined;
+	watch();
 	if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
 	const decided = await score(spawn, settings, keys, gate);
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
@@ -151,7 +192,8 @@ async function routeSpawn(
 
 /**
  * The `before_tool_call` handler for `sessions_spawn`. It never throws and never blocks.
- * At the deadline the work is aborted and the handler settles on its own timer with nothing.
+ * At the deadline the work is aborted, the spawn logs `skipped, timeout`, and the
+ * handler settles on its own timer with nothing. A host cancel logs `skipped, cancelled`.
  */
 export function createBeforeToolCall(
 	api: OpenClawApi,
@@ -166,13 +208,7 @@ export function createBeforeToolCall(
 			const request = readSpawn(event.params);
 			return await raceDeadline(
 				(signal) => {
-					/**
-					 * Writes one info line under the line prefix. Once the deadline or the hook's
-					 * signal ends the work, the work writes no line.
-					 */
-					const log = (message: string) => {
-						if (!signal.aborted) api.logger.info(LINE_PREFIX + message);
-					};
+					const { log, watch, close } = spawnLine(api, signal);
 					return routeSpawn({
 						api,
 						deps,
@@ -180,7 +216,8 @@ export function createBeforeToolCall(
 						request,
 						requester,
 						log,
-					});
+						watch,
+					}).finally(close);
 				},
 				deadlineMs,
 				deps.clock,
