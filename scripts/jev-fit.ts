@@ -4,10 +4,12 @@ export const FITTED_ON = "jev-1.14.0";
 
 /** Returns the warning for a run that Jev answered as `model`. Never throws. */
 export const fitWarning = (model: string): string =>
-	`warning: Jev answered as ${model}, and the factors were fitted on ${FITTED_ON}. Refit them with scripts/calibrate.ts --record before you trust the decisions.`;
+	`warning: Jev answered as ${model}, and the factors were fitted on ${FITTED_ON}. Refit them with scripts/calibrate.ts --record, then set FITTED_ON in scripts/jev-fit.ts to ${model}.`;
 
-/** Returns one warning per answering model other than FITTED_ON, in first-seen order. Ignores empty names. */
-export const fitWarnings = (models: Iterable<string>): string[] =>
+/** Returns one warning per answering model other than FITTED_ON, in first-seen order. Skips a missing or empty name. */
+export const fitWarnings = (
+	models: Iterable<string | null | undefined>,
+): string[] =>
 	[...new Set(models)]
-		.filter((m) => m !== "" && m !== FITTED_ON)
+		.filter((m): m is string => !!m && m !== FITTED_ON)
 		.map(fitWarning);

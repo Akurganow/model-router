@@ -106,7 +106,7 @@ export function runCase(c: Case): CaseResult {
 			exitCode: run.status,
 			evidence,
 			failures,
-			warnings: fitWarnings([evidence.jev ?? ""]),
+			warnings: fitWarnings([evidence.jev]),
 			passed: failures.length === 0,
 			stdout: clean(stdout),
 			stderr: clean(stderr),

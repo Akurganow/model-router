@@ -8,6 +8,8 @@ import { afterEach, mock, test } from "node:test";
 import { ROLE_CAP } from "../src/brief.ts";
 import { plan } from "../src/provider.ts";
 import { type Case, caseHead, main, readKey, runCase } from "./calibrate.ts";
+import { FITTED_ON, fitWarning } from "./jev-fit.ts";
+import { OTHER_JEV } from "./jev-fit-fakes.ts";
 
 const CASE: Case = {
 	role: "coder",
@@ -258,20 +260,18 @@ test("main warns on stderr when Jev answers as another model than the fit, and k
 	const code = await main(
 		["typesafe"],
 		piped("test-key"),
-		answeringAs("jev-1.15.0"),
+		answeringAs(OTHER_JEV),
 	);
 	assert.equal(code, 1);
-	assert.match(
-		err.join("\n"),
-		/warning: Jev answered as jev-1\.15\.0, and the factors were fitted on jev-1\.14\.0\. Refit them with scripts\/calibrate\.ts --record/,
-	);
+	assert.deepEqual(err, [fitWarning(OTHER_JEV)]);
 	assert.doesNotMatch(out.join("\n"), /warning:/);
 });
 
 test("main prints no warning when Jev answers as the fitted model", async () => {
-	const { err } = streams();
-	await main(["typesafe"], piped("test-key"), answeringAs("jev-1.14.0"));
-	assert.doesNotMatch(err.join("\n"), /warning:/);
+	const { out, err } = streams();
+	await main(["typesafe"], piped("test-key"), answeringAs(FITTED_ON));
+	assert.deepEqual(err, []);
+	assert.match(out.join("\n"), /^work agreement /m);
 });
 
 test("main exits 0 with the warning when every case agrees under another model", async () => {
@@ -295,7 +295,7 @@ test("main exits 0 with the warning when every case agrees under another model",
 	const fetchFn = async (_url: string, init: RequestInit = {}) => {
 		const c = labels.get(JSON.parse(String(init.body)).state.description);
 		const reply = {
-			model: "jev-1.15.0",
+			model: OTHER_JEV,
 			answers: { tier: sure(c?.expected ?? 0), work: sure(c?.work ?? 0) },
 		};
 		return new Response(JSON.stringify(reply), {
@@ -303,5 +303,5 @@ test("main exits 0 with the warning when every case agrees under another model",
 		});
 	};
 	assert.equal(await main(["typesafe"], piped("test-key"), fetchFn), 0);
-	assert.match(err.join("\n"), /warning: Jev answered as jev-1\.15\.0/);
+	assert.deepEqual(err, [fitWarning(OTHER_JEV)]);
 });

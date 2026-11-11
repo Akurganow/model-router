@@ -12,7 +12,8 @@ import {
 	readRows,
 	score,
 } from "./compare-rules.ts";
-import { fitWarning } from "./jev-fit.ts";
+import { FITTED_ON, fitWarning } from "./jev-fit.ts";
+import { OTHER_JEV } from "./jev-fit-fakes.ts";
 
 const P = (a: number, b: number, c: number) => ({ 0: a, 1: b, 2: c });
 const row = (expected: Level, contested: string[] = []): Row => ({
@@ -115,17 +116,18 @@ async function compareRecordOf(...models: string[]) {
 
 test("main warns on stderr once per other model the record's rows name", async () => {
 	const { code, out, errors } = await compareRecordOf(
-		"jev-1.14.0",
-		"jev-1.15.0",
-		"jev-1.15.0",
+		FITTED_ON,
+		OTHER_JEV,
+		OTHER_JEV,
 	);
 	assert.equal(code, 0);
-	assert.deepEqual(errors, [fitWarning("jev-1.15.0")]);
+	assert.deepEqual(errors, [fitWarning(OTHER_JEV)]);
 	assert.match(out.join("\n"), /^current tier: agreement/m);
 });
 
 test("main prints no warning for a record of the fitted model", async () => {
-	const { code, errors } = await compareRecordOf("jev-1.14.0");
+	const { code, out, errors } = await compareRecordOf(FITTED_ON);
 	assert.equal(code, 0);
 	assert.deepEqual(errors, []);
+	assert.match(out.join("\n"), /^current work: agreement/m);
 });

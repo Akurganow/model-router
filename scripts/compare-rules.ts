@@ -147,7 +147,7 @@ export async function main(args: readonly string[]): Promise<number> {
 		readFileSync(record, "utf8"),
 		readFileSync(new URL("../calibration.jsonl", import.meta.url), "utf8"),
 	);
-	for (const warning of fitWarnings(rows.map((r) => r.model ?? "")))
+	for (const warning of fitWarnings(rows.map((r) => r.model)))
 		console.error(warning);
 	for (const path of rules) {
 		const rule: Rule | undefined = (await import(pathToFileURL(path).href))

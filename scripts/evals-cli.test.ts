@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, mock, test } from "node:test";
 import type { Case } from "./evals/cases.ts";
 import type { runCase } from "./evals/run.ts";
 import { TYPESAFE_KEY } from "./evals/scrub.ts";
 import { main } from "./evals.ts";
+import { fitWarning } from "./jev-fit.ts";
+import { OTHER_JEV } from "./jev-fit-fakes.ts";
 import { useTempRoot } from "./temp-root.ts";
 
 const KEY_ENV = "EVALS_CLI_TEST_KEY";
@@ -126,14 +128,26 @@ test("a failing case is named and exits 1", () => {
 	assert.deepEqual(out, ["one: FAIL no decision line"]);
 });
 
-test("a case with a warning prints it on stderr and still passes", () => {
+test("cases with the same warning print it once on stderr, keep it in each result and still pass", () => {
 	process.env[KEY_ENV] = "k";
 	process.env[TYPESAFE_KEY] = "k";
-	const warning = "warning: Jev answered as jev-1.15.0";
+	const cases = join(box.root, "two-cases.json");
+	writeFileSync(
+		cases,
+		JSON.stringify({ cases: [CASE, { ...CASE, id: "two" }] }),
+	);
+	const warning = fitWarning(OTHER_JEV);
+	const args = ["run", "--cases", cases, "--out", join(box.root, "results")];
 	assert.equal(
-		main(run(), (c) => ({ ...resultFor(c, []), warnings: [warning] })),
+		main(args, (c) => ({ ...resultFor(c, []), warnings: [warning] })),
 		0,
 	);
-	assert.deepEqual(errors, [`one: ${warning}`]);
-	assert.ok(out.includes("one: pass"));
+	assert.deepEqual(errors, [warning]);
+	assert.ok(out.includes("one: pass") && out.includes("two: pass"));
+	for (const id of ["one", "two"]) {
+		const result = JSON.parse(
+			readFileSync(join(box.root, "results", `${id}.json`), "utf8"),
+		);
+		assert.deepEqual(result.warnings, [warning]);
+	}
 });
