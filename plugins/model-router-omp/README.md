@@ -136,7 +136,7 @@ Ask omp to run the `model-router-setup` skill. It walks through the provider, th
 
 The plugin stays at level 1 unless an end is clearly more likely. Level 0 needs more than 1.19 times the probability of level 1, and level 2 needs more than 1.41 times. When both ends pass, the likelier end wins. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors.
 
-At spawn, the plugin checks the batch-wide gates and the item again, as [Gate reasons](#gate-reasons) and [Item reasons](#item-reasons) list them. A stored decision binds only to the agent it was made for. The plugin returns the role for the item's level. It returns nothing when:
+At spawn, the plugin checks the item again and every batch-wide gate except the tool call timeout, as [Gate reasons](#gate-reasons) and [Item reasons](#item-reasons) list them. omp gives the spawn hook its own fixed 30 s. A stored decision binds only to the agent it was made for. The plugin returns the role for the item's level. It returns nothing when:
 
 - A gate or the item check fails at spawn time. For example, you added a model override after the batch.
 - The spawn names a model role that differs from the agent's own role. The agent's own role is the first model it declares that starts with `@`, without the `@`.
@@ -160,7 +160,7 @@ omp's task view shows the same decision as the spawn's routing note, without the
 
 A skipped entry reads `task <n>: skipped, <reason>`. After both providers fail, the reason names each provider, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. The item then runs as omp would run it without the plugin.
 
-A routed item can still skip at spawn time. The plugin then prints one more line for that item alone, in the same format. That line replaces the item's entry in the batch line:
+A routed item can still skip at spawn time. The plugin then prints one more line for that item alone, in the same format, after the batch line. For that item, the later line's reason is the one that holds:
 
 ```text
 model-router task 2: skipped, task model override set
@@ -214,10 +214,10 @@ The plugin calls `pi.pi.discoverAgents`, a typed omp API at omp 18.12.6 and 18.1
 
 ## Limits and retries
 
-- One limit covers the scoring of a batch, retries and second providers included: 8 s, or the tool call timeout less 2 s when that is shorter. At most four items are scored at once.
+- One limit covers a batch from the moment omp calls the plugin: the reads before scoring, the scoring, retries and second providers included. It is 8 s, or the tool call timeout less 2 s when that is shorter. At most four items are scored at once.
 - [Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider) gives the attempts at each provider.
 - Inside one batch, a provider whose first attempt for an item failed and fell back is passed over: items that start later in that batch go straight to the other provider. The next batch tries both again.
-- omp blocks the whole `task` call when a `tool_call` handler passes `extensionHandlers.toolCallTimeoutMs`, 30 s by default. The plugin reads the setting on every batch and keeps 2 s of it for its own reads. Under 3 s nothing is left to score: every item skips with `tool call timeout <n> ms leaves <m> ms to route`. Set it to 3000 ms or more, or keep the default.
+- omp blocks the whole `task` call when a `tool_call` handler passes `extensionHandlers.toolCallTimeoutMs`, 30 s by default. The plugin reads the setting on every batch and keeps 2 s of it back as a margin. Under 3 s nothing is left to score: every item skips with `tool call timeout <n> ms leaves <m> ms to route`. Set it to 3000 ms or more, or keep the default.
 - The plugin registers a `tool_call` handler, because only that hook gives a plugin the `task` input before omp runs it. While any extension has such a handler, omp starts no work early. `task.speculativeLaunch`, on by default, then no longer starts each subagent while the `task` call streams: the subagents start once the whole call has arrived. The experimental early reads of `tools.speculativeExecution.enabled` stop too. omp 18.12.6 and 18.18.9 both do this ([omp tool_call cost and timeout](../../docs/clients.md#omp-tool_call-cost-and-timeout)).
 
 Repeated task names, or same-name items in parallel calls in sync mode, may run unrouted, never misrouted. The plugin matches a spawn to its decision by name or by child id. When two decisions share a name, neither matches.
