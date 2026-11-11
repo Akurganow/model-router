@@ -170,7 +170,7 @@ They give none for free `setTimeout` globals or for a size limit on the module.
 
 Documentation is the Markdown under `docs/` in `can1357/oh-my-pi`, and source is the TypeScript under `packages/`.
 A link is a permalink at commit `96e4d8e`, the head of `main` on 2026-11-05, unless its section names another commit.
-CI and the evals workflow pin omp 18.12.6 in `.github/actions/setup-omp/minimum/package.json` and the latest omp release in `.github/actions/setup-omp/latest/package.json`, and the README asks for 18.12.6 or later.
+CI and the evals workflow pin two omp versions, which `.github/actions/setup-omp/action.yml` installs: the minimum the README names, in `.github/actions/setup-omp/minimum/package.json`, and the latest omp release, in `.github/actions/setup-omp/latest/package.json`.
 
 ### omp manifest and settings
 
@@ -322,8 +322,8 @@ The settings facts above rest on source at that commit.
 [`marketplace.md` L129–L164](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L129-L164) lists no `privacyPolicyUrl` entry field.
 The [catalogue parser](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/packages/coding-agent/src/extensibility/plugins/marketplace/fetcher.ts#L123-L215) preserves extra entry fields, but no source read here says what omp does with this one.
 The [omp install names](#omp-install-names) facts ran on omp 18.16.0.
-CI tests omp 18.12.6 from `.github/actions/setup-omp/minimum/package.json` and the latest omp release from `.github/actions/setup-omp/latest/package.json`, which `.github/actions/setup-omp/action.yml` installs, and the README asks for 18.12.6 or later.
-The `package` job in `.github/workflows/ci.yml` installs the unpacked tarball, lists the package and checks that omp loads it, but reads no setting, so no run exercises the settings name on omp 18.12.6.
+CI tests the two omp pins that [Oh My Pi](#oh-my-pi) names.
+The `package` job in `.github/workflows/ci.yml` installs the unpacked tarball, lists the package and checks that omp loads it, but reads no setting, so no run exercises the settings name on either pin.
 The settings-name facts are unchecked on every omp version from 18.12.6 up to 18.16.0.
 
 ## OpenClaw
