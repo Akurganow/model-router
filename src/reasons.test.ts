@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+	CALLER_EFFORT,
 	CONFIG_EFFORT,
 	LEVEL_SLOTS,
 	modelUnresolved,
@@ -15,6 +16,7 @@ import {
 } from "./reasons.ts";
 
 test("the shared reasons keep the texts the harnesses print", () => {
+	assert.equal(CALLER_EFFORT, "caller effort");
 	assert.equal(CONFIG_EFFORT, "config effort");
 	assert.equal(SUBAGENT_MODEL_SET, "subagent model set");
 	assert.equal(NO_END_MODEL, "no small or large model");
@@ -38,6 +40,7 @@ test("slotForLevel gives the end levels their slot and the middle level none", (
 
 test("no other source file spells a shared reason", () => {
 	const texts = [
+		CALLER_EFFORT,
 		CONFIG_EFFORT,
 		SUBAGENT_MODEL_SET,
 		NO_END_MODEL,

@@ -38,6 +38,7 @@ import { routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
 import type { Level } from "./part.ts";
 import { plan } from "./provider.ts";
+import { CALLER_EFFORT } from "./reasons.ts";
 import { resolveScope, type Scope } from "./scope.ts";
 import { installTimers } from "./timers.ts";
 
@@ -190,7 +191,7 @@ async function routeSpawn(
 	}
 	// Claude Code ranks this variable above any per-invocation effort, so a set value keeps the engine's effort.
 	const kept = callerSet
-		? "caller effort"
+		? CALLER_EFFORT
 		: (await $.env.get("CLAUDE_CODE_EFFORT_LEVEL"))
 			? "env effort"
 			: undefined;

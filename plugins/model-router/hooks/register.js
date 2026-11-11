@@ -1434,6 +1434,9 @@ var tier = {
   pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
 
+// src/reasons.ts
+var CALLER_EFFORT = "caller effort";
+
 // src/claude.ts
 var MODELS = ["haiku", "sonnet", "opus"];
 var BUILT_IN = "built-in";
@@ -1547,7 +1550,7 @@ async function routeSpawn($, spawn, next, options) {
     await $.ui.log(skippedLine(picked.skipped));
     return next(spawn);
   }
-  const kept = callerSet ? "caller effort" : await $.env.get("CLAUDE_CODE_EFFORT_LEVEL") ? "env effort" : void 0;
+  const kept = callerSet ? CALLER_EFFORT : await $.env.get("CLAUDE_CODE_EFFORT_LEVEL") ? "env effort" : void 0;
   await $.ui.log(decisionLine(picked, kept));
   const { model, effort } = picked;
   const started = next({ ...spawn, model });

@@ -1631,6 +1631,7 @@ function readSpawn(params) {
 }
 
 // src/reasons.ts
+var CALLER_EFFORT = "caller effort";
 var CONFIG_EFFORT = "config effort";
 var SUBAGENT_MODEL_SET = "subagent model set";
 var NO_END_MODEL = "no small or large model";
@@ -1671,7 +1672,7 @@ function subagentModelSet(input, target) {
 function effortRule(input) {
   const { spawn, config, requester, settings } = input;
   if (spawn.thinking !== void 0)
-    return { kind: "keep", label: "caller effort" };
+    return { kind: "keep", label: CALLER_EFFORT };
   const global = at(config, "agents", "defaults", "subagents", "thinking");
   const requesterThinking = agentField(
     config,
