@@ -28,7 +28,7 @@ export const ROUTING_LIMIT_MS = 8000;
 export const TIMEOUT = "timeout";
 export const FAILED = "failed";
 // The skip text for work the caller cancelled before the limit ran out.
-export const CANCELLED = "cancelled";
+const CANCELLED = "cancelled";
 // Adapters abort their signal with this reason when the limit runs out, so a timeout differs from a cancel.
 export const LIMIT_REACHED = Symbol("routing limit reached");
 
@@ -67,10 +67,14 @@ export type RouteInput = {
 const isCount = (v: unknown): v is number =>
 	typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 
+/** Returns the skip text for an aborted signal: the routing limit or the caller's cancel. */
+export function abortCategory(signal: AbortSignal): string {
+	return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
+}
+
 // The category comes from the error class or status, never from its message: messages can echo the key or the body.
 function skipCategory(err: unknown, signal: AbortSignal): string {
-	if (err instanceof APIUserAbortError)
-		return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
+	if (err instanceof APIUserAbortError) return abortCategory(signal);
 	if (err instanceof APIError) return `HTTP ${err.status}`;
 	if (err instanceof APITimeoutError) return TIMEOUT;
 	if (err instanceof APIConnectionError) return "network error";

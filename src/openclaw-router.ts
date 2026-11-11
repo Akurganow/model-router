@@ -1,6 +1,6 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { prepareBrief } from "./brief.ts";
-import { CANCELLED, LIMIT_REACHED, route, TIMEOUT } from "./compose.ts";
+import { abortCategory, route } from "./compose.ts";
 import { type Clock, raceDeadline } from "./deadline.ts";
 import { decide } from "./decide.ts";
 import { work } from "./effort.ts";
@@ -50,48 +50,45 @@ export type RouterDeps = {
 };
 
 type Route = Extract<Gate, { outcome: "route" }>;
-// What the handler needs for one spawn. `log` writes nothing once the deadline or the hook's signal has ended the work.
-// `watch` makes that end write the spawn's skip line.
+// What the handler needs for one spawn.
 type Spawn = {
 	readonly api: OpenClawApi;
 	readonly deps: RouterDeps;
 	readonly signal: AbortSignal;
 	readonly request: SpawnRequest;
 	readonly requester: string | undefined;
-	readonly log: (message: string) => void;
-	readonly watch: () => void;
 };
 
-type SpawnLine = Pick<Spawn, "log" | "watch"> & { readonly close: () => void };
+type SpawnLine = {
+	readonly log: (message: string) => void;
+	readonly close: () => void;
+};
 
 /**
- * Returns the writer of a spawn's one line. `log` writes while the signal is
- * live and throws what the logger throws. After `watch`, the signal's abort
- * writes `skipped, timeout` for the routing limit and `skipped, cancelled` for
- * the host's cancel, and swallows a logger error. The first line or `close`
- * ends the writer, so a spawn gets one line at most and none after the work ends.
+ * Returns the writer of a spawn's one line, armed at once. `log` writes and
+ * throws what the logger throws. The signal's abort writes `skipped, timeout`
+ * for the routing limit and `skipped, cancelled` for the host's cancel, and
+ * swallows a logger error. The first line or `close` ends the writer, so a
+ * spawn gets one line at most and none after the work ends.
  */
 function spawnLine(api: OpenClawApi, signal: AbortSignal): SpawnLine {
 	let open = true;
 	const onAbort = () => {
 		if (!open) return;
 		open = false;
-		const reason = signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
 		try {
-			api.logger.info(LINE_PREFIX + skippedLine(reason));
+			api.logger.info(LINE_PREFIX + skippedLine(abortCategory(signal)));
 		} catch {
 			// A throw inside an abort listener would escape as an uncaught exception.
 		}
 	};
+	if (signal.aborted) onAbort();
+	else signal.addEventListener("abort", onAbort, { once: true });
 	return {
 		log: (message) => {
-			if (!open || signal.aborted) return;
+			if (!open) return;
 			open = false;
 			api.logger.info(LINE_PREFIX + message);
-		},
-		watch: () => {
-			if (signal.aborted) onAbort();
-			else signal.addEventListener("abort", onAbort, { once: true });
 		},
 		close: () => {
 			open = false;
@@ -149,13 +146,14 @@ async function slotFor(
 /**
  * Returns the params to merge into the spawn, or undefined when the spawn stays
  * as written. Undefined covers a spawn that passes, a skip, and a route that
- * sets nothing. Each skip and each route writes one line to the log. An error
- * from reading the state or scoring propagates to the hook, which catches it.
+ * sets nothing. A passing spawn writes no line. Every other spawn writes one:
+ * its skip, its route, or the deadline's or the host's abort. An error from
+ * reading the state or scoring propagates to the hook, which catches it.
  */
 async function routeSpawn(
 	spawn: Spawn,
 ): Promise<BeforeToolCallResult | undefined> {
-	const { api, deps, request, requester, log, watch } = spawn;
+	const { api, deps, signal, request, requester } = spawn;
 	const { config, settings, keys } = readState(api, deps.env);
 	const gate = gateSpawn({
 		spawn: request,
@@ -165,7 +163,23 @@ async function routeSpawn(
 		hasKey: Object.keys(keys).length > 0,
 	});
 	if (gate.outcome === "pass") return undefined;
-	watch();
+	const { log, close } = spawnLine(api, signal);
+	try {
+		return await routeGated(spawn, settings, keys, gate, log);
+	} finally {
+		close();
+	}
+}
+
+// Routes a spawn past the pass gate, writing its one line through `log`.
+async function routeGated(
+	spawn: Spawn,
+	settings: OpenClawSettings,
+	keys: Keys,
+	gate: Exclude<Gate, { outcome: "pass" }>,
+	log: (message: string) => void,
+): Promise<BeforeToolCallResult | undefined> {
+	const { api } = spawn;
 	if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
 	const decided = await score(spawn, settings, keys, gate);
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
@@ -207,18 +221,7 @@ export function createBeforeToolCall(
 			const requester = nonEmpty(ctx?.agentId);
 			const request = readSpawn(event.params);
 			return await raceDeadline(
-				(signal) => {
-					const { log, watch, close } = spawnLine(api, signal);
-					return routeSpawn({
-						api,
-						deps,
-						signal,
-						request,
-						requester,
-						log,
-						watch,
-					}).finally(close);
-				},
+				(signal) => routeSpawn({ api, deps, signal, request, requester }),
 				deadlineMs,
 				deps.clock,
 				ctx?.abortSignal,
