@@ -1659,7 +1659,7 @@ var ROLE_BY_LEVEL = {
   1: void 0,
   2: ROLES.large
 };
-async function scoreItems(items, context, { attempts, keys, facts }, deadline = ROUTING_LIMIT_MS) {
+async function scoreItems(items, context, { attempts, keys, facts }, deadline) {
   const limit = new AbortController();
   if (deadline <= 0) limit.abort(LIMIT_REACHED);
   const timer = setTimeout(() => limit.abort(LIMIT_REACHED), deadline);

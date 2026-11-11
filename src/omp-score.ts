@@ -2,7 +2,6 @@ import { buildPrompt } from "./brief.ts";
 import {
 	type Decision,
 	LIMIT_REACHED,
-	ROUTING_LIMIT_MS,
 	type RouteInput,
 	route,
 	type Skipped,
@@ -45,7 +44,7 @@ export async function scoreItems(
 	items: readonly Pending[],
 	context: string,
 	{ attempts, keys, facts }: Batch,
-	deadline: number = ROUTING_LIMIT_MS,
+	deadline: number,
 ): Promise<Scored[]> {
 	const limit = new AbortController();
 	// A deadline the gates used up leaves no time to send anything.
