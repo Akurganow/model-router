@@ -66,9 +66,13 @@ middle level unless an end is more than a fixed factor times as likely as the
 middle. When both ends pass, the likelier end wins. Equal ends stay at the
 middle.
 
-The middle is the default because level 1 leaves the call alone. The
-subagent keeps the user's default model and effort. The router suggests the
-small model or the slow one only on clear evidence. The harnesses and
+The middle is the default level. In Claude Code, level 1 sets `sonnet` and
+the ladder's effort. In
+[OpenClaw](../../model-router-openclaw/README.md#routing) and
+[Hermes](../../model-router-hermes/README.md#routing), it keeps the model the
+harness would pick and sets the ladder's effort. In
+[omp](../../model-router-omp/README.md#routing), it changes nothing. The
+router suggests the small model or the slow one only on clear evidence. The harnesses and
 routers surveyed in the
 [findings record](https://github.com/Akurganow/model-router/issues/57#issuecomment-6626365731)
 match this. Harnesses keep the user's model as the root, send side jobs down and
