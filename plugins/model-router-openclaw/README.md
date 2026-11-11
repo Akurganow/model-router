@@ -178,7 +178,7 @@ A spawn with no `model-router` line in the Gateway log has one of four causes:
 - The Gateway has not loaded the plugin. Run `openclaw plugins inspect model-router-openclaw --runtime --json`. `plugin.status` must read `loaded` and `plugin.enabled` must read `true`. Then restart the Gateway. [Install](#install) has the commands.
 - The spawn [passes without a line](#spawns-that-pass-without-a-line).
 - The spawn takes a [path the hook never sees](#paths-the-hook-never-sees).
-- The routing limit expired, or the hook timeout is too short for the plugin to run. [Hook timeout](#hook-timeout) lists the limits.
+- The hook timeout is too short for the plugin to run. [Hook timeout](#hook-timeout) gives the floor.
 
 ### Spawns that pass without a line
 
@@ -213,7 +213,9 @@ A scored spawn can still skip:
 
 - `small model unset` or `large model unset`: the level picked a slot you left empty.
 - `small model unresolved` or `large model unresolved`: OpenClaw cannot resolve the slot's string for the target agent, or holds no credential for its provider. The check makes no network request. The plugin then sets neither model nor effort.
-- `timeout`, `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer in time or at all. `timeout` means Jev's own timeout only. [Hook timeout](#hook-timeout) says what the routing limit does. After two providers, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
+- `timeout`: the routing limit expired before Jev answered. The line reads `timeout` alone, even after a first provider failed. [Hook timeout](#hook-timeout) gives the limit.
+- `cancelled`: OpenClaw cancelled the `sessions_spawn` call before Jev answered.
+- `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer. After two providers, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 ### How the plugin reads a spawn
 
@@ -261,13 +263,13 @@ A skipped line reads `skipped, <reason>`. [Which spawns are routed](#which-spawn
 
 ### Paths the hook never sees
 
-The plugin hooks the `sessions_spawn` tool. A spawn that does not call that tool is never routed. Five paths start a subagent without it:
+The plugin hooks the `sessions_spawn` tool. A spawn that does not call that tool is never routed. Five paths start an agent session without it:
 
 - `/acp spawn`
 - the gateway method `sessions.create`
 - the Control UI's new session
 - `api.runtime.subagent.run` from another plugin
-- Codex's own `spawn_agent`
+- Codex's own `spawn_agent`. OpenClaw passes it to `before_tool_call` under that name, which the plugin's hook does not match, and it refuses any change to a Codex tool's arguments.
 
 ### Hook timeout
 
@@ -284,7 +286,7 @@ The routing limit is shorter than the Jev timeout, so it ends a slow request fir
 
 An operator overrides the hook timeout with `plugins.entries.model-router-openclaw.hooks.timeouts.before_tool_call` or `hooks.timeoutMs`.
 
-- **The limit.** The routing limit shrinks to the hook timeout minus 2 s when that is smaller. The margin keeps the plugin ahead of OpenClaw's own timeout. When the routing limit expires, the plugin logs nothing, sets nothing and lets the spawn run unchanged.
+- **The limit.** The routing limit shrinks to the hook timeout minus 2 s when that is smaller. The margin keeps the plugin ahead of OpenClaw's own timeout. When the routing limit expires, the plugin logs `skipped, timeout`, sets nothing and lets the spawn run unchanged.
 - **The floor.** A hook timeout below 3000 ms leaves less than 1 s to route, so the plugin routes nothing.
 - **The warning.** For such a timeout, the plugin logs one warning at start-up. It names the timeout and the value to set.
 

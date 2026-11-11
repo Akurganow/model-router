@@ -332,6 +332,7 @@ Documentation is the Markdown under `docs/` in `openclaw/openclaw`, published at
 Documentation pages below were read on 2026-11-05.
 Every source link is a permalink at commit `d48be80a6379`, the commit `openclaw --version` of the 2026.10.10 release prints.
 It is two commits after tag `v2026.10.10` (`7dc3350cb9f0`), and the two change only `scripts/lib/update-compat-inventory.json`.
+The facts added on 2026-11-11 were also read at tag `v2026.11.3` (`847611dcaa3b`), where the cited files are unchanged.
 Every running fact names its OpenClaw version and the date it ran.
 
 ### OpenClaw install and update
@@ -531,17 +532,45 @@ Every running fact names its OpenClaw version and the date it ran.
   (documentation: [Tool call policy hooks, Tool call policy](https://docs.openclaw.ai/plugins/hooks/tool-policy#tool-call-policy);
   source: [`tool-policy.md` L68–L70](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/docs/plugins/hooks/tool-policy.md#L68-L70))
 - Native Codex tools reject parameter rewrites.
+  OpenClaw passes Codex's own `spawn_agent` to `before_tool_call` under that name, and it refuses the call when a handler changes its arguments.
+  The hook runner calls only handlers whose matcher covers the tool, so a handler registered for `sessions_spawn` never sees `spawn_agent`.
   (documentation: [Tool call policy hooks, Tool call policy](https://docs.openclaw.ai/plugins/hooks/tool-policy#tool-call-policy);
-  source: [`tool-policy.md` L74–L76](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/docs/plugins/hooks/tool-policy.md#L74-L76))
+  source: [`tool-policy.md` L74–L76](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/docs/plugins/hooks/tool-policy.md#L74-L76),
+  [`native-hook-relay-codec.ts` L15–L20](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/harness/native-hook-relay-codec.ts#L15-L20),
+  [`native-hook-relay-events.ts` L195–L203](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/harness/native-hook-relay-events.ts#L195-L203),
+  [`hooks.ts` L218–L222](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hooks.ts#L218-L222))
+- The plugin hook `subagent_spawning` was removed before 2026.10.10. Only `subagent_spawned` remains, and it observes a launch without changing it.
+  (source: [`hook-types.ts` L124–L127](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hook-types.ts#L124-L127),
+  [`registry-records.ts` L318–L335](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/compat/registry-records.ts#L318-L335),
+  [`removed-surfaces.md` L242–L265](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/docs/plugins/sdk-migration/removed-surfaces.md#L242-L265))
+- Swarm's `agents.run` calls the `sessions_spawn` tool from the run's tool catalogue, whose entries carry the `before_tool_call` wrapper.
+  The hook sees `toolName` `sessions_spawn` and the swarm keys, such as `collect` and `groupId`, and a returned `params` applies.
+  (source: [`code-mode-swarm.runtime.ts` L109–L116](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/code-mode-swarm.runtime.ts#L109-L116),
+  [L189–L192](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/code-mode-swarm.runtime.ts#L189-L192),
+  [`tool-search-catalog.ts` L156–L160](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/tool-search-catalog.ts#L156-L160))
 - `hooks.timeouts.<hookName>` overrides `hooks.timeoutMs`, which overrides the plugin's `timeoutMs`.
   Both operator fields take positive integers up to 600000 ms.
   (documentation: [Hook reference, Registration and execution](https://docs.openclaw.ai/plugins/hooks/reference#registration-and-execution);
   source: [`reference.md` L53–L76](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/docs/plugins/hooks/reference.md#L53-L76))
 - A `before_tool_call` handler gets 15 seconds by default, and a thrown error or a timeout blocks the tool call.
+  The global hook runner marks `before_tool_call` fail-closed.
   (documentation: [Hook reference, Registration and execution](https://docs.openclaw.ai/plugins/hooks/reference#registration-and-execution);
-  source: [`reference.md` L93](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/docs/plugins/hooks/reference.md#L93))
+  source: [`reference.md` L93](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/docs/plugins/hooks/reference.md#L93),
+  [`hook-runner-global.ts` L40–L44](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hook-runner-global.ts#L40-L44),
+  [`hooks.ts` L497–L507](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hooks.ts#L497-L507))
 - A hook timeout does not abort the handler.
   (documentation: [Hook reference, Registration and execution](https://docs.openclaw.ai/plugins/hooks/reference#registration-and-execution))
+- `ctx.abortSignal` aborts only when the owning tool call is cancelled. A hook timeout does not abort it.
+  (source: [`hook-types.ts` L531](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hook-types.ts#L531),
+  [`reference.md` L78–L80](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/docs/plugins/hooks/reference.md#L78-L80))
+- The plugin's `api.logger` is the registry logger, bound once when OpenClaw builds the plugin API. No hook call or hook timeout gates it.
+  (source: [`registry-api.ts` L120–L125](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/registry-api.ts#L120-L125),
+  [`api-builder.ts` L143](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/api-builder.ts#L143))
+- At the plugin's routing limit, the Gateway log read `model-router skipped, timeout` once, and the spawn ran unchanged.
+  The hook timeout was 3000 ms, so the routing limit was 1000 ms. The Jev request went through a proxy that accepted the connection and never answered.
+  The child's first model request followed the line by about 1 s, on the caller's model, a local stub that refused connections.
+  No later `model-router` line appeared.
+  (running: OpenClaw 2026.10.10, `POST /tools/invoke` with `sessions_spawn` on a copy of the state folder, 2026-11-11)
 - The operator's per-hook timeout of 12 s beat the plugin's 10 s and the all-hooks value of 20 s.
   A handler that slept 13 s got `403 Tool call blocked because before_tool_call hook failed`, and the log read `timed out after 12000ms`.
   A handler that slept 11 s, over the plugin's own 10 s, finished and blocked by its own result.
@@ -716,12 +745,27 @@ The [update page](https://docs.openclaw.ai/cli/plugins/uninstall-and-update) say
 The [manage page](https://docs.openclaw.ai/plugins/manage-plugins#apply-changes-and-inspect) says an update refreshes a running one.
 The two pages disagree, and no run settled it.
 The hook runs only when a tool call runs.
-Five paths start a subagent without that tool. [Paths the hook never sees](../plugins/model-router-openclaw/README.md#paths-the-hook-never-sees) lists them.
+Five paths start an agent session without that tool. [Paths the hook never sees](../plugins/model-router-openclaw/README.md#paths-the-hook-never-sees) lists them.
 No source read here lists every such path.
+The meeting bot's realtime consult also runs an agent under a sub-agent session key without that tool.
+(source: [`agent-consult.ts` L92–L121](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/meeting-bot/agent-consult.ts#L92-L121))
 No run covers a sandboxed child with a CLI-backend model, or an `outputSchema` spawn on a model without tools.
 The sandbox rule for CLI backends and the collector child's need for tools rest on the documentation cited above.
 The source check of the workspace `.env` list left out variables that an installed provider plugin adds.
 OpenClaw may drop `TYPESAFE_API_KEY` when such a plugin declares it.
+No run has shown the `skipped, cancelled` line. It rests on the `ctx.abortSignal` source above and the unit tests.
+`before_model_resolve` can replace a run's model, provider and fallback chain.
+It receives only the prompt and attachment metadata, and its result holds no thinking level.
+It runs at the start of every embedded agent run, a sub-agent's included, unless the session's model selection is locked.
+A sub-agent run shows only in `ctx.sessionKey`, which reads `agent:<id>:subagent:<uuid>`.
+The plugin does not use this hook.
+It would run on every turn of every session, not once per spawn.
+It also cannot set the effort, which the plugin sets through `sessions_spawn`'s `thinking` as the other plugins set theirs.
+(source: [`hook-before-agent-start.types.ts` L1–L20](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hook-before-agent-start.types.ts#L1-L20),
+[`run-entry-model-selection.ts` L17–L63](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/embedded-agent-runner/run-entry-model-selection.ts#L17-L63),
+[`setup.ts` L82–L137](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/embedded-agent-runner/run/setup.ts#L82-L137),
+[`spawn-plan.ts` L60–L66](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/agents/spawn-plan.ts#L60-L66),
+[`hook-agent-context.types.ts` L26–L67](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/hook-agent-context.types.ts#L26-L67))
 
 ## Hermes Agent
 
