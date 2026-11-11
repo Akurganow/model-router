@@ -1,5 +1,5 @@
 import type { Level } from "../../src/part.ts";
-import { get, isRecord, jsonLines } from "./stream.ts";
+import { get, isRecord, jevModel, jsonLines } from "./stream.ts";
 import type { Adapter, Evidence } from "./types.ts";
 
 const SPAWN_TOOL = "Agent";
@@ -17,6 +17,7 @@ const emptyEvidence = (): Evidence => ({
 	effort: null,
 	target: null,
 	reply: null,
+	jev: null,
 });
 
 function countSpawns(event: Record<string, unknown>): number {
@@ -65,6 +66,7 @@ export const claude: Adapter = {
 			evidence.tier = Number(tier) as Level;
 			evidence.target = target ?? null;
 			evidence.effort = effort ?? null;
+			evidence.jev = jevModel(text);
 		}
 		return evidence;
 	},

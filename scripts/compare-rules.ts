@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { LEVELS, type Level, type Probabilities } from "../src/part.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
+import { fitWarnings } from "./jev-fit.ts";
 
 const FOLDS = 5;
 const PERCENT = 100;
@@ -15,6 +16,8 @@ export type Row = {
 	tier: Probabilities;
 	workProbabilities: Probabilities;
 	contested: readonly string[];
+	// The model Jev answered as; a record from before calibrate.ts wrote it has none.
+	model?: string;
 };
 export type Pick = (p: Probabilities) => Level;
 // A rule may fit its parameters on the training rows; a fixed rule ignores them.
@@ -144,6 +147,8 @@ export async function main(args: readonly string[]): Promise<number> {
 		readFileSync(record, "utf8"),
 		readFileSync(new URL("../calibration.jsonl", import.meta.url), "utf8"),
 	);
+	for (const warning of fitWarnings(rows.map((r) => r.model ?? "")))
+		console.error(warning);
 	for (const path of rules) {
 		const rule: Rule | undefined = (await import(pathToFileURL(path).href))
 			.default;

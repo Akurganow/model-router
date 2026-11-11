@@ -47,6 +47,7 @@ function runMode(args: string[], run: Run): number {
 		console.log(
 			`${c.id}: ${result.passed ? "pass" : `FAIL ${result.failures.join("; ")}`}`,
 		);
+		for (const warning of result.warnings) console.error(`${c.id}: ${warning}`);
 		if (!result.passed) failed++;
 	}
 	return failed === 0 ? 0 : 1;

@@ -26,6 +26,7 @@ const EVIDENCE = {
 	effort: null,
 	target: null,
 	reply: null,
+	jev: null,
 };
 
 const box = useTempRoot("evals-cli-", (put) =>
@@ -45,6 +46,7 @@ const resultFor = (
 	exitCode: 0,
 	evidence: EVIDENCE,
 	failures,
+	warnings: [],
 	passed: failures.length === 0,
 	stdout: "",
 	stderr: "",
@@ -52,14 +54,19 @@ const resultFor = (
 
 const saved = new Map<string, string | undefined>();
 let out: string[] = [];
+let errors: string[] = [];
 beforeEach(() => {
 	for (const name of [KEY_ENV, TYPESAFE_KEY])
 		saved.set(name, process.env[name]);
 	delete process.env[KEY_ENV];
 	delete process.env[TYPESAFE_KEY];
 	out = [];
+	errors = [];
 	mock.method(console, "log", (text: unknown) => void out.push(`${text}`));
-	mock.method(console, "error", (text: unknown) => void out.push(`${text}`));
+	mock.method(console, "error", (text: unknown) => {
+		out.push(`${text}`);
+		errors.push(`${text}`);
+	});
 });
 afterEach(() => {
 	mock.restoreAll();
@@ -117,4 +124,16 @@ test("a failing case is named and exits 1", () => {
 		1,
 	);
 	assert.deepEqual(out, ["one: FAIL no decision line"]);
+});
+
+test("a case with a warning prints it on stderr and still passes", () => {
+	process.env[KEY_ENV] = "k";
+	process.env[TYPESAFE_KEY] = "k";
+	const warning = "warning: Jev answered as jev-1.15.0";
+	assert.equal(
+		main(run(), (c) => ({ ...resultFor(c, []), warnings: [warning] })),
+		0,
+	);
+	assert.deepEqual(errors, [`one: ${warning}`]);
+	assert.ok(out.includes("one: pass"));
 });

@@ -20,6 +20,7 @@ import {
 } from "../src/provider.ts";
 import { PROVIDER_NAMES } from "../src/settings.ts";
 import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";
+import { fitWarnings } from "./jev-fit.ts";
 
 const AGREEMENT_BAR = 0.85;
 const CASE_HEAD_CHARS = 60;
@@ -222,6 +223,8 @@ export async function main(
 	console.log(
 		`${attempts[0]?.model} answered as ${[...answeredBy].join(", ") || "unknown"}`,
 	);
+	// A warning, not a failure: the agreement alone decides the exit code.
+	for (const warning of fitWarnings(answeredBy)) console.error(warning);
 	const tierOk = agreement("tier", tierHits) >= AGREEMENT_BAR;
 	const workOk = agreement("work", workHits) >= AGREEMENT_BAR;
 	return tierOk && workOk ? 0 : 1;

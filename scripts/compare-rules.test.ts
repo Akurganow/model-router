@@ -1,7 +1,18 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, mock, test } from "node:test";
+import { fileURLToPath } from "node:url";
 import type { Level } from "../src/part.ts";
-import { crossValidate, type Row, readRows, score } from "./compare-rules.ts";
+import {
+	crossValidate,
+	main,
+	type Row,
+	readRows,
+	score,
+} from "./compare-rules.ts";
+import { fitWarning } from "./jev-fit.ts";
 
 const P = (a: number, b: number, c: number) => ({ 0: a, 1: b, 2: c });
 const row = (expected: Level, contested: string[] = []): Row => ({
@@ -59,4 +70,62 @@ test("readRows refuses a record whose rows name other cases", () => {
 		() => readRows('{"description":"a"}\n', '{"description":"b"}\n'),
 		/row 1 is "a"/,
 	);
+});
+
+afterEach(() => mock.restoreAll());
+
+// A record of every calibration case, each row answered by the given models in turn.
+async function compareRecordOf(...models: string[]) {
+	const out: string[] = [];
+	const errors: string[] = [];
+	mock.method(console, "log", (text: unknown) => void out.push(`${text}`));
+	mock.method(console, "error", (text: unknown) => void errors.push(`${text}`));
+	const dir = mkdtempSync(join(tmpdir(), "compare-rules-"));
+	const record = join(dir, "record.jsonl");
+	const cases = readFileSync(
+		new URL("../calibration.jsonl", import.meta.url),
+		"utf8",
+	)
+		.trim()
+		.split("\n")
+		.map((l) => JSON.parse(l));
+	writeFileSync(
+		record,
+		cases
+			.map((c, i) =>
+				JSON.stringify({
+					description: c.description,
+					expected: c.expected,
+					work: c.work,
+					tier: P(0.1, 0.2, 0.7),
+					workProbabilities: P(0.2, 0.6, 0.2),
+					model: models[i % models.length],
+				}),
+			)
+			.map((l) => `${l}\n`)
+			.join(""),
+	);
+	const rule = fileURLToPath(new URL("rules/current.ts", import.meta.url));
+	try {
+		return { code: await main([record, rule]), out, errors };
+	} finally {
+		rmSync(dir, { recursive: true });
+	}
+}
+
+test("main warns on stderr once per other model the record's rows name", async () => {
+	const { code, out, errors } = await compareRecordOf(
+		"jev-1.14.0",
+		"jev-1.15.0",
+		"jev-1.15.0",
+	);
+	assert.equal(code, 0);
+	assert.deepEqual(errors, [fitWarning("jev-1.15.0")]);
+	assert.match(out.join("\n"), /^current tier: agreement/m);
+});
+
+test("main prints no warning for a record of the fitted model", async () => {
+	const { code, errors } = await compareRecordOf("jev-1.14.0");
+	assert.equal(code, 0);
+	assert.deepEqual(errors, []);
 });
