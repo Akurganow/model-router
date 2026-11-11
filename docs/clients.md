@@ -127,6 +127,32 @@ The CI action pins Claude Code 2.1.308 in `.github/actions/setup-claude-code/pac
   An edit reaches the installed copy only after the version rises and the user installs again.
   (documentation: [Create a mod, Share your mod](https://code.claude.com/docs/en/plugins/mods/create#share-your-mod))
 
+### Subagent events
+
+These facts hold for Claude Code 2.1.308 and 2.1.318.
+The documentation pages were read on 2026-11-11.
+
+- `agent.spawn` fires when a subagent or a teammate is about to start, and when a subagent that finished or stopped is about to run again.
+  For a resumed run `e.resume` is `{ agentId }`, and Claude Code ignores a changed event passed to `next`.
+  The resumed run raises the event from v2.1.299.
+  (documentation: [Mods reference, Subagents](https://code.claude.com/docs/en/plugins/mods/reference#subagents))
+- A `SendMessage` to a completed subagent resumes it under the same ID, with no new Agent call.
+  Explore and Plan return no agent ID, so Claude cannot resume them.
+  A per-invocation `model` and `effort` stay in effect on the resumed run, and `CLAUDE_CODE_EFFORT_LEVEL` outranks the effort.
+  (documentation: [Create custom subagents, Resume subagents](https://code.claude.com/docs/en/sub-agents#resume-subagents),
+  [Choose an effort level](https://code.claude.com/docs/en/sub-agents#choose-an-effort-level))
+- `turn.complete` carries a subagent's `agentId` once for each run of its loop.
+  No event marks a subagent as gone: an agent that completed, failed or was stopped can still resume under its id.
+  (documentation: the declarations Claude Code 2.1.308 writes beside a loaded mod, `TurnCompleteFields.agentId` and `AgentStatus`)
+- `turn.step` carries the subagent's `agentId`, and a hook may rewrite its `effort`.
+  (documentation: [React to events, Follow a turn](https://code.claude.com/docs/en/plugins/mods/events#follow-a-turn);
+  the declarations 2.1.308 writes, `TurnStepInput.effort`)
+- `agent.spawn` also carries `provider`, `parentModel`, `parentAgentId`, `permissionMode`, `background` and `cwd`, and `agent.offer` carries `provider`.
+  The adapter reads none of them.
+  (documentation: [`claude-code.d.ts` L203](https://github.com/anthropics/claude-code/blob/e379c8eca0af5b02a49bf8e784aeefdd1308de6f/mods/types/claude-code.d.ts#L203)
+  and [L259–L309](https://github.com/anthropics/claude-code/blob/e379c8eca0af5b02a49bf8e784aeefdd1308de6f/mods/types/claude-code.d.ts#L259-L309), written by Claude Code 2.1.277;
+  the declarations 2.1.308 writes hold the same fields)
+
 ### Validate and test
 
 - `claude plugin validate <path>` takes a manifest file or a directory.
@@ -165,6 +191,8 @@ No source read here settles three points.
 The [Mods reference](https://code.claude.com/docs/en/plugins/mods/reference) and the other pages above give no rule for the declaration form of `register` in a hooks module.
 They give none for free `setTimeout` globals or for a size limit on the module.
 `checkClaudeBundle` and `MAX_BUNDLE_BYTES` in `scripts/build.ts` check those three anyway.
+
+No source read here says whether a model that a hook sets at `agent.spawn` counts as the per-invocation `model` that a resumed run keeps.
 
 ## Oh My Pi
 
