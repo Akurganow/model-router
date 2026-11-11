@@ -213,8 +213,8 @@ A scored spawn can still skip:
 
 - `small model unset` or `large model unset`: the level picked a slot you left empty.
 - `small model unresolved` or `large model unresolved`: OpenClaw cannot resolve the slot's string for the target agent, or holds no credential for its provider. The check makes no network request. The plugin then sets neither model nor effort.
-- `timeout`: the routing limit expired before Jev answered. The line reads `timeout` alone, even after a first provider failed. [Hook timeout](#hook-timeout) gives the limit.
-- `cancelled`: OpenClaw cancelled the `sessions_spawn` call before Jev answered.
+- `timeout`: the routing limit expired before the plugin finished routing. The line reads `timeout` alone, even after a first provider failed. [Hook timeout](#hook-timeout) gives the limit.
+- `cancelled`: OpenClaw cancelled the `sessions_spawn` call before the plugin finished routing.
 - `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer. After two providers, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 ### How the plugin reads a spawn
@@ -269,7 +269,7 @@ The plugin hooks the `sessions_spawn` tool. A spawn that does not call that tool
 - the gateway method `sessions.create`
 - the Control UI's new session
 - `api.runtime.subagent.run` from another plugin
-- Codex's own `spawn_agent`. OpenClaw passes it to `before_tool_call` under that name, which the plugin's hook does not match, and it refuses any change to a Codex tool's arguments.
+- Codex's own `spawn_agent`. [OpenClaw hook and spawn](../../docs/clients.md#openclaw-hook-and-spawn) says why.
 
 ### Hook timeout
 
