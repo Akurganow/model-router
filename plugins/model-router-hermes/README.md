@@ -10,6 +10,7 @@ A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks
 - It sets the effort from a fixed ladder, as [Routing](#routing) says.
 - It sets only a model you assigned. It proposes none, and it never sets a model that Hermes cannot resolve offline with a credential that needs no network refresh.
 - It never overrides a model you chose, nor an effort the `delegation` section sets. [Which tasks are routed](#which-tasks-are-routed) lists the model rules, and [Routing](#routing) lists the effort rules.
+- The delegating model can describe each task, and can set a task's effort or level to escalate it. [Parameters of `delegate_task`](#parameters-of-delegate_task) lists them.
 - It starts Hermes's own Node once per task to run the scoring step. [Node](#node) says how.
 - It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what Hermes can still do.
 - The plugin changes a setting only when you type `/model-router-provider`. It never writes `delegation.backend`.
@@ -130,20 +131,55 @@ The work question picks the effort. The ladder is the one in the [Effort section
 
 The routed effort replaces the effort of the calling session. Hermes ranks a route's effort above the parent's level.
 
-The plugin keeps two kinds of setting:
+The plugin keeps these settings:
 
-- **An effort.** A non-empty `delegation.reasoning_effort` is your own effort for subagents. The plugin routes the model and sets no effort. The line shows `config effort`.
-- **A model.** A `delegation` section that sets `model`, `provider`, `base_url` or `api_key` names a route of its own. The plugin leaves every task on it, and the line shows `subagent model set`.
+- **Your effort.** A non-empty `delegation.reasoning_effort` is your own effort for subagents. The plugin routes the model and sets no effort. The line shows `config effort`.
+- **Your model.** A `delegation` section that sets `model`, `provider`, `base_url` or `api_key` names a route of its own. The plugin leaves every task on it, and the line shows `subagent model set`.
+- **An effort from the delegating model.** A task that sets `reasoning_effort` runs at it. The plugin routes the model, and the line shows `caller effort`. A skipped task keeps the effort too. Your `delegation.reasoning_effort` wins over it.
+- **A level from the delegating model.** A task that sets `level` takes that level's model, unscored. [Parameters of `delegate_task`](#parameters-of-delegate_task) says how. Your `delegation` model wins over it.
 
 The route starts as the whole `delegation` section, as Hermes's default backend returns it. Two settings of that section, `api_mode` and `request_overrides`, therefore apply at every level. They also apply when the plugin changes the provider. That is a known limit: an `api_mode` set for one provider reaches a child on another.
 
+A routed model gets the fallback chain in `delegation.fallback_providers`, and none when that is unset.
+
 [Facts behind this section](../../docs/clients.md#hermes-routing-and-refusals)
+
+## Parameters of `delegate_task`
+
+The plugin adds three parameters to each task of `delegate_task`. Hermes shows them to the delegating model with their descriptions, and adds one line to the tool's description. That line asks for a description on every task, and names the escalation skill.
+
+| Parameter | Values | What the plugin does with it |
+| --- | --- | --- |
+| `description` | One line of text | Sends it to Jev with the goal, as the request's description. A missing, blank or non-text value sends an empty description. |
+| `reasoning_effort` | `low`, `medium`, `high`, `xhigh` | Scores the task, routes the model and keeps this effort. The line shows `caller effort`. |
+| `level` | `0`, `1`, `2` | Asks Jev nothing. Level 0 sets your `small_model`, level 2 your `large_model`, and level 1 keeps Hermes's own route. |
+
+Hermes refuses a task whose `reasoning_effort` or `level` is off these lists, before the plugin sees it. The plugin reads a `level` of `true` or `false` as unset.
+
+A task that sets `level`:
+
+- Meets one gate, `subagent model set`. It needs no key and no Node.
+- Gets the slot checks of [Models](#models). An empty or unresolved slot skips with its reason, as a scored task does.
+- Runs at its `reasoning_effort` when it sets one. Otherwise it runs at the effort Hermes gives it.
+- Carries no `route.label` and writes no log line when the slot is set. The other plugins print no line for a call that names a model either. The task's result still names the model and provider it ran on.
+
+The delegating model should leave `reasoning_effort` and `level` unset on a first dispatch. The escalation skill, `model-router-hermes:model-router`, says when to set them. [The skill](skills/model-router/SKILL.md) follows the escalation steps of the other plugins.
+
+The parameters are part of the session's tool list. After an install or an update, they apply from the next session, or at once after `/delegation model-router --now`.
+
+[Facts behind this section](../../docs/clients.md#hermes-task-parameters)
+
+## Limits
+
+Hermes passes this backend a task's `goal`, `context` and index, and the parameters the plugin declares. It never passes `images` or `output_schema`. Jev scores a task with images on its text alone, so a level-0 task gets your `small_model` even when that model takes no images. If your tasks carry images, assign a `small_model` that accepts them, or pin such a task with `level`. Hermes still checks a child's answer against its `output_schema`; the plugin only cannot see it.
+
+[Facts behind this section](../../docs/clients.md#hermes-task-parameters)
 
 ## Which tasks are routed
 
 ### The gates
 
-Every task meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives.
+Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets only the third.
 
 1. `key unset`: no provider the `provider` setting allows has a key.
 2. `no small or large model`: neither slot is set.
@@ -186,7 +222,7 @@ Node reads the switch from 22.21.0 on the 22 line, and from 24.0.0. An older Nod
 
 ## The label and the log
 
-The plugin puts one line per routed or skipped task in the task's `route.label`. Hermes shows the label with the child's progress and with the child's result, in every plugin isolation mode. The plugin also writes the line to `~/.hermes/logs/agent.log` at INFO, once for each distinct line. The line starts with `model-router`.
+The plugin puts one line per routed or skipped task in the task's `route.label`. A task that sets `level` and gets its model carries no line, as [Parameters of `delegate_task`](#parameters-of-delegate_task) says. Hermes shows the label with the child's progress and with the child's result, in every plugin isolation mode. The plugin also writes the line to `~/.hermes/logs/agent.log` at INFO, once for each distinct line. The line starts with `model-router`.
 
 ```text
 model-router L0 <model> · medium · p=0.91/0.84 · jev jev-1.14.0 · 812/9 tok
@@ -194,7 +230,7 @@ model-router L1 no change · config effort · p=0.62/0.70
 model-router skipped, key unset
 ```
 
-A routed line reads `L<level> <model or no change> · <effort or kept label> · p=<tier>/<work>`. The model is the `model` field of the slot. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else it holds.
+A routed line reads `L<level> <model or no change> · <effort or kept label> · p=<tier>/<work>`. The kept label is `config effort` or `caller effort`. The model is the `model` field of the slot. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else it holds.
 
 A skipped line reads `skipped, <reason>`. [Which tasks are routed](#which-tasks-are-routed) lists the reasons.
 

@@ -2,7 +2,7 @@
 
 model-router for Hermes Agent is a plugin published by Akurganow. This policy
 says what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-06.
+2026-11-11.
 
 ## Where requests go
 
@@ -48,11 +48,15 @@ JSON body holds:
   within 12,000 characters, and the context is left out when less than 500
   characters of room remain
 - the agent text, the request's `role` field: one fixed text that ships with
-  the plugin. Hermes passes this backend the goal, the context and the task's
-  index only, so the plugin has no agent description to send.
+  the plugin. Hermes passes this backend the goal, the context, the task's
+  index and the parameters the plugin declares, so the plugin has no agent
+  description to send.
   [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent)
   says why the text is fixed
-- an empty description, because Hermes passes no label or name
+- the task's `description` parameter, when the delegating model sets one, or
+  an empty description. It sends the value as is, as the other plugins send
+  the description of a call. It masks and cuts nothing in it, so a key or a
+  private name in a description leaves your machine
 - the Jev alias and the two scoring questions, as
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them
@@ -65,7 +69,8 @@ lists the other headers, which the bundled SDK builds. The goal and the context
 hold whatever the model put in them, which can include code. Hermes routes all
 tasks of a call, one after another, before any child starts, and the plugin
 sends each request during that routing. A task that Hermes later refuses was
-already sent. That list is the whole request, and
+already sent. A task that sets the `level` parameter is not scored and sends
+no request. That list is the whole request, and
 [the plugin sends no telemetry](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#no-telemetry).
 
 ## The program the plugin starts
@@ -74,8 +79,8 @@ The plugin starts one Node program, `route.mjs`, for each task it routes. It
 uses Hermes's own Node and never the Node on `PATH`. The program makes the
 requests above.
 
-- The plugin hands the program the task text, the context and the keys on
-  standard input. A key never appears in the program's environment or
+- The plugin hands the program the task text, the context, the description
+  and the keys on standard input. A key never appears in the program's environment or
   arguments.
 - The program's environment holds only `PATH`, `HOME`, `TMPDIR`,
   `SYSTEMROOT`, the proxy variables `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`
@@ -123,14 +128,17 @@ visible to the programs Hermes starts. Keep a key out of the environment of
 programs you do not trust.
 
 At each task the plugin reads three of its own settings through Hermes:
-`provider`, `small_model` and `large_model`. It also reads the `delegation`
+`provider`, `small_model` and `large_model`. It reads the task's
+`description`, `reasoning_effort` and `level` parameters. Of those, only the
+description leaves your machine, in the request. It also reads the `delegation`
 section of Hermes's configuration, which Hermes passes with the task. It uses
 `model`, `provider`, `base_url`, `api_key` and `reasoning_effort` to decide
 whether to route. The plugin reads `api_key` only to see whether it is set.
 The value never enters a request, a log line or the program above. The plugin
 hands the whole `delegation` section back to Hermes as the base of the route,
 as Hermes's own default backend does, with a model, a provider and an effort
-changed when it routes.
+changed when it routes. When the section sets no effort, every route carries
+the task's `reasoning_effort` parameter.
 
 For a model it is about to set, the plugin asks Hermes to resolve the model's
 provider and to list the provider's models from Hermes's cached catalogue. For a slot that names
