@@ -1,7 +1,8 @@
-import { spawn } from "node:child_process";
+import { type ChildProcessByStdio, spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
+import type { Readable, Writable } from "node:stream";
 import { EXIT_USAGE } from "./exit-codes.ts";
 
 // Written out apart from the plugin's settings list, so a renamed command fails this check.
@@ -68,32 +69,32 @@ export function writeStubModels(agentDir: string): boolean {
 	return true;
 }
 
+// The parts of a spawned omp the check uses.
+export type OmpProcess = Pick<
+	ChildProcessByStdio<Writable, Readable, null>,
+	"stdin" | "stdout" | "on" | "kill" | "exitCode" | "signalCode"
+>;
+
 /**
- * Starts omp in rpc mode, asks for its commands and resolves with the reply,
+ * Asks a started omp in rpc mode for its commands and resolves with the reply,
  * or with a problem text when omp exits, fails to start or stays silent past
- * the timeout. Closes omp's stdin after the reply, so omp exits.
+ * the timeout. Stops omp once it has an answer.
  */
-function askCommands(
-	command: readonly string[],
-	env: NodeJS.ProcessEnv,
+export function askCommands(
+	child: OmpProcess,
 	timeoutMs: number,
 ): Promise<{ reply: unknown } | { problem: string }> {
-	const [file = "omp", ...args] = command;
-	const child = spawn(
-		file,
-		[...args, "--mode", "rpc", "--no-ui", "--model", "stub/stub"],
-		{ env, stdio: ["pipe", "pipe", "inherit"] },
-	);
 	return new Promise((resolve) => {
 		const done = (result: { reply: unknown } | { problem: string }) => {
 			clearTimeout(timer);
 			child.stdin.end();
+			if (child.exitCode === null && child.signalCode === null) child.kill();
 			resolve(result);
 		};
-		const timer = setTimeout(() => {
-			child.kill();
-			done({ problem: `omp sent no reply within ${timeoutMs} ms` });
-		}, timeoutMs);
+		const timer = setTimeout(
+			() => done({ problem: `omp sent no reply within ${timeoutMs} ms` }),
+			timeoutMs,
+		);
 		child.on("error", (error) =>
 			done({ problem: `omp did not start: ${error.message}` }),
 		);
@@ -111,6 +112,9 @@ function askCommands(
 			if (fields?.type === "response" && fields.id === REQUEST_ID)
 				done({ reply: message });
 		});
+		// An omp that exits before it reads the request fails the write with
+		// EPIPE. The close event then reports its exit code.
+		child.stdin.on("error", () => {});
 		child.stdin.write(
 			`${JSON.stringify({ id: REQUEST_ID, type: "get_available_commands" })}\n`,
 		);
@@ -137,8 +141,17 @@ export async function main(
 		return EXIT_USAGE;
 	}
 	try {
-		writeStubModels(agentDir);
-		const result = await askCommands(command, env, timeoutMs);
+		if (!writeStubModels(agentDir))
+			console.log(
+				`Kept the existing ${join(agentDir, "models.yml")}. omp starts with --model stub/stub, so that file must define it.`,
+			);
+		const [file = "omp", ...args] = command;
+		const child = spawn(
+			file,
+			[...args, "--mode", "rpc", "--no-ui", "--model", "stub/stub"],
+			{ env, stdio: ["pipe", "pipe", "inherit"] },
+		);
+		const result = await askCommands(child, timeoutMs);
 		const problems =
 			"problem" in result ? [result.problem] : replyProblems(result.reply);
 		for (const problem of problems) console.error(problem);

@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { PassThrough, Writable } from "node:stream";
 import { test } from "node:test";
 import { VALUE_SETTINGS } from "../src/settings.ts";
 import {
+	askCommands,
 	COMMANDS,
 	main,
+	type OmpProcess,
 	replyProblems,
 	STUB_MODELS,
 	writeStubModels,
@@ -115,4 +119,71 @@ test("the load check fails after the timeout when omp never answers", async () =
 		1,
 	);
 	assert.ok(existsSync(join(temp.root, "agent/models.yml")));
+});
+
+/**
+ * A stand-in omp process. Its stdin fails every write with the given error, or
+ * takes it, and kill() records the call.
+ */
+function fakeProcess(writeError?: Error) {
+	const child = new EventEmitter() as EventEmitter & {
+		stdin: Writable;
+		stdout: PassThrough;
+		exitCode: number | null;
+		signalCode: NodeJS.Signals | null;
+		kills: number;
+		kill(): boolean;
+	};
+	child.stdin = new Writable({
+		write: (_chunk, _encoding, callback) => callback(writeError),
+	});
+	child.stdout = new PassThrough();
+	child.exitCode = null;
+	child.signalCode = null;
+	child.kills = 0;
+	child.kill = () => {
+		child.kills += 1;
+		return true;
+	};
+	return child;
+}
+
+test("an omp that exits before it reads the request reports its exit code", async () => {
+	const child = fakeProcess(
+		Object.assign(new Error("write EPIPE"), { code: "EPIPE" }),
+	);
+	const result = askCommands(child as unknown as OmpProcess, 1000);
+	setImmediate(() => {
+		child.exitCode = 3;
+		child.emit("close", 3);
+	});
+	assert.deepEqual(await result, {
+		problem: "omp exited with code 3 before it replied",
+	});
+});
+
+test("the load check stops omp after its reply", async () => {
+	const child = fakeProcess();
+	const result = askCommands(child as unknown as OmpProcess, 1000);
+	child.stdout.write(
+		`${JSON.stringify({ ...reply(COMMANDS.map(extension)) })}\n`,
+	);
+	assert.deepEqual(await result, { reply: reply(COMMANDS.map(extension)) });
+	assert.equal(child.kills, 1);
+});
+
+test("the load check says when it kept an existing models.yml", async (t) => {
+	const log = t.mock.method(console, "log", () => {});
+	temp.put("agent/models.yml", STUB_MODELS);
+	temp.put("omp.mjs", fakeOmp(COMMANDS.map(extension)));
+	const env = { PI_CODING_AGENT_DIR: join(temp.root, "agent") };
+	assert.equal(
+		await main(env, [process.execPath, join(temp.root, "omp.mjs")]),
+		0,
+	);
+	const lines = log.mock.calls.map(({ arguments: [line] }) => String(line));
+	assert.ok(
+		lines.some((line) => line.includes(join(temp.root, "agent/models.yml"))),
+		lines.join("\n"),
+	);
 });
