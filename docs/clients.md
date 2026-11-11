@@ -897,6 +897,10 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
   (running: `plugins/model-router-hermes/tests/test_real_hermes.py`, 2026-11-11)
 - A session routes on the backend its `delegate_task` schema was built from. A plugin update or a backend change applies from the next session, or at the next turn after `/delegation <backend> --now`. A task that carries a parameter its session's schema lacks is refused alone.
   (documentation: [`delegation-provider-plugin.md` L171–L188](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/website/docs/developer-guide/delegation-provider-plugin.md#L171-L188))
+- A real delegating model filled the parameters. One `delegate_task` call held a new task and a re-dispatch of a task described as failed at level 1. The provider was `typesafe`, `small_model` was `openrouter qwen/qwen3.7-flash` and `large_model` was `openrouter openai/gpt-6-luna`.
+  The model gave both tasks a `description`, and gave the re-dispatch `level: 2` and `reasoning_effort: "high"`. The new task read `model-router L0 qwen/qwen3.7-flash · medium · p=0.99/1.00 · jev jev-1.14.0 · 699/30 tok`.
+  The re-dispatch ran on `openai/gpt-6-luna` at effort `high`, and its result's `route` held `backend`, `provider`, `model`, `reasoning_effort` and `service_tier` but no `label`. `agent.log` held the first line only. The parent turn cost an estimated 0.0007 USD.
+  (running: Hermes v0.23.0, the plugin installed from this branch with `hermes plugins install "file://<clone>#plugins/model-router-hermes" --enable` on a fresh Hermes home, `hermes -z "<call delegate_task once with two tasks …>" -m qwen/qwen3.7-flash --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 400 s alarm, 2026-11-11)
 - Under `plugins.isolation: host`, the parent builds a `DelegationProvider` whose methods run in the plugin host, so `task_parameters` and `description` cross as plain JSON.
   (source: [`plugin_isolation.py` L63–L78](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/hermes_cli/plugin_isolation.py#L63-L78), at v0.23.1)
 - A route without a `fallback_providers` of its own takes `delegation.fallback_providers`, and a profile route keeps its profile's chain. The plugin's route copies the `delegation` section, so a routed child gets exactly that list, and none when it is `null`.
@@ -1021,7 +1025,7 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
 
 Most probes ran a probe plugin, `probe-router`, and not this repository's plugin.
 The probe plugin ran Node on a small script and shipped the OpenClaw bundle for the scanner.
-This repository's plugin passed `validate`, the scan and the `file://` install on Hermes v0.23.0, as the facts above record. It routed one real call of two tasks on Hermes v0.22.7, in process and in the plugin host. No routing run used Hermes v0.23.0 or a fallback between providers.
+This repository's plugin passed `validate`, the scan and the `file://` install on Hermes v0.23.0, as the facts above record. It routed one real call of two tasks on Hermes v0.22.7, in process and in the plugin host, and one call with task parameters on Hermes v0.23.0, in process. No run used a fallback between providers, and no run with task parameters used the plugin host.
 The `hermes` job has not run on a pushed commit yet, so this page cites no run of it.
 No run used the repository form `Akurganow/model-router/plugins/model-router-hermes` from the README, a `--ref` pin or `hermes plugins update`.
 No run used native Windows, so the `SYSTEMROOT` rule rests on the Python documentation.
