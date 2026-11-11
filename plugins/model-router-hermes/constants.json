@@ -15,7 +15,7 @@
 			"openrouter": "OPENROUTER_API_KEY"
 		}
 	},
-	"efforts": ["medium", "high", "xhigh", "low"],
+	"efforts": ["low", "medium", "high", "xhigh"],
 	"skips": {
 		"keyUnset": "model-router skipped, key unset",
 		"noEndModel": "model-router skipped, no small or large model",
@@ -41,10 +41,7 @@
 		}
 	},
 	"levels": [0, 1, 2],
-	"levelSlots": {
-		"0": "small",
-		"2": "large"
-	},
+	"levelSlots": ["small", null, "large"],
 	"taskParameters": {
 		"description": {
 			"type": "string",

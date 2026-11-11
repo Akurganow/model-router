@@ -12,8 +12,7 @@
 			"small": "openai/small",
 			"large": "openai/large"
 		},
-		"configEffort": true,
-		"callerEffort": true,
+		"keptEffort": "config",
 		"description": ""
 	},
 	"jev": [

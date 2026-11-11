@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -18,7 +18,7 @@ import {
 	PROVIDER_VALUES,
 	resolve as resolveProvider,
 } from "../src/provider.ts";
-import { LEVEL_SLOTS } from "../src/reasons.ts";
+import { slotForLevel } from "../src/reasons.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { formatJson } from "./build/json.ts";
 import { HERMES_OUTPUTS } from "./build/outputs.ts";
@@ -157,8 +157,8 @@ test("the constants hold the values src/ gives", () => {
 		},
 	});
 	assert.deepEqual(constants.levels, [...LEVELS]);
-	assert.deepEqual(constants.levelSlots, { 0: "small", 2: "large" });
-	assert.deepEqual(constants.levelSlots, LEVEL_SLOTS);
+	assert.deepEqual(constants.levelSlots, ["small", null, "large"]);
+	assert.deepEqual(constants.levelSlots, LEVELS.map(slotForLevel));
 });
 
 test("the task parameters are the texts src/ gives, with the ladder and the levels as enums", () => {
@@ -182,6 +182,22 @@ test("the ladder's effort list holds every effort the ladder gives, weakest firs
 	);
 	assert.deepEqual([...EFFORTS].sort(), [...given].sort());
 	assert.deepEqual([...EFFORTS], ["low", "medium", "high", "xhigh"]);
+	assert.deepEqual(constants.efforts, [...EFFORTS]);
+});
+
+test("the escalation skill the addendum names is a folder of the plugin", () => {
+	assert.ok(
+		existsSync(
+			join(
+				ROOT,
+				"plugins",
+				source.hermes.pluginName,
+				"skills",
+				ESCALATION_SKILL,
+				"SKILL.md",
+			),
+		),
+	);
 });
 
 test("the efforts are every value the ladder returns, all valid in Hermes, none of max or ultra", () => {
@@ -241,7 +257,7 @@ test("the committed bundle answers a request on stdin with one JSON line", () =>
 		keys: {},
 		budgetMs: 1000,
 		models: { small: null, large: null },
-		configEffort: false,
+		keptEffort: null,
 	};
 	const run = spawnSync(process.execPath, [join(ROOT, HERMES_OUTPUTS.bundle)], {
 		input: JSON.stringify(request),

@@ -1,7 +1,7 @@
 import { ROUTING_LIMIT_MS } from "../../src/compose.ts";
 import { setupTexts } from "../../src/hermes-setup.ts";
 import { HERMES_TEXTS, taskParameterTexts } from "../../src/hermes-texts.ts";
-import { effortFor } from "../../src/ladder.ts";
+import { EFFORTS } from "../../src/ladder.ts";
 import { LINE_PREFIX, skippedLine } from "../../src/line.ts";
 import { LEVELS } from "../../src/part.ts";
 import {
@@ -12,10 +12,10 @@ import {
 } from "../../src/provider.ts";
 import {
 	type EndSlot,
-	LEVEL_SLOTS,
 	modelUnresolved,
 	modelUnset,
 	SLOTS,
+	slotForLevel,
 	slotSetting,
 } from "../../src/reasons.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
@@ -67,11 +67,6 @@ const manifest = (source: Source): JsonObject => ({
 	config_schema: configSchema(source),
 });
 
-// Every effort the ladder can return, in the order of first use.
-const efforts = (): string[] => [
-	...new Set(LEVELS.flatMap((t) => LEVELS.map((w) => effortFor(t, w)))),
-];
-
 const skipLine = (reason: string): string =>
 	`${LINE_PREFIX}${skippedLine(reason)}`;
 
@@ -91,7 +86,7 @@ const constants = (source: Source): JsonObject => {
 			order: Object.fromEntries(PROVIDER_VALUES.map((v) => [v, [...order(v)]])),
 			keyVariables: { ...KEY_VARIABLES },
 		},
-		efforts: efforts(),
+		efforts: [...EFFORTS],
 		skips: Object.fromEntries([
 			...Object.entries(reasons).map(([key, reason]) => [
 				key,
@@ -113,7 +108,8 @@ const constants = (source: Source): JsonObject => {
 			]),
 		),
 		levels: [...LEVELS],
-		levelSlots: { ...LEVEL_SLOTS },
+		// Indexed by level; null at the middle level, which names no slot.
+		levelSlots: LEVELS.map(slotForLevel),
 		...taskParameterTexts(source.hermes.pluginName),
 		backend: source.hermes.backendName,
 		texts: setupTexts(source.hermes.pluginName),

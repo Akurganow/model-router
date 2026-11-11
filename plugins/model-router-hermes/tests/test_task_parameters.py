@@ -111,14 +111,14 @@ class CallerEffortTest(RouterCase):
                         reply=route_reply(slot, None, PREFIX + "L"), reasoning_effort=effort
                     )
                     self.assertEqual(route["reasoning_effort"], effort)
-                    self.assertIs(json.loads(stub.captured()["stdin"])["callerEffort"], True)
+                    self.assertEqual(json.loads(stub.captured()["stdin"])["keptEffort"], "caller")
 
     def test_an_effort_off_the_ladder_is_ignored(self):
         for value in ("max", "minimal", "none", "Low", " low", "", 3, True, None):
             with self.subTest(value):
                 route, stub = self.routed(reasoning_effort=value)
                 self.assertNotIn("reasoning_effort", route)
-                self.assertIs(json.loads(stub.captured()["stdin"])["callerEffort"], False)
+                self.assertIsNone(json.loads(stub.captured()["stdin"])["keptEffort"])
 
     def test_the_caller_effort_rides_on_every_skip(self):
         stub_cases = {
@@ -158,7 +158,7 @@ class CallerEffortTest(RouterCase):
                 )
                 self.assertEqual(route["reasoning_effort"], "low")
                 request = json.loads(stub.captured()["stdin"])
-                self.assertEqual((request["configEffort"], request["callerEffort"]), (True, True))
+                self.assertEqual(request["keptEffort"], "config")
 
     def test_a_blank_config_effort_lets_the_caller_effort_through(self):
         route, _ = self.routed({"reasoning_effort": " "}, reasoning_effort="high")

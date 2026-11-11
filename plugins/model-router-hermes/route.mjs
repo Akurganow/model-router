@@ -1198,6 +1198,7 @@ var streamedFetch = async (url, init) => {
 
 // src/brief.ts
 var BUDGET_CHARS = 12e3;
+var ROLE_CAP = 500;
 var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
 var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
 var HEAD_SHARE = 2 / 3;
@@ -1243,6 +1244,12 @@ function buildPrompt(task, context) {
 }
 function contextText(context) {
   return typeof context === "string" && nonEmpty(context) !== void 0 ? context : "";
+}
+function descriptionText(description) {
+  if (typeof description !== "string") return "";
+  const text = redact2(description).replace(/\s+/g, " ").trim();
+  const cut = text.slice(0, ROLE_CAP);
+  return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
 }
 
 // src/decide.ts
@@ -1302,6 +1309,7 @@ var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
 var modelUnset = (slot) => `${slot} model unset`;
 
 // src/hermes-request.ts
+var KEPT_EFFORTS = ["config", "caller"];
 var readKeys = (value) => Object.fromEntries(
   PROVIDERS.flatMap((provider) => {
     const key = isRecord2(value) ? nonEmpty(value[provider]) : void 0;
@@ -1324,8 +1332,7 @@ function readRequest(raw) {
     keys,
     budgetMs,
     models,
-    configEffort,
-    callerEffort,
+    keptEffort,
     description
   } = raw;
   return {
@@ -1335,8 +1342,7 @@ function readRequest(raw) {
     keys: readKeys(keys),
     budgetMs: readBudget(budgetMs),
     models: readModels(models),
-    configEffort: configEffort === true,
-    callerEffort: callerEffort === true,
+    keptEffort: KEPT_EFFORTS.find((source) => source === keptEffort),
     description: typeof description === "string" ? description : ""
   };
 }
@@ -1390,13 +1396,17 @@ var skip2 = (reason) => ({
   outcome: "skip",
   line: `${LINE_PREFIX}${skippedLine(reason)}`
 });
+var KEPT_LABELS = {
+  config: CONFIG_EFFORT,
+  caller: CALLER_EFFORT
+};
 async function score(request, { fetchFn }, signal) {
   const { keys } = request;
   const decision = await route({
     parts: [tier, work],
     state: {
       role: DEFAULT_ROLE,
-      description: request.description,
+      description: descriptionText(request.description),
       task: buildPrompt(request.task, request.context)
     },
     attempts: plan(request.provider, keys),
@@ -1419,7 +1429,7 @@ function answer(request, decided) {
   const target = slot === null ? void 0 : request.models[slot];
   if (slot !== null && target === void 0) return skip2(modelUnset(slot));
   const effort = effortFor(level, decided.work);
-  const kept = request.configEffort ? CONFIG_EFFORT : request.callerEffort ? CALLER_EFFORT : void 0;
+  const kept = request.keptEffort === void 0 ? void 0 : KEPT_LABELS[request.keptEffort];
   return {
     outcome: "route",
     slot,

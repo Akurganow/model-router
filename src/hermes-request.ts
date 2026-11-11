@@ -3,6 +3,10 @@ import { isRecord, nonEmpty } from "./part.ts";
 import { type Keys, PROVIDERS } from "./provider.ts";
 import { type EndSlot, SLOTS } from "./reasons.ts";
 
+// Whose effort replaces the ladder's. Python ranks the delegation section above the caller.
+export const KEPT_EFFORTS = ["config", "caller"] as const;
+export type KeptEffort = (typeof KEPT_EFFORTS)[number];
+
 // What the Python shim sends, once read.
 export type HermesRequest = {
 	readonly task: string;
@@ -13,9 +17,8 @@ export type HermesRequest = {
 	readonly budgetMs: number | undefined;
 	// A blank or missing model is undefined.
 	readonly models: Readonly<Record<EndSlot, string | undefined>>;
-	readonly configEffort: boolean;
-	// The delegating model set the task's effort; an effort in the delegation section still wins.
-	readonly callerEffort: boolean;
+	// Undefined when the ladder's effort applies.
+	readonly keptEffort: KeptEffort | undefined;
 	// The task's description parameter, or empty text.
 	readonly description: string;
 };
@@ -44,7 +47,7 @@ const readBudget = (value: unknown): number | undefined =>
 /**
  * Reads a parsed request. Returns undefined when it is not an object. A field of
  * the wrong type reads as its empty value: no text, no key, no model, no budget,
- * the effort flags off. Never throws.
+ * no kept effort. Never throws.
  */
 export function readRequest(raw: unknown): HermesRequest | undefined {
 	if (!isRecord(raw) || Array.isArray(raw)) return undefined;
@@ -55,8 +58,7 @@ export function readRequest(raw: unknown): HermesRequest | undefined {
 		keys,
 		budgetMs,
 		models,
-		configEffort,
-		callerEffort,
+		keptEffort,
 		description,
 	} = raw;
 	return {
@@ -66,8 +68,7 @@ export function readRequest(raw: unknown): HermesRequest | undefined {
 		keys: readKeys(keys),
 		budgetMs: readBudget(budgetMs),
 		models: readModels(models),
-		configEffort: configEffort === true,
-		callerEffort: callerEffort === true,
+		keptEffort: KEPT_EFFORTS.find((source) => source === keptEffort),
 		description: typeof description === "string" ? description : "",
 	};
 }

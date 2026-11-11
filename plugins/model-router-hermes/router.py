@@ -29,6 +29,18 @@ def _effort_set(value):
     return value is not None and stripped(value) != ""
 
 
+# Node names a kept effort by its source, so only Python ranks the sources.
+KEPT_BY_CONFIG = "config"
+KEPT_BY_CALLER = "caller"
+
+
+def _kept_effort(section, caller_effort):
+    """Whose effort replaces the ladder's: the delegation section's, else the caller's, else None."""
+    if _effort_set(section.get("reasoning_effort")):
+        return KEPT_BY_CONFIG
+    return KEPT_BY_CALLER if caller_effort is not None else None
+
+
 def _subagent_model_set(config):
     return any(_is_set(config.get(key)) for key in SUBAGENT_ROUTE_KEYS)
 
@@ -61,7 +73,7 @@ class Router:
 
         The other harnesses keep a caller's effort even when the plugin skips, so every route carries it."""
         effort = params.caller_effort(task, self._constants)
-        if effort is None or _effort_set(base.get("reasoning_effort")):
+        if _kept_effort(base, effort) != KEPT_BY_CALLER:
             return base
         return {**base, "reasoning_effort": effort}
 
@@ -104,8 +116,7 @@ class Router:
             "keys": keys,
             "budgetMs": budget_ms,
             "models": {name: slot.model or None for name, slot in slot_settings.items()},
-            "configEffort": _effort_set(config.get("reasoning_effort")),
-            "callerEffort": params.caller_effort(task, self._constants) is not None,
+            "keptEffort": _kept_effort(config, params.caller_effort(task, self._constants)),
             "description": params.description(task),
         }
         return self._ask_node(node_path, request, base, slot_settings, window)
@@ -114,7 +125,7 @@ class Router:
         """The pass-through of a pinned level: no Jev call and no label, as on the other harnesses."""
         if _subagent_model_set(config):
             return self._skip(base, "subagentModelSet")
-        name = self._constants["levelSlots"].get(str(level))
+        name = self._constants["levelSlots"][level]
         if name is None:
             return dict(base)
         slot = slot_settings[name]
