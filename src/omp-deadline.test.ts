@@ -1,18 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { deadlineFor, MIN_DEADLINE_MS } from "./handler-deadline.ts";
-import {
-	DEFAULT_TIMEOUT_MS,
-	timeoutTooShort,
-	usableTimeout,
-} from "./omp-deadline.ts";
+import { budgetFor } from "./omp-deadline.ts";
 
-describe("usableTimeout", () => {
-	it("keeps a finite number above 0", () => {
-		assert.equal(usableTimeout(2000), 2000);
-		assert.equal(usableTimeout(0.5), 0.5);
-	});
+const closed = (timeout: number, left: number) => ({
+	closed: `tool call timeout ${timeout} ms leaves ${left} ms to route`,
+});
 
+describe("budgetFor", () => {
 	for (const value of [
 		undefined,
 		null,
@@ -23,41 +17,28 @@ describe("usableTimeout", () => {
 		"x",
 		"5000",
 	])
-		it(`takes omp's default for ${String(value)}`, () => {
-			assert.equal(usableTimeout(value), DEFAULT_TIMEOUT_MS);
+		it(`takes omp's default of 30000 for ${String(value)}`, () => {
+			assert.deepEqual(budgetFor(value), { deadline: 8000 });
 		});
-});
 
-describe("the deadline under omp's tool call timeout", () => {
 	for (const [timeout, deadline] of [
-		[30000, 8000],
-		[9000, 7000],
-		[5000, 3000],
 		[3000, 1000],
-		[2999, 999],
+		[4000, 2000],
+		[9000, 7000],
+		[10000, 8000],
+		[30000, 8000],
+		[60000, 8000],
 	] as const)
-		it(`${timeout} ms leaves ${deadline} ms`, () => {
-			assert.equal(deadlineFor(timeout), deadline);
+		it(`gives ${timeout} ms a ${deadline} ms deadline`, () => {
+			assert.deepEqual(budgetFor(timeout), { deadline });
 		});
 
-	it("routes from 3000 ms up", () => {
-		assert.ok(deadlineFor(3000) >= MIN_DEADLINE_MS);
-		assert.ok(deadlineFor(2999) < MIN_DEADLINE_MS);
-	});
-});
-
-describe("timeoutTooShort", () => {
-	it("names the timeout and what it leaves", () => {
-		assert.equal(
-			timeoutTooShort(2500, deadlineFor(2500)),
-			"tool call timeout 2500 ms leaves 500 ms to route",
-		);
-	});
-
-	it("never names a negative time", () => {
-		assert.equal(
-			timeoutTooShort(1000, deadlineFor(1000)),
-			"tool call timeout 1000 ms leaves 0 ms to route",
-		);
-	});
+	for (const [timeout, left] of [
+		[2999, 999],
+		[2500, 500],
+		[0.5, 0],
+	] as const)
+		it(`closes the batch at ${timeout} ms and never names a negative time`, () => {
+			assert.deepEqual(budgetFor(timeout), closed(timeout, left));
+		});
 });

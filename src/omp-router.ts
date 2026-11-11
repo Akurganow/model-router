@@ -1,14 +1,13 @@
 import { contextText } from "./brief.ts";
-import { deadlineFor, MIN_DEADLINE_MS } from "./handler-deadline.ts";
 import { ENTRY_SEPARATOR, LINE_PREFIX, skippedLine } from "./line.ts";
 import { registerConfig, say } from "./omp-config.ts";
-import { timeoutTooShort } from "./omp-deadline.ts";
+import { budgetFor } from "./omp-deadline.ts";
 import {
 	checkGates,
 	noModel,
 	openBatch,
 	readSettings,
-	readTimeout,
+	readTimeoutSetting,
 	resolves,
 } from "./omp-gates.ts";
 import { inScope, TASK } from "./omp-items.ts";
@@ -83,25 +82,21 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		const scope = settings?.scope ?? "core";
 		const items = eligible.filter(({ agent }) => inScope(agent, scope));
 		if (items.length === 0) return;
-		const timeout = readTimeout(omp.lookup, pi.pi.settings);
-		const deadline = deadlineFor(timeout);
-		// A timeout too short to score closes the batch before any key or agent is read.
-		const gates =
-			deadline < MIN_DEADLINE_MS
-				? { closed: timeoutTooShort(timeout, deadline) }
-				: await openBatch(omp, pi, ctx, settings);
-		if ("closed" in gates) {
-			const line = skippedLine(gates.closed);
-			return report(
+		const skipAll = (reason: string) =>
+			report(
 				ctx,
-				items.map(({ index }) => entry(index, line)),
+				items.map(({ index }) => entry(index, skippedLine(reason))),
 			);
-		}
+		// A timeout too short to score closes the batch before any key or agent is read.
+		const budget = budgetFor(readTimeoutSetting(omp.lookup, pi.pi.settings));
+		if ("closed" in budget) return skipAll(budget.closed);
+		const gates = await openBatch(omp, pi, ctx, settings);
+		if ("closed" in gates) return skipAll(gates.closed);
 		const scored = await scoreItems(
 			items,
 			contextText(context),
 			gates,
-			deadline,
+			budget.deadline,
 		);
 		for (const { index, item, agent, stored } of scored)
 			store.add(event.toolCallId, index, item.name, agent, {
