@@ -101,10 +101,7 @@ function createRouter(omp: OmpImports, pi: Pi) {
 			budget.deadline - (Date.now() - started),
 		);
 		for (const { index, item, agent, stored } of scored)
-			store.add(event.toolCallId, index, item.name, agent, {
-				...stored,
-				index,
-			});
+			store.add(event.toolCallId, index, item.name, agent, stored);
 		report(
 			ctx,
 			scored.map(({ index, stored }) => entry(index, stored.line)),
@@ -133,14 +130,14 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		ctx: Context,
 	): Promise<SpawnResult | undefined> {
 		if (event.invocationKind !== TASK) return;
-		const stored = store.take(event.spawnKey, event.agent);
-		if (!stored?.role) return;
-		const reason = await spawnReason(event, ctx, stored.role);
+		const taken = store.take(event.spawnKey, event.agent);
+		const role = taken?.stored.role;
+		if (!taken || !role) return;
+		const reason = await spawnReason(event, ctx, role);
 		if (reason === undefined)
-			return { model: stored.role, note: LINE_PREFIX + stored.line };
+			return { model: role, note: LINE_PREFIX + taken.stored.line };
 		// omp drops a note that comes without a model, so the skip goes out like the batch line.
-		if (stored.index !== undefined)
-			report(ctx, [entry(stored.index, skippedLine(reason))]);
+		report(ctx, [entry(taken.index, skippedLine(reason))]);
 		return undefined;
 	}
 

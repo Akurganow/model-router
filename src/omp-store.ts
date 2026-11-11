@@ -5,9 +5,9 @@ export const STORE_MAX = 64;
 export type Stored = {
 	readonly role: string | undefined;
 	readonly line: string;
-	// The item's place in its call, kept by the router to number a spawn-time line.
-	readonly index?: number;
 };
+// The index numbers a spawn-time line.
+export type Taken = { readonly stored: Stored; readonly index: number };
 type Entry = {
 	readonly stored: Stored;
 	readonly agent: string;
@@ -104,12 +104,12 @@ export function createStore() {
 
 		// More than one match is ambiguous, and an ambiguous key takes nothing.
 		// A decision binds to its agent: another agent takes nothing and leaves it stored.
-		take(key: string | undefined, agent: string): Stored | undefined {
+		take(key: string | undefined, agent: string): Taken | undefined {
 			const holders = key === undefined ? undefined : c.byKey.get(key);
 			const [entry] = holders?.size === 1 ? holders : [];
 			if (entry?.agent !== agent) return undefined;
 			remove(c, entry);
-			return entry.stored;
+			return { stored: entry.stored, index: entry.index };
 		},
 	};
 }

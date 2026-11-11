@@ -1798,7 +1798,7 @@ function createStore() {
       const [entry2] = holders?.size === 1 ? holders : [];
       if (entry2?.agent !== agent) return void 0;
       remove(c, entry2);
-      return entry2.stored;
+      return { stored: entry2.stored, index: entry2.index };
     }
   };
 }
@@ -1852,10 +1852,7 @@ function createRouter(omp, pi) {
       budget.deadline - (Date.now() - started)
     );
     for (const { index, item, agent, stored } of scored)
-      store.add(event.toolCallId, index, item.name, agent, {
-        ...stored,
-        index
-      });
+      store.add(event.toolCallId, index, item.name, agent, stored);
     report(
       ctx,
       scored.map(({ index, stored }) => entry(index, stored.line))
@@ -1868,13 +1865,13 @@ function createRouter(omp, pi) {
   }
   async function onSpawn(event, ctx) {
     if (event.invocationKind !== TASK) return;
-    const stored = store.take(event.spawnKey, event.agent);
-    if (!stored?.role) return;
-    const reason = await spawnReason(event, ctx, stored.role);
+    const taken = store.take(event.spawnKey, event.agent);
+    const role = taken?.stored.role;
+    if (!taken || !role) return;
+    const reason = await spawnReason(event, ctx, role);
     if (reason === void 0)
-      return { model: stored.role, note: LINE_PREFIX + stored.line };
-    if (stored.index !== void 0)
-      report(ctx, [entry(stored.index, skippedLine(reason))]);
+      return { model: role, note: LINE_PREFIX + taken.stored.line };
+    report(ctx, [entry(taken.index, skippedLine(reason))]);
     return void 0;
   }
   function learn({ toolName, toolCallId }, result) {
