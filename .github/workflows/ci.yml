@@ -91,9 +91,16 @@ jobs:
 
   # A user installs the committed files, so this job runs no build. It proves
   # that each client accepts the manifests and catalogues as they are checked in.
+  # It runs once per omp pin: the minimum omp the README names, and the latest
+  # omp release.
   install:
+    name: install (omp ${{ matrix.omp }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        omp: [minimum, latest]
     env:
       # Keeps Claude Code at the pinned version for the whole job.
       DISABLE_AUTOUPDATER: "1"
@@ -120,7 +127,17 @@ jobs:
           claude plugin install model-router@model-router
           claude plugin list | grep -F model-router
 
+      # omp reads PI_CONFIG_DIR relative to the home folder.
+      - name: Keep the omp config under the runner's temp folder
+        run: |
+          {
+            echo "PI_CONFIG_DIR=$(realpath -m --relative-to="$HOME" "$RUNNER_TEMP/omp-config")"
+            echo "PI_CODING_AGENT_DIR=$RUNNER_TEMP/omp-config/agent"
+          } >> "$GITHUB_ENV"
+
       - uses: ./.github/actions/setup-omp
+        with:
+          pin: ${{ matrix.omp }}
 
       - name: Install the omp plugin from the checkout
         run: |
@@ -128,13 +145,25 @@ jobs:
           omp plugin install model-router@model-router
           omp plugin list | grep -F model-router
 
+      # omp starts in rpc mode, sends no prompt and lists its commands. The
+      # plugin's commands come back only when omp loaded its extension.
+      - name: Check that omp loads the plugin
+        run: node scripts/check-omp-load.ts
+
   # The npm package is a committed tree, so this job packs that tree as it is.
   # It proves that the tarball holds the files the tree lists, that npm accepts
-  # it for publishing, and that OpenClaw and omp install it. Both harnesses run
-  # with their state and config under the runner's temp folder.
+  # it for publishing, and that OpenClaw and omp install it. It runs once per
+  # omp pin, the minimum and the latest, and checks that omp loads the
+  # installed plugin. Both harnesses run with their state and config under the
+  # runner's temp folder.
   package:
+    name: package (omp ${{ matrix.omp }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        omp: [minimum, latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -149,8 +178,6 @@ jobs:
 
       - uses: ./.github/actions/setup-openclaw
 
-      - uses: ./.github/actions/setup-omp
-
       # omp reads PI_CONFIG_DIR relative to the home folder.
       - name: Keep the harness state under the runner's temp folder
         run: |
@@ -161,6 +188,10 @@ jobs:
             echo "PI_CONFIG_DIR=$(realpath -m --relative-to="$HOME" "$RUNNER_TEMP/omp-config")"
             echo "PI_CODING_AGENT_DIR=$RUNNER_TEMP/omp-config/agent"
           } >> "$GITHUB_ENV"
+
+      - uses: ./.github/actions/setup-omp
+        with:
+          pin: ${{ matrix.omp }}
 
       # The script fails when npm packs other files than the tree's files
       # list and npm's always-packed files give, and prints the tarball path.
@@ -198,6 +229,9 @@ jobs:
           omp plugin install "$RUNNER_TEMP/unpacked/package"
           version=$(node -p 'require("./packages/model-router/package.json").version')
           omp plugin list | grep -F "@akurganow/model-router@$version"
+
+      - name: Check that omp loads the installed package
+        run: node scripts/check-omp-load.ts
 
   # The Hermes plugin is Python on the standard library only. Its tests run on
   # the oldest and the newest Python that Hermes supports, then under the

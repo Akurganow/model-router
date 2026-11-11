@@ -21,10 +21,18 @@ on:
         required: false
         default: ""
       ref:
-        description: Tag or branch to install the plugin from, or empty for the ref of this run. It must hold scripts/build.ts, .github/actions/setup-node, .github/actions/setup-claude-code and .github/actions/setup-omp
+        description: Tag or branch to install the plugin from, or empty for the ref of this run. It must hold scripts/build.ts, .github/actions/setup-node, .github/actions/setup-claude-code and .github/actions/setup-omp with its minimum and latest pins
         type: string
         required: false
         default: ""
+      omp:
+        description: Which omp pin the omp job installs, the latest omp release or the minimum the README names
+        type: choice
+        required: false
+        default: latest
+        options:
+          - minimum
+          - latest
 
 permissions:
   contents: read
@@ -90,6 +98,8 @@ jobs:
       - uses: ./.github/actions/setup-node
 
       - uses: ./.github/actions/setup-omp
+        with:
+          pin: ${{ inputs.omp }}
 
       # The plugin runs the bundle, so the cases use a fresh build of src/ at this ref.
       - name: Build the plugin bundles

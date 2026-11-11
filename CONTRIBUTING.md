@@ -232,7 +232,9 @@ later. `npm ci` refuses an older npm, which would ignore the window.
 Renovate (`.github/renovate.json`) keeps every pinned version current:
 
 - the development tools
-- Claude Code and omp for CI and the evals
+- Claude Code for CI and the evals
+- omp for CI and the evals, at two pins: the minimum the README names and the
+  latest release
 - OpenClaw for CI
 - Hermes Agent for CI
 - Bun
@@ -263,6 +265,23 @@ runner's temp folder, and `uv sync --frozen --no-build` installs only the
 wheels that Hermes's own `uv.lock` locks, so no package runs code at install
 time. The `uv` it uses and the action that installs `uv` keep the 14-day rule.
 
+The omp pins are the fourth exception. The `setup-omp` action installs omp for
+CI and the evals from one of two folders, and each folder's `bun.lock` locks
+every package by digest:
+
+- `latest/` pins the latest omp release. A Renovate rule raises it at any time
+  with no age delay.
+- `minimum/` pins the oldest omp the README supports. It keeps the 14-day rule,
+  and Renovate opens its pull request only after a person approves the update
+  on the Dependency Dashboard. That pull request also raises the version in
+  the README's harness table and in its omp setup steps, and a test fails when
+  they differ. A security update can skip the approval, so merge one only when
+  it raises the README too.
+
+The Bun that both pins run on keeps the 14-day rule. When a new omp needs a
+newer Bun, its pull request fails at `omp --version` with omp's own message,
+and a person raises Bun in that pull request.
+
 CI fails on any of these:
 
 - an open advisory
@@ -290,10 +309,11 @@ CI runs these checks:
 - Anthropic's plugin policy scan, with the prompt in `.github/policy/`. It skips
   drafts, so keep a pull request as a draft while it changes.
 - the generated-file check, on Ubuntu and macOS
-- the install of both plugins from the checkout
+- the install of both plugins from the checkout, once per omp pin, and a
+  check that omp loads the plugin
 - the `package` job: it packs `packages/model-router` and compares the packed
   files with its `files` list, runs `npm publish --dry-run`, and installs the
-  tarball into the pinned OpenClaw and omp
+  tarball into the pinned OpenClaw and into each pinned omp, which must load it
 - the `hermes` job: it runs the Hermes plugin's tests on Python 3.11 and 3.14,
   validates the plugin with the pinned Hermes, installs it from the checkout,
   and runs the tests again under Hermes's interpreter

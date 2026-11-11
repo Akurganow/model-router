@@ -16,7 +16,21 @@
 			"groupName": "typesafe sdk",
 			"semanticCommitType": "fix"
 		},
-		{ "matchManagers": ["bun"], "groupName": "omp" },
+		{
+			"description": "CI installs the latest omp release. The pin skips the 14-day age rule.",
+			"matchManagers": ["bun"],
+			"matchFileNames": [".github/actions/setup-omp/latest/package.json"],
+			"groupName": "omp latest",
+			"minimumReleaseAge": null,
+			"schedule": ["at any time"]
+		},
+		{
+			"description": "The minimum omp the README names. It moves only when a person approves the update on the Dependency Dashboard, and the README moves with it.",
+			"matchManagers": ["bun"],
+			"matchFileNames": [".github/actions/setup-omp/minimum/package.json"],
+			"groupName": "omp minimum",
+			"dependencyDashboardApproval": true
+		},
 		{
 			"description": "CI installs the latest OpenClaw release. The pin skips the 14-day age rule, and a rule here overrides the npm group above.",
 			"matchManagers": ["npm"],
