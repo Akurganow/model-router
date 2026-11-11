@@ -6,6 +6,7 @@ import {
 	buildPrompt,
 	contextText,
 	DEFAULT_ROLE,
+	descriptionText,
 	NO_DESCRIPTION,
 	OMISSION_MARKER,
 	prepareBrief,
@@ -260,6 +261,19 @@ test("a surrogate pair at the boundary is not split", () => {
 	const whole = roleText(`${"x".repeat(ROLE_CAP - 2)}\u{1F600}`);
 	assert.equal(whole.length, ROLE_CAP);
 	assert.ok(whole.endsWith("\u{1F600}"));
+});
+
+test("descriptionText masks, collapses, trims and cuts like the role text, with no neutral line", () => {
+	const key = "TOKEN=abc123def456";
+	assert.equal(
+		descriptionText(`  Fix the deploy,\n\n ${key} in .env  `),
+		"Fix the deploy, TOKEN=*** in .env",
+	);
+	assert.equal(descriptionText("x".repeat(100_000)), "x".repeat(ROLE_CAP));
+	for (const input of [undefined, null, 7, {}, "", " \n\t "])
+		assert.equal(descriptionText(input), "");
+	for (const input of ["a\tb", `${"x".repeat(ROLE_CAP - 1)}\u{1F600}`, key])
+		assert.equal(roleText(input), descriptionText(input));
 });
 
 test("a non-string, missing or blank description gives the neutral line", () => {

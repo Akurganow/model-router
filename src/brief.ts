@@ -70,13 +70,21 @@ export function contextText(context: unknown): string {
 		: "";
 }
 
-// Redaction runs before the cut, and the cut drops a lone high surrogate so no half of a pair is sent.
-export function roleText(description: unknown): string {
-	if (typeof description !== "string") return NO_DESCRIPTION;
+/**
+ * Returns a description as one masked line of at most ROLE_CAP characters, and
+ * an empty string for anything that is not text with a non-blank character.
+ * Redaction runs before the cut, and the cut drops a lone high surrogate so no
+ * half of a pair is sent. Never throws.
+ */
+export function descriptionText(description: unknown): string {
+	if (typeof description !== "string") return "";
 	const text = redact(description).replace(/\s+/g, " ").trim();
-	if (text === "") return NO_DESCRIPTION;
 	const cut = text.slice(0, ROLE_CAP);
 	return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP
 		? cut.slice(0, -1)
 		: cut;
+}
+
+export function roleText(description: unknown): string {
+	return descriptionText(description) || NO_DESCRIPTION;
 }
