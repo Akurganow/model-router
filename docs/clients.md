@@ -170,9 +170,12 @@ They give none for free `setTimeout` globals or for a size limit on the module.
 
 Documentation is the Markdown under `docs/` in `can1357/oh-my-pi`, and source is the TypeScript under `packages/`.
 A link is a permalink at commit `96e4d8e`, the head of `main` on 2026-11-05, unless its section names another commit.
+[omp tool_call cost and timeout](#omp-tool_call-cost-and-timeout) and the [omp gaps](#omp-gaps) entry on unrouted spawns were checked at tags `v18.12.6` (commit `45c35e4`) and `v18.18.9` (commit `50da2d3`) on 2026-11-11.
 The evals workflow pins omp 18.12.6 in `evals/omp/package.json`, and the README asks for that version or later.
 
 ### omp manifest and settings
+
+These facts were checked at commit `96e4d8e` only, not at omp 18.12.6 or 18.18.9.
 
 - Marketplace installs load extension modules that `package.json` declares in `omp.extensions`.
   Installation symlinks the cached plugin into the scope's `node_modules` and records it in `omp-plugins.lock.json`.
@@ -207,6 +210,8 @@ The evals workflow pins omp 18.12.6 in `evals/omp/package.json`, and the README 
 
 ### omp catalogue
 
+These facts were checked at commit `96e4d8e` only, not at omp 18.12.6 or 18.18.9.
+
 - omp looks for `.omp-plugin/marketplace.json` first and falls back to `.claude-plugin/marketplace.json`.
   A repository may ship both: omp reads the `.omp-plugin/` copy and Claude Code reads the `.claude-plugin/` copy.
   (documentation: [`marketplace.md` L16](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L16),
@@ -226,6 +231,9 @@ The evals workflow pins omp 18.12.6 in `evals/omp/package.json`, and the README 
   (documentation: [`marketplace.md` L86–L96](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L86-L96))
 
 ### omp install and update
+
+The documentation facts were read at commit `96e4d8e` only.
+The running fact names its omp version.
 
 - The commands are `omp plugin marketplace add <source>`, `omp plugin install name@marketplace` and `omp plugin upgrade [name@marketplace]`.
   `install` accepts `--scope user|project`, and the user scope is its default.
@@ -285,11 +293,14 @@ No documentation page was read for them.
 - The settings read of an extension covers the user scope lockfile only.
   A plugin installed with `--scope project` keeps its lockfile under the project, and that read does not see it.
   (source: `@oh-my-pi/pi-coding-agent@18.16.0`, `src/extensibility/plugins/loader.ts` L489–L491, not run)
+- The plugin at commit `022c3e1` installed from the checkout and from the unpacked tarball, and loaded its commands, on omp 18.12.6 and 18.18.9.
+  That run covers the install, not the settings name.
+  (running: omp 18.12.6 and 18.18.9, 2026-11-11, an install of the plugin and one `get_available_commands` request to `omp --mode rpc --no-ui` with a local stand-in model provider)
 
 ### omp per-call model
 
 These facts hold for omp 18.16.0.
-Links point at commit `650f3a1`, tag `v18.16.0`, whose `packages/coding-agent` is `@oh-my-pi/pi-coding-agent@18.16.0`.
+Links point at commit `650f3a1`, tag `v18.16.0`, whose `packages/coding-agent` is `@oh-my-pi/pi-coding-agent@18.16.0`, unless a fact names another version.
 
 - A `task` item may carry `model`, one exact `provider/model-id` selector.
   omp accepts it only when `task.perCallModel` is `on`, and the setting defaults to `off`.
@@ -314,6 +325,60 @@ Links point at commit `650f3a1`, tag `v18.16.0`, whose `packages/coding-agent` i
 - Plugin 0.17.0 returned a role for an item that set its own model, and the spawn ran on that role, not on the item's model.
   A level 0 item that named a large model got `@smol`, and a level 2 item that named a small one got `@slow`.
   (running: omp 18.16.0, 2026-11-06, with `task.perCallModel` set to `on` and one `task` call of those two items, each `model` a `provider/model-id`; the batch line showed `L0 @smol` for task 1 and `L2 @slow` for task 2)
+- omp 18.12.6 has no `task.perCallModel` setting: it arrived in 18.14.2.
+  (documentation: [`CHANGELOG.md` L566 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/CHANGELOG.md#L566), the 18.14.2 entry)
+- At omp 18.12.6 the docs mark the item `model` as seance only.
+  Yet the task tool passes it on as the request model for any agent, and the request model outranks the agent's own model.
+  (documentation: [`task.md` L47](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/docs/tools/task.md#L47);
+  source: [`task/index.ts` L346](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/index.ts#L346), [L923](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/index.ts#L923), [`structured-subagent.ts` L434](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/structured-subagent.ts#L434), not run)
+- From omp 18.18.4 the `task` tool advertises the item `model` only when `task.perCallModel` is `on` or the bundled seance is spawnable.
+  (documentation: [`CHANGELOG.md` L143 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/CHANGELOG.md#L143), the 18.18.4 entry)
+- The plugin skips every item that sets `model`, so these differences do not change what it routes on 18.12.6, 18.16.0 or 18.18.9.
+
+### omp tool_call cost and timeout
+
+These facts hold at omp 18.12.6 and 18.18.9.
+Each source fact links both tags: `v18.12.6` is commit `45c35e4` and `v18.18.9` is commit `50da2d3`.
+The running facts used omp from npm with a local stand-in model provider and called no paid model.
+
+- While any extension has a handler for `tool_call`, `tool_result`, `tool_approval_requested` or `tool_approval_resolved`, omp's speculation host refuses early work with the reason `active extension lifecycle handler`.
+  (source: [`speculation/host.ts` L76–L83 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/speculation/host.ts#L76-L83), [L76–L83 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/speculation/host.ts#L76-L83))
+- Early task launch asks that gate: the task tool calls `authorizeLaunch` before a launch, and `authorizeLaunch` calls the policy gate.
+  (source: [`task/index.ts` L696 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/index.ts#L696), [L909–L910 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/index.ts#L909-L910);
+  [`speculation/host.ts` L216–L234 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/speculation/host.ts#L216-L234), [L216–L235 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/speculation/host.ts#L216-L235))
+- `task.speculativeLaunch`, on by default, starts each subagent as soon as its `tasks[]` item has streamed.
+  Its description says it requires "no extension tool lifecycle handlers".
+  (source: [`task/settings.ts` L268–L279 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/settings.ts#L268-L279), [L311–L322 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/settings.ts#L311-L322);
+  documentation: [`task.md` L137 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/docs/tools/task.md#L137), [L164 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/docs/tools/task.md#L164))
+- Early local reads ask the same gate. `tools.speculativeExecution.enabled`, which turns them on, is experimental and off by default.
+  (source: [`speculation/host.ts` L142–L155 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/speculation/host.ts#L142-L155), [L142–L155 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/speculation/host.ts#L142-L155);
+  [`tools/settings.ts` L875–L886 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/tools/settings.ts#L875-L886), [L921–L932 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/tools/settings.ts#L921-L932))
+- The default tool approval mode is `yolo`, so without a `tool_call` handler speculative task launch is active by default.
+  (source: [`tools/settings.ts` L314–L318 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/tools/settings.ts#L314-L318), [L315–L319 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/tools/settings.ts#L315-L319))
+- `pi.on("tool_call", handler)` takes no tool filter, and the runner counts any handler for the event name.
+  `tool_execution_start` carries the arguments but is a mirrored notification that does not gate dispatch.
+  So no narrower registration avoids the veto.
+  (source: [`extensibility/extensions/types.ts` L1714 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/types.ts#L1714), [L1951 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/types.ts#L1951);
+  [`extensibility/extensions/runner.ts` L1380–L1388 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/runner.ts#L1380-L1388), [L1558–L1566 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/runner.ts#L1558-L1566);
+  [`extensibility/extensions/lifecycle-mirror.ts` L154–L163 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/lifecycle-mirror.ts#L154-L163), [L154–L163 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/lifecycle-mirror.ts#L154-L163))
+- The veto is in every omp version the plugin supports: it first appears in 18.1.19, and `task.speculativeLaunch` in 18.4.3.
+  (source: the `@oh-my-pi/pi-coding-agent` npm packages 18.1.18, 18.1.19, 18.4.2 and 18.4.3, searched for the veto reason and the setting name, not run)
+- omp registers `extensionHandlers.toolCallTimeoutMs`, a number with a default of 30000.
+  Time spent in omp's own dialogs does not count against it.
+  (source: [`extensibility/settings.ts` L151–L162 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/settings.ts#L151-L162), [L158–L169 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/settings.ts#L158-L169))
+- omp reads the setting on every tool call.
+  It keeps a finite value above 0 and replaces any other value with 30000.
+  (source: [`extensibility/extensions/runner.ts` L1945–L1990 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/runner.ts#L1945-L1990), [L2324–L2369 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/runner.ts#L2324-L2369);
+  [`extensibility/extensions/runner.ts` L133–L146 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/runner.ts#L133-L146), [L149–L162 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/runner.ts#L149-L162))
+- When a `tool_call` handler passes the timeout, omp blocks the tool call with the reason `Extension <path> timed out after <n>ms`.
+  (source: [`extensibility/extensions/runner.ts` L1973 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/runner.ts#L1973), [L2352 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/runner.ts#L2352))
+- A `before_subagent_spawn` handler gets a fixed 30 s instead, `extensionHandlerTimeoutMs`.
+  On that timeout omp logs it, and the spawn goes on without a model change.
+  (source: [`extensibility/extensions/runner.ts` L2309 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/runner.ts#L2309), [L2690 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/runner.ts#L2690);
+  [`extensibility/extensions/runner.ts` L1609–L1681 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/runner.ts#L1609-L1681), [L1925–L1998 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/runner.ts#L1925-L1998))
+- An extension that read `lookup("extensionHandlers.toolCallTimeoutMs")?.get(pi.pi.settings)` got 30000 with no setting and 2000 with the setting at 2000.
+  With the setting at 2000 and a `tool_call` handler that slept 3000 ms, the `task` call ended with `Extension <path> timed out after 2000ms`, and no subagent request reached the provider.
+  (running: omp 18.12.6 and 18.18.9, 2026-11-11, `omp -p` with a probe extension)
 
 ### omp gaps
 
@@ -325,6 +390,20 @@ The [omp install names](#omp-install-names) facts ran on omp 18.16.0.
 CI pins omp 18.12.6 in `evals/omp/package.json`, which `.github/actions/setup-omp/action.yml` installs, and the README asks for that version or later.
 The `package` job in `.github/workflows/ci.yml` only installs the unpacked tarball and lists the package, so no run exercises the settings name on omp 18.12.6.
 The settings-name facts are unchecked on every omp version from 18.12.6 up to 18.16.0.
+
+The plugin routes the subagents of a `task` call only.
+omp also fires `before_subagent_spawn` for eval `agent()` and `workpool()` spawns, with `invocationKind` `"eval"`.
+The plugin returns nothing for them, because no `task` batch scored them.
+Some subagents start with no `before_subagent_spawn` event, so no plugin can change their model:
+`/cleanse` workers, vibe workers, follow-up turns of a running subagent, revived subagents, and a seance that reuses a prepared session.
+(source: omp 18.12.6 and 18.18.9, not run:
+[`task/structured-subagent.ts` L492–L521 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/structured-subagent.ts#L492-L521), [L686–L715 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/structured-subagent.ts#L686-L715) for `applySpawnHook`;
+[`eval/agent-bridge.ts` L196 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/eval/agent-bridge.ts#L196), [L204 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/eval/agent-bridge.ts#L204);
+[`eval/workpool-bridge.ts` L81 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/eval/workpool-bridge.ts#L81), [L80 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/eval/workpool-bridge.ts#L80);
+[`cleanse/agent.ts` L106–L177 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/cleanse/agent.ts#L106-L177), [L94–L168 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/cleanse/agent.ts#L94-L168);
+[`vibe/runtime.ts` L1391–L1392 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/vibe/runtime.ts#L1391-L1392), [L1394–L1395 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/vibe/runtime.ts#L1394-L1395);
+[`task/workpool.ts` L401 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/workpool.ts#L401), [L406 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/workpool.ts#L406);
+[`task/restore.ts` L89 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/restore.ts#L89), [L90 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/restore.ts#L90))
 
 ## OpenClaw
 
