@@ -3,6 +3,37 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.19.1 - 2026-11-11
+#### Bug Fixes
+- the routed-effort store drops the least recently used subagent (61fc1e4)
+- a resumed Claude Code subagent keeps its routed effort (bc152f8)
+#### Documentation
+- (**omp**) the task-only choice needs the effective scope at core, which a project's scope overrides (eda98a3)
+- record that a resumed Claude Code subagent stays on its routed model (e74e903)
+- rewrap the level 1 paragraph in model-choice.md (bfdc968)
+- record the Claude Code subagent events the adapter relies on (a1de08d)
+- level 1 wording matches what each harness does (4b949a0)
+- the Claude Code README says a resumed subagent keeps its routed effort (502ff6b)
+- a rule for paid runs, and the Claude Code eval on haiku (ba057b8)
+- a 32 KB palette icon and a shorter banner alt text (14bae62)
+- a Gamayun banner under the README badges and a matching plugin icon (1183212)
+- a skip line names both providers after both providers fail, not after two requests (3aada7a)
+- a neutral shared providers page, the true retry rule, and README wording restored (0da96a6)
+- one copy of each passage the plugin docs share, in docs/providers.md (31fceb4)
+#### Continuous Integration
+- a merge reuses the head's verdict only after a scan job on the head succeeded (e54b235)
+- the policy scan runs on Sonnet 5.5 (47ebe60)
+- the policy scan runs on Haiku 5.5 (6738228)
+- each push to main gets its own policy scan group (e06096e)
+- the policy scan skips drafts, cancels stale runs and reuses the head's verdict on merge (0ff4e08)
+#### Refactoring
+- one helper each for the slot of a level, the error text and the line parts (5da8aca)
+- the provider list sits beside the key variables, and OpenClaw reads the shared level-to-slot table (6edc7b6)
+- one home for the tool name, the command names, the line prefix and the fake clock (5b4f8d8)
+
+- - -
+
+
 ## v0.19.0 - 2026-11-06
 #### Features
 - (**hermes**) a read-only settings tool, a provider command for local sessions and a setup skill (95179f7)
