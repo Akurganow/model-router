@@ -1758,6 +1758,11 @@ function budgetFor(value) {
 // src/core/reasons.ts
 var CALLER_EFFORT = "caller effort";
 var CONFIG_EFFORT = "config effort";
+var LEVEL_SLOTS = {
+  0: "small",
+  2: "large"
+};
+var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
 
 // src/adapters/omp/effort.ts
 var NO_PATTERNS = "no model patterns";
@@ -1912,11 +1917,6 @@ var streamedFetch = async (url, init) => {
 
 // src/adapters/omp/score.ts
 var MAX_PARALLEL = 4;
-var ROLE_BY_LEVEL = {
-  0: ROLES.small,
-  1: void 0,
-  2: ROLES.large
-};
 async function scoreItems(items, context, { attempts, keys, facts }, deadline) {
   const limit = new AbortController();
   if (deadline <= 0) limit.abort(LIMIT_REACHED);
@@ -1963,9 +1963,10 @@ var skipped = (reason) => ({ line: skippedLine(reason) });
 function toStored(decision, item, facts) {
   const decided = decide2(decision, tier.key, work.key);
   if ("skipped" in decided) return skipped(decided.skipped);
+  const slot = slotForLevel(decided.tier);
   const routed = {
     level: decided.tier,
-    role: ROLE_BY_LEVEL[decided.tier],
+    role: slot === null ? void 0 : ROLES[slot],
     ladder: effortFor(decided.tier, decided.work),
     itemEffort: item.effort !== void 0,
     probabilities: decided.probabilities,

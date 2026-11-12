@@ -1689,6 +1689,12 @@ var LEVEL_SLOTS = {
 var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
 var modelUnset = (slot) => `${slot} model unset`;
 var modelUnresolved = (slot) => `${slot} model unresolved`;
+var modelForLevel = (level, models) => {
+  const slot = slotForLevel(level);
+  if (slot === null) return { slot };
+  const model = models[slot];
+  return model === void 0 ? { skipped: modelUnset(slot) } : { slot, model };
+};
 
 // src/utils/deadline.ts
 async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
@@ -1900,10 +1906,6 @@ function readSpawn(params) {
 // src/adapters/openclaw/router.ts
 var SPAWN_TOOL = "sessions_spawn";
 var HOOK = "before_tool_call";
-var SLOT_MODELS = {
-  small: (s) => s.smallModel,
-  large: (s) => s.largeModel
-};
 function spawnLine(api, signal) {
   let open = true;
   const onAbort = () => {
@@ -1944,12 +1946,14 @@ async function score({ deps, signal }, settings, keys, gate) {
   return decide2(decision, tier.key, work.key);
 }
 async function slotFor(runtime, settings, { config, target }, level) {
-  const name = slotForLevel(level);
-  if (name === null) return { model: void 0 };
-  const model = SLOT_MODELS[name](settings);
-  if (model === void 0) return { skipped: modelUnset(name) };
-  if (!await slotResolves(runtime, config, target, model))
-    return { skipped: modelUnresolved(name) };
+  const picked = modelForLevel(level, {
+    small: settings.smallModel,
+    large: settings.largeModel
+  });
+  if ("skipped" in picked) return picked;
+  const { slot, model } = picked;
+  if (slot !== null && !await slotResolves(runtime, config, target, model))
+    return { skipped: modelUnresolved(slot) };
   return { model };
 }
 async function routeSpawn(spawn) {

@@ -17,8 +17,7 @@ import {
 	CALLER_EFFORT,
 	CONFIG_EFFORT,
 	type EndSlot,
-	modelUnset,
-	slotForLevel,
+	modelForLevel,
 } from "../../core/reasons.ts";
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
@@ -95,9 +94,9 @@ function answer(
 	decided: DecidedWithWork,
 ): HermesResponse {
 	const level = decided.tier;
-	const slot = slotForLevel(level);
-	const target = slot === null ? undefined : request.models[slot];
-	if (slot !== null && target === undefined) return skip(modelUnset(slot));
+	const picked = modelForLevel(level, request.models);
+	if ("skipped" in picked) return skip(picked.skipped);
+	const { slot, model: target } = picked;
 	const effort = effortFor(level, decided.work);
 	const kept =
 		request.keptEffort === undefined

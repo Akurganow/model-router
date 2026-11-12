@@ -11,8 +11,8 @@ import { work } from "../../core/effort.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { skippedLine } from "../../core/line.ts";
 import { tier } from "../../core/model.ts";
-import type { Level } from "../../core/part.ts";
 import type { Provider } from "../../core/provider.ts";
+import { slotForLevel } from "../../core/reasons.ts";
 import { streamedFetch } from "../../utils/fetch.ts";
 import { lineFor, planEffort, type Routed } from "./effort.ts";
 import { type Batch, ROLES } from "./gates.ts";
@@ -35,11 +35,6 @@ export type Pending = {
 type Scored = Pending & { readonly stored: Stored };
 
 const MAX_PARALLEL = 4;
-const ROLE_BY_LEVEL: Record<Level, string | undefined> = {
-	0: ROLES.small,
-	1: undefined,
-	2: ROLES.large,
-};
 
 // One deadline covers the batch. Aborting also ends the SDK's retry wait, so no request follows a skip.
 // A provider passed over once is dropped for items that start later, and only within this batch.
@@ -116,9 +111,10 @@ function toStored(
 ): Stored {
 	const decided = decide(decision, tier.key, work.key);
 	if ("skipped" in decided) return skipped(decided.skipped);
+	const slot = slotForLevel(decided.tier);
 	const routed: Routed = {
 		level: decided.tier,
-		role: ROLE_BY_LEVEL[decided.tier],
+		role: slot === null ? undefined : ROLES[slot],
 		ladder: effortFor(decided.tier, decided.work),
 		itemEffort: item.effort !== undefined,
 		probabilities: decided.probabilities,

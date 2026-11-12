@@ -1481,6 +1481,12 @@ var LEVEL_SLOTS = {
 };
 var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
 var modelUnset = (slot) => `${slot} model unset`;
+var modelForLevel = (level, models) => {
+  const slot = slotForLevel(level);
+  if (slot === null) return { slot };
+  const model = models[slot];
+  return model === void 0 ? { skipped: modelUnset(slot) } : { slot, model };
+};
 
 // src/utils/deadline.ts
 async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
@@ -1591,9 +1597,9 @@ async function scored(request, deps, signal) {
 }
 function answer(request, decided) {
   const level = decided.tier;
-  const slot = slotForLevel(level);
-  const target = slot === null ? void 0 : request.models[slot];
-  if (slot !== null && target === void 0) return skip2(modelUnset(slot));
+  const picked = modelForLevel(level, request.models);
+  if ("skipped" in picked) return skip2(picked.skipped);
+  const { slot, model: target } = picked;
   const effort = effortFor(level, decided.work);
   const kept = request.keptEffort === void 0 ? void 0 : KEPT_LABELS[request.keptEffort];
   return {

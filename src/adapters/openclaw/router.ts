@@ -9,12 +9,7 @@ import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
 import { tier } from "../../core/model.ts";
 import type { Level } from "../../core/part.ts";
 import { type Keys, plan } from "../../core/provider.ts";
-import {
-	type EndSlot,
-	modelUnresolved,
-	modelUnset,
-	slotForLevel,
-} from "../../core/reasons.ts";
+import { modelForLevel, modelUnresolved } from "../../core/reasons.ts";
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
 import { nonEmpty } from "../../utils/text.ts";
@@ -37,13 +32,6 @@ import type {
 
 export const SPAWN_TOOL = "sessions_spawn";
 export const HOOK = "before_tool_call";
-// The setting that holds each slot's model; slotForLevel says which level takes which slot.
-const SLOT_MODELS: Readonly<
-	Record<EndSlot, (s: OpenClawSettings) => string | undefined>
-> = {
-	small: (s) => s.smallModel,
-	large: (s) => s.largeModel,
-};
 
 export type RouterDeps = {
 	readonly fetchFn: Fetch;
@@ -136,12 +124,14 @@ async function slotFor(
 	{ config, target }: Route,
 	level: Level,
 ): Promise<Slot> {
-	const name = slotForLevel(level);
-	if (name === null) return { model: undefined };
-	const model = SLOT_MODELS[name](settings);
-	if (model === undefined) return { skipped: modelUnset(name) };
-	if (!(await slotResolves(runtime, config, target, model)))
-		return { skipped: modelUnresolved(name) };
+	const picked = modelForLevel(level, {
+		small: settings.smallModel,
+		large: settings.largeModel,
+	});
+	if ("skipped" in picked) return picked;
+	const { slot, model } = picked;
+	if (slot !== null && !(await slotResolves(runtime, config, target, model)))
+		return { skipped: modelUnresolved(slot) };
 	return { model };
 }
 
