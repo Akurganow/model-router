@@ -18,220 +18,8 @@ function clearTimeout(timer) {
   timer?.cancel();
 }
 
-// src/utils/text.ts
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
-};
-
-// src/core/brief.ts
-var BUDGET_CHARS = 12e3;
-var ROLE_CAP = 500;
-var NO_DESCRIPTION = "An agent with no description.";
-var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
-var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
-var HEAD_SHARE = 2 / 3;
-var CONTEXT_CAP_CHARS = 3e3;
-var CONTEXT_MIN_CHARS = 500;
-var CONTEXT_LABEL = "\n\nBatch context:\n";
-var PEM_LABEL = "[ A-Z0-9_-]{0,100}PRIVATE KEY(?: BLOCK)?-----";
-var AWS_ID = "(?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}(?![A-Za-z0-9])";
-var AUTH_SCHEMES = [
-  "AWS4-HMAC-SHA256",
-  "ApiKey",
-  "Basic",
-  "Bearer",
-  "Concealed",
-  "Digest",
-  "DPoP",
-  "GNAP",
-  "HOBA",
-  "Mutual",
-  "Negotiate",
-  "NTLM",
-  "OAuth",
-  "PrivateToken",
-  "SCRAM-SHA-1",
-  "SCRAM-SHA-256",
-  "Token",
-  "vapid"
-].join("|");
-var AUTH_HEAD = `\\bAuthorization["']?\\s*[:=]\\s*`;
-var AUTH_SCHEME = `(?:${AUTH_SCHEMES})[ \\t]+`;
-var quotedRun = (quote) => `[^${quote}\\\\\\n]*(?:\\\\.[^${quote}\\\\\\n]*)*`;
-var TOKEN_PREFIXES = {
-  "GitHub token": "gh[pousr]_[A-Za-z0-9]{36,}",
-  "GitHub fine-grained token": "github_pat_[A-Za-z0-9_]{22,}",
-  "GitLab token": "glpat-[A-Za-z0-9_-]{20,}",
-  "Slack token": "xox[abeoprs]-[A-Za-z0-9-]{10,}",
-  "Slack app token": "xapp-\\d-[A-Za-z0-9-]{10,}",
-  "Slack webhook": "hooks\\.slack\\.com/(?:services|workflows|triggers)/[A-Za-z0-9+/]{20,}",
-  "AWS access key id": AWS_ID,
-  "Google API key": "AIza[A-Za-z0-9_-]{35,}",
-  "Stripe key": "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
-  "npm token": "npm_[A-Za-z0-9]{36,}",
-  "Hugging Face token": "hf_[A-Za-z]{34,}",
-  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
-};
-var REDACTIONS = [
-  {
-    name: "PEM private key",
-    pattern: new RegExp(
-      `-----BEGIN${PEM_LABEL}(?:(?:[^-]|-(?!----))*-----END${PEM_LABEL}|(?:(?:\\s|\\\\[rn])+[A-Za-z0-9+/=]{16,})*)`,
-      "gi"
-    ),
-    replacement: "***"
-  },
-  {
-    name: "URL credentials",
-    pattern: /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]*:[^\s/?#'"]+@/gi,
-    replacement: "$1***@"
-  },
-  {
-    name: "Authorization header",
-    pattern: new RegExp(
-      `(${AUTH_HEAD}["']?${AUTH_SCHEME})(?:${[
-        `(?<="${AUTH_SCHEME})${quotedRun('"')}`,
-        `(?<='${AUTH_SCHEME})${quotedRun("'")}`,
-        `(?<="${AUTH_HEAD}${AUTH_SCHEME})${quotedRun('"')}`,
-        `(?<='${AUTH_HEAD}${AUTH_SCHEME})${quotedRun("'")}`,
-        "[^\\n]*"
-      ].join("|")})|(${AUTH_HEAD}["']?)[A-Za-z0-9._~+/=-]{16,}`,
-      "gi"
-    ),
-    replacement: "$1$2***"
-  },
-  {
-    name: "AWS secret",
-    pattern: new RegExp(
-      `((?<![A-Za-z0-9])${AWS_ID}[^\\n]{0,100}?)(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{40}(?![A-Za-z0-9+/=])`,
-      "g"
-    ),
-    replacement: "$1***"
-  },
-  {
-    name: "JSON Web Token",
-    pattern: /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}={0,2}\.ey[A-Za-z0-9_-]{8,}={0,2}\.[A-Za-z0-9_-]*/g,
-    replacement: "***"
-  },
-  {
-    name: "token prefixes",
-    pattern: new RegExp(
-      `(?<![A-Za-z0-9])(?:${Object.values(TOKEN_PREFIXES).join("|")})`,
-      "g"
-    ),
-    replacement: "***"
-  },
-  {
-    name: "Bearer token",
-    pattern: /Bearer\s+[A-Za-z0-9._~+/=-]+/gi,
-    replacement: "Bearer ***"
-  },
-  { name: "sk- key", pattern: /\bsk-[A-Za-z0-9_-]{8,}/g, replacement: "***" },
-  {
-    name: "curl user",
-    pattern: /((?<!\S)(?:-[A-Za-z]{0,8}u|--(?:proxy-)?user)(?:\s+|=)?)(?:"[^"\n:]*:[^"\n]*"|'[^'\n:]*:[^'\n]*'|[^\s"':]+:[^\s"']+)/g,
-    replacement: "$1***"
-  },
-  {
-    name: "password is",
-    pattern: /\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)(?::\s*|\s+))(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
-    replacement: "$1$2***"
-  },
-  {
-    name: "secret name",
-    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
-    replacement: "$1$2***"
-  }
-];
-var FENCE_OPENER = /(?<![`~])(?:(`{3,})[^\n`]*|(~{3,})[^\n~]*)\n/g;
-var FENCE_CLOSER = /^ {0,3}(`{3,}|~{3,})[ \t]*\r?$/;
-function prepareBrief(text, budget = BUDGET_CHARS) {
-  const condensed = condense(redact(text));
-  if (condensed.length <= budget) return condensed;
-  const kept = budget - OMISSION_MARKER.length;
-  const head = Math.floor(kept * HEAD_SHARE);
-  const tail = kept - head;
-  return `${condensed.slice(0, head)}${OMISSION_MARKER}${condensed.slice(condensed.length - tail)}`;
-}
-function condense(text) {
-  return condenseFences(text).replace(/\n{3,}/g, "\n\n");
-}
-function condenseFences(text) {
-  const lines = text.split("\n");
-  const starts = [];
-  let offset = 0;
-  for (const line2 of lines) {
-    starts.push(offset);
-    offset += line2.length + 1;
-  }
-  const runs = lines.map((line2) => FENCE_CLOSER.exec(line2)?.[1] ?? "");
-  const longest = {
-    "`": longestAfter(runs, "`"),
-    "~": longestAfter(runs, "~")
-  };
-  const opener = new RegExp(FENCE_OPENER);
-  let out = "";
-  let kept = 0;
-  let line = 0;
-  for (let open = opener.exec(text); open; open = opener.exec(text)) {
-    const run = open[1] ?? open[2] ?? "";
-    const first = open.index + open[0].length;
-    while ((starts[line] ?? Number.POSITIVE_INFINITY) < first) line++;
-    const char = run.startsWith("`") ? "`" : "~";
-    if ((longest[char][line] ?? 0) < run.length) continue;
-    let close = line;
-    while (!closes(runs[close] ?? "", run)) close++;
-    const count = close - line;
-    out += `${text.slice(kept, open.index)}[an exact block of ${count} ${count === 1 ? "line" : "lines"} is given verbatim]`;
-    kept = (starts[close] ?? 0) + (lines[close]?.length ?? 0);
-    opener.lastIndex = kept;
-  }
-  return out + text.slice(kept);
-}
-var closes = (closer, opener) => closer.startsWith(opener.charAt(0)) && closer.length >= opener.length;
-function longestAfter(runs, char) {
-  const longest = new Array(runs.length + 1).fill(0);
-  for (let k = runs.length - 1; k >= 0; k--) {
-    const run = runs[k] ?? "";
-    longest[k] = Math.max(
-      longest[k + 1] ?? 0,
-      run.startsWith(char) ? run.length : 0
-    );
-  }
-  return longest;
-}
-function redact(text) {
-  return REDACTIONS.reduce(
-    (t, { pattern, replacement }) => t.replace(pattern, replacement),
-    text
-  );
-}
-function buildPrompt(task, context) {
-  const brief = prepareBrief(task);
-  const budget = Math.min(
-    BUDGET_CHARS - brief.length - CONTEXT_LABEL.length,
-    CONTEXT_CAP_CHARS
-  );
-  if (context === "" || budget < CONTEXT_MIN_CHARS) return brief;
-  return `${brief}${CONTEXT_LABEL}${prepareBrief(context, budget)}`;
-}
-function descriptionText(description) {
-  if (typeof description !== "string") return "";
-  const text = redact(description).replace(/\s+/g, " ").trim();
-  const cut = text.slice(0, ROLE_CAP);
-  return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
-}
-function roleText(description) {
-  return descriptionText(description) || NO_DESCRIPTION;
-}
-function routingState(raw) {
-  return {
-    role: roleText(raw.role),
-    description: descriptionText(raw.description),
-    task: buildPrompt(raw.task, raw.context ?? "")
-  };
-}
+// src/utils/error.ts
+var errorText = (err) => err instanceof Error ? err.message : String(err);
 
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
 var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
@@ -728,13 +516,13 @@ var redactKey = (value) => {
   const tail = secret && secret.length > 8 ? secret.slice(-4) : "";
   return `${scheme ? `${scheme} ` : ""}***${tail}`;
 };
-var redact2 = (name, value) => {
+var redact = (name, value) => {
   const lower = name.toLowerCase();
   if (KEY_HEADERS.has(lower)) return redactKey(value);
   if (OPAQUE_HEADERS.has(lower)) return "***";
   return value;
 };
-var redactHeaders = (headers) => Object.fromEntries(Object.entries(headers).map(([name, value]) => [name, redact2(name, value)]));
+var redactHeaders = (headers) => Object.fromEntries(Object.entries(headers).map(([name, value]) => [name, redact(name, value)]));
 var isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 var validateChoice = (name, { criteria }) => {
   if (!isObject(criteria)) throw new TypeSafeError(`Choice question "${name}" has criteria that are not a map; choice criteria must be a map of labels to descriptions.`);
@@ -1142,9 +930,6 @@ var parseBody = async (res) => {
   }
 };
 
-// src/utils/guards.ts
-var isRecord2 = (v) => typeof v === "object" && v !== null;
-
 // src/core/provider.ts
 var PROVIDER_VALUES = [
   "auto",
@@ -1208,6 +993,421 @@ function fallsBack(err) {
   const { status } = err;
   return FALLBACK_STATUSES.has(status) || status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
 }
+
+// src/core/scope.ts
+var SCOPE_VALUES = ["core", "extended"];
+var DEFAULT_SCOPE = "core";
+var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
+var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
+
+// src/core/settings.ts
+var VALUE_SETTINGS = ["provider", "scope"];
+var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
+var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
+var LABEL_SEPARATOR = " - ";
+var TEXTS = {
+  provider: {
+    values: PROVIDER_VALUES,
+    resolve,
+    about: "which providers score subagent calls",
+    question: "Which providers should score subagent calls?",
+    consequences: {
+      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
+      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
+      typesafe: "TypeSafe only",
+      openrouter: "OpenRouter only"
+    }
+  },
+  scope: {
+    values: SCOPE_VALUES,
+    resolve: resolveScope,
+    about: "which agent calls the router routes",
+    question: "Which agent calls should the router route?",
+    consequences: {
+      core: "today's routing: built-in general agents only",
+      extended: "also routes other agents that pass no model"
+    }
+  }
+};
+var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
+var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
+var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
+var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
+var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
+var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
+var alreadyValue = (value) => `already ${value}`;
+var NO_ANSWER = "no answer from the dialog";
+var NOT_OFFERED = "the answer was not one of the offered values";
+var keyLine = (provider, state) => `${provider} key: ${state}`;
+var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
+function ask(setting, current2) {
+  const { values, resolve: resolve2, question } = TEXTS[setting];
+  const first = resolve2(current2);
+  const sorted = [first, ...values.filter((value) => value !== first)];
+  return { question, options: sorted.map((value) => label(setting, value)) };
+}
+function pick(setting, answer2) {
+  return TEXTS[setting].values.find(
+    (value) => label(setting, value) === answer2
+  );
+}
+async function chooseValue(setting, current2, select, apply) {
+  const { question, options } = ask(setting, current2);
+  let answer2;
+  try {
+    answer2 = await select(question, options);
+  } catch {
+    answer2 = void 0;
+  }
+  if (answer2 === void 0) return unchanged(setting, NO_ANSWER);
+  const value = pick(setting, answer2);
+  return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply(value);
+}
+var settingsReport = (provider, scope, extra, keys) => [
+  valueLine("provider", provider),
+  valueLine("scope", scope),
+  ...extra,
+  ...order(provider).map(
+    (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
+  )
+].join("\n");
+var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
+var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
+function describeCommand(setting) {
+  const { about, values } = TEXTS[setting];
+  return `Shows or changes ${about}: ${values.join(", ")}.`;
+}
+var COMMAND_DESCRIPTIONS = {
+  provider: describeCommand("provider"),
+  scope: describeCommand("scope")
+};
+
+// src/utils/serializer.ts
+function serializer() {
+  let tail = Promise.resolve();
+  return (job) => {
+    const run = tail.then(job);
+    tail = run.catch(() => void 0);
+    return run;
+  };
+}
+
+// src/adapters/claude/host.ts
+var EFFORTS_MAX = 1024;
+function passOn(_, e, next) {
+  return next(e);
+}
+async function* passStep(_, e, next) {
+  return yield* next(e);
+}
+async function denied($, call) {
+  const {
+    tool,
+    tool_use_id: _id,
+    agentId: _agentId,
+    requestMeta: _meta,
+    ...input
+  } = call;
+  return (await $.tool.check({ tool, input })).decision === "deny";
+}
+
+// src/utils/text.ts
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+
+// src/adapters/claude/keys.ts
+async function readKeys($, options, provider) {
+  return collectKeys(
+    provider,
+    async (name) => nonEmpty(options[KEY_FIELDS[name]]) ?? nonEmpty(await keyVariable($, name))
+  );
+}
+function keyVariable($, provider) {
+  return provider === "typesafe" ? $.env.get("TYPESAFE_API_KEY") : $.env.get("OPENROUTER_API_KEY");
+}
+
+// src/adapters/claude/config.ts
+var ROW_PREFIX = "model-router.";
+var REFUSED = "Permission rules deny this tool, so nothing was read or changed.";
+var PERSON = "composer";
+var TOOL_SPEC = {
+  name: "config",
+  description: toolDescription(VALUE_SETTINGS),
+  inputSchema: {
+    type: "object",
+    properties: { setting: { type: "string", enum: VALUE_SETTINGS } }
+  }
+};
+var written = {};
+var serial = serializer();
+function resetConfig() {
+  for (const setting of VALUE_SETTINGS) delete written[setting];
+  serial = serializer();
+}
+var current = (options, setting) => written[setting] ?? options[setting];
+async function registerConfigTool($, e, next) {
+  await $.tool.register(TOOL_SPEC);
+  return next(e);
+}
+async function write($, setting, value) {
+  try {
+    const { deny } = await $.config.set({
+      key: `${ROW_PREFIX}${setting}`,
+      value
+    });
+    if (deny !== void 0) return unchanged(setting, deny);
+    written[setting] = value;
+    return valueLine(setting, value);
+  } catch (err) {
+    return unchangedBy(setting, err);
+  }
+}
+async function choose($, setting, options) {
+  return chooseValue(
+    setting,
+    current(options, setting),
+    (question, labels) => $.ui.ask(question, { options: labels, header: setting }),
+    async (value) => value === current(options, setting) ? unchanged(setting, alreadyValue(value)) : write($, setting, value)
+  );
+}
+async function read($, options) {
+  const provider = current(options, "provider");
+  const keys = await readKeys($, options, provider);
+  return settingsReport(provider, current(options, "scope"), [], keys);
+}
+async function answer($, call, options) {
+  if (await denied($, call)) return { deny: REFUSED };
+  const { setting } = call;
+  if (setting === void 0) return { result: await read($, options) };
+  if (isValueSetting(setting))
+    return { result: await choose($, setting, options) };
+  return { result: badCall(VALUE_SETTINGS) };
+}
+function configCall($, call, options) {
+  return serial(() => answer($, call, options));
+}
+async function configCommand($, e, setting, options) {
+  const args = e.args.trim();
+  if (args !== "" && !isValue(setting, args))
+    return { text: useOneOf(setting) };
+  if (args === "" || e.origin.kind !== PERSON)
+    return { text: valueLine(setting, current(options, setting)) };
+  return { text: await write($, setting, args) };
+}
+
+// src/core/brief.ts
+var BUDGET_CHARS = 12e3;
+var ROLE_CAP = 500;
+var NO_DESCRIPTION = "An agent with no description.";
+var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
+var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
+var HEAD_SHARE = 2 / 3;
+var CONTEXT_CAP_CHARS = 3e3;
+var CONTEXT_MIN_CHARS = 500;
+var CONTEXT_LABEL = "\n\nBatch context:\n";
+var PEM_LABEL = "[ A-Z0-9_-]{0,100}PRIVATE KEY(?: BLOCK)?-----";
+var AWS_ID = "(?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}(?![A-Za-z0-9])";
+var AUTH_SCHEMES = [
+  "AWS4-HMAC-SHA256",
+  "ApiKey",
+  "Basic",
+  "Bearer",
+  "Concealed",
+  "Digest",
+  "DPoP",
+  "GNAP",
+  "HOBA",
+  "Mutual",
+  "Negotiate",
+  "NTLM",
+  "OAuth",
+  "PrivateToken",
+  "SCRAM-SHA-1",
+  "SCRAM-SHA-256",
+  "Token",
+  "vapid"
+].join("|");
+var AUTH_HEAD = `\\bAuthorization["']?\\s*[:=]\\s*`;
+var AUTH_SCHEME = `(?:${AUTH_SCHEMES})[ \\t]+`;
+var quotedRun = (quote) => `[^${quote}\\\\\\n]*(?:\\\\.[^${quote}\\\\\\n]*)*`;
+var TOKEN_PREFIXES = {
+  "GitHub token": "gh[pousr]_[A-Za-z0-9]{36,}",
+  "GitHub fine-grained token": "github_pat_[A-Za-z0-9_]{22,}",
+  "GitLab token": "glpat-[A-Za-z0-9_-]{20,}",
+  "Slack token": "xox[abeoprs]-[A-Za-z0-9-]{10,}",
+  "Slack app token": "xapp-\\d-[A-Za-z0-9-]{10,}",
+  "Slack webhook": "hooks\\.slack\\.com/(?:services|workflows|triggers)/[A-Za-z0-9+/]{20,}",
+  "AWS access key id": AWS_ID,
+  "Google API key": "AIza[A-Za-z0-9_-]{35,}",
+  "Stripe key": "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
+  "npm token": "npm_[A-Za-z0-9]{36,}",
+  "Hugging Face token": "hf_[A-Za-z]{34,}",
+  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
+};
+var REDACTIONS = [
+  {
+    name: "PEM private key",
+    pattern: new RegExp(
+      `-----BEGIN${PEM_LABEL}(?:(?:[^-]|-(?!----))*-----END${PEM_LABEL}|(?:(?:\\s|\\\\[rn])+[A-Za-z0-9+/=]{16,})*)`,
+      "gi"
+    ),
+    replacement: "***"
+  },
+  {
+    name: "URL credentials",
+    pattern: /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]*:[^\s/?#'"]+@/gi,
+    replacement: "$1***@"
+  },
+  {
+    name: "Authorization header",
+    pattern: new RegExp(
+      `(${AUTH_HEAD}["']?${AUTH_SCHEME})(?:${[
+        `(?<="${AUTH_SCHEME})${quotedRun('"')}`,
+        `(?<='${AUTH_SCHEME})${quotedRun("'")}`,
+        `(?<="${AUTH_HEAD}${AUTH_SCHEME})${quotedRun('"')}`,
+        `(?<='${AUTH_HEAD}${AUTH_SCHEME})${quotedRun("'")}`,
+        "[^\\n]*"
+      ].join("|")})|(${AUTH_HEAD}["']?)[A-Za-z0-9._~+/=-]{16,}`,
+      "gi"
+    ),
+    replacement: "$1$2***"
+  },
+  {
+    name: "AWS secret",
+    pattern: new RegExp(
+      `((?<![A-Za-z0-9])${AWS_ID}[^\\n]{0,100}?)(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{40}(?![A-Za-z0-9+/=])`,
+      "g"
+    ),
+    replacement: "$1***"
+  },
+  {
+    name: "JSON Web Token",
+    pattern: /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}={0,2}\.ey[A-Za-z0-9_-]{8,}={0,2}\.[A-Za-z0-9_-]*/g,
+    replacement: "***"
+  },
+  {
+    name: "token prefixes",
+    pattern: new RegExp(
+      `(?<![A-Za-z0-9])(?:${Object.values(TOKEN_PREFIXES).join("|")})`,
+      "g"
+    ),
+    replacement: "***"
+  },
+  {
+    name: "Bearer token",
+    pattern: /Bearer\s+[A-Za-z0-9._~+/=-]+/gi,
+    replacement: "Bearer ***"
+  },
+  { name: "sk- key", pattern: /\bsk-[A-Za-z0-9_-]{8,}/g, replacement: "***" },
+  {
+    name: "curl user",
+    pattern: /((?<!\S)(?:-[A-Za-z]{0,8}u|--(?:proxy-)?user)(?:\s+|=)?)(?:"[^"\n:]*:[^"\n]*"|'[^'\n:]*:[^'\n]*'|[^\s"':]+:[^\s"']+)/g,
+    replacement: "$1***"
+  },
+  {
+    name: "password is",
+    pattern: /\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)(?::\s*|\s+))(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    replacement: "$1$2***"
+  },
+  {
+    name: "secret name",
+    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    replacement: "$1$2***"
+  }
+];
+var FENCE_OPENER = /(?<![`~])(?:(`{3,})[^\n`]*|(~{3,})[^\n~]*)\n/g;
+var FENCE_CLOSER = /^ {0,3}(`{3,}|~{3,})[ \t]*\r?$/;
+function prepareBrief(text, budget = BUDGET_CHARS) {
+  const condensed = condense(redact2(text));
+  if (condensed.length <= budget) return condensed;
+  const kept = budget - OMISSION_MARKER.length;
+  const head = Math.floor(kept * HEAD_SHARE);
+  const tail = kept - head;
+  return `${condensed.slice(0, head)}${OMISSION_MARKER}${condensed.slice(condensed.length - tail)}`;
+}
+function condense(text) {
+  return condenseFences(text).replace(/\n{3,}/g, "\n\n");
+}
+function condenseFences(text) {
+  const lines = text.split("\n");
+  const starts = [];
+  let offset = 0;
+  for (const line2 of lines) {
+    starts.push(offset);
+    offset += line2.length + 1;
+  }
+  const runs = lines.map((line2) => FENCE_CLOSER.exec(line2)?.[1] ?? "");
+  const longest = {
+    "`": longestAfter(runs, "`"),
+    "~": longestAfter(runs, "~")
+  };
+  const opener = new RegExp(FENCE_OPENER);
+  let out = "";
+  let kept = 0;
+  let line = 0;
+  for (let open = opener.exec(text); open; open = opener.exec(text)) {
+    const run = open[1] ?? open[2] ?? "";
+    const first = open.index + open[0].length;
+    while ((starts[line] ?? Number.POSITIVE_INFINITY) < first) line++;
+    const char = run.startsWith("`") ? "`" : "~";
+    if ((longest[char][line] ?? 0) < run.length) continue;
+    let close = line;
+    while (!closes(runs[close] ?? "", run)) close++;
+    const count = close - line;
+    out += `${text.slice(kept, open.index)}[an exact block of ${count} ${count === 1 ? "line" : "lines"} is given verbatim]`;
+    kept = (starts[close] ?? 0) + (lines[close]?.length ?? 0);
+    opener.lastIndex = kept;
+  }
+  return out + text.slice(kept);
+}
+var closes = (closer, opener) => closer.startsWith(opener.charAt(0)) && closer.length >= opener.length;
+function longestAfter(runs, char) {
+  const longest = new Array(runs.length + 1).fill(0);
+  for (let k = runs.length - 1; k >= 0; k--) {
+    const run = runs[k] ?? "";
+    longest[k] = Math.max(
+      longest[k + 1] ?? 0,
+      run.startsWith(char) ? run.length : 0
+    );
+  }
+  return longest;
+}
+function redact2(text) {
+  return REDACTIONS.reduce(
+    (t, { pattern, replacement }) => t.replace(pattern, replacement),
+    text
+  );
+}
+function buildPrompt(task, context) {
+  const brief = prepareBrief(task);
+  const budget = Math.min(
+    BUDGET_CHARS - brief.length - CONTEXT_LABEL.length,
+    CONTEXT_CAP_CHARS
+  );
+  if (context === "" || budget < CONTEXT_MIN_CHARS) return brief;
+  return `${brief}${CONTEXT_LABEL}${prepareBrief(context, budget)}`;
+}
+function descriptionText(description) {
+  if (typeof description !== "string") return "";
+  const text = redact2(description).replace(/\s+/g, " ").trim();
+  const cut = text.slice(0, ROLE_CAP);
+  return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
+}
+function roleText(description) {
+  return descriptionText(description) || NO_DESCRIPTION;
+}
+function routingState(raw) {
+  return {
+    role: roleText(raw.role),
+    description: descriptionText(raw.description),
+    task: buildPrompt(raw.task, raw.context ?? "")
+  };
+}
+
+// src/utils/guards.ts
+var isRecord2 = (v) => typeof v === "object" && v !== null;
 
 // src/core/client.ts
 function createClient(provider, apiKey, model, fetchFn) {
@@ -1283,7 +1483,7 @@ async function route(input) {
   for (const [i, attempt] of attempts.entries()) {
     let result;
     try {
-      result = await ask(input, attempt);
+      result = await ask2(input, attempt);
     } catch (err) {
       failed.push({
         provider: attempt.provider,
@@ -1309,7 +1509,7 @@ async function route(input) {
   }
   return skip(failed);
 }
-function ask(input, attempt) {
+function ask2(input, attempt) {
   const { parts, state, keys, fetchFn, signal } = input;
   const { provider, model, ...overrides } = attempt;
   return createClient(provider, keys[provider], model, fetchFn).systemOne(
@@ -1440,207 +1640,7 @@ function routedLine({
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 
-// src/core/scope.ts
-var SCOPE_VALUES = ["core", "extended"];
-var DEFAULT_SCOPE = "core";
-var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
-var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
-
-// src/utils/error.ts
-var errorText = (err) => err instanceof Error ? err.message : String(err);
-
-// src/core/settings.ts
-var VALUE_SETTINGS = ["provider", "scope"];
-var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
-var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
-var LABEL_SEPARATOR = " - ";
-var TEXTS = {
-  provider: {
-    values: PROVIDER_VALUES,
-    resolve,
-    about: "which providers score subagent calls",
-    question: "Which providers should score subagent calls?",
-    consequences: {
-      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
-      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
-      typesafe: "TypeSafe only",
-      openrouter: "OpenRouter only"
-    }
-  },
-  scope: {
-    values: SCOPE_VALUES,
-    resolve: resolveScope,
-    about: "which agent calls the router routes",
-    question: "Which agent calls should the router route?",
-    consequences: {
-      core: "today's routing: built-in general agents only",
-      extended: "also routes other agents that pass no model"
-    }
-  }
-};
-var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
-var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
-var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
-var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
-var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
-var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
-var alreadyValue = (value) => `already ${value}`;
-var NO_ANSWER = "no answer from the dialog";
-var NOT_OFFERED = "the answer was not one of the offered values";
-var keyLine = (provider, state) => `${provider} key: ${state}`;
-var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
-function ask2(setting, current2) {
-  const { values, resolve: resolve2, question } = TEXTS[setting];
-  const first = resolve2(current2);
-  const sorted = [first, ...values.filter((value) => value !== first)];
-  return { question, options: sorted.map((value) => label(setting, value)) };
-}
-function pick(setting, answer2) {
-  return TEXTS[setting].values.find(
-    (value) => label(setting, value) === answer2
-  );
-}
-async function chooseValue(setting, current2, select, apply) {
-  const { question, options } = ask2(setting, current2);
-  let answer2;
-  try {
-    answer2 = await select(question, options);
-  } catch {
-    answer2 = void 0;
-  }
-  if (answer2 === void 0) return unchanged(setting, NO_ANSWER);
-  const value = pick(setting, answer2);
-  return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply(value);
-}
-var settingsReport = (provider, scope, extra, keys) => [
-  valueLine("provider", provider),
-  valueLine("scope", scope),
-  ...extra,
-  ...order(provider).map(
-    (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
-  )
-].join("\n");
-var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
-var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
-function describeCommand(setting) {
-  const { about, values } = TEXTS[setting];
-  return `Shows or changes ${about}: ${values.join(", ")}.`;
-}
-var COMMAND_DESCRIPTIONS = {
-  provider: describeCommand("provider"),
-  scope: describeCommand("scope")
-};
-
-// src/utils/serializer.ts
-function serializer() {
-  let tail = Promise.resolve();
-  return (job) => {
-    const run = tail.then(job);
-    tail = run.catch(() => void 0);
-    return run;
-  };
-}
-
-// src/adapters/claude/host.ts
-var EFFORTS_MAX = 1024;
-function passOn(_, e, next) {
-  return next(e);
-}
-async function* passStep(_, e, next) {
-  return yield* next(e);
-}
-async function denied($, call) {
-  const {
-    tool,
-    tool_use_id: _id,
-    agentId: _agentId,
-    requestMeta: _meta,
-    ...input
-  } = call;
-  return (await $.tool.check({ tool, input })).decision === "deny";
-}
-
-// src/adapters/claude/keys.ts
-async function readKeys($, options, provider) {
-  return collectKeys(
-    provider,
-    async (name) => nonEmpty(options[KEY_FIELDS[name]]) ?? nonEmpty(await keyVariable($, name))
-  );
-}
-function keyVariable($, provider) {
-  return provider === "typesafe" ? $.env.get("TYPESAFE_API_KEY") : $.env.get("OPENROUTER_API_KEY");
-}
-
-// src/adapters/claude/config.ts
-var ROW_PREFIX = "model-router.";
-var REFUSED = "Permission rules deny this tool, so nothing was read or changed.";
-var PERSON = "composer";
-var TOOL_SPEC = {
-  name: "config",
-  description: toolDescription(VALUE_SETTINGS),
-  inputSchema: {
-    type: "object",
-    properties: { setting: { type: "string", enum: VALUE_SETTINGS } }
-  }
-};
-var written = {};
-var serial = serializer();
-function resetConfig() {
-  for (const setting of VALUE_SETTINGS) delete written[setting];
-  serial = serializer();
-}
-var current = (options, setting) => written[setting] ?? options[setting];
-async function registerConfigTool($, e, next) {
-  await $.tool.register(TOOL_SPEC);
-  return next(e);
-}
-async function write($, setting, value) {
-  try {
-    const { deny } = await $.config.set({
-      key: `${ROW_PREFIX}${setting}`,
-      value
-    });
-    if (deny !== void 0) return unchanged(setting, deny);
-    written[setting] = value;
-    return valueLine(setting, value);
-  } catch (err) {
-    return unchangedBy(setting, err);
-  }
-}
-async function choose($, setting, options) {
-  return chooseValue(
-    setting,
-    current(options, setting),
-    (question, labels) => $.ui.ask(question, { options: labels, header: setting }),
-    async (value) => value === current(options, setting) ? unchanged(setting, alreadyValue(value)) : write($, setting, value)
-  );
-}
-async function read($, options) {
-  const provider = current(options, "provider");
-  const keys = await readKeys($, options, provider);
-  return settingsReport(provider, current(options, "scope"), [], keys);
-}
-async function answer($, call, options) {
-  if (await denied($, call)) return { deny: REFUSED };
-  const { setting } = call;
-  if (setting === void 0) return { result: await read($, options) };
-  if (isValueSetting(setting))
-    return { result: await choose($, setting, options) };
-  return { result: badCall(VALUE_SETTINGS) };
-}
-function configCall($, call, options) {
-  return serial(() => answer($, call, options));
-}
-async function configCommand($, e, setting, options) {
-  const args = e.args.trim();
-  if (args !== "" && !isValue(setting, args))
-    return { text: useOneOf(setting) };
-  if (args === "" || e.origin.kind !== PERSON)
-    return { text: valueLine(setting, current(options, setting)) };
-  return { text: await write($, setting, args) };
-}
-
-// src/adapters/claude/index.ts
+// src/adapters/claude/router.ts
 var MODELS = ["haiku", "sonnet", "opus"];
 var BUILT_IN = "built-in";
 var ENGINE = "engine";
@@ -1663,42 +1663,18 @@ var efforts = /* @__PURE__ */ new Map();
 var starting = /* @__PURE__ */ new Set();
 var waited = /* @__PURE__ */ new Set();
 var STEP_WAIT_MS = 1e3;
-function register(on, options) {
+function resetRouting() {
   offered.clear();
   callerEffort.clear();
   efforts.clear();
   starting.clear();
   waited.clear();
-  on("agent.offer", (_, e, next) => {
-    offered.set(e.agent, { source: e.source, description: e.description });
-    return next(e);
-  }).catch(passOn);
-  on("tool.call", { tool: "Agent" }, noteCallerEffort).catch(passOn);
-  on("agent.spawn", ($, e, next) => routeSpawn($, e, next, options)).catch(
-    passOn
-  );
-  on("turn.step", stepEffort).catch(passStep);
-  on("turn.complete", (_, e, next) => {
-    if (e.agentId !== void 0) waited.delete(e.agentId);
-    return next(e);
-  }).catch(passOn);
-  resetConfig();
-  on("session.start", registerConfigTool).catch(passOn);
-  on(
-    "tool.call",
-    { tool: "mcp__model-router__config" },
-    ($, e) => configCall($, e, options)
-  );
-  on(
-    "command.run",
-    { command: "model-router:provider" },
-    ($, e) => configCommand($, e, "provider", options)
-  );
-  on(
-    "command.run",
-    { command: "model-router:scope" },
-    ($, e) => configCommand($, e, "scope", options)
-  );
+}
+function noteOffer(agent, source, description) {
+  offered.set(agent, { source, description });
+}
+function forgetWaited(agentId) {
+  waited.delete(agentId);
 }
 async function noteCallerEffort(_, e, next) {
   const id = e.tool_use_id;
@@ -1884,6 +1860,41 @@ function toResponse({ status, ok, headers, text }) {
       return this;
     }
   };
+}
+
+// src/adapters/claude/index.ts
+function register(on, options) {
+  resetRouting();
+  on("agent.offer", (_, e, next) => {
+    noteOffer(e.agent, e.source, e.description);
+    return next(e);
+  }).catch(passOn);
+  on("tool.call", { tool: "Agent" }, noteCallerEffort).catch(passOn);
+  on("agent.spawn", ($, e, next) => routeSpawn($, e, next, options)).catch(
+    passOn
+  );
+  on("turn.step", stepEffort).catch(passStep);
+  on("turn.complete", (_, e, next) => {
+    if (e.agentId !== void 0) forgetWaited(e.agentId);
+    return next(e);
+  }).catch(passOn);
+  resetConfig();
+  on("session.start", registerConfigTool).catch(passOn);
+  on(
+    "tool.call",
+    { tool: "mcp__model-router__config" },
+    ($, e) => configCall($, e, options)
+  );
+  on(
+    "command.run",
+    { command: "model-router:provider" },
+    ($, e) => configCommand($, e, "provider", options)
+  );
+  on(
+    "command.run",
+    { command: "model-router:scope" },
+    ($, e) => configCommand($, e, "scope", options)
+  );
 }
 export {
   register
