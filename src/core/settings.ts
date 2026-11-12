@@ -15,7 +15,6 @@ export type KeySetting = (typeof KEY_SETTINGS)[number];
 type KeyState = "set" | "unset" | "saved, checking";
 
 export const TOOL_NAME = "model_router_config";
-// The dash form is the one OpenClaw and Hermes use; omp and Claude Code name their commands with "model-router:".
 const COMMAND_PREFIX = "model-router-";
 export const commandName = (setting: ValueSetting): string =>
 	`${COMMAND_PREFIX}${setting}`;
