@@ -6,20 +6,31 @@ every commit as a [conventional commit](#commits).
 
 ## Repository layout
 
-- `src/` holds the sources in three layers. Each test sits beside its
-  source as `*.test.ts`. `scripts/layout.test.ts` checks the layers and
-  their import directions.
-  - `src/core/` holds the routing domain: the parts, the composer, the
-    client, the brief, the decision, the line, the reasons, the settings
-    texts and the deadlines. It imports only `src/core/` and `src/utils/`.
-  - `src/utils/` holds general helpers that name no routing concept and
-    have two or more users. Each file does one job. It imports only
-    `src/utils/`. A helper with one user stays in its module.
-  - `src/adapters/<harness>/` holds one adapter, with `index.ts` as its
-    entry: `claude`, `omp`, `openclaw` and `hermes`. An adapter imports
-    itself, `src/core/` and `src/utils/`, never another adapter. The tests
-    directly in `src/adapters/` drive several adapters at once and may
-    import any of them.
+- `src/` holds the sources in three layers: `src/core/`, `src/utils/` and
+  `src/adapters/<harness>/`. Each test sits beside the source it tests.
+  `scripts/layout.test.ts` checks that:
+  - every file under `src/` except `src/tsconfig.json` sits in `core/`,
+    `utils/` or one adapter folder, and only a test sits directly in
+    `src/adapters/`;
+  - `utils/` imports only `utils/`, `core/` imports only `core/` and
+    `utils/`, and an adapter imports only itself, `core/` and `utils/`;
+  - a relative import stays inside `src/`, and no specifier starts with `#`
+    or `/`;
+  - every `import()` takes a string literal;
+  - each adapter folder holds an `index.ts`, the adapter's entry;
+  - each test directly in `src/adapters/` imports two or more adapters;
+  - each non-test file of `utils/` has two or more users outside `utils/`,
+    where tests and scripts count as users;
+  - no file of `utils/` re-exports from another file.
+
+  To place new code, use this table. The test does not check it.
+
+  | Code | Home |
+  | --- | --- |
+  | A routing concept that two or more adapters use | `src/core/` |
+  | A general helper with two or more users | `src/utils/` |
+  | Anything one adapter uses | that adapter's folder |
+  | A test double | The layer of the code it replaces, in a file named `*fake*` |
 - `src/core/part.ts` holds the shared types and the answer check.
   `src/core/tier.ts` and `src/core/work.ts` both build on it.
 - `plugins/model-router` is the Claude Code plugin.
@@ -55,7 +66,8 @@ every commit as a [conventional commit](#commits).
 - `scripts/scan-owner-setup.ts` scans for owner-setup facts. See
   [Continuous integration](#continuous-integration).
 - `docs/clients.md` cites how each client loads a package.
-  `docs/design.md` gives the reasons for this layout and for the CI checks.
+  `docs/design.md` gives the reasons for the generated copies, the single
+  version and the CI checks.
   `docs/providers.md` holds what the four plugins do the same way when they ask Jev.
 - `evals/` and `scripts/evals.ts` run real clients against the plugins.
 
