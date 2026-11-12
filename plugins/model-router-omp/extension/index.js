@@ -1890,16 +1890,13 @@ function decide2(decision, tierKey, workKey) {
   if ("skipped" in decision) return decision;
   const tier2 = levelOf(decision, tierKey);
   if (!tier2) return BAD;
-  const suffix = decisionSuffix(decision);
-  if (workKey === void 0)
-    return { tier: tier2.level, probabilities: tier2.probability, suffix };
   const work2 = levelOf(decision, workKey);
   if (!work2) return BAD;
   return {
     tier: tier2.level,
     work: work2.level,
     probabilities: `${tier2.probability}/${work2.probability}`,
-    suffix
+    suffix: decisionSuffix(decision)
   };
 }
 async function scoreWork(input) {

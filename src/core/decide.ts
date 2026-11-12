@@ -10,12 +10,12 @@ import { tier } from "./model.ts";
 import { formatProbability, type Level } from "./part.ts";
 import { BAD_REPLY } from "./reasons.ts";
 
-type Decided = {
+export type DecidedWithWork = {
 	readonly tier: Level;
+	readonly work: Level;
 	readonly probabilities: string;
 	readonly suffix: string;
 };
-export type DecidedWithWork = Decided & { readonly work: Level };
 
 const BAD: Skipped = { skipped: BAD_REPLY };
 
@@ -37,41 +37,25 @@ const levelOf = (
 };
 
 /**
- * Reads the levels of the asked parts from a decision. A part the reply lacks makes the whole reply bad.
+ * Returns the skip unchanged when the decision is a skip, and a bad-reply skip
+ * when the tier part or the work part is missing. Returns both levels with the
+ * joined probabilities and the suffix otherwise. Never throws.
  */
-export function decide(
-	decision: Decision | Skipped,
-	tierKey: string,
-): Decided | Skipped;
 export function decide(
 	decision: Decision | Skipped,
 	tierKey: string,
 	workKey: string,
-): DecidedWithWork | Skipped;
-/**
- * Returns the skip unchanged when the decision is a skip, and a bad-reply skip
- * when the tier part or the asked work part is missing. Returns the tier, plus
- * the work level when workKey is given, with the joined probabilities and the
- * suffix otherwise. Never throws.
- */
-export function decide(
-	decision: Decision | Skipped,
-	tierKey: string,
-	workKey?: string,
-): Decided | DecidedWithWork | Skipped {
+): DecidedWithWork | Skipped {
 	if ("skipped" in decision) return decision;
 	const tier = levelOf(decision, tierKey);
 	if (!tier) return BAD;
-	const suffix = decisionSuffix(decision);
-	if (workKey === undefined)
-		return { tier: tier.level, probabilities: tier.probability, suffix };
 	const work = levelOf(decision, workKey);
 	if (!work) return BAD;
 	return {
 		tier: tier.level,
 		work: work.level,
 		probabilities: `${tier.probability}/${work.probability}`,
-		suffix,
+		suffix: decisionSuffix(decision),
 	};
 }
 
