@@ -1231,6 +1231,9 @@ var AUTH_SCHEMES = [
   "Token",
   "vapid"
 ].join("|");
+var AUTH_HEAD = `\\bAuthorization["']?\\s*[:=]\\s*`;
+var AUTH_SCHEME = `(?:${AUTH_SCHEMES})[ \\t]+`;
+var quotedRun = (quote) => `[^${quote}\\\\\\n]*(?:\\\\.[^${quote}\\\\\\n]*)*`;
 var TOKEN_PREFIXES = {
   "GitHub token": "gh[pousr]_[A-Za-z0-9]{36,}",
   "GitHub fine-grained token": "github_pat_[A-Za-z0-9_]{22,}",
@@ -1256,13 +1259,19 @@ var REDACTIONS = [
   },
   {
     name: "URL credentials",
-    pattern: /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]{0,256}:[^\s/?#'"]{1,256}@/gi,
+    pattern: /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]*:[^\s/?#'"]+@/gi,
     replacement: "$1***@"
   },
   {
     name: "Authorization header",
     pattern: new RegExp(
-      `\\b(Authorization["']?\\s*[:=]\\s*["']?)(?:((?:${AUTH_SCHEMES})[ \\t]+)\\S[^\\n]*|[A-Za-z0-9._~+/=-]{16,})`,
+      `(${AUTH_HEAD}["']?${AUTH_SCHEME})(?:${[
+        `(?<="${AUTH_SCHEME})${quotedRun('"')}`,
+        `(?<='${AUTH_SCHEME})${quotedRun("'")}`,
+        `(?<="${AUTH_HEAD}${AUTH_SCHEME})${quotedRun('"')}`,
+        `(?<='${AUTH_HEAD}${AUTH_SCHEME})${quotedRun("'")}`,
+        "[^\\n]*"
+      ].join("|")})|(${AUTH_HEAD}["']?)[A-Za-z0-9._~+/=-]{16,}`,
       "gi"
     ),
     replacement: "$1$2***"
@@ -1301,16 +1310,17 @@ var REDACTIONS = [
   },
   {
     name: "password is",
-    pattern: /\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)(?::\s*|\s+))(?:"[^"]*"?|'[^']*'?|[^\s"']+)/gi,
+    pattern: /\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)(?::\s*|\s+))(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
     replacement: "$1$2***"
   },
   {
     name: "secret name",
-    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"]*"?|'[^']*'?|[^\s"']+)/gi,
+    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
     replacement: "$1$2***"
   }
 ];
-var FENCE = /(?<![`~])(?:```+[^\n`]*\n([\s\S]*?)```|~~~+[^\n~]*\n([\s\S]*?)~~~)/g;
+var FENCE_OPENER = /(?<![`~])(?:(`{3,})[^\n`]*|(~{3,})[^\n~]*)\n/g;
+var FENCE_CLOSER = /^ {0,3}(`{3,}|~{3,})[ \t]*\r?$/;
 function prepareBrief(text, budget = BUDGET_CHARS) {
   const condensed = condense(redact2(text));
   if (condensed.length <= budget) return condensed;
@@ -1320,14 +1330,51 @@ function prepareBrief(text, budget = BUDGET_CHARS) {
   return `${condensed.slice(0, head)}${OMISSION_MARKER}${condensed.slice(condensed.length - tail)}`;
 }
 function condense(text) {
-  return text.replace(
-    FENCE,
-    (_, tick, tilde) => {
-      const block = tick ?? tilde ?? "";
-      const lines = block === "" ? 0 : block.replace(/\n$/, "").split("\n").length;
-      return `[an exact block of ${lines} ${lines === 1 ? "line" : "lines"} is given verbatim]`;
-    }
-  ).replace(/\n{3,}/g, "\n\n");
+  return condenseFences(text).replace(/\n{3,}/g, "\n\n");
+}
+function condenseFences(text) {
+  const lines = text.split("\n");
+  const starts = [];
+  let offset = 0;
+  for (const line2 of lines) {
+    starts.push(offset);
+    offset += line2.length + 1;
+  }
+  const runs = lines.map((line2) => FENCE_CLOSER.exec(line2)?.[1] ?? "");
+  const longest = {
+    "`": longestAfter(runs, "`"),
+    "~": longestAfter(runs, "~")
+  };
+  const opener = new RegExp(FENCE_OPENER);
+  let out = "";
+  let kept = 0;
+  let line = 0;
+  for (let open = opener.exec(text); open; open = opener.exec(text)) {
+    const run = open[1] ?? open[2] ?? "";
+    const first = open.index + open[0].length;
+    while ((starts[line] ?? Number.POSITIVE_INFINITY) < first) line++;
+    const char = run.startsWith("`") ? "`" : "~";
+    if ((longest[char][line] ?? 0) < run.length) continue;
+    let close = line;
+    while (!closes(runs[close] ?? "", run)) close++;
+    const count = close - line;
+    out += `${text.slice(kept, open.index)}[an exact block of ${count} ${count === 1 ? "line" : "lines"} is given verbatim]`;
+    kept = (starts[close] ?? 0) + (lines[close]?.length ?? 0);
+    opener.lastIndex = kept;
+  }
+  return out + text.slice(kept);
+}
+var closes = (closer, opener) => closer.startsWith(opener.charAt(0)) && closer.length >= opener.length;
+function longestAfter(runs, char) {
+  const longest = new Array(runs.length + 1).fill(0);
+  for (let k = runs.length - 1; k >= 0; k--) {
+    const run = runs[k] ?? "";
+    longest[k] = Math.max(
+      longest[k + 1] ?? 0,
+      run.startsWith(char) ? run.length : 0
+    );
+  }
+  return longest;
 }
 function redact2(text) {
   return REDACTIONS.reduce(

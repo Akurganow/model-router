@@ -43,6 +43,11 @@ const AUTH_SCHEMES = [
 	"Token",
 	"vapid",
 ].join("|");
+const AUTH_HEAD = `\\bAuthorization["']?\\s*[:=]\\s*`;
+const AUTH_SCHEME = `(?:${AUTH_SCHEMES})[ \\t]+`;
+// A credential inside quotes ends at the first unescaped quote of the same kind, or at the end of its line.
+const quotedRun = (quote: string) =>
+	`[^${quote}\\\\\\n]*(?:\\\\.[^${quote}\\\\\\n]*)*`;
 
 // Each prefix ends in the whole run of its token's alphabet, so a longer token is masked whole.
 export const TOKEN_PREFIXES: Readonly<Record<string, string>> = {
@@ -78,13 +83,19 @@ export const REDACTIONS: readonly Redaction[] = [
 	{
 		name: "URL credentials",
 		pattern:
-			/(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]{0,256}:[^\s/?#'"]{1,256}@/gi,
+			/(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]*:[^\s/?#'"]+@/gi,
 		replacement: "$1***@",
 	},
 	{
 		name: "Authorization header",
 		pattern: new RegExp(
-			`\\b(Authorization["']?\\s*[:=]\\s*["']?)(?:((?:${AUTH_SCHEMES})[ \\t]+)\\S[^\\n]*|[A-Za-z0-9._~+/=-]{16,})`,
+			`(${AUTH_HEAD}["']?${AUTH_SCHEME})(?:${[
+				`(?<="${AUTH_SCHEME})${quotedRun('"')}`,
+				`(?<='${AUTH_SCHEME})${quotedRun("'")}`,
+				`(?<="${AUTH_HEAD}${AUTH_SCHEME})${quotedRun('"')}`,
+				`(?<='${AUTH_HEAD}${AUTH_SCHEME})${quotedRun("'")}`,
+				"[^\\n]*",
+			].join("|")})|(${AUTH_HEAD}["']?)[A-Za-z0-9._~+/=-]{16,}`,
 			"gi",
 		),
 		replacement: "$1$2***",
@@ -126,21 +137,22 @@ export const REDACTIONS: readonly Redaction[] = [
 	{
 		name: "password is",
 		pattern:
-			/\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)(?::\s*|\s+))(?:"[^"]*"?|'[^']*'?|[^\s"']+)/gi,
+			/\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)(?::\s*|\s+))(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
 		replacement: "$1$2***",
 	},
 	{
 		name: "secret name",
 		pattern:
-			/\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"]*"?|'[^']*'?|[^\s"']+)/gi,
+			/\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
 		replacement: "$1$2***",
 	},
 ];
 
-// A backtick info string holds no backtick (CommonMark 0.31.2, 4.5), and a fence starts only where no fence character precedes it.
-// Each closer is a literal run, not a backreference, so an unclosed opener scans the text at most once per fence character.
-const FENCE =
-	/(?<![`~])(?:```+[^\n`]*\n([\s\S]*?)```|~~~+[^\n~]*\n([\s\S]*?)~~~)/g;
+// A fence opens at a run of three or more backticks or tildes that no fence character precedes, and its info string runs to the end of the line.
+// A backtick info string holds no backtick (CommonMark 0.31.2, 4.5).
+const FENCE_OPENER = /(?<![`~])(?:(`{3,})[^\n`]*|(~{3,})[^\n~]*)\n/g;
+// A closing line holds a run of fence characters after at most three spaces, then only spaces or tabs.
+const FENCE_CLOSER = /^ {0,3}(`{3,}|~{3,})[ \t]*\r?$/;
 
 // Redaction runs on the full text, so a cut can never split a secret into an unmasked piece.
 export function prepareBrief(text: string, budget = BUDGET_CHARS): string {
@@ -153,17 +165,57 @@ export function prepareBrief(text: string, budget = BUDGET_CHARS): string {
 }
 
 function condense(text: string): string {
-	return text
-		.replace(
-			FENCE,
-			(_, tick: string | undefined, tilde: string | undefined) => {
-				const block = tick ?? tilde ?? "";
-				const lines =
-					block === "" ? 0 : block.replace(/\n$/, "").split("\n").length;
-				return `[an exact block of ${lines} ${lines === 1 ? "line" : "lines"} is given verbatim]`;
-			},
-		)
-		.replace(/\n{3,}/g, "\n\n");
+	return condenseFences(text).replace(/\n{3,}/g, "\n\n");
+}
+
+// A block closes at the first later line whose run has the opener's character and at least its length; a shorter run, or a run with text after it, is content.
+// The longest closer at or after each line is known up front, so an opener with no closer is skipped at once and a block's lines are read once: the pass is linear.
+function condenseFences(text: string): string {
+	const lines = text.split("\n");
+	const starts: number[] = [];
+	let offset = 0;
+	for (const line of lines) {
+		starts.push(offset);
+		offset += line.length + 1;
+	}
+	const runs = lines.map((line) => FENCE_CLOSER.exec(line)?.[1] ?? "");
+	const longest = {
+		"`": longestAfter(runs, "`"),
+		"~": longestAfter(runs, "~"),
+	};
+	const opener = new RegExp(FENCE_OPENER);
+	let out = "";
+	let kept = 0;
+	let line = 0;
+	for (let open = opener.exec(text); open; open = opener.exec(text)) {
+		const run = open[1] ?? open[2] ?? "";
+		const first = open.index + open[0].length;
+		while ((starts[line] ?? Number.POSITIVE_INFINITY) < first) line++;
+		const char = run.startsWith("`") ? "`" : "~";
+		if ((longest[char][line] ?? 0) < run.length) continue;
+		let close = line;
+		while (!closes(runs[close] ?? "", run)) close++;
+		const count = close - line;
+		out += `${text.slice(kept, open.index)}[an exact block of ${count} ${count === 1 ? "line" : "lines"} is given verbatim]`;
+		kept = (starts[close] ?? 0) + (lines[close]?.length ?? 0);
+		opener.lastIndex = kept;
+	}
+	return out + text.slice(kept);
+}
+
+const closes = (closer: string, opener: string) =>
+	closer.startsWith(opener.charAt(0)) && closer.length >= opener.length;
+
+function longestAfter(runs: readonly string[], char: string): number[] {
+	const longest = new Array<number>(runs.length + 1).fill(0);
+	for (let k = runs.length - 1; k >= 0; k--) {
+		const run = runs[k] ?? "";
+		longest[k] = Math.max(
+			longest[k + 1] ?? 0,
+			run.startsWith(char) ? run.length : 0,
+		);
+	}
+	return longest;
 }
 
 function redact(text: string): string {

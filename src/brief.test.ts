@@ -63,10 +63,10 @@ test("the head and the tail are the ends of the text", () => {
 
 test("code blocks and blank lines shrink before the cut, so a short result is not cut", () => {
 	const code = `\`\`\`ts\n${"const a = 1\n".repeat(BUDGET_CHARS)}\`\`\``;
-	const out = prepareBrief(`a\n\n\n\nb ${code} c`);
+	const out = prepareBrief(`a\n\n\n\nb ${code}\nc`);
 	assert.equal(
 		out,
-		`a\n\nb [an exact block of ${BUDGET_CHARS} lines is given verbatim] c`,
+		`a\n\nb [an exact block of ${BUDGET_CHARS} lines is given verbatim]\nc`,
 	);
 });
 
@@ -345,10 +345,40 @@ const SHAPES: [string, string, string, string][] = [
 		"mongodb+srv://***@cluster0.example.net/db",
 	],
 	[
+		"URL credentials",
+		"a user and a password of any length",
+		j("https", "://", "a".repeat(300), ":", "P".repeat(257), "@example.com/x"),
+		"https://***@example.com/x",
+	],
+	[
 		"Authorization header",
-		"Basic credentials, to the end of the line",
-		`curl -H "Authorization: Basic ${j("dXNlcjpw", "YXNzd29yZA==")}" https://api.example.com\nnext`,
-		'curl -H "Authorization: Basic ***\nnext',
+		"Basic credentials up to the quote around the header",
+		`curl -H "Authorization: Basic ${j("dXNlcjpw", "YXNzd29yZA==")}" https://api.example.com then report`,
+		'curl -H "Authorization: Basic ***" https://api.example.com then report',
+	],
+	[
+		"Authorization header",
+		"a JSON value up to its closing quote",
+		`{"Authorization": "Basic ${j("abcdefgh", "ijklmnop")}", "next": 1}`,
+		'{"Authorization": "Basic ***", "next": 1}',
+	],
+	[
+		"Authorization header",
+		"a Digest header in single quotes, through its quoted parameters",
+		`curl -H 'Authorization: Digest username="a", response="${j("0123456789", "abcdef0123")}"' https://host`,
+		"curl -H 'Authorization: Digest ***' https://host",
+	],
+	[
+		"Authorization header",
+		"an escaped quote that does not close the credential",
+		`{"h": "Authorization: Basic ${j("abc", '\\"', "def456ghi")}", "x": 1}`,
+		'{"h": "Authorization: Basic ***", "x": 1}',
+	],
+	[
+		"Authorization header",
+		"a quote that does not close on its line, to the end of the line",
+		`"Authorization: Basic ${j("abc123", " def456")}\nnext`,
+		'"Authorization: Basic ***\nnext',
 	],
 	[
 		"Authorization header",
@@ -567,6 +597,24 @@ const SHAPES: [string, string, string, string][] = [
 		'export API_KEY="abc def ghi"',
 		"export API_KEY=***",
 	],
+	[
+		"secret name",
+		"an unclosed quote that ends at its line",
+		'API_KEY="secret\nRun the tests\nthen report',
+		"API_KEY=***\nRun the tests\nthen report",
+	],
+	[
+		"secret name",
+		"a quote closed on a later line, masked on its own line",
+		'API_KEY="line1\nline2" tail',
+		'API_KEY=***\nline2" tail',
+	],
+	[
+		"password is",
+		"an unclosed quote after password is, to the end of its line",
+		'the password is "hunter 2\nnext step',
+		"the password is ***\nnext step",
+	],
 ];
 
 test("each secret shape is masked and its context kept", async (t) => {
@@ -588,6 +636,12 @@ test("each shape row needs its own entry, and each prefix row matches its prefix
 });
 
 test("a URL keeps its scheme and host, a header its scheme, prose after a PEM header stays", () => {
+	assert.equal(
+		prepareBrief(
+			`{"Authorization": "Bearer ${j("abcdefgh", "ijklmnop")}", "next": 1}`,
+		),
+		'{"Authorization": "Bearer ***", "next": 1}',
+	);
 	assert.equal(
 		prepareBrief(
 			"Find files that contain -----BEGIN RSA PRIVATE KEY----- headers and delete them. Then run the tests.",
@@ -673,6 +727,43 @@ test("a tilde fence condenses like a backtick fence", () => {
 	);
 });
 
+test("a block closes only at a line that holds a run at least as long as its opener", () => {
+	const cases: [string, string][] = [
+		[
+			"~~~~\nfirst\n~~~\nsecond\n~~~~\nafter",
+			"[an exact block of 3 lines is given verbatim]\nafter",
+		],
+		[
+			"```\na\n``` not a closer\nb\n```\nend",
+			"[an exact block of 3 lines is given verbatim]\nend",
+		],
+		[
+			"```\na\n    ```\n```\nz",
+			"[an exact block of 2 lines is given verbatim]\nz",
+		],
+		[
+			"x\n```\na\n   ``` \t\nz",
+			"x\n[an exact block of 1 line is given verbatim]\nz",
+		],
+		[
+			"```\na\nb```\n````\nz",
+			"[an exact block of 2 lines is given verbatim]\nz",
+		],
+	];
+	for (const [input, expected] of cases)
+		assert.equal(prepareBrief(input), expected, input);
+});
+
+test("an opener with no closer leaves the text as it is", () => {
+	for (const text of [
+		"```\na\n``` x\nb",
+		"````\na\n```\nb",
+		"```\na\n~~~\nb",
+		"before ```\na\nb``` after",
+	])
+		assert.equal(prepareBrief(text), text);
+});
+
 test("the fence note says 0 lines for an empty block, 1 line for one and 2 lines for two", () => {
 	assert.equal(
 		prepareBrief("Write:\n```\n```\nthen\n~~~\n~~~\nend"),
@@ -725,6 +816,35 @@ const ADVERSARIAL: [string, string, () => string][] = [
 	["fences", "fence pairs", () => fill("```ts\nconst a = 1\n```\n")],
 	[
 		"fences",
+		"openers of growing length with no closer",
+		() =>
+			Array.from({ length: 1400 }, (_, k) => `${"`".repeat(3 + k)}x\n`)
+				.join("")
+				.slice(0, ADVERSARIAL_SIZE),
+	],
+	[
+		"fences",
+		"an opener then shorter near-closers",
+		() => `\`\`\`\`\n${fill("```\n")}`,
+	],
+	[
+		"fences",
+		"an opener then closers followed by text",
+		() => `\`\`\`\n${fill("``` x\n")}`,
+	],
+	[
+		"fences",
+		"an opener then closers indented four spaces",
+		() => `\`\`\`\n${fill("    ```\n")}`,
+	],
+	[
+		"fences",
+		"a tilde opener then shorter near-closers",
+		() => `~~~~\n${fill("~~~\n")}`,
+	],
+	["fences", "repeated openers with no closer", () => fill("````x\n```\n")],
+	[
+		"fences",
 		"fences of falling length",
 		() =>
 			Array.from({ length: 1400 }, (_, k) => `${"`".repeat(1400 - k)}\n`)
@@ -759,6 +879,13 @@ const ADVERSARIAL: [string, string, () => string][] = [
 		() => `a://a:${fill("@")}`,
 	],
 	["URL credentials", "repeated URL users and at-signs", () => fill("a://a:@")],
+	["URL credentials", "a long user with no colon", () => `a://${fill("u")}`],
+	[
+		"URL credentials",
+		"a long password with no at-sign",
+		() => `a://b:${fill("p")}`,
+	],
+	["URL credentials", "many URL starts in one run", () => fill("a://b:")],
 	[
 		"Authorization header",
 		"repeated Authorization headers",
@@ -773,6 +900,26 @@ const ADVERSARIAL: [string, string, () => string][] = [
 		"Authorization header",
 		"repeated Digest parameters",
 		() => fill('Authorization: Digest a="b", '),
+	],
+	[
+		"Authorization header",
+		"quoted headers with no closing quote",
+		() => fill('"Authorization: Basic '),
+	],
+	[
+		"Authorization header",
+		"quoted schemes with no closing quote",
+		() => fill('Authorization: "Basic '),
+	],
+	[
+		"Authorization header",
+		"escaped quotes inside a quoted header",
+		() => `"Authorization: Basic ${fill('\\"')}`,
+	],
+	[
+		"Authorization header",
+		"single-quoted Digest headers",
+		() => fill(`'Authorization: Digest a="b", `),
 	],
 	[
 		"Authorization header",
@@ -863,6 +1010,11 @@ const ADVERSARIAL: [string, string, () => string][] = [
 	["secret name", "KEY assignments", () => fill("KEY=")],
 	["secret name", "name near misses", () => fill("a_KEY ")],
 	["secret name", "open quotes after a name", () => fill('KEY="')],
+	[
+		"secret name",
+		"open quotes after names, one per line",
+		() => fill('KEY="a\n'),
+	],
 	["secret name", "underscore run", () => fill("_")],
 ];
 
