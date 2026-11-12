@@ -1430,14 +1430,71 @@ var NO_DESCRIPTION = "An agent with no description.";
 var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
 var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
 var HEAD_SHARE = 2 / 3;
+var PEM_LABEL = "[ A-Z0-9_-]{0,100}PRIVATE KEY(?: BLOCK)?-----";
+var AWS_ID = "(?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}(?![A-Za-z0-9])";
 var REDACT_PATTERNS = [
+  [
+    new RegExp(
+      `-----BEGIN${PEM_LABEL}(?:(?:[^-]|-(?!----))*-----END${PEM_LABEL}|(?:(?:\\s|\\\\[rn])+[A-Za-z0-9+/=]{16,})*)`,
+      "gi"
+    ),
+    "***"
+  ],
+  [
+    /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]{0,256}:[^\s@/?#'"]{1,256}@/gi,
+    "$1***@"
+  ],
+  [
+    /\b(Authorization["']?\s*[:=]\s*["']?(?:[A-Za-z][\w-]*\s+)?)[A-Za-z0-9._~+/=-]{8,}/gi,
+    "$1***"
+  ],
+  [
+    new RegExp(
+      `((?<![A-Za-z0-9])${AWS_ID}[^\\n]{0,100}?)(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{40}(?![A-Za-z0-9+/=])`,
+      "g"
+    ),
+    "$1***"
+  ],
+  [
+    /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}={0,2}\.ey[A-Za-z0-9_-]{8,}={0,2}\.[A-Za-z0-9_-]*/g,
+    "***"
+  ],
+  [
+    new RegExp(
+      `(?<![A-Za-z0-9])(?:${[
+        "gh[pousr]_[A-Za-z0-9]{36,}",
+        "github_pat_[A-Za-z0-9_]{22,}",
+        "glpat-[A-Za-z0-9_-]{20,}",
+        "xox[abeoprs]-[A-Za-z0-9-]{10,}",
+        "xapp-\\d-[A-Za-z0-9-]{10,}",
+        "hooks\\.slack\\.com/(?:services|workflows|triggers)/[A-Za-z0-9+/]{20,}",
+        AWS_ID,
+        "AIza[A-Za-z0-9_-]{35}",
+        "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
+        "npm_[A-Za-z0-9]{36}",
+        "hf_[A-Za-z]{34}",
+        "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
+      ].join("|")})`,
+      "g"
+    ),
+    "***"
+  ],
   [/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer ***"],
   [/\bsk-[A-Za-z0-9_-]{8,}/g, "***"],
+  [
+    /((?<!\S)(?:-u|--user)(?:\s+|=))(?:"[^"\n]*:[^"\n]*"|'[^'\n]*:[^'\n]*'|[^\s"':]+:[^\s"']+)/g,
+    "$1***"
+  ],
+  [
+    /\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)\s+)(?:"[^"]*"?|'[^']*'?|[^\s"']+)/gi,
+    "$1$2***"
+  ],
   [
     /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"]*"?|'[^']*'?|[^\s"']+)/gi,
     "$1$2***"
   ]
 ];
+var FENCE = /(?<![`~])(?:```+[^\n`]*\n([\s\S]*?)```|~~~+[^\n~]*\n([\s\S]*?)~~~)/g;
 function prepareBrief(text, budget = BUDGET_CHARS) {
   const condensed = condense(redact2(text));
   if (condensed.length <= budget) return condensed;
@@ -1447,10 +1504,13 @@ function prepareBrief(text, budget = BUDGET_CHARS) {
   return `${condensed.slice(0, head)}${OMISSION_MARKER}${condensed.slice(condensed.length - tail)}`;
 }
 function condense(text) {
-  return text.replace(/```[^\n]*\n([\s\S]*?)```/g, (_, block) => {
-    const lines = block.replace(/\n$/, "").split("\n").length;
-    return `[an exact block of ${lines} lines is given verbatim]`;
-  }).replace(/\n{3,}/g, "\n\n");
+  return text.replace(
+    FENCE,
+    (_, tick, tilde) => {
+      const lines = (tick ?? tilde ?? "").replace(/\n$/, "").split("\n").length;
+      return `[an exact block of ${lines} ${lines === 1 ? "line" : "lines"} is given verbatim]`;
+    }
+  ).replace(/\n{3,}/g, "\n\n");
 }
 function redact2(text) {
   return REDACT_PATTERNS.reduce(
