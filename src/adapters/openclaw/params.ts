@@ -1,3 +1,4 @@
+import { isSet } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 
 type Params = Readonly<Record<string, unknown>>;
@@ -24,12 +25,6 @@ export const readStringParam = (
 	params: Params,
 	key: string,
 ): string | undefined => nonEmpty(readParam(params, key));
-
-/** Config values may be objects, such as a model with fallbacks, so only text is checked for blankness. */
-export const isSet = (v: unknown): boolean =>
-	typeof v === "string"
-		? nonEmpty(v) !== undefined
-		: v !== undefined && v !== null;
 
 // `invalid` is an agent id that is set but not text.
 export type SpawnAgent =

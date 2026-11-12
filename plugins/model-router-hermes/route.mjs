@@ -907,6 +907,12 @@ var parseBody = async (res) => {
   }
 };
 
+// src/utils/text.ts
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+
 // src/utils/guards.ts
 var isRecord2 = (v) => typeof v === "object" && v !== null;
 
@@ -1163,12 +1169,6 @@ var streamedFetch = async (url, init) => {
     statusText: reply.statusText,
     headers: reply.headers
   });
-};
-
-// src/utils/text.ts
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
 };
 
 // src/core/brief.ts

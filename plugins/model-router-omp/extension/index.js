@@ -6,8 +6,15 @@ import { getPluginsLockfile } from "@oh-my-pi/pi-utils";
 // src/adapters/omp/name.ts
 import { readFileSync } from "node:fs";
 
+// src/utils/text.ts
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+
 // src/utils/guards.ts
 var isRecord = (v) => typeof v === "object" && v !== null;
+var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
 
 // src/adapters/omp/name.ts
 var FALLBACK_NAME = "model-router-omp";
@@ -22,12 +29,6 @@ function readInstalledName(moduleUrl) {
     return void 0;
   }
 }
-
-// src/utils/text.ts
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
-};
 
 // src/core/brief.ts
 var BUDGET_CHARS = 12e3;
@@ -1337,14 +1338,12 @@ var BUNDLED = "bundled";
 var ROLE_MARK = "@";
 var SEANCE = "seance";
 var CUSTOM_AGENT = "custom task agent";
-var isEmpty = (v) => v === void 0 || v === null || typeof v === "string" && nonEmpty(v) === void 0;
 var inScope = (name, scope) => scope === "extended" || name === TASK;
 var findAgent = (name, { agents }) => agents?.find((agent) => agent.name === name);
 var ownRole = (agent) => agent?.model?.find((model) => model.startsWith(ROLE_MARK))?.slice(ROLE_MARK.length);
 function userChoice(name, facts) {
-  if (name === TASK && !isEmpty(facts.roles[TASK]))
-    return "task model role set";
-  if (Object.hasOwn(facts.overrides, name) && !isEmpty(facts.overrides[name]))
+  if (name === TASK && isSet(facts.roles[TASK])) return "task model role set";
+  if (Object.hasOwn(facts.overrides, name) && isSet(facts.overrides[name]))
     return `${name} model override set`;
   if (facts.disabled.includes(name)) return `${name} agent disabled`;
   return void 0;

@@ -6,7 +6,7 @@ import {
 	outsideCoreScope,
 	setsOwnModel,
 } from "../../core/settings.ts";
-import { nonEmpty } from "../../utils/text.ts";
+import { isSet } from "../../utils/guards.ts";
 import type { DiscoveredAgent } from "./types.ts";
 
 export const TASK = "task";
@@ -35,15 +35,6 @@ export type Spawning = {
 	readonly modelRole?: string | undefined;
 };
 
-/**
- * Returns true for undefined, null and a blank string, and false for any other
- * value. Never throws.
- */
-const isEmpty = (v: unknown) =>
-	v === undefined ||
-	v === null ||
-	(typeof v === "string" && nonEmpty(v) === undefined);
-
 export const inScope = (name: string, scope: Scope) =>
 	scope === "extended" || name === TASK;
 
@@ -58,9 +49,8 @@ const ownRole = (agent: DiscoveredAgent | undefined) =>
 
 // A model the user set is never overridden. A bundled agent's own model is not a user choice.
 function userChoice(name: string, facts: Facts): string | undefined {
-	if (name === TASK && !isEmpty(facts.roles[TASK]))
-		return "task model role set";
-	if (Object.hasOwn(facts.overrides, name) && !isEmpty(facts.overrides[name]))
+	if (name === TASK && isSet(facts.roles[TASK])) return "task model role set";
+	if (Object.hasOwn(facts.overrides, name) && isSet(facts.overrides[name]))
 		return `${name} model override set`;
 	if (facts.disabled.includes(name)) return `${name} agent disabled`;
 	return undefined;

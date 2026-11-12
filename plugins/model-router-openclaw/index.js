@@ -907,8 +907,15 @@ var parseBody = async (res) => {
   }
 };
 
+// src/utils/text.ts
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+
 // src/utils/guards.ts
 var isRecord2 = (v) => typeof v === "object" && v !== null;
+var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
 
 // src/core/provider.ts
 var PROVIDER_VALUES = [
@@ -1222,12 +1229,6 @@ var streamedFetch = async (url, init) => {
     statusText: reply.statusText,
     headers: reply.headers
   });
-};
-
-// src/utils/text.ts
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
 };
 
 // src/adapters/openclaw/settings.ts
@@ -1782,44 +1783,6 @@ function findAgent(config, id) {
   return list.filter(isRecord2).find(({ id: itemId }) => normalizeAgentId(itemId) === wanted);
 }
 
-// src/adapters/openclaw/params.ts
-var snakeCase = (key) => key.replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2").replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
-function readParam(params, key) {
-  if (Object.hasOwn(params, key)) return params[key];
-  const snake = snakeCase(key);
-  return Object.hasOwn(params, snake) ? params[snake] : void 0;
-}
-var readStringParam = (params, key) => nonEmpty(readParam(params, key));
-var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
-var SUBAGENT_RUNTIME = "subagent";
-function readAgent(params) {
-  const raw = readParam(params, "agentId");
-  if (typeof raw !== "string")
-    return isSet(raw) ? { kind: "invalid" } : { kind: "none" };
-  const id = nonEmpty(raw);
-  return id === void 0 ? { kind: "none" } : { kind: "id", id };
-}
-function readRuntime(params) {
-  const { runtime } = params;
-  if (!isSet(runtime)) return void 0;
-  return runtime === SUBAGENT_RUNTIME ? SUBAGENT_RUNTIME : "other";
-}
-function readSpawn(params) {
-  const { task, taskName, visible, context, mode, thread } = params;
-  return {
-    task: typeof task === "string" ? task : void 0,
-    agent: readAgent(params),
-    model: readStringParam(params, "model"),
-    thinking: readStringParam(params, "thinking"),
-    description: readStringParam(params, "label") ?? nonEmpty(taskName) ?? "",
-    runtime: readRuntime(params),
-    visible: visible === true,
-    context: context === "fork" || context === "isolated" ? context : void 0,
-    mode: mode === "run" || mode === "session" ? mode : void 0,
-    thread: thread === true
-  };
-}
-
 // src/adapters/openclaw/gates.ts
 var PASS = { outcome: "pass" };
 var skip2 = (reason) => ({ outcome: "skip", reason });
@@ -1894,6 +1857,43 @@ function gateSpawn(input) {
     config,
     task,
     description: spawn.description
+  };
+}
+
+// src/adapters/openclaw/params.ts
+var snakeCase = (key) => key.replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2").replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+function readParam(params, key) {
+  if (Object.hasOwn(params, key)) return params[key];
+  const snake = snakeCase(key);
+  return Object.hasOwn(params, snake) ? params[snake] : void 0;
+}
+var readStringParam = (params, key) => nonEmpty(readParam(params, key));
+var SUBAGENT_RUNTIME = "subagent";
+function readAgent(params) {
+  const raw = readParam(params, "agentId");
+  if (typeof raw !== "string")
+    return isSet(raw) ? { kind: "invalid" } : { kind: "none" };
+  const id = nonEmpty(raw);
+  return id === void 0 ? { kind: "none" } : { kind: "id", id };
+}
+function readRuntime(params) {
+  const { runtime } = params;
+  if (!isSet(runtime)) return void 0;
+  return runtime === SUBAGENT_RUNTIME ? SUBAGENT_RUNTIME : "other";
+}
+function readSpawn(params) {
+  const { task, taskName, visible, context, mode, thread } = params;
+  return {
+    task: typeof task === "string" ? task : void 0,
+    agent: readAgent(params),
+    model: readStringParam(params, "model"),
+    thinking: readStringParam(params, "thinking"),
+    description: readStringParam(params, "label") ?? nonEmpty(taskName) ?? "",
+    runtime: readRuntime(params),
+    visible: visible === true,
+    context: context === "fork" || context === "isolated" ? context : void 0,
+    mode: mode === "run" || mode === "session" ? mode : void 0,
+    thread: thread === true
   };
 }
 

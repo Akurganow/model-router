@@ -13,10 +13,10 @@ import {
 	setsOwnModel,
 	UNREADABLE,
 } from "../../core/settings.ts";
-import { isRecord } from "../../utils/guards.ts";
+import { isRecord, isSet } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import { findAgent, sameAgent } from "./agents.ts";
-import { isSet, type SpawnRequest } from "./params.ts";
+import type { SpawnRequest } from "./params.ts";
 import type { OpenClawSettings } from "./settings.ts";
 import type { OpenClawConfig } from "./types.ts";
 
