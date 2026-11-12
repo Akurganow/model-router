@@ -171,6 +171,70 @@ describe("the kept effort", () => {
 		});
 });
 
+describe("the slot and model each level takes", () => {
+	const SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
+	const MODELS = { small: "openai/small", large: "openai/large" };
+	type Models = { small?: string; large?: string };
+
+	const route = (
+		tier: number,
+		slot: string | null,
+		target: string,
+		effort: string,
+	) => ({
+		outcome: "route",
+		slot,
+		effort,
+		line: `model-router L${tier} ${target} · ${effort} · p=0.90/0.90${SUFFIX}`,
+	});
+	const skip = (reason: string) => ({
+		outcome: "skip",
+		line: `model-router skipped, ${reason}`,
+	});
+
+	// Level 1 changes no model, so it needs neither slot; an end level needs its own slot only.
+	// The ladder's effort at work level 1 is high at level 0 and medium at the other levels.
+	// The fixtures feed the rows left out.
+	const ROWS: readonly [0 | 1 | 2, string, Models, object][] = [
+		[
+			0,
+			"the small model only",
+			{ small: MODELS.small },
+			route(0, "small", MODELS.small, "high"),
+		],
+		[0, "no model", {}, skip("small model unset")],
+		[
+			1,
+			"the small model only",
+			{ small: MODELS.small },
+			route(1, null, "no change", "medium"),
+		],
+		[
+			1,
+			"the large model only",
+			{ large: MODELS.large },
+			route(1, null, "no change", "medium"),
+		],
+		[1, "no model", {}, route(1, null, "no change", "medium")],
+		[
+			2,
+			"the large model only",
+			{ large: MODELS.large },
+			route(2, "large", MODELS.large, "medium"),
+		],
+		[2, "no model", {}, skip("large model unset")],
+	];
+
+	for (const [tier, name, models, expected] of ROWS)
+		it(`level ${tier} with ${name} set gives ${JSON.stringify(expected)}`, async () => {
+			const steps = [
+				{ host: "api.typesafe.ai", reply: { levels: { tier, work: 1 } } },
+			] satisfies Step[];
+			const { response } = run({ ...REQUEST, models }, steps);
+			assert.deepEqual(await response, expected);
+		});
+});
+
 describe("failures", () => {
 	for (const raw of [undefined, null, 7, "text", []])
 		it(`a request of ${JSON.stringify(raw)} gives the failed skip`, async () => {
