@@ -386,3 +386,62 @@ test("calls run one at a time, and a failed call does not block the next", async
 	);
 	assert.match(await world.callTool({}), /^provider: /);
 });
+
+test("a dialog that fails gives its call the no-answer line, and the call behind it opens its dialog only after", async () => {
+	install();
+	const open: {
+		resolve: (answer: string) => void;
+		reject: (reason: Error) => void;
+	}[] = [];
+	world.select = () =>
+		new Promise((resolve, reject) => {
+			open.push({ resolve, reject });
+		});
+	const first = world.callTool({ setting: "scope" });
+	const second = world.callTool({ setting: "scope" });
+	await settle(1);
+	await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
+	assert.equal(world.dialogs.length, 1);
+	open[0]?.reject(new Error("dialog gone"));
+	assert.equal(await first, unchanged("scope", NO_ANSWER));
+	await settle(2);
+	assert.equal(world.writes.length, 0);
+	open[1]?.resolve(labelOf("scope", "extended"));
+	assert.equal(await second, valueLine("scope", "extended"));
+	assert.equal(world.writes.length, 1);
+});
+
+test("a command and the tool share one queue, and a failed write does not stop the tool behind it", async () => {
+	let release: () => void = () => undefined;
+	let attempts = 0;
+	install({
+		...world.imports,
+		writeSetting: async (...args) => {
+			attempts += 1;
+			if (attempts === 1) {
+				await new Promise<void>((resolve) => {
+					release = resolve;
+				});
+				throw new Error("disk full");
+			}
+			return world.imports.writeSetting(...args);
+		},
+	});
+	choose("scope", "extended");
+	const first = world.runCommand(SCOPE_COMMAND, "extended");
+	const second = world.callTool({ setting: "scope" });
+	const deadline = Date.now() + DIALOG_WAIT_MS;
+	while (attempts < 1) {
+		if (Date.now() > deadline) assert.fail("the first write did not start");
+		await new Promise((resolve) => setTimeout(resolve, 1));
+	}
+	await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
+	assert.equal(world.dialogs.length, 0);
+	assert.equal(attempts, 1);
+	release();
+	await first;
+	assert.deepEqual(world.notes, [unchanged("scope", "disk full")]);
+	assert.equal(await second, valueLine("scope", "extended"));
+	assert.equal(world.dialogs.length, 1);
+	assert.equal(attempts, 2);
+});
