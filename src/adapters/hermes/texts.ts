@@ -1,12 +1,11 @@
 import { FAILED, TIMEOUT } from "../../core/compose.ts";
 import { EFFORTS } from "../../core/ladder.ts";
 import { LEVELS } from "../../core/part.ts";
-import {
-	NO_END_MODEL,
-	NODE_NOT_FOUND,
-	SUBAGENT_MODEL_SET,
-} from "../../core/reasons.ts";
+import { NO_END_MODEL, SUBAGENT_MODEL_SET } from "../../core/reasons.ts";
 import { KEY_UNSET } from "../../core/settings.ts";
+
+// The reason Python gives when no Node runtime is on the path.
+const NODE_NOT_FOUND = "node not found";
 
 /**
  * Python ends a Node run this long after its budget, so Node's own deadline
