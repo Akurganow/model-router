@@ -31,7 +31,6 @@ export type Facts = {
 export type Spawning = {
 	readonly agent: string;
 	readonly modelRole?: string | undefined;
-	readonly patterns?: readonly string[] | undefined;
 };
 
 /**
