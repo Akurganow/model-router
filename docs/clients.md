@@ -456,6 +456,17 @@ The running facts used omp from npm, a probe extension and a local stand-in mode
   The hook's suffix won over a project agent's `thinking-level: low` and over a level on the role, `modelRoles.smol: stub/small:low`.
   `task.maxEffort: low` with a hook `@smol:high` ran the child at `high`.
   (running: omp 18.12.6 and 18.18.9, 2026-11-11)
+- The built plugin, with its Jev requests answered inside the omp process and the stand-in model, set the child's model and level as [Effort](../plugins/model-router-omp/README.md#effort) says.
+  Level 0 ran the small model at `high` or `xhigh`, level 1 the parent's model at `low` or `medium`, and level 2 the large model at `medium` or `high`, as the work level picked.
+  `task.maxEffort: low` capped level 0 at `low`, and `task.maxEffort: medium` capped level 2 at `medium`.
+  With `task.maxEffort: minimal`, an item `effort: "lo"` or `modelRoles.smol: stub/small:low`, the plugin returned `@smol` alone, and the line named `config effort` or `caller effort`.
+  (running: omp 18.12.6 and 18.18.9, 2026-11-12, 36 cases, every one alike at both versions)
+- A level on the `smol` role reached the spawn's patterns of the bundled `scout` agent as `stub/small:low`.
+  At level 1 the plugin then returned nothing and printed `config effort`, and the child ran at `low`, as it did without the plugin.
+  A level on the `default` role did not reach the patterns of a `task` spawn, which read `stub/parent`.
+  Without the plugin that child ran at `high`, not at the role's `low`.
+  A project agent with `thinking-level: low` and no model ran at `low` without the plugin and at the ladder's `medium` on the large model at level 2.
+  (running: omp 18.12.6 and 18.18.9, 2026-11-12, under the `extended` scope where an agent is named)
 
 ### omp gaps
 
