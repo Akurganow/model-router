@@ -403,7 +403,7 @@ test("a skip after two attempts names both providers, a later one-attempt skip d
 
 test("one 8 s limit covers the batch: running and queued items are skipped as timeout", async () => {
 	install();
-	mock.timers.enable({ apis: ["setTimeout"] });
+	mock.timers.enable({ apis: ["setTimeout", "Date"] });
 	world.answer = (_sent, _n, signal) =>
 		new Promise((_resolve, reject) =>
 			signal.addEventListener("abort", () => reject(signal.reason)),
@@ -424,3 +424,105 @@ test("one 8 s limit covers the batch: running and queued items are skipped as ti
 		assert.equal(entry, `task ${i + 1}: skipped, timeout`);
 	assert.equal(world.sent.length, 4);
 });
+
+const TIMEOUT = "extensionHandlers.toolCallTimeoutMs";
+const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+// The key lookup takes the given time on the mocked clock.
+const slowKey = (ms: number) => {
+	world.credential = (provider) =>
+		new Promise((resolve) =>
+			setTimeout(() => resolve(provider === "typesafe" ? KEY : undefined), ms),
+		);
+};
+const passKey = async (ms: number) => {
+	while (world.asked.length === 0) await flush();
+	mock.timers.tick(ms);
+};
+const hangingAnswer = () => {
+	world.answer = (_sent, _n, signal) =>
+		new Promise((_resolve, reject) =>
+			signal.addEventListener("abort", () => reject(signal.reason)),
+		);
+};
+
+test("gates that use up the deadline leave nothing to send, and the item skips as timeout", async () => {
+	world.config[TIMEOUT] = 3000;
+	install();
+	mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	slowKey(2500);
+	hangingAnswer();
+	const pending = world.toolCall("c", { tasks: [{ task: "level2 a" }] });
+	await passKey(2500);
+	while (world.notes.length === 0 && world.sent.length === 0) await flush();
+	assert.deepEqual(world.sent, []);
+	assert.deepEqual(world.notes, [`${PREFIX}task 1: skipped, timeout`]);
+	await pending;
+});
+
+test("the gates' time counts against the deadline: scoring gets only what is left", async () => {
+	world.config[TIMEOUT] = 4000;
+	install();
+	mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	slowKey(500);
+	hangingAnswer();
+	const pending = world.toolCall("c", { tasks: [{ task: "level2 a" }] });
+	await passKey(500);
+	while (world.sent.length < 1) await flush();
+	mock.timers.tick(1499);
+	await flush();
+	assert.equal(world.notes.length, 0);
+	mock.timers.tick(1);
+	await pending;
+	assert.deepEqual(world.notes, [`${PREFIX}task 1: skipped, timeout`]);
+});
+
+test("a tool call timeout under 3 s skips every item, reads no key and sends nothing", async () => {
+	world.config[TIMEOUT] = 2500;
+	install();
+	const result = await world.toolCall("c", {
+		tasks: [{ task: "level2 a" }, { task: "level0 b" }],
+	});
+	assert.equal(result, undefined);
+	const reason = "skipped, tool call timeout 2500 ms leaves 500 ms to route";
+	assert.deepEqual(world.notes, [
+		`${PREFIX}task 1: ${reason} | task 2: ${reason}`,
+	]);
+	assert.deepEqual(world.sent, []);
+	assert.deepEqual(world.asked, []);
+});
+
+test("a tool call timeout of 3 s still routes", async () => {
+	world.config[TIMEOUT] = 3000;
+	install();
+	await world.toolCall("c", { tasks: [{ task: "level2 a" }] });
+	assert.equal(world.sent.length, 1);
+	assert.deepEqual(world.notes, [
+		`${PREFIX}task 1: L2 @slow · p=0.90${SUFFIX}`,
+	]);
+});
+
+for (const [timeout, limit] of [
+	[4000, 2000],
+	[9000, 7000],
+	[60000, 8000],
+	["x", 8000],
+] as const)
+	test(`a tool call timeout of ${timeout} gives the batch ${limit} ms`, async () => {
+		world.config[TIMEOUT] = timeout;
+		install();
+		mock.timers.enable({ apis: ["setTimeout", "Date"] });
+		world.answer = (_sent, _n, signal) =>
+			new Promise((_resolve, reject) =>
+				signal.addEventListener("abort", () => reject(signal.reason)),
+			);
+		const pending = world.toolCall("c", { tasks: [{ task: "level2 a" }] });
+		while (world.sent.length < 1)
+			await new Promise((resolve) => setImmediate(resolve));
+		mock.timers.tick(limit - 1);
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(world.notes.length, 0);
+		mock.timers.tick(1);
+		await pending;
+		assert.deepEqual(world.notes, [`${PREFIX}task 1: skipped, timeout`]);
+	});
