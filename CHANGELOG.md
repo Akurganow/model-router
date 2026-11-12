@@ -3,6 +3,27 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.20.1 - 2026-11-12
+#### Bug Fixes
+- mask long URL credentials, keep text after a quoted header, close fences only at a real closer (d27bb1f)
+- close the redaction gaps the review found, and type the routing state (45b3cc9)
+- mask the call's one-line description like the task text (cc8b244)
+- mask more secret shapes and condense tilde fences in linear time (c1039f9)
+#### Documentation
+- say how a fence closes, where a quoted credential ends, and that URL credentials have no length limit (d602371)
+- list the masked shapes in the code's order and as the code masks them (f9fab9d)
+- one list of masked shapes, linked from the READMEs and policies (5e26204)
+- name the two omp pins once in clients.md (6a03c69)
+#### Continuous Integration
+- the omp load check answers once when a kill fails (5e20ccf)
+- the omp load check survives an early exit and stops omp (e4fa656)
+- leave the minimum omp pin to a person and guard the evals pin (8bd8983)
+- title Renovate bumps of CI-only pins ci, so they release nothing (ee8e709)
+- test omp at the minimum and at the latest release (5592261)
+
+- - -
+
+
 ## v0.20.0 - 2026-11-12
 #### Features
 - (**hermes**) let the delegating model describe a task and pin its effort and level (dada28e)
