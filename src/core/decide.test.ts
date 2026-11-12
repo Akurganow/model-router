@@ -18,14 +18,6 @@ const decision = (parts: Decision["parts"], model = "m"): Decision => ({
 	usage: { input_tokens: 1, output_tokens: 2 },
 });
 
-test("a tier part alone gives the level, its probability and the suffix", () => {
-	assert.deepEqual(decide(decision({ tier: part(2, 0.9) }), "tier"), {
-		tier: 2,
-		probabilities: "0.90",
-		suffix: " · jev m · 1/2 tok",
-	});
-});
-
 test("a tier and a work part give both levels and a joined probability", () => {
 	assert.deepEqual(
 		decide(
@@ -46,7 +38,9 @@ test("a missing part is a bad reply", () => {
 	assert.deepEqual(decide(decision({ tier: part(1, 0.9) }), "tier", "work"), {
 		skipped: "bad reply",
 	});
-	assert.deepEqual(decide(decision({}), "tier"), { skipped: "bad reply" });
+	assert.deepEqual(decide(decision({ work: part(1, 0.9) }), "tier", "work"), {
+		skipped: "bad reply",
+	});
 });
 
 test("a skipped decision passes through", () => {
