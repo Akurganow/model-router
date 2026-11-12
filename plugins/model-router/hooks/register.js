@@ -1313,7 +1313,12 @@ function pick(setting, answer2) {
 }
 async function chooseValue(setting, current2, select, apply) {
   const { question, options } = ask(setting, current2);
-  const answer2 = await select(question, options);
+  let answer2;
+  try {
+    answer2 = await select(question, options);
+  } catch {
+    answer2 = void 0;
+  }
   if (answer2 === void 0) return unchanged(setting, NO_ANSWER);
   const value = pick(setting, answer2);
   return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply(value);
@@ -1603,13 +1608,7 @@ async function choose($, setting, options) {
   return chooseValue(
     setting,
     current(options, setting),
-    async (question, labels) => {
-      try {
-        return await $.ui.ask(question, { options: labels, header: setting });
-      } catch {
-        return void 0;
-      }
-    },
+    (question, labels) => $.ui.ask(question, { options: labels, header: setting }),
     async (value) => value === current(options, setting) ? unchanged(setting, alreadyValue(value)) : write($, setting, value)
   );
 }

@@ -153,10 +153,10 @@ export function pick(
 
 /**
  * Asks the person which value a setting takes and returns the line to show.
- * `select` shows the question and returns the answer, or undefined when the
- * dialog gave none. An answer that is not an offered label is refused. `apply`
- * gets the picked value and returns the line, so each harness keeps its own
- * test for a value that already holds.
+ * `select` shows the question and returns the answer. A dialog that returns
+ * undefined, throws or rejects gave no answer. An answer that is not an offered
+ * label is refused. `apply` gets the picked value and returns the line, so each
+ * harness keeps its own test for a value that already holds.
  */
 export async function chooseValue(
 	setting: ValueSetting,
@@ -165,7 +165,12 @@ export async function chooseValue(
 	apply: (value: string) => Promise<string>,
 ): Promise<string> {
 	const { question, options } = ask(setting, current);
-	const answer = await select(question, options);
+	let answer: string | undefined;
+	try {
+		answer = await select(question, options);
+	} catch {
+		answer = undefined;
+	}
 	if (answer === undefined) return unchanged(setting, NO_ANSWER);
 	const value = pick(setting, answer);
 	return value === undefined ? unchanged(setting, NOT_OFFERED) : apply(value);

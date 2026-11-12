@@ -231,6 +231,35 @@ test("chooseValue maps no answer to the no-answer line and applies nothing", asy
 	assert.equal(applied, 0);
 });
 
+test("chooseValue maps a select that rejects or throws to the no-answer line and applies nothing", async () => {
+	let applied = 0;
+	const apply = async () => {
+		applied += 1;
+		return "";
+	};
+	assert.equal(
+		await chooseValue(
+			"provider",
+			undefined,
+			async () => {
+				throw new Error("dialog gone");
+			},
+			apply,
+		),
+		unchanged("provider", NO_ANSWER),
+	);
+	assert.equal(
+		await chooseValue(
+			"provider",
+			undefined,
+			() => Promise.reject(new Error("dialog gone")),
+			apply,
+		),
+		unchanged("provider", NO_ANSWER),
+	);
+	assert.equal(applied, 0);
+});
+
 test("chooseValue maps an unknown answer to the not-offered line and never echoes it", async () => {
 	let applied = 0;
 	for (const answer of ["auto", "", "secret-text", "auto - TypeSafe only"]) {

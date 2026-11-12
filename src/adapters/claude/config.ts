@@ -91,13 +91,8 @@ async function choose(
 	return chooseValue(
 		setting,
 		current(options, setting),
-		async (question, labels) => {
-			try {
-				return await $.ui.ask(question, { options: labels, header: setting });
-			} catch {
-				return undefined;
-			}
-		},
+		(question, labels) =>
+			$.ui.ask(question, { options: labels, header: setting }),
 		async (value) =>
 			value === current(options, setting)
 				? unchanged(setting, alreadyValue(value))

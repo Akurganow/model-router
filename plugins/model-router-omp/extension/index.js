@@ -1319,9 +1319,14 @@ function pick(setting, answer) {
     (value) => label(setting, value) === answer
   );
 }
-async function chooseValue(setting, current, select2, apply2) {
+async function chooseValue(setting, current, select, apply2) {
   const { question, options } = ask(setting, current);
-  const answer = await select2(question, options);
+  let answer;
+  try {
+    answer = await select(question, options);
+  } catch {
+    answer = void 0;
+  }
   if (answer === void 0) return unchanged(setting, NO_ANSWER);
   const value = pick(setting, answer);
   return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply2(value);
@@ -1567,20 +1572,13 @@ async function apply(omp, ctx, setting, value) {
   const line = valueLine(setting, now);
   return now === value ? line : [line, projectOverrides(setting)].join(LINE_BREAK2);
 }
-async function select(ctx, question, options) {
-  try {
-    return await ctx.ui.select(question, options);
-  } catch {
-    return void 0;
-  }
-}
 async function dialog(omp, ctx, setting) {
   if (!ctx.hasUI) return unchanged(setting, NO_ANSWER);
   const shown = await readSettings(omp, ctx.cwd);
   return chooseValue(
     setting,
     shown?.[setting],
-    (question, options) => select(ctx, question, options),
+    (question, options) => ctx.ui.select(question, options),
     (value) => apply(omp, ctx, setting, value)
   );
 }

@@ -97,18 +97,6 @@ async function apply(
 		: [line, projectOverrides(setting)].join(LINE_BREAK);
 }
 
-async function select(
-	ctx: Context,
-	question: string,
-	options: string[],
-): Promise<string | undefined> {
-	try {
-		return await ctx.ui.select(question, options);
-	} catch {
-		return undefined;
-	}
-}
-
 async function dialog(
 	omp: OmpImports,
 	ctx: Context,
@@ -119,7 +107,7 @@ async function dialog(
 	return chooseValue(
 		setting,
 		shown?.[setting],
-		(question, options) => select(ctx, question, options),
+		(question, options) => ctx.ui.select(question, options),
 		(value) => apply(omp, ctx, setting, value),
 	);
 }
