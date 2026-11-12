@@ -2,7 +2,7 @@
 
 model-router for Hermes Agent is a plugin published by Akurganow. This policy
 says what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-11.
+2026-11-12.
 
 ## Where requests go
 
@@ -56,8 +56,10 @@ JSON body holds:
 - the task's `description` parameter, when the delegating model sets one, or
   an empty description. The plugin masks its token-shaped strings as it masks
   the task text, turns each run of whitespace into one space, and cuts it to
-  500 characters. A private name in a description, such as a client, a
-  product or a team, still leaves your machine
+  500 characters. A private name in a description still leaves your
+  machine, as
+  [Descriptions and private names](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#descriptions-and-private-names)
+  says
 - the Jev alias and the two scoring questions, as
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them

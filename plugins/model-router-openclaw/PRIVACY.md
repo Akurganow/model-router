@@ -2,7 +2,7 @@
 
 model-router for OpenClaw is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-06.
+2026-11-12.
 
 ## Where requests go
 
@@ -49,8 +49,9 @@ JSON body holds:
 - the agent's role:
   - [the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself)
     sends that agent's `description` from OpenClaw's configuration when one is
-    set. The plugin masks token-shaped strings, collapses whitespace and cuts
-    it to 500 characters
+    set. The plugin masks the token-shaped strings that
+    [The task text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-task-text)
+    lists, collapses whitespace and cuts it to 500 characters
   - the same spawn sends one fixed text that ships with the plugin when the
     requester has no description
   - under `extended`, a spawn of another configured agent sends that agent's
@@ -61,9 +62,11 @@ JSON body holds:
 - the spawn's `label` as the description, else its `taskName`, or an empty
   description when it has neither. The plugin reads `label` and `taskName` as
   [How the plugin reads a spawn](README.md#how-the-plugin-reads-a-spawn) says.
-  It sends the value as is, as the other plugins send the description of a
-  call. It masks and cuts nothing in it, so a key or a private name in a label
-  leaves your machine
+  The plugin masks, collapses and cuts the value like the agent's
+  description, as the other plugins do with the description of a call. A
+  private name in a label still leaves your machine, as
+  [Descriptions and private names](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#descriptions-and-private-names)
+  says
 - the Jev alias and the two scoring questions, as
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them

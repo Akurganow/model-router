@@ -60,6 +60,23 @@ The plugin sends no telemetry and no other data about you or your machine.
 ## The task text
 
 Before the task text leaves, the plugin condenses it and masks token-shaped strings.
+Condensing replaces each code block fenced with three or more backticks or tildes by a note of its line count.
+Masking replaces these shapes with `***`:
+
+- a private key block in PEM form, from its `BEGIN` line to its `END` line;
+- the user and password in a URL, as in `postgres://user:pass@host`, which keeps its scheme and host;
+- the credentials of an `Authorization` header, which keeps its scheme;
+- a `Bearer` token, in any case;
+- GitHub, GitLab, Slack, Stripe, npm, Hugging Face and PyPI tokens, Slack webhook URLs, Google API keys and AWS access key ids, by their prefixes;
+- a 40-character AWS secret after an access key id on the same line;
+- a JSON Web Token;
+- an `sk-` key, such as an OpenAI, Anthropic or OpenRouter key;
+- the `user:password` after `-u` or `--user`;
+- the word after `password`, `passphrase` or `passwd` followed by `is` or `was`;
+- the value assigned with `=` or `:` to a name that ends in `key`, `token`, `secret` or `password`, in any case.
+
+The last rule also masks the word after such a name in prose, as in `primary key: id`.
+The agent's description and the call's one-line description pass through the same masking.
 A text over 12,000 characters keeps its start and its end.
 
 ## Retries and the second provider
@@ -100,9 +117,8 @@ The plugin author has no access to those requests.
 
 ## Descriptions and private names
 
-A hand-written agent description can hold private names, such as a client, a product or a team.
-The plugin masks token-shaped strings only.
-Read your agents' descriptions before you set `extended`.
+An agent's description and a call's one-line description can hold private names, such as a client, a product or a team.
+The plugin masks token-shaped strings only, so a private name in a description leaves your machine.
 
 ## The option commands
 

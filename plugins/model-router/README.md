@@ -242,15 +242,15 @@ as below. Each key goes only to its own provider. The body holds:
   fixed text, and every other agent sends its description, masked and cut to
   500 characters. [model-choice.md](docs/model-choice.md#the-role-of-the-default-agent)
   says why
-- the caller's one-line description
+- the caller's one-line description, masked like the task text
 - the Jev alias `jev-latest` and two scoring questions with their
   three texts each, which ship with the plugin
 
 Two steps run on the task text before it leaves. Fenced code blocks become a
-one-line size note. Token-shaped strings are masked: `Bearer …`, `sk-…` keys,
-and assignments to names ending in `key`, `token`, `secret` or `password`. A
-text over 12,000 characters keeps its start and its end, joined by a marker
-that says the middle is omitted. Nothing else leaves the machine.
+one-line size note, and token-shaped strings are masked, as
+[The task text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-task-text)
+lists. A text over 12,000 characters keeps its start and its end, joined by a
+marker that says the middle is omitted. Nothing else leaves the machine.
 
 Under `extended`, the descriptions and task text of your user, project and
 plugin agents leave too. [The extended scope](PRIVACY.md#the-extended-scope)

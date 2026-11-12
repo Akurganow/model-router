@@ -2,7 +2,7 @@
 
 model-router for Oh My Pi is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-06.
+2026-11-12.
 
 ## Where requests go
 
@@ -56,14 +56,16 @@ names. The JSON body holds:
 - the agent text, the request's `role` field:
   - for the bundled `task` agent, one fixed text that ships with the plugin
   - for every other routed agent, its description as omp discovers it, a
-    `task` agent you define included. The plugin masks token-shaped strings,
-    collapses whitespace and cuts it to 500 characters
+    `task` agent you define included. The plugin masks the token-shaped
+    strings that
+    [The task text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-task-text)
+    lists, collapses whitespace and cuts it to 500 characters
   - a missing or blank description sends `An agent with no description.`
   - under the default scope only the bundled `task` agent is routed
   - [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent)
     says why the text is fixed
-- the item's `name` as the description, or an empty description when it has
-  none
+- the item's `name` as the description, masked, collapsed and cut like the
+  agent's description, or an empty description when it has none
 - the Jev alias and one scoring question, `tier`, as
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them
