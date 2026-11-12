@@ -25,6 +25,7 @@ import {
 	valueLine,
 } from "../../core/settings.ts";
 import { isRecord } from "../../utils/guards.ts";
+import { serializer } from "../../utils/serializer.ts";
 import { findKey, readSettings, type Settings } from "./gates.ts";
 import { changeKey } from "./key.ts";
 import type { Context, OmpImports, Pi, ToolReply } from "./types.ts";
@@ -40,16 +41,6 @@ export function say(ctx: Context, text: string): void {
 	} catch {
 		// Nothing is left to tell.
 	}
-}
-
-// Calls queue behind each other, and a call that fails does not stop the queue.
-function serializer() {
-	let tail: Promise<unknown> = Promise.resolve();
-	return <T>(job: () => Promise<T>): Promise<T> => {
-		const run = tail.then(job);
-		tail = run.catch(() => undefined);
-		return run;
-	};
 }
 
 async function withSettings(

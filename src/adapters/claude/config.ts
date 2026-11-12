@@ -18,6 +18,7 @@ import {
 	type ValueSetting,
 	valueLine,
 } from "../../core/settings.ts";
+import { serializer } from "../../utils/serializer.ts";
 import type {
 	CommandOutput,
 	CommandRun,
@@ -47,11 +48,11 @@ const TOOL_SPEC = {
 
 // What this instance wrote, so a call queued behind a write sees the new value before the reload.
 const written: Partial<Record<ValueSetting, string>> = {};
-let queue: Promise<unknown> = Promise.resolve();
+let serial = serializer();
 
 export function resetConfig(): void {
 	for (const setting of VALUE_SETTINGS) delete written[setting];
-	queue = Promise.resolve();
+	serial = serializer();
 }
 
 const current = (options: Options, setting: ValueSetting): unknown =>
@@ -135,9 +136,7 @@ export function configCall(
 	call: ConfigCall,
 	options: Options,
 ): Promise<ToolAnswer> {
-	const run = queue.then(() => answer($, call, options));
-	queue = run.catch(() => undefined);
-	return run;
+	return serial(() => answer($, call, options));
 }
 
 export async function configCommand(

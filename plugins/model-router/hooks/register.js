@@ -1511,6 +1511,16 @@ var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 // src/core/reasons.ts
 var CALLER_EFFORT = "caller effort";
 
+// src/utils/serializer.ts
+function serializer() {
+  let tail = Promise.resolve();
+  return (job) => {
+    const run = tail.then(job);
+    tail = run.catch(() => void 0);
+    return run;
+  };
+}
+
 // src/adapters/claude/host.ts
 var EFFORTS_MAX = 1024;
 function passOn(_, e, next) {
@@ -1553,10 +1563,10 @@ var TOOL_SPEC = {
   }
 };
 var written = {};
-var queue = Promise.resolve();
+var serial = serializer();
 function resetConfig() {
   for (const setting of VALUE_SETTINGS) delete written[setting];
-  queue = Promise.resolve();
+  serial = serializer();
 }
 var current = (options, setting) => written[setting] ?? options[setting];
 async function registerConfigTool($, e, next) {
@@ -1610,9 +1620,7 @@ async function answer($, call, options) {
   return { result: badCall(VALUE_SETTINGS) };
 }
 function configCall($, call, options) {
-  const run = queue.then(() => answer($, call, options));
-  queue = run.catch(() => void 0);
-  return run;
+  return serial(() => answer($, call, options));
 }
 async function configCommand($, e, setting, options) {
   const args = e.args.trim();

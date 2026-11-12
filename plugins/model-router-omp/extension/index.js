@@ -1337,6 +1337,16 @@ var COMMAND_DESCRIPTIONS = {
   scope: describeCommand("scope")
 };
 
+// src/utils/serializer.ts
+function serializer() {
+  let tail = Promise.resolve();
+  return (job) => {
+    const run = tail.then(job);
+    tail = run.catch(() => void 0);
+    return run;
+  };
+}
+
 // src/adapters/omp/gates.ts
 import { readFile } from "node:fs/promises";
 
@@ -1512,14 +1522,6 @@ function say(ctx, text) {
 `);
   } catch {
   }
-}
-function serializer() {
-  let tail = Promise.resolve();
-  return (job) => {
-    const run = tail.then(job);
-    tail = run.catch(() => void 0);
-    return run;
-  };
 }
 async function withSettings(omp, ctx, show) {
   const settings = await readSettings(omp, ctx.cwd);
