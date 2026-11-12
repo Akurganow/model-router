@@ -1,4 +1,4 @@
-import { deadlineFor, tooShort } from "../../core/handler-deadline.ts";
+import { deadlineFor, MIN_DEADLINE_MS } from "../../core/handler-deadline.ts";
 
 // omp gives every tool_call handler this long when its setting is unusable.
 const DEFAULT_TIMEOUT_MS = 30000;
@@ -18,7 +18,7 @@ export function budgetFor(value: unknown): Budget {
 			? value
 			: DEFAULT_TIMEOUT_MS;
 	const deadline = deadlineFor(timeout);
-	if (!tooShort(deadline)) return { deadline };
+	if (deadline >= MIN_DEADLINE_MS) return { deadline };
 	return {
 		closed: `tool call timeout ${timeout} ms leaves ${Math.max(0, deadline)} ms to route`,
 	};

@@ -1134,7 +1134,6 @@ function decisionSuffix({
 var HANDLER_MARGIN_MS = 2e3;
 var MIN_DEADLINE_MS = 1e3;
 var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
-var tooShort = (deadline) => deadline < MIN_DEADLINE_MS;
 var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
 
 // src/core/line.ts
@@ -2023,7 +2022,7 @@ async function routeGated(spawn, settings, keys, gate, log) {
 function createBeforeToolCall(api, deadlineMs, deps) {
   return async (event, ctx) => {
     try {
-      if (tooShort(deadlineMs) || event?.toolName !== SPAWN_TOOL)
+      if (deadlineMs < MIN_DEADLINE_MS || event?.toolName !== SPAWN_TOOL)
         return void 0;
       const requester = nonEmpty(ctx?.agentId);
       const request = readSpawn(event.params);
@@ -2065,7 +2064,7 @@ var HOOK_MODES = ["full", "discovery"];
 function registerRouting(api, deps) {
   const timeout = effectiveTimeout(api.config);
   const deadline = deadlineFor(timeout);
-  if (api.registrationMode === "full" && tooShort(deadline))
+  if (api.registrationMode === "full" && deadline < MIN_DEADLINE_MS)
     warn(
       api,
       `the hook timeout is ${timeout} ms, which leaves ${deadline} ms to route; the plugin routes nothing. Set it to ${MIN_TIMEOUT_MS} ms or more.`

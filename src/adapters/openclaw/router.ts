@@ -2,7 +2,7 @@ import type { Fetch } from "@typesafe-ai/sdk";
 import { routingState } from "../../core/brief.ts";
 import { abortCategory, LIMIT_REACHED } from "../../core/compose.ts";
 import { scoreWork } from "../../core/decide.ts";
-import { tooShort } from "../../core/handler-deadline.ts";
+import { MIN_DEADLINE_MS } from "../../core/handler-deadline.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
 import type { Level } from "../../core/part.ts";
@@ -205,7 +205,7 @@ export function createBeforeToolCall(
 ): BeforeToolCallHandler {
 	return async (event: BeforeToolCallEvent, ctx: ToolContext) => {
 		try {
-			if (tooShort(deadlineMs) || event?.toolName !== SPAWN_TOOL)
+			if (deadlineMs < MIN_DEADLINE_MS || event?.toolName !== SPAWN_TOOL)
 				return undefined;
 			const requester = nonEmpty(ctx?.agentId);
 			const request = readSpawn(event.params);

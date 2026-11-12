@@ -7,10 +7,6 @@ export const MIN_DEADLINE_MS = 1000;
 // The shortest handler timeout that still leaves the minimum deadline.
 export const MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
 
-// Tells whether a deadline is under the floor, so the handler routes nothing.
-export const tooShort = (deadline: number): boolean =>
-	deadline < MIN_DEADLINE_MS;
-
 // The scoring time left once the handler's margin is kept back, capped at the routing limit.
 export const deadlineFor = (timeout: number): number =>
 	Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
