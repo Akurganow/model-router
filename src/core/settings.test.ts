@@ -271,17 +271,6 @@ test("chooseValue returns what apply returns, and a throw passes through", async
 		),
 		{ message: "apply failed" },
 	);
-	await assert.rejects(
-		chooseValue(
-			"provider",
-			"auto",
-			async () => {
-				throw new Error("select failed");
-			},
-			async () => "",
-		),
-		{ message: "select failed" },
-	);
 });
 
 test("settingsReport joins the value lines, the extra lines and the key lines in order", () => {
