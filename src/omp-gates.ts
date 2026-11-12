@@ -157,11 +157,17 @@ export function resolves(ctx: Context, role: string): boolean {
 	}
 }
 
-function read(lookup: Lookup, id: string, settings: unknown): unknown {
+// A read that throws gives the fallback.
+function read(
+	lookup: Lookup,
+	id: string,
+	settings: unknown,
+	fallback?: unknown,
+): unknown {
 	try {
 		return lookup(id)?.get(settings);
 	} catch {
-		return undefined;
+		return fallback;
 	}
 }
 
@@ -171,26 +177,21 @@ export const readTimeoutSetting = (
 	settings: unknown,
 ): unknown => read(lookup, "extensionHandlers.toolCallTimeoutMs", settings);
 
-// A ceiling that cannot be read is no omp value, so the plugin keeps omp's effort.
-const UNREADABLE_CEILING = Symbol("unreadable ceiling");
-function readCeiling(lookup: Lookup, settings: unknown): unknown {
-	try {
-		return lookup("task.maxEffort")?.get(settings);
-	} catch {
-		return UNREADABLE_CEILING;
-	}
-}
+type Config = Pick<
+	Facts,
+	"roles" | "overrides" | "disabled" | "maxEffort" | "effortEnabled"
+>;
 
-type Config = Pick<Facts, "roles" | "overrides" | "disabled" | "maxEffort">;
-
-// The effort ceiling closes no gate: a value the plugin cannot use only keeps omp's effort.
+// The effort settings close no gate. A ceiling that cannot be read reads as null, no omp value, so omp's effort stays.
+// A per-task effort setting that is not true counts as off: omp still lets the item's effort win when it is on.
 function readConfig(lookup: Lookup, settings: unknown): Config | undefined {
 	const roles = read(lookup, "modelRoles", settings);
 	const overrides = read(lookup, "task.agentModelOverrides", settings);
 	const disabled = read(lookup, "task.disabledAgents", settings);
-	const maxEffort = readCeiling(lookup, settings);
+	const maxEffort = read(lookup, "task.maxEffort", settings, null);
+	const effortEnabled = read(lookup, "task.enableEffort", settings) === true;
 	return isRecord(roles) && isRecord(overrides) && Array.isArray(disabled)
-		? { roles, overrides, disabled, maxEffort }
+		? { roles, overrides, disabled, maxEffort, effortEnabled }
 		: undefined;
 }
 

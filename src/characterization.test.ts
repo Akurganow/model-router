@@ -224,6 +224,7 @@ describe("omp per-item line", () => {
 			agents: world.agents,
 			noModels: undefined,
 			maxEffort: undefined,
+			effortEnabled: false,
 		},
 	});
 	const lines = async (tasks: [string, string?][]) => {

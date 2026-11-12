@@ -61,13 +61,14 @@ type Answer = (
 ) => Promise<Response>;
 
 // The fake settings hold the values the gates read. Setting a key to undefined makes it unreadable.
-// The tool call timeout and the effort ceiling start unset, so omp's defaults apply.
+// The tool call timeout, the effort ceiling and per-task effort start unset, so omp's defaults apply.
 type Config = {
 	modelRoles: unknown;
 	"task.agentModelOverrides": unknown;
 	"task.disabledAgents": unknown;
 	"extensionHandlers.toolCallTimeoutMs"?: unknown;
 	"task.maxEffort"?: unknown;
+	"task.enableEffort"?: unknown;
 };
 
 // A task text holding `level0`, `level1` or `level2` gets that tier from the fake Jev, and `work0` to `work2` that work level.

@@ -7,7 +7,7 @@ An [Oh My Pi](https://github.com/can1357/oh-my-pi) (omp) plugin that picks a mod
 - It scores each eligible batch item through Jev, using the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - At spawn, it returns `@smol` for level 0 and `@slow` for level 2, each with the effort as a thinking suffix, such as `@smol:high`. Level 1 keeps the agent's model and sets the effort alone, as [Effort](#effort) says.
 - The [`scope` setting](#scope) picks the agents. Under `core`, the default, only omp's bundled `task` agent is routed. Under `extended`, every agent whose model you did not set is routed.
-- It never overrides a model you set, nor an effort you set. [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the effort rules. It never changes the tool input.
+- It never overrides a model you set. It keeps the item's own `effort`, a level on the role it picks, and at level 1 a level on the spawn's model patterns. [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the rules, and [Effort](#effort) names the exception: a level that an agent sets gives way to the ladder. It never changes the tool input.
 - The routed effort replaces the level of a bundled agent: `auto` for `task`, where omp picks the effort for each prompt, and `medium` for `sonic`.
 - The plugin changes a setting only when you pick a value in its dialog or give it a command. [Change the options](#change-the-options) lists both.
 - An item is eligible when its `task` text is not empty. Under `core`, its `agent` must also be absent or `task`.
@@ -159,10 +159,10 @@ The routed effort replaces a level that omp's bundled agents set, such as `auto`
 
 The first rule that matches decides. The plugin then sets the model alone, and the line shows the label in place of the effort.
 
-1. The item carries `effort`. The line shows `caller effort`.
+1. The item carries `effort` and `task.enableEffort` is on, so omp applies it. The line shows `caller effort`. While the setting is off or unreadable, omp ignores the item's `effort`, and the plugin sets its own.
 2. The `smol` or `slow` role the level picks carries a level, such as `modelRoles.smol: provider/model:low`, directly or through a role it names. The line shows `config effort`.
-3. A model pattern of the spawn carries a level. The line shows `config effort`.
-4. `task.maxEffort` is below `low`, or holds a value omp does not define. The line shows `config effort`.
+3. At level 1, a model pattern of the spawn carries a level. The line shows `config effort`. At level 0 or 2 the role replaces the patterns, so their levels do not count.
+4. `task.maxEffort` is below `low`, or holds a value omp does not define. The plugin then sets no level, and the child runs at omp's own level, which omp does not hold under that ceiling. The line shows `config effort`.
 5. At level 1, the spawn has no model patterns, so there is no model to put the level on. The line shows `no model patterns`.
 6. Otherwise the plugin sets the ladder effort, capped at `task.maxEffort`. omp does not apply that ceiling to a level the spawn hook sets, so the plugin applies it itself.
 
@@ -251,7 +251,7 @@ The plugin prints no line when the call has no eligible item. A call with `task.
 
 ## What the plugin reads
 
-- omp's settings: `modelRoles`, `task.agentModelOverrides`, `task.disabledAgents`, `task.maxEffort` and `extensionHandlers.toolCallTimeoutMs`.
+- omp's settings: `modelRoles`, `task.agentModelOverrides`, `task.disabledAgents`, `task.maxEffort`, `task.enableEffort` and `extensionHandlers.toolCallTimeoutMs`.
 - The model patterns and the model role omp sends with each spawn, and the `effort` of each item.
 - Its own `provider` and `scope` plugin settings, through omp's plugin settings loader, and the plugins lockfile that holds your global values. The project value may only narrow `provider` and may set `scope` both ways, as [Provider](#provider) and [Scope](#scope) say.
 - Whether `@smol` and `@slow` resolve, through omp's model resolution.

@@ -158,9 +158,10 @@ global values of them, and reads a missing lockfile as empty. The lockfile is th
 file the plugin reads itself. When either read fails, the plugin skips routing
 and sends nothing. At the same
 points it reads omp's settings `modelRoles`, `task.agentModelOverrides`,
-`task.disabledAgents` and `task.maxEffort`, and the source, declared models and description of each
-agent omp discovers, to see whether your own agent replaced a bundled one or
-sets its own model. `modelRoles` and `task.maxEffort` also decide whether it
+`task.disabledAgents`, `task.maxEffort` and `task.enableEffort`, and the
+source, declared models and description of each agent omp discovers, to see
+whether your own agent replaced a bundled one or sets its own model.
+`modelRoles`, `task.maxEffort` and `task.enableEffort` also decide whether it
 keeps your effort or caps its own. As each routed subagent starts, it reads the
 model patterns and the model role omp sends with the spawn, and the item's
 `effort`. It also checks whether the `@smol` and `@slow` roles

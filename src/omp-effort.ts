@@ -1,13 +1,14 @@
 import type { Effort } from "./ladder.ts";
 import { routedLine } from "./line.ts";
+import { type Facts, ROLE_MARK } from "./omp-items.ts";
 import type { Level } from "./part.ts";
 import { CALLER_EFFORT, CONFIG_EFFORT } from "./reasons.ts";
 
 // The middle level keeps the agent's model, so a spawn with no model patterns leaves nothing to put a level on.
 export const NO_PATTERNS = "no model patterns";
-const ROLE_MARK = "@";
 
-// omp's thinking selectors, in the order omp ranks them. Source: docs/clients.md#omp-thinking-levels.
+// The selectors omp reads as a thinking level after a pattern's last colon; a prefix must name one of them only.
+// Source: docs/clients.md#omp-thinking-levels.
 const SELECTORS = [
 	"inherit",
 	"off",
@@ -95,17 +96,15 @@ export type Routed = {
 	readonly suffix: string;
 };
 
-export type EffortFacts = {
-	readonly roles: Readonly<Record<string, unknown>>;
-	readonly maxEffort: unknown;
-};
+export type EffortFacts = Pick<Facts, "roles" | "maxEffort">;
 
 /**
  * Returns the effort to set on a spawn, or the label of the one that stays.
- * The item's own effort stays first, then a level on the role, then a level
- * on a pattern the spawn carries, then a ceiling below `low`. The middle level
- * with no patterns sets nothing. Patterns are undefined before the spawn.
- * Never throws.
+ * The item's own effort stays first, then a level on the role, then, at the
+ * middle level, a level on a pattern the spawn carries, then a ceiling below
+ * `low`. An end level's role replaces the patterns, so their levels do not
+ * count there. The middle level with no patterns sets nothing. Patterns are
+ * undefined before the spawn. Never throws.
  */
 export function planEffort(
 	{ role, ladder, callerEffort }: Routed,
@@ -118,7 +117,8 @@ export function planEffort(
 		roleCarriesLevel(role.slice(ROLE_MARK.length), roles)
 	)
 		return { kept: CONFIG_EFFORT };
-	if (patterns?.some(carriesLevel)) return { kept: CONFIG_EFFORT };
+	if (role === undefined && patterns?.some(carriesLevel))
+		return { kept: CONFIG_EFFORT };
 	const effort = capped(ladder, maxEffort);
 	if (effort === undefined) return { kept: CONFIG_EFFORT };
 	if (role === undefined && patterns?.length === 0)

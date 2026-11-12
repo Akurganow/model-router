@@ -433,6 +433,7 @@ The running facts used omp from npm, a probe extension and a local stand-in mode
 - The executor ranks the item's `effort` first, then an explicit `:level` on the resolved pattern, then the agent's own level, then a level derived from the pattern.
   (source: [`task/executor.ts` L4484–L4508 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/executor.ts#L4484-L4508), [L4815–L4848 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/executor.ts#L4815-L4848))
 - omp passes the item's `effort` on only while `task.enableEffort` is on, and that setting defaults to off.
+  The plugin therefore counts an item's `effort` as the caller's only while the setting reads `true`.
   (source: [`task/index.ts` L795–L804 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/index.ts#L795-L804), [`task/index.ts` L1024–L1033 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/index.ts#L1024-L1033);
   [`task/settings.ts` L281–L292 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/settings.ts#L281-L292), [`task/settings.ts` L324–L335 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/settings.ts#L324-L335))
 - `task.maxEffort` takes `minimal`, `low`, `medium`, `high`, `xhigh` or `max`, and defaults to `max`.
@@ -467,6 +468,9 @@ The running facts used omp from npm, a probe extension and a local stand-in mode
   Without the plugin that child ran at `high`, not at the role's `low`.
   A project agent with `thinking-level: low` and no model ran at `low` without the plugin and at the ladder's `medium` on the large model at level 2.
   (running: omp 18.12.6 and 18.18.9, 2026-11-12, under the `extended` scope where an agent is named)
+- At level 2 for `scout` with `modelRoles.smol: stub/small:low`, the spawn's patterns read `stub/small:low`, the plugin returned `@slow:medium`, and the child ran the large model at `medium`.
+  With `task.enableEffort` off, an item `effort: "hi"` changed nothing without the plugin: the child ran the parent's model at `high`. With the plugin at level 0 and work 2, it returned `@smol:xhigh`, and the child ran the small model at `xhigh`.
+  (running: omp 18.12.6 and 18.18.9, 2026-11-12)
 
 ### omp gaps
 
@@ -496,7 +500,6 @@ Some subagents start with no `before_subagent_spawn` event, so no plugin can cha
 The stand-in model accepted every level, so no run exercised omp's clamp of a level to the range a model supports.
 The plugin reads a level on the role it picks and on any role that role names with `@`.
 A role left unset falls back to omp's own defaults, which the plugin does not read, so the routed effort replaces a level set there.
-The plugin keeps an item's `effort` even while `task.enableEffort` is off, when omp ignores the field.
 
 ## OpenClaw
 

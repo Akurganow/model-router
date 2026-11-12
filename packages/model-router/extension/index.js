@@ -1313,28 +1313,21 @@ function resolves(ctx, role) {
     return false;
   }
 }
-function read(lookup2, id, settings) {
+function read(lookup2, id, settings, fallback) {
   try {
     return lookup2(id)?.get(settings);
   } catch {
-    return void 0;
+    return fallback;
   }
 }
 var readTimeoutSetting = (lookup2, settings) => read(lookup2, "extensionHandlers.toolCallTimeoutMs", settings);
-var UNREADABLE_CEILING = /* @__PURE__ */ Symbol("unreadable ceiling");
-function readCeiling(lookup2, settings) {
-  try {
-    return lookup2("task.maxEffort")?.get(settings);
-  } catch {
-    return UNREADABLE_CEILING;
-  }
-}
 function readConfig(lookup2, settings) {
   const roles = read(lookup2, "modelRoles", settings);
   const overrides = read(lookup2, "task.agentModelOverrides", settings);
   const disabled = read(lookup2, "task.disabledAgents", settings);
-  const maxEffort = readCeiling(lookup2, settings);
-  return isRecord(roles) && isRecord(overrides) && Array.isArray(disabled) ? { roles, overrides, disabled, maxEffort } : void 0;
+  const maxEffort = read(lookup2, "task.maxEffort", settings, null);
+  const effortEnabled = read(lookup2, "task.enableEffort", settings) === true;
+  return isRecord(roles) && isRecord(overrides) && Array.isArray(disabled) ? { roles, overrides, disabled, maxEffort, effortEnabled } : void 0;
 }
 async function discover(pi, ctx) {
   try {
@@ -1610,7 +1603,6 @@ var CONFIG_EFFORT = "config effort";
 
 // src/omp-effort.ts
 var NO_PATTERNS = "no model patterns";
-var ROLE_MARK2 = "@";
 var SELECTORS = [
   "inherit",
   "off",
@@ -1638,7 +1630,7 @@ function roleCarriesLevel(role, roles, seen = /* @__PURE__ */ new Set()) {
   if (seen.has(role) || !Object.hasOwn(roles, role)) return false;
   seen.add(role);
   return patternsOf(roles[role]).some(
-    (pattern) => carriesLevel(pattern) || pattern.startsWith(ROLE_MARK2) && roleCarriesLevel(pattern.slice(ROLE_MARK2.length), roles, seen)
+    (pattern) => carriesLevel(pattern) || pattern.startsWith(ROLE_MARK) && roleCarriesLevel(pattern.slice(ROLE_MARK.length), roles, seen)
   );
 }
 function capped(effort, ceiling) {
@@ -1649,9 +1641,10 @@ function capped(effort, ceiling) {
 }
 function planEffort({ role, ladder, callerEffort }, { roles, maxEffort }, patterns) {
   if (callerEffort) return { kept: CALLER_EFFORT };
-  if (role !== void 0 && roleCarriesLevel(role.slice(ROLE_MARK2.length), roles))
+  if (role !== void 0 && roleCarriesLevel(role.slice(ROLE_MARK.length), roles))
     return { kept: CONFIG_EFFORT };
-  if (patterns?.some(carriesLevel)) return { kept: CONFIG_EFFORT };
+  if (role === void 0 && patterns?.some(carriesLevel))
+    return { kept: CONFIG_EFFORT };
   const effort = capped(ladder, maxEffort);
   if (effort === void 0) return { kept: CONFIG_EFFORT };
   if (role === void 0 && patterns?.length === 0)
@@ -1815,7 +1808,7 @@ function toStored(decision, item, facts) {
     level: decided.tier,
     role: ROLE_BY_LEVEL[decided.tier],
     ladder: effortFor(decided.tier, decided.work),
-    callerEffort: item.effort !== void 0,
+    callerEffort: item.effort !== void 0 && facts.effortEnabled,
     probabilities: decided.probabilities,
     suffix: decided.suffix
   };
@@ -1971,8 +1964,7 @@ function createRouter(omp, pi) {
     if (event.invocationKind !== TASK) return;
     const taken = store.take(event.spawnKey, event.agent);
     const routed = taken?.stored.routed;
-    if (!taken || !routed || routed.role === void 0 && routed.callerEffort)
-      return;
+    if (!taken || !routed) return;
     const gates = await spawnGates(event, ctx, routed.role);
     if ("closed" in gates)
       return void report(ctx, [entry(taken.index, skippedLine(gates.closed))]);

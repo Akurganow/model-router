@@ -17,6 +17,7 @@ type Row = {
 	readonly patterns?: readonly string[];
 	readonly roles?: Record<string, unknown>;
 	readonly effort?: string;
+	readonly enableEffort?: unknown;
 	readonly maxEffort?: unknown;
 	readonly agent?: string;
 	readonly extended?: boolean;
@@ -106,20 +107,28 @@ const ROWS: readonly Row[] = [
 		spawn: "config effort",
 	},
 	{
-		name: "level 0 keeps a pattern's level",
+		name: "level 0 sets its effort over a pattern's level, since the role replaces the patterns",
 		level: 0,
 		patterns: ["prov/parent:xhigh"],
-		model: "@smol",
+		model: "@smol:high",
 		batch: "high",
-		spawn: "config effort",
 	},
 	{
-		name: "level 2 keeps a pattern's auto",
+		name: "level 2 sets its effort over a pattern's auto, since the role replaces the patterns",
 		level: 2,
 		patterns: ["prov/parent:auto"],
-		model: "@slow",
+		model: "@slow:medium",
 		batch: "medium",
-		spawn: "config effort",
+	},
+	{
+		name: "extended: level 2 sets its effort over a level the scout's smol role puts on its patterns",
+		level: 2,
+		patterns: ["stub/small:low"],
+		roles: { smol: "stub/small:low" },
+		extended: true,
+		agent: "scout",
+		model: "@slow:medium",
+		batch: "medium",
 	},
 	{
 		name: "a model id's own colon is no level",
@@ -180,6 +189,7 @@ const ROWS: readonly Row[] = [
 		level: 0,
 		patterns: PLAIN,
 		effort: "lo",
+		enableEffort: true,
 		model: "@smol",
 		batch: "caller effort",
 	},
@@ -188,6 +198,7 @@ const ROWS: readonly Row[] = [
 		level: 1,
 		patterns: PLAIN,
 		effort: "hi",
+		enableEffort: true,
 		model: undefined,
 		batch: "caller effort",
 	},
@@ -196,6 +207,7 @@ const ROWS: readonly Row[] = [
 		level: 2,
 		patterns: PLAIN,
 		effort: "med",
+		enableEffort: true,
 		model: "@slow",
 		batch: "caller effort",
 	},
@@ -204,9 +216,36 @@ const ROWS: readonly Row[] = [
 		level: 0,
 		patterns: PLAIN,
 		effort: "lo",
+		enableEffort: true,
 		roles: { smol: "prov/small:low" },
 		model: "@smol",
 		batch: "caller effort",
+	},
+	{
+		name: "level 0 sets its effort over the item's effort while omp ignores the field",
+		level: 0,
+		patterns: PLAIN,
+		effort: "hi",
+		enableEffort: false,
+		model: "@smol:high",
+		batch: "high",
+	},
+	{
+		name: "level 1 sets its effort over the item's effort while per-task effort is unset",
+		level: 1,
+		patterns: PLAIN,
+		effort: "lo",
+		model: ["prov/parent:medium"],
+		batch: "medium",
+	},
+	{
+		name: "an enableEffort that is not true counts as off",
+		level: 2,
+		patterns: PLAIN,
+		effort: "lo",
+		enableEffort: "true",
+		model: "@slow:medium",
+		batch: "medium",
 	},
 	{
 		name: "a ceiling of off keeps omp's effort",
@@ -320,6 +359,8 @@ for (const row of ROWS)
 		if (row.roles) world.config.modelRoles = row.roles;
 		if (row.maxEffort !== undefined)
 			world.config["task.maxEffort"] = row.maxEffort;
+		if (row.enableEffort !== undefined)
+			world.config["task.enableEffort"] = row.enableEffort;
 		createExtension(world.imports)(world.pi);
 		const agent = row.agent ?? "task";
 		await world.toolCall("c", {
@@ -380,6 +421,17 @@ test("a ceiling omp cannot read keeps omp's effort", async () => {
 test("a gate that closes at spawn skips level 1 too", async () => {
 	createExtension(world.imports)(world.pi);
 	await world.toolCall("c", { tasks: [{ task: "level1" }] });
+	world.config["task.agentModelOverrides"] = { task: "prov/x" };
+	assert.equal(await world.spawn("c:0", { patterns: PLAIN }), undefined);
+	assert.deepEqual(world.notes.slice(1), [
+		"model-router task 1: skipped, task model override set",
+	]);
+});
+
+test("a gate that closes at spawn skips level 1 with the item's effort too", async () => {
+	world.config["task.enableEffort"] = true;
+	createExtension(world.imports)(world.pi);
+	await world.toolCall("c", { tasks: [{ task: "level1", effort: "hi" }] });
 	world.config["task.agentModelOverrides"] = { task: "prov/x" };
 	assert.equal(await world.spawn("c:0", { patterns: PLAIN }), undefined);
 	assert.deepEqual(world.notes.slice(1), [

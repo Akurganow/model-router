@@ -11,7 +11,7 @@ import {
 
 export const TASK = "task";
 const BUNDLED = "bundled";
-const ROLE_MARK = "@";
+export const ROLE_MARK = "@";
 // omp 18.12.6 sends the bundled seance agent no before_subagent_spawn event, so a role cannot reach it.
 const SEANCE = "seance";
 const CUSTOM_AGENT = "custom task agent";
@@ -24,8 +24,10 @@ export type Facts = {
 	readonly disabled: readonly unknown[];
 	readonly agents: readonly DiscoveredAgent[] | undefined;
 	readonly noModels: string | undefined;
-	// Undefined when omp has no such setting. omp does not cap a level the spawn hook sets.
+	// Undefined when omp has no such setting, and null when its read throws. omp does not cap a level the spawn hook sets.
 	readonly maxEffort: unknown;
+	// omp passes an item's `effort` on only while `task.enableEffort` is true.
+	readonly effortEnabled: boolean;
 };
 
 export type Spawning = {

@@ -138,9 +138,7 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		if (event.invocationKind !== TASK) return;
 		const taken = store.take(event.spawnKey, event.agent);
 		const routed = taken?.stored.routed;
-		// The item's own effort holds, so the middle level has nothing to set.
-		if (!taken || !routed || (routed.role === undefined && routed.callerEffort))
-			return;
+		if (!taken || !routed) return;
 		const gates = await spawnGates(event, ctx, routed.role);
 		// omp drops a note that comes without a model, so a spawn-time line goes out like the batch line.
 		if ("closed" in gates)
