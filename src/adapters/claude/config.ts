@@ -5,7 +5,6 @@ import {
 	chooseValue,
 	isValue,
 	isValueSetting,
-	REFUSED,
 	settingsReport,
 	toolDescription,
 	unchanged,
@@ -31,6 +30,8 @@ import { denied } from "./host.ts";
 import { readKeys } from "./keys.ts";
 
 const ROW_PREFIX = "model-router.";
+export const REFUSED =
+	"Permission rules deny this tool, so nothing was read or changed.";
 // Only the person's own Enter at the prompt may change a setting by command.
 const PERSON = "composer";
 

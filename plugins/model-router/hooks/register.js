@@ -1490,7 +1490,6 @@ var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var NO_ANSWER = "no answer from the dialog";
 var NOT_OFFERED = "the answer was not one of the offered values";
-var REFUSED = "Permission rules deny this tool, so nothing was read or changed.";
 var keyLine = (provider, state) => `${provider} key: ${state}`;
 var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
 function ask2(setting, current2) {
@@ -1575,6 +1574,7 @@ function keyVariable($, provider) {
 
 // src/adapters/claude/config.ts
 var ROW_PREFIX = "model-router.";
+var REFUSED = "Permission rules deny this tool, so nothing was read or changed.";
 var PERSON = "composer";
 var TOOL_SPEC = {
   name: "config",

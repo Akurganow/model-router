@@ -110,8 +110,6 @@ export const projectOverrides = (setting: ValueSetting): string =>
 
 export const NO_ANSWER = "no answer from the dialog";
 export const NOT_OFFERED = "the answer was not one of the offered values";
-export const REFUSED =
-	"Permission rules deny this tool, so nothing was read or changed.";
 
 export const keyLine = (provider: Provider, state: KeyState): string =>
 	`${provider} key: ${state}`;

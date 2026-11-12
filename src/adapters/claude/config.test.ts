@@ -1,13 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-	ask,
-	NO_ANSWER,
-	REFUSED,
-	unchanged,
-	valueLine,
-} from "../../core/settings.ts";
-import { configCall, configCommand, resetConfig } from "./config.ts";
+import { ask, NO_ANSWER, unchanged, valueLine } from "../../core/settings.ts";
+import { configCall, configCommand, REFUSED, resetConfig } from "./config.ts";
 import type { CommandRun, Engine } from "./host.ts";
 
 test("the refusal says nothing was read or changed", () => {
