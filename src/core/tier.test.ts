@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { TIER_TEXTS, tier } from "./model.ts";
+import { TIER_TEXTS, tier } from "./tier.ts";
 
 test("the tier question carries its key, the score type, instructions that name the task fields, and the three texts", () => {
 	assert.equal(tier.key, "tier");

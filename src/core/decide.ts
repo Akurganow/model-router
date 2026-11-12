@@ -5,10 +5,10 @@ import {
 	route,
 	type Skipped,
 } from "./compose.ts";
-import { work } from "./effort.ts";
-import { tier } from "./model.ts";
 import { formatProbability, type Level } from "./part.ts";
 import { BAD_REPLY } from "./reasons.ts";
+import { tier } from "./tier.ts";
+import { work } from "./work.ts";
 
 export type DecidedWithWork = {
 	readonly tier: Level;

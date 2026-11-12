@@ -20,7 +20,7 @@ work.
 ## The three tiers
 
 Jev scores the task against the three tier texts in `TIER_TEXTS` in
-`src/core/model.ts`:
+`src/core/tier.ts`:
 
 <table>
 <tr><th>Level</th><th>Model</th><th>Tier text</th></tr>
@@ -84,8 +84,8 @@ and picks the ends on demand, so the factors rest on measurement.
 | tier | 2^0.25 = 1.19 | 2^0.5 = 1.41 |
 | work | 2^1.25 = 2.38 | 2^0.5 = 1.41 |
 
-`TIER_DOWN` and `TIER_UP` sit in `src/core/model.ts`. `WORK_DOWN` and `WORK_UP`
-sit in `src/core/effort.ts`.
+`TIER_DOWN` and `TIER_UP` sit in `src/core/tier.ts`. `WORK_DOWN` and `WORK_UP`
+sit in `src/core/work.ts`.
 
 ### How the factors were measured
 
@@ -182,7 +182,7 @@ current factors. Per-harness weights do not fix the shift. Fixing the input does
 
 Jev answers a second question in the same request: how much work the task
 takes once the judgment is settled. It scores the three `WORK_TEXTS` texts
-in `src/core/effort.ts`:
+in `src/core/work.ts`:
 
 - **0.** A short task: one or two mechanical steps in one place, nothing to
   diagnose, and the given command is the whole check.

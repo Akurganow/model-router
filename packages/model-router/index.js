@@ -1631,26 +1631,7 @@ function routingState(raw) {
   };
 }
 
-// src/core/effort.ts
-var WORK_DOWN = 2 ** 1.25;
-var WORK_UP = 2 ** 0.5;
-var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
-var WORK_TEXTS = [
-  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
-  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
-  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
-];
-var work = {
-  key: "work",
-  question: {
-    type: "score",
-    instructions: WORK_INSTRUCTIONS,
-    criteria: WORK_TEXTS
-  },
-  pick: fromMiddle(WORK_DOWN, WORK_UP)
-};
-
-// src/core/model.ts
+// src/core/tier.ts
 var TIER_DOWN = 2 ** 0.25;
 var TIER_UP = 2 ** 0.5;
 var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
@@ -1667,6 +1648,25 @@ var tier = {
     criteria: TIER_TEXTS
   },
   pick: fromMiddle(TIER_DOWN, TIER_UP)
+};
+
+// src/core/work.ts
+var WORK_DOWN = 2 ** 1.25;
+var WORK_UP = 2 ** 0.5;
+var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
+var WORK_TEXTS = [
+  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
+  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
+  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
+];
+var work = {
+  key: "work",
+  question: {
+    type: "score",
+    instructions: WORK_INSTRUCTIONS,
+    criteria: WORK_TEXTS
+  },
+  pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
 // src/core/decide.ts

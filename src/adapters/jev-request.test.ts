@@ -2,9 +2,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_ROLE } from "../core/brief.ts";
-import { work } from "../core/effort.ts";
 import { jevAnswer, streamed } from "../core/jev-fakes.ts";
-import { tier } from "../core/model.ts";
+import { tier } from "../core/tier.ts";
+import { work } from "../core/work.ts";
 import { createFakeClock } from "../utils/fake-clock.ts";
 import {
 	AGENT_CALL,

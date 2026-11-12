@@ -20,10 +20,8 @@ every commit as a [conventional commit](#commits).
     itself, `src/core/` and `src/utils/`, never another adapter. The tests
     directly in `src/adapters/` drive several adapters at once and may
     import any of them.
-- `src/core/model.ts` holds the tier texts, and `src/core/effort.ts` holds the
-  work texts. Neither imports the other.
 - `src/core/part.ts` holds the shared types and the answer check.
-  `src/core/model.ts` and `src/core/effort.ts` both build on it.
+  `src/core/tier.ts` and `src/core/work.ts` both build on it.
 - `plugins/model-router` is the Claude Code plugin.
 - `plugins/model-router-omp` is the omp plugin.
 - `plugins/model-router-openclaw` is the OpenClaw plugin.
@@ -199,8 +197,8 @@ Each case in `calibration.jsonl` names its source, its license and the basis
 of its label. For a label that the brief supports both ways, set the array
 `contested` to `["expected"]`, `["work"]` or both.
 
-Fix a miss by rewording a tier text in `src/core/model.ts` or a work-level text in
-`src/core/effort.ts`. Then rebuild with `node scripts/build.ts`. Never lower the
+Fix a miss by rewording a tier text in `src/core/tier.ts` or a work-level text in
+`src/core/work.ts`. Then rebuild with `node scripts/build.ts`. Never lower the
 bar.
 
 The masked prompt keeps the key out of command lines and shell history. Pipe

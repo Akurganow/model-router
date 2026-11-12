@@ -8,8 +8,6 @@ import {
 	route,
 	type Skipped,
 } from "../src/core/compose.ts";
-import { work } from "../src/core/effort.ts";
-import { tier } from "../src/core/model.ts";
 import { formatProbability } from "../src/core/part.ts";
 import {
 	type Attempt,
@@ -19,6 +17,8 @@ import {
 	plan,
 } from "../src/core/provider.ts";
 import { PROVIDER_NAMES } from "../src/core/settings.ts";
+import { tier } from "../src/core/tier.ts";
+import { work } from "../src/core/work.ts";
 import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";
 import { fitWarnings } from "./jev-fit.ts";
 

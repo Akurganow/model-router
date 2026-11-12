@@ -11,11 +11,11 @@ import {
 	type RouteInput,
 	route,
 } from "./compose.ts";
-import { work } from "./effort.ts";
 import { streamed } from "./jev-fakes.ts";
-import { tier } from "./model.ts";
 import { type Attempt, plan } from "./provider.ts";
 import { KEY_UNSET } from "./reasons.ts";
+import { tier } from "./tier.ts";
+import { work } from "./work.ts";
 
 const KEY = "test-key";
 const OR_KEY = "test-openrouter-key";

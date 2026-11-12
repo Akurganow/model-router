@@ -3,10 +3,10 @@ import { test } from "node:test";
 import { routingState } from "./brief.ts";
 import type { Decision } from "./compose.ts";
 import { decide, scoreWork } from "./decide.ts";
-import { work } from "./effort.ts";
 import { jevAnswer, streamed } from "./jev-fakes.ts";
-import { tier } from "./model.ts";
 import { plan } from "./provider.ts";
+import { tier } from "./tier.ts";
+import { work } from "./work.ts";
 
 const part = (level: 0 | 1 | 2, p: number) => ({
 	level,

@@ -268,9 +268,9 @@ const rows: {
 	{
 		form: "side-effect import",
 		name: "src/utils/a.ts",
-		code: 'import "../core/model.ts";',
-		refs: [{ kind: "import", spec: "../core/model.ts" }],
-		verdict: ["src/utils/a.ts imports ../core/model.ts"],
+		code: 'import "../core/tier.ts";',
+		refs: [{ kind: "import", spec: "../core/tier.ts" }],
+		verdict: ["src/utils/a.ts imports ../core/tier.ts"],
 	},
 	{
 		form: "import type",
@@ -310,9 +310,9 @@ const rows: {
 	{
 		form: "comment inside the braces of a utils import",
 		name: "src/utils/a.ts",
-		code: 'import {\n\ttier, // note\n} from "../core/model.ts";',
-		refs: [{ kind: "import", spec: "../core/model.ts" }],
-		verdict: ["src/utils/a.ts imports ../core/model.ts"],
+		code: 'import {\n\ttier, // note\n} from "../core/tier.ts";',
+		refs: [{ kind: "import", spec: "../core/tier.ts" }],
+		verdict: ["src/utils/a.ts imports ../core/tier.ts"],
 	},
 	{
 		form: "block comment inside the braces of a core import",

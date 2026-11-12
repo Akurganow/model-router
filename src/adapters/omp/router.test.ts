@@ -6,9 +6,9 @@ import {
 	NO_DESCRIPTION,
 	roleText,
 } from "../../core/brief.ts";
-import { work } from "../../core/effort.ts";
-import { tier } from "../../core/model.ts";
 import { KEY_UNSET, UNREADABLE } from "../../core/reasons.ts";
+import { tier } from "../../core/tier.ts";
+import { work } from "../../core/work.ts";
 import {
 	ENDPOINT,
 	jevAnswer,

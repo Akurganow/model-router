@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { work } from "./effort.ts";
-import { tier } from "./model.ts";
+import { tier } from "./tier.ts";
+import { work } from "./work.ts";
 
 const SOURCE = {
-	model: readFileSync(join(import.meta.dirname, "model.ts"), "utf8"),
-	effort: readFileSync(join(import.meta.dirname, "effort.ts"), "utf8"),
+	tier: readFileSync(join(import.meta.dirname, "tier.ts"), "utf8"),
+	work: readFileSync(join(import.meta.dirname, "work.ts"), "utf8"),
 };
 
 type Import = { from: string; typeOnly: boolean; names: string[] };
@@ -32,17 +32,17 @@ function importsOf(source: string): Import[] {
 }
 
 test("neither part imports a client file", () => {
-	assert.ok(importsOf(SOURCE.effort).length > 0);
-	for (const source of [SOURCE.model, SOURCE.effort])
+	assert.ok(importsOf(SOURCE.work).length > 0);
+	for (const source of [SOURCE.tier, SOURCE.work])
 		for (const { from } of importsOf(source))
 			assert.doesNotMatch(from, CLIENT_FILE);
 });
 
 test("neither part imports the other", () => {
-	for (const { from } of importsOf(SOURCE.model))
-		assert.doesNotMatch(from, /effort/);
-	for (const { from } of importsOf(SOURCE.effort))
-		assert.doesNotMatch(from, /model/);
+	for (const { from } of importsOf(SOURCE.tier))
+		assert.doesNotMatch(from, /work/);
+	for (const { from } of importsOf(SOURCE.work))
+		assert.doesNotMatch(from, /tier/);
 });
 
 test("both parts share one shape: a key, a score question and a pick function", () => {
