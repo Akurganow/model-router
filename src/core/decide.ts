@@ -1,4 +1,12 @@
-import { type Decision, decisionSuffix, type Skipped } from "./compose.ts";
+import {
+	type Decision,
+	decisionSuffix,
+	type RouteInput,
+	route,
+	type Skipped,
+} from "./compose.ts";
+import { work } from "./effort.ts";
+import { tier } from "./model.ts";
 import { formatProbability, type Level } from "./part.ts";
 
 export type Decided = {
@@ -64,4 +72,16 @@ export function decide(
 		probabilities: `${tier.probability}/${work.probability}`,
 		suffix,
 	};
+}
+
+/**
+ * Asks Jev once for the tier and work parts and reads both levels from the
+ * reply. Returns the skip when the call skips or the reply lacks a part.
+ * Rejects as route does.
+ */
+export async function scoreWork(
+	input: Omit<RouteInput, "parts">,
+): Promise<DecidedWithWork | Skipped> {
+	const decision = await route({ ...input, parts: [tier, work] });
+	return decide(decision, tier.key, work.key);
 }

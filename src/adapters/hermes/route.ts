@@ -3,15 +3,12 @@ import { DEFAULT_ROLE, routingState } from "../../core/brief.ts";
 import {
 	FAILED,
 	LIMIT_REACHED,
-	route,
 	type Skipped,
 	TIMEOUT,
 } from "../../core/compose.ts";
-import { type DecidedWithWork, decide } from "../../core/decide.ts";
-import { work } from "../../core/effort.ts";
+import { type DecidedWithWork, scoreWork } from "../../core/decide.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
-import { tier } from "../../core/model.ts";
 import { plan } from "../../core/provider.ts";
 import {
 	CALLER_EFFORT,
@@ -53,8 +50,7 @@ async function score(
 	signal: AbortSignal,
 ) {
 	const { keys } = request;
-	const decision = await route({
-		parts: [tier, work],
+	return scoreWork({
 		state: routingState({
 			role: DEFAULT_ROLE,
 			description: request.description,
@@ -66,7 +62,6 @@ async function score(
 		fetchFn,
 		signal,
 	});
-	return decide(decision, tier.key, work.key);
 }
 
 // A rejected score is a failure of no known kind, not a run past the budget.

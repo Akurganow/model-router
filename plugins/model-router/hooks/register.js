@@ -1409,6 +1409,44 @@ function decisionSuffix({
   return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
 }
 
+// src/core/effort.ts
+var WORK_DOWN = 2 ** 1.25;
+var WORK_UP = 2 ** 0.5;
+var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
+var WORK_TEXTS = [
+  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
+  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
+  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
+];
+var work = {
+  key: "work",
+  question: {
+    type: "score",
+    instructions: WORK_INSTRUCTIONS,
+    criteria: WORK_TEXTS
+  },
+  pick: fromMiddle(WORK_DOWN, WORK_UP)
+};
+
+// src/core/model.ts
+var TIER_DOWN = 2 ** 0.25;
+var TIER_UP = 2 ** 0.5;
+var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
+var TIER_TEXTS = [
+  "Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
+  "Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
+  "Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."
+];
+var tier = {
+  key: "tier",
+  question: {
+    type: "score",
+    instructions: TIER_INSTRUCTIONS,
+    criteria: TIER_TEXTS
+  },
+  pick: fromMiddle(TIER_DOWN, TIER_UP)
+};
+
 // src/core/decide.ts
 var BAD_REPLY = { skipped: "bad reply" };
 var levelOf = (decision, key) => {
@@ -1434,25 +1472,10 @@ function decide2(decision, tierKey, workKey) {
     suffix
   };
 }
-
-// src/core/effort.ts
-var WORK_DOWN = 2 ** 1.25;
-var WORK_UP = 2 ** 0.5;
-var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
-var WORK_TEXTS = [
-  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
-  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
-  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
-];
-var work = {
-  key: "work",
-  question: {
-    type: "score",
-    instructions: WORK_INSTRUCTIONS,
-    criteria: WORK_TEXTS
-  },
-  pick: fromMiddle(WORK_DOWN, WORK_UP)
-};
+async function scoreWork(input) {
+  const decision = await route({ ...input, parts: [tier, work] });
+  return decide2(decision, tier.key, work.key);
+}
 
 // src/core/ladder.ts
 var EFFORT_BY_TIER = {
@@ -1476,25 +1499,6 @@ function routedLine({
 }
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
-
-// src/core/model.ts
-var TIER_DOWN = 2 ** 0.25;
-var TIER_UP = 2 ** 0.5;
-var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
-var TIER_TEXTS = [
-  "Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
-  "Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
-  "Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."
-];
-var tier = {
-  key: "tier",
-  question: {
-    type: "score",
-    instructions: TIER_INSTRUCTIONS,
-    criteria: TIER_TEXTS
-  },
-  pick: fromMiddle(TIER_DOWN, TIER_UP)
-};
 
 // src/core/reasons.ts
 var CALLER_EFFORT = "caller effort";
@@ -1713,12 +1717,12 @@ async function routeSpawn($, spawn, next, options) {
     task: spawn.prompt
   });
   const keys = await readKeys($, options, options.provider);
-  const decision = await scored($, next.signal, {
+  const decided = await scored($, next.signal, {
     state,
     attempts: plan(options.provider, keys),
     keys
   });
-  const picked = pick2(decision);
+  const picked = pick2(decided);
   if ("skipped" in picked) {
     await $.ui.log(skippedLine(picked.skipped));
     return next(spawn);
@@ -1776,8 +1780,7 @@ async function spawnsSettled($) {
     stop.abort();
   }
 }
-function pick2(decision) {
-  const decided = decide2(decision, tier.key, work.key);
+function pick2(decided) {
   if ("skipped" in decided) return decided;
   return {
     model: MODELS[decided.tier],
@@ -1803,9 +1806,8 @@ async function scored($, cancel, input) {
     () => void 0
   );
   try {
-    return await route({
+    return await scoreWork({
       ...input,
-      parts: [tier, work],
       fetchFn: engineFetch($),
       signal: AbortSignal.any([stop.signal, cancel])
     });

@@ -1,18 +1,14 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { DEFAULT_ROLE, roleText, routingState } from "../../core/brief.ts";
 import {
-	type Decision,
 	LIMIT_REACHED,
 	ROUTING_LIMIT_MS,
 	type RouteInput,
-	route,
 	type Skipped,
 } from "../../core/compose.ts";
-import { decide } from "../../core/decide.ts";
-import { work } from "../../core/effort.ts";
+import { type DecidedWithWork, scoreWork } from "../../core/decide.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { routedLine, skippedLine } from "../../core/line.ts";
-import { tier } from "../../core/model.ts";
 import type { Level } from "../../core/part.ts";
 import { plan } from "../../core/provider.ts";
 import { CALLER_EFFORT } from "../../core/reasons.ts";
@@ -178,12 +174,12 @@ async function routeSpawn(
 		task: spawn.prompt,
 	});
 	const keys = await readKeys($, options, options.provider);
-	const decision = await scored($, next.signal, {
+	const decided = await scored($, next.signal, {
 		state,
 		attempts: plan(options.provider, keys),
 		keys,
 	});
-	const picked = pick(decision);
+	const picked = pick(decided);
 	if ("skipped" in picked) {
 		await $.ui.log(skippedLine(picked.skipped));
 		return next(spawn);
@@ -266,13 +262,10 @@ type Picked = {
 };
 
 /**
- * Returns the model, effort, level, probabilities and suffix for a decision
- * that holds the tier and work parts. Returns the skip unchanged when the
- * decision is a skip, and a bad-reply skip when a part is missing. Never
- * throws.
+ * Returns the model, effort, level, probabilities and suffix for the levels
+ * Jev decided. Returns the skip unchanged. Never throws.
  */
-function pick(decision: Decision | Skipped): Picked | Skipped {
-	const decided = decide(decision, tier.key, work.key);
+function pick(decided: DecidedWithWork | Skipped): Picked | Skipped {
 	if ("skipped" in decided) return decided;
 	return {
 		model: MODELS[decided.tier],
@@ -309,9 +302,8 @@ async function scored(
 		() => undefined,
 	);
 	try {
-		return await route({
+		return await scoreWork({
 			...input,
-			parts: [tier, work],
 			fetchFn: engineFetch($),
 			signal: AbortSignal.any([stop.signal, cancel]),
 		});

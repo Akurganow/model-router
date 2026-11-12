@@ -1,16 +1,12 @@
 import { routingState } from "../../core/brief.ts";
 import {
-	type Decision,
 	LIMIT_REACHED,
 	type RouteInput,
-	route,
 	type Skipped,
 } from "../../core/compose.ts";
-import { decide } from "../../core/decide.ts";
-import { work } from "../../core/effort.ts";
+import { type DecidedWithWork, scoreWork } from "../../core/decide.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { skippedLine } from "../../core/line.ts";
-import { tier } from "../../core/model.ts";
 import type { Provider } from "../../core/provider.ts";
 import { slotForLevel } from "../../core/reasons.ts";
 import { streamedFetch } from "../../utils/fetch.ts";
@@ -60,14 +56,14 @@ export async function scoreItems(
 				keys,
 				onFallback: (p: Provider) => void passedOver.add(p),
 			};
-			const decision = await scoreItem(
+			const decided = await scoreItem(
 				item,
 				context,
 				roleOf(agent, facts),
 				routing,
 				limit.signal,
 			);
-			return { ...pending, stored: toStored(decision, item, facts) };
+			return { ...pending, stored: toStored(decided, item, facts) };
 		});
 	} finally {
 		clearTimeout(timer);
@@ -80,9 +76,8 @@ function scoreItem(
 	role: string,
 	routing: Pick<RouteInput, "attempts" | "keys" | "onFallback">,
 	signal: AbortSignal,
-): Promise<Decision | Skipped> {
-	return route({
-		parts: [tier, work],
+): Promise<DecidedWithWork | Skipped> {
+	return scoreWork({
 		state: routingState({
 			role,
 			description: item.name,
@@ -98,18 +93,16 @@ function scoreItem(
 const skipped = (reason: string): Stored => ({ line: skippedLine(reason) });
 
 /**
- * Returns the stored entry for a decision that holds both parts: the role of
+ * Returns the stored entry for the levels Jev decided: the role of
  * the picked level, the ladder's effort and the routing line. The line shows
  * the effort the batch's facts allow, before the spawn's patterns are known.
- * Returns a skip line alone when the decision is a skip or lacks a part. Never
- * throws.
+ * Returns a skip line alone when the decision is a skip. Never throws.
  */
 function toStored(
-	decision: Decision | Skipped,
+	decided: DecidedWithWork | Skipped,
 	item: TaskItem,
 	facts: Facts,
 ): Stored {
-	const decided = decide(decision, tier.key, work.key);
 	if ("skipped" in decided) return skipped(decided.skipped);
 	const slot = slotForLevel(decided.tier);
 	const routed: Routed = {

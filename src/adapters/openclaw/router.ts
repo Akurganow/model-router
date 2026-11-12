@@ -1,12 +1,10 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { routingState } from "../../core/brief.ts";
-import { abortCategory, LIMIT_REACHED, route } from "../../core/compose.ts";
-import { decide } from "../../core/decide.ts";
-import { work } from "../../core/effort.ts";
+import { abortCategory, LIMIT_REACHED } from "../../core/compose.ts";
+import { scoreWork } from "../../core/decide.ts";
 import { tooShort } from "../../core/handler-deadline.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
-import { tier } from "../../core/model.ts";
 import type { Level } from "../../core/part.ts";
 import { type Keys, plan } from "../../core/provider.ts";
 import { modelForLevel, modelUnresolved } from "../../core/reasons.ts";
@@ -94,8 +92,7 @@ async function score(
 	keys: Keys,
 	gate: Route,
 ) {
-	const decision = await route({
-		parts: [tier, work],
+	return scoreWork({
 		state: routingState({
 			role: gate.role,
 			description: gate.description,
@@ -106,7 +103,6 @@ async function score(
 		fetchFn: deps.fetchFn,
 		signal,
 	});
-	return decide(decision, tier.key, work.key);
 }
 
 type Slot =
