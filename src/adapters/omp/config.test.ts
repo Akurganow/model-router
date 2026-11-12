@@ -29,6 +29,13 @@ import {
 import { createExtension } from "./router.ts";
 import type { OmpImports, ToolSpec } from "./types.ts";
 
+test("the project-override note names the setting", () => {
+	assert.equal(
+		projectOverrides("scope"),
+		"A project value for scope overrides it.",
+	);
+});
+
 const world = useWorld();
 const PROVIDER_COMMAND = "model-router:provider";
 const SCOPE_COMMAND = "model-router:scope";
