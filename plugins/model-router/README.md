@@ -69,7 +69,7 @@ This is the whole surface:
 | hook | `tool.call{tool=Agent}` | Passes the Agent call on unchanged and notes whether the caller set an `effort`. |
 | hook | `tool.call{tool=mcp__model-router__config}` | Answers the `config` tool: the settings and the dialogs. |
 | hook | `turn.step` | Sets the routed `effort` on the subagent's requests. |
-| hook | `turn.complete` | Forgets the routed `effort` of a subagent whose turn ended. |
+| hook | `turn.complete` | Forgets that a finished subagent's first request already waited for the spawns in flight. |
 | call | `$.clock.after` | The TypeSafe SDK's timers run on it, for example its retry wait. |
 | call | `$.clock.sleep` | Times the 8 s limit. |
 | call | `$.config.set` | Writes the `provider` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. |
@@ -295,7 +295,11 @@ times the middle's probability: 2.38 for index 0 and 1.41 for index 2. The index
 The router never sets Haiku below `medium`, because Anthropic measured early
 stops at `low`. `max` is never set. A call that names an effort gets a model
 and keeps its effort. A call that names a model is not routed, so it keeps
-both. `CLAUDE_CODE_EFFORT_LEVEL` outranks either, as
+both. A subagent that Claude resumes with `SendMessage` keeps its routed
+effort. The mod keeps in memory the efforts of the 1024 routed subagents it
+used most recently, so a reload of the mod or a restart of Claude Code forgets
+them.
+`CLAUDE_CODE_EFFORT_LEVEL` outranks either, as
 [Precedence](#precedence) says. Claude Code reads the per-invocation effort
 from v2.1.292. Under the `extended` scope the ladder also replaces an effort
 that an agent definition sets, as
