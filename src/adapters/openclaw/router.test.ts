@@ -26,6 +26,19 @@ import type { BeforeToolCallResult } from "./types.ts";
 const DECISION_LINE =
 	/^(?:model-router )?L(?<tier>[012]) (?<target>\S+) · (?<effort>caller effort|[^\s·]+) · p=\d+(?:\.\d+)?\/\d+(?:\.\d+)?/;
 
+describe("provider", () => {
+	it("asks the provider the setting names", async () => {
+		const s = setup({
+			settings: { provider: "openrouter", openrouter_api_key: "or-key" },
+		});
+		await s.call();
+		assert.deepEqual(
+			s.jev.requests.map(({ url }) => new URL(url).host),
+			["openrouter.ai"],
+		);
+	});
+});
+
 describe("levels and efforts", () => {
 	const cases: [Levels, BeforeToolCallResult | undefined, string][] = [
 		[
