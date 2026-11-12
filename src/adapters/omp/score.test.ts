@@ -28,6 +28,37 @@ for (const tier of LEVELS)
 			);
 		});
 
+type Unresolved = {
+	readonly level: Level;
+	readonly role: "@smol" | "@slow";
+	// What the spawn hook returns as the model, and the notes after the batch line.
+	readonly model: string | readonly string[] | undefined;
+	readonly after: readonly string[];
+};
+
+// Level 1 changes no model, so it needs neither role; an end level needs its own role only.
+const UNRESOLVED: readonly Unresolved[] = [
+	{
+		level: 0,
+		role: "@smol",
+		model: undefined,
+		after: ["model-router task 1: skipped, no @smol model"],
+	},
+	{ level: 1, role: "@smol", model: ["prov/parent:medium"], after: [] },
+	{ level: 1, role: "@slow", model: ["prov/parent:medium"], after: [] },
+	{ level: 2, role: "@smol", model: "@slow:medium", after: [] },
+];
+
+for (const { level, role, model, after } of UNRESOLVED)
+	test(`level ${level} with ${role} unresolved gives ${JSON.stringify(model)}`, async () => {
+		install();
+		await world.toolCall("c", { tasks: [{ task: `level${level} work1` }] });
+		world.resolvable.delete(role);
+		const result = await world.spawn("c:0", { patterns: ["prov/parent"] });
+		assert.deepEqual(result?.model, model);
+		assert.deepEqual(world.notes.slice(1), after);
+	});
+
 test("a skipped item names no effort", async () => {
 	install();
 	world.credential = async () => undefined;
