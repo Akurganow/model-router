@@ -203,7 +203,7 @@ They give none for free `setTimeout` globals or for a size limit on the module.
 
 Documentation is the Markdown under `docs/` in `can1357/oh-my-pi`, and source is the TypeScript under `packages/`.
 A link is a permalink at commit `96e4d8e`, the head of `main` on 2026-11-05, unless its section names another commit.
-[omp tool_call cost and timeout](#omp-tool_call-cost-and-timeout) and the [omp gaps](#omp-gaps) entry on unrouted spawns were checked at tags `v18.12.6` (commit `45c35e4`) and `v18.18.9` (commit `50da2d3`) on 2026-11-11.
+[omp tool_call cost and timeout](#omp-tool_call-cost-and-timeout), [omp thinking levels](#omp-thinking-levels) and the [omp gaps](#omp-gaps) entries on unrouted spawns and on levels were checked at tags `v18.12.6` (commit `45c35e4`) and `v18.18.9` (commit `50da2d3`) on 2026-11-11.
 The evals workflow pins omp 18.12.6 in `evals/omp/package.json`, and the README asks for that version or later.
 
 ### omp manifest and settings
@@ -413,6 +413,50 @@ The running facts used omp from npm with a local stand-in model provider and cal
   With the setting at 2000 and a `tool_call` handler that slept 3000 ms, the `task` call ended with `Extension <path> timed out after 2000ms`, and no subagent request reached the provider.
   (running: omp 18.12.6 and 18.18.9, 2026-11-11, `omp -p` with a probe extension)
 
+### omp thinking levels
+
+These facts hold at omp 18.12.6 and 18.18.9.
+Each source fact links both tags: `v18.12.6` is commit `45c35e4` and `v18.18.9` is commit `50da2d3`.
+The running facts used omp from npm, a probe extension and a local stand-in model provider that logged each request's `model` and `reasoning_effort`, and called no paid model.
+
+- A `model` that a `before_subagent_spawn` handler returns replaces the spawn's patterns, and omp expands it like a configured role.
+  A role alias with a level suffix, such as `@smol:high`, expands to every pattern of the role with `:high` appended.
+  (source: [`task/structured-subagent.ts` L492–L521 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/structured-subagent.ts#L492-L521), [`task/structured-subagent.ts` L686–L715 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/structured-subagent.ts#L686-L715);
+  [`config/model-resolver.ts` L1194–L1241 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-resolver.ts#L1194-L1241), [`config/model-resolver.ts` L1260–L1307 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-resolver.ts#L1260-L1307))
+- omp reads the text after a pattern's last colon as a level when it is `inherit`, `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` or `auto`, or a prefix of two characters or more that names one of the first eight only, such as `hi`, `med` or `xhi`.
+  The match is case-sensitive. Any other suffix, such as `:free` or `:8b`, stays part of the model id.
+  The role and pattern paths pass `MAX_THINKING_SUFFIX_OPTIONS`, so `:max` and `:auto` parse there.
+  (source: [`tui/src/thinking.ts` L59–L93 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/tui/src/thinking.ts#L59-L93), [`tui/src/thinking.ts` L59–L93 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/tui/src/thinking.ts#L59-L93);
+  [`tui/src/overlays/model-selector.ts` L14–L52 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/tui/src/overlays/model-selector.ts#L14-L52), [`tui/src/overlays/model-selector.ts` L14–L52 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/tui/src/overlays/model-selector.ts#L14-L52))
+- The ladder's four efforts, `low`, `medium`, `high` and `xhigh`, are omp `Effort` values with the same strings.
+  (source: [`agent/src/thinking.ts` L8–L17 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/agent/src/thinking.ts#L8-L17), [`catalog/src/effort.ts` L1–L18 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/catalog/src/effort.ts#L1-L18))
+- The executor ranks the item's `effort` first, then an explicit `:level` on the resolved pattern, then the agent's own level, then a level derived from the pattern.
+  (source: [`task/executor.ts` L4484–L4508 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/executor.ts#L4484-L4508), [L4815–L4848 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/executor.ts#L4815-L4848))
+- omp passes the item's `effort` on only while `task.enableEffort` is on, and that setting defaults to off.
+  (source: [`task/index.ts` L795–L804 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/index.ts#L795-L804), [`task/index.ts` L1024–L1033 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/index.ts#L1024-L1033);
+  [`task/settings.ts` L281–L292 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/settings.ts#L281-L292), [`task/settings.ts` L324–L335 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/settings.ts#L324-L335))
+- `task.maxEffort` takes `minimal`, `low`, `medium`, `high`, `xhigh` or `max`, and defaults to `max`.
+  omp applies it only to the item's `effort` or a per-call model, not to a level the spawn hook sets.
+  (source: [`task/settings.ts` L456–L469 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/settings.ts#L456-L469), [`task/settings.ts` L599–L612 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/settings.ts#L599-L612);
+  [`task/executor.ts` L4490 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/executor.ts#L4490), [L4824–L4825 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/executor.ts#L4824-L4825))
+- The bundled `task` agent runs at `auto`, which lets omp pick the effort per prompt, and `sonic` at `medium`.
+  (source: [`task/agents.ts` L53–L71 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/agents.ts#L53-L71), [`task/agents.ts` L53–L71 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/agents.ts#L53-L71))
+- The spawn event's `patterns` are the expanded model patterns omp would spawn with.
+  omp fills them from the spawn policy's model override, so the list can be empty.
+  A hook that returns an empty list leaves the policy unchanged.
+  (source: [`extensibility/extensions/types.ts` L1075–L1086 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/types.ts#L1075-L1086), [`extensibility/extensions/types.ts` L1221–L1232 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/types.ts#L1221-L1232);
+  [`task/structured-subagent.ts` L519 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/structured-subagent.ts#L519), [L713 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/structured-subagent.ts#L713))
+- At 18.18.9 only, a user agent whose model tag names a level ignores the item's `effort`.
+  The plugin skips a user agent that declares a model, so this rule does not reach a routed spawn.
+  (source: [`task/structured-subagent.ts` L601–L605 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/structured-subagent.ts#L601-L605), [L676](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/structured-subagent.ts#L676))
+- A probe hook's suffix set the child's level. With no hook the child ran on the parent's model at `high`.
+  `@smol:high` ran the small model at `high`, `@smol:xhigh` at `xhigh`, and the event's own patterns with `:low` kept the parent's model at `low`.
+  (running: omp 18.12.6 and 18.18.9, 2026-11-11)
+- The item's `effort` won over the hook: with `task.enableEffort` on, an item `effort: "lo"` and a hook `@smol:high` ran the small model at `minimal`, its lowest level.
+  The hook's suffix won over a project agent's `thinking-level: low` and over a level on the role, `modelRoles.smol: stub/small:low`.
+  `task.maxEffort: low` with a hook `@smol:high` ran the child at `high`.
+  (running: omp 18.12.6 and 18.18.9, 2026-11-11)
+
 ### omp gaps
 
 No documentation page under `docs/` at the commit named describes the `omp.settings` block.
@@ -437,6 +481,11 @@ Some subagents start with no `before_subagent_spawn` event, so no plugin can cha
 [`vibe/runtime.ts` L1391–L1392 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/vibe/runtime.ts#L1391-L1392), [L1394–L1395 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/vibe/runtime.ts#L1394-L1395);
 [`task/workpool.ts` L401 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/workpool.ts#L401), [L406 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/workpool.ts#L406);
 [`task/restore.ts` L89 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/restore.ts#L89), [L90 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/restore.ts#L90))
+
+The stand-in model accepted every level, so no run exercised omp's clamp of a level to the range a model supports.
+The plugin reads a level on the role it picks and on any role that role names with `@`.
+A role left unset falls back to omp's own defaults, which the plugin does not read, so the routed effort replaces a level set there.
+The plugin keeps an item's `effort` even while `task.enableEffort` is off, when omp ignores the field.
 
 ## OpenClaw
 

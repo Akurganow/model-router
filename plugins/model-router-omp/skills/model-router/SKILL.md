@@ -9,7 +9,7 @@ description: >
 
 # model-router
 
-model-router scores each eligible batch item through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it gives the agent the `smol` role for level 0, or the `slow` role for level 2. Level 1 changes nothing. The plugin sets no effort.
+model-router scores each eligible batch item through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it gives the agent the `smol` role for level 0, or the `slow` role for level 2, with a thinking level from the work question. Level 1 keeps the agent's model and sets the thinking level alone. An effort the item or the user's settings set is kept, as the [README](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#efforts-the-plugin-keeps) lists.
 
 - The batch line starts with `model-router`. It shows each decision, or the reason an item ran unrouted.
 - The `scope` setting decides which agents the plugin routes. The [README](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#scope) lists them and the skip reasons.
@@ -20,7 +20,7 @@ model-router scores each eligible batch item through Jev, on TypeSafe or OpenRou
 
 Escalate when a subagent reports BLOCKED, fails the check its brief names, or two fix rounds in a row make no progress.
 
-1. If the report shows skipped steps (a file not read, tests not run), re-dispatch to the same agent with a brief that names those steps.
+1. If the report shows skipped steps (a file not read, tests not run), re-dispatch to the same agent with a brief that names those steps. When the item's schema lists `effort`, set it one step up: `med`, then `hi`. The plugin keeps an item's `effort`.
 2. Otherwise, re-dispatch to an agent whose model is stronger.
 3. If the stronger agent also fails, stop and report to the user.
 
@@ -30,13 +30,13 @@ Use a flagship model only when the user opted in. Do not change a role or a sett
 
 ## Re-dispatch
 
-Under the default `core` scope, a named agent is not routed, so the re-dispatch keeps the agent's model. Under `extended`, the plugin may give the agent `@smol` or `@slow`. Read the batch line after the call. Tell the user when it lowered the stronger agent.
+Under the default `core` scope, a named agent is not routed, so the re-dispatch keeps the agent's model. Under `extended`, the plugin may give the agent `@smol` or `@slow` and a thinking level. Read the batch line after the call. Tell the user when it lowered the stronger agent.
 
 - Set `agent` on the item to the stronger agent.
 - Do not set `agent` to `task`. Routing would score the item again and may pick the same small model.
 - Set `solutionSpace` on the item. It says how open the problem is.
 - Put the new brief in `task`. State what failed and which steps were skipped.
-- Set `effort` only when the item's schema lists it.
+- Set `effort` only when the item's schema lists it: `lo`, `med` or `hi`.
 
 ```json
 {
