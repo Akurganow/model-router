@@ -22,6 +22,7 @@ import {
 	skipped,
 	withParams,
 } from "./gate-fakes.ts";
+import { readSpawn } from "./params.ts";
 import type { OpenClawConfig } from "./types.ts";
 
 test("a plain spawn of the requesting agent itself is routed", () => {
@@ -481,3 +482,55 @@ for (const [kind, build] of ROSTERS)
 			kind: "set",
 		});
 	});
+
+// What counts as set is tested with isSet. These values are the ones the tests above do not feed to the fields the gate reads.
+const SET_VALUES: readonly [string, unknown, boolean][] = [
+	["undefined", undefined, false],
+	["zero", 0, true],
+	["an empty object", {}, true],
+];
+
+test("zero and an empty object as another agent's model skip the spawn", () => {
+	for (const model of [0, {}])
+		assert.equal(skipped(other(known({ model }))), setsOwnModel(OTHER));
+});
+
+for (const [name, value, set] of SET_VALUES) {
+	test(`${name} as the defaults' subagent model ${set ? "skips" : "routes"} the spawn`, () => {
+		const result = gate({
+			config: agents({ defaults: { subagents: { model: value } } }),
+		});
+		if (set) assert.equal(skipped(result), "subagent model set");
+		else routed(result);
+	});
+
+	test(`${name} as the target's subagent model ${set ? "skips" : "routes"} the spawn`, () => {
+		const result = other(known({ subagents: { model: value } }));
+		if (set) assert.equal(skipped(result), "subagent model set");
+		else routed(result);
+	});
+
+	test(`${name} as the defaults' subagent thinking ${set ? "keeps" : "sets"} the effort`, () => {
+		assert.deepEqual(
+			effort(gate({ config: thinking(value) })),
+			set ? { kind: "keep", label: "config effort" } : { kind: "set" },
+		);
+	});
+
+	test(`${name} as the requester's subagent thinking ${set ? "keeps" : "sets"} the effort under core`, () => {
+		assert.deepEqual(
+			effort(gate({ config: thinking(undefined, value) })),
+			set ? { kind: "keep", label: "config effort" } : { kind: "set" },
+		);
+	});
+
+	test(`${name} as the runtime reads ${set ? "as another runtime" : "as unset"}`, () => {
+		assert.equal(
+			readSpawn({ runtime: value }).runtime,
+			set ? "other" : undefined,
+		);
+		const result = withParams({ runtime: value });
+		if (set) assert.deepEqual(result, { outcome: "pass" });
+		else routed(result);
+	});
+}
