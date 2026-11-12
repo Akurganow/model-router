@@ -3,7 +3,8 @@ import { mock, test } from "node:test";
 import { KEY_VARIABLES, type Provider, plan } from "../../core/provider.ts";
 import { KEY_UNSET } from "../../core/reasons.ts";
 import { setEnv, useWorld } from "./fakes.ts";
-import { openBatch, type Settings } from "./gates.ts";
+import { openBatch } from "./gates.ts";
+import type { Settings } from "./settings.ts";
 
 const world = useWorld();
 

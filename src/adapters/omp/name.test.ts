@@ -7,9 +7,10 @@ import { pathToFileURL } from "node:url";
 import { UNREADABLE } from "../../core/reasons.ts";
 import { ask, TOOL_NAME, unchanged } from "../../core/settings.ts";
 import { lockfileWith, useWorld } from "./fakes.ts";
-import { checkGates, readSettings } from "./gates.ts";
+import { checkGates } from "./gates.ts";
 import { readInstalledName } from "./name.ts";
 import { createExtension } from "./router.ts";
+import { readSettings } from "./settings.ts";
 
 const CATALOGUE = "model-router-omp";
 const SCOPED = "@akurganow/model-router";

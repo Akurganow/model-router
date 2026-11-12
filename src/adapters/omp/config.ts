@@ -23,8 +23,8 @@ import {
 } from "../../core/settings.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { serializer } from "../../utils/serializer.ts";
-import { findKey, readSettings, type Settings } from "./gates.ts";
 import { changeKey } from "./key.ts";
+import { findKey, readSettings, type Settings } from "./settings.ts";
 import type { Context, OmpImports, Pi, ToolReply } from "./types.ts";
 
 const COMMAND_PREFIX = "model-router:";

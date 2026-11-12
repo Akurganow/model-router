@@ -9,12 +9,11 @@ import {
 	checkGates,
 	noModel,
 	openBatch,
-	readSettings,
-	readTimeoutSetting,
 	resolves,
 } from "./gates.ts";
 import { inScope, TASK } from "./items.ts";
 import { type Pending, scoreItems, type TaskItem } from "./score.ts";
+import { readSettings, readTimeoutSetting } from "./settings.ts";
 import { createStore } from "./store.ts";
 import type {
 	Context,

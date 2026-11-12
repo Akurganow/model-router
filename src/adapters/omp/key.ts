@@ -6,7 +6,7 @@ import {
 	keyProvider,
 	PROVIDER_NAMES,
 } from "../../core/settings.ts";
-import { findKey } from "./gates.ts";
+import { findKey } from "./settings.ts";
 import type { Context } from "./types.ts";
 
 export const KEY_MAX_LENGTH = 512;

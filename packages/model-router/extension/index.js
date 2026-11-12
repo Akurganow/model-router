@@ -1364,71 +1364,9 @@ function serializer() {
   };
 }
 
-// src/adapters/omp/gates.ts
+// src/adapters/omp/settings.ts
 import { readFile } from "node:fs/promises";
-
-// src/adapters/omp/items.ts
-var TASK = "task";
-var BUNDLED = "bundled";
-var ROLE_MARK = "@";
-var SEANCE = "seance";
-var CUSTOM_AGENT = "custom task agent";
-var inScope = (name, scope) => scope === "extended" || name === TASK;
-var findAgent = (name, { agents }) => agents?.find((agent) => agent.name === name);
-var ownRole = (agent) => agent?.model?.find((model) => model.startsWith(ROLE_MARK))?.slice(ROLE_MARK.length);
-function userChoice(name, facts) {
-  if (name === TASK && isSet(facts.roles[TASK])) return "task model role set";
-  if (Object.hasOwn(facts.overrides, name) && isSet(facts.overrides[name]))
-    return `${name} model override set`;
-  if (facts.disabled.includes(name)) return `${name} agent disabled`;
-  return void 0;
-}
-function agentGate(name, facts) {
-  const found = findAgent(name, facts);
-  if (found?.source === BUNDLED) return void 0;
-  if (facts.scope === "core") return CUSTOM_AGENT;
-  if (facts.agents === void 0) return agentDiscoveryFailed(name);
-  if (found === void 0) return agentUnknown(name);
-  return found.model?.length ? setsOwnModel(name) : void 0;
-}
-var seanceGate = (name) => name === SEANCE ? `${name} spawns without the hook omp gives plugins, so its model cannot change` : void 0;
-var modelGate = (model) => model === void 0 ? void 0 : setsOwnModel("the item");
-function itemCheck(name, facts, model) {
-  if (!inScope(name, facts.scope)) return outsideCoreScope(name);
-  return userChoice(name, facts) ?? seanceGate(name) ?? modelGate(model) ?? agentGate(name, facts) ?? facts.noModels;
-}
-function spawnCheck({ agent, modelRole }, facts) {
-  const reason = itemCheck(agent, facts);
-  if (reason !== void 0) return reason;
-  return modelRole && modelRole !== ownRole(findAgent(agent, facts)) ? `${agent} spawns with another model role` : void 0;
-}
-function roleOf(name, facts) {
-  const found = findAgent(name, facts);
-  return name === TASK && found?.source === BUNDLED ? DEFAULT_ROLE : roleText(found?.description);
-}
-
-// src/adapters/omp/gates.ts
 var NARROWABLE = ["auto", "openrouter-first"];
-var ROLES = { small: "@smol", large: "@slow" };
-async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
-  const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
-  if ("closed" in batch) return batch;
-  const reason = spawnCheck(spawning, batch.facts);
-  return reason === void 0 ? batch : { closed: reason };
-}
-async function openBatch(omp, pi, ctx, settings) {
-  if (settings === void 0) return { closed: UNREADABLE };
-  const routing = await findKeys(ctx, settings.provider);
-  if (routing.attempts.length === 0) return { closed: KEY_UNSET };
-  const config = readConfig(omp.lookup, pi.pi.settings);
-  if (config === void 0) return { closed: UNREADABLE };
-  const agents = await discover(pi, ctx);
-  const noModels = modelsGate(ctx);
-  return {
-    ...routing,
-    facts: { ...config, scope: settings.scope, agents, noModels }
-  };
-}
 function narrow(global, project) {
   const value = resolve(global);
   return NARROWABLE.includes(value) && (project === "typesafe" || project === "openrouter") ? project : value;
@@ -1477,13 +1415,6 @@ async function findKey(ctx, provider) {
   }
   return nonEmpty(process.env[KEY_VARIABLES[provider]]);
 }
-function resolves(ctx, role) {
-  try {
-    return ctx.models.resolve(role) !== void 0;
-  } catch {
-    return false;
-  }
-}
 function read(lookup2, id, settings, fallback) {
   try {
     return lookup2(id)?.get(settings);
@@ -1499,17 +1430,6 @@ function readConfig(lookup2, settings) {
   const maxEffort = read(lookup2, "task.maxEffort", settings, null);
   const effortEnabled = read(lookup2, "task.enableEffort", settings) === true;
   return isRecord(roles) && isRecord(overrides) && Array.isArray(disabled) ? { roles, overrides, disabled, maxEffort, effortEnabled } : void 0;
-}
-async function discover(pi, ctx) {
-  try {
-    return (await pi.pi.discoverAgents(ctx.cwd)).agents;
-  } catch {
-    return void 0;
-  }
-}
-var noModel = (role) => `no ${role} model`;
-function modelsGate(ctx) {
-  return Object.values(ROLES).some((role) => resolves(ctx, role)) ? void 0 : noModel(`${ROLES.small} or ${ROLES.large}`);
 }
 
 // src/adapters/omp/key.ts
@@ -1778,6 +1698,46 @@ function budgetFor(value) {
   };
 }
 
+// src/adapters/omp/items.ts
+var TASK = "task";
+var BUNDLED = "bundled";
+var ROLE_MARK = "@";
+var SEANCE = "seance";
+var CUSTOM_AGENT = "custom task agent";
+var inScope = (name, scope) => scope === "extended" || name === TASK;
+var findAgent = (name, { agents }) => agents?.find((agent) => agent.name === name);
+var ownRole = (agent) => agent?.model?.find((model) => model.startsWith(ROLE_MARK))?.slice(ROLE_MARK.length);
+function userChoice(name, facts) {
+  if (name === TASK && isSet(facts.roles[TASK])) return "task model role set";
+  if (Object.hasOwn(facts.overrides, name) && isSet(facts.overrides[name]))
+    return `${name} model override set`;
+  if (facts.disabled.includes(name)) return `${name} agent disabled`;
+  return void 0;
+}
+function agentGate(name, facts) {
+  const found = findAgent(name, facts);
+  if (found?.source === BUNDLED) return void 0;
+  if (facts.scope === "core") return CUSTOM_AGENT;
+  if (facts.agents === void 0) return agentDiscoveryFailed(name);
+  if (found === void 0) return agentUnknown(name);
+  return found.model?.length ? setsOwnModel(name) : void 0;
+}
+var seanceGate = (name) => name === SEANCE ? `${name} spawns without the hook omp gives plugins, so its model cannot change` : void 0;
+var modelGate = (model) => model === void 0 ? void 0 : setsOwnModel("the item");
+function itemCheck(name, facts, model) {
+  if (!inScope(name, facts.scope)) return outsideCoreScope(name);
+  return userChoice(name, facts) ?? seanceGate(name) ?? modelGate(model) ?? agentGate(name, facts) ?? facts.noModels;
+}
+function spawnCheck({ agent, modelRole }, facts) {
+  const reason = itemCheck(agent, facts);
+  if (reason !== void 0) return reason;
+  return modelRole && modelRole !== ownRole(findAgent(agent, facts)) ? `${agent} spawns with another model role` : void 0;
+}
+function roleOf(name, facts) {
+  const found = findAgent(name, facts);
+  return name === TASK && found?.source === BUNDLED ? DEFAULT_ROLE : roleText(found?.description);
+}
+
 // src/adapters/omp/effort.ts
 var NO_PATTERNS = "no model patterns";
 var SELECTORS = [
@@ -1838,6 +1798,46 @@ var lineFor = (routed, plan2) => routedLine({
 function modelFor(role, plan2, patterns) {
   if (role !== void 0) return "set" in plan2 ? `${role}:${plan2.set}` : role;
   return "set" in plan2 ? patterns.map((p) => `${p}:${plan2.set}`) : void 0;
+}
+
+// src/adapters/omp/gates.ts
+var ROLES = { small: "@smol", large: "@slow" };
+async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
+  const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
+  if ("closed" in batch) return batch;
+  const reason = spawnCheck(spawning, batch.facts);
+  return reason === void 0 ? batch : { closed: reason };
+}
+async function openBatch(omp, pi, ctx, settings) {
+  if (settings === void 0) return { closed: UNREADABLE };
+  const routing = await findKeys(ctx, settings.provider);
+  if (routing.attempts.length === 0) return { closed: KEY_UNSET };
+  const config = readConfig(omp.lookup, pi.pi.settings);
+  if (config === void 0) return { closed: UNREADABLE };
+  const agents = await discover(pi, ctx);
+  const noModels = modelsGate(ctx);
+  return {
+    ...routing,
+    facts: { ...config, scope: settings.scope, agents, noModels }
+  };
+}
+function resolves(ctx, role) {
+  try {
+    return ctx.models.resolve(role) !== void 0;
+  } catch {
+    return false;
+  }
+}
+async function discover(pi, ctx) {
+  try {
+    return (await pi.pi.discoverAgents(ctx.cwd)).agents;
+  } catch {
+    return void 0;
+  }
+}
+var noModel = (role) => `no ${role} model`;
+function modelsGate(ctx) {
+  return Object.values(ROLES).some((role) => resolves(ctx, role)) ? void 0 : noModel(`${ROLES.small} or ${ROLES.large}`);
 }
 
 // src/core/tier.ts

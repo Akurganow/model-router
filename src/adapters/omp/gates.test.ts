@@ -20,7 +20,8 @@ import {
 	setEnv,
 	useWorld,
 } from "./fakes.ts";
-import { checkGates, narrow, readSettings } from "./gates.ts";
+import { checkGates } from "./gates.ts";
+import { narrow, readSettings } from "./settings.ts";
 
 const world = useWorld();
 const ENV_KEY = "env-key-0002";
