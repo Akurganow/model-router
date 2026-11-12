@@ -24,18 +24,50 @@ import {
 	UNREADABLE,
 } from "./reasons.ts";
 
+// Every shared reason with the text the harnesses print: the constants, then the builders with one argument each.
+const CONSTANTS: [string, string][] = [
+	[CALLER_EFFORT, "caller effort"],
+	[CONFIG_EFFORT, "config effort"],
+	[SUBAGENT_MODEL_SET, "subagent model set"],
+	[NO_END_MODEL, "no small or large model"],
+	[UNREADABLE, "settings unreadable"],
+	[KEY_UNSET, "key unset"],
+	[BAD_REPLY, "bad reply"],
+	[TIMEOUT, "timeout"],
+	[FAILED, "failed"],
+	[CANCELLED, "cancelled"],
+	[NETWORK_ERROR, "network error"],
+	[REJECTED_REQUEST, "rejected request"],
+];
+type Builder = {
+	build: (arg: never) => string;
+	arg: string | number;
+	text: string;
+};
+const BUILDERS: Builder[] = [
+	{
+		build: outsideCoreScope,
+		arg: "scout",
+		text: "scout is outside the core scope",
+	},
+	{
+		build: agentDiscoveryFailed,
+		arg: "scout",
+		text: "scout agent discovery failed",
+	},
+	{ build: agentUnknown, arg: "scout", text: "scout agent unknown" },
+	{ build: setsOwnModel, arg: "scout", text: "scout sets its own model" },
+	{ build: httpStatus, arg: 503, text: "HTTP 503" },
+	{ build: modelUnset, arg: "small", text: "small model unset" },
+	{ build: modelUnset, arg: "large", text: "large model unset" },
+	{ build: modelUnresolved, arg: "small", text: "small model unresolved" },
+	{ build: modelUnresolved, arg: "large", text: "large model unresolved" },
+];
+
 test("the shared reasons keep the texts the harnesses print", () => {
-	assert.equal(CALLER_EFFORT, "caller effort");
-	assert.equal(CONFIG_EFFORT, "config effort");
-	assert.equal(SUBAGENT_MODEL_SET, "subagent model set");
-	assert.equal(NO_END_MODEL, "no small or large model");
-	assert.equal(NETWORK_ERROR, "network error");
-	assert.equal(REJECTED_REQUEST, "rejected request");
-	assert.equal(httpStatus(503), "HTTP 503");
-	assert.equal(modelUnset("small"), "small model unset");
-	assert.equal(modelUnset("large"), "large model unset");
-	assert.equal(modelUnresolved("small"), "small model unresolved");
-	assert.equal(modelUnresolved("large"), "large model unresolved");
+	for (const [reason, text] of CONSTANTS) assert.equal(reason, text);
+	for (const { build, arg, text } of BUILDERS)
+		assert.equal((build as (arg: string | number) => string)(arg), text);
 });
 
 // The scan reads every file under src/, so a file in a subfolder cannot spell a reason either.
@@ -57,38 +89,10 @@ const spells = (code: string, text: string): boolean =>
 		? code.includes(text)
 		: ['"', "'", "`"].some((quote) => code.includes(quote + text + quote));
 
-test("the fixed skip reasons read as they do in the log", () => {
-	assert.equal(KEY_UNSET, "key unset");
-	assert.equal(UNREADABLE, "settings unreadable");
-	assert.equal(outsideCoreScope("scout"), "scout is outside the core scope");
-	assert.equal(agentDiscoveryFailed("scout"), "scout agent discovery failed");
-	assert.equal(agentUnknown("scout"), "scout agent unknown");
-	assert.equal(setsOwnModel("scout"), "scout sets its own model");
-});
-
 test("no other source file spells a shared reason", () => {
 	const texts = [
-		CALLER_EFFORT,
-		CONFIG_EFFORT,
-		SUBAGENT_MODEL_SET,
-		NO_END_MODEL,
-		UNREADABLE,
-		KEY_UNSET,
-		BAD_REPLY,
-		TIMEOUT,
-		FAILED,
-		CANCELLED,
-		NETWORK_ERROR,
-		REJECTED_REQUEST,
-		...[
-			outsideCoreScope,
-			agentDiscoveryFailed,
-			agentUnknown,
-			setsOwnModel,
-			httpStatus,
-			modelUnset,
-			modelUnresolved,
-		].flatMap(around),
+		...CONSTANTS.map(([reason]) => reason),
+		...[...new Set(BUILDERS.map(({ build }) => build))].flatMap(around),
 	];
 	const files = readdirSync(SOURCES, {
 		recursive: true,
