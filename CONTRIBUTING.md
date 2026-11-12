@@ -6,12 +6,24 @@ every commit as a [conventional commit](#commits).
 
 ## Repository layout
 
-- `src/` holds the parts, the composer, the client, the brief and the two
-  adapters. Its tests sit beside the sources as `src/*.test.ts`.
-- `src/core/model.ts` holds the tier texts, and `src/core/effort.ts` holds the work
-  texts. Neither imports the other.
-- `src/core/part.ts` holds the shared types and the answer check. `src/core/model.ts`
-  and `src/core/effort.ts` both build on it.
+- `src/` holds the sources in three layers. Each test sits beside its
+  source as `*.test.ts`. `scripts/layout.test.ts` checks the layers and
+  their import directions.
+  - `src/core/` holds the routing domain: the parts, the composer, the
+    client, the brief, the decision, the line, the reasons, the settings
+    texts and the deadlines. It imports only `src/core/` and `src/utils/`.
+  - `src/utils/` holds general helpers that name no routing concept and
+    have two or more users. Each file does one job. It imports only
+    `src/utils/`. A helper with one user stays in its module.
+  - `src/adapters/<harness>/` holds one adapter, with `index.ts` as its
+    entry: `claude`, `omp`, `openclaw` and `hermes`. An adapter imports
+    itself, `src/core/` and `src/utils/`, never another adapter. The tests
+    directly in `src/adapters/` drive several adapters at once and may
+    import any of them.
+- `src/core/model.ts` holds the tier texts, and `src/core/effort.ts` holds the
+  work texts. Neither imports the other.
+- `src/core/part.ts` holds the shared types and the answer check.
+  `src/core/model.ts` and `src/core/effort.ts` both build on it.
 - `plugins/model-router` is the Claude Code plugin.
 - `plugins/model-router-omp` is the omp plugin.
 - `plugins/model-router-openclaw` is the OpenClaw plugin.
