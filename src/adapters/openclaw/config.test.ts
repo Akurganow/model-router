@@ -142,6 +142,13 @@ describe("registration", () => {
 		);
 	});
 
+	it("registers the tool with its description text", () => {
+		assert.equal(
+			setup().tool().description,
+			"Reads the router's settings. With no input it returns the provider, the scope, both models, and whether each key the provider allows is set. With a setting name (provider, scope, typesafe_key, openrouter_key, small_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key.",
+		);
+	});
+
 	it("lets the tool schema and description take the model settings", () => {
 		const tool = setup().tool();
 		const { properties } = tool.parameters as {
@@ -222,6 +229,35 @@ describe("the tool reads", () => {
 			assert.equal(text.includes(key), false);
 			assert.equal(text.includes(String(key.length)), false);
 		}
+	});
+
+	it("shows a model on its own line, unset when only the other is set", async () => {
+		const env = { ...NO_ENV, TYPESAFE_API_KEY: TYPESAFE_KEY };
+		const report = (config: Record<string, unknown>) =>
+			runTool(setup({ provider: "openrouter-first", ...config }, env));
+		const head = [
+			valueLine("provider", "openrouter-first"),
+			valueLine("scope", "core"),
+		];
+		const keys = [keyLine("openrouter", "unset"), keyLine("typesafe", "set")];
+		assert.equal(
+			await report({ small_model: "openai/gpt-5-mini" }),
+			lines(
+				...head,
+				"small_model: openai/gpt-5-mini",
+				"large_model: unset",
+				...keys,
+			),
+		);
+		assert.equal(
+			await report({ large_model: "anthropic/claude-opus-5-5" }),
+			lines(
+				...head,
+				"small_model: unset",
+				"large_model: anthropic/claude-opus-5-5",
+				...keys,
+			),
+		);
 	});
 
 	it("counts a key from the environment as set", async () => {
