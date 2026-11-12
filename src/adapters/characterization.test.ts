@@ -1,136 +1,23 @@
-// Pins the decision code as it behaves today, so a move into shared modules can prove it changed nothing.
+// Pins the decision line suffix that Claude Code and omp print.
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ROUTING_LIMIT_MS } from "../core/compose.ts";
 import { plan } from "../core/provider.ts";
-import { routedCall, SPAWN } from "./claude/fakes.ts";
+import {
+	type Answers,
+	answer,
+	FULL,
+	FULL_SUFFIX,
+	type Once,
+	routed,
+	spawnOnce,
+} from "./claude/fakes.ts";
 import { useWorld } from "./omp/fakes.ts";
 import type { Batch } from "./omp/gates.ts";
 import { type Pending, scoreItems } from "./omp/score.ts";
 
-type Reply = {
-	status: number;
-	ok: boolean;
-	headers: Record<string, string>;
-	text: string;
-};
-type Answers = { tier?: number; work?: number; model?: string; usage?: object };
-
-const scores = (level: number) => ({
-	type: "score",
-	probabilities: { 0: 0.05, 1: 0.05, 2: 0.05, [level]: 0.9 },
-});
-
-/**
- * Returns the fake Jev reply with status 200. Its body holds a tier answer when
- * tier is given, a work answer when work is given, and the model and usage as
- * passed.
- */
-const answer = ({ tier, work, model, usage }: Answers): Reply => ({
-	status: 200,
-	ok: true,
-	headers: {},
-	text: JSON.stringify({
-		model,
-		usage,
-		answers: {
-			...(tier === undefined ? {} : { tier: scores(tier) }),
-			...(work === undefined ? {} : { work: scores(work) }),
-		},
-	}),
-});
-
-const TOKENS = { input_tokens: 812, output_tokens: 9 };
-const FULL = { model: "jev-1.14.0", usage: TOKENS };
-const FULL_SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
-
-type Run = {
-	options?: Record<string, unknown>;
-	env?: Record<string, string>;
-	callerEffort?: boolean;
-	reply: (url: string) => Reply;
-};
-
-/**
- * Runs one routed spawn and returns the logged lines, the spawn the engine
- * received and the effort its model requests carry. Sends a caller effort with
- * the tool call when callerEffort is true. The logged lines leave out what goes
- * to the debug log.
- */
-const spawnOnce = ({ options, env = {}, callerEffort, reply }: Run) =>
-	routedCall(
-		{ api_key: "ts-key", ...options },
-		env,
-		undefined,
-		undefined,
-		undefined,
-		{ reply, callerEffort },
-	);
-
-const routed = (answers: Answers, run: Partial<Run> = {}) =>
-	spawnOnce({ ...run, reply: () => answer(answers) });
-
-// Rows are the tier level, columns the work level. The values are written out, not read from the ladder.
-const LADDER = [
-	["haiku", ["medium", "high", "xhigh"]],
-	["sonnet", ["low", "medium", "high"]],
-	["opus", ["low", "medium", "high"]],
-] as const;
-
-describe("Claude Code decision for each tier and work level", () => {
-	for (const [tier, [model, efforts]] of LADDER.entries())
-		for (const [work, effort] of efforts.entries())
-			test(`tier ${tier} and work ${work} give ${model} at ${effort}`, async () => {
-				const { logs, spawned, requestEffort } = await routed({
-					tier,
-					work,
-					...FULL,
-				});
-				assert.deepEqual(logs, [
-					`L${tier} ${model} · ${effort} · p=0.90/0.90${FULL_SUFFIX}`,
-				]);
-				assert.equal(spawned?.model, model);
-				assert.equal(requestEffort, effort);
-			});
-});
-
-describe("Claude Code reply and effort edge cases", () => {
-	for (const missing of ["tier", "work"] as const)
-		test(`a reply without the ${missing} part skips and leaves the spawn alone`, async () => {
-			const answers = { tier: 1, work: 1, ...FULL, [missing]: undefined };
-			const { logs, spawned, requestEffort } = await routed(answers);
-			assert.deepEqual(logs, ["skipped, bad reply"]);
-			assert.deepEqual(spawned, SPAWN);
-			assert.equal(requestEffort, "max");
-		});
-
-	test("a caller-set effort is logged in place of the effort and applies none", async () => {
-		const { logs, spawned, requestEffort } = await routed(
-			{ tier: 2, work: 0, ...FULL },
-			{ callerEffort: true },
-		);
-		assert.deepEqual(logs, [
-			`L2 opus · caller effort · p=0.90/0.90${FULL_SUFFIX}`,
-		]);
-		assert.equal(spawned?.model, "opus");
-		assert.equal(requestEffort, "max");
-	});
-
-	test("an effort in CLAUDE_CODE_EFFORT_LEVEL is logged in place of the effort and applies none", async () => {
-		const { logs, spawned, requestEffort } = await routed(
-			{ tier: 0, work: 2, ...FULL },
-			{ env: { CLAUDE_CODE_EFFORT_LEVEL: "high" } },
-		);
-		assert.deepEqual(logs, [
-			`L0 haiku · env effort · p=0.90/0.90${FULL_SUFFIX}`,
-		]);
-		assert.equal(spawned?.model, "haiku");
-		assert.equal(requestEffort, "max");
-	});
-});
-
 describe("decision line suffix", () => {
-	const line = async (extra: Answers, run: Partial<Run> = {}) =>
+	const line = async (extra: Answers, run: Partial<Once> = {}) =>
 		(await routed({ tier: 1, work: 1, ...extra }, run)).logs[0];
 	const BASE = "L1 sonnet · medium · p=0.90/0.90";
 

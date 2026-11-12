@@ -154,3 +154,64 @@ export async function routedCall(
 		requestEffort: steps[0]?.effort,
 	};
 }
+
+export type Answers = {
+	tier?: number;
+	work?: number;
+	model?: string;
+	usage?: object;
+};
+
+const scores = (level: number) => ({
+	type: "score",
+	probabilities: { 0: 0.05, 1: 0.05, 2: 0.05, [level]: 0.9 },
+});
+
+/**
+ * Returns the fake Jev reply with status 200. Its body holds a tier answer when
+ * tier is given, a work answer when work is given, and the model and usage as
+ * passed.
+ */
+export const answer = ({ tier, work, model, usage }: Answers): HttpReply => ({
+	status: 200,
+	ok: true,
+	headers: {},
+	text: JSON.stringify({
+		model,
+		usage,
+		answers: {
+			...(tier === undefined ? {} : { tier: scores(tier) }),
+			...(work === undefined ? {} : { work: scores(work) }),
+		},
+	}),
+});
+
+const TOKENS = { input_tokens: 812, output_tokens: 9 };
+export const FULL = { model: "jev-1.14.0", usage: TOKENS };
+export const FULL_SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
+
+export type Once = {
+	options?: Record<string, unknown>;
+	env?: Record<string, string>;
+	callerEffort?: boolean;
+	reply: (url: string) => HttpReply;
+};
+
+/**
+ * Runs one routed spawn and returns the logged lines, the spawn the engine
+ * received and the effort its model requests carry. Sends a caller effort with
+ * the tool call when callerEffort is true. The logged lines leave out what goes
+ * to the debug log.
+ */
+export const spawnOnce = ({ options, env = {}, callerEffort, reply }: Once) =>
+	routedCall(
+		{ api_key: "ts-key", ...options },
+		env,
+		undefined,
+		undefined,
+		undefined,
+		{ reply, callerEffort },
+	);
+
+export const routed = (answers: Answers, run: Partial<Once> = {}) =>
+	spawnOnce({ ...run, reply: () => answer(answers) });
