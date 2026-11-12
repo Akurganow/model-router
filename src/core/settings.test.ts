@@ -29,6 +29,7 @@ import {
 	pick,
 	projectOverrides,
 	REFUSED,
+	readOnlyToolDescription,
 	SETTING_NAMES,
 	setsOwnModel,
 	settingsReport,
@@ -39,6 +40,7 @@ import {
 	useOneOf,
 	VALUE_SETTINGS,
 	valueLine,
+	valueSettingHelp,
 } from "./settings.ts";
 
 test("lists the four setting names, value settings first", () => {
@@ -369,6 +371,28 @@ test("the tool description lists the names it is given", () => {
 		assert.match(text, /Never pass a value/);
 	}
 	assert.doesNotMatch(toolDescription(VALUE_SETTINGS), /_key/);
+});
+
+test("the read-only tool description joins what it returns and the names", () => {
+	assert.equal(
+		readOnlyToolDescription(["the provider", "both models"], ["a", "b"]),
+		"Reads the router's settings. With no input it returns the provider, both models, and whether each key the provider allows is set. With a setting name (a, b) it returns how the person changes that setting. It changes nothing and never returns a key.",
+	);
+	assert.match(
+		readOnlyToolDescription(["x"], SETTING_NAMES),
+		/returns x, and whether/,
+	);
+});
+
+test("the value setting help gives the command line, then the allowed values", () => {
+	assert.equal(
+		valueSettingHelp("provider"),
+		"Type /model-router-provider <value> in the chat.\nprovider: use one of auto, openrouter-first, typesafe, openrouter",
+	);
+	assert.equal(
+		valueSettingHelp("scope"),
+		"Type /model-router-scope <value> in the chat.\nscope: use one of core, extended",
+	);
 });
 
 test("the bad-call text lists the names it is given", () => {

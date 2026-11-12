@@ -8,6 +8,7 @@ import {
 	isValue,
 	isValueSetting,
 	keyProvider,
+	readOnlyToolDescription,
 	SETTING_NAMES,
 	settingsReport,
 	TOOL_LABEL,
@@ -18,6 +19,7 @@ import {
 	VALUE_SETTINGS,
 	type ValueSetting,
 	valueLine,
+	valueSettingHelp,
 } from "../../core/settings.ts";
 import { errorText } from "../../utils/error.ts";
 import { isRecord } from "../../utils/guards.ts";
@@ -46,7 +48,10 @@ type ModelSetting = (typeof MODEL_SETTINGS)[number];
 // No chat command sets a model, but the tool still answers where it is set, so
 // the schema has to let the name through: OpenClaw checks arguments before execute.
 const TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
-export const TOOL_DESCRIPTION = `Reads the router's settings. With no input it returns the provider, the scope, both models, and whether each key the provider allows is set. With a setting name (${TOOL_SETTINGS.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
+export const TOOL_DESCRIPTION = readOnlyToolDescription(
+	["the provider", "the scope", "both models"],
+	TOOL_SETTINGS,
+);
 
 /** Returns `name: model`, or `name: unset` when the model is undefined. */
 const modelLine = (name: string, model: string | undefined): string =>
@@ -90,11 +95,7 @@ const modelSettingHelp = (setting: ModelSetting): string =>
  */
 function howToChange(setting: unknown): string {
 	if (isModelSetting(setting)) return modelSettingHelp(setting);
-	if (isValueSetting(setting))
-		return [
-			`Type /${commandName(setting)} <value> in the chat.`,
-			useOneOf(setting),
-		].join(LINE_BREAK);
+	if (isValueSetting(setting)) return valueSettingHelp(setting);
 	return isKeySetting(setting)
 		? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.`
 		: badCall(TOOL_SETTINGS);

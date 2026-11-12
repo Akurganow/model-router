@@ -1075,6 +1075,10 @@ var keyProvider = (setting) => KEY_PROVIDERS[setting];
 var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
+var valueSettingHelp = (setting) => [
+  `Type /${commandName(setting)} <value> in the chat.`,
+  useOneOf(setting)
+].join("\n");
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
@@ -1091,6 +1095,7 @@ var settingsReport = (provider, scope, extra, keys) => [
   ...extra,
   ...keys.map(([name, state]) => keyLine(name, state))
 ].join("\n");
+var readOnlyToolDescription = (returned, names) => `Reads the router's settings. With no input it returns ${returned.join(", ")}, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
 var TOOL_LABEL = "Model Router settings";
 var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
 function describeCommand(setting) {
@@ -1310,7 +1315,10 @@ var UNSET = "unset";
 var NOT_OWNER = "only the owner can change it";
 var MODEL_SETTINGS = ["small_model", "large_model"];
 var TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
-var TOOL_DESCRIPTION = `Reads the router's settings. With no input it returns the provider, the scope, both models, and whether each key the provider allows is set. With a setting name (${TOOL_SETTINGS.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
+var TOOL_DESCRIPTION = readOnlyToolDescription(
+  ["the provider", "the scope", "both models"],
+  TOOL_SETTINGS
+);
 var modelLine = (name, model) => `${name}: ${model ?? UNSET}`;
 function readAll({ settings, keys }) {
   return settingsReport(
@@ -1330,11 +1338,7 @@ var isModelSetting = (setting) => MODEL_SETTINGS.some((known) => known === setti
 var modelSettingHelp = (setting) => `${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`;
 function howToChange(setting) {
   if (isModelSetting(setting)) return modelSettingHelp(setting);
-  if (isValueSetting(setting))
-    return [
-      `Type /${commandName(setting)} <value> in the chat.`,
-      useOneOf(setting)
-    ].join(LINE_BREAK);
+  if (isValueSetting(setting)) return valueSettingHelp(setting);
   return isKeySetting(setting) ? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.` : badCall(TOOL_SETTINGS);
 }
 function runTool(api, env, params) {

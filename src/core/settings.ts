@@ -93,6 +93,13 @@ export const valueLine = (setting: ValueSetting, value: unknown): string =>
 export const useOneOf = (setting: ValueSetting): string =>
 	`${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 
+/** Returns the chat command line and the allowed values of a value setting, one per line. */
+export const valueSettingHelp = (setting: ValueSetting): string =>
+	[
+		`Type /${commandName(setting)} <value> in the chat.`,
+		useOneOf(setting),
+	].join("\n");
+
 export const unchanged = (setting: ValueSetting, reason: string): string =>
 	`${setting} unchanged: ${reason}`;
 
@@ -202,6 +209,16 @@ export const keyQuestion = (provider: Provider, replaces: boolean): string =>
 
 export const toolDescription = (names: readonly string[]): string =>
 	`Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
+
+/**
+ * Returns the description of the read-only settings tool. `returned` lists what
+ * a call with no input returns, and `names` the settings it answers for.
+ */
+export const readOnlyToolDescription = (
+	returned: readonly string[],
+	names: readonly string[],
+): string =>
+	`Reads the router's settings. With no input it returns ${returned.join(", ")}, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
 
 export const TOOL_LABEL = "Model Router settings";
 
