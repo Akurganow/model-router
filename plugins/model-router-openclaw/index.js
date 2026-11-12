@@ -1239,7 +1239,9 @@ var settingsReport = (provider, scope, extra, keys) => [
   valueLine("provider", provider),
   valueLine("scope", scope),
   ...extra,
-  ...keys.map(([name, state]) => keyLine(name, state))
+  ...order(provider).map(
+    (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
+  )
 ].join("\n");
 var readOnlyToolDescription = (returned, names) => `Reads the router's settings. With no input it returns ${returned.join(", ")}, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
 var TOOL_LABEL = "Model Router settings";
@@ -1339,10 +1341,7 @@ function readAll({ settings, keys }) {
       modelLine("small_model", settings.smallModel),
       modelLine("large_model", settings.largeModel)
     ],
-    order(settings.provider).map((name) => [
-      name,
-      keys[name] === void 0 ? UNSET : "set"
-    ])
+    keys
   );
 }
 var isModelSetting = (setting) => MODEL_SETTINGS.some((known) => known === setting);

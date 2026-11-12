@@ -1516,7 +1516,9 @@ var settingsReport = (provider, scope, extra, keys) => [
   valueLine("provider", provider),
   valueLine("scope", scope),
   ...extra,
-  ...keys.map(([name, state]) => keyLine(name, state))
+  ...order(provider).map(
+    (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
+  )
 ].join("\n");
 var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
 var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
@@ -1616,15 +1618,7 @@ async function choose($, setting, options) {
 async function read($, options) {
   const provider = current(options, "provider");
   const keys = await readKeys($, options, provider);
-  return settingsReport(
-    provider,
-    current(options, "scope"),
-    [],
-    order(provider).map((name) => [
-      name,
-      keys[name] === void 0 ? "unset" : "set"
-    ])
-  );
+  return settingsReport(provider, current(options, "scope"), [], keys);
 }
 async function answer($, call, options) {
   if (await denied($, call)) return { deny: REFUSED };

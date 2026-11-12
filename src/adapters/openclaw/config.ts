@@ -1,4 +1,3 @@
-import { order } from "../../core/provider.ts";
 import {
 	alreadyValue,
 	badCall,
@@ -70,10 +69,7 @@ function readAll({ settings, keys }: State): string {
 			modelLine("small_model", settings.smallModel),
 			modelLine("large_model", settings.largeModel),
 		],
-		order(settings.provider).map((name) => [
-			name,
-			keys[name] === undefined ? UNSET : "set",
-		]),
+		keys,
 	);
 }
 

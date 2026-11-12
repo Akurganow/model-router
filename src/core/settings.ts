@@ -1,5 +1,6 @@
 import { errorText } from "../utils/error.ts";
 import {
+	type Keys,
 	order,
 	PROVIDER_VALUES,
 	type Provider,
@@ -158,19 +159,23 @@ export async function chooseValue(
 
 /**
  * Returns the settings report: the provider and scope lines, then the extra
- * lines, then one line for each key state in the order given.
+ * lines, then one line for each provider the value allows, in order, that says
+ * whether its entry in keys is set or unset. A key is only checked for
+ * presence. Nothing about it leaves this function.
  */
 export const settingsReport = (
 	provider: unknown,
 	scope: unknown,
 	extra: readonly string[],
-	keys: readonly (readonly [Provider, KeyState])[],
+	keys: Keys,
 ): string =>
 	[
 		valueLine("provider", provider),
 		valueLine("scope", scope),
 		...extra,
-		...keys.map(([name, state]) => keyLine(name, state)),
+		...order(provider).map((name) =>
+			keyLine(name, keys[name] === undefined ? "unset" : "set"),
+		),
 	].join("\n");
 
 export const toolDescription = (names: readonly string[]): string =>

@@ -1337,7 +1337,9 @@ var settingsReport = (provider, scope, extra, keys) => [
   valueLine("provider", provider),
   valueLine("scope", scope),
   ...extra,
-  ...keys.map(([name, state]) => keyLine(name, state))
+  ...order(provider).map(
+    (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
+  )
 ].join("\n");
 var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
 var TOOL_LABEL = "Model Router settings";
@@ -1554,14 +1556,13 @@ async function withSettings(omp, ctx, show) {
   return settings === void 0 ? UNREADABLE : show(settings);
 }
 var readAll = (omp, ctx) => withSettings(omp, ctx, async ({ provider, scope }) => {
-  const keys = await Promise.all(
-    order(provider).map(
-      async (name) => [
-        name,
-        await findKey(ctx, name) === void 0 ? "unset" : "set"
-      ]
-    )
-  );
+  const names = order(provider);
+  const found = await Promise.all(names.map((name) => findKey(ctx, name)));
+  const keys = {};
+  names.forEach((name, i) => {
+    const key = found[i];
+    if (key !== void 0) keys[name] = key;
+  });
   return settingsReport(provider, scope, [], keys);
 });
 async function apply(omp, ctx, setting, value) {

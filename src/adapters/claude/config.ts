@@ -1,4 +1,3 @@
-import { order } from "../../core/provider.ts";
 import {
 	alreadyValue,
 	badCall,
@@ -104,15 +103,7 @@ async function choose(
 async function read($: Engine, options: Options): Promise<string> {
 	const provider = current(options, "provider");
 	const keys = await readKeys($, options, provider);
-	return settingsReport(
-		provider,
-		current(options, "scope"),
-		[],
-		order(provider).map((name) => [
-			name,
-			keys[name] === undefined ? "unset" : "set",
-		]),
-	);
+	return settingsReport(provider, current(options, "scope"), [], keys);
 }
 
 async function answer(

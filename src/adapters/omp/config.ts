@@ -1,4 +1,4 @@
-import { order } from "../../core/provider.ts";
+import { type Keys, order } from "../../core/provider.ts";
 import { UNREADABLE } from "../../core/reasons.ts";
 import {
 	alreadyValue,
@@ -55,15 +55,13 @@ async function withSettings(
 // A key is only checked for presence. Nothing about it leaves this function.
 const readAll = (omp: OmpImports, ctx: Context): Promise<string> =>
 	withSettings(omp, ctx, async ({ provider, scope }) => {
-		const keys = await Promise.all(
-			order(provider).map(
-				async (name) =>
-					[
-						name,
-						(await findKey(ctx, name)) === undefined ? "unset" : "set",
-					] as const,
-			),
-		);
+		const names = order(provider);
+		const found = await Promise.all(names.map((name) => findKey(ctx, name)));
+		const keys: Keys = {};
+		names.forEach((name, i) => {
+			const key = found[i];
+			if (key !== undefined) keys[name] = key;
+		});
 		return settingsReport(provider, scope, [], keys);
 	});
 

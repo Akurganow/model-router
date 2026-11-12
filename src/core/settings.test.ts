@@ -302,26 +302,18 @@ test("chooseValue returns what apply returns, and a throw passes through", async
 
 test("settingsReport joins the value lines, the extra lines and the key lines in order", () => {
 	assert.equal(
-		settingsReport(
-			"auto",
-			"extended",
-			["small_model: a/b"],
-			[
-				["typesafe", "set"],
-				["openrouter", "unset"],
-			],
-		),
+		settingsReport("auto", "extended", ["small_model: a/b"], { typesafe: "k" }),
 		"provider: auto (typesafe, then openrouter)\nscope: extended\nsmall_model: a/b\ntypesafe key: set\nopenrouter key: unset",
 	);
 	assert.equal(
-		settingsReport("openrouter", "core", [], [["openrouter", "unset"]]),
+		settingsReport("openrouter", "core", [], {}),
 		"provider: openrouter (openrouter)\nscope: core\nopenrouter key: unset",
 	);
 });
 
 test("settingsReport prints the stored provider as it is and resolves the scope", () => {
 	assert.equal(
-		settingsReport(undefined, "bogus", [], [["typesafe", "set"]]),
+		settingsReport(undefined, "bogus", [], { typesafe: "k" }),
 		"provider: undefined (typesafe)\nscope: core\ntypesafe key: set",
 	);
 });
