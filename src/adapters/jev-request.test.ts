@@ -6,7 +6,7 @@ import { jevAnswer, streamed } from "../core/jev-fakes.ts";
 import { tier } from "../core/tier.ts";
 import { work } from "../core/work.ts";
 import { createFakeClock } from "../utils/fake-clock.ts";
-import { routedCall } from "./claude/fakes.ts";
+import { answer, FULL, routedCall } from "./claude/fakes.ts";
 import { createScriptedJev } from "./hermes/fakes.ts";
 import { routeRequest } from "./hermes/route.ts";
 import { DEADLINE_MS, REQUESTER, setup } from "./openclaw/handler-fakes.ts";
@@ -18,22 +18,12 @@ const DESCRIPTION = "Rename one helper";
 const NO_WORK = jevAnswer(2);
 
 test("Claude Code sends one request with the role, the description, the task and the two questions", async () => {
-	const { bodies } = await routedCall(
-		{ api_key: "ts-key" },
-		{},
-		undefined,
-		undefined,
-		DESCRIPTION,
-		{
-			prompt: TASK,
-			reply: () => ({
-				status: 200,
-				ok: true,
-				headers: {},
-				text: JSON.stringify(jevAnswer(2, 1)),
-			}),
-		},
-	);
+	const { bodies } = await routedCall({
+		options: { api_key: "ts-key" },
+		description: DESCRIPTION,
+		prompt: TASK,
+		reply: () => answer({ tier: 2, work: 1, ...FULL }),
+	});
 	assert.deepEqual(bodies, [
 		{
 			model: "jev-latest",

@@ -1,3 +1,4 @@
+import { jevAnswer } from "../../core/jev-fakes.ts";
 import type { HttpReply } from "./host.ts";
 import { register } from "./index.ts";
 
@@ -58,13 +59,19 @@ export const BUILT_IN_DEFAULT: Offer = {
 	source: "built-in",
 };
 
-type Run = {
+export type Call = {
+	options?: Record<string, unknown>;
+	env?: Record<string, string>;
+	offers?: readonly Offer[];
+	subagentType?: string;
+	/** The one-line description of the Agent call. Defaults to the one of SPAWN. */
+	description?: string;
+	/** The task text of the spawn. Defaults to the one of SPAWN. */
+	prompt?: string;
 	/** The reply to each Jev request, by URL. Defaults to ANSWER with status 200. */
 	reply?: (url: string) => HttpReply;
 	/** Sends a caller effort with the Agent call. */
-	callerEffort?: boolean | undefined;
-	/** The task text of the spawn. Defaults to the one of SPAWN. */
-	prompt?: string;
+	callerEffort?: boolean;
 };
 
 /**
@@ -73,14 +80,16 @@ type Run = {
  * their parsed bodies, the lines logged to the default log, the spawn the engine received
  * and the effort the subagent's first model request carries.
  */
-export async function routedCall(
-	options: Record<string, unknown>,
-	env: Record<string, string>,
-	offers: readonly Offer[] = [BUILT_IN_DEFAULT],
+export async function routedCall({
+	options = {},
+	env = {},
+	offers = [BUILT_IN_DEFAULT],
 	subagentType = "general-purpose",
 	description = SPAWN.description,
-	{ reply, callerEffort, prompt = SPAWN.prompt }: Run = {},
-) {
+	prompt = SPAWN.prompt,
+	reply,
+	callerEffort,
+}: Call) {
 	const reads: string[] = [];
 	const requests: { url: string; model: unknown }[] = [];
 	const bodies: unknown[] = [];
@@ -166,56 +175,32 @@ export type Answers = {
 	usage?: object;
 };
 
-const scores = (level: number) => ({
-	type: "score",
-	probabilities: { 0: 0.05, 1: 0.05, 2: 0.05, [level]: 0.9 },
-});
-
 /**
  * Returns the fake Jev reply with status 200. Its body holds a tier answer when
  * tier is given, a work answer when work is given, and the model and usage as
  * passed.
  */
-export const answer = ({ tier, work, model, usage }: Answers): HttpReply => ({
-	status: 200,
-	ok: true,
-	headers: {},
-	text: JSON.stringify({
-		model,
-		usage,
-		answers: {
-			...(tier === undefined ? {} : { tier: scores(tier) }),
-			...(work === undefined ? {} : { work: scores(work) }),
-		},
-	}),
-});
+export const answer = ({ tier, work, model, usage }: Answers): HttpReply => {
+	const { answers } = jevAnswer(tier ?? 0, work);
+	return {
+		status: 200,
+		ok: true,
+		headers: {},
+		text: JSON.stringify({
+			model,
+			usage,
+			answers: tier === undefined ? { work: answers.work } : answers,
+		}),
+	};
+};
 
 const TOKENS = { input_tokens: 812, output_tokens: 9 };
 export const FULL = { model: "jev-1.14.0", usage: TOKENS };
 export const FULL_SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
 
-export type Once = {
-	options?: Record<string, unknown>;
-	env?: Record<string, string>;
-	callerEffort?: boolean;
-	reply: (url: string) => HttpReply;
-};
-
-/**
- * Runs one routed spawn and returns the logged lines, the spawn the engine
- * received and the effort its model requests carry. Sends a caller effort with
- * the tool call when callerEffort is true. The logged lines leave out what goes
- * to the debug log.
- */
-export const spawnOnce = ({ options, env = {}, callerEffort, reply }: Once) =>
-	routedCall(
-		{ api_key: "ts-key", ...options },
-		env,
-		undefined,
-		undefined,
-		undefined,
-		{ reply, callerEffort },
-	);
-
-export const routed = (answers: Answers, run: Partial<Once> = {}) =>
-	spawnOnce({ ...run, reply: () => answer(answers) });
+export const routed = (answers: Answers, run: Omit<Call, "reply"> = {}) =>
+	routedCall({
+		...run,
+		options: { api_key: "ts-key", ...run.options },
+		reply: () => answer(answers),
+	});

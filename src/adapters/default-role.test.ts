@@ -14,12 +14,11 @@ const world = useWorld();
 
 for (const agent of ["general-purpose", "claude"])
 	test(`${agent} and omp task send the same fixed role`, async () => {
-		const { roles } = await routedCall(
-			{ api_key: "ts-key" },
-			{},
-			[{ agent, source: "built-in", description: CLAUDE_WORDING }],
-			agent,
-		);
+		const { roles } = await routedCall({
+			options: { api_key: "ts-key" },
+			offers: [{ agent, source: "built-in", description: CLAUDE_WORDING }],
+			subagentType: agent,
+		});
 		createExtension(world.imports)(world.pi);
 		await world.toolCall("c", { tasks: [{ task: "a" }] });
 		const fromOmp = (world.sent[0]?.body as Body | undefined)?.state.role;

@@ -45,10 +45,10 @@ test("a new registration forgets the offers made before it", async () => {
 });
 
 test("an unknown provider value routes as typesafe and reads no OpenRouter key", async () => {
-	const { reads, requests } = await routedCall(
-		{ provider: "bogus", api_key: "", openrouter_api_key: "or-key" },
-		{ TYPESAFE_API_KEY: "ts-key", OPENROUTER_API_KEY: "or-var-key" },
-	);
+	const { reads, requests } = await routedCall({
+		options: { provider: "bogus", api_key: "", openrouter_api_key: "or-key" },
+		env: { TYPESAFE_API_KEY: "ts-key", OPENROUTER_API_KEY: "or-var-key" },
+	});
 	assert.deepEqual(reads, ["TYPESAFE_API_KEY", "CLAUDE_CODE_EFFORT_LEVEL"]);
 	assert.deepEqual(requests, [
 		{ url: "https://api.typesafe.ai/v1/systemone", model: "jev-latest" },
@@ -56,10 +56,9 @@ test("an unknown provider value routes as typesafe and reads no OpenRouter key",
 });
 
 test("a stored model option is ignored and jev-latest is sent", async () => {
-	const { requests } = await routedCall(
-		{ api_key: "ts-key", model: "jev-preview" },
-		{},
-	);
+	const { requests } = await routedCall({
+		options: { api_key: "ts-key", model: "jev-preview" },
+	});
 	assert.deepEqual(
 		requests.map((r) => r.model),
 		["jev-latest"],
@@ -67,25 +66,26 @@ test("a stored model option is ignored and jev-latest is sent", async () => {
 });
 
 test("under extended a fresh registration with no offers sends the default role", async () => {
-	const { requests, roles } = await routedCall(
-		{ api_key: "ts-key", scope: "extended" },
-		{},
-		[],
-	);
+	const { requests, roles } = await routedCall({
+		options: { api_key: "ts-key", scope: "extended" },
+		offers: [],
+	});
 	assert.equal(requests.length, 1);
 	assert.deepEqual(roles, [DEFAULT_ROLE]);
 });
 
 test("under core a fresh registration with no offers sends no request", async () => {
-	const { requests } = await routedCall({ api_key: "ts-key" }, {}, []);
+	const { requests } = await routedCall({
+		options: { api_key: "ts-key" },
+		offers: [],
+	});
 	assert.deepEqual(requests, []);
 });
 
 test("a built-in claude agent sends the default role whatever description Claude Code offers", async () => {
-	const { roles } = await routedCall(
-		{ api_key: "ts-key" },
-		{},
-		[
+	const { roles } = await routedCall({
+		options: { api_key: "ts-key" },
+		offers: [
 			{
 				agent: "claude",
 				source: "built-in",
@@ -93,58 +93,52 @@ test("a built-in claude agent sends the default role whatever description Claude
 					"Catch-all agent for any task that fits no more specific agent.",
 			},
 		],
-		"claude",
-	);
+		subagentType: "claude",
+	});
 	assert.deepEqual(roles, [DEFAULT_ROLE]);
 });
 
 for (const agent of ["general-purpose", "claude"])
 	test(`under extended a user agent that takes the name ${agent} sends its own description`, async () => {
-		const { roles } = await routedCall(
-			{ api_key: "ts-key", scope: "extended" },
-			{},
-			[{ agent, source: "user", description: "Mine." }],
-			agent,
-		);
+		const { roles } = await routedCall({
+			options: { api_key: "ts-key", scope: "extended" },
+			offers: [{ agent, source: "user", description: "Mine." }],
+			subagentType: agent,
+		});
 		assert.deepEqual(roles, [roleText("Mine.")]);
 	});
 
 test("under extended an Explore agent with no offer sends the neutral line", async () => {
-	const { roles } = await routedCall(
-		{ api_key: "ts-key", scope: "extended" },
-		{},
-		[],
-		"Explore",
-	);
+	const { roles } = await routedCall({
+		options: { api_key: "ts-key", scope: "extended" },
+		offers: [],
+		subagentType: "Explore",
+	});
 	assert.deepEqual(roles, [NO_DESCRIPTION]);
 });
 
 test("a built-in Explore agent keeps its offered description", async () => {
-	const { roles } = await routedCall(
-		{ api_key: "ts-key" },
-		{},
-		[
+	const { roles } = await routedCall({
+		options: { api_key: "ts-key" },
+		offers: [
 			{
 				agent: "Explore",
 				source: "built-in",
 				description: "Searches the code.",
 			},
 		],
-		"Explore",
-	);
+		subagentType: "Explore",
+	});
 	assert.deepEqual(roles, [roleText("Searches the code.")]);
 });
 
 // The key is joined at run time, so the owner-setup scan reads no key here.
 test("the Agent call's one-line description is masked like the task text", async () => {
 	const key = ["sk", "a1B2c3D4e5F6g7H8"].join("-");
-	const { descriptions } = await routedCall(
-		{ api_key: "ts-key" },
-		{},
-		undefined,
-		"general-purpose",
-		`Deploy with ${key}`,
-	);
+	const { descriptions } = await routedCall({
+		options: { api_key: "ts-key" },
+		description: `Deploy with ${key}`,
+	});
 	assert.deepEqual(descriptions, ["Deploy with ***"]);
 });
 

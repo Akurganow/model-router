@@ -3,12 +3,12 @@ import { describe, test } from "node:test";
 import {
 	AGENT_CALL,
 	type Answers,
+	type Call,
 	CLOCK,
 	FULL,
 	FULL_SUFFIX,
 	flush,
 	nextHook,
-	type Once,
 	registered,
 	routed,
 	SPAWN,
@@ -74,7 +74,7 @@ describe("Claude Code reply and effort edge cases", () => {
 });
 
 describe("decision line suffix", () => {
-	const line = async (extra: Answers, run: Partial<Once> = {}) =>
+	const line = async (extra: Answers, run: Omit<Call, "reply"> = {}) =>
 		(await routed({ tier: 1, work: 1, ...extra }, run)).logs[0];
 	const BASE = "L1 sonnet · medium · p=0.90/0.90";
 
