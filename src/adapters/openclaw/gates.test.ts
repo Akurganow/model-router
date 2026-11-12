@@ -483,7 +483,7 @@ for (const [kind, build] of ROSTERS)
 		});
 	});
 
-// What counts as set is tested with isSet. These values are the ones the tests above do not feed to the fields the gate reads.
+// isSet counts any value but undefined, null and blank text as set. These rows feed the values no other gate test feeds: undefined is unset, zero and an empty object are set.
 const SET_VALUES: readonly [string, unknown, boolean][] = [
 	["undefined", undefined, false],
 	["zero", 0, true],
