@@ -1,8 +1,9 @@
 import {
-	collectKeys,
 	KEY_FIELDS,
 	KEY_VARIABLES,
 	type Keys,
+	order,
+	type Provider,
 	type ProviderValue,
 	parseProvider,
 	resolve,
@@ -98,6 +99,18 @@ export function readSettings(
 		smallModel: firstValid(from, "small_model", nonEmpty),
 		largeModel: firstValid(from, "large_model", nonEmpty),
 	};
+}
+
+function collectKeys(
+	value: unknown,
+	lookup: (provider: Provider) => string | undefined,
+): Keys {
+	const keys: Keys = {};
+	for (const provider of order(value)) {
+		const key = lookup(provider);
+		if (key !== undefined) keys[provider] = key;
+	}
+	return keys;
 }
 
 /**

@@ -958,14 +958,6 @@ var ORDER = {
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
-function collectKeys(value, lookup) {
-  const keys = {};
-  for (const provider of order(value)) {
-    const key = lookup(provider);
-    if (key !== void 0) keys[provider] = key;
-  }
-  return keys;
-}
 function plan(value, keys) {
   const providers = order(value).filter((p) => Boolean(keys[p]));
   return providers.map(
@@ -1301,6 +1293,14 @@ function readSettings(live, pluginConfig) {
     smallModel: firstValid(from, "small_model", nonEmpty),
     largeModel: firstValid(from, "large_model", nonEmpty)
   };
+}
+function collectKeys(value, lookup) {
+  const keys = {};
+  for (const provider of order(value)) {
+    const key = lookup(provider);
+    if (key !== void 0) keys[provider] = key;
+  }
+  return keys;
 }
 function readKeys(live, pluginConfig, providerValue, env) {
   const from = sources(live, pluginConfig);

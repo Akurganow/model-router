@@ -1205,7 +1205,7 @@ var ORDER = {
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
-async function collectKeysAsync(value, lookup2) {
+async function collectKeys(value, lookup2) {
   const keys = {};
   for (const provider of order(value)) {
     const key = await lookup2(provider);
@@ -1462,10 +1462,7 @@ async function readGlobal(path, plugin) {
   return isRecord(mine) ? mine : {};
 }
 async function findKeys(ctx, value) {
-  const keys = await collectKeysAsync(
-    value,
-    (provider) => findKey(ctx, provider)
-  );
+  const keys = await collectKeys(value, (provider) => findKey(ctx, provider));
   return { attempts: plan(value, keys), keys };
 }
 async function findKey(ctx, provider) {

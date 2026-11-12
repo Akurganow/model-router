@@ -1182,7 +1182,7 @@ var ORDER = {
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
-async function collectKeysAsync(value, lookup) {
+async function collectKeys(value, lookup) {
   const keys = {};
   for (const provider of order(value)) {
     const key = await lookup(provider);
@@ -1563,7 +1563,7 @@ async function denied($, call) {
 
 // src/adapters/claude/keys.ts
 async function readKeys($, options, provider) {
-  return collectKeysAsync(
+  return collectKeys(
     provider,
     async (name) => nonEmpty(options[KEY_FIELDS[name]]) ?? nonEmpty(await keyVariable($, name))
   );

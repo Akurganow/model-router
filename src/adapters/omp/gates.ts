@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import type { RouteInput } from "../../core/compose.ts";
 import {
-	collectKeysAsync,
+	collectKeys,
 	KEY_VARIABLES,
 	type Provider,
 	type ProviderValue,
@@ -133,9 +133,7 @@ async function readGlobal(
  * Returns no attempts when no key is set. Never throws.
  */
 async function findKeys(ctx: Context, value: string): Promise<Routing> {
-	const keys = await collectKeysAsync(value, (provider) =>
-		findKey(ctx, provider),
-	);
+	const keys = await collectKeys(value, (provider) => findKey(ctx, provider));
 	return { attempts: plan(value, keys), keys };
 }
 

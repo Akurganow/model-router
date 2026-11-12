@@ -82,25 +82,10 @@ export const order = (value: unknown): readonly Provider[] =>
 /**
  * Returns the keys that lookup finds for the providers the value allows. A
  * provider the value leaves out is never looked up, and one whose lookup gives
- * undefined has no entry. Throws only when lookup throws.
+ * undefined has no entry. Each lookup finishes before the next starts, and a
+ * rejection stops the rest and passes through.
  */
-export function collectKeys(
-	value: unknown,
-	lookup: (provider: Provider) => string | undefined,
-): Keys {
-	const keys: Keys = {};
-	for (const provider of order(value)) {
-		const key = lookup(provider);
-		if (key !== undefined) keys[provider] = key;
-	}
-	return keys;
-}
-
-/**
- * Like collectKeys for a lookup that returns a promise. Each lookup finishes
- * before the next starts, and a rejection stops the rest and passes through.
- */
-export async function collectKeysAsync(
+export async function collectKeys(
 	value: unknown,
 	lookup: (provider: Provider) => Promise<string | undefined>,
 ): Promise<Keys> {

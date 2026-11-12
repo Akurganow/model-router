@@ -1,5 +1,5 @@
 import {
-	collectKeysAsync,
+	collectKeys,
 	KEY_FIELDS,
 	type Keys,
 	type Provider,
@@ -19,7 +19,7 @@ export async function readKeys(
 	options: Options,
 	provider: unknown,
 ): Promise<Keys> {
-	return collectKeysAsync(
+	return collectKeys(
 		provider,
 		async (name) =>
 			nonEmpty(options[KEY_FIELDS[name]]) ??

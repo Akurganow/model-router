@@ -10,7 +10,7 @@ import {
 } from "@typesafe-ai/sdk";
 import { LIMIT_REACHED } from "./compose.ts";
 import {
-	collectKeysAsync,
+	collectKeys,
 	FIRST_ATTEMPT_TIMEOUT_MS,
 	fallsBack,
 	HOSTS,
@@ -80,9 +80,9 @@ test("order lists the providers a value allows, without keys", () => {
 
 const LOOKED_UP = { typesafe: "ts-key", openrouter: "or-key" };
 
-test("collectKeysAsync awaits each lookup before it starts the next", async () => {
+test("collectKeys awaits each lookup before it starts the next", async () => {
 	const trace: string[] = [];
-	const keys = await collectKeysAsync("openrouter-first", async (provider) => {
+	const keys = await collectKeys("openrouter-first", async (provider) => {
 		trace.push(`start ${provider}`);
 		await new Promise((resolve) => setTimeout(resolve, 5));
 		trace.push(`end ${provider}`);
@@ -97,9 +97,9 @@ test("collectKeysAsync awaits each lookup before it starts the next", async () =
 	]);
 });
 
-test("collectKeysAsync never looks up a provider the value leaves out", async () => {
+test("collectKeys never looks up a provider the value leaves out", async () => {
 	const asked: string[] = [];
-	const keys = await collectKeysAsync("typesafe", async (provider) => {
+	const keys = await collectKeys("typesafe", async (provider) => {
 		asked.push(provider);
 		return LOOKED_UP[provider];
 	});
@@ -107,10 +107,10 @@ test("collectKeysAsync never looks up a provider the value leaves out", async ()
 	assert.deepEqual(asked, ["typesafe"]);
 });
 
-test("collectKeysAsync stops at a rejection and passes it through", async () => {
+test("collectKeys stops at a rejection and passes it through", async () => {
 	const asked: string[] = [];
 	await assert.rejects(
-		collectKeysAsync("auto", async (provider) => {
+		collectKeys("auto", async (provider) => {
 			asked.push(provider);
 			throw new Error("lookup failed");
 		}),
