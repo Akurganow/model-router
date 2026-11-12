@@ -16,6 +16,10 @@ export const CLOCK = {
 	sleep: () => new Promise(() => {}),
 };
 
+export const flush = async () => {
+	for (let i = 0; i < 20; i++) await new Promise((r) => setImmediate(r));
+};
+
 /**
  * The continuation under a hook. Its origin names the plugin that started the call, and "engine" is the Agent tool itself.
  */

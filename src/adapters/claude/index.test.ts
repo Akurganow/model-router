@@ -7,6 +7,7 @@ import {
 	AGENT_CALL,
 	ANSWER,
 	CLOCK,
+	flush,
 	nextHook,
 	registered,
 	routedCall,
@@ -162,10 +163,6 @@ test("register hooks the offers, the spawn, the steps, the turn ends, the sessio
 });
 
 const SPAWN_HOOK = "agent.spawn";
-const flush = async () => {
-	for (let i = 0; i < 20; i++) await new Promise((r) => setImmediate(r));
-};
-
 // A session with a key and a built-in general-purpose offer. Its clock sleeps until a test wakes them.
 async function session() {
 	const hooks = registered({ api_key: "ts-key" });

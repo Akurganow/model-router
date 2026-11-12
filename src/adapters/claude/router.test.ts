@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
+	AGENT_CALL,
 	type Answers,
+	CLOCK,
 	FULL,
 	FULL_SUFFIX,
+	flush,
+	nextHook,
 	type Once,
+	registered,
 	routed,
 	SPAWN,
 } from "./fakes.ts";
@@ -84,4 +89,36 @@ describe("decision line suffix", () => {
 			BASE,
 		);
 	});
+});
+
+test("a host cancel while Jev is being asked skips the routing and starts the spawn", async () => {
+	const hooks = registered({ api_key: "ts-key" });
+	const logs: string[] = [];
+	const $ = {
+		clock: CLOCK,
+		env: { get: async () => undefined },
+		http: { fetch: () => new Promise<never>(() => {}) },
+		tool: { check: async () => ({ decision: "allow" }) },
+		ui: { log: async (text: string) => void logs.push(text) },
+	};
+	await hooks["agent.offer"]?.(
+		$,
+		{ agent: "general-purpose", source: "built-in" },
+		nextHook(),
+	);
+	const cancel = new AbortController();
+	const started: unknown[] = [];
+	const engine = Object.assign(
+		async (spawn: unknown) => {
+			started.push(spawn);
+			return { agentId: "agent-1" };
+		},
+		{ signal: cancel.signal, origin: { plugin: "engine" } },
+	);
+	hooks[AGENT_CALL]?.($, SPAWN, engine);
+	await flush();
+	assert.deepEqual(started, []);
+	cancel.abort();
+	await flush();
+	assert.deepEqual(started, [SPAWN]);
 });
