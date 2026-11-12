@@ -46,6 +46,10 @@ test("the tool and command names and texts equal the src/ values", () => {
 });
 
 test("the tool description names every setting, changes nothing and returns no key", () => {
+	assert.equal(
+		texts.toolDescription,
+		"Reads the router's settings. With no input it returns the provider, both models, and whether each key the provider allows is set. With a setting name (provider, typesafe_key, openrouter_key, small_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key.",
+	);
 	for (const name of texts.settings)
 		assert.ok(texts.toolDescription.includes(name), name);
 	assert.match(texts.toolDescription, /changes nothing/);
