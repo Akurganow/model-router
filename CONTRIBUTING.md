@@ -30,7 +30,7 @@ every commit as a [conventional commit](#commits).
   | A routing concept that two or more adapters use | `src/core/` |
   | A general helper with two or more users | `src/utils/` |
   | Anything one adapter uses | that adapter's folder |
-  | A test double | The layer of the code it replaces, in a file named `*fake*` |
+  | A test double | The layer of the code it replaces, in a `*fake*` file |
 - `src/core/part.ts` holds the shared types and the answer check.
   `src/core/tier.ts` and `src/core/work.ts` both build on it.
 - `plugins/model-router` is the Claude Code plugin.
