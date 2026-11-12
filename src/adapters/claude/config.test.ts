@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { NO_ANSWER, unchanged, valueLine } from "../../core/settings.ts";
 import { configCall, configCommand, REFUSED, resetConfig } from "./config.ts";
-import { answeringEngine, dialogs, recordingEngine } from "./fakes.ts";
+import {
+	answeringEngine,
+	dialogs,
+	flush,
+	recordingEngine,
+	type Step,
+} from "./fakes.ts";
 import type { CommandRun, ConfigCall, Engine } from "./host.ts";
 
 test("the refusal says nothing was read or changed", () => {
@@ -52,20 +58,16 @@ test("a reset forgets what the instance wrote", async () => {
 	});
 });
 
-const idle = async () => {
-	for (let i = 0; i < 20; i++) await new Promise((r) => setImmediate(r));
-};
-
 test("a call whose dialog fails answers no answer, and the call behind it starts only after", async () => {
 	resetConfig();
 	const { $, log, open } = dialogs();
 	const first = configCall($, call("scope"), {});
 	const second = configCall($, call("scope"), {});
-	await idle();
+	await flush();
 	assert.deepEqual(log, ["check", "ask"]);
 	open[0]?.reject(new Error("dialog gone"));
 	assert.deepEqual(await first, { result: unchanged("scope", NO_ANSWER) });
-	await idle();
+	await flush();
 	assert.deepEqual(log, ["check", "ask", "check", "ask"]);
 	open[1]?.resolve(EXTENDED);
 	assert.deepEqual(await second, { result: valueLine("scope", "extended") });
@@ -89,11 +91,11 @@ test("a call that throws rejects its caller, and the call behind it still runs a
 	};
 	const first = configCall($, call("scope"), {});
 	const second = configCall($, call("scope"), {});
-	await idle();
+	await flush();
 	assert.deepEqual(log, ["check"]);
 	release();
 	await assert.rejects(first, { message: "no rules" });
-	await idle();
+	await flush();
 	assert.deepEqual(log, ["check", "check", "ask"]);
 	open[0]?.resolve(EXTENDED);
 	assert.deepEqual(await second, { result: valueLine("scope", "extended") });
@@ -103,11 +105,11 @@ test("a reset drops a pending queue, so a call after it does not wait for an uns
 	resetConfig();
 	const { $, log, open } = dialogs();
 	const stuck = configCall($, call("scope"), {});
-	await idle();
+	await flush();
 	assert.deepEqual(log, ["check", "ask"]);
 	resetConfig();
 	const fresh = configCall($, call("scope"), {});
-	await idle();
+	await flush();
 	assert.deepEqual(log, ["check", "ask", "check", "ask"]);
 	open[1]?.resolve(EXTENDED);
 	assert.deepEqual(await fresh, { result: valueLine("scope", "extended") });
@@ -155,33 +157,32 @@ test("the provider dialog puts the stored value first and keeps the rest in orde
 	]);
 });
 
-test("a dialog that rejects answers no answer and writes nothing", async () => {
-	resetConfig();
-	const { $, log } = answeringEngine(async () => {
-		throw new Error("dialog gone");
-	});
-	assert.deepEqual(await configCall($, call("scope"), {}), {
-		result: "scope unchanged: no answer from the dialog",
-	});
-	assert.deepEqual(
-		log.filter((step) => typeof step === "string" || "set" in step),
-		["check"],
-	);
-});
+// The steps a call took that are not the dialog itself: the permission check and any write.
+const checksAndWrites = (log: Step[]) =>
+	log.filter((step) => typeof step === "string" || "set" in step);
 
-test("a dialog that resolves nothing answers no answer and writes nothing", async () => {
-	resetConfig();
-	const { $, log } = answeringEngine(
-		async () => undefined as unknown as string,
-	);
-	assert.deepEqual(await configCall($, call("scope"), {}), {
-		result: "scope unchanged: no answer from the dialog",
+const FAILURES = [
+	{
+		name: "rejects",
+		answer: async () => {
+			throw new Error("dialog gone");
+		},
+	},
+	{
+		name: "resolves nothing",
+		answer: async () => undefined as unknown as string,
+	},
+];
+
+for (const { name, answer } of FAILURES)
+	test(`a dialog that ${name} answers no answer and writes nothing`, async () => {
+		resetConfig();
+		const { $, log } = answeringEngine(answer);
+		assert.deepEqual(await configCall($, call("scope"), {}), {
+			result: "scope unchanged: no answer from the dialog",
+		});
+		assert.deepEqual(checksAndWrites(log), ["check"]);
 	});
-	assert.deepEqual(
-		log.filter((step) => typeof step === "string" || "set" in step),
-		["check"],
-	);
-});
 
 test("an answer that is not a label is not offered and is never echoed", async () => {
 	resetConfig();
@@ -191,16 +192,6 @@ test("an answer that is not a label is not offered and is never echoed", async (
 	});
 	assert.equal(log.length, 2);
 	assert.equal(log[0], "check");
-});
-
-test("the stored value picked again says it is already set and writes nothing", async () => {
-	resetConfig();
-	const { $, log } = answeringEngine(async () => TYPESAFE);
-	assert.deepEqual(
-		await configCall($, call("provider"), { provider: "typesafe" }),
-		{ result: "provider unchanged: already typesafe" },
-	);
-	assert.equal(log.length, 2);
 });
 
 test("the default picked while nothing is stored is written, because no stored value equals it", async () => {
@@ -216,6 +207,12 @@ test("the default picked while nothing is stored is written, because no stored v
 
 test("a pick of the stored value counts as already set, and a written one counts for the next call", async () => {
 	resetConfig();
+	const typesafe = answeringEngine(async () => TYPESAFE);
+	assert.deepEqual(
+		await configCall(typesafe.$, call("provider"), { provider: "typesafe" }),
+		{ result: "provider unchanged: already typesafe" },
+	);
+	assert.equal(typesafe.log.length, 2);
 	const { $, log } = answeringEngine(async () => EXTENDED);
 	assert.deepEqual(await configCall($, call("scope"), { scope: "extended" }), {
 		result: "scope unchanged: already extended",

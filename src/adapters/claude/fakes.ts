@@ -232,7 +232,7 @@ export function dialogs() {
 	return { $, log, open };
 }
 
-type Step = string | { ask: unknown } | { set: unknown };
+export type Step = string | { ask: unknown } | { set: unknown };
 
 // An engine that answers each dialog with `answer` and logs every host call in order.
 export function answeringEngine(
