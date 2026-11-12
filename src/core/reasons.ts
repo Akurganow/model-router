@@ -24,7 +24,7 @@ export const modelUnresolved = (slot: EndSlot): string =>
 	`${slot} model unresolved`;
 
 // What a level does to the model: the middle keeps it, an end level names its slot and model, or its slot has no model.
-export type LevelModel =
+type LevelModel =
 	| { readonly slot: null; readonly model?: undefined }
 	| { readonly slot: EndSlot; readonly model: string }
 	| { readonly skipped: string };

@@ -5,7 +5,7 @@ import { isRecord } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 
 // Whose effort replaces the ladder's. Python ranks the delegation section above the caller.
-export const KEPT_EFFORTS = ["config", "caller"] as const;
+const KEPT_EFFORTS = ["config", "caller"] as const;
 export type KeptEffort = (typeof KEPT_EFFORTS)[number];
 
 // What the Python shim sends, once read.

@@ -36,7 +36,7 @@ export const LIMIT_REACHED = Symbol("routing limit reached");
 const MODEL_CHARS_MAX = 40;
 
 type Failure = { readonly provider: Provider; readonly reason: string };
-export type Via = {
+type Via = {
 	readonly provider: Provider;
 	readonly first: Provider;
 	readonly reason: string;

@@ -18,7 +18,7 @@ import type { Context, Lookup, OmpImports, Pi } from "./types.ts";
 
 export const ROLES = { small: "@smol", large: "@slow" } as const;
 
-export type Routing = Pick<RouteInput, "attempts" | "keys">;
+type Routing = Pick<RouteInput, "attempts" | "keys">;
 export type Batch = Routing & { readonly facts: Facts };
 export type Settings = {
 	readonly provider: ProviderValue;

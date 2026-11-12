@@ -20,7 +20,7 @@ import type { SpawnRequest } from "./params.ts";
 import type { OpenClawSettings } from "./settings.ts";
 import type { OpenClawConfig } from "./types.ts";
 
-export type EffortRule =
+type EffortRule =
 	| { readonly kind: "set" }
 	| {
 			readonly kind: "keep";

@@ -27,7 +27,7 @@ export const readStringParam = (
 ): string | undefined => nonEmpty(readParam(params, key));
 
 // `invalid` is an agent id that is set but not text.
-export type SpawnAgent =
+type SpawnAgent =
 	| { readonly kind: "none" }
 	| { readonly kind: "id"; readonly id: string }
 	| { readonly kind: "invalid" };

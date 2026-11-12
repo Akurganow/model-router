@@ -2,7 +2,7 @@ import type { Fetch } from "@typesafe-ai/sdk";
 import { jevAnswer, streamed } from "../../core/jev-fakes.ts";
 
 // What one scripted Jev call answers. "hang" holds the request until its signal aborts.
-export type Reply =
+type Reply =
 	| "hang"
 	| { readonly levels: { readonly tier: number; readonly work: number } }
 	| { readonly status: number }

@@ -3,9 +3,7 @@ import { deadlineFor, tooShort } from "../../core/handler-deadline.ts";
 // omp gives every tool_call handler this long when its setting is unusable.
 const DEFAULT_TIMEOUT_MS = 30000;
 
-export type Budget =
-	| { readonly deadline: number }
-	| { readonly closed: string };
+type Budget = { readonly deadline: number } | { readonly closed: string };
 
 /**
  * Returns the scoring deadline that omp's tool call timeout leaves, from the

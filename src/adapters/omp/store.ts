@@ -10,7 +10,7 @@ export type Stored = {
 	readonly routed?: Routed;
 };
 // The index numbers a spawn-time line.
-export type Taken = { readonly stored: Stored; readonly index: number };
+type Taken = { readonly stored: Stored; readonly index: number };
 type Entry = {
 	readonly stored: Stored;
 	readonly agent: string;

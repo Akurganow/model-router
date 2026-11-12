@@ -1,8 +1,8 @@
 // The mods API and hook types this adapter uses. The bundle must not depend on the generated declarations.
-export type Timer = { cancel(): void };
+type Timer = { cancel(): void };
 // The most routed efforts the adapter keeps for finished subagents. The least recently used goes first.
 export const EFFORTS_MAX = 1024;
-export type HttpInit = {
+type HttpInit = {
 	method?: string | undefined;
 	headers?: Record<string, string> | undefined;
 	body?: string | undefined;
@@ -49,11 +49,7 @@ export type Next<R = Outcome> = {
 	// Who raised the dispatch: the engine for the model's Agent call, a plugin name for its own calls.
 	readonly origin: { readonly plugin: string };
 };
-export type Hook<E, R = Outcome> = (
-	$: Engine,
-	e: E,
-	next: Next<R>,
-) => Promise<R>;
+type Hook<E, R = Outcome> = ($: Engine, e: E, next: Next<R>) => Promise<R>;
 // agent.spawn rewrites the model. Its answer names the started subagent.
 export type Started = { readonly deny?: string; readonly agentId?: string };
 export type AgentSpawn = {
@@ -69,11 +65,11 @@ export type AgentSpawn = {
 	workflow?: unknown;
 };
 export type TurnStep = { agentId?: string; effort?: string };
-export type TurnComplete = { agentId?: string };
+type TurnComplete = { agentId?: string };
 // turn.step streams: the hook is an async generator and next(e) is the stream beneath.
 export type StepStream = AsyncGenerator<unknown, unknown>;
 export type StepNext = (e: TurnStep) => StepStream;
-export type StepHook = ($: Engine, e: TurnStep, next: StepNext) => StepStream;
+type StepHook = ($: Engine, e: TurnStep, next: StepNext) => StepStream;
 export type CommandRun = {
 	command: string;
 	args: string;
@@ -84,9 +80,9 @@ export type SessionStart = { cwd: string };
 // A tool the plugin registered answers with its result, or refuses the call.
 export type ToolAnswer = { result: string } | { deny: string };
 export type ConfigCall = ReservedKeys & { setting?: unknown };
-export type AgentOffer = { agent: string; source: string; description: string };
+type AgentOffer = { agent: string; source: string; description: string };
 // The keys every tool.call carries beside the tool's own arguments.
-export type ReservedKeys = {
+type ReservedKeys = {
 	tool: string;
 	tool_use_id?: string;
 	agentId?: string;

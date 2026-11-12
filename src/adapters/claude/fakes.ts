@@ -1,6 +1,6 @@
 import { register } from "./index.ts";
 
-export type Hook = ($: unknown, e: unknown, next: unknown) => Promise<unknown>;
+type Hook = ($: unknown, e: unknown, next: unknown) => Promise<unknown>;
 
 export const AGENT_CALL = "agent.spawn";
 export const SPAWN = {
@@ -47,7 +47,7 @@ export const ANSWER = JSON.stringify({
 	answers: { tier: SCORE([0.9, 0.1, 0]), work: SCORE([0.2, 0.6, 0.2]) },
 });
 
-export type Offer = { agent: string; source: string; description?: string };
+type Offer = { agent: string; source: string; description?: string };
 export const BUILT_IN_DEFAULT: Offer = {
 	agent: "general-purpose",
 	source: "built-in",

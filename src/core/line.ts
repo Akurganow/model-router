@@ -1,6 +1,6 @@
 import type { Level } from "./part.ts";
 
-export type RoutedLine = {
+type RoutedLine = {
 	readonly level: Level;
 	// A level that changes nothing has no target.
 	readonly target: string | undefined;
@@ -29,6 +29,6 @@ export function routedLine({
 	return `L${level} ${target ?? NO_CHANGE}${effortSegment} · p=${probabilities}${suffix}`;
 }
 
-export const SKIPPED_PREFIX = "skipped, ";
+const SKIPPED_PREFIX = "skipped, ";
 export const skippedLine = (reason: string): string =>
 	`${SKIPPED_PREFIX}${reason}`;

@@ -12,7 +12,7 @@ import { KEY_UNSET } from "../../core/settings.ts";
  * Python ends a Node run this long after its budget, so Node's own deadline
  * settles first and the kill is for a stuck process only.
  */
-export const GRACE_MS = 1000;
+const GRACE_MS = 1000;
 
 // What the Hermes shim reads from constants.json. The builder turns each reason
 // into a finished skip line, so Python never builds the line format.

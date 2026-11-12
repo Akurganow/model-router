@@ -5,7 +5,7 @@ import { CALLER_EFFORT, CONFIG_EFFORT } from "../../core/reasons.ts";
 import { type Facts, ROLE_MARK } from "./items.ts";
 
 // The middle level keeps the agent's model, so a spawn with no model patterns leaves nothing to put a level on.
-export const NO_PATTERNS = "no model patterns";
+const NO_PATTERNS = "no model patterns";
 
 // The selectors omp reads as a thinking level after a pattern's last colon; a prefix must name one of them only.
 // Source: docs/clients.md#omp-thinking-levels.
@@ -84,7 +84,7 @@ export function capped(effort: Effort, ceiling: unknown): Effort | undefined {
 }
 
 // A level set on the spawn, or the label of the effort the plugin leaves in place.
-export type EffortPlan = { readonly set: Effort } | { readonly kept: string };
+type EffortPlan = { readonly set: Effort } | { readonly kept: string };
 
 // What a decision holds until its spawn. The middle level has no role.
 export type Routed = {
@@ -97,7 +97,7 @@ export type Routed = {
 	readonly suffix: string;
 };
 
-export type EffortFacts = Pick<Facts, "roles" | "maxEffort" | "effortEnabled">;
+type EffortFacts = Pick<Facts, "roles" | "maxEffort" | "effortEnabled">;
 
 /**
  * Returns the effort to set on a spawn, or the label of the one that stays.

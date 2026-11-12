@@ -20,8 +20,8 @@ import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
 import { type HermesRequest, type KeptEffort, readRequest } from "./request.ts";
 
-export type HermesDeps = { readonly fetchFn: Fetch; readonly clock: Clock };
-export type HermesResponse =
+type HermesDeps = { readonly fetchFn: Fetch; readonly clock: Clock };
+type HermesResponse =
 	| {
 			readonly outcome: "route";
 			// The slot whose model the level names; null at the middle level.

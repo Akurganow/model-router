@@ -19,13 +19,13 @@ export type Logger = {
 };
 
 // src/config/zod-schema.agent-runtime.ts: the subagent settings of an agent or of the defaults.
-export type SubagentSettings = {
+type SubagentSettings = {
 	model?: unknown;
 	thinking?: unknown;
 };
 
 // src/config/zod-schema.agent-entry-base.ts: the fields of an agent entry the adapter reads, from `agents.entries.<id>` or an `agents.list` item.
-export type AgentEntry = {
+type AgentEntry = {
 	id?: unknown;
 	description?: unknown;
 	model?: unknown;
@@ -33,7 +33,7 @@ export type AgentEntry = {
 };
 
 // docs/plugins/hooks/reference.md: `plugins.entries.<id>.hooks`, in ms.
-export type HookTimeoutSettings = {
+type HookTimeoutSettings = {
 	timeoutMs?: unknown;
 	timeouts?: { before_tool_call?: unknown };
 };

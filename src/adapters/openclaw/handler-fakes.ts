@@ -23,7 +23,7 @@ export const CONTEXT: ToolContext = {
 };
 export const TASK = "do the work";
 export const JEV = " · jev jev-1.14.0 · 812/9 tok";
-export type Setup = {
+type Setup = {
 	levels?: Levels;
 	settings?: Record<string, unknown>;
 	config?: OpenClawConfig;

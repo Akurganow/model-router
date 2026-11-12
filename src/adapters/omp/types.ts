@@ -23,7 +23,7 @@ export type OmpImports = {
 };
 
 // omp's credential rows at 18.12.6: a key saved with source "login" is the kind omp's own login stores.
-export type Credentials = {
+type Credentials = {
 	set(
 		provider: string,
 		credential: { type: "api_key"; key: string; source: "login" },

@@ -12,7 +12,6 @@ import {
 	COMMAND_DESCRIPTIONS,
 	chooseValue,
 	isKeySetting,
-	isSettingName,
 	isValue,
 	isValueSetting,
 	KEY_MAX_LENGTH,
@@ -58,17 +57,14 @@ test("predicates tell value settings, key settings and other input apart", () =>
 	for (const name of VALUE_SETTINGS) {
 		assert.equal(isValueSetting(name), true, name);
 		assert.equal(isKeySetting(name), false, name);
-		assert.equal(isSettingName(name), true, name);
 	}
 	for (const name of KEY_SETTINGS) {
 		assert.equal(isValueSetting(name), false, name);
 		assert.equal(isKeySetting(name), true, name);
-		assert.equal(isSettingName(name), true, name);
 	}
 	for (const other of ["", "key", "toString", 1, null, undefined]) {
 		assert.equal(isValueSetting(other), false, String(other));
 		assert.equal(isKeySetting(other), false, String(other));
-		assert.equal(isSettingName(other), false, String(other));
 	}
 });
 

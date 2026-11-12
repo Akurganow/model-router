@@ -1,4 +1,4 @@
-export type Timer = { cancel(): void };
+type Timer = { cancel(): void };
 type After = (ms: number, fn: () => void) => Timer;
 
 let after: After | undefined;

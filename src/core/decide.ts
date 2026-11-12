@@ -9,7 +9,7 @@ import { work } from "./effort.ts";
 import { tier } from "./model.ts";
 import { formatProbability, type Level } from "./part.ts";
 
-export type Decided = {
+type Decided = {
 	readonly tier: Level;
 	readonly probabilities: string;
 	readonly suffix: string;

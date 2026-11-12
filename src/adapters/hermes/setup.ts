@@ -27,7 +27,7 @@ const SETTINGS = ["provider", ...KEY_SETTINGS, ...SLOT_SETTINGS] as const;
 // Hermes puts a plugin tool in a toolset of its own, and a plugin toolset is on in a default session.
 const TOOLSET = "model_router";
 const UNSET = "unset";
-export const NOT_LOCAL = "only a local session can change it";
+const NOT_LOCAL = "only a local session can change it";
 // The platform names Hermes passes to a command from a session on the same machine.
 const LOCAL_PLATFORMS = ["local", "cli", "tui", "desktop"] as const;
 

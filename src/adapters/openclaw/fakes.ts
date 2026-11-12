@@ -33,7 +33,7 @@ type FakeCalls = {
 export type RuntimeMember = keyof FakeCalls;
 
 // What the fake runtime answers. A test changes a field between calls.
-export type RuntimeAnswers = {
+type RuntimeAnswers = {
 	config: OpenClawConfig;
 	defaultModel: ModelRef;
 	// Unset: the raw string splits at its first slash into provider and model.
@@ -131,14 +131,14 @@ export function createFakeRuntime(initial: Partial<RuntimeAnswers> = {}) {
 	};
 	return { runtime, answers, calls, throwOn };
 }
-export type FakeRuntime = ReturnType<typeof createFakeRuntime>;
+type FakeRuntime = ReturnType<typeof createFakeRuntime>;
 
-export type RecordedHook = {
+type RecordedHook = {
 	event: string;
 	handler: BeforeToolCallHandler;
 	options?: HookOptions;
 };
-export type LogLine = { level: keyof Logger; message: string };
+type LogLine = { level: keyof Logger; message: string };
 
 // The modes in which OpenClaw keeps what a plugin registers with `on`, `registerTool` and
 // `registerCommand`. In the other modes it swaps those members for no-ops
@@ -226,9 +226,9 @@ export function createFakeApi(overrides: FakeApiOverrides = {}) {
 }
 
 export type Levels = { tier: number; work: number };
-export type JevRequest = { url: string; body: unknown; signal?: AbortSignal };
+type JevRequest = { url: string; body: unknown; signal?: AbortSignal };
 // "hang" holds a request until its signal aborts. A status answers an empty body with that status.
-export type JevMode = "answer" | "hang" | { status: number };
+type JevMode = "answer" | "hang" | { status: number };
 
 function hold(signal: AbortSignal | null | undefined): Promise<never> {
 	return new Promise((_, reject) => {

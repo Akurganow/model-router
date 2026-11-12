@@ -13,7 +13,7 @@ export const SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS] as const;
 export type ValueSetting = (typeof VALUE_SETTINGS)[number];
 export type KeySetting = (typeof KEY_SETTINGS)[number];
 export type SettingName = (typeof SETTING_NAMES)[number];
-export type KeyState = "set" | "unset" | "saved, checking";
+type KeyState = "set" | "unset" | "saved, checking";
 
 export const TOOL_NAME = "model_router_config";
 // The dash form is the one OpenClaw and Hermes use; omp and Claude Code name their commands with "model-router:".
@@ -74,9 +74,6 @@ export const isValueSetting = (name: unknown): name is ValueSetting =>
 
 export const isKeySetting = (name: unknown): name is KeySetting =>
 	KEY_SETTINGS.some((known) => known === name);
-
-export const isSettingName = (name: unknown): name is SettingName =>
-	isValueSetting(name) || isKeySetting(name);
 
 export const keyProvider = (setting: KeySetting): Provider =>
 	KEY_PROVIDERS[setting];
