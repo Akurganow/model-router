@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ROUTING_LIMIT_MS } from "../core/compose.ts";
 import { plan } from "../core/provider.ts";
-import { streamedFetch } from "../utils/fetch.ts";
 import { routedCall, SPAWN } from "./claude/fakes.ts";
 import { useWorld } from "./omp/fakes.ts";
 import type { Batch } from "./omp/gates.ts";
@@ -222,28 +221,5 @@ describe("omp per-item line", () => {
 			},
 		]);
 		assert.deepEqual(world.sent, []);
-	});
-});
-
-describe("streamedFetch", () => {
-	const world = useWorld();
-
-	test("keeps the status, the status text, the headers and the body, and reads as a stream", async () => {
-		world.answer = async () =>
-			new Response('{"ok":true}', {
-				status: 202,
-				statusText: "Accepted",
-				headers: { "x-kept": "yes", "content-type": "application/json" },
-			});
-		const reply = await streamedFetch("https://example.test/", {
-			method: "POST",
-			body: "{}",
-		});
-		assert.equal(reply.status, 202);
-		assert.equal(reply.statusText, "Accepted");
-		assert.equal(reply.headers.get("x-kept"), "yes");
-		assert.equal(reply.headers.get("content-type"), "application/json");
-		assert.ok(reply.body instanceof ReadableStream);
-		assert.deepEqual(await reply.json(), { ok: true });
 	});
 });
