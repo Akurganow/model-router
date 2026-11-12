@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { NO_ANSWER, unchanged, valueLine } from "../../core/settings.ts";
 import { configCall, configCommand, REFUSED, resetConfig } from "./config.ts";
+import { answeringEngine, dialogs, recordingEngine } from "./fakes.ts";
 import type { CommandRun, ConfigCall, Engine } from "./host.ts";
 
 test("the refusal says nothing was read or changed", () => {
@@ -50,33 +51,6 @@ test("a reset forgets what the instance wrote", async () => {
 		text: "scope: core",
 	});
 });
-
-// An engine whose dialogs stay open until a test answers them. Each step is logged as it starts.
-function dialogs() {
-	const log: string[] = [];
-	const open: {
-		resolve: (answer: string) => void;
-		reject: (reason: Error) => void;
-	}[] = [];
-	const $ = {
-		tool: {
-			check: async () => {
-				log.push("check");
-				return { decision: "allow" };
-			},
-		},
-		ui: {
-			ask: () => {
-				log.push("ask");
-				return new Promise<string>((resolve, reject) => {
-					open.push({ resolve, reject });
-				});
-			},
-		},
-		config: { set: async () => ({}) },
-	} as unknown as Engine;
-	return { $, log, open };
-}
 
 const idle = async () => {
 	for (let i = 0; i < 20; i++) await new Promise((r) => setImmediate(r));
@@ -141,40 +115,9 @@ test("a reset drops a pending queue, so a call after it does not wait for an uns
 	assert.deepEqual(await stuck, { result: unchanged("scope", NO_ANSWER) });
 });
 
-type Step = string | { ask: unknown } | { set: unknown };
-
-// An engine that answers each dialog with `answer` and logs every host call in order.
-function engine(
-	answer: () => Promise<string>,
-	set: () => Promise<{ deny?: string }> = async () => ({}),
-) {
-	const log: Step[] = [];
-	const $ = {
-		tool: {
-			check: async () => {
-				log.push("check");
-				return { decision: "allow" };
-			},
-		},
-		ui: {
-			ask: async (question: string, opts: unknown) => {
-				log.push({ ask: [question, opts] });
-				return answer();
-			},
-		},
-		config: {
-			set: async (row: unknown) => {
-				log.push({ set: row });
-				return set();
-			},
-		},
-	} as unknown as Engine;
-	return { $, log };
-}
-
 test("the scope dialog offers the current value first and writes a new pick", async () => {
 	resetConfig();
-	const { $, log } = engine(async () => EXTENDED);
+	const { $, log } = answeringEngine(async () => EXTENDED);
 	assert.deepEqual(await configCall($, call("scope"), {}), {
 		result: "scope: extended",
 	});
@@ -192,7 +135,7 @@ test("the scope dialog offers the current value first and writes a new pick", as
 
 test("the provider dialog puts the stored value first and keeps the rest in order", async () => {
 	resetConfig();
-	const { $, log } = engine(async () => OPENROUTER_FIRST);
+	const { $, log } = answeringEngine(async () => OPENROUTER_FIRST);
 	assert.deepEqual(
 		await configCall($, call("provider"), { provider: "openrouter" }),
 		{ result: "provider: openrouter-first (openrouter, then typesafe)" },
@@ -214,7 +157,7 @@ test("the provider dialog puts the stored value first and keeps the rest in orde
 
 test("a dialog that rejects answers no answer and writes nothing", async () => {
 	resetConfig();
-	const { $, log } = engine(async () => {
+	const { $, log } = answeringEngine(async () => {
 		throw new Error("dialog gone");
 	});
 	assert.deepEqual(await configCall($, call("scope"), {}), {
@@ -228,7 +171,9 @@ test("a dialog that rejects answers no answer and writes nothing", async () => {
 
 test("a dialog that resolves nothing answers no answer and writes nothing", async () => {
 	resetConfig();
-	const { $, log } = engine(async () => undefined as unknown as string);
+	const { $, log } = answeringEngine(
+		async () => undefined as unknown as string,
+	);
 	assert.deepEqual(await configCall($, call("scope"), {}), {
 		result: "scope unchanged: no answer from the dialog",
 	});
@@ -240,7 +185,7 @@ test("a dialog that resolves nothing answers no answer and writes nothing", asyn
 
 test("an answer that is not a label is not offered and is never echoed", async () => {
 	resetConfig();
-	const { $, log } = engine(async () => "extended");
+	const { $, log } = answeringEngine(async () => "extended");
 	assert.deepEqual(await configCall($, call("scope"), {}), {
 		result: "scope unchanged: the answer was not one of the offered values",
 	});
@@ -250,7 +195,7 @@ test("an answer that is not a label is not offered and is never echoed", async (
 
 test("the stored value picked again says it is already set and writes nothing", async () => {
 	resetConfig();
-	const { $, log } = engine(async () => TYPESAFE);
+	const { $, log } = answeringEngine(async () => TYPESAFE);
 	assert.deepEqual(
 		await configCall($, call("provider"), { provider: "typesafe" }),
 		{ result: "provider unchanged: already typesafe" },
@@ -260,7 +205,7 @@ test("the stored value picked again says it is already set and writes nothing", 
 
 test("the default picked while nothing is stored is written, because no stored value equals it", async () => {
 	resetConfig();
-	const { $, log } = engine(async () => TYPESAFE);
+	const { $, log } = answeringEngine(async () => TYPESAFE);
 	assert.deepEqual(await configCall($, call("provider"), {}), {
 		result: "provider: typesafe (typesafe)",
 	});
@@ -271,7 +216,7 @@ test("the default picked while nothing is stored is written, because no stored v
 
 test("a pick of the stored value counts as already set, and a written one counts for the next call", async () => {
 	resetConfig();
-	const { $, log } = engine(async () => EXTENDED);
+	const { $, log } = answeringEngine(async () => EXTENDED);
 	assert.deepEqual(await configCall($, call("scope"), { scope: "extended" }), {
 		result: "scope unchanged: already extended",
 	});
@@ -286,14 +231,14 @@ test("a pick of the stored value counts as already set, and a written one counts
 
 test("a write that is denied or throws leaves the setting unchanged", async () => {
 	resetConfig();
-	const denied = engine(
+	const denied = answeringEngine(
 		async () => EXTENDED,
 		async () => ({ deny: "read only" }),
 	);
 	assert.deepEqual(await configCall(denied.$, call("scope"), {}), {
 		result: "scope unchanged: read only",
 	});
-	const thrown = engine(
+	const thrown = answeringEngine(
 		async () => EXTENDED,
 		async () => {
 			throw new Error("row gone");
@@ -306,7 +251,7 @@ test("a write that is denied or throws leaves the setting unchanged", async () =
 
 test("a tool call denied by the permission rules never opens the dialog", async () => {
 	resetConfig();
-	const { $, log } = engine(async () => EXTENDED);
+	const { $, log } = answeringEngine(async () => EXTENDED);
 	$.tool.check = async () => {
 		log.push("check");
 		return { decision: "deny" };
@@ -319,17 +264,10 @@ test("a tool call denied by the permission rules never opens the dialog", async 
 
 // The report lists the stored value, the scope and one line for each key the provider allows.
 const report = async (options: Record<string, unknown>, env: Set<string>) => {
-	const reads: string[] = [];
-	const $ = {
-		tool: { check: async () => ({ decision: "allow" }) },
-		env: {
-			get: async (name: string) => {
-				reads.push(name);
-				return env.has(name) ? "a-key" : undefined;
-			},
-		},
-	} as unknown as Engine;
-	const answer = await configCall($, CALL, options);
+	const { engine, reads } = recordingEngine((name) =>
+		env.has(name) ? "a-key" : undefined,
+	);
+	const answer = await configCall(engine, CALL, options);
 	return { answer, reads };
 };
 

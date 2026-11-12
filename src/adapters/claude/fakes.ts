@@ -1,5 +1,5 @@
 import { jevAnswer } from "../../core/jev-fakes.ts";
-import type { HttpReply } from "./host.ts";
+import type { Engine, HttpReply } from "./host.ts";
 import { register } from "./index.ts";
 
 type Hook = ($: unknown, e: unknown, next: unknown) => Promise<unknown>;
@@ -204,3 +204,76 @@ export const routed = (answers: Answers, run: Omit<Call, "reply"> = {}) =>
 		options: { api_key: "ts-key", ...run.options },
 		reply: () => answer(answers),
 	});
+
+// An engine whose dialogs stay open until a test answers them. Each step is logged as it starts.
+export function dialogs() {
+	const log: string[] = [];
+	const open: {
+		resolve: (answer: string) => void;
+		reject: (reason: Error) => void;
+	}[] = [];
+	const $ = {
+		tool: {
+			check: async () => {
+				log.push("check");
+				return { decision: "allow" };
+			},
+		},
+		ui: {
+			ask: () => {
+				log.push("ask");
+				return new Promise<string>((resolve, reject) => {
+					open.push({ resolve, reject });
+				});
+			},
+		},
+		config: { set: async () => ({}) },
+	} as unknown as Engine;
+	return { $, log, open };
+}
+
+type Step = string | { ask: unknown } | { set: unknown };
+
+// An engine that answers each dialog with `answer` and logs every host call in order.
+export function answeringEngine(
+	answer: () => Promise<string>,
+	set: () => Promise<{ deny?: string }> = async () => ({}),
+) {
+	const log: Step[] = [];
+	const $ = {
+		tool: {
+			check: async () => {
+				log.push("check");
+				return { decision: "allow" };
+			},
+		},
+		ui: {
+			ask: async (question: string, opts: unknown) => {
+				log.push({ ask: [question, opts] });
+				return answer();
+			},
+		},
+		config: {
+			set: async (row: unknown) => {
+				log.push({ set: row });
+				return set();
+			},
+		},
+	} as unknown as Engine;
+	return { $, log };
+}
+
+// An engine that records each variable read and answers it with `answer`.
+export const recordingEngine = (answer: (name: string) => unknown) => {
+	const reads: string[] = [];
+	const engine = {
+		tool: { check: async () => ({ decision: "allow" }) },
+		env: {
+			get: async (name: string) => {
+				reads.push(name);
+				return answer(name);
+			},
+		},
+	} as unknown as Engine;
+	return { engine, reads };
+};

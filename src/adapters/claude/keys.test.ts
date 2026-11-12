@@ -1,22 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { KEY_VARIABLES } from "../../core/provider.ts";
+import { recordingEngine } from "./fakes.ts";
 import type { Engine, Options } from "./host.ts";
 import { readKeys } from "./keys.ts";
-
-// An engine that records each variable read and answers every one the same way.
-const recordingEngine = (answer: () => unknown) => {
-	const reads: string[] = [];
-	const engine = {
-		env: {
-			get: async (name: string) => {
-				reads.push(name);
-				return answer();
-			},
-		},
-	} as unknown as Engine;
-	return { engine, reads };
-};
 
 // The host needs a literal name in each $.env.get call, so claude/keys.ts cannot read the table.
 test("the key variables read by name are the ones in the provider table", async () => {
