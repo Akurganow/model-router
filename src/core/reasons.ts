@@ -1,6 +1,7 @@
 import type { Level } from "./part.ts";
 
-// The skip reasons and the effort labels that more than one harness prints.
+// A skip reason or effort label that two or more adapters print lives here, and no other file spells its text.
+// A reason that one adapter prints lives in that adapter.
 export const CALLER_EFFORT = "caller effort";
 export const CONFIG_EFFORT = "config effort";
 export const SUBAGENT_MODEL_SET = "subagent model set";
