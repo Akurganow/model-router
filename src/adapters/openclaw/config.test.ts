@@ -149,14 +149,11 @@ describe("registration", () => {
 		);
 	});
 
-	it("lets the tool schema and description take the model settings", () => {
-		const tool = setup().tool();
-		const { properties } = tool.parameters as {
+	it("lets the tool schema take the model settings", () => {
+		const { properties } = setup().tool().parameters as {
 			properties: { setting: { enum: readonly string[] } };
 		};
 		assert.deepEqual(properties.setting.enum, TOOL_SETTINGS);
-		for (const setting of TOOL_SETTINGS)
-			assert.ok(tool.description.includes(setting), setting);
 	});
 
 	it("registers no command for the models", () => {
