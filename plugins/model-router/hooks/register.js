@@ -80,12 +80,14 @@ function redact(text) {
     text
   );
 }
-function roleText(description) {
-  if (typeof description !== "string") return NO_DESCRIPTION;
+function descriptionText(description) {
+  if (typeof description !== "string") return "";
   const text = redact(description).replace(/\s+/g, " ").trim();
-  if (text === "") return NO_DESCRIPTION;
   const cut = text.slice(0, ROLE_CAP);
   return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
+}
+function roleText(description) {
+  return descriptionText(description) || NO_DESCRIPTION;
 }
 
 // src/claude-host.ts
@@ -1438,6 +1440,9 @@ var tier = {
   pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
 
+// src/reasons.ts
+var CALLER_EFFORT = "caller effort";
+
 // src/claude.ts
 var MODELS = ["haiku", "sonnet", "opus"];
 var BUILT_IN = "built-in";
@@ -1548,7 +1553,7 @@ async function routeSpawn($, spawn, next, options) {
     await $.ui.log(skippedLine(picked.skipped));
     return next(spawn);
   }
-  const kept = callerSet ? "caller effort" : await $.env.get("CLAUDE_CODE_EFFORT_LEVEL") ? "env effort" : void 0;
+  const kept = callerSet ? CALLER_EFFORT : await $.env.get("CLAUDE_CODE_EFFORT_LEVEL") ? "env effort" : void 0;
   await $.ui.log(decisionLine(picked, kept));
   const { model, effort } = picked;
   const started = next({ ...spawn, model });

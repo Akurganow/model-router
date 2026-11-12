@@ -37,7 +37,8 @@ class NodeRequestTest(RouterCase):
                 "keys": {"typesafe": "typesafe-secret-one"},
                 "budgetMs": 1000,
                 "models": {"small": "small-model", "large": "large-model"},
-                "configEffort": False,
+                "keptEffort": None,
+                "description": "",
             },
         )
 
@@ -81,18 +82,18 @@ class NodeRequestTest(RouterCase):
         )
         self.assertEqual(request["models"], {"small": None, "large": "l"})
 
-    def test_config_effort_flag(self):
-        for value, flag in (
-            (None, False),
-            ("", False),
-            ("  ", False),
-            ("low", True),
-            ("medium", True),
-            (3, True),
+    def test_a_config_effort_is_kept_by_config(self):
+        for value, kept in (
+            (None, None),
+            ("", None),
+            ("  ", None),
+            ("low", "config"),
+            ("medium", "config"),
+            (3, "config"),
         ):
             with self.subTest(value):
                 config = {} if value is None else {"reasoning_effort": value}
-                self.assertEqual(self.request(config)["configEffort"], flag)
+                self.assertEqual(self.request(config)["keptEffort"], kept)
 
 
 class BudgetHandoffTest(RouterCase):

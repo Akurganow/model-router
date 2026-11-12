@@ -7,7 +7,7 @@
 		"keys": {},
 		"budgetMs": 8000,
 		"models": { "small": "openai/small", "large": "openai/large" },
-		"configEffort": false
+		"keptEffort": null
 	},
 	"jev": [],
 	"response": { "outcome": "skip", "line": "model-router skipped, key unset" }

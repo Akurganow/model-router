@@ -1,15 +1,20 @@
 import type { Fetch } from "@typesafe-ai/sdk";
-import { buildPrompt, DEFAULT_ROLE } from "./brief.ts";
+import { buildPrompt, DEFAULT_ROLE, descriptionText } from "./brief.ts";
 import { FAILED, route, type Skipped, TIMEOUT } from "./compose.ts";
 import { type Clock, raceDeadline } from "./deadline.ts";
 import { type DecidedWithWork, decide } from "./decide.ts";
 import { work } from "./effort.ts";
-import { type HermesRequest, readRequest } from "./hermes-request.ts";
+import {
+	type HermesRequest,
+	type KeptEffort,
+	readRequest,
+} from "./hermes-request.ts";
 import { effortFor } from "./ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
 import { plan } from "./provider.ts";
 import {
+	CALLER_EFFORT,
 	CONFIG_EFFORT,
 	type EndSlot,
 	modelUnset,
@@ -22,7 +27,7 @@ export type HermesResponse =
 			readonly outcome: "route";
 			// The slot whose model the level names; null at the middle level.
 			readonly slot: EndSlot | null;
-			// Null when the harness config sets the effort.
+			// Null when the request names a kept effort.
 			readonly effort: string | null;
 			readonly line: string;
 	  }
@@ -34,7 +39,12 @@ export const skip = (reason: string): HermesResponse => ({
 	line: `${LINE_PREFIX}${skippedLine(reason)}`,
 });
 
-// Jev is asked once for both parts, with the task and its context under the default role.
+const KEPT_LABELS: Readonly<Record<KeptEffort, string>> = {
+	config: CONFIG_EFFORT,
+	caller: CALLER_EFFORT,
+};
+
+// Jev is asked once for both parts, with the task, its context and its description under the default role.
 async function score(
 	request: HermesRequest,
 	{ fetchFn }: HermesDeps,
@@ -45,7 +55,7 @@ async function score(
 		parts: [tier, work],
 		state: {
 			role: DEFAULT_ROLE,
-			description: "",
+			description: descriptionText(request.description),
 			task: buildPrompt(request.task, request.context),
 		},
 		attempts: plan(request.provider, keys),
@@ -72,7 +82,9 @@ async function scored(
 /**
  * Returns the response for a decided request: a skip when an end tier has no
  * model, else the slot the level names, the effort the ladder gives and the
- * routing line. Every line starts with the line prefix.
+ * routing line. A kept effort replaces the ladder's, and the line names its
+ * source.
+ * Every line starts with the line prefix.
  */
 function answer(
 	request: HermesRequest,
@@ -83,16 +95,20 @@ function answer(
 	const target = slot === null ? undefined : request.models[slot];
 	if (slot !== null && target === undefined) return skip(modelUnset(slot));
 	const effort = effortFor(level, decided.work);
+	const kept =
+		request.keptEffort === undefined
+			? undefined
+			: KEPT_LABELS[request.keptEffort];
 	return {
 		outcome: "route",
 		slot,
-		effort: request.configEffort ? null : effort,
+		effort: kept === undefined ? effort : null,
 		line:
 			LINE_PREFIX +
 			routedLine({
 				level,
 				target,
-				effort: request.configEffort ? CONFIG_EFFORT : effort,
+				effort: kept ?? effort,
 				probabilities: decided.probabilities,
 				suffix: decided.suffix,
 			}),

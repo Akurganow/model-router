@@ -15,7 +15,7 @@
 			"openrouter": "OPENROUTER_API_KEY"
 		}
 	},
-	"efforts": ["medium", "high", "xhigh", "low"],
+	"efforts": ["low", "medium", "high", "xhigh"],
 	"skips": {
 		"keyUnset": "model-router skipped, key unset",
 		"noEndModel": "model-router skipped, no small or large model",
@@ -23,19 +23,42 @@
 		"nodeNotFound": "model-router skipped, node not found",
 		"timeout": "model-router skipped, timeout",
 		"failed": "model-router skipped, failed",
+		"smallModelUnset": "model-router skipped, small model unset",
 		"smallModelUnresolved": "model-router skipped, small model unresolved",
+		"largeModelUnset": "model-router skipped, large model unset",
 		"largeModelUnresolved": "model-router skipped, large model unresolved"
 	},
 	"slots": {
 		"small": {
 			"setting": "small_model",
+			"unset": "smallModelUnset",
 			"unresolved": "smallModelUnresolved"
 		},
 		"large": {
 			"setting": "large_model",
+			"unset": "largeModelUnset",
 			"unresolved": "largeModelUnresolved"
 		}
 	},
+	"levels": [0, 1, 2],
+	"levelSlots": ["small", null, "large"],
+	"taskParameters": {
+		"description": {
+			"type": "string",
+			"description": "One line that says what this task is. model-router sends it with the goal to Jev, which judges the model and effort the child needs."
+		},
+		"reasoning_effort": {
+			"type": "string",
+			"enum": ["low", "medium", "high", "xhigh"],
+			"description": "Leave it unset unless you re-dispatch a failed task. The child runs at this effort, and model-router still picks its model. A delegation.reasoning_effort in the user's config wins."
+		},
+		"level": {
+			"type": "integer",
+			"enum": [0, 1, 2],
+			"description": "Leave it unset unless you re-dispatch a failed task. 0 runs the child on the user's small model, 1 on the model Hermes gives it, 2 on the large model, and model-router asks Jev nothing. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins."
+		}
+	},
+	"delegationAddendum": "model-router picks each task's model and effort. Give every task a description. Leave reasoning_effort and level unset unless you re-dispatch a failed task; the model-router-hermes:model-router skill says how.",
 	"backend": "model-router",
 	"texts": {
 		"toolName": "model_router_config",

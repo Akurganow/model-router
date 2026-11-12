@@ -1,6 +1,7 @@
 import type { Level } from "./part.ts";
 
-// The skip reasons and the effort label that more than one harness prints.
+// The skip reasons and the effort labels that more than one harness prints.
+export const CALLER_EFFORT = "caller effort";
 export const CONFIG_EFFORT = "config effort";
 export const SUBAGENT_MODEL_SET = "subagent model set";
 export const NO_END_MODEL = "no small or large model";

@@ -3,11 +3,12 @@ import json
 import os
 import socket
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from support import REAL_HERMES, fake_api, make_router, submodule, task
+from support import CONSTANTS, REAL_HERMES, FakeCtx, fake_api, good_settings, make_router, submodule, task
 
 checks = submodule("checks")
 hermes_api = submodule("hermes_api")
@@ -65,6 +66,91 @@ class CredentialRuleOnHermesTest(unittest.TestCase):
         for provider in ("nous", "openai-codex", "qwen-oauth", "minimax-oauth", "bedrock"):
             with self.subTest(provider):
                 self.assertFalse(checks.credentials_stay_offline(provider, api))
+
+
+@unittest.skipUnless(REAL_HERMES, "the real Hermes modules do not import here")
+class TaskParametersOnHermesTest(unittest.TestCase):
+    """Hermes takes every declared parameter, shows it to the model and hands its value over."""
+
+    CONFIG = {"backend": CONSTANTS["backend"]}
+
+    def setUp(self):
+        from agent.delegation_registry import _registry
+
+        # No key: a scored task skips at once and starts no Node.
+        self.router = make_router(api=fake_api(secrets={}))
+        provider_class = submodule("provider").ModelRouterProvider
+        self.provider = provider_class(FakeCtx(good_settings()), router=self.router)
+        _registry.register(self.provider)
+        self.addCleanup(_registry.restore_registration, self.provider.name, self.provider, None)
+
+    def routes(self, *tasks):
+        from tools.delegate_tool_routes import resolve_task_routes
+
+        parent = types.SimpleNamespace(
+            session_id="root", model="parent-model", provider="openrouter", request_overrides={}
+        )
+        with mock.patch.object(self.router, "route", wraps=self.router.route) as route:
+            routes, error = resolve_task_routes(list(tasks), self.CONFIG, parent)
+        self.assertIsNone(error)
+        return routes, [call.args[0] for call in route.call_args_list]
+
+    def test_no_declared_name_is_refused_or_reserved(self):
+        from agent.delegation_provider import RESERVED_TASK_PARAMETERS
+        from tools.delegate_tool_routes import schema_extension
+
+        params, addendum = schema_extension(self.CONFIG)
+        self.assertEqual(params, CONSTANTS["taskParameters"])
+        self.assertEqual(addendum, CONSTANTS["delegationAddendum"])
+        self.assertFalse(set(params) & RESERVED_TASK_PARAMETERS)
+
+    def test_the_tool_schema_carries_the_parameters_and_the_addendum(self):
+        from tools import delegate_tool
+
+        with mock.patch.object(delegate_tool, "_load_config", return_value=self.CONFIG):
+            schema = delegate_tool._build_dynamic_schema_overrides()
+        properties = schema["parameters"]["properties"]["tasks"]["items"]["properties"]
+        for name, declared in CONSTANTS["taskParameters"].items():
+            self.assertEqual(properties[name], declared)
+        self.assertTrue(schema["description"].endswith("\n" + CONSTANTS["delegationAddendum"]))
+
+    def test_the_values_reach_route_task(self):
+        _, payloads = self.routes(
+            {"goal": "g", "description": "find the config file", "reasoning_effort": "high"},
+            {"goal": "g", "level": 1},
+        )
+        self.assertEqual(
+            payloads,
+            [
+                {
+                    "goal": "g",
+                    "context": None,
+                    "index": 0,
+                    "description": "find the config file",
+                    "reasoning_effort": "high",
+                },
+                {"goal": "g", "context": None, "index": 1, "level": 1},
+            ],
+        )
+
+    def test_hermes_refuses_a_value_off_an_enum_before_route_task(self):
+        routes, payloads = self.routes(
+            {"goal": "g", "reasoning_effort": "max"}, {"goal": "g", "level": "2"}
+        )
+        self.assertIn("'reasoning_effort' must be one of", routes[0].error)
+        self.assertIn("'level' must be one of", routes[1].error)
+        self.assertEqual(payloads, [])
+
+    def test_hermes_lets_a_boolean_level_through_and_the_router_ignores_it(self):
+        routes, payloads = self.routes({"goal": "g", "level": True})
+        self.assertIs(payloads[0]["level"], True)
+        self.assertIsNone(routes[0].error)
+        self.assertEqual(routes[0].label, CONSTANTS["skips"]["keyUnset"])
+
+    def test_hermes_refuses_an_undeclared_name(self):
+        routes, payloads = self.routes({"goal": "g", "priority": "p1"})
+        self.assertIn("does not take 'priority'", routes[0].error)
+        self.assertEqual(payloads, [])
 
 
 def _no_network(*_args, **_kwargs):

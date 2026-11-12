@@ -973,7 +973,7 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
   `config` is the `delegation` section of the active profile's `config.yaml`, and `dict(config)` is the default route.
   (documentation: [Delegation provider plugins, The interface](https://hermes-agent.nousresearch.com/docs/developer-guide/delegation-provider-plugin#the-interface);
   source: [`delegation_provider.py` L62–L110](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/delegation_provider.py#L62-L110))
-- `route_task` gets `{goal, context, index}` plus the parameters the backend declared. This plugin declares none, and `context` can be `None`.
+- `route_task` gets `{goal, context, index}` plus the parameters the backend declared. This plugin declares three, as [Hermes task parameters](#hermes-task-parameters) says, and `context` can be `None`.
   Nothing else crosses: no role, no agent description, no toolsets, no images and no output schema.
   (source: [`delegate_tool_routes.py` L299](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L299);
   running: Hermes v0.22.7, the probe plugin saw the task keys `context, goal, index`, and `context` was `None` when the model gave none, 2026-11-06)
@@ -1026,6 +1026,44 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
   (running: Hermes v0.22.7, the plugin installed with `hermes plugins install "file://<clone>#plugins/model-router-hermes" --enable` on a fresh Hermes home and set up as its README says, `hermes -z "<call delegate_task once with two tasks …>" -m openai/gpt-6-luna --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 400 s alarm, once for each mode, 2026-11-06, repeated after the request began to key the models by slot and the reply dropped the level)
 - Hermes maps a requested effort that a wire does not support to the nearest weaker supported level, and to the weakest level when none is weaker.
   (source: [`reasoning_effort.py` L127–L139](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/reasoning_effort.py#L127-L139))
+
+### Hermes task parameters
+
+- `DelegationProvider.task_parameters(config)` returns `{name: json_schema}`, which Hermes merges into `delegate_task`'s `tasks.items.properties`. `description(config)` returns a line that Hermes appends to the tool description after a line break.
+  Hermes calls both when it builds a session's tool list, and both must give the same bytes for the same `config`, because the schema is part of the cached prompt.
+  (source: [`delegation_provider.py` L86–L101](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/delegation_provider.py#L86-L101),
+  [`delegate_tool.py` L763–L772](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool.py#L763-L772);
+  documentation: [Delegation provider plugins, Prompt caching](https://hermes-agent.nousresearch.com/docs/developer-guide/delegation-provider-plugin#prompt-caching))
+- Both methods exist from Hermes v0.22.5, the first release with delegation providers. They are unchanged in v0.22.6, v0.23.0 and v0.23.1.
+  (running: `git log --diff-filter=A -- agent/delegation_provider.py` and `git diff v0.22.6 v0.23.1 -- agent/delegation_provider.py tools/delegate_tool_routes.py` in a clone of `NousResearch/hermes-agent`, 2026-11-11)
+- A parameter name must match `^[a-z][a-z0-9_]{0,63}$` and stay out of the reserved names `goal, context, index, output_schema, images, group, role, toolsets, acp_command, acp_args, provider, model, base_url, api_key, api_mode`. Hermes drops a refused name with a warning and keeps the others.
+  (source: [`delegate_tool_routes.py` L26](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L26),
+  [L60–L78](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L60-L78),
+  [`delegation_provider.py` L45–L48](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/delegation_provider.py#L45-L48);
+  running: Hermes v0.23.0, a probe that declared `model` and `Effort` logged `task parameter 'model' refused (reserved or invalid name)` and the same for `Effort`, 2026-11-11)
+- Before `route_task`, Hermes checks only three things. A non-`None` value for a name no backend declared refuses the task. A value outside a declared `enum` refuses it. A `None` value counts as absent.
+  Hermes checks no `type`. A `level` of `True` passes the enum `[0, 1, 2]`, because Python compares `True` equal to `1`.
+  (source: [`delegate_tool_routes.py` L96–L100](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L96-L100),
+  [L288–L306](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L288-L306);
+  running: Hermes v0.23.0, `plugins/model-router-hermes/tests/test_real_hermes.py` under Hermes's interpreter, 2026-11-11: `reasoning_effort: "max"` and `level: "2"` were refused with `must be one of`, `priority` was refused with `does not take 'priority'`, and `level: True` reached `route_task`)
+- The payload is `{goal, context, index}` plus each declared parameter whose value is not `None`.
+  (source: [`delegate_tool_routes.py` L299](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L299);
+  running: Hermes v0.23.0, the same test file, 2026-11-11: a task with `description` and `reasoning_effort` reached `route_task` as `{goal, context: None, index: 0, description, reasoning_effort}`)
+- This repository's plugin declares `description`, `reasoning_effort` and `level`, and appends one line from `constants.json`. Under Hermes v0.23.0, `schema_extension` returned all three, none reserved, and `_build_dynamic_schema_overrides()` put them in `tasks.items.properties` and ended the tool description with the line.
+  (running: `plugins/model-router-hermes/tests/test_real_hermes.py`, 2026-11-11)
+- A session routes on the backend its `delegate_task` schema was built from. A plugin update or a backend change applies from the next session, or at the next turn after `/delegation <backend> --now`. A task that carries a parameter its session's schema lacks is refused alone.
+  (documentation: [`delegation-provider-plugin.md` L171–L188](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/website/docs/developer-guide/delegation-provider-plugin.md#L171-L188))
+- A real delegating model filled the parameters. One `delegate_task` call held a new task and a re-dispatch of a task described as failed at level 1. The provider was `typesafe`, `small_model` was `openrouter qwen/qwen3.7-flash` and `large_model` was `openrouter openai/gpt-6-luna`.
+  The model gave both tasks a `description`, and gave the re-dispatch `level: 2` and `reasoning_effort: "high"`. The new task read `model-router L0 qwen/qwen3.7-flash · medium · p=0.99/1.00 · jev jev-1.14.0 · 699/30 tok`.
+  The re-dispatch ran on `openai/gpt-6-luna` at effort `high`, and its result's `route` held `backend`, `provider`, `model`, `reasoning_effort` and `service_tier` but no `label`. `agent.log` held the first line only.
+  (running: Hermes v0.23.0, the plugin installed from this branch with `hermes plugins install "file://<clone>#plugins/model-router-hermes" --enable` on a fresh Hermes home, `hermes -z "<call delegate_task once with two tasks …>" -m qwen/qwen3.7-flash --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 400 s alarm, 2026-11-11)
+- Under `plugins.isolation: host`, the parent builds a `DelegationProvider` whose methods run in the plugin host, so `task_parameters` and `description` cross as plain JSON.
+  (source: [`plugin_isolation.py` L63–L78](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/hermes_cli/plugin_isolation.py#L63-L78), at v0.23.1)
+- A route without a `fallback_providers` of its own takes `delegation.fallback_providers`, and a profile route keeps its profile's chain. The plugin's route copies the `delegation` section, so a routed child gets exactly that list, and none when it is `null`.
+  (source: [`delegate_tool_routes.py` L224–L230](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/delegate_tool_routes.py#L224-L230))
+- A route may name a `profile`, which runs the child as another Hermes profile with its own config, model, credentials, skills and `SOUL.md`. Hermes ignores every other route key on it. Hermes v0.23.1 adds a `route_keys` property for settings editors, which routing does not use. The plugin sets neither.
+  (source: [`delegation_provider.py` L25–L28](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/delegation_provider.py#L25-L28);
+  [`delegation_provider.py` L81–L86](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/agent/delegation_provider.py#L81-L86), at v0.23.1)
 
 ### Hermes model and credential checks
 
@@ -1135,6 +1173,7 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
   It pins `v0.23.0` at commit `2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19`. A Renovate rule raises the tag and the commit together with no age delay.
   (source: `.github/actions/setup-hermes/action.yml`; [CONTRIBUTING.md, Dependencies](../CONTRIBUTING.md#dependencies))
 - The tests of the plugin call each handler and the router directly with a fake Hermes API. One test file, `plugins/model-router-hermes/tests/test_real_hermes.py`, runs only under Hermes's interpreter. It calls each Hermes function the shim uses, and compares the default route with Hermes's bundled default backend.
+  It also registers the provider with Hermes's delegation registry, builds the `delegate_task` schema, and routes tasks through `resolve_task_routes`, so a pin raise that changes the parameter seam fails CI. Those tests use Hermes's private names `_registry` and `_build_dynamic_schema_overrides`.
   Its catalogue test writes a one-provider `models_dev_cache.json` into a scratch Hermes home, because Hermes ships no catalogue and reads only that disk cache offline.
   (source: `plugins/model-router-hermes/tests/`)
 
@@ -1142,7 +1181,7 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
 
 Most probes ran a probe plugin, `probe-router`, and not this repository's plugin.
 The probe plugin ran Node on a small script and shipped the OpenClaw bundle for the scanner.
-This repository's plugin passed `validate`, the scan and the `file://` install on Hermes v0.23.0, as the facts above record. It routed one real call of two tasks on Hermes v0.22.7, in process and in the plugin host. No routing run used Hermes v0.23.0 or a fallback between providers.
+This repository's plugin passed `validate`, the scan and the `file://` install on Hermes v0.23.0, as the facts above record. It routed one real call of two tasks on Hermes v0.22.7, in process and in the plugin host, and one call with task parameters on Hermes v0.23.0, in process. No run used a fallback between providers, and no run with task parameters used the plugin host.
 The `hermes` job has not run on a pushed commit yet, so this page cites no run of it.
 No run used the repository form `Akurganow/model-router/plugins/model-router-hermes` from the README, a `--ref` pin or `hermes plugins update`.
 No run used native Windows, so the `SYSTEMROOT` rule rests on the Python documentation.

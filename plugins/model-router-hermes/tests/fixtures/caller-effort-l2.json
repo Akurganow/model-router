@@ -1,0 +1,35 @@
+{
+	"description": "When the delegating model sets the effort, the response carries no effort and the line says caller effort.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "typesafe",
+		"keys": {
+			"typesafe": "typesafe-key"
+		},
+		"budgetMs": 8000,
+		"models": {
+			"small": "openai/small",
+			"large": "openai/large"
+		},
+		"keptEffort": "caller",
+		"description": ""
+	},
+	"jev": [
+		{
+			"host": "api.typesafe.ai",
+			"reply": {
+				"levels": {
+					"tier": 2,
+					"work": 2
+				}
+			}
+		}
+	],
+	"response": {
+		"outcome": "route",
+		"slot": "large",
+		"effort": null,
+		"line": "model-router L2 openai/large · caller effort · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+	}
+}

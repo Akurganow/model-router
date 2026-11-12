@@ -97,12 +97,14 @@ function buildPrompt(task, context) {
 function contextText(context) {
   return typeof context === "string" && nonEmpty(context) !== void 0 ? context : "";
 }
-function roleText(description) {
-  if (typeof description !== "string") return NO_DESCRIPTION;
+function descriptionText(description) {
+  if (typeof description !== "string") return "";
   const text = redact(description).replace(/\s+/g, " ").trim();
-  if (text === "") return NO_DESCRIPTION;
   const cut = text.slice(0, ROLE_CAP);
   return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
+}
+function roleText(description) {
+  return descriptionText(description) || NO_DESCRIPTION;
 }
 
 // src/line.ts

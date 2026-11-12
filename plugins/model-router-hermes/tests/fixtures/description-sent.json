@@ -1,0 +1,35 @@
+{
+	"description": "A task description goes to Jev with the task and leaves the route as the ladder gives it.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "typesafe",
+		"keys": {
+			"typesafe": "typesafe-key"
+		},
+		"budgetMs": 8000,
+		"models": {
+			"small": "openai/small",
+			"large": "openai/large"
+		},
+		"keptEffort": null,
+		"description": "Rename one helper and run the tests"
+	},
+	"jev": [
+		{
+			"host": "api.typesafe.ai",
+			"reply": {
+				"levels": {
+					"tier": 1,
+					"work": 1
+				}
+			}
+		}
+	],
+	"response": {
+		"outcome": "route",
+		"slot": null,
+		"effort": "medium",
+		"line": "model-router L1 no change · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+	}
+}

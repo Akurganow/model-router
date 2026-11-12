@@ -4,7 +4,12 @@ import { isSet, type SpawnRequest } from "./openclaw-params.ts";
 import type { OpenClawSettings } from "./openclaw-settings.ts";
 import type { OpenClawConfig } from "./openclaw-types.ts";
 import { isRecord, nonEmpty } from "./part.ts";
-import { CONFIG_EFFORT, NO_END_MODEL, SUBAGENT_MODEL_SET } from "./reasons.ts";
+import {
+	CALLER_EFFORT,
+	CONFIG_EFFORT,
+	NO_END_MODEL,
+	SUBAGENT_MODEL_SET,
+} from "./reasons.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
@@ -18,7 +23,7 @@ export type EffortRule =
 	| { readonly kind: "set" }
 	| {
 			readonly kind: "keep";
-			readonly label: "caller effort" | typeof CONFIG_EFFORT;
+			readonly label: typeof CALLER_EFFORT | typeof CONFIG_EFFORT;
 	  };
 
 // A spawn passes silently, is skipped with a reason, or is routed for its target agent with this role and effort rule.
@@ -131,7 +136,7 @@ function subagentModelSet(input: GateInput, target: string | undefined) {
 function effortRule(input: GateInput): EffortRule {
 	const { spawn, config, requester, settings } = input;
 	if (spawn.thinking !== undefined)
-		return { kind: "keep", label: "caller effort" };
+		return { kind: "keep", label: CALLER_EFFORT };
 	const global = at(config, "agents", "defaults", "subagents", "thinking");
 	const requesterThinking = agentField(
 		config,

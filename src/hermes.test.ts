@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { buildPrompt, DEFAULT_ROLE } from "./brief.ts";
+import { buildPrompt, DEFAULT_ROLE, ROLE_CAP } from "./brief.ts";
 import { ROUTING_LIMIT_MS } from "./compose.ts";
 import { createFakeClock } from "./fake-clock.ts";
 import { createScriptedJev, type Step } from "./hermes-fakes.ts";
@@ -55,6 +55,9 @@ describe("protocol fixtures", () => {
 			"bad-reply",
 			"timeout",
 			"fallback-auto",
+			"caller-effort-l2",
+			"caller-effort-over-config",
+			"description-sent",
 		])
 			assert.ok(names.includes(wanted), wanted);
 	});
@@ -81,7 +84,8 @@ const REQUEST = {
 	keys: { typesafe: "typesafe-key" },
 	budgetMs: ROUTING_LIMIT_MS,
 	models: { small: "openai/small", large: "openai/large" },
-	configEffort: false,
+	keptEffort: null,
+	description: "Rename one helper",
 };
 const FAILED_SKIP = { outcome: "skip", line: "model-router skipped, failed" };
 const ONE = [
@@ -100,10 +104,34 @@ describe("the request to Jev", () => {
 		assert.deepEqual(Object.keys(body?.questions ?? {}), ["tier", "work"]);
 		assert.deepEqual(body?.state, {
 			role: DEFAULT_ROLE,
-			description: "",
+			description: REQUEST.description,
 			task: buildPrompt(REQUEST.task, REQUEST.context),
 		});
 	});
+
+	it("masks a key and cuts an over-long text in the description", async () => {
+		for (const [description, sent] of [
+			[
+				"Fix the deploy, TOKEN=abc123def456 in .env",
+				"Fix the deploy, TOKEN=*** in .env",
+			],
+			["x".repeat(100_000), "x".repeat(ROLE_CAP)],
+			["  two\n\n  lines  ", "two lines"],
+		]) {
+			const { response, jev } = run({ ...REQUEST, description }, ONE);
+			await response;
+			const [body] = jev.bodies as { state: { description: unknown } }[];
+			assert.equal(body?.state.description, sent);
+		}
+	});
+
+	for (const description of [undefined, null, 7, ["a"], { a: 1 }, "  "])
+		it(`sends an empty description for a description of ${JSON.stringify(description)}`, async () => {
+			const { response, jev } = run({ ...REQUEST, description }, ONE);
+			await response;
+			const [body] = jev.bodies as { state: { description: unknown } }[];
+			assert.equal(body?.state.description, "");
+		});
 
 	it("masks a key shaped string in the task", async () => {
 		const { response, jev } = run(
@@ -122,6 +150,23 @@ describe("the request to Jev", () => {
 		await response;
 		assert.deepEqual(jev.hosts, ["api.typesafe.ai"]);
 	});
+});
+
+describe("the kept effort", () => {
+	const L2 = [
+		{ host: "api.typesafe.ai", reply: { levels: { tier: 2, work: 2 } } },
+	] satisfies Step[];
+
+	for (const keptEffort of [undefined, "Config", true, 1, null])
+		it(`reads ${JSON.stringify(keptEffort)} as no kept effort`, async () => {
+			const { response } = run({ ...REQUEST, keptEffort }, L2);
+			assert.deepEqual(await response, {
+				outcome: "route",
+				slot: "large",
+				effort: "high",
+				line: "model-router L2 openai/large · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+			});
+		});
 });
 
 describe("failures", () => {

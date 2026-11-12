@@ -7,7 +7,7 @@
 		"keys": { "typesafe": "typesafe-key" },
 		"budgetMs": 8000,
 		"models": { "small": "   ", "large": "openai/large" },
-		"configEffort": false
+		"keptEffort": null
 	},
 	"jev": [
 		{
