@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, mock, test } from "node:test";
 import type { Case } from "./evals/cases.ts";
 import type { runCase } from "./evals/run.ts";
 import { TYPESAFE_KEY } from "./evals/scrub.ts";
 import { main } from "./evals.ts";
+import { fitWarning } from "./jev-fit.ts";
+import { OTHER_JEV } from "./jev-fit-fakes.ts";
 import { useTempRoot } from "./temp-root.ts";
 
 const KEY_ENV = "EVALS_CLI_TEST_KEY";
@@ -26,6 +28,7 @@ const EVIDENCE = {
 	effort: null,
 	target: null,
 	reply: null,
+	jev: null,
 };
 
 const box = useTempRoot("evals-cli-", (put) =>
@@ -45,6 +48,7 @@ const resultFor = (
 	exitCode: 0,
 	evidence: EVIDENCE,
 	failures,
+	warnings: [],
 	passed: failures.length === 0,
 	stdout: "",
 	stderr: "",
@@ -52,14 +56,19 @@ const resultFor = (
 
 const saved = new Map<string, string | undefined>();
 let out: string[] = [];
+let errors: string[] = [];
 beforeEach(() => {
 	for (const name of [KEY_ENV, TYPESAFE_KEY])
 		saved.set(name, process.env[name]);
 	delete process.env[KEY_ENV];
 	delete process.env[TYPESAFE_KEY];
 	out = [];
+	errors = [];
 	mock.method(console, "log", (text: unknown) => void out.push(`${text}`));
-	mock.method(console, "error", (text: unknown) => void out.push(`${text}`));
+	mock.method(console, "error", (text: unknown) => {
+		out.push(`${text}`);
+		errors.push(`${text}`);
+	});
 });
 afterEach(() => {
 	mock.restoreAll();
@@ -117,4 +126,28 @@ test("a failing case is named and exits 1", () => {
 		1,
 	);
 	assert.deepEqual(out, ["one: FAIL no decision line"]);
+});
+
+test("cases with the same warning print it once on stderr, keep it in each result and still pass", () => {
+	process.env[KEY_ENV] = "k";
+	process.env[TYPESAFE_KEY] = "k";
+	const cases = join(box.root, "two-cases.json");
+	writeFileSync(
+		cases,
+		JSON.stringify({ cases: [CASE, { ...CASE, id: "two" }] }),
+	);
+	const warning = fitWarning(OTHER_JEV);
+	const args = ["run", "--cases", cases, "--out", join(box.root, "results")];
+	assert.equal(
+		main(args, (c) => ({ ...resultFor(c, []), warnings: [warning] })),
+		0,
+	);
+	assert.deepEqual(errors, [warning]);
+	assert.ok(out.includes("one: pass") && out.includes("two: pass"));
+	for (const id of ["one", "two"]) {
+		const result = JSON.parse(
+			readFileSync(join(box.root, "results", `${id}.json`), "utf8"),
+		);
+		assert.deepEqual(result.warnings, [warning]);
+	}
 });
