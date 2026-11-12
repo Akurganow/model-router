@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { lockfileScoped, unreadable, useWorld } from "./fakes.ts";
-import { narrow, readSettings } from "./settings.ts";
+import { KEY_VARIABLES } from "../../core/provider.ts";
+import { KEY, lockfileScoped, setEnv, unreadable, useWorld } from "./fakes.ts";
+import { findKeys, narrow, readSettings } from "./settings.ts";
 
 const world = useWorld();
 
@@ -68,4 +69,24 @@ test("a project only narrows auto or openrouter-first to one provider", () => {
 				`${String(global)} narrowed by ${String(project)}`,
 			);
 		});
+});
+
+test("a provider takes its key from omp's credential and the other from the variable", async () => {
+	setEnv(KEY_VARIABLES.openrouter, "env-or-key");
+	world.credential = async (provider) =>
+		provider === "typesafe" ? KEY : undefined;
+	const { keys } = await findKeys(world.ctx(), "auto");
+	assert.deepEqual(keys, { typesafe: KEY, openrouter: "env-or-key" });
+	assert.deepEqual(world.asked, ["typesafe", "openrouter"]);
+});
+
+test("a credential store that throws falls through to the variable and the next provider is still read", async () => {
+	setEnv(KEY_VARIABLES.typesafe, "env-ts-key");
+	setEnv(KEY_VARIABLES.openrouter, "env-or-key");
+	world.credential = async () => {
+		throw new Error("store locked");
+	};
+	const { keys } = await findKeys(world.ctx(), "auto");
+	assert.deepEqual(keys, { typesafe: "env-ts-key", openrouter: "env-or-key" });
+	assert.deepEqual(world.asked, ["typesafe", "openrouter"]);
 });
