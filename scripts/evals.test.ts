@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import {
+	chmodSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -8,6 +14,8 @@ import { claude } from "./evals/claude.ts";
 import { omp } from "./evals/omp.ts";
 import { missingKeys, runCase } from "./evals/run.ts";
 import { clientEnv, normalisePaths, scrub } from "./evals/scrub.ts";
+import { FITTED_ON, fitWarning } from "./jev-fit.ts";
+import { OTHER_JEV } from "./jev-fit-fakes.ts";
 
 const LINE = "L1 sonnet · medium · p=0.80/0.55 · jev jev-1.14.0 · 800/9 tok";
 const jsonl = (...events: object[]) =>
@@ -33,6 +41,7 @@ test("claude: a ui_log decision line after an Agent call is routed evidence", ()
 		effort: "medium",
 		target: "sonnet",
 		reply: null,
+		jev: "jev-1.14.0",
 	});
 });
 
@@ -89,6 +98,7 @@ test("omp: the decision line on stderr is the routing evidence", () => {
 		effort: null,
 		target: "@smol",
 		reply: null,
+		jev: "jev-1.14.0",
 	});
 });
 
@@ -220,6 +230,7 @@ test("check lists one failure per broken assertion", () => {
 		effort: null,
 		target: null,
 		reply: null,
+		jev: null,
 	};
 	assert.equal(check(base, evidence).length, 3);
 	assert.deepEqual(
@@ -248,6 +259,7 @@ test("answered needs the case's answer in the reply", () => {
 		effort: null,
 		target: null,
 		reply: "The name is eval-subject.",
+		jev: null,
 	};
 	assert.deepEqual(check(answered, evidence), []);
 	assert.deepEqual(check(answered, { ...evidence, reply: null }), [
@@ -287,4 +299,61 @@ test("missingKeys names the client key and the TypeSafe key that are unset", () 
 		missingKeys(base, { ANTHROPIC_API_KEY: "a", TYPESAFE_API_KEY: "t" }),
 		[],
 	);
+});
+
+test("both adapters read the answering Jev model from the decision line", () => {
+	const claudeLine = `L1 sonnet · medium · p=0.80/0.55 · jev ${OTHER_JEV} · 800/9 tok`;
+	const stdout = jsonl({ type: "system", subtype: "ui_log", text: claudeLine });
+	assert.equal(claude.parse({ stdout, stderr: "" }).jev, OTHER_JEV);
+	const ompLine = `task 1: L0 @smol · p=0.91 · jev ${OTHER_JEV} · 812/9 tok`;
+	const stderr = `model-router ${ompLine}\n`;
+	assert.equal(omp.parse({ stdout: "", stderr }).jev, OTHER_JEV);
+});
+
+test("a decision line without the jev segment gives no Jev model", () => {
+	const text = "L2 opus · caller effort · p=0.9/0.6";
+	const stdout = jsonl({ type: "system", subtype: "ui_log", text });
+	assert.equal(claude.parse({ stdout, stderr: "" }).jev, null);
+	const stderr = "model-router task 1: L2 @slow · p=0.90\n";
+	assert.equal(omp.parse({ stdout: "", stderr }).jev, null);
+});
+
+// Runs body with a fake claude on PATH whose decision line names the given Jev model.
+function withFakeClaude<T>(jev: string, body: () => T): T {
+	const dir = mkdtempSync(join(tmpdir(), "evals-fake-claude-"));
+	const events = jsonl(
+		{ type: "assistant", message: { content: [spawn] } },
+		{
+			type: "system",
+			subtype: "ui_log",
+			text: `L1 sonnet · medium · p=0.80/0.55 · jev ${jev}`,
+		},
+	);
+	const bin = join(dir, "claude");
+	writeFileSync(
+		bin,
+		`#!/bin/sh\n[ "$1" = --version ] && { echo 9.9.9; exit 0; }\ncat <<'EOF'\n${events}\nEOF\n`,
+	);
+	chmodSync(bin, 0o755);
+	const path = process.env[PATH_VAR];
+	process.env[PATH_VAR] = `${dir}:${path}`;
+	try {
+		return body();
+	} finally {
+		process.env[PATH_VAR] = path;
+		rmSync(dir, { recursive: true, force: true });
+	}
+}
+
+test("runCase stores a warning, not a failure, when Jev answers as another model", () => {
+	const result = withFakeClaude(OTHER_JEV, () => runCase(base));
+	assert.deepEqual(result.failures, []);
+	assert.equal(result.passed, true);
+	assert.deepEqual(result.warnings, [fitWarning(OTHER_JEV)]);
+});
+
+test("runCase stores no warning when Jev answers as the fitted model", () => {
+	const result = withFakeClaude(FITTED_ON, () => runCase(base));
+	assert.equal(result.passed, true);
+	assert.deepEqual(result.warnings, []);
 });

@@ -38,6 +38,8 @@ function runMode(args: string[], run: Run): number {
 	}
 	mkdirSync(values.out, { recursive: true });
 	let failed = 0;
+	// Every case of a run asks the same Jev, so each warning prints once.
+	const warnings = new Set<string>();
 	for (const c of cases) {
 		const result = run(c);
 		writeFileSync(
@@ -47,8 +49,10 @@ function runMode(args: string[], run: Run): number {
 		console.log(
 			`${c.id}: ${result.passed ? "pass" : `FAIL ${result.failures.join("; ")}`}`,
 		);
+		for (const warning of result.warnings) warnings.add(warning);
 		if (!result.passed) failed++;
 	}
+	for (const warning of warnings) console.error(warning);
 	return failed === 0 ? 0 : 1;
 }
 

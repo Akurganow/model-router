@@ -8,6 +8,8 @@ import { afterEach, mock, test } from "node:test";
 import { ROLE_CAP } from "../src/brief.ts";
 import { plan } from "../src/provider.ts";
 import { type Case, caseHead, main, readKey, runCase } from "./calibrate.ts";
+import { FITTED_ON, fitWarning } from "./jev-fit.ts";
+import { OTHER_JEV } from "./jev-fit-fakes.ts";
 
 const CASE: Case = {
 	role: "coder",
@@ -234,4 +236,72 @@ test("main prints a case whose reply lacks a part as skipped", async () => {
 		});
 	assert.equal(await main(["typesafe"], piped("test-key"), fetchFn), 1);
 	assert.match(out.join("\n"), /^skip /m);
+});
+
+function streams() {
+	const out: string[] = [];
+	const err: string[] = [];
+	mock.method(console, "log", (text: unknown) => void out.push(`${text}`));
+	mock.method(console, "error", (text: unknown) => void err.push(`${text}`));
+	mock.method(process.stderr, "write", (text: unknown) => {
+		err.push(`${text}`);
+		return true;
+	});
+	return { out, err };
+}
+
+const answeringAs = (model: string) => async () =>
+	new Response(JSON.stringify({ ...REPLY, model }), {
+		headers: { "content-type": "application/json" },
+	});
+
+test("main warns on stderr when Jev answers as another model than the fit, and keeps the agreement's exit code", async () => {
+	const { out, err } = streams();
+	const code = await main(
+		["typesafe"],
+		piped("test-key"),
+		answeringAs(OTHER_JEV),
+	);
+	assert.equal(code, 1);
+	assert.deepEqual(err, [fitWarning(OTHER_JEV)]);
+	assert.doesNotMatch(out.join("\n"), /warning:/);
+});
+
+test("main prints no warning when Jev answers as the fitted model", async () => {
+	const { out, err } = streams();
+	await main(["typesafe"], piped("test-key"), answeringAs(FITTED_ON));
+	assert.deepEqual(err, []);
+	assert.match(out.join("\n"), /^work agreement /m);
+});
+
+test("main exits 0 with the warning when every case agrees under another model", async () => {
+	const { err } = streams();
+	const cases: Case[] = readFileSync(
+		new URL("../calibration.jsonl", import.meta.url),
+		"utf8",
+	)
+		.trim()
+		.split("\n")
+		.map((l) => JSON.parse(l));
+	const labels = new Map(cases.map((c) => [c.description, c]));
+	const sure = (level: number) =>
+		score(
+			...([0, 1, 2].map((l) => (l === level ? 0.98 : 0.01)) as [
+				number,
+				number,
+				number,
+			]),
+		);
+	const fetchFn = async (_url: string, init: RequestInit = {}) => {
+		const c = labels.get(JSON.parse(String(init.body)).state.description);
+		const reply = {
+			model: OTHER_JEV,
+			answers: { tier: sure(c?.expected ?? 0), work: sure(c?.work ?? 0) },
+		};
+		return new Response(JSON.stringify(reply), {
+			headers: { "content-type": "application/json" },
+		});
+	};
+	assert.equal(await main(["typesafe"], piped("test-key"), fetchFn), 0);
+	assert.deepEqual(err, [fitWarning(OTHER_JEV)]);
 });

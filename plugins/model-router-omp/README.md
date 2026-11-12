@@ -8,7 +8,7 @@ An [Oh My Pi](https://github.com/can1357/oh-my-pi) (omp) plugin that picks a mod
 - At spawn, it returns `@smol` for level 0 and `@slow` for level 2. Level 1 changes nothing.
 - The [`scope` setting](#scope) picks the agents. Under `core`, the default, only omp's bundled `task` agent is routed. Under `extended`, every agent whose model you did not set is routed.
 - It never overrides a model you set. It never changes the tool input.
-- The plugin sets no effort. The bundled `task` agent runs with thinking set to `auto`, so omp picks the effort for each prompt.
+- The plugin sets no effort. The bundled `task` agent runs with thinking set to `auto`, so omp picks the effort for each prompt (checked on omp 18.12.6 and 18.18.9).
 - The plugin changes a setting only when you pick a value in its dialog or give it a command. [Change the options](#change-the-options) lists both.
 - An item is eligible when its `task` text is not empty. Under `core`, its `agent` must also be absent or `task`.
 
@@ -74,7 +74,7 @@ The `scope` plugin setting picks which agents the plugin routes:
 
 A value outside the two counts as `core`.
 
-Under `extended`, the plugin judges each batch item on its own. Bundled agents route: `task`, `scout`, `sonic`, `reviewer` and `security-reviewer`. A bundled agent's default model is not your choice. The bundled `seance` agent is the exception: omp gives it no spawn hook, so the plugin skips it.
+Under `extended`, the plugin judges each batch item on its own. Bundled agents route: `task`, `scout`, `sonic`, `reviewer` and `security-reviewer`, on omp 18.12.6 and 18.18.9. A bundled agent's default model is not your choice. The bundled `seance` agent is the exception: omp gives it no spawn hook, so the plugin skips it.
 
 The plugin skips an item, with the reason in the [batch line](#the-batch-line), when any of these holds:
 
@@ -136,13 +136,15 @@ Ask omp to run the `model-router-setup` skill. It walks through the provider, th
 
 The plugin stays at level 1 unless an end is clearly more likely. Level 0 needs more than 1.19 times the probability of level 1, and level 2 needs more than 1.41 times. When both ends pass, the likelier end wins. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors.
 
-At spawn, the plugin checks the batch-wide gates and the item again, as [Gate reasons](#gate-reasons) and [Item reasons](#item-reasons) list them. A stored decision binds only to the agent it was made for. The plugin returns the role for the item's level. It returns nothing when:
+At spawn, the plugin checks the item again and every batch-wide gate except the tool call timeout, as [Gate reasons](#gate-reasons) and [Item reasons](#item-reasons) list them. omp gives the spawn hook its own fixed 30 s. A stored decision binds only to the agent it was made for. The plugin returns the role for the item's level. It returns nothing when:
 
 - A gate or the item check fails at spawn time. For example, you added a model override after the batch.
 - The spawn names a model role that differs from the agent's own role. The agent's own role is the first model it declares that starts with `@`, without the `@`.
 - The agent declares no such role and the spawn carries any model role.
 - The role does not resolve.
 - No decision matches the spawn.
+
+In the first four cases the plugin also prints `model-router task <n>: skipped, <reason>`, a second line for the same item, as [The batch line](#the-batch-line) says. A spawn that matches no decision prints nothing.
 
 ## The batch line
 
@@ -158,13 +160,20 @@ omp's task view shows the same decision as the spawn's routing note, without the
 
 A skipped entry reads `task <n>: skipped, <reason>`. After both providers fail, the reason names each provider, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. The item then runs as omp would run it without the plugin.
 
+A routed item can still skip at spawn time. The plugin then prints one more line for that item alone, in the same format, after the batch line. For that item, the later line's reason is the one that holds:
+
+```text
+model-router task 2: skipped, task model override set
+```
+
 ### Gate reasons
 
 A closed gate skips every item the scope covers with the same reason. The gates run in this order:
 
-1. `settings unreadable`: the `provider` and `scope` settings or the plugins lockfile cannot be read. The plugin then cannot read `scope`, so it reports `task` items only.
-2. `key unset`: no provider the `provider` setting allows has a key.
-3. `settings unreadable`: omp's model roles, task model overrides or disabled agents cannot be read.
+1. `tool call timeout <n> ms leaves <m> ms to route`: omp's tool call timeout leaves less than 1 s to score, as [Limits and retries](#limits-and-retries) says. The plugin reads no key and sends nothing.
+2. `settings unreadable`: the `provider` and `scope` settings or the plugins lockfile cannot be read. The plugin then cannot read `scope`, so it reports `task` items only.
+3. `key unset`: no provider the `provider` setting allows has a key.
+4. `settings unreadable`: omp's model roles, task model overrides or disabled agents cannot be read.
 
 ### Item reasons
 
@@ -173,7 +182,7 @@ After the gates pass, the plugin judges each item alone. The first reason that h
 - `task model role set`: the `task` model role is set. omp's own routing decides. Only a `task` item gets this reason.
 - `<agent> model override set`: `task.agentModelOverrides` has an entry for the agent, such as `task model override set`.
 - `<agent> agent disabled`: `task.disabledAgents` lists the agent.
-- `seance spawns without the hook omp gives plugins, so its model cannot change`: under `extended`, omp sends the bundled `seance` agent no `before_subagent_spawn` event (checked on omp 18.12.6), so the plugin cannot set its model.
+- `seance spawns without the hook omp gives plugins, so its model cannot change`: under `extended`, omp sends the bundled `seance` agent no `before_subagent_spawn` event (checked on omp 18.12.6 and 18.18.9), so the plugin cannot set its model.
 - `the item sets its own model`: the item carries `model`. The plugin leaves the item's model alone and sends nothing for it. [omp per-call model](../../docs/clients.md#omp-per-call-model) has the source.
 - `custom task agent`: under `core`, the `task` agent is not omp's bundled one, or omp's agent discovery fails.
 - `<agent> agent discovery failed`: under `extended`, omp's agent discovery fails.
@@ -181,9 +190,14 @@ After the gates pass, the plugin judges each item alone. The first reason that h
 - `<agent> sets its own model`: under `extended`, the agent is not bundled and declares a model.
 - `no @smol or @slow model`: neither role resolves. Every item that passed the checks above gets this reason.
 
+Two reasons appear only at spawn time:
+
+- `<agent> is outside the core scope`: the decision was made under `extended`, and the scope is `core` when the agent spawns.
+- `no <role> model`: the picked role stopped resolving after the batch, such as `no @slow model`.
+
 After the item check, a scored item can still skip:
 
-- `timeout`: a first attempt got no answer in 2 s, or the 8 s scoring limit ran out. When the limit runs out, items still waiting skip too.
+- `timeout`: a first attempt got no answer in 2 s, or the scoring limit ran out: 8 s, or less under a short tool call timeout. When the limit runs out, items still waiting skip too.
 - `HTTP <status>`: the provider returned an error status, after any retries. For example, `HTTP 401` means the provider refused the key.
 - `network error`: the request could not connect, after any retries.
 - `rejected request`: the SDK raised a TypeSafe error that is neither an HTTP error nor a network error.
@@ -192,7 +206,7 @@ After the item check, a scored item can still skip:
 
 ## Agent discovery
 
-The plugin calls `pi.pi.discoverAgents`, a typed omp API that the docs prose does not name. For each agent it reads the name, the source, the declared models and the description.
+The plugin calls `pi.pi.discoverAgents`, a typed omp API at omp 18.12.6 and 18.18.9 that the docs prose does not name. For each agent it reads the name, the source, the declared models and the description.
 
 - The source tells omp's bundled agents from a user, project or plugin agent with the same name.
 - The declared models decide whether a non-bundled agent keeps its own model under `extended`, and what the agent's own role is.
@@ -200,10 +214,11 @@ The plugin calls `pi.pi.discoverAgents`, a typed omp API that the docs prose doe
 
 ## Limits and retries
 
-- One fixed limit of 8 s covers the scoring of a batch, retries and second providers included. At most four items are scored at once.
+- One limit covers a batch from the moment omp calls the plugin: the reads before scoring, the scoring, retries and second providers included. It is 8 s, or the tool call timeout less 2 s when that is shorter. At most four items are scored at once.
 - [Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider) gives the attempts at each provider.
 - Inside one batch, a provider whose first attempt for an item failed and fell back is passed over: items that start later in that batch go straight to the other provider. The next batch tries both again.
-- Keep `extensionHandlers.toolCallTimeoutMs` at its default of 30 s. omp fails closed when a `tool_call` handler passes that timeout. A value below 8 s can block a task.
+- omp blocks the whole `task` call when a `tool_call` handler passes `extensionHandlers.toolCallTimeoutMs`, 30 s by default. The plugin reads the setting on every batch and keeps 2 s of it back as a margin. Under 3 s nothing is left to score: every item skips with `tool call timeout <n> ms leaves <m> ms to route`. Set it to 3000 ms or more, or keep the default.
+- The plugin registers a `tool_call` handler, because only that hook gives a plugin the `task` input before omp runs it. While any extension has such a handler, omp starts no work early. `task.speculativeLaunch`, on by default, then no longer starts each subagent while the `task` call streams: the subagents start once the whole call has arrived. The experimental early reads of `tools.speculativeExecution.enabled` stop too. omp 18.12.6 and 18.18.9 both do this ([omp tool_call cost and timeout](../../docs/clients.md#omp-tool_call-cost-and-timeout)).
 
 Repeated task names, or same-name items in parallel calls in sync mode, may run unrouted, never misrouted. The plugin matches a spawn to its decision by name or by child id. When two decisions share a name, neither matches.
 
@@ -211,7 +226,7 @@ The plugin prints no line when the call has no eligible item. A call with `task.
 
 ## What the plugin reads
 
-- omp's settings: `modelRoles`, `task.agentModelOverrides` and `task.disabledAgents`.
+- omp's settings: `modelRoles`, `task.agentModelOverrides`, `task.disabledAgents` and `extensionHandlers.toolCallTimeoutMs`.
 - Its own `provider` and `scope` plugin settings, through omp's plugin settings loader, and the plugins lockfile that holds your global values. The project value may only narrow `provider` and may set `scope` both ways, as [Provider](#provider) and [Scope](#scope) say.
 - Whether `@smol` and `@slow` resolve, through omp's model resolution.
 - The agent list, with each agent's source, models and description, through `pi.pi.discoverAgents`.

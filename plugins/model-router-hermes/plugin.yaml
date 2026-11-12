@@ -1,6 +1,6 @@
 {
   "name": "model-router-hermes",
-  "version": "0.19.0",
+  "version": "0.19.3",
   "description": "Routes Hermes Agent delegated tasks to your small or large model and an effort that fits the task, judged by Jev. For each routed task it sends the task text, condensed to at most 12,000 characters, and the task's context, shortened to fit, both with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows, each with its own key. It sends a fixed text in place of an agent description. The plugin sets a model only from your small_model and large_model settings, and only after Hermes resolves its provider offline and lists the model. A key set as an environment variable is visible to every process Hermes starts.",
   "author": "Akurganow",
   "kind": "backend",

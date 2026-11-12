@@ -167,6 +167,12 @@ function read(lookup: Lookup, id: string, settings: unknown): unknown {
 	}
 }
 
+// omp reads this setting on every tool call and times out a tool_call handler that runs longer.
+export const readTimeoutSetting = (
+	lookup: Lookup,
+	settings: unknown,
+): unknown => read(lookup, "extensionHandlers.toolCallTimeoutMs", settings);
+
 type Config = Pick<Facts, "roles" | "overrides" | "disabled">;
 
 function readConfig(lookup: Lookup, settings: unknown): Config | undefined {
@@ -186,8 +192,10 @@ async function discover(pi: Pi, ctx: Context): Promise<Facts["agents"]> {
 	}
 }
 
+export const noModel = (role: string) => `no ${role} model`;
+
 function modelsGate(ctx: Context): string | undefined {
 	return Object.values(ROLES).some((role) => resolves(ctx, role))
 		? undefined
-		: `no ${ROLES.small} or ${ROLES.large} model`;
+		: noModel(`${ROLES.small} or ${ROLES.large}`);
 }

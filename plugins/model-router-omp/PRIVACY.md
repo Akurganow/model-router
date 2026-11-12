@@ -96,8 +96,8 @@ that declare no model.
 ## Requests and billing
 
 The plugin scores each routed item on its own. An item a closed gate stops is
-not routed and sends nothing. An item that starts after the batch's 8 s limit
-has passed sends nothing either, so a batch can send fewer requests than it
+not routed and sends nothing. An item that starts after the batch's scoring
+limit has passed sends nothing either, so a batch can send fewer requests than it
 has routed items.
 
 One item sends at most four requests.
@@ -106,8 +106,10 @@ gives the attempts at each provider. Once an item falls back, items that start
 later in the same batch skip the failed provider.
 
 [The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing)
-says what a request in flight can cost. One fixed 8 s limit covers the scoring
-of a whole batch, both providers and all retries included. The plugin sends no
+says what a request in flight can cost. One limit covers the scoring of a
+whole batch, both providers and all retries included: 8 s, or less under a
+short omp tool call timeout, as the
+[README](README.md#limits-and-retries) says. The plugin sends no
 other request.
 
 ## What the providers do with it
@@ -159,7 +161,9 @@ points it reads omp's settings `modelRoles`, `task.agentModelOverrides` and
 `task.disabledAgents`, and the source, declared models and description of each
 agent omp discovers, to see whether your own agent replaced a bundled one or
 sets its own model. It also checks whether the `@smol` and `@slow` roles
-resolve to a model. Nothing from these leaves your machine, except the
+resolve to a model. For each batch it also reads omp's
+`extensionHandlers.toolCallTimeoutMs` setting, to fit its scoring time into
+it. Nothing from these leaves your machine, except the
 agent text of each routed agent, which the request carries as described above.
 
 The lines the plugin prints per batch go to your omp notifications, or to

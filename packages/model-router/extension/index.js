@@ -1318,6 +1318,7 @@ function read(lookup2, id, settings) {
     return void 0;
   }
 }
+var readTimeoutSetting = (lookup2, settings) => read(lookup2, "extensionHandlers.toolCallTimeoutMs", settings);
 function readConfig(lookup2, settings) {
   const roles = read(lookup2, "modelRoles", settings);
   const overrides = read(lookup2, "task.agentModelOverrides", settings);
@@ -1331,8 +1332,9 @@ async function discover(pi, ctx) {
     return void 0;
   }
 }
+var noModel = (role) => `no ${role} model`;
 function modelsGate(ctx) {
-  return Object.values(ROLES).some((role) => resolves(ctx, role)) ? void 0 : `no ${ROLES.small} or ${ROLES.large} model`;
+  return Object.values(ROLES).some((role) => resolves(ctx, role)) ? void 0 : noModel(`${ROLES.small} or ${ROLES.large}`);
 }
 
 // src/omp-key.ts
@@ -1483,12 +1485,15 @@ function createClient(provider, apiKey, model, fetchFn) {
 var ROUTING_LIMIT_MS = 8e3;
 var TIMEOUT = "timeout";
 var FAILED = "failed";
+var CANCELLED = "cancelled";
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 var MODEL_CHARS_MAX = 40;
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+function abortCategory(signal) {
+  return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
+}
 function skipCategory(err, signal) {
-  if (err instanceof APIUserAbortError)
-    return signal.reason === LIMIT_REACHED ? TIMEOUT : "cancelled";
+  if (err instanceof APIUserAbortError) return abortCategory(signal);
   if (err instanceof APIError) return `HTTP ${err.status}`;
   if (err instanceof APITimeoutError) return TIMEOUT;
   if (err instanceof APIConnectionError) return "network error";
@@ -1571,6 +1576,23 @@ function decisionSuffix({
   return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
 }
 
+// src/handler-deadline.ts
+var HANDLER_MARGIN_MS = 2e3;
+var MIN_DEADLINE_MS = 1e3;
+var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
+var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
+
+// src/omp-deadline.ts
+var DEFAULT_TIMEOUT_MS = 3e4;
+function budgetFor(value) {
+  const timeout = typeof value === "number" && Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS;
+  const deadline = deadlineFor(timeout);
+  if (deadline >= MIN_DEADLINE_MS) return { deadline };
+  return {
+    closed: `tool call timeout ${timeout} ms leaves ${Math.max(0, deadline)} ms to route`
+  };
+}
+
 // src/decide.ts
 var BAD_REPLY = { skipped: "bad reply" };
 var levelOf = (decision, key) => {
@@ -1640,9 +1662,10 @@ var ROLE_BY_LEVEL = {
   1: void 0,
   2: ROLES.large
 };
-async function scoreItems(items, context, { attempts, keys, facts }) {
+async function scoreItems(items, context, { attempts, keys, facts }, deadline) {
   const limit = new AbortController();
-  const timer = setTimeout(() => limit.abort(LIMIT_REACHED), ROUTING_LIMIT_MS);
+  if (deadline <= 0) limit.abort(LIMIT_REACHED);
+  const timer = setTimeout(() => limit.abort(LIMIT_REACHED), deadline);
   const passedOver = /* @__PURE__ */ new Set();
   try {
     return await mapLimit(items, MAX_PARALLEL, async (pending) => {
@@ -1778,7 +1801,7 @@ function createStore() {
       const [entry2] = holders?.size === 1 ? holders : [];
       if (entry2?.agent !== agent) return void 0;
       remove(c, entry2);
-      return entry2.stored;
+      return { stored: entry2.stored, index: entry2.index };
     }
   };
 }
@@ -1806,6 +1829,7 @@ var eligibleItems = (tasks) => tasks.flatMap(
 function createRouter(omp, pi) {
   const store = createStore();
   async function onToolCall(event, ctx) {
+    const started = Date.now();
     const { input } = event;
     if (event.toolName !== TASK || !isRecord(input)) return;
     const { tasks, context } = input;
@@ -1816,15 +1840,20 @@ function createRouter(omp, pi) {
     const scope = settings?.scope ?? "core";
     const items = eligible.filter(({ agent }) => inScope(agent, scope));
     if (items.length === 0) return;
+    const skipAll = (reason) => report(
+      ctx,
+      items.map(({ index }) => entry(index, skippedLine(reason)))
+    );
+    const budget = budgetFor(readTimeoutSetting(omp.lookup, pi.pi.settings));
+    if ("closed" in budget) return skipAll(budget.closed);
     const gates = await openBatch(omp, pi, ctx, settings);
-    if ("closed" in gates) {
-      const line = skippedLine(gates.closed);
-      return report(
-        ctx,
-        items.map(({ index }) => entry(index, line))
-      );
-    }
-    const scored = await scoreItems(items, contextText(context), gates);
+    if ("closed" in gates) return skipAll(gates.closed);
+    const scored = await scoreItems(
+      items,
+      contextText(context),
+      gates,
+      budget.deadline - (Date.now() - started)
+    );
     for (const { index, item, agent, stored } of scored)
       store.add(event.toolCallId, index, item.name, agent, stored);
     report(
@@ -1832,13 +1861,21 @@ function createRouter(omp, pi) {
       scored.map(({ index, stored }) => entry(index, stored.line))
     );
   }
+  async function spawnReason(event, ctx, role) {
+    const gates = await checkGates(omp, pi, ctx, event);
+    if ("closed" in gates) return gates.closed;
+    return resolves(ctx, role) ? void 0 : noModel(role);
+  }
   async function onSpawn(event, ctx) {
     if (event.invocationKind !== TASK) return;
-    const stored = store.take(event.spawnKey, event.agent);
-    if (!stored?.role) return;
-    if ("closed" in await checkGates(omp, pi, ctx, event)) return;
-    if (!resolves(ctx, stored.role)) return;
-    return { model: stored.role, note: LINE_PREFIX + stored.line };
+    const taken = store.take(event.spawnKey, event.agent);
+    const role = taken?.stored.role;
+    if (!taken || !role) return;
+    const reason = await spawnReason(event, ctx, role);
+    if (reason === void 0)
+      return { model: role, note: LINE_PREFIX + taken.stored.line };
+    report(ctx, [entry(taken.index, skippedLine(reason))]);
+    return void 0;
   }
   function learn({ toolName, toolCallId }, result) {
     if (toolName !== TASK) return;

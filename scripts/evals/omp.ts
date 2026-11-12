@@ -1,6 +1,6 @@
 import { ENTRY_SEPARATOR, LINE_PREFIX, NO_CHANGE } from "../../src/line.ts";
 import type { Level } from "../../src/part.ts";
-import { get, isRecord, jsonLines } from "./stream.ts";
+import { get, isRecord, jevModel, jsonLines } from "./stream.ts";
 import type { Adapter, Evidence } from "./types.ts";
 
 const SPAWN_TOOL = "task";
@@ -79,6 +79,7 @@ export const omp: Adapter = {
 			effort: null,
 			target: null,
 			reply: lastReply(stdout),
+			jev: null,
 		};
 		for (const text of stderr.split("\n")) {
 			if (!text.startsWith(LINE_PREFIX)) continue;
@@ -92,6 +93,7 @@ export const omp: Adapter = {
 				const { tier, target } = groups;
 				evidence.tier = Number(tier) as Level;
 				evidence.target = target === NO_CHANGE ? null : (target ?? null);
+				evidence.jev = jevModel(entry);
 				return evidence;
 			}
 		}

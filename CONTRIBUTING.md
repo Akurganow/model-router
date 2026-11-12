@@ -161,7 +161,14 @@ the host that gets the key, for example
 `calibration.jsonl`, 172 labelled cases, to the endpoint that the
 plugins use for that provider. Its optional second argument names the Jev
 model and defaults to `jev-latest`. It exits 1 when tier or work
-agreement falls below 85%.
+agreement falls below 85%. This script, `scripts/compare-rules.ts` and
+`scripts/evals.ts` warn on stderr when Jev answers as another model than
+`FITTED_ON` in `scripts/jev-fit.ts`, the one the factors were fitted on.
+
+After a refit on another Jev model, set `FITTED_ON` in `scripts/jev-fit.ts`
+to that model. Change the fit sentence in
+`plugins/model-router/docs/model-choice.md` in the same commit. A test keeps
+the two equal.
 
 Add `--record <file>` to write each case's labels and probabilities to a JSONL
 file. Then compare rule modules offline on that file:
