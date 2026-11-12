@@ -1250,11 +1250,6 @@ var outsideCoreScope = (id) => `${id} is outside the core scope`;
 var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
 var agentUnknown = (id) => `${id} agent unknown`;
 var setsOwnModel = (id) => `${id} sets its own model`;
-var LEVEL_SLOTS = {
-  0: "small",
-  2: "large"
-};
-var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
 
 // src/utils/error.ts
 var errorText = (err) => err instanceof Error ? err.message : String(err);
@@ -1919,6 +1914,13 @@ var EFFORT_BY_TIER = {
   2: ["low", "medium", "high"]
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
+
+// src/core/slots.ts
+var LEVEL_SLOTS = {
+  0: "small",
+  2: "large"
+};
+var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
 
 // src/utils/fetch.ts
 var oneChunk = (bytes) => new ReadableStream({

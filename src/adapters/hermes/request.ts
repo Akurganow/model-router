@@ -1,6 +1,6 @@
 import { contextText } from "../../core/brief.ts";
 import { type Keys, PROVIDERS } from "../../core/provider.ts";
-import { type EndSlot, SLOTS } from "../../core/reasons.ts";
+import { type EndSlot, SLOTS } from "../../core/slots.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 

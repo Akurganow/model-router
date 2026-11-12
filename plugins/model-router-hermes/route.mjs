@@ -6,19 +6,7 @@ var BAD_REPLY = "bad reply";
 var TIMEOUT = "timeout";
 var FAILED = "failed";
 var CANCELLED = "cancelled";
-var SLOTS = ["small", "large"];
-var LEVEL_SLOTS = {
-  0: "small",
-  2: "large"
-};
-var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
 var modelUnset = (slot) => `${slot} model unset`;
-var modelForLevel = (level, models) => {
-  const slot = slotForLevel(level);
-  if (slot === null) return { slot };
-  const model = models[slot];
-  return model === void 0 ? { skipped: modelUnset(slot) } : { slot, model };
-};
 
 // src/utils/clock.ts
 var realClock = {
@@ -1443,6 +1431,20 @@ function routedLine({
 }
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
+
+// src/core/slots.ts
+var SLOTS = ["small", "large"];
+var LEVEL_SLOTS = {
+  0: "small",
+  2: "large"
+};
+var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
+var modelForLevel = (level, models) => {
+  const slot = slotForLevel(level);
+  if (slot === null) return { slot };
+  const model = models[slot];
+  return model === void 0 ? { skipped: modelUnset(slot) } : { slot, model };
+};
 
 // src/utils/deadline.ts
 async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {

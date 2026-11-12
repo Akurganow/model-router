@@ -8,7 +8,7 @@ import { type DecidedWithWork, scoreWork } from "../../core/decide.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { skippedLine } from "../../core/line.ts";
 import type { Provider } from "../../core/provider.ts";
-import { slotForLevel } from "../../core/reasons.ts";
+import { slotForLevel } from "../../core/slots.ts";
 import { streamedFetch } from "../../utils/fetch.ts";
 import { lineFor, planEffort, type Routed } from "./effort.ts";
 import { type Batch, ROLES } from "./gates.ts";

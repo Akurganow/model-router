@@ -13,14 +13,13 @@ import {
 	PROVIDER_VALUES,
 	resolve as resolveProvider,
 } from "../../src/core/provider.ts";
+import { modelUnresolved, modelUnset } from "../../src/core/reasons.ts";
 import {
 	type EndSlot,
-	modelUnresolved,
-	modelUnset,
 	SLOTS,
 	slotForLevel,
 	slotSetting,
-} from "../../src/core/reasons.ts";
+} from "../../src/core/slots.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";

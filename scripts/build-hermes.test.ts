@@ -18,7 +18,7 @@ import {
 	PROVIDER_VALUES,
 	resolve as resolveProvider,
 } from "../src/core/provider.ts";
-import { slotForLevel } from "../src/core/reasons.ts";
+import { slotForLevel } from "../src/core/slots.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { formatJson } from "./build/json.ts";
 import { HERMES_OUTPUTS } from "./build/outputs.ts";

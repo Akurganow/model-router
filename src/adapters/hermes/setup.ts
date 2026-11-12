@@ -4,7 +4,6 @@ import {
 	PROVIDERS,
 	type Provider,
 } from "../../core/provider.ts";
-import { SLOTS, type SlotSetting, slotSetting } from "../../core/reasons.ts";
 import {
 	alreadyValue,
 	badCall,
@@ -20,6 +19,7 @@ import {
 	valueLine,
 	valueSettingHelp,
 } from "../../core/settings.ts";
+import { SLOTS, type SlotSetting, slotSetting } from "../../core/slots.ts";
 
 const SLOT_SETTINGS = SLOTS.map(slotSetting);
 const SETTINGS = ["provider", ...KEY_SETTINGS, ...SLOT_SETTINGS] as const;

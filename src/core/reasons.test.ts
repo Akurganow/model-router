@@ -11,19 +11,16 @@ import {
 	CONFIG_EFFORT,
 	FAILED,
 	KEY_UNSET,
-	LEVEL_SLOTS,
-	modelForLevel,
 	modelUnresolved,
 	modelUnset,
 	NO_END_MODEL,
 	outsideCoreScope,
-	SLOTS,
 	SUBAGENT_MODEL_SET,
 	setsOwnModel,
-	slotForLevel,
 	TIMEOUT,
 	UNREADABLE,
 } from "./reasons.ts";
+import { LEVEL_SLOTS, modelForLevel, SLOTS, slotForLevel } from "./slots.ts";
 
 test("the shared reasons keep the texts the harnesses print", () => {
 	assert.equal(CALLER_EFFORT, "caller effort");

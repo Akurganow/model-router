@@ -8,11 +8,10 @@ import { plan } from "../../core/provider.ts";
 import {
 	CALLER_EFFORT,
 	CONFIG_EFFORT,
-	type EndSlot,
 	FAILED,
-	modelForLevel,
 	TIMEOUT,
 } from "../../core/reasons.ts";
+import { type EndSlot, modelForLevel } from "../../core/slots.ts";
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
 import { type HermesRequest, type KeptEffort, readRequest } from "./request.ts";
