@@ -285,6 +285,26 @@ describe("failures", () => {
 		assert.deepEqual(await routeRequest(REQUEST, deps), FAILED_SKIP);
 	});
 
+	it("aborts the request in flight when the budget runs out", async () => {
+		const time = createFakeClock();
+		let sent: AbortSignal | null | undefined;
+		const response = routeRequest(REQUEST, {
+			fetchFn: (_url, init) => {
+				sent = init?.signal;
+				return new Promise<never>(() => {});
+			},
+			clock: time.clock,
+		});
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(sent?.aborted, false);
+		time.fire();
+		assert.equal(sent?.aborted, true);
+		assert.deepEqual(await response, {
+			outcome: "skip",
+			line: "model-router skipped, timeout",
+		});
+	});
+
 	it("never lets a key reach the response", async () => {
 		const { response } = run({ ...REQUEST, keys: { typesafe: "k-9f3" } }, [
 			{ host: "api.typesafe.ai", reply: { status: 401 } },
