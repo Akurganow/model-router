@@ -3,6 +3,29 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.19.3 - 2026-11-12
+#### Bug Fixes
+- (**omp**) count the scoring deadline from the handler's start (6693c3f)
+- (**omp**) fit the scoring limit to the tool call timeout (46cd0c9)
+- (**omp**) report a decision dropped at spawn time (2315bb5)
+#### Documentation
+- (**omp**) say the spawn-time line follows the batch line, and when the limit starts (0d88c30)
+- (**omp**) document spawn-time skips, the timeout rule and the tool_call cost (9922f01)
+- (**omp**) say why itemCheck keeps its scope check (a7d23c6)
+- say what to set after a refit on another Jev model (8325a36)
+- name the Jev fit warning in the calibration section (fdb9aab)
+#### Refactoring
+- (**omp**) scoreItems takes its deadline from every caller (f6c4d3b)
+- (**omp**) the store hands back the item's index with its decision (4f5bdd0)
+- (**omp**) one function turns the timeout setting into a budget (0ec2aa5)
+#### Miscellaneous Chores
+- amend the Lawman constitution to version 4 (28b5dd2)
+- derive the Jev models in the fit tests and name FITTED_ON in the warning (a1086c6)
+- warn when Jev answers as another model than the factors were fitted on (b40319d)
+
+- - -
+
+
 ## v0.19.2 - 2026-11-12
 #### Bug Fixes
 - (**openclaw**) log a line at the routing limit and on a cancel (255b2ed)
