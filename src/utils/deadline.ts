@@ -11,7 +11,7 @@ export async function raceDeadline<T>(
 	deadlineMs: number,
 	clock: Clock,
 	hostSignal: AbortSignal | undefined,
-	reason: unknown,
+	reason: symbol,
 ): Promise<T | undefined> {
 	try {
 		const stop = new AbortController();
