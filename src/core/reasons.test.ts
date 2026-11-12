@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { join, sep } from "node:path";
 import { test } from "node:test";
 import {
 	CALLER_EFFORT,
@@ -87,12 +87,14 @@ test("no other source file spells a shared reason", () => {
 	const files = readdirSync(SOURCES, {
 		recursive: true,
 		encoding: "utf8",
-	}).filter(
-		(name) =>
-			name.endsWith(".ts") &&
-			!name.endsWith(".test.ts") &&
-			basename(name) !== "reasons.ts",
-	);
+	})
+		.map((name) => name.split(sep).join("/"))
+		.filter(
+			(name) =>
+				name.endsWith(".ts") &&
+				!name.endsWith(".test.ts") &&
+				name !== "core/reasons.ts",
+		);
 	for (const name of files) {
 		const code = readFileSync(join(SOURCES, name), "utf8");
 		for (const text of texts)
