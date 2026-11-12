@@ -6,13 +6,7 @@ import { jevAnswer, streamed } from "../core/jev-fakes.ts";
 import { tier } from "../core/tier.ts";
 import { work } from "../core/work.ts";
 import { createFakeClock } from "../utils/fake-clock.ts";
-import {
-	AGENT_CALL,
-	BUILT_IN_DEFAULT,
-	CLOCK,
-	nextHook,
-	registered,
-} from "./claude/fakes.ts";
+import { routedCall } from "./claude/fakes.ts";
 import { createScriptedJev, type Step } from "./hermes/fakes.ts";
 import { routeRequest } from "./hermes/route.ts";
 import { useWorld } from "./omp/fakes.ts";
@@ -52,44 +46,25 @@ function assertRequest(body: unknown): void {
 
 describe("Claude Code asks Jev for one task", () => {
 	/** Spawns the task once against a Jev that gives the reply, then returns the bodies Jev received and the lines logged. */
-	async function run(reply: unknown) {
-		const bodies: unknown[] = [];
-		const lines: string[] = [];
-		const $ = {
-			clock: CLOCK,
-			env: { get: async () => undefined },
-			http: {
-				fetch: async (_url: string, init: { body: string }) => {
-					bodies.push(JSON.parse(init.body));
-					return {
-						status: 200,
-						ok: true,
-						headers: {},
-						text: JSON.stringify(reply),
-					};
-				},
-			},
-			ui: {
-				log: async (text: string, to?: { to: string }) => {
-					if (to === undefined) lines.push(text);
-				},
-			},
-		};
-		const hooks = registered({ api_key: "ts-key" });
-		await hooks["agent.offer"]?.($, BUILT_IN_DEFAULT, nextHook());
-		await hooks[AGENT_CALL]?.(
-			$,
+	const run = async (reply: unknown) => {
+		const { bodies, logs } = await routedCall(
+			{ api_key: "ts-key" },
+			{},
+			undefined,
+			undefined,
+			DESCRIPTION,
 			{
-				tool_use_id: "toolu_1",
 				prompt: TASK,
-				description: DESCRIPTION,
-				subagentType: "general-purpose",
-				fork: false,
+				reply: () => ({
+					status: 200,
+					ok: true,
+					headers: {},
+					text: JSON.stringify(reply),
+				}),
 			},
-			nextHook(),
 		);
-		return { bodies, lines };
-	}
+		return { bodies, lines: logs };
+	};
 
 	test("one request holds the role, the description, the task and the two questions", async () => {
 		const { bodies } = await run(jevAnswer(2, 1));

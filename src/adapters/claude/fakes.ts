@@ -1,3 +1,4 @@
+import type { HttpReply } from "./host.ts";
 import { register } from "./index.ts";
 
 type Hook = ($: unknown, e: unknown, next: unknown) => Promise<unknown>;
@@ -53,9 +54,20 @@ export const BUILT_IN_DEFAULT: Offer = {
 	source: "built-in",
 };
 
+type Run = {
+	/** The reply to each Jev request, by URL. Defaults to ANSWER with status 200. */
+	reply?: (url: string) => HttpReply;
+	/** Sends a caller effort with the Agent call. */
+	callerEffort?: boolean | undefined;
+	/** The task text of the spawn. Defaults to the one of SPAWN. */
+	prompt?: string;
+};
+
 /**
  * Registers the mod, makes the offers, then spawns `subagentType` as the engine does.
- * Returns the env names read, the requests Jev received and the role each carried.
+ * Returns the env names read, the requests Jev received with the role and description each carried,
+ * their parsed bodies, the lines logged to the default log, the spawn the engine received
+ * and the effort the subagent's first model request carries.
  */
 export async function routedCall(
 	options: Record<string, unknown>,
@@ -63,11 +75,14 @@ export async function routedCall(
 	offers: readonly Offer[] = [BUILT_IN_DEFAULT],
 	subagentType = "general-purpose",
 	description = SPAWN.description,
+	{ reply, callerEffort, prompt = SPAWN.prompt }: Run = {},
 ) {
 	const reads: string[] = [];
 	const requests: { url: string; model: unknown }[] = [];
+	const bodies: unknown[] = [];
 	const roles: unknown[] = [];
 	const descriptions: unknown[] = [];
+	const logs: string[] = [];
 	const $ = {
 		clock: CLOCK,
 		env: {
@@ -80,17 +95,62 @@ export async function routedCall(
 			fetch: async (url: string, init: { body: string }) => {
 				const body = JSON.parse(init.body);
 				requests.push({ url, model: body.model });
+				bodies.push(body);
 				roles.push(body.state.role);
 				descriptions.push(body.state.description);
-				return { status: 200, ok: true, headers: {}, text: ANSWER };
+				return (
+					reply?.(url) ?? { status: 200, ok: true, headers: {}, text: ANSWER }
+				);
 			},
 		},
 		tool: { check: async () => ({ decision: "allow" }) },
-		ui: { log: async () => undefined },
+		ui: {
+			// The request bodies go to the debug log; the decision line goes to the default one.
+			log: async (text: string, to?: { to: string }) => {
+				if (to === undefined) logs.push(text);
+			},
+		},
 	};
 	const next = nextHook();
 	const hooks = registered(options);
 	for (const offer of offers) await hooks["agent.offer"]?.($, offer, next);
-	await hooks[AGENT_CALL]?.($, { ...SPAWN, subagentType, description }, next);
-	return { reads, requests, roles, descriptions };
+	if (callerEffort)
+		await hooks['tool.call {"tool":"Agent"}']?.(
+			$,
+			{ tool: "Agent", tool_use_id: SPAWN.tool_use_id, effort: "low" },
+			next,
+		);
+	const received: unknown[] = [];
+	const engine = Object.assign(
+		async (spawn: unknown) => {
+			received.push(spawn);
+			return { agentId: "agent-1" };
+		},
+		{ signal: next.signal, origin: next.origin },
+	);
+	await hooks[AGENT_CALL]?.(
+		$,
+		{ ...SPAWN, subagentType, description, prompt },
+		engine,
+	);
+	const steps: { effort?: string }[] = [];
+	const step = hooks["turn.step"] as unknown as (
+		...args: unknown[]
+	) => AsyncIterable<unknown>;
+	// biome-ignore lint/correctness/useYield: the bottom of the chain streams no chunks
+	const bottom = async function* (e: { effort?: string }) {
+		steps.push(e);
+		return {};
+	};
+	for await (const _ of step($, { agentId: "agent-1", effort: "max" }, bottom));
+	return {
+		reads,
+		requests,
+		bodies,
+		roles,
+		descriptions,
+		logs,
+		spawned: received[0] as { model?: string } | undefined,
+		requestEffort: steps[0]?.effort,
+	};
 }

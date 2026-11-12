@@ -4,19 +4,17 @@ import { describe, test } from "node:test";
 import { ROUTING_LIMIT_MS } from "../core/compose.ts";
 import { plan } from "../core/provider.ts";
 import { streamedFetch } from "../utils/fetch.ts";
-import {
-	AGENT_CALL,
-	BUILT_IN_DEFAULT,
-	CLOCK,
-	nextHook,
-	registered,
-	SPAWN,
-} from "./claude/fakes.ts";
+import { routedCall, SPAWN } from "./claude/fakes.ts";
 import { useWorld } from "./omp/fakes.ts";
 import type { Batch } from "./omp/gates.ts";
 import { type Pending, scoreItems } from "./omp/score.ts";
 
-type Reply = { status: number; ok: boolean; headers: object; text: string };
+type Reply = {
+	status: number;
+	ok: boolean;
+	headers: Record<string, string>;
+	text: string;
+};
 type Answers = { tier?: number; work?: number; model?: string; usage?: object };
 
 const scores = (level: number) => ({
@@ -60,48 +58,15 @@ type Run = {
  * the tool call when callerEffort is true. The logged lines leave out what goes
  * to the debug log.
  */
-async function spawnOnce({ options, env = {}, callerEffort, reply }: Run) {
-	const logs: string[] = [];
-	const $ = {
-		clock: CLOCK,
-		env: { get: async (name: string) => env[name] },
-		http: { fetch: async (url: string) => reply(url) },
-		ui: {
-			// The request bodies go to the debug log; the decision line goes to the default one.
-			log: async (text: string, to?: { to: string }) => {
-				if (to === undefined) logs.push(text);
-			},
-		},
-	};
-	const hooks = registered({ api_key: "ts-key", ...options });
-	await hooks["agent.offer"]?.($, BUILT_IN_DEFAULT, nextHook());
-	if (callerEffort)
-		await hooks['tool.call {"tool":"Agent"}']?.(
-			$,
-			{ tool: "Agent", tool_use_id: SPAWN.tool_use_id, effort: "low" },
-			nextHook(),
-		);
-	const received: { model?: string }[] = [];
-	const engine = Object.assign(
-		async (spawn: { model?: string }) => {
-			received.push(spawn);
-			return { agentId: "agent-1" };
-		},
-		{ signal: new AbortController().signal, origin: { plugin: "engine" } },
+const spawnOnce = ({ options, env = {}, callerEffort, reply }: Run) =>
+	routedCall(
+		{ api_key: "ts-key", ...options },
+		env,
+		undefined,
+		undefined,
+		undefined,
+		{ reply, callerEffort },
 	);
-	await hooks[AGENT_CALL]?.($, SPAWN, engine);
-	const steps: { effort?: string }[] = [];
-	const step = hooks["turn.step"] as unknown as (
-		...args: unknown[]
-	) => AsyncIterable<unknown>;
-	// biome-ignore lint/correctness/useYield: the bottom of the chain streams no chunks
-	const bottom = async function* (e: { effort?: string }) {
-		steps.push(e);
-		return {};
-	};
-	for await (const _ of step($, { agentId: "agent-1", effort: "max" }, bottom));
-	return { logs, spawned: received[0], requestEffort: steps[0]?.effort };
-}
 
 const routed = (answers: Answers, run: Partial<Run> = {}) =>
 	spawnOnce({ ...run, reply: () => answer(answers) });
