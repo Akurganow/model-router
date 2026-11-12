@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
+import { fitWarnings } from "../jev-fit.ts";
 import { ADAPTERS } from "./adapters.ts";
 import { type Case, check } from "./cases.ts";
 import { clientEnv, normalisePaths, scrub, TYPESAFE_KEY } from "./scrub.ts";
@@ -23,6 +24,8 @@ type CaseResult = {
 	exitCode: number | null;
 	evidence: Evidence;
 	failures: string[];
+	// A warning never fails a case.
+	warnings: string[];
 	passed: boolean;
 	stdout: string;
 	stderr: string;
@@ -103,6 +106,7 @@ export function runCase(c: Case): CaseResult {
 			exitCode: run.status,
 			evidence,
 			failures,
+			warnings: fitWarnings([evidence.jev]),
 			passed: failures.length === 0,
 			stdout: clean(stdout),
 			stderr: clean(stderr),

@@ -1,7 +1,15 @@
 import { contextText } from "./brief.ts";
 import { ENTRY_SEPARATOR, LINE_PREFIX, skippedLine } from "./line.ts";
 import { registerConfig, say } from "./omp-config.ts";
-import { checkGates, openBatch, readSettings, resolves } from "./omp-gates.ts";
+import { budgetFor } from "./omp-deadline.ts";
+import {
+	checkGates,
+	noModel,
+	openBatch,
+	readSettings,
+	readTimeoutSetting,
+	resolves,
+} from "./omp-gates.ts";
 import { inScope, TASK } from "./omp-items.ts";
 import { type Pending, scoreItems, type TaskItem } from "./omp-score.ts";
 import { createStore } from "./omp-store.ts";
@@ -57,11 +65,14 @@ function createRouter(omp: OmpImports, pi: Pi) {
 
 	/**
 	 * Scores the eligible items of a task call and reports one line per item.
-	 * Reports one skip line for every in-scope item when a batch gate closes.
-	 * Returns nothing when the call is not a task call, holds no eligible item,
-	 * or holds none in scope.
+	 * Reports one skip line for every in-scope item when a batch gate closes or
+	 * omp's tool call timeout leaves too little time to score. Returns nothing
+	 * when the call is not a task call, holds no eligible item, or holds none in
+	 * scope.
 	 */
 	async function onToolCall(event: ToolCallEvent, ctx: Context) {
+		// omp's timeout runs from the handler's start, so every read below spends the deadline.
+		const started = Date.now();
 		const { input } = event;
 		if (event.toolName !== TASK || !isRecord(input)) return;
 		const { tasks, context } = input;
@@ -73,15 +84,22 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		const scope = settings?.scope ?? "core";
 		const items = eligible.filter(({ agent }) => inScope(agent, scope));
 		if (items.length === 0) return;
-		const gates = await openBatch(omp, pi, ctx, settings);
-		if ("closed" in gates) {
-			const line = skippedLine(gates.closed);
-			return report(
+		const skipAll = (reason: string) =>
+			report(
 				ctx,
-				items.map(({ index }) => entry(index, line)),
+				items.map(({ index }) => entry(index, skippedLine(reason))),
 			);
-		}
-		const scored = await scoreItems(items, contextText(context), gates);
+		// A timeout too short to score closes the batch before any key or agent is read.
+		const budget = budgetFor(readTimeoutSetting(omp.lookup, pi.pi.settings));
+		if ("closed" in budget) return skipAll(budget.closed);
+		const gates = await openBatch(omp, pi, ctx, settings);
+		if ("closed" in gates) return skipAll(gates.closed);
+		const scored = await scoreItems(
+			items,
+			contextText(context),
+			gates,
+			budget.deadline - (Date.now() - started),
+		);
 		for (const { index, item, agent, stored } of scored)
 			store.add(event.toolCallId, index, item.name, agent, stored);
 		report(
@@ -90,16 +108,37 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		);
 	}
 
+	// A gate that closed since the batch, or a role that stopped resolving, drops the decision.
+	async function spawnReason(
+		event: SpawnEvent,
+		ctx: Context,
+		role: string,
+	): Promise<string | undefined> {
+		const gates = await checkGates(omp, pi, ctx, event);
+		if ("closed" in gates) return gates.closed;
+		return resolves(ctx, role) ? undefined : noModel(role);
+	}
+
+	/**
+	 * Returns the stored role and its line for a task spawn. Returns nothing when
+	 * the spawn is not a task spawn, no decision matches, or the decision holds no
+	 * role. When a gate closes or the role stopped resolving since the batch, it
+	 * reports a skip line for the item and returns nothing.
+	 */
 	async function onSpawn(
 		event: SpawnEvent,
 		ctx: Context,
 	): Promise<SpawnResult | undefined> {
 		if (event.invocationKind !== TASK) return;
-		const stored = store.take(event.spawnKey, event.agent);
-		if (!stored?.role) return;
-		if ("closed" in (await checkGates(omp, pi, ctx, event))) return;
-		if (!resolves(ctx, stored.role)) return;
-		return { model: stored.role, note: LINE_PREFIX + stored.line };
+		const taken = store.take(event.spawnKey, event.agent);
+		const role = taken?.stored.role;
+		if (!taken || !role) return;
+		const reason = await spawnReason(event, ctx, role);
+		if (reason === undefined)
+			return { model: role, note: LINE_PREFIX + taken.stored.line };
+		// omp drops a note that comes without a model, so the skip goes out like the batch line.
+		report(ctx, [entry(taken.index, skippedLine(reason))]);
+		return undefined;
 	}
 
 	function learn({ toolName, toolCallId }: ToolProgressEvent, result: unknown) {

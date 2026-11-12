@@ -1,7 +1,7 @@
 {
 	"$schema": "./source.schema.json",
 	"name": "model-router",
-	"version": "0.19.2",
+	"version": "0.19.3",
 	"license": "MIT",
 	"homepage": "https://github.com/Akurganow/model-router",
 	"repository": "https://github.com/Akurganow/model-router",

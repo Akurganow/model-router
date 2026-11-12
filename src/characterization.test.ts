@@ -9,6 +9,7 @@ import {
 	registered,
 	SPAWN,
 } from "./claude-fakes.ts";
+import { ROUTING_LIMIT_MS } from "./compose.ts";
 import { streamedFetch } from "./fetch.ts";
 import { useWorld } from "./omp-fakes.ts";
 import type { Batch } from "./omp-gates.ts";
@@ -230,7 +231,9 @@ describe("omp per-item line", () => {
 			item: { task },
 			agent: agent ?? "task",
 		}));
-		return (await scoreItems(items, "", batch())).map((s) => s.stored);
+		return (await scoreItems(items, "", batch(), ROUTING_LIMIT_MS)).map(
+			(s) => s.stored,
+		);
 	};
 
 	test("level 0 names @smol, level 1 changes nothing and level 2 names @slow", async () => {

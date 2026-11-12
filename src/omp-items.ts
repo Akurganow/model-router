@@ -91,7 +91,9 @@ const modelGate = (model: unknown) =>
  * Judges one item alone and returns the reason to skip it, or undefined when it
  * may be routed. A scope, a user choice, the seance gate, the item's own model,
  * the agent gate or a missing model role gives the reason, in that order. Never
- * throws.
+ * throws. The batch drops out-of-scope items before it judges them, so the
+ * scope check acts at spawn time: after a switch to the core scope, it skips a
+ * bundled agent that the agent gate would pass.
  */
 export function itemCheck(
 	name: string,

@@ -9,6 +9,8 @@ export type Evidence = {
 	effort: string | null;
 	target: string | null;
 	reply: string | null;
+	// The model Jev answered as, from the decision line's jev segment.
+	jev: string | null;
 };
 
 type Captured = { stdout: string; stderr: string };
