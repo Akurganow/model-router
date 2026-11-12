@@ -5,10 +5,10 @@ import { fileURLToPath } from "node:url";
 import { generatedFiles } from "./build/copies.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 
-// The two key shapes are the ones the redaction in src/brief.ts masks, and the
-// bearer rule ignores case as that redaction does. It also needs a digit and
-// 16 characters, because prose such as "the bearer token" and the masked form
-// "Bearer ***" must pass.
+// The two key shapes are two of the shapes the redaction in src/brief.ts
+// masks, and the bearer rule ignores case as that redaction does. It also needs
+// a digit and 16 characters, because prose such as "the bearer token" and the
+// masked form "Bearer ***" must pass.
 const BEARER_TOKEN = "[A-Za-z0-9._~+/=-]";
 const HOME_NAME = "[A-Za-z0-9._-]+";
 // A POSIX path counts at the start of a token or after "file://". A Windows

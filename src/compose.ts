@@ -7,6 +7,7 @@ import {
 	TypeSafeError,
 	type Usage,
 } from "@typesafe-ai/sdk";
+import type { RoutingState } from "./brief.ts";
 import { createClient } from "./client.ts";
 import {
 	isRecord,
@@ -34,11 +35,6 @@ export const LIMIT_REACHED = Symbol("routing limit reached");
 
 const MODEL_CHARS_MAX = 40;
 
-type RoutingState = {
-	readonly role: string;
-	readonly description: string;
-	readonly task: string;
-};
 type Failure = { readonly provider: Provider; readonly reason: string };
 export type Via = {
 	readonly provider: Provider;

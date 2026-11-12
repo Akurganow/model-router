@@ -170,6 +170,23 @@ describe("what Jev is asked", () => {
 		);
 	});
 
+	// The key is joined at run time, so the owner-setup scan reads no key here.
+	it("masks the label and the task name like the task text", async () => {
+		const key = ["sk", "a1B2c3D4e5F6g7H8"].join("-");
+		const labelled = setup();
+		await labelled.call({ label: `docs ${key}`, taskName: "write" });
+		assert.equal(
+			(stateOf(labelled) as { description: string }).description,
+			"docs ***",
+		);
+		const named = setup();
+		await named.call({ taskName: `write ${key}` });
+		assert.equal(
+			(stateOf(named) as { description: string }).description,
+			"write ***",
+		);
+	});
+
 	it("sends the requester's description as the role of the requesting agent itself", async () => {
 		const s = setup({
 			config: {

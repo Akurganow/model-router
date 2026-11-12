@@ -134,6 +134,19 @@ test("a built-in Explore agent keeps its offered description", async () => {
 	assert.deepEqual(roles, [roleText("Searches the code.")]);
 });
 
+// The key is joined at run time, so the owner-setup scan reads no key here.
+test("the Agent call's one-line description is masked like the task text", async () => {
+	const key = ["sk", "a1B2c3D4e5F6g7H8"].join("-");
+	const { descriptions } = await routedCall(
+		{ api_key: "ts-key" },
+		{},
+		undefined,
+		"general-purpose",
+		`Deploy with ${key}`,
+	);
+	assert.deepEqual(descriptions, ["Deploy with ***"]);
+});
+
 test("register hooks the offers, the spawn, the steps, the turn ends, the session start, the config tool and both commands by literal matcher", () => {
 	assert.deepEqual(Object.keys(registered()).sort(), [
 		"agent.offer",

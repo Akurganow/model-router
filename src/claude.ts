@@ -1,5 +1,5 @@
 import type { Fetch } from "@typesafe-ai/sdk";
-import { DEFAULT_ROLE, prepareBrief, roleText } from "./brief.ts";
+import { DEFAULT_ROLE, roleText, routingState } from "./brief.ts";
 import {
 	configCall,
 	configCommand,
@@ -172,11 +172,11 @@ async function routeSpawn(
 		!routable(spawn, resolveScope(options.scope))
 	)
 		return next(spawn);
-	const state = {
+	const state = routingState({
 		role: roleFor(spawn.subagentType),
 		description: spawn.description,
-		task: prepareBrief(spawn.prompt),
-	};
+		task: spawn.prompt,
+	});
 	const keys = await readKeys($, options, options.provider);
 	const decision = await scored($, next.signal, {
 		state,

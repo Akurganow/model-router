@@ -60,6 +60,27 @@ The plugin sends no telemetry and no other data about you or your machine.
 ## The task text
 
 Before the task text leaves, the plugin condenses it and masks token-shaped strings.
+Condensing replaces each code block fenced with three or more backticks or tildes by a note of its line count.
+A block closes at a line that holds, after at most three spaces, a run of the same character at least as long as the opening run, and nothing after it but spaces or tabs.
+A block with no such line stays as it is.
+Masking replaces these shapes with `***`:
+
+- a private key block in PEM form, from its `BEGIN` line to its `END` line, or, with no `END` line, the header and the base64 lines after it;
+- the user and password in a URL, of any length, as in `postgres://user:pass@host`, which keeps its scheme and host; the password may hold `@`, but a password with `/`, `?` or `#` is not masked;
+- the credentials of an `Authorization` header: after a scheme such as `Basic`, `Bearer`, `Digest` or `Token`, up to the unescaped quote that encloses them, else to the end of the line; with no scheme, a single value of 16 or more characters;
+- a 40-character AWS secret within 100 characters after an access key id, on the same line;
+- a JSON Web Token;
+- GitHub, GitLab, Slack, Stripe, npm, Hugging Face and PyPI tokens, Slack webhook URLs, Google API keys and AWS access key ids, by their prefixes, each with the whole run of its characters;
+- a `Bearer` token, in any case;
+- an `sk-` key, such as an OpenAI, Anthropic or OpenRouter key;
+- the `user:password` after `-u`, also attached as in `-uuser:pass` or after a group of short flags that ends in `u` as in `-fsSu`, and after `--user` or `--proxy-user`;
+- the word after `password`, `passphrase` or `passwd` followed by `is` or `was`, with or without a colon;
+- the value assigned with `=` or `:` to a name that ends in `key`, `token`, `secret` or `password`, in any case.
+
+A quoted value after `password is` or after such a name is masked up to its closing quote on the same line, or to the end of that line.
+The last rule also masks the word after such a name in prose, as in `primary key: id`.
+The `-u` and `password` rules also mask `-u 1000:1000` and `password was reset`.
+The agent's description and the call's one-line description pass through the same masking.
 A text over 12,000 characters keeps its start and its end.
 
 ## Retries and the second provider
@@ -100,9 +121,8 @@ The plugin author has no access to those requests.
 
 ## Descriptions and private names
 
-A hand-written agent description can hold private names, such as a client, a product or a team.
-The plugin masks token-shaped strings only.
-Read your agents' descriptions before you set `extended`.
+An agent's description and a call's one-line description can hold private names, such as a client, a product or a team.
+The plugin masks token-shaped strings only, so a private name in a description leaves your machine.
 
 ## The option commands
 

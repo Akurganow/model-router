@@ -97,6 +97,17 @@ for (const [name, agent] of [
 		assert.equal(body.state.role, DEFAULT_ROLE);
 	});
 
+// The key is joined at run time, so the owner-setup scan reads no key here.
+test("an item's name is masked like the task text before it goes as the description", async () => {
+	install();
+	const key = ["sk", "a1B2c3D4e5F6g7H8"].join("-");
+	await world.toolCall("c", {
+		tasks: [{ task: "a", name: `Deploy with ${key}` }],
+	});
+	const body = world.sent[0]?.body as { state: { description: string } };
+	assert.equal(body.state.description, "Deploy with ***");
+});
+
 test("an unnamed item has an empty description, and the batch context follows the task", async () => {
 	install();
 	await world.toolCall("c", {

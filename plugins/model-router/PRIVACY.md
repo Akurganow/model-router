@@ -2,7 +2,7 @@
 
 model-router is a Claude Code plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-06.
+2026-11-12.
 
 ## Where requests go
 
@@ -48,16 +48,19 @@ call the plugin routes. The JSON body holds:
 - the agent's role:
   - the built-in `general-purpose` and `claude` agents send one fixed text that
     ships with the plugin
-  - every other routed agent sends its description, as Claude Code offers it,
-    condensed and with token-shaped strings masked, capped at 500 characters.
-    Under the default scope these are the built-in `Explore` and `Plan`
+  - every other routed agent sends its description, as Claude Code offers it.
+    The plugin masks the token-shaped strings that
+    [The task text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-task-text)
+    lists, collapses whitespace and cuts it to 500 characters. Under the
+    default scope these are the built-in `Explore` and `Plan`
   - a missing or blank description sends `An agent with no description.`
   - under `extended`, a `general-purpose` or `claude` agent you define sends its
     description once Claude Code has offered it. Before that offer it sends the
     fixed text
   - [The role of the default agent](docs/model-choice.md#the-role-of-the-default-agent)
     says why the text is fixed
-- the caller's one-line description of the task
+- the caller's one-line description of the task, masked, collapsed and cut
+  the same way
 - the Jev alias and the two scoring questions, as
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them

@@ -72,6 +72,23 @@ test("runCase sends the role collapsed and cut to the role cap", async () => {
 	assert.ok(!body.includes("x".repeat(ROLE_CAP)), "the role is cut");
 });
 
+// The key is joined at run time, so the owner-setup scan reads no key here.
+test("runCase masks the description like the plugins do", async () => {
+	let body = "";
+	const fetchFn = async (_url: string, init: RequestInit = {}) => {
+		body = String(init.body);
+		return replying();
+	};
+	const key = ["sk", "a1B2c3D4e5F6g7H8"].join("-");
+	await runCase(
+		{ ...CASE, description: `Fix it with ${key}` },
+		plan("typesafe", { typesafe: true, openrouter: false }),
+		{ typesafe: "test-key" },
+		fetchFn,
+	);
+	assert.equal(JSON.parse(body).state.description, "Fix it with ***");
+});
+
 test("the printed head of a case is redacted like the request", () => {
 	const head = caseHead("Bearer abc.def-123 then\nthe task");
 	assert.equal(head, "Bearer *** then the task");

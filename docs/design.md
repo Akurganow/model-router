@@ -143,6 +143,8 @@ The repository is public.
 The `scan` job checks the added lines of a pull request and every generated file for two markers.
 One is an absolute home path, in the macOS, Linux or Windows form, also after `file://`.
 The other is a key-shaped string with the `sk-` or `Bearer` prefix that the redaction in `src/brief.ts` masks.
+The scan keeps these two of the redaction's shapes because the others, such as a password in a URL, also match the repository's own texts.
+A new shape joins the scan only when no text in the repository has to contain it.
 Paths written from `~` pass.
 The `Bearer` rule departs from the redaction on purpose.
 The redaction masks any token after `Bearer`, in any case.

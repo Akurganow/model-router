@@ -1,4 +1,4 @@
-import { buildPrompt } from "./brief.ts";
+import { routingState } from "./brief.ts";
 import {
 	type Decision,
 	LIMIT_REACHED,
@@ -84,11 +84,12 @@ function scoreItem(
 ): Promise<Decision | Skipped> {
 	return route({
 		parts: [tier],
-		state: {
+		state: routingState({
 			role,
-			description: typeof item.name === "string" ? item.name : "",
-			task: buildPrompt(item.task, context),
-		},
+			description: item.name,
+			task: item.task,
+			context,
+		}),
 		...routing,
 		fetchFn: streamedFetch,
 		signal,
