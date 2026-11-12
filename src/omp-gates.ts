@@ -26,19 +26,17 @@ export type Settings = {
 };
 type Closed = { readonly closed: string };
 
-// The spawn check needs the verdict alone. A spawn is judged like a batch item, for its own agent.
+// A spawn is judged like a batch item, for its own agent. Its effort needs the facts read again.
 export async function checkGates(
 	omp: OmpImports,
 	pi: Pi,
 	ctx: Context,
 	spawning: Spawning = { agent: TASK },
-): Promise<Routing | Closed> {
+): Promise<Batch | Closed> {
 	const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
 	if ("closed" in batch) return batch;
 	const reason = spawnCheck(spawning, batch.facts);
-	return reason === undefined
-		? { attempts: batch.attempts, keys: batch.keys }
-		: { closed: reason };
+	return reason === undefined ? batch : { closed: reason };
 }
 
 /**
@@ -173,14 +171,26 @@ export const readTimeoutSetting = (
 	settings: unknown,
 ): unknown => read(lookup, "extensionHandlers.toolCallTimeoutMs", settings);
 
-type Config = Pick<Facts, "roles" | "overrides" | "disabled">;
+// A ceiling that cannot be read is no omp value, so the plugin keeps omp's effort.
+const UNREADABLE_CEILING = Symbol("unreadable ceiling");
+function readCeiling(lookup: Lookup, settings: unknown): unknown {
+	try {
+		return lookup("task.maxEffort")?.get(settings);
+	} catch {
+		return UNREADABLE_CEILING;
+	}
+}
 
+type Config = Pick<Facts, "roles" | "overrides" | "disabled" | "maxEffort">;
+
+// The effort ceiling closes no gate: a value the plugin cannot use only keeps omp's effort.
 function readConfig(lookup: Lookup, settings: unknown): Config | undefined {
 	const roles = read(lookup, "modelRoles", settings);
 	const overrides = read(lookup, "task.agentModelOverrides", settings);
 	const disabled = read(lookup, "task.disabledAgents", settings);
+	const maxEffort = readCeiling(lookup, settings);
 	return isRecord(roles) && isRecord(overrides) && Array.isArray(disabled)
-		? { roles, overrides, disabled }
+		? { roles, overrides, disabled, maxEffort }
 		: undefined;
 }
 

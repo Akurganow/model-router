@@ -26,7 +26,8 @@ const ompTask = {
 	toolName: "task",
 	args: { tasks: [{ agent: "task", task: "read it" }] },
 };
-const OMP_LINE = "task 1: L0 @smol · p=0.91 · jev jev-1.14.0 · 812/9 tok";
+const OMP_LINE =
+	"task 1: L0 @smol · high · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok";
 
 test("claude: a ui_log decision line after an Agent call is routed evidence", () => {
 	const stdout = jsonl(
@@ -95,7 +96,7 @@ test("omp: the decision line on stderr is the routing evidence", () => {
 		routed: true,
 		line: OMP_LINE,
 		tier: 0,
-		effort: null,
+		effort: "high",
 		target: "@smol",
 		reply: null,
 		jev: "jev-1.14.0",
@@ -103,12 +104,28 @@ test("omp: the decision line on stderr is the routing evidence", () => {
 });
 
 test("omp: a batch line gives the first decision entry, and no change has no target", () => {
-	const stderr = `model-router task 1: skipped, HTTP 401 | task 2: L1 no change · p=0.80 | task 3: L2 @slow · p=0.90\n`;
+	const stderr = `model-router task 1: skipped, HTTP 401 | task 2: L1 no change · medium · p=0.80/0.55 | task 3: L2 @slow · low · p=0.90/0.70\n`;
 	const evidence = omp.parse({ stdout: jsonl(ompTask), stderr });
-	assert.equal(evidence.line, "task 2: L1 no change · p=0.80");
+	assert.equal(evidence.line, "task 2: L1 no change · medium · p=0.80/0.55");
 	assert.equal(evidence.tier, 1);
+	assert.equal(evidence.effort, "medium");
 	assert.equal(evidence.target, null);
 	assert.equal(evidence.routed, true);
+});
+
+for (const label of ["caller effort", "config effort", "no model patterns"])
+	test(`omp: a kept effort reads as its label, ${label}`, () => {
+		const stderr = `model-router task 1: L0 @smol · ${label} · p=0.91/0.62\n`;
+		const evidence = omp.parse({ stdout: "", stderr });
+		assert.equal(evidence.routed, true);
+		assert.equal(evidence.tier, 0);
+		assert.equal(evidence.effort, label);
+		assert.equal(evidence.target, "@smol");
+	});
+
+test("omp: an entry without the effort segment is no decision line", () => {
+	const stderr = "model-router task 1: L0 @smol · p=0.91\n";
+	assert.equal(omp.parse({ stdout: "", stderr }).routed, false);
 });
 
 test("omp: a spawn with no decision line was not routed", () => {
@@ -305,7 +322,7 @@ test("both adapters read the answering Jev model from the decision line", () => 
 	const claudeLine = `L1 sonnet · medium · p=0.80/0.55 · jev ${OTHER_JEV} · 800/9 tok`;
 	const stdout = jsonl({ type: "system", subtype: "ui_log", text: claudeLine });
 	assert.equal(claude.parse({ stdout, stderr: "" }).jev, OTHER_JEV);
-	const ompLine = `task 1: L0 @smol · p=0.91 · jev ${OTHER_JEV} · 812/9 tok`;
+	const ompLine = `task 1: L0 @smol · high · p=0.91/0.62 · jev ${OTHER_JEV} · 812/9 tok`;
 	const stderr = `model-router ${ompLine}\n`;
 	assert.equal(omp.parse({ stdout: "", stderr }).jev, OTHER_JEV);
 });
@@ -314,7 +331,7 @@ test("a decision line without the jev segment gives no Jev model", () => {
 	const text = "L2 opus · caller effort · p=0.9/0.6";
 	const stdout = jsonl({ type: "system", subtype: "ui_log", text });
 	assert.equal(claude.parse({ stdout, stderr: "" }).jev, null);
-	const stderr = "model-router task 1: L2 @slow · p=0.90\n";
+	const stderr = "model-router task 1: L2 @slow · medium · p=0.90/0.70\n";
 	assert.equal(omp.parse({ stdout: "", stderr }).jev, null);
 });
 

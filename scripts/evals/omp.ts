@@ -6,10 +6,11 @@ import type { Adapter, Evidence } from "./types.ts";
 const SPAWN_TOOL = "task";
 // Background tasks, omp's default, let print mode exit before the subagent's answer arrives.
 const SETTINGS_OVERLAY = "omp-evals.yml";
-// The extension prints "model-router task <n>: L<level> <role> · p=…" to stderr when omp has no UI.
+// The extension prints "model-router task <n>: L<level> <role> · <effort> · p=<tier>/<work>" to stderr when omp has no UI.
 // A batch is one line of entries joined by " | ". The role is "no change" when the task keeps its model.
+// The effort is a level, or the label of the effort omp keeps, such as "caller effort".
 const DECISION_ENTRY = new RegExp(
-	`^task \\d+: L(?<tier>[012]) (?<target>@\\w+|${NO_CHANGE}) · p=\\d+(?:\\.\\d+)?`,
+	`^task \\d+: L(?<tier>[012]) (?<target>@\\w+|${NO_CHANGE}) · (?<effort>[^·]+?) · p=\\d+(?:\\.\\d+)?/\\d+(?:\\.\\d+)?`,
 );
 
 function spawnCount(stdout: string): number {
@@ -90,8 +91,9 @@ export const omp: Adapter = {
 				if (!groups) continue;
 				evidence.routed = true;
 				evidence.line = entry;
-				const { tier, target } = groups;
+				const { tier, target, effort } = groups;
 				evidence.tier = Number(tier) as Level;
+				evidence.effort = effort ?? null;
 				evidence.target = target === NO_CHANGE ? null : (target ?? null);
 				evidence.jev = jevModel(entry);
 				return evidence;

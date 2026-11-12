@@ -24,11 +24,14 @@ export type Facts = {
 	readonly disabled: readonly unknown[];
 	readonly agents: readonly DiscoveredAgent[] | undefined;
 	readonly noModels: string | undefined;
+	// Undefined when omp has no such setting. omp does not cap a level the spawn hook sets.
+	readonly maxEffort: unknown;
 };
 
 export type Spawning = {
 	readonly agent: string;
 	readonly modelRole?: string | undefined;
+	readonly patterns?: readonly string[] | undefined;
 };
 
 /**

@@ -1,10 +1,12 @@
+import type { Routed } from "./omp-effort.ts";
 import { isRecord, nonEmpty } from "./part.ts";
 
 export const STORE_MAX = 64;
 
+// A skipped item stores its line alone.
 export type Stored = {
-	readonly role: string | undefined;
 	readonly line: string;
+	readonly routed?: Routed;
 };
 // The index numbers a spawn-time line.
 export type Taken = { readonly stored: Stored; readonly index: number };

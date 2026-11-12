@@ -61,18 +61,22 @@ type Answer = (
 ) => Promise<Response>;
 
 // The fake settings hold the values the gates read. Setting a key to undefined makes it unreadable.
-// The tool call timeout starts unset, so omp's default applies.
+// The tool call timeout and the effort ceiling start unset, so omp's defaults apply.
 type Config = {
 	modelRoles: unknown;
 	"task.agentModelOverrides": unknown;
 	"task.disabledAgents": unknown;
 	"extensionHandlers.toolCallTimeoutMs"?: unknown;
+	"task.maxEffort"?: unknown;
 };
 
-// A task text holding `level0`, `level1` or `level2` gets that level from the fake Jev. Others get level 1.
+// A task text holding `level0`, `level1` or `level2` gets that tier from the fake Jev, and `work0` to `work2` that work level.
+// Either level is 1 when the text names none.
 const answerByTask: Answer = async ({ body }) => {
 	const { task } = (body as { state: { task: string } }).state;
-	return streamed(200, jevAnswer(Number(/level([012])/.exec(task)?.[1] ?? 1)));
+	const level = (name: string) =>
+		Number(new RegExp(`${name}([012])`).exec(task)?.[1] ?? 1);
+	return streamed(200, jevAnswer(level("level"), level("work")));
 };
 
 const newState = () => ({

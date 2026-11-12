@@ -6,6 +6,7 @@ import {
 	NO_DESCRIPTION,
 	roleText,
 } from "./brief.ts";
+import { work } from "./effort.ts";
 import { tier } from "./model.ts";
 import {
 	ENDPOINT,
@@ -38,7 +39,7 @@ test("the factory registers the four handlers", () => {
 	]);
 });
 
-test("a request carries the tier question only, and the key goes in the header", async () => {
+test("a request carries the tier and work questions, and the key goes in the header", async () => {
 	install();
 	await world.toolCall("c", { tasks: [{ task: "level0 Do it", name: "Foo" }] });
 	assert.equal(world.sent.length, 1);
@@ -49,7 +50,7 @@ test("a request carries the tier question only, and the key goes in the header",
 			description: "Foo",
 			task: "level0 Do it",
 		},
-		questions: { tier: tier.question },
+		questions: { tier: tier.question, work: work.question },
 	});
 	assert.equal(world.sent[0]?.url, ENDPOINT);
 	assert.equal(world.sent[0]?.authorization, `Bearer ${KEY}`);
@@ -133,7 +134,10 @@ test("a project narrowing auto sends the request to its provider with that provi
 		world.sent.map((s) => [s.url, s.authorization]),
 		[[OR_ENDPOINT, `Bearer ${OR_KEY}`]],
 	);
-	assert.equal(world.notes[0], `${PREFIX}task 1: L0 @smol · p=0.90${SUFFIX}`);
+	assert.equal(
+		world.notes[0],
+		`${PREFIX}task 1: L0 @smol · high · p=0.90/0.90${SUFFIX}`,
+	);
 });
 
 test("the setting is read for each batch, so a change needs no reload", async () => {
@@ -165,7 +169,7 @@ test("the batch makes one line with one entry per scored item", async () => {
 		],
 	});
 	assert.deepEqual(world.notes, [
-		`${PREFIX}task 1: L0 @smol · p=0.90${SUFFIX} | task 2: L1 no change · p=0.90${SUFFIX} | task 3: L2 @slow · p=0.90${SUFFIX}`,
+		`${PREFIX}task 1: L0 @smol · high · p=0.90/0.90${SUFFIX} | task 2: L1 no change · medium · p=0.90/0.90${SUFFIX} | task 3: L2 @slow · medium · p=0.90/0.90${SUFFIX}`,
 	]);
 });
 
@@ -248,13 +252,20 @@ test("an item the request cannot score is skipped with its category", async () =
 	world.answer = async (sent) =>
 		JSON.stringify(sent.body).includes("bad")
 			? streamed(401, { error: "no" })
-			: streamed(200, jevAnswer(2));
+			: streamed(200, jevAnswer(2, 1));
 	await world.toolCall("c", { tasks: [{ task: "bad" }, { task: "good" }] });
 	assert.equal(
 		world.notes[0],
-		`${PREFIX}task 1: skipped, HTTP 401 | task 2: L2 @slow · p=0.90${SUFFIX}`,
+		`${PREFIX}task 1: skipped, HTTP 401 | task 2: L2 @slow · medium · p=0.90/0.90${SUFFIX}`,
 	);
 	assert.ok(!(world.notes[0] ?? "").includes(KEY));
+});
+
+test("a reply without the work answer is a bad reply", async () => {
+	install();
+	world.answer = async () => streamed(200, jevAnswer(0));
+	await world.toolCall("c", { tasks: [{ task: "a" }] });
+	assert.equal(world.notes[0], `${PREFIX}task 1: skipped, bad reply`);
 });
 
 test("a reply without the tier answer is a bad reply", async () => {
@@ -293,7 +304,7 @@ test("a throwing notification does not reach omp, and the decision still waits f
 		input: { tasks: [{ task: "level2 a" }] },
 	};
 	assert.equal(await handler(event, ctx), undefined);
-	assert.equal((await world.spawn("c:0"))?.model, "@slow");
+	assert.equal((await world.spawn("c:0"))?.model, "@slow:medium");
 });
 
 test("a hostile event does not throw", async () => {
@@ -319,7 +330,7 @@ test("at most four items are scored at once", async () => {
 		peak = Math.max(peak, inFlight);
 		await wait(15);
 		inFlight -= 1;
-		return streamed(200, jevAnswer(1));
+		return streamed(200, jevAnswer(1, 1));
 	};
 	const tasks = Array.from({ length: 10 }, (_, i) => ({ task: `task ${i}` }));
 	await world.toolCall("c", { tasks });
@@ -339,12 +350,12 @@ test("in an outage, items that start later in the batch pass over the failed pro
 	world.answer = async ({ url }) =>
 		url === ENDPOINT
 			? streamed(503, { error: "down" })
-			: streamed(200, jevAnswer(1));
+			: streamed(200, jevAnswer(1, 1));
 	const tasks = Array.from({ length: 6 }, (_, i) => ({ task: `task ${i}` }));
 	await world.toolCall("c", { tasks });
 	assert.equal(count(ENDPOINT), 4);
 	assert.equal(count(OR_ENDPOINT), 6);
-	const line = `L1 no change · p=0.90${SUFFIX}`;
+	const line = `L1 no change · medium · p=0.90/0.90${SUFFIX}`;
 	assert.deepEqual(entriesOf(world.notes[0]), [
 		...[1, 2, 3, 4].map((n) => `task ${n}: ${line}${VIA}`),
 		`task 5: ${line}`,
@@ -373,13 +384,13 @@ test("an item that starts while another waits on its fallback already passes ove
 			fellBack();
 			await lastSent;
 		} else if (url === ENDPOINT) await fallbackSent;
-		return streamed(200, jevAnswer(1));
+		return streamed(200, jevAnswer(1, 1));
 	};
 	const tasks = Array.from({ length: 5 }, (_, i) => ({ task: `task ${i}` }));
 	await world.toolCall("c", { tasks });
 	assert.equal(count(ENDPOINT), 4);
 	assert.equal(count(OR_ENDPOINT), 2);
-	const line = `L1 no change · p=0.90${SUFFIX}`;
+	const line = `L1 no change · medium · p=0.90/0.90${SUFFIX}`;
 	assert.deepEqual(entriesOf(world.notes[0]), [
 		`task 1: ${line}${VIA}`,
 		...[2, 3, 4, 5].map((n) => `task ${n}: ${line}`),
@@ -498,7 +509,7 @@ test("a tool call timeout of 3 s still routes", async () => {
 	await world.toolCall("c", { tasks: [{ task: "level2 a" }] });
 	assert.equal(world.sent.length, 1);
 	assert.deepEqual(world.notes, [
-		`${PREFIX}task 1: L2 @slow · p=0.90${SUFFIX}`,
+		`${PREFIX}task 1: L2 @slow · medium · p=0.90/0.90${SUFFIX}`,
 	]);
 });
 

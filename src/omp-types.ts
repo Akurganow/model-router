@@ -60,9 +60,11 @@ export type SpawnEvent = {
 	agent: string;
 	invocationKind: "task" | "eval";
 	modelRole?: string;
+	// Expanded model patterns omp would spawn with. Present at omp 18.12.6 and 18.18.9.
+	patterns?: readonly string[];
 	spawnKey?: string;
 };
-export type SpawnResult = { model?: string; note?: string };
+export type SpawnResult = { model?: string | string[]; note?: string };
 
 type Handlers = {
 	tool_call: (event: ToolCallEvent, ctx: Context) => Promise<undefined>;
