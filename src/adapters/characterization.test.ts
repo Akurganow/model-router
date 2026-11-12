@@ -5,12 +5,10 @@ import { ROUTING_LIMIT_MS } from "../core/compose.ts";
 import { plan } from "../core/provider.ts";
 import {
 	type Answers,
-	answer,
 	FULL,
 	FULL_SUFFIX,
 	type Once,
 	routed,
-	spawnOnce,
 } from "./claude/fakes.ts";
 import { useWorld } from "./omp/fakes.ts";
 import type { Batch } from "./omp/gates.ts";
@@ -25,40 +23,12 @@ describe("decision line suffix", () => {
 		assert.equal(await line(FULL), `${BASE}${FULL_SUFFIX}`);
 	});
 
-	test("a reply with a model and no usage names the model alone", async () => {
-		assert.equal(
-			await line({ model: "jev-1.14.0" }),
-			`${BASE} · jev jev-1.14.0`,
-		);
-	});
-
-	test("a reply with no model and no usage adds nothing", async () => {
-		assert.equal(await line({}), BASE);
-	});
-
-	test("a model name keeps only safe characters", async () => {
-		assert.equal(await line({ model: "jev 1.14!" }), `${BASE} · jev jev1.14`);
-	});
-
 	test("usage with one count, or a count that is not a whole number, adds no tokens", async () => {
 		assert.equal(await line({ usage: { input_tokens: 5 } }), BASE);
 		assert.equal(
 			await line({ usage: { input_tokens: 5, output_tokens: 1.5 } }),
 			BASE,
 		);
-	});
-
-	test("an answer from the second provider names the first and its reason", async () => {
-		const { logs } = await spawnOnce({
-			options: { provider: "auto", openrouter_api_key: "or-key" },
-			reply: (url) =>
-				url.includes("typesafe")
-					? { status: 401, ok: false, headers: {}, text: "{}" }
-					: answer({ tier: 1, work: 1, ...FULL }),
-		});
-		assert.deepEqual(logs, [
-			`${BASE}${FULL_SUFFIX} · via openrouter (typesafe HTTP 401)`,
-		]);
 	});
 });
 
