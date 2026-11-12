@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import { noul } from "@typesafe-ai/sdk";
 import { createClient } from "./client.ts";
-import { streamed } from "./omp-fakes.ts";
+import { streamed } from "./jev-fakes.ts";
 import { PROVIDERS } from "./provider.ts";
 
 const KEY = "test-key";

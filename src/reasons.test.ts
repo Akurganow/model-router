@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { test } from "node:test";
 import {
 	CALLER_EFFORT,
@@ -38,6 +38,9 @@ test("slotForLevel gives the end levels their slot and the middle level none", (
 	assert.equal(slotForLevel(2), "large");
 });
 
+// The scan reads every file under src/, so a file in a subfolder cannot spell a reason either.
+const SOURCES = import.meta.dirname;
+
 test("no other source file spells a shared reason", () => {
 	const texts = [
 		CALLER_EFFORT,
@@ -48,14 +51,17 @@ test("no other source file spells a shared reason", () => {
 		" model unset",
 		" model unresolved",
 	];
-	const files = readdirSync(import.meta.dirname).filter(
+	const files = readdirSync(SOURCES, {
+		recursive: true,
+		encoding: "utf8",
+	}).filter(
 		(name) =>
 			name.endsWith(".ts") &&
 			!name.endsWith(".test.ts") &&
-			name !== "reasons.ts",
+			basename(name) !== "reasons.ts",
 	);
 	for (const name of files) {
-		const code = readFileSync(join(import.meta.dirname, name), "utf8");
+		const code = readFileSync(join(SOURCES, name), "utf8");
 		for (const text of texts)
 			assert.equal(code.includes(text), false, `${name} spells "${text}"`);
 	}

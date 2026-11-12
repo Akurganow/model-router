@@ -11,8 +11,8 @@ import {
 	route,
 } from "./compose.ts";
 import { work } from "./effort.ts";
+import { streamed } from "./jev-fakes.ts";
 import { tier } from "./model.ts";
-import { streamed } from "./omp-fakes.ts";
 import { type Attempt, plan } from "./provider.ts";
 import { KEY_UNSET } from "./settings.ts";
 
