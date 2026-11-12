@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
 	KEY_MAX_LENGTH,
+	keyFrom,
 	keyLine,
 	keyNotSaved,
 	keyQuestion,
@@ -106,4 +107,52 @@ test("a failing store says the key was not saved and leaves no trace of the key"
 		assert.equal(text, keyNotSaved("typesafe"));
 		assert.equal(everythingSaid(text).includes(TYPED), false);
 	}
+});
+
+test("keyFrom returns the trimmed key and refuses anything else", () => {
+	assert.equal(keyFrom("sk-abc"), "sk-abc");
+	assert.equal(keyFrom("  sk-abc\t"), "sk-abc");
+	assert.equal(keyFrom("x".repeat(KEY_MAX_LENGTH)), "x".repeat(KEY_MAX_LENGTH));
+	const refused = [
+		undefined,
+		null,
+		12,
+		{},
+		"",
+		"   ",
+		"\t",
+		"a\nb",
+		"a\r\nb",
+		"a\rb",
+		"sk-abc\n",
+		"a\u2028b",
+		"a\u2029b",
+		"x".repeat(KEY_MAX_LENGTH + 1),
+		"Yes",
+		"No",
+		" Yes ",
+	];
+	for (const answer of refused)
+		assert.equal(keyFrom(answer), undefined, JSON.stringify(answer));
+	assert.equal(keyFrom("yes"), "yes");
+	assert.equal(keyFrom("Yes please"), "Yes please");
+});
+
+test("the key cap is 512", () => {
+	assert.equal(KEY_MAX_LENGTH, 512);
+});
+
+test("the key question names the provider and the storage", () => {
+	const fresh = keyQuestion("typesafe", false);
+	assert.match(fresh, /TypeSafe/);
+	assert.match(fresh, /credential store/);
+	assert.doesNotMatch(fresh, /replace/);
+	const replacing = keyQuestion("openrouter", true);
+	assert.match(replacing, /OpenRouter/);
+	assert.match(replacing, /credential store/);
+	assert.match(replacing, /replaces/);
+});
+
+test("the key question names no harness", () => {
+	assert.doesNotMatch(keyQuestion("typesafe", true), /claude|\bomp\b/i);
 });

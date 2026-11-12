@@ -21,13 +21,10 @@ import {
 	isKeySetting,
 	isValue,
 	isValueSetting,
-	KEY_MAX_LENGTH,
 	KEY_SETTINGS,
-	keyFrom,
 	keyLine,
 	keyNotSaved,
 	keyProvider,
-	keyQuestion,
 	NO_ANSWER,
 	NOT_OFFERED,
 	pick,
@@ -334,50 +331,6 @@ test("settingsReport prints the stored provider as it is and resolves the scope"
 	);
 });
 
-test("keyFrom returns the trimmed key and refuses anything else", () => {
-	assert.equal(keyFrom("sk-abc"), "sk-abc");
-	assert.equal(keyFrom("  sk-abc\t"), "sk-abc");
-	assert.equal(keyFrom("x".repeat(KEY_MAX_LENGTH)), "x".repeat(KEY_MAX_LENGTH));
-	const refused = [
-		undefined,
-		null,
-		12,
-		{},
-		"",
-		"   ",
-		"\t",
-		"a\nb",
-		"a\r\nb",
-		"a\rb",
-		"sk-abc\n",
-		"a\u2028b",
-		"a\u2029b",
-		"x".repeat(KEY_MAX_LENGTH + 1),
-		"Yes",
-		"No",
-		" Yes ",
-	];
-	for (const answer of refused)
-		assert.equal(keyFrom(answer), undefined, JSON.stringify(answer));
-	assert.equal(keyFrom("yes"), "yes");
-	assert.equal(keyFrom("Yes please"), "Yes please");
-});
-
-test("the key cap is 512", () => {
-	assert.equal(KEY_MAX_LENGTH, 512);
-});
-
-test("the key question names the provider and the storage", () => {
-	const fresh = keyQuestion("typesafe", false);
-	assert.match(fresh, /TypeSafe/);
-	assert.match(fresh, /credential store/);
-	assert.doesNotMatch(fresh, /replace/);
-	const replacing = keyQuestion("openrouter", true);
-	assert.match(replacing, /OpenRouter/);
-	assert.match(replacing, /credential store/);
-	assert.match(replacing, /replaces/);
-});
-
 test("the tool description lists the names it is given", () => {
 	for (const names of [SETTING_NAMES, VALUE_SETTINGS]) {
 		const text = toolDescription(names);
@@ -428,7 +381,6 @@ test("no text names a harness", () => {
 	const texts = [
 		toolDescription(SETTING_NAMES),
 		badCall(SETTING_NAMES),
-		keyQuestion("typesafe", true),
 		...VALUE_SETTINGS.flatMap((s) => ask(s, undefined).options),
 	];
 	for (const text of texts) assert.doesNotMatch(text, /claude|\bomp\b/i, text);
