@@ -107,7 +107,7 @@ export async function route(input: RouteInput): Promise<Decision | Skipped> {
 			if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
 			continue;
 		}
-		const decision = decide(parts, result);
+		const decision = parseReply(parts, result);
 		if ("skipped" in decision) {
 			failed.push({ provider: attempt.provider, reason: decision.skipped });
 			break;
@@ -146,7 +146,10 @@ function skip(failed: readonly Failure[]): Skipped {
 	};
 }
 
-function decide(parts: readonly Part[], result: unknown): Decision | Skipped {
+function parseReply(
+	parts: readonly Part[],
+	result: unknown,
+): Decision | Skipped {
 	const { answers, model, usage }: Record<string, unknown> = isRecord(result)
 		? result
 		: {};

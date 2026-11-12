@@ -1293,7 +1293,7 @@ async function route(input) {
       if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
       continue;
     }
-    const decision = decide(parts, result);
+    const decision = parseReply(parts, result);
     if ("skipped" in decision) {
       failed.push({ provider: attempt.provider, reason: decision.skipped });
       break;
@@ -1328,7 +1328,7 @@ function skip(failed) {
     skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
   };
 }
-function decide(parts, result) {
+function parseReply(parts, result) {
   const { answers, model, usage } = isRecord2(result) ? result : {};
   const decided = {};
   for (const part of parts) {
@@ -1399,7 +1399,7 @@ var levelOf = (decision, key) => {
     probability: formatProbability(part.probabilities[part.level])
   };
 };
-function decide2(decision, tierKey, workKey) {
+function decide(decision, tierKey, workKey) {
   if ("skipped" in decision) return decision;
   const tier2 = levelOf(decision, tierKey);
   if (!tier2) return BAD;
@@ -1414,7 +1414,7 @@ function decide2(decision, tierKey, workKey) {
 }
 async function scoreWork(input) {
   const decision = await route({ ...input, parts: [tier, work] });
-  return decide2(decision, tier.key, work.key);
+  return decide(decision, tier.key, work.key);
 }
 
 // src/core/ladder.ts
