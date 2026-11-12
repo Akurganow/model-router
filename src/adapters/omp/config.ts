@@ -9,7 +9,6 @@ import {
 	isValue,
 	isValueSetting,
 	NO_ANSWER,
-	projectOverrides,
 	SETTING_NAMES,
 	settingsReport,
 	TOOL_LABEL,
@@ -30,6 +29,9 @@ import type { Context, OmpImports, Pi, ToolReply } from "./types.ts";
 
 const COMMAND_PREFIX = "model-router:";
 const LINE_BREAK = "\n";
+
+export const projectOverrides = (setting: ValueSetting): string =>
+	`A project value for ${setting} overrides it.`;
 
 // A failed report must never block the caller.
 export function say(ctx: Context, text: string): void {

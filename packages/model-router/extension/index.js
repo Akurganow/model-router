@@ -1310,7 +1310,6 @@ var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
-var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
 var NO_ANSWER = "no answer from the dialog";
 var NOT_OFFERED = "the answer was not one of the offered values";
 var keyLine = (provider, state) => `${provider} key: ${state}`;
@@ -1544,6 +1543,7 @@ async function changeKey(ctx, setting) {
 // src/adapters/omp/config.ts
 var COMMAND_PREFIX = "model-router:";
 var LINE_BREAK2 = "\n";
+var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
 function say(ctx, text) {
   try {
     if (ctx.hasUI) ctx.ui.notify(text);

@@ -8,7 +8,6 @@ import {
 	COMMAND_DESCRIPTIONS,
 	NO_ANSWER,
 	NOT_OFFERED,
-	projectOverrides,
 	SETTING_NAMES,
 	TOOL_NAME,
 	toolDescription,
@@ -17,6 +16,7 @@ import {
 	type ValueSetting,
 	valueLine,
 } from "../../core/settings.ts";
+import { projectOverrides } from "./config.ts";
 import {
 	KEY,
 	KEY_VARIABLE,
