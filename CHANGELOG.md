@@ -3,6 +3,23 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.20.0 - 2026-11-12
+#### Features
+- (**hermes**) let the delegating model describe a task and pin its effort and level (dada28e)
+#### Bug Fixes
+- (**hermes**) mask and cut a task's description before it goes to Jev (39064cb)
+#### Documentation
+- (**clients**) record a Hermes turn that fills the task parameters (abadc9b)
+- (**hermes**) the escalation skill stops when the delegation effort holds (208103b)
+- (**hermes**) one precedence table, a masked description, and a clear escalation ladder (fd04743)
+- (**hermes**) state the task parameters, what a task cannot show, and the fallback chain (8b30fae)
+#### Refactoring
+- (**hermes**) rank the kept effort in Python only (fac903e)
+- keep the caller effort label in src/reasons.ts (81e17f5)
+
+- - -
+
+
 ## v0.19.3 - 2026-11-12
 #### Bug Fixes
 - (**omp**) count the scoring deadline from the handler's start (6693c3f)
