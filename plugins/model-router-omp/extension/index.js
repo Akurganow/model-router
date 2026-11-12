@@ -1202,7 +1202,6 @@ var ORDER = {
   typesafe: ["typesafe"],
   openrouter: ["openrouter"]
 };
-var NARROWABLE = ["auto", "openrouter-first"];
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
@@ -1231,10 +1230,6 @@ function fallsBack(err) {
   if (!(err instanceof APIError)) return false;
   const { status } = err;
   return FALLBACK_STATUSES.has(status) || status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
-}
-function narrow(global, project) {
-  const value = resolve(global);
-  return NARROWABLE.includes(value) && (project === "typesafe" || project === "openrouter") ? project : value;
 }
 
 // src/core/reasons.ts
@@ -1410,6 +1405,7 @@ function roleOf(name, facts) {
 }
 
 // src/adapters/omp/gates.ts
+var NARROWABLE = ["auto", "openrouter-first"];
 var ROLES = { small: "@smol", large: "@slow" };
 async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
   const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
@@ -1429,6 +1425,10 @@ async function openBatch(omp, pi, ctx, settings) {
     ...routing,
     facts: { ...config, scope: settings.scope, agents, noModels }
   };
+}
+function narrow(global, project) {
+  const value = resolve(global);
+  return NARROWABLE.includes(value) && (project === "typesafe" || project === "openrouter") ? project : value;
 }
 async function readSettings(omp, cwd) {
   const plugin = omp.plugin ?? FALLBACK_NAME;

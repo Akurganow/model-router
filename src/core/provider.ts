@@ -51,7 +51,6 @@ const ORDER: Readonly<Record<ProviderValue, readonly Provider[]>> = {
 	typesafe: ["typesafe"],
 	openrouter: ["openrouter"],
 };
-const NARROWABLE: readonly ProviderValue[] = ["auto", "openrouter-first"];
 
 export type Attempt = {
 	readonly provider: Provider;
@@ -146,13 +145,4 @@ export function fallsBack(err: unknown): boolean {
 		FALLBACK_STATUSES.has(status) ||
 		(status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max)
 	);
-}
-
-// A project may only drop one provider from a two-provider global value, never swap, add or reorder.
-export function narrow(global: unknown, project: unknown): ProviderValue {
-	const value = resolve(global);
-	return NARROWABLE.includes(value) &&
-		(project === "typesafe" || project === "openrouter")
-		? project
-		: value;
 }

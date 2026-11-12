@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
-import { narrow, plan } from "../../core/provider.ts";
+import { plan } from "../../core/provider.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
@@ -20,7 +20,7 @@ import {
 	setEnv,
 	useWorld,
 } from "./fakes.ts";
-import { checkGates, readSettings } from "./gates.ts";
+import { checkGates, narrow, readSettings } from "./gates.ts";
 
 const world = useWorld();
 const ENV_KEY = "env-key-0002";

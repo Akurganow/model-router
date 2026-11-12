@@ -3,10 +3,10 @@ import type { RouteInput } from "../../core/compose.ts";
 import {
 	collectKeysAsync,
 	KEY_VARIABLES,
-	narrow,
 	type Provider,
 	type ProviderValue,
 	plan,
+	resolve as resolveProvider,
 } from "../../core/provider.ts";
 import { KEY_UNSET, UNREADABLE } from "../../core/reasons.ts";
 import { resolveScope, type Scope } from "../../core/scope.ts";
@@ -15,6 +15,8 @@ import { nonEmpty } from "../../utils/text.ts";
 import { type Facts, type Spawning, spawnCheck, TASK } from "./items.ts";
 import { FALLBACK_NAME } from "./name.ts";
 import type { Context, Lookup, OmpImports, Pi } from "./types.ts";
+
+const NARROWABLE: readonly ProviderValue[] = ["auto", "openrouter-first"];
 
 export const ROLES = { small: "@smol", large: "@slow" } as const;
 
@@ -62,6 +64,15 @@ export async function openBatch(
 		...routing,
 		facts: { ...config, scope: settings.scope, agents, noModels },
 	};
+}
+
+// A project may only drop one provider from a two-provider global value, never swap, add or reorder.
+export function narrow(global: unknown, project: unknown): ProviderValue {
+	const value = resolveProvider(global);
+	return NARROWABLE.includes(value) &&
+		(project === "typesafe" || project === "openrouter")
+		? project
+		: value;
 }
 
 /**
