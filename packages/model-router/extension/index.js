@@ -14,6 +14,7 @@ var nonEmpty = (value) => {
 
 // src/utils/guards.ts
 var isRecord = (v) => typeof v === "object" && v !== null;
+var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
 var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
 
 // src/adapters/omp/name.ts
@@ -1769,7 +1770,7 @@ var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARG
 // src/adapters/omp/deadline.ts
 var DEFAULT_TIMEOUT_MS = 3e4;
 function budgetFor(value) {
-  const timeout = typeof value === "number" && Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS;
+  const timeout = isPositiveNumber(value) ? value : DEFAULT_TIMEOUT_MS;
   const deadline = deadlineFor(timeout);
   if (deadline >= MIN_DEADLINE_MS) return { deadline };
   return {

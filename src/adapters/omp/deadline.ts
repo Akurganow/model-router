@@ -1,4 +1,5 @@
 import { deadlineFor, MIN_DEADLINE_MS } from "../../core/handler-deadline.ts";
+import { isPositiveNumber } from "../../utils/guards.ts";
 
 // omp gives every tool_call handler this long when its setting is unusable.
 const DEFAULT_TIMEOUT_MS = 30000;
@@ -13,10 +14,7 @@ type Budget = { readonly deadline: number } | { readonly closed: string };
  * Source: docs/clients.md#omp-tool_call-cost-and-timeout.
  */
 export function budgetFor(value: unknown): Budget {
-	const timeout =
-		typeof value === "number" && Number.isFinite(value) && value > 0
-			? value
-			: DEFAULT_TIMEOUT_MS;
+	const timeout = isPositiveNumber(value) ? value : DEFAULT_TIMEOUT_MS;
 	const deadline = deadlineFor(timeout);
 	if (deadline >= MIN_DEADLINE_MS) return { deadline };
 	return {

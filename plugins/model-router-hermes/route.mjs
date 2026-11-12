@@ -1165,6 +1165,7 @@ var parseBody = async (res) => {
 
 // src/utils/guards.ts
 var isRecord2 = (v) => typeof v === "object" && v !== null;
+var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
 
 // src/core/provider.ts
 var PROVIDERS = ["typesafe", "openrouter"];
@@ -1494,7 +1495,7 @@ var readModels = (value) => Object.fromEntries(
     isRecord2(value) ? nonEmpty(value[slot]) : void 0
   ])
 );
-var readBudget = (value) => typeof value === "number" && Number.isFinite(value) && value > 0 ? value : void 0;
+var readBudget = (value) => isPositiveNumber(value) ? value : void 0;
 function readRequest(raw) {
   if (!isRecord2(raw) || Array.isArray(raw)) return void 0;
   const {

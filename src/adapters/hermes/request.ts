@@ -1,7 +1,7 @@
 import { contextText } from "../../core/brief.ts";
 import { type Keys, PROVIDERS } from "../../core/provider.ts";
 import { type EndSlot, SLOTS } from "../../core/slots.ts";
-import { isRecord } from "../../utils/guards.ts";
+import { isPositiveNumber, isRecord } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 
 // Whose effort replaces the ladder's. Python ranks the delegation section above the caller.
@@ -41,9 +41,7 @@ const readModels = (value: unknown): HermesRequest["models"] =>
 	) as HermesRequest["models"];
 
 const readBudget = (value: unknown): number | undefined =>
-	typeof value === "number" && Number.isFinite(value) && value > 0
-		? value
-		: undefined;
+	isPositiveNumber(value) ? value : undefined;
 
 /**
  * Reads a parsed request. Returns undefined when it is not an object. A field of
