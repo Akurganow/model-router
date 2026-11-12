@@ -10,6 +10,7 @@ import {
 	ask,
 	badCall,
 	COMMAND_DESCRIPTIONS,
+	chooseValue,
 	isKeySetting,
 	isSettingName,
 	isValue,
@@ -30,6 +31,7 @@ import {
 	REFUSED,
 	SETTING_NAMES,
 	setsOwnModel,
+	settingsReport,
 	TOOL_LABEL,
 	toolDescription,
 	UNREADABLE,
@@ -194,6 +196,124 @@ test("pick maps an exact label to its value and refuses anything else", () => {
 	for (const other of ["auto", "extended", "", "Yes", "No", 1, null, undefined])
 		assert.equal(pick("provider", other), undefined, String(other));
 	assert.equal(pick("scope", "typesafe - TypeSafe only"), undefined);
+});
+
+test("chooseValue asks the dialog's question and applies the picked value", async () => {
+	const asked: unknown[] = [];
+	const applied: string[] = [];
+	const text = await chooseValue(
+		"scope",
+		"extended",
+		async (question, options) => {
+			asked.push({ question, options });
+			return ask("scope", undefined).options[1];
+		},
+		async (value) => {
+			applied.push(value);
+			return `applied ${value}`;
+		},
+	);
+	assert.equal(text, "applied extended");
+	assert.deepEqual(applied, ["extended"]);
+	assert.deepEqual(asked, [ask("scope", "extended")]);
+});
+
+test("chooseValue maps no answer to the no-answer line and applies nothing", async () => {
+	let applied = 0;
+	const text = await chooseValue(
+		"provider",
+		undefined,
+		async () => undefined,
+		async () => {
+			applied += 1;
+			return "";
+		},
+	);
+	assert.equal(text, unchanged("provider", NO_ANSWER));
+	assert.equal(applied, 0);
+});
+
+test("chooseValue maps an unknown answer to the not-offered line and never echoes it", async () => {
+	let applied = 0;
+	for (const answer of ["auto", "", "secret-text", "auto - TypeSafe only"]) {
+		const text = await chooseValue(
+			"provider",
+			"auto",
+			async () => answer,
+			async () => {
+				applied += 1;
+				return "";
+			},
+		);
+		assert.equal(text, unchanged("provider", NOT_OFFERED));
+		assert.equal(text.includes("secret-text"), false);
+	}
+	assert.equal(applied, 0);
+});
+
+test("chooseValue returns what apply returns, and a throw passes through", async () => {
+	const label = ask("provider", "auto").options[0] ?? "";
+	assert.equal(
+		await chooseValue(
+			"provider",
+			"auto",
+			async () => label,
+			async (value) => unchanged("provider", alreadyValue(value)),
+		),
+		"provider unchanged: already auto",
+	);
+	await assert.rejects(
+		chooseValue(
+			"provider",
+			"auto",
+			async () => label,
+			async () => {
+				throw new Error("apply failed");
+			},
+		),
+		{ message: "apply failed" },
+	);
+	await assert.rejects(
+		chooseValue(
+			"provider",
+			"auto",
+			async () => {
+				throw new Error("select failed");
+			},
+			async () => "",
+		),
+		{ message: "select failed" },
+	);
+});
+
+test("settingsReport joins the value lines, the extra lines and the key lines in order", () => {
+	assert.equal(
+		settingsReport(
+			"auto",
+			"extended",
+			["small_model: a/b"],
+			[
+				["typesafe", "set"],
+				["openrouter", "unset"],
+			],
+		),
+		"provider: auto (typesafe, then openrouter)\nscope: extended\nsmall_model: a/b\ntypesafe key: set\nopenrouter key: unset",
+	);
+	assert.equal(
+		settingsReport("openrouter", "core", [], [["openrouter", "unset"]]),
+		"provider: openrouter (openrouter)\nscope: core\nopenrouter key: unset",
+	);
+	assert.equal(
+		settingsReport("typesafe", "core", [], []),
+		"provider: typesafe (typesafe)\nscope: core",
+	);
+});
+
+test("settingsReport prints the stored provider as it is and resolves the scope", () => {
+	assert.equal(
+		settingsReport(undefined, "bogus", [], [["typesafe", "set"]]),
+		"provider: undefined (typesafe)\nscope: core\ntypesafe key: set",
+	);
 });
 
 test("keyFrom returns the trimmed key and refuses anything else", () => {

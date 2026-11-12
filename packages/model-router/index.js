@@ -1085,6 +1085,12 @@ var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
 var agentUnknown = (id) => `${id} agent unknown`;
 var setsOwnModel = (id) => `${id} sets its own model`;
 var keyLine = (provider, state) => `${provider} key: ${state}`;
+var settingsReport = (provider, scope, extra, keys) => [
+  valueLine("provider", provider),
+  valueLine("scope", scope),
+  ...extra,
+  ...keys.map(([name, state]) => keyLine(name, state))
+].join("\n");
 var TOOL_LABEL = "Model Router settings";
 var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
 function describeCommand(setting) {
@@ -1306,19 +1312,19 @@ var MODEL_SETTINGS = ["small_model", "large_model"];
 var TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
 var TOOL_DESCRIPTION = `Reads the router's settings. With no input it returns the provider, the scope, both models, and whether each key the provider allows is set. With a setting name (${TOOL_SETTINGS.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
 var modelLine = (name, model) => `${name}: ${model ?? UNSET}`;
-function keyLines(providers, keys) {
-  return providers.map(
-    (name) => keyLine(name, keys[name] === void 0 ? UNSET : "set")
-  );
-}
 function readAll({ settings, keys }) {
-  return [
-    valueLine("provider", settings.provider),
-    valueLine("scope", settings.scope),
-    modelLine("small_model", settings.smallModel),
-    modelLine("large_model", settings.largeModel),
-    ...keyLines(order(settings.provider), keys)
-  ].join(LINE_BREAK);
+  return settingsReport(
+    settings.provider,
+    settings.scope,
+    [
+      modelLine("small_model", settings.smallModel),
+      modelLine("large_model", settings.largeModel)
+    ],
+    order(settings.provider).map((name) => [
+      name,
+      keys[name] === void 0 ? UNSET : "set"
+    ])
+  );
 }
 var isModelSetting = (setting) => MODEL_SETTINGS.some((known) => known === setting);
 var modelSettingHelp = (setting) => `${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`;

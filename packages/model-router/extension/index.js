@@ -1319,6 +1319,19 @@ function pick(setting, answer) {
     (value) => label(setting, value) === answer
   );
 }
+async function chooseValue(setting, current, select2, apply2) {
+  const { question, options } = ask(setting, current);
+  const answer = await select2(question, options);
+  if (answer === void 0) return unchanged(setting, NO_ANSWER);
+  const value = pick(setting, answer);
+  return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply2(value);
+}
+var settingsReport = (provider, scope, extra, keys) => [
+  valueLine("provider", provider),
+  valueLine("scope", scope),
+  ...extra,
+  ...keys.map(([name, state]) => keyLine(name, state))
+].join("\n");
 function keyFrom(answer) {
   if (typeof answer !== "string" || LINE_BREAK.test(answer)) return void 0;
   const key = answer.trim();
@@ -1530,17 +1543,13 @@ async function withSettings(omp, ctx, show) {
 var readAll = (omp, ctx) => withSettings(omp, ctx, async ({ provider, scope }) => {
   const keys = await Promise.all(
     order(provider).map(
-      async (name) => keyLine(
+      async (name) => [
         name,
         await findKey(ctx, name) === void 0 ? "unset" : "set"
-      )
+      ]
     )
   );
-  return [
-    valueLine("provider", provider),
-    valueLine("scope", scope),
-    ...keys
-  ].join(LINE_BREAK2);
+  return settingsReport(provider, scope, [], keys);
 });
 async function apply(omp, ctx, setting, value) {
   if (!isValue(setting, value)) return useOneOf(setting);
@@ -1568,11 +1577,12 @@ async function select(ctx, question, options) {
 async function dialog(omp, ctx, setting) {
   if (!ctx.hasUI) return unchanged(setting, NO_ANSWER);
   const shown = await readSettings(omp, ctx.cwd);
-  const { question, options } = ask(setting, shown?.[setting]);
-  const answer = await select(ctx, question, options);
-  if (answer === void 0) return unchanged(setting, NO_ANSWER);
-  const value = pick(setting, answer);
-  return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply(omp, ctx, setting, value);
+  return chooseValue(
+    setting,
+    shown?.[setting],
+    (question, options) => select(ctx, question, options),
+    (value) => apply(omp, ctx, setting, value)
+  );
 }
 async function runTool(omp, ctx, params) {
   const { setting } = isRecord(params) ? params : {};

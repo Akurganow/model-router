@@ -1311,6 +1311,19 @@ function pick(setting, answer2) {
     (value) => label(setting, value) === answer2
   );
 }
+async function chooseValue(setting, current2, select, apply) {
+  const { question, options } = ask(setting, current2);
+  const answer2 = await select(question, options);
+  if (answer2 === void 0) return unchanged(setting, NO_ANSWER);
+  const value = pick(setting, answer2);
+  return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply(value);
+}
+var settingsReport = (provider, scope, extra, keys) => [
+  valueLine("provider", provider),
+  valueLine("scope", scope),
+  ...extra,
+  ...keys.map(([name, state]) => keyLine(name, state))
+].join("\n");
 var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
 var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
 function describeCommand(setting) {
@@ -1587,29 +1600,31 @@ async function write($, setting, value) {
   }
 }
 async function choose($, setting, options) {
-  const { question, options: labels } = ask(setting, current(options, setting));
-  let answer2;
-  try {
-    answer2 = await $.ui.ask(question, { options: labels, header: setting });
-  } catch {
-    return unchanged(setting, NO_ANSWER);
-  }
-  const value = pick(setting, answer2);
-  if (value === void 0) return unchanged(setting, NOT_OFFERED);
-  if (value === current(options, setting))
-    return unchanged(setting, alreadyValue(value));
-  return write($, setting, value);
+  return chooseValue(
+    setting,
+    current(options, setting),
+    async (question, labels) => {
+      try {
+        return await $.ui.ask(question, { options: labels, header: setting });
+      } catch {
+        return void 0;
+      }
+    },
+    async (value) => value === current(options, setting) ? unchanged(setting, alreadyValue(value)) : write($, setting, value)
+  );
 }
 async function read($, options) {
   const provider = current(options, "provider");
   const keys = await readKeys($, options, provider);
-  return [
-    valueLine("provider", provider),
-    valueLine("scope", current(options, "scope")),
-    ...order(provider).map(
-      (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
-    )
-  ].join("\n");
+  return settingsReport(
+    provider,
+    current(options, "scope"),
+    [],
+    order(provider).map((name) => [
+      name,
+      keys[name] === void 0 ? "unset" : "set"
+    ])
+  );
 }
 async function answer($, call, options) {
   if (await denied($, call)) return { deny: REFUSED };

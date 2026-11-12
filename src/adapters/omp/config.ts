@@ -1,18 +1,16 @@
 import { order } from "../../core/provider.ts";
 import {
 	alreadyValue,
-	ask,
 	badCall,
 	COMMAND_DESCRIPTIONS,
+	chooseValue,
 	isKeySetting,
 	isValue,
 	isValueSetting,
-	keyLine,
 	NO_ANSWER,
-	NOT_OFFERED,
-	pick,
 	projectOverrides,
 	SETTING_NAMES,
+	settingsReport,
 	TOOL_LABEL,
 	TOOL_NAME,
 	toolDescription,
@@ -56,18 +54,15 @@ async function withSettings(
 const readAll = (omp: OmpImports, ctx: Context): Promise<string> =>
 	withSettings(omp, ctx, async ({ provider, scope }) => {
 		const keys = await Promise.all(
-			order(provider).map(async (name) =>
-				keyLine(
-					name,
-					(await findKey(ctx, name)) === undefined ? "unset" : "set",
-				),
+			order(provider).map(
+				async (name) =>
+					[
+						name,
+						(await findKey(ctx, name)) === undefined ? "unset" : "set",
+					] as const,
 			),
 		);
-		return [
-			valueLine("provider", provider),
-			valueLine("scope", scope),
-			...keys,
-		].join(LINE_BREAK);
+		return settingsReport(provider, scope, [], keys);
 	});
 
 /**
@@ -121,13 +116,12 @@ async function dialog(
 ): Promise<string> {
 	if (!ctx.hasUI) return unchanged(setting, NO_ANSWER);
 	const shown = await readSettings(omp, ctx.cwd);
-	const { question, options } = ask(setting, shown?.[setting]);
-	const answer = await select(ctx, question, options);
-	if (answer === undefined) return unchanged(setting, NO_ANSWER);
-	const value = pick(setting, answer);
-	return value === undefined
-		? unchanged(setting, NOT_OFFERED)
-		: apply(omp, ctx, setting, value);
+	return chooseValue(
+		setting,
+		shown?.[setting],
+		(question, options) => select(ctx, question, options),
+		(value) => apply(omp, ctx, setting, value),
+	);
 }
 
 async function runTool(

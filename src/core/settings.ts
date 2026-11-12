@@ -148,6 +148,43 @@ export function pick(
 	);
 }
 
+/**
+ * Asks the person which value a setting takes and returns the line to show.
+ * `select` shows the question and returns the answer, or undefined when the
+ * dialog gave none. An answer that is not an offered label is refused. `apply`
+ * gets the picked value and returns the line, so each harness keeps its own
+ * test for a value that already holds.
+ */
+export async function chooseValue(
+	setting: ValueSetting,
+	current: unknown,
+	select: (question: string, options: string[]) => Promise<string | undefined>,
+	apply: (value: string) => Promise<string>,
+): Promise<string> {
+	const { question, options } = ask(setting, current);
+	const answer = await select(question, options);
+	if (answer === undefined) return unchanged(setting, NO_ANSWER);
+	const value = pick(setting, answer);
+	return value === undefined ? unchanged(setting, NOT_OFFERED) : apply(value);
+}
+
+/**
+ * Returns the settings report: the provider and scope lines, then the extra
+ * lines, then one line for each key state in the order given.
+ */
+export const settingsReport = (
+	provider: unknown,
+	scope: unknown,
+	extra: readonly string[],
+	keys: readonly (readonly [Provider, KeyState])[],
+): string =>
+	[
+		valueLine("provider", provider),
+		valueLine("scope", scope),
+		...extra,
+		...keys.map(([name, state]) => keyLine(name, state)),
+	].join("\n");
+
 export function keyFrom(answer: unknown): string | undefined {
 	if (typeof answer !== "string" || LINE_BREAK.test(answer)) return undefined;
 	const key = answer.trim();

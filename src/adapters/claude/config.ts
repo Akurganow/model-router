@@ -1,15 +1,12 @@
 import { order } from "../../core/provider.ts";
 import {
 	alreadyValue,
-	ask,
 	badCall,
+	chooseValue,
 	isValue,
 	isValueSetting,
-	keyLine,
-	NO_ANSWER,
-	NOT_OFFERED,
-	pick,
 	REFUSED,
+	settingsReport,
 	toolDescription,
 	unchanged,
 	unchangedBy,
@@ -91,30 +88,35 @@ async function choose(
 	setting: ValueSetting,
 	options: Options,
 ): Promise<string> {
-	const { question, options: labels } = ask(setting, current(options, setting));
-	let answer: string;
-	try {
-		answer = await $.ui.ask(question, { options: labels, header: setting });
-	} catch {
-		return unchanged(setting, NO_ANSWER);
-	}
-	const value = pick(setting, answer);
-	if (value === undefined) return unchanged(setting, NOT_OFFERED);
-	if (value === current(options, setting))
-		return unchanged(setting, alreadyValue(value));
-	return write($, setting, value);
+	return chooseValue(
+		setting,
+		current(options, setting),
+		async (question, labels) => {
+			try {
+				return await $.ui.ask(question, { options: labels, header: setting });
+			} catch {
+				return undefined;
+			}
+		},
+		async (value) =>
+			value === current(options, setting)
+				? unchanged(setting, alreadyValue(value))
+				: write($, setting, value),
+	);
 }
 
 async function read($: Engine, options: Options): Promise<string> {
 	const provider = current(options, "provider");
 	const keys = await readKeys($, options, provider);
-	return [
-		valueLine("provider", provider),
-		valueLine("scope", current(options, "scope")),
-		...order(provider).map((name) =>
-			keyLine(name, keys[name] === undefined ? "unset" : "set"),
-		),
-	].join("\n");
+	return settingsReport(
+		provider,
+		current(options, "scope"),
+		[],
+		order(provider).map((name) => [
+			name,
+			keys[name] === undefined ? "unset" : "set",
+		]),
+	);
 }
 
 async function answer(

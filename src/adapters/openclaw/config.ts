@@ -1,4 +1,4 @@
-import { type Keys, order, type Provider } from "../../core/provider.ts";
+import { order } from "../../core/provider.ts";
 import {
 	alreadyValue,
 	badCall,
@@ -7,9 +7,9 @@ import {
 	isKeySetting,
 	isValue,
 	isValueSetting,
-	keyLine,
 	keyProvider,
 	SETTING_NAMES,
+	settingsReport,
 	TOOL_LABEL,
 	TOOL_NAME,
 	unchanged,
@@ -53,23 +53,23 @@ const modelLine = (name: string, model: string | undefined): string =>
 	`${name}: ${model ?? UNSET}`;
 
 /**
- * Returns one line per provider that says whether its key is set or unset. A
- * key is only checked for presence. Nothing about it leaves this function.
+ * Returns the report: the provider, the scope, both models, and one line per
+ * provider that says whether its key is set or unset. A key is only checked
+ * for presence. Nothing about it leaves this function.
  */
-function keyLines(providers: readonly Provider[], keys: Keys): string[] {
-	return providers.map((name) =>
-		keyLine(name, keys[name] === undefined ? UNSET : "set"),
-	);
-}
-
 function readAll({ settings, keys }: State): string {
-	return [
-		valueLine("provider", settings.provider),
-		valueLine("scope", settings.scope),
-		modelLine("small_model", settings.smallModel),
-		modelLine("large_model", settings.largeModel),
-		...keyLines(order(settings.provider), keys),
-	].join(LINE_BREAK);
+	return settingsReport(
+		settings.provider,
+		settings.scope,
+		[
+			modelLine("small_model", settings.smallModel),
+			modelLine("large_model", settings.largeModel),
+		],
+		order(settings.provider).map((name) => [
+			name,
+			keys[name] === undefined ? UNSET : "set",
+		]),
+	);
 }
 
 const isModelSetting = (setting: unknown): setting is ModelSetting =>
