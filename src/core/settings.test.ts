@@ -302,18 +302,35 @@ test("chooseValue returns what apply returns, and a throw passes through", async
 
 test("settingsReport joins the value lines, the extra lines and the key lines in order", () => {
 	assert.equal(
-		settingsReport("auto", "extended", ["small_model: a/b"], { typesafe: "k" }),
+		settingsReport("auto", "extended", ["small_model: a/b"], {
+			typesafe: "key-1",
+		}),
 		"provider: auto (typesafe, then openrouter)\nscope: extended\nsmall_model: a/b\ntypesafe key: set\nopenrouter key: unset",
 	);
+});
+
+test("settingsReport lists the providers the value allows, in their order", () => {
 	assert.equal(
-		settingsReport("openrouter", "core", [], {}),
+		settingsReport("openrouter-first", "core", [], { typesafe: "key-1" }),
+		"provider: openrouter-first (openrouter, then typesafe)\nscope: core\nopenrouter key: unset\ntypesafe key: set",
+	);
+	assert.equal(
+		settingsReport("openrouter", "core", [], { typesafe: "key-1" }),
 		"provider: openrouter (openrouter)\nscope: core\nopenrouter key: unset",
 	);
 });
 
+test("settingsReport never prints a key", () => {
+	const report = settingsReport("auto", "core", [], {
+		typesafe: "key-1",
+		openrouter: "key-2",
+	});
+	assert.doesNotMatch(report, /key-[12]/);
+});
+
 test("settingsReport prints the stored provider as it is and resolves the scope", () => {
 	assert.equal(
-		settingsReport(undefined, "bogus", [], { typesafe: "k" }),
+		settingsReport(undefined, "bogus", [], { typesafe: "key-1" }),
 		"provider: undefined (typesafe)\nscope: core\ntypesafe key: set",
 	);
 });
