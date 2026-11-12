@@ -85,7 +85,11 @@ export function askCommands(
 	timeoutMs: number,
 ): Promise<{ reply: unknown } | { problem: string }> {
 	return new Promise((resolve) => {
+		let answered = false;
 		const done = (result: { reply: unknown } | { problem: string }) => {
+			// A failed kill() emits its error event before it returns, which calls done again.
+			if (answered) return;
+			answered = true;
 			clearTimeout(timer);
 			child.stdin.end();
 			if (child.exitCode === null && child.signalCode === null) child.kill();

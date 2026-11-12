@@ -172,6 +172,20 @@ test("the load check stops omp after its reply", async () => {
 	assert.equal(child.kills, 1);
 });
 
+test("a kill that fails at once does not stop omp's answer from coming back", async () => {
+	const child = fakeProcess();
+	// Node's kill() emits a failure as an error event before it returns.
+	child.kill = () => {
+		child.kills += 1;
+		child.emit("error", new Error("kill EPERM"));
+		return false;
+	};
+	const result = askCommands(child as unknown as OmpProcess, 1000);
+	child.stdout.write(`${JSON.stringify(reply(COMMANDS.map(extension)))}\n`);
+	assert.deepEqual(await result, { reply: reply(COMMANDS.map(extension)) });
+	assert.equal(child.kills, 1);
+});
+
 test("the load check says when it kept an existing models.yml", async (t) => {
 	const log = t.mock.method(console, "log", () => {});
 	temp.put("agent/models.yml", STUB_MODELS);
