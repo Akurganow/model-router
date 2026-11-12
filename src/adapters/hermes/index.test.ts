@@ -194,7 +194,8 @@ describe("the slot and model each level takes", () => {
 
 	// Level 1 changes no model, so it needs neither slot; an end level needs its own slot only.
 	// The ladder's effort at work level 1 is high at level 0 and medium at the other levels.
-	// The fixtures feed the rows left out.
+	// The rows left out sit in plugins/model-router-hermes/tests/fixtures/: both models set at each level in l0-routed, l1-routed and l2-routed,
+	// level 0 with the large model only in small-model-unset, and level 2 with the small model only in large-model-unset.
 	const ROWS: readonly [0 | 1 | 2, string, Models, object][] = [
 		[
 			0,
