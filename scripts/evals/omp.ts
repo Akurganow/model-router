@@ -9,6 +9,7 @@ const SETTINGS_OVERLAY = "omp-evals.yml";
 // The extension prints "model-router task <n>: L<level> <role> · <effort> · p=<tier>/<work>" to stderr when omp has no UI.
 // A batch is one line of entries joined by " | ". The role is "no change" when the task keeps its model.
 // The effort is a level, or the label of the effort omp keeps, such as "caller effort".
+const ENTRY_NUMBER = /^task (\d+): /;
 const DECISION_ENTRY = new RegExp(
 	`^task \\d+: L(?<tier>[012]) (?<target>@\\w+|${NO_CHANGE}) · (?<effort>[^·]+?) · p=\\d+(?:\\.\\d+)?/\\d+(?:\\.\\d+)?`,
 );
@@ -82,23 +83,36 @@ export const omp: Adapter = {
 			reply: lastReply(stdout),
 			jev: null,
 		};
+		// The first routed item is the evidence. A later line for the same item holds, as the README says.
+		let item: string | undefined;
 		for (const text of stderr.split("\n")) {
 			if (!text.startsWith(LINE_PREFIX)) continue;
 			for (const entry of text
 				.slice(LINE_PREFIX.length)
 				.split(ENTRY_SEPARATOR)) {
+				const number = ENTRY_NUMBER.exec(entry)?.[1];
 				const groups = DECISION_ENTRY.exec(entry)?.groups;
-				if (!groups) continue;
-				evidence.routed = true;
-				evidence.line = entry;
-				const { tier, target, effort } = groups;
-				evidence.tier = Number(tier) as Level;
-				evidence.effort = effort ?? null;
-				evidence.target = target === NO_CHANGE ? null : (target ?? null);
-				evidence.jev = jevModel(entry);
-				return evidence;
+				if (item === undefined && groups) item = number;
+				if (number === undefined || number !== item) continue;
+				record(evidence, entry, groups);
 			}
 		}
 		return evidence;
 	},
 };
+
+// A routed entry fills the decision fields, and any other entry clears them.
+function record(
+	evidence: Evidence,
+	entry: string,
+	groups: Record<string, string> | undefined,
+): void {
+	const { tier, effort, target } = groups ?? {};
+	evidence.routed = groups !== undefined;
+	evidence.line = groups ? entry : null;
+	evidence.tier = tier === undefined ? null : (Number(tier) as Level);
+	evidence.effort = effort ?? null;
+	evidence.target =
+		target === undefined || target === NO_CHANGE ? null : target;
+	evidence.jev = groups ? jevModel(entry) : null;
+}

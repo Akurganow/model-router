@@ -123,6 +123,30 @@ for (const label of ["caller effort", "config effort", "no model patterns"])
 		assert.equal(evidence.target, "@smol");
 	});
 
+test("omp: a later entry for the same item replaces the batch entry", () => {
+	const stderr = [
+		"model-router task 1: L1 no change · medium · p=0.80/0.55 | task 2: L0 @smol · high · p=0.90/0.70",
+		"model-router task 1: L1 no change · no model patterns · p=0.80/0.55",
+	].join("\n");
+	const evidence = omp.parse({ stdout: "", stderr });
+	assert.equal(
+		evidence.line,
+		"task 1: L1 no change · no model patterns · p=0.80/0.55",
+	);
+	assert.equal(evidence.effort, "no model patterns");
+	assert.equal(evidence.tier, 1);
+});
+
+test("omp: a later skip for the same item leaves no decision", () => {
+	const stderr = [
+		"model-router task 1: L0 @smol · high · p=0.90/0.70",
+		"model-router task 1: skipped, task model override set",
+	].join("\n");
+	const evidence = omp.parse({ stdout: "", stderr });
+	assert.equal(evidence.routed, false);
+	assert.equal(evidence.line, null);
+});
+
 test("omp: an entry without the effort segment is no decision line", () => {
 	const stderr = "model-router task 1: L0 @smol · p=0.91\n";
 	assert.equal(omp.parse({ stdout: "", stderr }).routed, false);
