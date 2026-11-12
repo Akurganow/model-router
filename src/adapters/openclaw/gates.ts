@@ -1,18 +1,16 @@
 import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "../../core/brief.ts";
 import {
-	CALLER_EFFORT,
-	CONFIG_EFFORT,
-	NO_END_MODEL,
-	SUBAGENT_MODEL_SET,
-} from "../../core/reasons.ts";
-import {
 	agentDiscoveryFailed,
 	agentUnknown,
+	CALLER_EFFORT,
+	CONFIG_EFFORT,
 	KEY_UNSET,
+	NO_END_MODEL,
 	outsideCoreScope,
+	SUBAGENT_MODEL_SET,
 	setsOwnModel,
 	UNREADABLE,
-} from "../../core/settings.ts";
+} from "../../core/reasons.ts";
 import { isRecord, isSet } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import { findAgent, sameAgent } from "./agents.ts";

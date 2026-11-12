@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { outsideCoreScope, setsOwnModel } from "../../core/settings.ts";
+import { outsideCoreScope, setsOwnModel } from "../../core/reasons.ts";
 import {
 	effort,
 	extended,

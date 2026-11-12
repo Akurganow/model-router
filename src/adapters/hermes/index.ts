@@ -1,4 +1,4 @@
-import { FAILED } from "../../core/compose.ts";
+import { FAILED } from "../../core/reasons.ts";
 import { realClock } from "../../utils/clock.ts";
 import { streamedFetch } from "../../utils/fetch.ts";
 import { routeRequest, skip } from "./route.ts";

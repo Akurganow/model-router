@@ -1,11 +1,6 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { DEFAULT_ROLE, routingState } from "../../core/brief.ts";
-import {
-	FAILED,
-	LIMIT_REACHED,
-	type Skipped,
-	TIMEOUT,
-} from "../../core/compose.ts";
+import { LIMIT_REACHED, type Skipped } from "../../core/compose.ts";
 import { type DecidedWithWork, scoreWork } from "../../core/decide.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
@@ -14,7 +9,9 @@ import {
 	CALLER_EFFORT,
 	CONFIG_EFFORT,
 	type EndSlot,
+	FAILED,
 	modelForLevel,
+	TIMEOUT,
 } from "../../core/reasons.ts";
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";

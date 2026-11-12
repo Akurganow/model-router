@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { setsOwnModel } from "../../core/settings.ts";
+import { setsOwnModel } from "../../core/reasons.ts";
 import {
 	agents,
 	effort,

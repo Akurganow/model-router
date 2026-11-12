@@ -8,7 +8,7 @@ import {
 	KEY_UNSET,
 	setsOwnModel,
 	UNREADABLE,
-} from "../../core/settings.ts";
+} from "../../core/reasons.ts";
 import { AGENTS, extend } from "./fake-agents.ts";
 import { lockfileScoped, useWorld } from "./fakes.ts";
 import { createExtension } from "./router.ts";

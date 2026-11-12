@@ -1025,93 +1025,37 @@ function parseProbabilities(answers, key) {
   return { 0: p0, 1: p1, 2: p2 };
 }
 
-// src/utils/error.ts
-var errorText = (err) => err instanceof Error ? err.message : String(err);
-
-// src/core/scope.ts
-var SCOPE_VALUES = ["core", "extended"];
-var DEFAULT_SCOPE = "core";
-var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
-var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
-
-// src/core/settings.ts
-var VALUE_SETTINGS = ["provider", "scope"];
-var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
-var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
-var TOOL_NAME = "model_router_config";
-var COMMAND_PREFIX = "model-router-";
-var commandName = (setting) => `${COMMAND_PREFIX}${setting}`;
-var KEY_PROVIDERS = {
-  typesafe_key: "typesafe",
-  openrouter_key: "openrouter"
-};
-var TEXTS = {
-  provider: {
-    values: PROVIDER_VALUES,
-    resolve,
-    about: "which providers score subagent calls",
-    question: "Which providers should score subagent calls?",
-    consequences: {
-      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
-      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
-      typesafe: "TypeSafe only",
-      openrouter: "OpenRouter only"
-    }
-  },
-  scope: {
-    values: SCOPE_VALUES,
-    resolve: resolveScope,
-    about: "which agent calls the router routes",
-    question: "Which agent calls should the router route?",
-    consequences: {
-      core: "today's routing: built-in general agents only",
-      extended: "also routes other agents that pass no model"
-    }
-  }
-};
-var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
-var isKeySetting = (name) => KEY_SETTINGS.some((known) => known === name);
-var keyProvider = (setting) => KEY_PROVIDERS[setting];
-var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
-var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
-var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
-var valueSettingHelp = (setting) => [
-  `Type /${commandName(setting)} <value> in the chat.`,
-  useOneOf(setting)
-].join("\n");
-var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
-var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
-var alreadyValue = (value) => `already ${value}`;
+// src/core/reasons.ts
+var CALLER_EFFORT = "caller effort";
+var CONFIG_EFFORT = "config effort";
+var SUBAGENT_MODEL_SET = "subagent model set";
+var NO_END_MODEL = "no small or large model";
 var UNREADABLE = "settings unreadable";
 var KEY_UNSET = "key unset";
+var BAD_REPLY = "bad reply";
+var TIMEOUT = "timeout";
+var FAILED = "failed";
+var CANCELLED = "cancelled";
 var outsideCoreScope = (id) => `${id} is outside the core scope`;
 var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
 var agentUnknown = (id) => `${id} agent unknown`;
 var setsOwnModel = (id) => `${id} sets its own model`;
-var keyLine = (provider, state) => `${provider} key: ${state}`;
-var settingsReport = (provider, scope, extra, keys) => [
-  valueLine("provider", provider),
-  valueLine("scope", scope),
-  ...extra,
-  ...keys.map(([name, state]) => keyLine(name, state))
-].join("\n");
-var readOnlyToolDescription = (returned, names) => `Reads the router's settings. With no input it returns ${returned.join(", ")}, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
-var TOOL_LABEL = "Model Router settings";
-var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
-function describeCommand(setting) {
-  const { about, values } = TEXTS[setting];
-  return `Shows or changes ${about}: ${values.join(", ")}.`;
-}
-var COMMAND_DESCRIPTIONS = {
-  provider: describeCommand("provider"),
-  scope: describeCommand("scope")
+var LEVEL_SLOTS = {
+  0: "small",
+  2: "large"
+};
+var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
+var modelUnset = (slot) => `${slot} model unset`;
+var modelUnresolved = (slot) => `${slot} model unresolved`;
+var modelForLevel = (level, models) => {
+  const slot = slotForLevel(level);
+  if (slot === null) return { slot };
+  const model = models[slot];
+  return model === void 0 ? { skipped: modelUnset(slot) } : { slot, model };
 };
 
 // src/core/compose.ts
 var ROUTING_LIMIT_MS = 8e3;
-var TIMEOUT = "timeout";
-var FAILED = "failed";
-var CANCELLED = "cancelled";
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 var MODEL_CHARS_MAX = 40;
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
@@ -1183,7 +1127,7 @@ function decide(parts, result) {
   const decided = {};
   for (const part of parts) {
     const probabilities = parseProbabilities(answers, part.key);
-    if (!probabilities) return { skipped: "bad reply" };
+    if (!probabilities) return { skipped: BAD_REPLY };
     decided[part.key] = { level: part.pick(probabilities), probabilities };
   }
   return {
@@ -1248,6 +1192,82 @@ var streamedFetch = async (url, init) => {
     statusText: reply.statusText,
     headers: reply.headers
   });
+};
+
+// src/utils/error.ts
+var errorText = (err) => err instanceof Error ? err.message : String(err);
+
+// src/core/scope.ts
+var SCOPE_VALUES = ["core", "extended"];
+var DEFAULT_SCOPE = "core";
+var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
+var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
+
+// src/core/settings.ts
+var VALUE_SETTINGS = ["provider", "scope"];
+var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
+var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
+var TOOL_NAME = "model_router_config";
+var COMMAND_PREFIX = "model-router-";
+var commandName = (setting) => `${COMMAND_PREFIX}${setting}`;
+var KEY_PROVIDERS = {
+  typesafe_key: "typesafe",
+  openrouter_key: "openrouter"
+};
+var TEXTS = {
+  provider: {
+    values: PROVIDER_VALUES,
+    resolve,
+    about: "which providers score subagent calls",
+    question: "Which providers should score subagent calls?",
+    consequences: {
+      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
+      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
+      typesafe: "TypeSafe only",
+      openrouter: "OpenRouter only"
+    }
+  },
+  scope: {
+    values: SCOPE_VALUES,
+    resolve: resolveScope,
+    about: "which agent calls the router routes",
+    question: "Which agent calls should the router route?",
+    consequences: {
+      core: "today's routing: built-in general agents only",
+      extended: "also routes other agents that pass no model"
+    }
+  }
+};
+var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
+var isKeySetting = (name) => KEY_SETTINGS.some((known) => known === name);
+var keyProvider = (setting) => KEY_PROVIDERS[setting];
+var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
+var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
+var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
+var valueSettingHelp = (setting) => [
+  `Type /${commandName(setting)} <value> in the chat.`,
+  useOneOf(setting)
+].join("\n");
+var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
+var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
+var alreadyValue = (value) => `already ${value}`;
+var keyLine = (provider, state) => `${provider} key: ${state}`;
+var settingsReport = (provider, scope, extra, keys) => [
+  valueLine("provider", provider),
+  valueLine("scope", scope),
+  ...extra,
+  ...keys.map(([name, state]) => keyLine(name, state))
+].join("\n");
+var readOnlyToolDescription = (returned, names) => `Reads the router's settings. With no input it returns ${returned.join(", ")}, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
+var TOOL_LABEL = "Model Router settings";
+var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
+function describeCommand(setting) {
+  const { about, values } = TEXTS[setting];
+  return `Shows or changes ${about}: ${values.join(", ")}.`;
+}
+var COMMAND_DESCRIPTIONS = {
+  provider: describeCommand("provider"),
+  scope: describeCommand("scope")
 };
 
 // src/adapters/openclaw/settings.ts
@@ -1660,7 +1680,7 @@ var tier = {
 };
 
 // src/core/decide.ts
-var BAD_REPLY = { skipped: "bad reply" };
+var BAD = { skipped: BAD_REPLY };
 var levelOf = (decision, key) => {
   const part = decision.parts[key];
   return part && {
@@ -1671,12 +1691,12 @@ var levelOf = (decision, key) => {
 function decide2(decision, tierKey, workKey) {
   if ("skipped" in decision) return decision;
   const tier2 = levelOf(decision, tierKey);
-  if (!tier2) return BAD_REPLY;
+  if (!tier2) return BAD;
   const suffix = decisionSuffix(decision);
   if (workKey === void 0)
     return { tier: tier2.level, probabilities: tier2.probability, suffix };
   const work2 = levelOf(decision, workKey);
-  if (!work2) return BAD_REPLY;
+  if (!work2) return BAD;
   return {
     tier: tier2.level,
     work: work2.level,
@@ -1696,25 +1716,6 @@ var EFFORT_BY_TIER = {
   2: ["low", "medium", "high"]
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
-
-// src/core/reasons.ts
-var CALLER_EFFORT = "caller effort";
-var CONFIG_EFFORT = "config effort";
-var SUBAGENT_MODEL_SET = "subagent model set";
-var NO_END_MODEL = "no small or large model";
-var LEVEL_SLOTS = {
-  0: "small",
-  2: "large"
-};
-var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
-var modelUnset = (slot) => `${slot} model unset`;
-var modelUnresolved = (slot) => `${slot} model unresolved`;
-var modelForLevel = (level, models) => {
-  const slot = slotForLevel(level);
-  if (slot === null) return { slot };
-  const model = models[slot];
-  return model === void 0 ? { skipped: modelUnset(slot) } : { slot, model };
-};
 
 // src/utils/deadline.ts
 async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {

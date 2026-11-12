@@ -1,11 +1,18 @@
 /// <reference types="node" />
+
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { order, PROVIDER_VALUES } from "./provider.ts";
-import { SCOPE_VALUES } from "./scope.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
+	KEY_UNSET,
+	outsideCoreScope,
+	setsOwnModel,
+	UNREADABLE,
+} from "./reasons.ts";
+import { SCOPE_VALUES } from "./scope.ts";
+import {
 	alreadyValue,
 	ask,
 	badCall,
@@ -16,7 +23,6 @@ import {
 	isValueSetting,
 	KEY_MAX_LENGTH,
 	KEY_SETTINGS,
-	KEY_UNSET,
 	keyFrom,
 	keyLine,
 	keyNotSaved,
@@ -24,17 +30,14 @@ import {
 	keyQuestion,
 	NO_ANSWER,
 	NOT_OFFERED,
-	outsideCoreScope,
 	pick,
 	projectOverrides,
 	REFUSED,
 	readOnlyToolDescription,
 	SETTING_NAMES,
-	setsOwnModel,
 	settingsReport,
 	TOOL_LABEL,
 	toolDescription,
-	UNREADABLE,
 	unchanged,
 	useOneOf,
 	VALUE_SETTINGS,

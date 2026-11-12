@@ -8,8 +8,8 @@ import {
 	type ProviderValue,
 	plan,
 } from "../../core/provider.ts";
+import { KEY_UNSET, UNREADABLE } from "../../core/reasons.ts";
 import { resolveScope, type Scope } from "../../core/scope.ts";
-import { KEY_UNSET, UNREADABLE } from "../../core/settings.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import { type Facts, type Spawning, spawnCheck, TASK } from "./items.ts";

@@ -1249,102 +1249,16 @@ function parseProbabilities(answers, key) {
   return { 0: p0, 1: p1, 2: p2 };
 }
 
-// src/utils/error.ts
-var errorText = (err) => err instanceof Error ? err.message : String(err);
-
-// src/core/scope.ts
-var SCOPE_VALUES = ["core", "extended"];
-var DEFAULT_SCOPE = "core";
-var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
-var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
-
-// src/core/settings.ts
-var VALUE_SETTINGS = ["provider", "scope"];
-var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
-var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
-var LABEL_SEPARATOR = " - ";
-var TEXTS = {
-  provider: {
-    values: PROVIDER_VALUES,
-    resolve,
-    about: "which providers score subagent calls",
-    question: "Which providers should score subagent calls?",
-    consequences: {
-      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
-      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
-      typesafe: "TypeSafe only",
-      openrouter: "OpenRouter only"
-    }
-  },
-  scope: {
-    values: SCOPE_VALUES,
-    resolve: resolveScope,
-    about: "which agent calls the router routes",
-    question: "Which agent calls should the router route?",
-    consequences: {
-      core: "today's routing: built-in general agents only",
-      extended: "also routes other agents that pass no model"
-    }
-  }
-};
-var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
-var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
-var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
-var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
-var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
-var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
-var alreadyValue = (value) => `already ${value}`;
+// src/core/reasons.ts
+var CALLER_EFFORT = "caller effort";
 var KEY_UNSET = "key unset";
-var NO_ANSWER = "no answer from the dialog";
-var NOT_OFFERED = "the answer was not one of the offered values";
-var REFUSED = "Permission rules deny this tool, so nothing was read or changed.";
-var keyLine = (provider, state) => `${provider} key: ${state}`;
-var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
-function ask(setting, current2) {
-  const { values, resolve: resolve2, question } = TEXTS[setting];
-  const first = resolve2(current2);
-  const sorted = [first, ...values.filter((value) => value !== first)];
-  return { question, options: sorted.map((value) => label(setting, value)) };
-}
-function pick(setting, answer2) {
-  return TEXTS[setting].values.find(
-    (value) => label(setting, value) === answer2
-  );
-}
-async function chooseValue(setting, current2, select, apply) {
-  const { question, options } = ask(setting, current2);
-  let answer2;
-  try {
-    answer2 = await select(question, options);
-  } catch {
-    answer2 = void 0;
-  }
-  if (answer2 === void 0) return unchanged(setting, NO_ANSWER);
-  const value = pick(setting, answer2);
-  return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply(value);
-}
-var settingsReport = (provider, scope, extra, keys) => [
-  valueLine("provider", provider),
-  valueLine("scope", scope),
-  ...extra,
-  ...keys.map(([name, state]) => keyLine(name, state))
-].join("\n");
-var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
-var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
-function describeCommand(setting) {
-  const { about, values } = TEXTS[setting];
-  return `Shows or changes ${about}: ${values.join(", ")}.`;
-}
-var COMMAND_DESCRIPTIONS = {
-  provider: describeCommand("provider"),
-  scope: describeCommand("scope")
-};
-
-// src/core/compose.ts
-var ROUTING_LIMIT_MS = 8e3;
+var BAD_REPLY = "bad reply";
 var TIMEOUT = "timeout";
 var FAILED = "failed";
 var CANCELLED = "cancelled";
+
+// src/core/compose.ts
+var ROUTING_LIMIT_MS = 8e3;
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 var MODEL_CHARS_MAX = 40;
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
@@ -1366,7 +1280,7 @@ async function route(input) {
   for (const [i, attempt] of attempts.entries()) {
     let result;
     try {
-      result = await ask2(input, attempt);
+      result = await ask(input, attempt);
     } catch (err) {
       failed.push({
         provider: attempt.provider,
@@ -1392,7 +1306,7 @@ async function route(input) {
   }
   return skip(failed);
 }
-function ask2(input, attempt) {
+function ask(input, attempt) {
   const { parts, state, keys, fetchFn, signal } = input;
   const { provider, model, ...overrides } = attempt;
   return createClient(provider, keys[provider], model, fetchFn).systemOne(
@@ -1416,7 +1330,7 @@ function decide(parts, result) {
   const decided = {};
   for (const part of parts) {
     const probabilities = parseProbabilities(answers, part.key);
-    if (!probabilities) return { skipped: "bad reply" };
+    if (!probabilities) return { skipped: BAD_REPLY };
     decided[part.key] = { level: part.pick(probabilities), probabilities };
   }
   return {
@@ -1474,7 +1388,7 @@ var tier = {
 };
 
 // src/core/decide.ts
-var BAD_REPLY = { skipped: "bad reply" };
+var BAD = { skipped: BAD_REPLY };
 var levelOf = (decision, key) => {
   const part = decision.parts[key];
   return part && {
@@ -1485,12 +1399,12 @@ var levelOf = (decision, key) => {
 function decide2(decision, tierKey, workKey) {
   if ("skipped" in decision) return decision;
   const tier2 = levelOf(decision, tierKey);
-  if (!tier2) return BAD_REPLY;
+  if (!tier2) return BAD;
   const suffix = decisionSuffix(decision);
   if (workKey === void 0)
     return { tier: tier2.level, probabilities: tier2.probability, suffix };
   const work2 = levelOf(decision, workKey);
-  if (!work2) return BAD_REPLY;
+  if (!work2) return BAD;
   return {
     tier: tier2.level,
     work: work2.level,
@@ -1526,8 +1440,95 @@ function routedLine({
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 
-// src/core/reasons.ts
-var CALLER_EFFORT = "caller effort";
+// src/core/scope.ts
+var SCOPE_VALUES = ["core", "extended"];
+var DEFAULT_SCOPE = "core";
+var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
+var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
+
+// src/utils/error.ts
+var errorText = (err) => err instanceof Error ? err.message : String(err);
+
+// src/core/settings.ts
+var VALUE_SETTINGS = ["provider", "scope"];
+var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
+var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
+var LABEL_SEPARATOR = " - ";
+var TEXTS = {
+  provider: {
+    values: PROVIDER_VALUES,
+    resolve,
+    about: "which providers score subagent calls",
+    question: "Which providers should score subagent calls?",
+    consequences: {
+      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
+      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
+      typesafe: "TypeSafe only",
+      openrouter: "OpenRouter only"
+    }
+  },
+  scope: {
+    values: SCOPE_VALUES,
+    resolve: resolveScope,
+    about: "which agent calls the router routes",
+    question: "Which agent calls should the router route?",
+    consequences: {
+      core: "today's routing: built-in general agents only",
+      extended: "also routes other agents that pass no model"
+    }
+  }
+};
+var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
+var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
+var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
+var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
+var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
+var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
+var alreadyValue = (value) => `already ${value}`;
+var NO_ANSWER = "no answer from the dialog";
+var NOT_OFFERED = "the answer was not one of the offered values";
+var REFUSED = "Permission rules deny this tool, so nothing was read or changed.";
+var keyLine = (provider, state) => `${provider} key: ${state}`;
+var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
+function ask2(setting, current2) {
+  const { values, resolve: resolve2, question } = TEXTS[setting];
+  const first = resolve2(current2);
+  const sorted = [first, ...values.filter((value) => value !== first)];
+  return { question, options: sorted.map((value) => label(setting, value)) };
+}
+function pick(setting, answer2) {
+  return TEXTS[setting].values.find(
+    (value) => label(setting, value) === answer2
+  );
+}
+async function chooseValue(setting, current2, select, apply) {
+  const { question, options } = ask2(setting, current2);
+  let answer2;
+  try {
+    answer2 = await select(question, options);
+  } catch {
+    answer2 = void 0;
+  }
+  if (answer2 === void 0) return unchanged(setting, NO_ANSWER);
+  const value = pick(setting, answer2);
+  return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply(value);
+}
+var settingsReport = (provider, scope, extra, keys) => [
+  valueLine("provider", provider),
+  valueLine("scope", scope),
+  ...extra,
+  ...keys.map(([name, state]) => keyLine(name, state))
+].join("\n");
+var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
+var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
+function describeCommand(setting) {
+  const { about, values } = TEXTS[setting];
+  return `Shows or changes ${about}: ${values.join(", ")}.`;
+}
+var COMMAND_DESCRIPTIONS = {
+  provider: describeCommand("provider"),
+  scope: describeCommand("scope")
+};
 
 // src/utils/serializer.ts
 function serializer() {

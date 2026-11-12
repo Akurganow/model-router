@@ -8,6 +8,7 @@ import {
 import { work } from "./effort.ts";
 import { tier } from "./model.ts";
 import { formatProbability, type Level } from "./part.ts";
+import { BAD_REPLY } from "./reasons.ts";
 
 type Decided = {
 	readonly tier: Level;
@@ -16,7 +17,7 @@ type Decided = {
 };
 export type DecidedWithWork = Decided & { readonly work: Level };
 
-const BAD_REPLY: Skipped = { skipped: "bad reply" };
+const BAD: Skipped = { skipped: BAD_REPLY };
 
 /**
  * Returns the level and the formatted probability of the keyed part, or
@@ -60,12 +61,12 @@ export function decide(
 ): Decided | DecidedWithWork | Skipped {
 	if ("skipped" in decision) return decision;
 	const tier = levelOf(decision, tierKey);
-	if (!tier) return BAD_REPLY;
+	if (!tier) return BAD;
 	const suffix = decisionSuffix(decision);
 	if (workKey === undefined)
 		return { tier: tier.level, probabilities: tier.probability, suffix };
 	const work = levelOf(decision, workKey);
-	if (!work) return BAD_REPLY;
+	if (!work) return BAD;
 	return {
 		tier: tier.level,
 		work: work.level,

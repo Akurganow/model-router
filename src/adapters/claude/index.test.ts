@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "../../core/brief.ts";
 import { skippedLine } from "../../core/line.ts";
-import { KEY_UNSET } from "../../core/settings.ts";
+import { KEY_UNSET } from "../../core/reasons.ts";
 import {
 	AGENT_CALL,
 	ANSWER,

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { UNREADABLE } from "../../core/reasons.ts";
 import {
 	alreadyValue,
 	ask,
@@ -11,7 +12,6 @@ import {
 	SETTING_NAMES,
 	TOOL_NAME,
 	toolDescription,
-	UNREADABLE,
 	unchanged,
 	useOneOf,
 	type ValueSetting,

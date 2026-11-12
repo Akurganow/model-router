@@ -8,7 +8,7 @@ import {
 	outsideCoreScope,
 	setsOwnModel,
 	UNREADABLE,
-} from "../../core/settings.ts";
+} from "../../core/reasons.ts";
 import { AGENTS, extend } from "./fake-agents.ts";
 import {
 	KEY,

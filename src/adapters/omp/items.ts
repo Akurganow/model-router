@@ -1,11 +1,11 @@
 import { DEFAULT_ROLE, roleText } from "../../core/brief.ts";
-import type { Scope } from "../../core/scope.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
 	outsideCoreScope,
 	setsOwnModel,
-} from "../../core/settings.ts";
+} from "../../core/reasons.ts";
+import type { Scope } from "../../core/scope.ts";
 import { isSet } from "../../utils/guards.ts";
 import type { DiscoveredAgent } from "./types.ts";
 

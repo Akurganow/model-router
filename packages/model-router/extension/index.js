@@ -1237,6 +1237,25 @@ function narrow(global, project) {
   return NARROWABLE.includes(value) && (project === "typesafe" || project === "openrouter") ? project : value;
 }
 
+// src/core/reasons.ts
+var CALLER_EFFORT = "caller effort";
+var CONFIG_EFFORT = "config effort";
+var UNREADABLE = "settings unreadable";
+var KEY_UNSET = "key unset";
+var BAD_REPLY = "bad reply";
+var TIMEOUT = "timeout";
+var FAILED = "failed";
+var CANCELLED = "cancelled";
+var outsideCoreScope = (id) => `${id} is outside the core scope`;
+var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
+var agentUnknown = (id) => `${id} agent unknown`;
+var setsOwnModel = (id) => `${id} sets its own model`;
+var LEVEL_SLOTS = {
+  0: "small",
+  2: "large"
+};
+var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
+
 // src/utils/error.ts
 var errorText = (err) => err instanceof Error ? err.message : String(err);
 
@@ -1297,12 +1316,6 @@ var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
-var UNREADABLE = "settings unreadable";
-var KEY_UNSET = "key unset";
-var outsideCoreScope = (id) => `${id} is outside the core scope`;
-var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
-var agentUnknown = (id) => `${id} agent unknown`;
-var setsOwnModel = (id) => `${id} sets its own model`;
 var NO_ANSWER = "no answer from the dialog";
 var NOT_OFFERED = "the answer was not one of the offered values";
 var keyLine = (provider, state) => `${provider} key: ${state}`;
@@ -1661,9 +1674,6 @@ function parseProbabilities(answers, key) {
 
 // src/core/compose.ts
 var ROUTING_LIMIT_MS = 8e3;
-var TIMEOUT = "timeout";
-var FAILED = "failed";
-var CANCELLED = "cancelled";
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 var MODEL_CHARS_MAX = 40;
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
@@ -1735,7 +1745,7 @@ function decide(parts, result) {
   const decided = {};
   for (const part of parts) {
     const probabilities = parseProbabilities(answers, part.key);
-    if (!probabilities) return { skipped: "bad reply" };
+    if (!probabilities) return { skipped: BAD_REPLY };
     decided[part.key] = { level: part.pick(probabilities), probabilities };
   }
   return {
@@ -1771,15 +1781,6 @@ function budgetFor(value) {
     closed: `tool call timeout ${timeout} ms leaves ${Math.max(0, deadline)} ms to route`
   };
 }
-
-// src/core/reasons.ts
-var CALLER_EFFORT = "caller effort";
-var CONFIG_EFFORT = "config effort";
-var LEVEL_SLOTS = {
-  0: "small",
-  2: "large"
-};
-var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
 
 // src/adapters/omp/effort.ts
 var NO_PATTERNS = "no model patterns";
@@ -1882,7 +1883,7 @@ var tier = {
 };
 
 // src/core/decide.ts
-var BAD_REPLY = { skipped: "bad reply" };
+var BAD = { skipped: BAD_REPLY };
 var levelOf = (decision, key) => {
   const part = decision.parts[key];
   return part && {
@@ -1893,12 +1894,12 @@ var levelOf = (decision, key) => {
 function decide2(decision, tierKey, workKey) {
   if ("skipped" in decision) return decision;
   const tier2 = levelOf(decision, tierKey);
-  if (!tier2) return BAD_REPLY;
+  if (!tier2) return BAD;
   const suffix = decisionSuffix(decision);
   if (workKey === void 0)
     return { tier: tier2.level, probabilities: tier2.probability, suffix };
   const work2 = levelOf(decision, workKey);
-  if (!work2) return BAD_REPLY;
+  if (!work2) return BAD;
   return {
     tier: tier2.level,
     work: work2.level,

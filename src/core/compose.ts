@@ -22,14 +22,9 @@ import {
 	type Keys,
 	type Provider,
 } from "./provider.ts";
-import { KEY_UNSET } from "./settings.ts";
+import { BAD_REPLY, CANCELLED, FAILED, KEY_UNSET, TIMEOUT } from "./reasons.ts";
 
 export const ROUTING_LIMIT_MS = 8000;
-// The skip texts for a run past the routing limit and for a failure of no known kind.
-export const TIMEOUT = "timeout";
-export const FAILED = "failed";
-// The skip text for work the caller cancelled before the limit ran out.
-const CANCELLED = "cancelled";
 // Adapters abort their signal with this reason when the limit runs out, so a timeout differs from a cancel.
 export const LIMIT_REACHED = Symbol("routing limit reached");
 
@@ -152,7 +147,7 @@ function decide(parts: readonly Part[], result: unknown): Decision | Skipped {
 	> = {};
 	for (const part of parts) {
 		const probabilities = parseProbabilities(answers, part.key);
-		if (!probabilities) return { skipped: "bad reply" };
+		if (!probabilities) return { skipped: BAD_REPLY };
 		decided[part.key] = { level: part.pick(probabilities), probabilities };
 	}
 	return {

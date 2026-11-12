@@ -1,4 +1,5 @@
 import { order } from "../../core/provider.ts";
+import { UNREADABLE } from "../../core/reasons.ts";
 import {
 	alreadyValue,
 	badCall,
@@ -14,7 +15,6 @@ import {
 	TOOL_LABEL,
 	TOOL_NAME,
 	toolDescription,
-	UNREADABLE,
 	unchanged,
 	unchangedBy,
 	useOneOf,
