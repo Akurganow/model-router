@@ -99,6 +99,18 @@ test("a dialog that rejects answers no answer and writes nothing", async () => {
 	);
 });
 
+test("a dialog that resolves nothing answers no answer and writes nothing", async () => {
+	resetConfig();
+	const { $, log } = engine(async () => undefined as unknown as string);
+	assert.deepEqual(await configCall($, call("scope"), {}), {
+		result: "scope unchanged: no answer from the dialog",
+	});
+	assert.deepEqual(
+		log.filter((step) => typeof step === "string" || "set" in step),
+		["check"],
+	);
+});
+
 test("an answer that is not a label is not offered and is never echoed", async () => {
 	resetConfig();
 	const { $, log } = engine(async () => "extended");
