@@ -218,6 +218,18 @@ describe("the deadline from the operator's hook timeouts", () => {
 			assert.match(s.logs[0]?.message ?? "", /3000 ms or more/);
 		});
 
+	it("warns with this exact text at 2999 ms and still registers the handler", () => {
+		const s = install(hooksOf({ timeoutMs: 2999 }));
+		assert.deepEqual(s.logs, [
+			{
+				level: "warn",
+				message:
+					"model-router the hook timeout is 2999 ms, which leaves 999 ms to route; the plugin routes nothing. Set it to 3000 ms or more.",
+			},
+		]);
+		assert.equal(s.hooks.length, 1);
+	});
+
 	it("does not warn at 3000 ms", () => {
 		assert.deepEqual(install(hooksOf({ timeoutMs: 3000 })).logs, []);
 	});
