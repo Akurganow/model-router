@@ -1,11 +1,13 @@
 /// <reference types="node" />
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { routingState } from "./brief.ts";
 import {
 	type Decision,
 	decisionSuffix,
 	LIMIT_REACHED,
 	ROUTING_LIMIT_MS,
+	type RouteInput,
 	route,
 } from "./compose.ts";
 import { work } from "./effort.ts";
@@ -19,7 +21,11 @@ const OR_KEY = "test-openrouter-key";
 const KEYS = { typesafe: KEY, openrouter: OR_KEY };
 const BOTH = plan("auto", { typesafe: true, openrouter: true });
 const MODEL = "jev-test";
-const STATE = { role: "coder", description: "Fix it", task: "Fix the bug." };
+const STATE = routingState({
+	role: "coder",
+	description: "Fix it",
+	task: "Fix the bug.",
+});
 const SECRET = "sk-live-0123456789abcdef";
 const NO_WAIT = { "retry-after-ms": "0" };
 
@@ -74,6 +80,13 @@ const asDecision = (routed: Awaited<ReturnType<typeof run>>): Decision => {
 	assert.ok(!("skipped" in routed), JSON.stringify(routed));
 	return routed;
 };
+
+test("route takes only a state that routingState built", () => {
+	const raw = { role: "r", description: "d", task: "t" };
+	// @ts-expect-error A raw state would skip the masking.
+	const state: RouteInput["state"] = raw;
+	assert.equal(state, raw);
+});
 
 test("the routing limit is 8000 ms", () => {
 	assert.equal(ROUTING_LIMIT_MS, 8000);
@@ -205,7 +218,8 @@ test("a malformed or incomplete answer is a bad reply", async () => {
 test("a request the SDK rejects locally is a rejected request with no fetch", async () => {
 	const task = "see <image:00112233445566778899aabbccddeeff>";
 	const { bodies, fetchFn } = answering(VALID);
-	const routed = await run(fetchFn, { state: { ...STATE, task } });
+	const state = routingState({ ...STATE, task });
+	const routed = await run(fetchFn, { state });
 	assert.deepEqual(routed, { skipped: "rejected request" });
 	assert.equal(bodies.length, 0);
 });
@@ -241,7 +255,9 @@ test("a skip holds neither the response body, the task nor the key", async () =>
 	const { fetchFn } = stub(async () =>
 		streamed(401, { error: `bad key ${KEY} ${SECRET}`, echo: task }),
 	);
-	const routed = await run(fetchFn, { state: { ...STATE, task } });
+	// The raw task skips the masking on purpose: the skip text itself must drop it.
+	const state = { ...STATE, task } as RouteInput["state"];
+	const routed = await run(fetchFn, { state });
 	const text = JSON.stringify(routed);
 	for (const leak of [SECRET, task, KEY, "bad key"])
 		assert.ok(!text.includes(leak), `leaked ${leak}`);

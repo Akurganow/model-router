@@ -1430,69 +1430,109 @@ var NO_DESCRIPTION = "An agent with no description.";
 var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
 var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
 var HEAD_SHARE = 2 / 3;
+var CONTEXT_CAP_CHARS = 3e3;
+var CONTEXT_MIN_CHARS = 500;
+var CONTEXT_LABEL = "\n\nBatch context:\n";
 var PEM_LABEL = "[ A-Z0-9_-]{0,100}PRIVATE KEY(?: BLOCK)?-----";
 var AWS_ID = "(?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}(?![A-Za-z0-9])";
-var REDACT_PATTERNS = [
-  [
-    new RegExp(
+var AUTH_SCHEMES = [
+  "AWS4-HMAC-SHA256",
+  "ApiKey",
+  "Basic",
+  "Bearer",
+  "Concealed",
+  "Digest",
+  "DPoP",
+  "GNAP",
+  "HOBA",
+  "Mutual",
+  "Negotiate",
+  "NTLM",
+  "OAuth",
+  "PrivateToken",
+  "SCRAM-SHA-1",
+  "SCRAM-SHA-256",
+  "Token",
+  "vapid"
+].join("|");
+var TOKEN_PREFIXES = {
+  "GitHub token": "gh[pousr]_[A-Za-z0-9]{36,}",
+  "GitHub fine-grained token": "github_pat_[A-Za-z0-9_]{22,}",
+  "GitLab token": "glpat-[A-Za-z0-9_-]{20,}",
+  "Slack token": "xox[abeoprs]-[A-Za-z0-9-]{10,}",
+  "Slack app token": "xapp-\\d-[A-Za-z0-9-]{10,}",
+  "Slack webhook": "hooks\\.slack\\.com/(?:services|workflows|triggers)/[A-Za-z0-9+/]{20,}",
+  "AWS access key id": AWS_ID,
+  "Google API key": "AIza[A-Za-z0-9_-]{35,}",
+  "Stripe key": "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
+  "npm token": "npm_[A-Za-z0-9]{36,}",
+  "Hugging Face token": "hf_[A-Za-z]{34,}",
+  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
+};
+var REDACTIONS = [
+  {
+    name: "PEM private key",
+    pattern: new RegExp(
       `-----BEGIN${PEM_LABEL}(?:(?:[^-]|-(?!----))*-----END${PEM_LABEL}|(?:(?:\\s|\\\\[rn])+[A-Za-z0-9+/=]{16,})*)`,
       "gi"
     ),
-    "***"
-  ],
-  [
-    /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]{0,256}:[^\s@/?#'"]{1,256}@/gi,
-    "$1***@"
-  ],
-  [
-    /\b(Authorization["']?\s*[:=]\s*["']?(?:[A-Za-z][\w-]*\s+)?)[A-Za-z0-9._~+/=-]{8,}/gi,
-    "$1***"
-  ],
-  [
-    new RegExp(
+    replacement: "***"
+  },
+  {
+    name: "URL credentials",
+    pattern: /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]{0,256}:[^\s/?#'"]{1,256}@/gi,
+    replacement: "$1***@"
+  },
+  {
+    name: "Authorization header",
+    pattern: new RegExp(
+      `\\b(Authorization["']?\\s*[:=]\\s*["']?)(?:((?:${AUTH_SCHEMES})[ \\t]+)\\S[^\\n]*|[A-Za-z0-9._~+/=-]{16,})`,
+      "gi"
+    ),
+    replacement: "$1$2***"
+  },
+  {
+    name: "AWS secret",
+    pattern: new RegExp(
       `((?<![A-Za-z0-9])${AWS_ID}[^\\n]{0,100}?)(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{40}(?![A-Za-z0-9+/=])`,
       "g"
     ),
-    "$1***"
-  ],
-  [
-    /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}={0,2}\.ey[A-Za-z0-9_-]{8,}={0,2}\.[A-Za-z0-9_-]*/g,
-    "***"
-  ],
-  [
-    new RegExp(
-      `(?<![A-Za-z0-9])(?:${[
-        "gh[pousr]_[A-Za-z0-9]{36,}",
-        "github_pat_[A-Za-z0-9_]{22,}",
-        "glpat-[A-Za-z0-9_-]{20,}",
-        "xox[abeoprs]-[A-Za-z0-9-]{10,}",
-        "xapp-\\d-[A-Za-z0-9-]{10,}",
-        "hooks\\.slack\\.com/(?:services|workflows|triggers)/[A-Za-z0-9+/]{20,}",
-        AWS_ID,
-        "AIza[A-Za-z0-9_-]{35}",
-        "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
-        "npm_[A-Za-z0-9]{36}",
-        "hf_[A-Za-z]{34}",
-        "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
-      ].join("|")})`,
+    replacement: "$1***"
+  },
+  {
+    name: "JSON Web Token",
+    pattern: /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}={0,2}\.ey[A-Za-z0-9_-]{8,}={0,2}\.[A-Za-z0-9_-]*/g,
+    replacement: "***"
+  },
+  {
+    name: "token prefixes",
+    pattern: new RegExp(
+      `(?<![A-Za-z0-9])(?:${Object.values(TOKEN_PREFIXES).join("|")})`,
       "g"
     ),
-    "***"
-  ],
-  [/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer ***"],
-  [/\bsk-[A-Za-z0-9_-]{8,}/g, "***"],
-  [
-    /((?<!\S)(?:-u|--user)(?:\s+|=))(?:"[^"\n]*:[^"\n]*"|'[^'\n]*:[^'\n]*'|[^\s"':]+:[^\s"']+)/g,
-    "$1***"
-  ],
-  [
-    /\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)\s+)(?:"[^"]*"?|'[^']*'?|[^\s"']+)/gi,
-    "$1$2***"
-  ],
-  [
-    /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"]*"?|'[^']*'?|[^\s"']+)/gi,
-    "$1$2***"
-  ]
+    replacement: "***"
+  },
+  {
+    name: "Bearer token",
+    pattern: /Bearer\s+[A-Za-z0-9._~+/=-]+/gi,
+    replacement: "Bearer ***"
+  },
+  { name: "sk- key", pattern: /\bsk-[A-Za-z0-9_-]{8,}/g, replacement: "***" },
+  {
+    name: "curl user",
+    pattern: /((?<!\S)(?:-[A-Za-z]{0,8}u|--(?:proxy-)?user)(?:\s+|=)?)(?:"[^"\n:]*:[^"\n]*"|'[^'\n:]*:[^'\n]*'|[^\s"':]+:[^\s"']+)/g,
+    replacement: "$1***"
+  },
+  {
+    name: "password is",
+    pattern: /\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)(?::\s*|\s+))(?:"[^"]*"?|'[^']*'?|[^\s"']+)/gi,
+    replacement: "$1$2***"
+  },
+  {
+    name: "secret name",
+    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"]*"?|'[^']*'?|[^\s"']+)/gi,
+    replacement: "$1$2***"
+  }
 ];
 var FENCE = /(?<![`~])(?:```+[^\n`]*\n([\s\S]*?)```|~~~+[^\n~]*\n([\s\S]*?)~~~)/g;
 function prepareBrief(text, budget = BUDGET_CHARS) {
@@ -1507,16 +1547,26 @@ function condense(text) {
   return text.replace(
     FENCE,
     (_, tick, tilde) => {
-      const lines = (tick ?? tilde ?? "").replace(/\n$/, "").split("\n").length;
+      const block = tick ?? tilde ?? "";
+      const lines = block === "" ? 0 : block.replace(/\n$/, "").split("\n").length;
       return `[an exact block of ${lines} ${lines === 1 ? "line" : "lines"} is given verbatim]`;
     }
   ).replace(/\n{3,}/g, "\n\n");
 }
 function redact2(text) {
-  return REDACT_PATTERNS.reduce(
-    (t, [pattern, replacement]) => t.replace(pattern, replacement),
+  return REDACTIONS.reduce(
+    (t, { pattern, replacement }) => t.replace(pattern, replacement),
     text
   );
+}
+function buildPrompt(task, context) {
+  const brief = prepareBrief(task);
+  const budget = Math.min(
+    BUDGET_CHARS - brief.length - CONTEXT_LABEL.length,
+    CONTEXT_CAP_CHARS
+  );
+  if (context === "" || budget < CONTEXT_MIN_CHARS) return brief;
+  return `${brief}${CONTEXT_LABEL}${prepareBrief(context, budget)}`;
 }
 function descriptionText(description) {
   if (typeof description !== "string") return "";
@@ -1526,6 +1576,13 @@ function descriptionText(description) {
 }
 function roleText(description) {
   return descriptionText(description) || NO_DESCRIPTION;
+}
+function routingState(raw) {
+  return {
+    role: roleText(raw.role),
+    description: descriptionText(raw.description),
+    task: buildPrompt(raw.task, raw.context ?? "")
+  };
 }
 
 // src/decide.ts
@@ -1821,11 +1878,11 @@ function spawnLine(api, signal) {
 async function score({ deps, signal }, settings, keys, gate) {
   const decision = await route({
     parts: [tier, work],
-    state: {
+    state: routingState({
       role: gate.role,
-      description: descriptionText(gate.description),
-      task: prepareBrief(gate.task)
-    },
+      description: gate.description,
+      task: gate.task
+    }),
     attempts: plan(settings.provider, keys),
     keys,
     fetchFn: deps.fetchFn,

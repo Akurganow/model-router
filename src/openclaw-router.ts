@@ -1,5 +1,5 @@
 import type { Fetch } from "@typesafe-ai/sdk";
-import { descriptionText, prepareBrief } from "./brief.ts";
+import { routingState } from "./brief.ts";
 import { abortCategory, route } from "./compose.ts";
 import { type Clock, raceDeadline } from "./deadline.ts";
 import { decide } from "./decide.ts";
@@ -106,11 +106,11 @@ async function score(
 ) {
 	const decision = await route({
 		parts: [tier, work],
-		state: {
+		state: routingState({
 			role: gate.role,
-			description: descriptionText(gate.description),
-			task: prepareBrief(gate.task),
-		},
+			description: gate.description,
+			task: gate.task,
+		}),
 		attempts: plan(settings.provider, keys),
 		keys,
 		fetchFn: deps.fetchFn,

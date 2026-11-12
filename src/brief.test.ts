@@ -10,8 +10,12 @@ import {
 	NO_DESCRIPTION,
 	OMISSION_MARKER,
 	prepareBrief,
+	REDACTIONS,
+	type Redaction,
 	ROLE_CAP,
 	roleText,
+	routingState,
+	TOKEN_PREFIXES,
 } from "./brief.ts";
 
 const CALIBRATION = new URL("../calibration.jsonl", import.meta.url);
@@ -290,134 +294,300 @@ const AWS_SECRET = j("wJalrXUtnFEMI", "/K7MDENG/bPxRfiCYEXAMPLEKEY");
 const RSA = "RSA PRIVATE";
 const PEM_BODY =
 	"MIIEowIBAAKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOEePzNm0tRgeLezV6ffAt0gun\nVTLw7onLRnrq0/IzW7yWR7QkrmBL7jTKEn5u+qKhbwKfBstIs+bMY2Zkp18gnTxK";
+const PEM_BLOCK = `-----BEGIN ${RSA} KEY-----\n${PEM_BODY}\n-----END ${RSA} KEY-----`;
+const SK_KEY = j("sk", "-ant-api03-", "abcdefghijklmnop");
+const TOKEN = j("abc123", "def456ghi789");
 
-const SHAPES: [string, string, string][] = [
+// The entry whose pattern joins TOKEN_PREFIXES. A row tagged with a prefix name belongs to it.
+const PREFIX_ENTRY = "token prefixes";
+const entryOf = (tag: string) =>
+	Object.hasOwn(TOKEN_PREFIXES, tag) ? PREFIX_ENTRY : tag;
+const redactWith = (table: readonly Redaction[], text: string) =>
+	table.reduce((t, r) => t.replace(r.pattern, r.replacement), text);
+const without = (name: string) => REDACTIONS.filter((r) => r.name !== name);
+
+// Each row: the entry or prefix it tests, a name, the input, and what prepareBrief gives.
+const SHAPES: [string, string, string, string][] = [
 	[
-		"a GitHub classic token",
-		`use ${j("ghp", "_", A36)} to push`,
-		"use *** to push",
-	],
-	[
-		"a GitHub fine-grained token",
-		`token ${j("github", "_pat_", "11ABCDEFG0123456789abc", "_", "x".repeat(59))}`,
-		"token ***",
-	],
-	[
-		"a GitHub app token",
-		`x-access-token ${j("ghs", "_", A36)}`,
-		"x-access-token ***",
-	],
-	[
-		"an AWS id and its secret",
-		`creds ${AWS_ID} ${AWS_SECRET}`,
-		"creds *** ***",
-	],
-	[
-		"an AWS CSV row",
-		`Access key ID,Secret access key\n${AWS_ID},${AWS_SECRET}`,
-		"Access key ID,Secret access key\n***,***",
-	],
-	[
-		"named AWS keys",
-		`aws_access_key_id = ${AWS_ID}\naws_secret_access_key = ${AWS_SECRET}`,
-		"aws_access_key_id = ***\naws_secret_access_key = ***",
-	],
-	[
-		"a Slack bot token",
-		`post with ${j("xoxb", "-", "1234567890123-1234567890123-", "AbCdEfGhIjKlMnOpQrStUvWx")}`,
-		"post with ***",
-	],
-	[
-		"a Slack webhook",
-		`curl ${j("https://hooks", ".slack.com/services/", "T00000000/B00000000/", "XXXXXXXXXXXXXXXXXXXXXXXX")}`,
-		"curl https://***",
-	],
-	[
-		"a JSON Web Token",
-		`cookie ${j("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", ".", "eyJzdWIiOiIxMjM0NTY3ODkwIn0", ".", "dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U")}`,
-		"cookie ***",
-	],
-	[
-		"a Google API key",
-		`key ${j("AIza", "SyA-1234567890abcdefghijklmnopqrstu")}`,
-		"key ***",
-	],
-	[
-		"a password in a database URL",
-		`connect to ${j("postgres", "://admin:", "s3cr3t", "@db.internal:5432/app")}`,
-		"connect to postgres://***@db.internal:5432/app",
-	],
-	[
-		"a token in an HTTPS URL",
-		`clone ${j("https", "://x-access-token:", "abc123def456", "@github.com/o/r.git")}`,
-		"clone https://***@github.com/o/r.git",
-	],
-	[
-		"Basic credentials in an Authorization header",
-		`curl -H "Authorization: Basic ${j("dXNlcjpw", "YXNzd29yZA==")}" https://api.example.com`,
-		'curl -H "Authorization: Basic ***" https://api.example.com',
-	],
-	[
+		"PEM private key",
 		"a PEM private key block",
-		`key:\n-----BEGIN ${RSA} KEY-----\n${PEM_BODY}\n-----END ${RSA} KEY-----\ndone`,
+		`key:\n${PEM_BLOCK}\ndone`,
 		"key:\n***\ndone",
 	],
 	[
+		"PEM private key",
 		"a PEM header with no END line",
 		`the key starts -----BEGIN ${"OPENSSH PRIVATE"} KEY----- b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQ and more prose after it`,
 		"the key starts *** and more prose after it",
 	],
 	[
-		"a Stripe key",
-		`charge with ${j("sk", "_live_", "51H8abcdefghijklmnopqrstuv")}`,
-		"charge with ***",
+		"URL credentials",
+		"a password in a database URL",
+		`connect to ${j("postgres", "://admin:", "s3cr3t", "@db.internal:5432/app")}`,
+		"connect to postgres://***@db.internal:5432/app",
 	],
 	[
-		"an npm token in .npmrc",
-		`//registry.npmjs.org/:_authToken=${j("npm", "_", A36)}`,
-		"//registry.npmjs.org/:_authToken=***",
+		"URL credentials",
+		"a token in an HTTPS URL",
+		`clone ${j("https", "://x-access-token:", "abc123def456", "@github.com/o/r.git")}`,
+		"clone https://***@github.com/o/r.git",
 	],
 	[
-		"a bare npm token",
-		`publish with ${j("npm", "_", A36)}`,
-		"publish with ***",
+		"URL credentials",
+		"a password that holds @",
+		j("postgres", "://admin:", "p@ssw0rd", "@db.example/x"),
+		"postgres://***@db.example/x",
 	],
 	[
+		"URL credentials",
+		"a scheme with a plus sign",
+		j("mongodb+srv", "://app:", "pa55word", "@cluster0.example.net/db"),
+		"mongodb+srv://***@cluster0.example.net/db",
+	],
+	[
+		"Authorization header",
+		"Basic credentials, to the end of the line",
+		`curl -H "Authorization: Basic ${j("dXNlcjpw", "YXNzd29yZA==")}" https://api.example.com\nnext`,
+		'curl -H "Authorization: Basic ***\nnext',
+	],
+	[
+		"Authorization header",
+		"a Token scheme",
+		`Authorization: Token ${TOKEN}`,
+		"Authorization: Token ***",
+	],
+	[
+		"Authorization header",
+		"every parameter of a Digest scheme",
+		`Authorization: Digest username="a", response="${j("0123456789", "abcdef0123")}"`,
+		"Authorization: Digest ***",
+	],
+	[
+		"Authorization header",
+		"a long value with no scheme",
+		`Authorization: ${j("0123456789", "abcdef0123")}`,
+		"Authorization: ***",
+	],
+	[
+		"AWS secret",
+		"an AWS id and its secret",
+		`creds ${AWS_ID} ${AWS_SECRET}`,
+		"creds *** ***",
+	],
+	[
+		"AWS secret",
+		"an AWS CSV row",
+		`Access key ID,Secret access key\n${AWS_ID},${AWS_SECRET}`,
+		"Access key ID,Secret access key\n***,***",
+	],
+	[
+		"JSON Web Token",
+		"a JSON Web Token",
+		`cookie ${j("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", ".", "eyJzdWIiOiIxMjM0NTY3ODkwIn0", ".", "dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U")}`,
+		"cookie ***",
+	],
+	[
+		"GitHub token",
+		"a GitHub classic token",
+		`use ${j("ghp", "_", A36)} to push`,
+		"use *** to push",
+	],
+	[
+		"GitHub token",
+		"a GitHub app token",
+		`x-access-token ${j("ghs", "_", A36)}`,
+		"x-access-token ***",
+	],
+	[
+		"GitHub fine-grained token",
+		"a GitHub fine-grained token",
+		`token ${j("github", "_pat_", "11ABCDEFG0123456789abc", "_", "x".repeat(59))}`,
+		"token ***",
+	],
+	[
+		"GitLab token",
 		"a GitLab token",
 		`use ${j("glpat", "-", "xxxxxxxxxxxxxxxxxxxx")}`,
 		"use ***",
 	],
 	[
+		"Slack token",
+		"a Slack bot token",
+		`post with ${j("xoxb", "-", "1234567890123-1234567890123-", "AbCdEfGhIjKlMnOpQrStUvWx")}`,
+		"post with ***",
+	],
+	[
+		"Slack app token",
+		"a Slack app token",
+		`connect with ${j("xapp", "-1-", "A0123456789-0123456789-abcdef")}`,
+		"connect with ***",
+	],
+	[
+		"Slack webhook",
+		"a Slack services webhook",
+		`curl ${j("https://hooks", ".slack.com/services/", "T00000000/B00000000/", "XXXXXXXXXXXXXXXXXXXXXXXX")}`,
+		"curl https://***",
+	],
+	[
+		"Slack webhook",
+		"a Slack workflows webhook",
+		`curl ${j("https://hooks", ".slack.com/workflows/", "T00000000/A00000000/", "XXXXXXXXXXXXXXXXXXXXXXXX")}`,
+		"curl https://***",
+	],
+	[
+		"Slack webhook",
+		"a Slack triggers webhook",
+		`curl ${j("https://hooks", ".slack.com/triggers/", "T00000000/0000000000/", "XXXXXXXXXXXXXXXXXXXXXXXX")}`,
+		"curl https://***",
+	],
+	[
+		"AWS access key id",
+		"named AWS keys",
+		`aws_access_key_id = ${AWS_ID}\naws_secret_access_key = ${AWS_SECRET}`,
+		"aws_access_key_id = ***\naws_secret_access_key = ***",
+	],
+	[
+		"AWS access key id",
+		"a temporary AWS key id",
+		`role ${j("ASIA", "IOSFODNN7EXAMPLE")} assumed`,
+		"role *** assumed",
+	],
+	[
+		"Google API key",
+		"a Google API key",
+		`key ${j("AIza", "SyA-1234567890abcdefghijklmnopqrstu")}`,
+		"key ***",
+	],
+	[
+		"Google API key",
+		"a longer run after the Google prefix",
+		`key ${j("AIza", "b".repeat(40))} end`,
+		"key *** end",
+	],
+	[
+		"Stripe key",
+		"a Stripe key",
+		`charge with ${j("sk", "_live_", "51H8abcdefghijklmnopqrstuv")}`,
+		"charge with ***",
+	],
+	[
+		"npm token",
+		"a bare npm token",
+		`publish with ${j("npm", "_", A36)}`,
+		"publish with ***",
+	],
+	[
+		"npm token",
+		"a longer run after the npm prefix",
+		`publish with ${j("npm", "_", "a".repeat(40))} now`,
+		"publish with *** now",
+	],
+	[
+		"Hugging Face token",
 		"a Hugging Face token",
 		`use ${j("hf", "_", "abcdefghijklmnopqrstuvwxyzABCDEFGH")}`,
 		"use ***",
 	],
 	[
+		"Hugging Face token",
+		"a longer run after the Hugging Face prefix",
+		`use ${j("hf", "_", "a".repeat(40))} now`,
+		"use *** now",
+	],
+	[
+		"PyPI token",
+		"a PyPI upload token",
+		`upload with ${j("pypi", "-AgEIcHlwaS5vcmc", "A".repeat(60))}`,
+		"upload with ***",
+	],
+	[
+		"Bearer token",
+		"a Bearer token in prose",
+		`pass Bearer ${TOKEN} to the API`,
+		"pass Bearer *** to the API",
+	],
+	["sk- key", "an sk- key", `key ${SK_KEY}`, "key ***"],
+	[
+		"curl user",
 		"curl -u credentials",
 		"curl -u admin:hunter2 https://api.example.com",
 		"curl -u *** https://api.example.com",
 	],
 	[
+		"curl user",
+		"credentials attached to -u",
+		"curl -uadmin:hunter2pass https://x",
+		"curl -u*** https://x",
+	],
+	[
+		"curl user",
+		"a group of short flags that ends in u",
+		"curl -fsSu admin:hunter2pass https://x",
+		"curl -fsSu *** https://x",
+	],
+	[
+		"curl user",
+		"--user credentials",
+		"curl --user admin:hunter2pass https://x",
+		"curl --user *** https://x",
+	],
+	[
+		"curl user",
+		"--proxy-user credentials",
+		"curl --proxy-user admin:hunter2pass https://x",
+		"curl --proxy-user *** https://x",
+	],
+	[
+		"curl user",
+		"quoted -u credentials",
+		`curl -u "admin:hunter 2" https://x and -u 'root:pa ss' https://y`,
+		"curl -u *** https://x and -u *** https://y",
+	],
+	[
+		"password is",
 		"the word after password is",
 		"log in as admin, the password is hunter2",
 		"log in as admin, the password is ***",
 	],
+	[
+		"password is",
+		"the word after passphrase was",
+		"the passphrase was correcthorse yesterday",
+		"the passphrase was *** yesterday",
+	],
+	[
+		"password is",
+		"the word after passwd is and a colon",
+		"the passwd is: hunter2xyz",
+		"the passwd is: ***",
+	],
+	[
+		"secret name",
+		"a quoted value assigned to a secret name",
+		'export API_KEY="abc def ghi"',
+		"export API_KEY=***",
+	],
 ];
 
 test("each secret shape is masked and its context kept", async (t) => {
-	for (const [name, input, expected] of SHAPES)
+	for (const [, name, input, expected] of SHAPES)
 		await t.test(name, () => assert.equal(prepareBrief(input), expected));
 });
 
+test("each shape row needs its own entry, and each prefix row matches its prefix", async (t) => {
+	for (const [tag, name, input] of SHAPES)
+		await t.test(name, () => {
+			assert.notEqual(
+				redactWith(without(entryOf(tag)), input),
+				redactWith(REDACTIONS, input),
+			);
+			const prefix = TOKEN_PREFIXES[tag];
+			if (prefix !== undefined)
+				assert.match(input, new RegExp(`(?<![A-Za-z0-9])(?:${prefix})`));
+		});
+});
+
 test("a URL keeps its scheme and host, a header its scheme, prose after a PEM header stays", () => {
-	const url = prepareBrief(
-		j("mongodb+srv", "://app:", "pa55word", "@cluster0.example.net/db"),
-	);
-	assert.equal(url, "mongodb+srv://***@cluster0.example.net/db");
-	assert.equal(
-		prepareBrief(`Authorization: Token ${j("abc123", "def456ghi")}`),
-		"Authorization: Token ***",
-	);
 	assert.equal(
 		prepareBrief(
 			"Find files that contain -----BEGIN RSA PRIVATE KEY----- headers and delete them. Then run the tests.",
@@ -429,6 +599,7 @@ test("a URL keeps its scheme and host, a header its scheme, prose after a PEM he
 test("prose and look-alikes stay as they are", () => {
 	for (const text of [
 		"Use Basic authentication for the admin API, as the Authorization header docs say.",
+		"Authorization: required for all routes",
 		"Open https://example.com:8443/path?q=1 and ssh://git@github.com/o/r.git",
 		"git push -u origin main",
 		"See ```inline``` and ~~~ here",
@@ -451,6 +622,27 @@ test("a 40-character SHA alone stays, and an AWS id with a secret on its line is
 		prepareBrief(`id ${AWS_ID}\nnext line ${AWS_SECRET}`),
 		`id ***\nnext line ${AWS_SECRET}`,
 	);
+});
+
+// Each order below keeps a secret from leaking. Swapping the two entries leaks it.
+const ORDERS: [string, string, string, RegExp][] = [
+	["AWS secret", PREFIX_ENTRY, `creds ${AWS_ID} ${AWS_SECRET}`, /EXAMPLEKEY/],
+	["PEM private key", "secret name", `key:\n${PEM_BLOCK}`, /MIIE/],
+	["Bearer token", "password is", `the password is Bearer ${TOKEN}`, /def456/],
+	["Bearer token", "secret name", `TOKEN: Bearer ${TOKEN}`, /def456/],
+];
+
+test("the entries that guard each other run in their order", async (t) => {
+	const at = (name: string) => REDACTIONS.findIndex((r) => r.name === name);
+	for (const [first, second, input, secret] of ORDERS)
+		await t.test(`${first} before ${second}`, () => {
+			assert.ok(at(first) >= 0 && at(first) < at(second));
+			assert.doesNotMatch(prepareBrief(input), secret);
+			const swapped = [...REDACTIONS];
+			swapped[at(first)] = REDACTIONS[at(second)] as Redaction;
+			swapped[at(second)] = REDACTIONS[at(first)] as Redaction;
+			assert.match(redactWith(swapped, input), secret);
+		});
 });
 
 // Each body repeats the pieces that SECRET_PIECES looks for, so any split leaves a piece in view if masking fails.
@@ -481,10 +673,18 @@ test("a tilde fence condenses like a backtick fence", () => {
 	);
 });
 
-test("the fence note says 1 line for one line and 2 lines for two", () => {
+test("the fence note says 0 lines for an empty block, 1 line for one and 2 lines for two", () => {
+	assert.equal(
+		prepareBrief("Write:\n```\n```\nthen\n~~~\n~~~\nend"),
+		"Write:\n[an exact block of 0 lines is given verbatim]\nthen\n[an exact block of 0 lines is given verbatim]\nend",
+	);
 	assert.equal(
 		prepareBrief("Write:\n```json\n{}\n```\nthen test"),
 		"Write:\n[an exact block of 1 line is given verbatim]\nthen test",
+	);
+	assert.equal(
+		prepareBrief("Write:\n```\n\n```\nthen"),
+		"Write:\n[an exact block of 1 line is given verbatim]\nthen",
 	);
 	assert.equal(
 		prepareBrief("Write:\n```\na\nb\n```\nthen"),
@@ -493,76 +693,204 @@ test("the fence note says 1 line for one line and 2 lines for two", () => {
 });
 
 // Each input is repeated to a million characters. A quadratic rule takes minutes on some of them, a linear one milliseconds.
+// Each row: the entry or prefix it attacks, or "fences" or "all", a name, and the input.
 const ADVERSARIAL_SIZE = 1_000_000;
 const ADVERSARIAL_LIMIT_MS = 1000;
 const fill = (unit: string) =>
 	unit
 		.repeat(Math.ceil(ADVERSARIAL_SIZE / unit.length))
 		.slice(0, ADVERSARIAL_SIZE);
-const ADVERSARIAL: Record<string, () => string> = {
-	"a run": () => fill("a"),
-	"dash run": () => fill("-"),
-	"space run": () => fill(" "),
-	"newline run": () => fill("\n"),
-	"backtick run": () => fill("`"),
-	"fence opener with no newline": () => fill("```x"),
-	"unclosed fence openers": () => fill("```x\n"),
-	"tilde opener with no newline": () => fill("~~~x"),
-	"tilde run": () => fill("~"),
-	"fence pairs": () => fill("```ts\nconst a = 1\n```\n"),
-	"fences of falling length": () =>
-		Array.from({ length: 1400 }, (_, k) => `${"`".repeat(1400 - k)}\n`)
-			.join("")
-			.slice(0, ADVERSARIAL_SIZE),
-	"repeated PEM headers": () => fill("-----BEGIN PRIVATE KEY-----"),
-	"a PEM header then prose": () =>
-		`-----BEGIN PRIVATE KEY-----\n${fill("word ")}`,
-	"PEM headers and dash runs": () => fill("-----BEGIN PRIVATE KEY----- ----"),
-	"URL near misses": () => fill("ab://user:pass "),
-	"URL colon runs": () => fill("a://a:"),
-	"URLs with a long user": () =>
-		fill(`x://${"u".repeat(250)}:${"p".repeat(250)} `),
-	"repeated Authorization headers": () => fill("Authorization: Basic "),
-	"short Authorization values": () => fill("Authorization: ab "),
-	"AWS id near misses": () => fill(`${j("AKIA", "A".repeat(16))} `),
-	"AWS ids then short base64": () =>
-		fill(`${j("AKIA", "A".repeat(16))} ${"b".repeat(39)} `),
-	"JWT dashes": () => fill("eyJ-"),
-	"JWT headers and dots": () => fill("eyJaaaaaaaaaa."),
-	"JWT two parts": () => fill("eyJaaaaaaaaaa.eyJaaaaaaaaaa "),
-	"GitHub near misses": () => fill(`${j("ghp", "_")}${"a".repeat(35)} `),
-	"GitHub prefix dashes": () => fill(j("ghp", "_-")),
-	"Google prefix dashes": () => fill("AIza-"),
-	"repeated Slack prefixes": () => fill("xoxb-"),
-	"repeated Bearer": () => fill("Bearer "),
-	"repeated sk- prefixes": () => fill(j("sk", "-")),
-	"curl -u near misses": () => fill("-u ab "),
-	"curl -u colons": () => fill("-u a:"),
-	"repeated password is": () => fill("password is "),
-	"KEY run": () => fill("KEY"),
-	"KEY assignments": () => fill("KEY="),
-	"name near misses": () => fill("a_KEY "),
-	"open quotes after a name": () => fill('KEY="'),
-	"underscore run": () => fill("_"),
-	"calibration texts": () =>
-		fill(
-			readFileSync(CALIBRATION, "utf8")
-				.split("\n")
-				.filter((line) => line.trim() !== "")
-				.map((line) => (JSON.parse(line) as { text: string }).text)
-				.join("\n\n"),
-		),
-};
+const ADVERSARIAL: [string, string, () => string][] = [
+	["all", "a run", () => fill("a")],
+	["all", "dash run", () => fill("-")],
+	["all", "space run", () => fill(" ")],
+	["all", "newline run", () => fill("\n")],
+	[
+		"all",
+		"calibration texts",
+		() =>
+			fill(
+				readFileSync(CALIBRATION, "utf8")
+					.split("\n")
+					.filter((line) => line.trim() !== "")
+					.map((line) => (JSON.parse(line) as { text: string }).text)
+					.join("\n\n"),
+			),
+	],
+	["fences", "backtick run", () => fill("`")],
+	["fences", "fence opener with no newline", () => fill("```x")],
+	["fences", "unclosed fence openers", () => fill("```x\n")],
+	["fences", "tilde opener with no newline", () => fill("~~~x")],
+	["fences", "tilde run", () => fill("~")],
+	["fences", "fence pairs", () => fill("```ts\nconst a = 1\n```\n")],
+	[
+		"fences",
+		"fences of falling length",
+		() =>
+			Array.from({ length: 1400 }, (_, k) => `${"`".repeat(1400 - k)}\n`)
+				.join("")
+				.slice(0, ADVERSARIAL_SIZE),
+	],
+	[
+		"PEM private key",
+		"repeated PEM headers",
+		() => fill("-----BEGIN PRIVATE KEY-----"),
+	],
+	[
+		"PEM private key",
+		"a PEM header then prose",
+		() => `-----BEGIN PRIVATE KEY-----\n${fill("word ")}`,
+	],
+	[
+		"PEM private key",
+		"PEM headers and dash runs",
+		() => fill("-----BEGIN PRIVATE KEY----- ----"),
+	],
+	["URL credentials", "URL near misses", () => fill("ab://user:pass ")],
+	["URL credentials", "URL colon runs", () => fill("a://a:")],
+	[
+		"URL credentials",
+		"URLs with a long user",
+		() => fill(`x://${"u".repeat(250)}:${"p".repeat(250)} `),
+	],
+	[
+		"URL credentials",
+		"an at-sign run after a URL user",
+		() => `a://a:${fill("@")}`,
+	],
+	["URL credentials", "repeated URL users and at-signs", () => fill("a://a:@")],
+	[
+		"Authorization header",
+		"repeated Authorization headers",
+		() => fill("Authorization: Basic "),
+	],
+	[
+		"Authorization header",
+		"short Authorization values",
+		() => fill("Authorization: ab "),
+	],
+	[
+		"Authorization header",
+		"repeated Digest parameters",
+		() => fill('Authorization: Digest a="b", '),
+	],
+	[
+		"Authorization header",
+		"values one short of the unschemed length",
+		() => fill(`Authorization: ${"a".repeat(15)} `),
+	],
+	[
+		"AWS secret",
+		"AWS id near misses",
+		() => fill(`${j("AKIA", "A".repeat(16))} `),
+	],
+	[
+		"AWS secret",
+		"AWS ids then short base64",
+		() => fill(`${j("AKIA", "A".repeat(16))} ${"b".repeat(39)} `),
+	],
+	["JSON Web Token", "JWT dashes", () => fill("eyJ-")],
+	["JSON Web Token", "JWT headers and dots", () => fill("eyJaaaaaaaaaa.")],
+	[
+		"JSON Web Token",
+		"JWT two parts",
+		() => fill("eyJaaaaaaaaaa.eyJaaaaaaaaaa "),
+	],
+	[
+		"GitHub token",
+		"GitHub near misses",
+		() => fill(`${j("ghp", "_")}${"a".repeat(35)} `),
+	],
+	["GitHub token", "GitHub prefix dashes", () => fill(j("ghp", "_-"))],
+	[
+		"GitHub fine-grained token",
+		"fine-grained near misses",
+		() => fill(`${j("github", "_pat_")}${"a".repeat(21)} `),
+	],
+	[
+		"GitLab token",
+		"GitLab near misses",
+		() => fill(`${j("glpat", "-")}${"a".repeat(19)} `),
+	],
+	["Slack token", "repeated Slack prefixes", () => fill("xoxb-")],
+	["Slack app token", "repeated Slack app prefixes", () => fill("xapp-1-")],
+	[
+		"Slack webhook",
+		"short Slack webhook paths",
+		() => fill("hooks.slack.com/services/a "),
+	],
+	[
+		"AWS access key id",
+		"temporary AWS id near misses",
+		() => fill(`${j("ASIA", "A".repeat(15))} `),
+	],
+	["Google API key", "Google prefix dashes", () => fill("AIza-")],
+	["Stripe key", "repeated Stripe prefixes", () => fill(j("sk", "_live_"))],
+	[
+		"npm token",
+		"npm near misses",
+		() => fill(`${j("npm", "_")}${"a".repeat(35)} `),
+	],
+	[
+		"Hugging Face token",
+		"Hugging Face near misses",
+		() => fill(`${j("hf", "_")}${"a".repeat(33)} `),
+	],
+	[
+		"PyPI token",
+		"repeated PyPI prefixes",
+		() => fill(j("pypi", "-AgEIcHlwaS5vcmc ")),
+	],
+	["Bearer token", "repeated Bearer", () => fill("Bearer ")],
+	["sk- key", "repeated sk- prefixes", () => fill(j("sk", "-"))],
+	["curl user", "curl -u near misses", () => fill("-u ab ")],
+	["curl user", "curl -u colons", () => fill("-u a:")],
+	["curl user", "a double-quoted -u then colons", () => `-u "${fill(":")}`],
+	["curl user", "a single-quoted -u then colons", () => `-u '${fill(":")}`],
+	[
+		"curl user",
+		"a double-quoted -u then repeated a:",
+		() => `-u "${fill("a:")}`,
+	],
+	["curl user", "a short flag run of u", () => `-${fill("u")}`],
+	["password is", "repeated password is", () => fill("password is ")],
+	[
+		"password is",
+		"repeated password is and a colon",
+		() => fill("password is: "),
+	],
+	["secret name", "KEY run", () => fill("KEY")],
+	["secret name", "KEY assignments", () => fill("KEY=")],
+	["secret name", "name near misses", () => fill("a_KEY ")],
+	["secret name", "open quotes after a name", () => fill('KEY="')],
+	["secret name", "underscore run", () => fill("_")],
+];
 
-test("prepareBrief takes linear time on adversarial inputs of a million characters", () => {
-	for (const [name, build] of Object.entries(ADVERSARIAL)) {
+test("prepareBrief takes linear time on adversarial inputs of a million characters", async (t) => {
+	for (const [, name, build] of ADVERSARIAL) {
 		const text = build();
-		const start = performance.now();
-		prepareBrief(text);
-		const elapsed = performance.now() - start;
-		assert.ok(
-			elapsed < ADVERSARIAL_LIMIT_MS,
-			`${name}: ${elapsed.toFixed(0)} ms`,
+		await t.test(name, () => {
+			const start = performance.now();
+			prepareBrief(text);
+			const elapsed = performance.now() - start;
+			assert.ok(elapsed < ADVERSARIAL_LIMIT_MS, `${elapsed.toFixed(0)} ms`);
+		});
+	}
+});
+
+test("every entry and every token prefix has a shape row and an adversarial input", () => {
+	const names = [
+		...REDACTIONS.map((r) => r.name),
+		...Object.keys(TOKEN_PREFIXES),
+	];
+	for (const tags of [
+		SHAPES.map(([tag]) => tag),
+		ADVERSARIAL.map(([tag]) => tag),
+	]) {
+		const covered = new Set([...tags, ...tags.map(entryOf)]);
+		assert.deepEqual(
+			names.filter((n) => !covered.has(n)),
+			[],
 		);
 	}
 });
@@ -579,4 +907,43 @@ test("a name ending in key still masks the word after its colon in prose", () =>
 		prepareBrief("The primary key: user_id. Hotkey: Ctrl+S"),
 		"The primary key: *** Hotkey: ***",
 	);
+});
+
+test("routingState masks the role, the description, the task and the context", () => {
+	assert.deepEqual(
+		routingState({
+			role: `Plans with ${SK_KEY}`,
+			description: `Ship\n with ${SK_KEY}`,
+			task: `Run with ${SK_KEY}`,
+			context: `Notes ${SK_KEY}`,
+		}),
+		{
+			role: "Plans with ***",
+			description: "Ship with ***",
+			task: "Run with ***\n\nBatch context:\nNotes ***",
+		},
+	);
+});
+
+test("routingState keeps the fixed roles, and a blank description stays empty", () => {
+	for (const role of [DEFAULT_ROLE, NO_DESCRIPTION])
+		assert.equal(
+			routingState({ role, description: undefined, task: "t" }).role,
+			role,
+		);
+	assert.equal(
+		routingState({ role: "", description: " ", task: "t" }).role,
+		NO_DESCRIPTION,
+	);
+	assert.equal(
+		routingState({ role: "r", description: " ", task: "t" }).description,
+		"",
+	);
+});
+
+// routingState masks text that roleText or prepareBrief may already have masked, so a second pass must change nothing.
+test("masking a masked text again changes nothing", () => {
+	for (const [, name, , expected] of SHAPES)
+		assert.equal(prepareBrief(expected), expected, name);
+	assert.equal(roleText(DEFAULT_ROLE), DEFAULT_ROLE);
 });

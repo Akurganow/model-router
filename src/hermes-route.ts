@@ -1,5 +1,5 @@
 import type { Fetch } from "@typesafe-ai/sdk";
-import { buildPrompt, DEFAULT_ROLE, descriptionText } from "./brief.ts";
+import { DEFAULT_ROLE, routingState } from "./brief.ts";
 import { FAILED, route, type Skipped, TIMEOUT } from "./compose.ts";
 import { type Clock, raceDeadline } from "./deadline.ts";
 import { type DecidedWithWork, decide } from "./decide.ts";
@@ -53,11 +53,12 @@ async function score(
 	const { keys } = request;
 	const decision = await route({
 		parts: [tier, work],
-		state: {
+		state: routingState({
 			role: DEFAULT_ROLE,
-			description: descriptionText(request.description),
-			task: buildPrompt(request.task, request.context),
-		},
+			description: request.description,
+			task: request.task,
+			context: request.context,
+		}),
 		attempts: plan(request.provider, keys),
 		keys,
 		fetchFn,
