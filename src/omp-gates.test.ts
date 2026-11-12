@@ -37,7 +37,13 @@ const openOr = (key = OR_KEY) => ({
 });
 
 const ctx = world.ctx;
-const gates = () => checkGates(world.imports, world.pi, ctx());
+// The routing alone: the facts are the batch's, which other tests check.
+const routing = (result: Awaited<ReturnType<typeof checkGates>>) =>
+	"closed" in result
+		? result
+		: { attempts: result.attempts, keys: result.keys };
+const gates = async () =>
+	routing(await checkGates(world.imports, world.pi, ctx()));
 const throws = () => {
 	throw new Error("boom");
 };
@@ -310,8 +316,10 @@ test("an unreadable lockfile or settings read gives no settings", async () => {
 	assert.equal(await readSettings(world.imports, "/work"), undefined);
 });
 
-const forAgent = (agent: string, modelRole?: string) =>
-	checkGates(world.imports, world.pi, ctx(), { agent, modelRole });
+const forAgent = async (agent: string, modelRole?: string) =>
+	routing(
+		await checkGates(world.imports, world.pi, ctx(), { agent, modelRole }),
+	);
 
 for (const name of [
 	"task",

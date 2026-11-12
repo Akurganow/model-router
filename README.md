@@ -11,7 +11,7 @@ Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For th
 | Harness | The plugin sets | Questions to Jev | Starts a program | Minimum version | Reference |
 | --- | --- | --- | --- | --- | --- |
 | Claude Code | `model` and `effort` | 2 | no | v2.1.308 | [plugin README](plugins/model-router/README.md) |
-| Oh My Pi | the `smol` or `slow` role | 1 | no | v18.12.6 | [plugin README](plugins/model-router-omp/README.md) |
+| Oh My Pi | the `smol` or `slow` role and the thinking level | 2 | no | v18.12.6 | [plugin README](plugins/model-router-omp/README.md) |
 | OpenClaw | `model` and `thinking` | 2 | no | 2026.10.10 | [plugin README](plugins/model-router-openclaw/README.md) |
 | Hermes Agent | `model`, `provider` and `reasoning_effort` | 2 | yes, Node once per task | 0.22.6 | [plugin README](plugins/model-router-hermes/README.md) |
 
@@ -34,12 +34,15 @@ tiers and the ladder are what they are, with Anthropic's sources.
 The `scope` option picks the calls. [Which calls are routed](plugins/model-router/README.md#which-calls-are-routed)
 holds the rules.
 
-**Oh My Pi.** The plugin scores each batch item with Jev, which answers one
-question: how much judgment the task needs. Jev reads the task and the agent
-text. For lookup work the plugin gives the spawn the `smol` role. For open
-judgment it gives the `slow` role. For bounded judgment it changes nothing. It
-sets no effort and never changes the tool input. The roles run on the models
-you point `smol` and `slow` at.
+**Oh My Pi.** The plugin scores each batch item with Jev, which answers two
+questions: how much judgment the task needs and how much work it takes. Jev
+reads the task and the agent text. For lookup work the plugin gives the spawn
+the `smol` role. For open judgment it gives the `slow` role. For bounded
+judgment it keeps the agent's model. Each spawn also gets a thinking level from
+a fixed ladder. The plugin never changes the tool input. The roles run on the
+models you point `smol` and `slow` at.
+[Effort](plugins/model-router-omp/README.md#effort) has the ladder and the
+efforts the plugin keeps.
 
 The `scope` setting picks the agents. [Scope](plugins/model-router-omp/README.md#scope)
 holds the rules.

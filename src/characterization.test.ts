@@ -223,6 +223,8 @@ describe("omp per-item line", () => {
 			disabled: [],
 			agents: world.agents,
 			noModels: undefined,
+			maxEffort: undefined,
+			effortEnabled: false,
 		},
 	});
 	const lines = async (tasks: [string, string?][]) => {
@@ -232,15 +234,18 @@ describe("omp per-item line", () => {
 			agent: agent ?? "task",
 		}));
 		return (await scoreItems(items, "", batch(), ROUTING_LIMIT_MS)).map(
-			(s) => s.stored,
+			({ stored }) => ({ role: stored.routed?.role, line: stored.line }),
 		);
 	};
 
 	test("level 0 names @smol, level 1 changes nothing and level 2 names @slow", async () => {
 		assert.deepEqual(await lines([["level0 a"], ["level1 b"], ["level2 c"]]), [
-			{ role: "@smol", line: `L0 @smol · p=0.90${FULL_SUFFIX}` },
-			{ role: undefined, line: `L1 no change · p=0.90${FULL_SUFFIX}` },
-			{ role: "@slow", line: `L2 @slow · p=0.90${FULL_SUFFIX}` },
+			{ role: "@smol", line: `L0 @smol · high · p=0.90/0.90${FULL_SUFFIX}` },
+			{
+				role: undefined,
+				line: `L1 no change · medium · p=0.90/0.90${FULL_SUFFIX}`,
+			},
+			{ role: "@slow", line: `L2 @slow · medium · p=0.90/0.90${FULL_SUFFIX}` },
 		]);
 	});
 

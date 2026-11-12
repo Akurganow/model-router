@@ -2,7 +2,9 @@ import { contextText } from "./brief.ts";
 import { ENTRY_SEPARATOR, LINE_PREFIX, skippedLine } from "./line.ts";
 import { registerConfig, say } from "./omp-config.ts";
 import { budgetFor } from "./omp-deadline.ts";
+import { lineFor, modelFor, planEffort } from "./omp-effort.ts";
 import {
+	type Batch,
 	checkGates,
 	noModel,
 	openBatch,
@@ -109,21 +111,25 @@ function createRouter(omp: OmpImports, pi: Pi) {
 	}
 
 	// A gate that closed since the batch, or a role that stopped resolving, drops the decision.
-	async function spawnReason(
+	async function spawnGates(
 		event: SpawnEvent,
 		ctx: Context,
-		role: string,
-	): Promise<string | undefined> {
+		role: string | undefined,
+	): Promise<Batch | { closed: string }> {
 		const gates = await checkGates(omp, pi, ctx, event);
-		if ("closed" in gates) return gates.closed;
-		return resolves(ctx, role) ? undefined : noModel(role);
+		if ("closed" in gates || role === undefined || resolves(ctx, role))
+			return gates;
+		return { closed: noModel(role) };
 	}
 
 	/**
-	 * Returns the stored role and its line for a task spawn. Returns nothing when
-	 * the spawn is not a task spawn, no decision matches, or the decision holds no
-	 * role. When a gate closes or the role stopped resolving since the batch, it
-	 * reports a skip line for the item and returns nothing.
+	 * Returns the model and the line for a task spawn: the stored role, or the
+	 * spawn's own patterns at the middle level, with the effort as a suffix
+	 * where the plugin sets one. Returns nothing when the spawn is not a task
+	 * spawn, no routed decision matches, or the middle level sets no effort.
+	 * When a gate closes or the role stopped resolving since the batch, it
+	 * reports a skip line for the item and returns nothing. When the effort
+	 * differs from the batch line's, it reports the new line for the item.
 	 */
 	async function onSpawn(
 		event: SpawnEvent,
@@ -131,14 +137,20 @@ function createRouter(omp: OmpImports, pi: Pi) {
 	): Promise<SpawnResult | undefined> {
 		if (event.invocationKind !== TASK) return;
 		const taken = store.take(event.spawnKey, event.agent);
-		const role = taken?.stored.role;
-		if (!taken || !role) return;
-		const reason = await spawnReason(event, ctx, role);
-		if (reason === undefined)
-			return { model: role, note: LINE_PREFIX + taken.stored.line };
-		// omp drops a note that comes without a model, so the skip goes out like the batch line.
-		report(ctx, [entry(taken.index, skippedLine(reason))]);
-		return undefined;
+		const routed = taken?.stored.routed;
+		if (!taken || !routed) return;
+		const gates = await spawnGates(event, ctx, routed.role);
+		// omp drops a note that comes without a model, so a spawn-time line goes out like the batch line.
+		if ("closed" in gates)
+			return void report(ctx, [entry(taken.index, skippedLine(gates.closed))]);
+		const patterns = event.patterns ?? [];
+		const plan = planEffort(routed, gates.facts, patterns);
+		const line = lineFor(routed, plan);
+		if (line !== taken.stored.line) report(ctx, [entry(taken.index, line)]);
+		const model = modelFor(routed.role, plan, patterns);
+		return model === undefined
+			? undefined
+			: { model, note: LINE_PREFIX + line };
 	}
 
 	function learn({ toolName, toolCallId }: ToolProgressEvent, result: unknown) {
@@ -156,7 +168,7 @@ function createRouter(omp: OmpImports, pi: Pi) {
 	return { onToolCall, onSpawn, learn, onToolEnd };
 }
 
-// The adapter only picks the model. Effort stays with omp, and the tool input is never changed.
+// The adapter sets the model role and the effort through the spawn hook. The tool input is never changed.
 export function createExtension(omp: OmpImports): (pi: Pi) => void {
 	return (pi) => {
 		const router = createRouter(omp, pi);

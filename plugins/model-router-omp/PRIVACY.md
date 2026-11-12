@@ -66,7 +66,7 @@ names. The JSON body holds:
     says why the text is fixed
 - the item's `name` as the description, masked, collapsed and cut like the
   agent's description, or an empty description when it has none
-- the Jev alias and one scoring question, `tier`, as
+- the Jev alias and two scoring questions, `tier` and `work`, as
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them
 
@@ -122,7 +122,7 @@ The providers' privacy policies are linked at
 ## What the plugin stores
 
 The plugin keeps no file of its own. In memory it holds up to 64 routing
-decisions, each a model role and its log line. A decision leaves when its
+decisions, each a level, a model role, an effort and its log line. A decision leaves when its
 subagent spawns, when its task call ends before omp reports the subagent's id,
 or when newer decisions push it out.
 
@@ -159,10 +159,14 @@ include the project's value. It also reads omp's plugins lockfile for your
 global values of them, and reads a missing lockfile as empty. The lockfile is the only
 file the plugin reads itself. When either read fails, the plugin skips routing
 and sends nothing. At the same
-points it reads omp's settings `modelRoles`, `task.agentModelOverrides` and
-`task.disabledAgents`, and the source, declared models and description of each
-agent omp discovers, to see whether your own agent replaced a bundled one or
-sets its own model. It also checks whether the `@smol` and `@slow` roles
+points it reads omp's settings `modelRoles`, `task.agentModelOverrides`,
+`task.disabledAgents`, `task.maxEffort` and `task.enableEffort`, and the
+source, declared models and description of each agent omp discovers, to see
+whether your own agent replaced a bundled one or sets its own model.
+`modelRoles`, `task.maxEffort` and `task.enableEffort` also decide whether it
+keeps your effort or caps its own. As each routed subagent starts, it reads the
+model patterns and the model role omp sends with the spawn, and the item's
+`effort`. It also checks whether the `@smol` and `@slow` roles
 resolve to a model. For each batch it also reads omp's
 `extensionHandlers.toolCallTimeoutMs` setting, to fit its scoring time into
 it. Nothing from these leaves your machine, except the

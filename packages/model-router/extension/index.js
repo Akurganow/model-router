@@ -1395,7 +1395,7 @@ async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
   const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
   if ("closed" in batch) return batch;
   const reason = spawnCheck(spawning, batch.facts);
-  return reason === void 0 ? { attempts: batch.attempts, keys: batch.keys } : { closed: reason };
+  return reason === void 0 ? batch : { closed: reason };
 }
 async function openBatch(omp, pi, ctx, settings) {
   if (settings === void 0) return { closed: UNREADABLE };
@@ -1465,11 +1465,11 @@ function resolves(ctx, role) {
     return false;
   }
 }
-function read(lookup2, id, settings) {
+function read(lookup2, id, settings, fallback) {
   try {
     return lookup2(id)?.get(settings);
   } catch {
-    return void 0;
+    return fallback;
   }
 }
 var readTimeoutSetting = (lookup2, settings) => read(lookup2, "extensionHandlers.toolCallTimeoutMs", settings);
@@ -1477,7 +1477,9 @@ function readConfig(lookup2, settings) {
   const roles = read(lookup2, "modelRoles", settings);
   const overrides = read(lookup2, "task.agentModelOverrides", settings);
   const disabled = read(lookup2, "task.disabledAgents", settings);
-  return isRecord(roles) && isRecord(overrides) && Array.isArray(disabled) ? { roles, overrides, disabled } : void 0;
+  const maxEffort = read(lookup2, "task.maxEffort", settings, null);
+  const effortEnabled = read(lookup2, "task.enableEffort", settings) === true;
+  return isRecord(roles) && isRecord(overrides) && Array.isArray(disabled) ? { roles, overrides, disabled, maxEffort, effortEnabled } : void 0;
 }
 async function discover(pi, ctx) {
   try {
@@ -1747,6 +1749,72 @@ function budgetFor(value) {
   };
 }
 
+// src/reasons.ts
+var CALLER_EFFORT = "caller effort";
+var CONFIG_EFFORT = "config effort";
+
+// src/omp-effort.ts
+var NO_PATTERNS = "no model patterns";
+var SELECTORS = [
+  "inherit",
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max"
+];
+var AUTO = "auto";
+var MIN_PREFIX = 2;
+var CEILINGS = ["minimal", "low", "medium", "high", "xhigh", "max"];
+var LOWEST = CEILINGS.indexOf("low");
+function carriesLevel(pattern) {
+  const colon = pattern.lastIndexOf(":");
+  if (colon < 0) return false;
+  const suffix = pattern.slice(colon + 1);
+  if (suffix === AUTO || SELECTORS.includes(suffix))
+    return true;
+  return suffix.length >= MIN_PREFIX && SELECTORS.filter((selector) => selector.startsWith(suffix)).length === 1;
+}
+var patternsOf = (value) => (typeof value === "string" ? [value] : Array.isArray(value) ? value : []).filter((v) => typeof v === "string").flatMap((v) => v.split(",")).map((v) => v.trim()).filter((v) => v !== "");
+function roleCarriesLevel(role, roles, seen = /* @__PURE__ */ new Set()) {
+  if (seen.has(role) || !Object.hasOwn(roles, role)) return false;
+  seen.add(role);
+  return patternsOf(roles[role]).some(
+    (pattern) => carriesLevel(pattern) || pattern.startsWith(ROLE_MARK) && roleCarriesLevel(pattern.slice(ROLE_MARK.length), roles, seen)
+  );
+}
+function capped(effort, ceiling) {
+  if (ceiling === void 0) return effort;
+  const top = CEILINGS.indexOf(ceiling);
+  if (top < LOWEST) return void 0;
+  return CEILINGS.indexOf(effort) <= top ? effort : CEILINGS[top];
+}
+function planEffort({ role, ladder, itemEffort }, { roles, maxEffort, effortEnabled }, patterns) {
+  if (itemEffort && effortEnabled) return { kept: CALLER_EFFORT };
+  if (role !== void 0 && roleCarriesLevel(role.slice(ROLE_MARK.length), roles))
+    return { kept: CONFIG_EFFORT };
+  if (role === void 0 && patterns?.some(carriesLevel))
+    return { kept: CONFIG_EFFORT };
+  const effort = capped(ladder, maxEffort);
+  if (effort === void 0) return { kept: CONFIG_EFFORT };
+  if (role === void 0 && patterns?.length === 0)
+    return { kept: NO_PATTERNS };
+  return { set: effort };
+}
+var lineFor = (routed, plan2) => routedLine({
+  level: routed.level,
+  target: routed.role,
+  effort: "set" in plan2 ? plan2.set : plan2.kept,
+  probabilities: routed.probabilities,
+  suffix: routed.suffix
+});
+function modelFor(role, plan2, patterns) {
+  if (role !== void 0) return "set" in plan2 ? `${role}:${plan2.set}` : role;
+  return "set" in plan2 ? patterns.map((p) => `${p}:${plan2.set}`) : void 0;
+}
+
 // src/decide.ts
 var BAD_REPLY = { skipped: "bad reply" };
 var levelOf = (decision, key) => {
@@ -1763,15 +1831,34 @@ function decide2(decision, tierKey, workKey) {
   const suffix = decisionSuffix(decision);
   if (workKey === void 0)
     return { tier: tier2.level, probabilities: tier2.probability, suffix };
-  const work = levelOf(decision, workKey);
-  if (!work) return BAD_REPLY;
+  const work2 = levelOf(decision, workKey);
+  if (!work2) return BAD_REPLY;
   return {
     tier: tier2.level,
-    work: work.level,
-    probabilities: `${tier2.probability}/${work.probability}`,
+    work: work2.level,
+    probabilities: `${tier2.probability}/${work2.probability}`,
     suffix
   };
 }
+
+// src/effort.ts
+var WORK_DOWN = 2 ** 1.25;
+var WORK_UP = 2 ** 0.5;
+var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
+var WORK_TEXTS = [
+  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
+  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
+  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
+];
+var work = {
+  key: "work",
+  question: {
+    type: "score",
+    instructions: WORK_INSTRUCTIONS,
+    criteria: WORK_TEXTS
+  },
+  pick: fromMiddle(WORK_DOWN, WORK_UP)
+};
 
 // src/fetch.ts
 var oneChunk = (bytes) => new ReadableStream({
@@ -1789,6 +1876,14 @@ var streamedFetch = async (url, init) => {
     headers: reply2.headers
   });
 };
+
+// src/ladder.ts
+var EFFORT_BY_TIER = {
+  0: ["medium", "high", "xhigh"],
+  1: ["low", "medium", "high"],
+  2: ["low", "medium", "high"]
+};
+var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
 // src/model.ts
 var TIER_DOWN = 2 ** 0.25;
@@ -1838,7 +1933,7 @@ async function scoreItems(items, context, { attempts, keys, facts }, deadline) {
         routing,
         limit.signal
       );
-      return { ...pending, stored: toStored(decision) };
+      return { ...pending, stored: toStored(decision, item, facts) };
     });
   } finally {
     clearTimeout(timer);
@@ -1846,7 +1941,7 @@ async function scoreItems(items, context, { attempts, keys, facts }, deadline) {
 }
 function scoreItem(item, context, role, routing, signal) {
   return route({
-    parts: [tier],
+    parts: [tier, work],
     state: routingState({
       role,
       description: item.name,
@@ -1858,23 +1953,19 @@ function scoreItem(item, context, role, routing, signal) {
     signal
   });
 }
-var skipped = (reason) => ({
-  role: void 0,
-  line: skippedLine(reason)
-});
-function toStored(decision) {
-  const decided = decide2(decision, tier.key);
+var skipped = (reason) => ({ line: skippedLine(reason) });
+function toStored(decision, item, facts) {
+  const decided = decide2(decision, tier.key, work.key);
   if ("skipped" in decided) return skipped(decided.skipped);
-  const role = ROLE_BY_LEVEL[decided.tier];
-  return {
-    role,
-    line: routedLine({
-      level: decided.tier,
-      target: role,
-      probabilities: decided.probabilities,
-      suffix: decided.suffix
-    })
+  const routed = {
+    level: decided.tier,
+    role: ROLE_BY_LEVEL[decided.tier],
+    ladder: effortFor(decided.tier, decided.work),
+    itemEffort: item.effort !== void 0,
+    probabilities: decided.probabilities,
+    suffix: decided.suffix
   };
+  return { line: lineFor(routed, planEffort(routed, facts)), routed };
 }
 async function mapLimit(items, limit, fn) {
   const results = [];
@@ -2016,21 +2107,26 @@ function createRouter(omp, pi) {
       scored.map(({ index, stored }) => entry(index, stored.line))
     );
   }
-  async function spawnReason(event, ctx, role) {
+  async function spawnGates(event, ctx, role) {
     const gates = await checkGates(omp, pi, ctx, event);
-    if ("closed" in gates) return gates.closed;
-    return resolves(ctx, role) ? void 0 : noModel(role);
+    if ("closed" in gates || role === void 0 || resolves(ctx, role))
+      return gates;
+    return { closed: noModel(role) };
   }
   async function onSpawn(event, ctx) {
     if (event.invocationKind !== TASK) return;
     const taken = store.take(event.spawnKey, event.agent);
-    const role = taken?.stored.role;
-    if (!taken || !role) return;
-    const reason = await spawnReason(event, ctx, role);
-    if (reason === void 0)
-      return { model: role, note: LINE_PREFIX + taken.stored.line };
-    report(ctx, [entry(taken.index, skippedLine(reason))]);
-    return void 0;
+    const routed = taken?.stored.routed;
+    if (!taken || !routed) return;
+    const gates = await spawnGates(event, ctx, routed.role);
+    if ("closed" in gates)
+      return void report(ctx, [entry(taken.index, skippedLine(gates.closed))]);
+    const patterns = event.patterns ?? [];
+    const plan2 = planEffort(routed, gates.facts, patterns);
+    const line = lineFor(routed, plan2);
+    if (line !== taken.stored.line) report(ctx, [entry(taken.index, line)]);
+    const model = modelFor(routed.role, plan2, patterns);
+    return model === void 0 ? void 0 : { model, note: LINE_PREFIX + line };
   }
   function learn({ toolName, toolCallId }, result) {
     if (toolName !== TASK) return;

@@ -96,7 +96,7 @@ For each reason that holds, tell the user which setting to change, and where. Th
 3. On Skip, record "routing check: skipped" and go to the closing summary.
 4. On Check, spawn one `task` item with no `agent` and the text "Reply with the single word ok."
 5. Read the batch line, which starts with `model-router`. If no line appears, check `task.batch` and that the plugin is enabled.
-6. Check that the entry names a level and either a role or `no change`.
+6. Check that the entry names a level, either a role or `no change`, and an effort or a kept label such as `caller effort`.
 7. If the entry names a skip reason, stop and report it.
 8. If omp records the model the subagent ran on, check it against the entry.
 9. Report the result in one line.
@@ -106,6 +106,7 @@ The routing-check question reads: "To check routing I will spawn one small subag
 Read the entry as follows:
 
 - The model matches the role the entry names. For `no change`, it is the model omp uses without routing.
+- The thinking level matches the effort the entry names, within the range the model supports. A kept label means omp's own level.
 - After a fallback, it ends with ` · via <provider> (<first provider> <reason>)`.
 - `key unset` points to step 3.
 - A gate or item reason points to step 5.

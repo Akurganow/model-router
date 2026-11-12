@@ -9,7 +9,7 @@ const world = useWorld();
 const install = () => createExtension(world.imports)(world.pi);
 const twoTasks = () =>
 	world.toolCall("c", { tasks: [{ task: "level0 a" }, { task: "level2 b" }] });
-const LINE = "L2 @slow · p=0.90 · jev jev-1.14.0 · 812/9 tok";
+const LINE = "L2 @slow · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok";
 // The spawn-time line for one item, after its batch line.
 const skipAt = (n: number, reason: string) =>
 	`model-router task ${n}: skipped, ${reason}`;
@@ -17,15 +17,18 @@ const skipAt = (n: number, reason: string) =>
 test("sync mode: an unnamed item is found by its call and index", async () => {
 	install();
 	await twoTasks();
-	assert.equal((await world.spawn("c:0"))?.model, "@smol");
+	assert.equal((await world.spawn("c:0"))?.model, "@smol:high");
 	const second = await world.spawn("c:1");
-	assert.deepEqual(second, { model: "@slow", note: `model-router ${LINE}` });
+	assert.deepEqual(second, {
+		model: "@slow:medium",
+		note: `model-router ${LINE}`,
+	});
 });
 
 test("sync mode: a named item is found by its raw name, once", async () => {
 	install();
 	await world.toolCall("c", { tasks: [{ task: "level2 a", name: "Foo" }] });
-	assert.equal((await world.spawn("Foo"))?.model, "@slow");
+	assert.equal((await world.spawn("Foo"))?.model, "@slow:medium");
 	assert.equal(await world.spawn("Foo"), undefined);
 	assert.equal(await world.spawn("c:0"), undefined);
 });
@@ -37,9 +40,9 @@ test("async mode: progress swaps the keys for the child id", async () => {
 	});
 	await world.update("c", [{ index: 0, id: "0-Foo", status: "running" }]);
 	assert.equal(await world.spawn("Foo"), undefined);
-	assert.equal((await world.spawn("0-Foo"))?.model, "@slow");
+	assert.equal((await world.spawn("0-Foo"))?.model, "@slow:medium");
 	await world.end("c", [{ index: 1, id: "1-Bar" }]);
-	assert.equal((await world.spawn("1-Bar"))?.model, "@smol");
+	assert.equal((await world.spawn("1-Bar"))?.model, "@smol:high");
 });
 
 test("async mode: the id still works after the call ends, and the old keys do not", async () => {
@@ -48,7 +51,7 @@ test("async mode: the id still works after the call ends, and the old keys do no
 	await world.update("c", [{ index: 0, id: "0-Foo" }]);
 	await world.end("c");
 	assert.equal(await world.spawn("c:0"), undefined);
-	assert.equal((await world.spawn("0-Foo"))?.model, "@slow");
+	assert.equal((await world.spawn("0-Foo"))?.model, "@slow:medium");
 });
 
 test("progress of another tool is ignored", async () => {
@@ -60,7 +63,7 @@ test("progress of another tool is ignored", async () => {
 		partialResult: { details: { progress: [{ index: 0, id: "x" }] } },
 	});
 	assert.equal(await world.spawn("x"), undefined);
-	assert.equal((await world.spawn("c:0"))?.model, "@slow");
+	assert.equal((await world.spawn("c:0"))?.model, "@slow:medium");
 });
 
 test("nested calls keep their own decisions", async () => {
@@ -69,7 +72,7 @@ test("nested calls keep their own decisions", async () => {
 	await world.toolCall("child", { tasks: [{ task: "level2 b" }] });
 	await world.end("child");
 	assert.equal(await world.spawn("child:0"), undefined);
-	assert.equal((await world.spawn("parent:0"))?.model, "@smol");
+	assert.equal((await world.spawn("parent:0"))?.model, "@smol:high");
 });
 
 test("one name in two open calls is ambiguous", async () => {
@@ -81,7 +84,7 @@ test("one name in two open calls is ambiguous", async () => {
 		tasks: [{ task: "level2 b", name: "Same" }],
 	});
 	assert.equal(await world.spawn("Same"), undefined);
-	assert.equal((await world.spawn("child:0"))?.model, "@slow");
+	assert.equal((await world.spawn("child:0"))?.model, "@slow:medium");
 });
 
 test("a repeated name inside one call is skipped", async () => {
@@ -133,7 +136,7 @@ test("an eval spawn and another agent are skipped and keep the decision", async 
 	assert.equal(await world.spawn("c:0", { invocationKind: "eval" }), undefined);
 	assert.equal(await world.spawn("c:0", { agent: "explore" }), undefined);
 	assert.equal(world.notes.length, 1);
-	assert.equal((await world.spawn("c:0"))?.model, "@slow");
+	assert.equal((await world.spawn("c:0"))?.model, "@slow:medium");
 });
 
 test("a spawn that sets its own model role is left alone", async () => {
@@ -192,7 +195,7 @@ test("an item with its own model leaves a sibling without one routed", async () 
 	});
 	assert.equal(world.sent.length, 1);
 	assert.equal(await world.spawn("c:0"), undefined);
-	assert.equal((await world.spawn("c:1"))?.model, "@slow");
+	assert.equal((await world.spawn("c:1"))?.model, "@slow:medium");
 });
 
 test("a spawn without a key finds nothing", async () => {
@@ -203,11 +206,13 @@ test("a spawn without a key finds nothing", async () => {
 	assert.equal(world.notes.length, 1);
 });
 
-test("level 1 returns nothing", async () => {
+test("level 1 with no model patterns returns nothing and says why", async () => {
 	install();
 	await world.toolCall("c", { tasks: [{ task: "level1 a" }] });
 	assert.equal(await world.spawn("c:0"), undefined);
-	assert.equal(world.notes.length, 1);
+	assert.deepEqual(world.notes.slice(1), [
+		"model-router task 1: L1 no change · no model patterns · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	]);
 });
 
 test("a role that does not resolve is not returned", async () => {
@@ -216,7 +221,7 @@ test("a role that does not resolve is not returned", async () => {
 	world.resolvable.delete("@slow");
 	assert.equal(await world.spawn("c:1"), undefined);
 	assert.deepEqual(world.notes.slice(1), [skipAt(2, "no @slow model")]);
-	assert.equal((await world.spawn("c:0"))?.model, "@smol");
+	assert.equal((await world.spawn("c:0"))?.model, "@smol:high");
 });
 
 for (const [name, close, reason] of [
@@ -250,8 +255,11 @@ test("the store keeps 64 decisions and drops the oldest", async () => {
 	for (let i = 0; i <= STORE_MAX; i++)
 		await world.toolCall(`call${i}`, { tasks: [{ task: "level2 a" }] });
 	assert.equal(await world.spawn("call0:0"), undefined);
-	assert.equal((await world.spawn("call1:0"))?.model, "@slow");
-	assert.equal((await world.spawn(`call${STORE_MAX}:0`))?.model, "@slow");
+	assert.equal((await world.spawn("call1:0"))?.model, "@slow:medium");
+	assert.equal(
+		(await world.spawn(`call${STORE_MAX}:0`))?.model,
+		"@slow:medium",
+	);
 });
 
 test("a failing handler leaves the task unrouted", async () => {
@@ -282,14 +290,14 @@ const scout = (extra: object = {}) =>
 test("a scout spawn with its own model role takes the slow role at level 2", async () => {
 	await scoutBatch();
 	assert.deepEqual(await scout({ modelRole: "smol" }), {
-		model: "@slow",
+		model: "@slow:medium",
 		note: `model-router ${LINE}`,
 	});
 });
 
 test("a scout spawn without a model role is routed too", async () => {
 	await scoutBatch();
-	assert.equal((await scout())?.model, "@slow");
+	assert.equal((await scout())?.model, "@slow:medium");
 });
 
 test("a spawn whose model role differs from the agent's own is left alone", async () => {
@@ -313,14 +321,17 @@ test("an agent with no own role is left alone when its spawn carries a model rol
 
 test("an agent with no own role is routed when its spawn carries none", async () => {
 	await scoutBatch();
-	assert.equal((await world.spawn("c:1", { agent: "helper" }))?.model, "@slow");
+	assert.equal(
+		(await world.spawn("c:1", { agent: "helper" }))?.model,
+		"@slow:medium",
+	);
 });
 
 test("a decision belongs to its agent: another agent takes nothing and leaves it", async () => {
 	await scoutBatch();
 	assert.equal(await world.spawn("c:0", { agent: "sonic" }), undefined);
 	assert.equal(await world.spawn("c:0", { agent: "task" }), undefined);
-	assert.equal((await scout({ modelRole: "smol" }))?.model, "@slow");
+	assert.equal((await scout({ modelRole: "smol" }))?.model, "@slow:medium");
 });
 
 for (const [name, close, reason] of [

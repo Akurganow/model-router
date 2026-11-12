@@ -7,11 +7,14 @@ import {
 	type Skipped,
 } from "./compose.ts";
 import { decide } from "./decide.ts";
+import { work } from "./effort.ts";
 import { streamedFetch } from "./fetch.ts";
-import { routedLine, skippedLine } from "./line.ts";
+import { effortFor } from "./ladder.ts";
+import { skippedLine } from "./line.ts";
 import { tier } from "./model.ts";
+import { lineFor, planEffort, type Routed } from "./omp-effort.ts";
 import { type Batch, ROLES } from "./omp-gates.ts";
-import { itemCheck, roleOf } from "./omp-items.ts";
+import { type Facts, itemCheck, roleOf } from "./omp-items.ts";
 import type { Stored } from "./omp-store.ts";
 import type { Level } from "./part.ts";
 import type { Provider } from "./provider.ts";
@@ -21,6 +24,7 @@ export type TaskItem = {
 	readonly name?: unknown;
 	readonly agent?: string;
 	readonly model?: unknown;
+	readonly effort?: unknown;
 };
 // The agent is the item's own, or the default task agent.
 export type Pending = {
@@ -68,7 +72,7 @@ export async function scoreItems(
 				routing,
 				limit.signal,
 			);
-			return { ...pending, stored: toStored(decision) };
+			return { ...pending, stored: toStored(decision, item, facts) };
 		});
 	} finally {
 		clearTimeout(timer);
@@ -83,7 +87,7 @@ function scoreItem(
 	signal: AbortSignal,
 ): Promise<Decision | Skipped> {
 	return route({
-		parts: [tier],
+		parts: [tier, work],
 		state: routingState({
 			role,
 			description: item.name,
@@ -96,29 +100,31 @@ function scoreItem(
 	});
 }
 
-const skipped = (reason: string): Stored => ({
-	role: undefined,
-	line: skippedLine(reason),
-});
+const skipped = (reason: string): Stored => ({ line: skippedLine(reason) });
 
 /**
- * Returns the stored entry for a decision that holds the tier part: the role of
- * the picked level with its routing line. Returns an entry with no role and a
- * skip line when the decision is a skip or lacks the part. Never throws.
+ * Returns the stored entry for a decision that holds both parts: the role of
+ * the picked level, the ladder's effort and the routing line. The line shows
+ * the effort the batch's facts allow, before the spawn's patterns are known.
+ * Returns a skip line alone when the decision is a skip or lacks a part. Never
+ * throws.
  */
-function toStored(decision: Decision | Skipped): Stored {
-	const decided = decide(decision, tier.key);
+function toStored(
+	decision: Decision | Skipped,
+	item: TaskItem,
+	facts: Facts,
+): Stored {
+	const decided = decide(decision, tier.key, work.key);
 	if ("skipped" in decided) return skipped(decided.skipped);
-	const role = ROLE_BY_LEVEL[decided.tier];
-	return {
-		role,
-		line: routedLine({
-			level: decided.tier,
-			target: role,
-			probabilities: decided.probabilities,
-			suffix: decided.suffix,
-		}),
+	const routed: Routed = {
+		level: decided.tier,
+		role: ROLE_BY_LEVEL[decided.tier],
+		ladder: effortFor(decided.tier, decided.work),
+		itemEffort: item.effort !== undefined,
+		probabilities: decided.probabilities,
+		suffix: decided.suffix,
 	};
+	return { line: lineFor(routed, planEffort(routed, facts)), routed };
 }
 
 // Workers share one iterator, so each takes the next item as it frees up.

@@ -26,19 +26,17 @@ export type Settings = {
 };
 type Closed = { readonly closed: string };
 
-// The spawn check needs the verdict alone. A spawn is judged like a batch item, for its own agent.
+// A spawn is judged like a batch item, for its own agent. Its effort needs the facts read again.
 export async function checkGates(
 	omp: OmpImports,
 	pi: Pi,
 	ctx: Context,
 	spawning: Spawning = { agent: TASK },
-): Promise<Routing | Closed> {
+): Promise<Batch | Closed> {
 	const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
 	if ("closed" in batch) return batch;
 	const reason = spawnCheck(spawning, batch.facts);
-	return reason === undefined
-		? { attempts: batch.attempts, keys: batch.keys }
-		: { closed: reason };
+	return reason === undefined ? batch : { closed: reason };
 }
 
 /**
@@ -159,11 +157,17 @@ export function resolves(ctx: Context, role: string): boolean {
 	}
 }
 
-function read(lookup: Lookup, id: string, settings: unknown): unknown {
+// A read that throws gives the fallback.
+function read(
+	lookup: Lookup,
+	id: string,
+	settings: unknown,
+	fallback?: unknown,
+): unknown {
 	try {
 		return lookup(id)?.get(settings);
 	} catch {
-		return undefined;
+		return fallback;
 	}
 }
 
@@ -173,14 +177,21 @@ export const readTimeoutSetting = (
 	settings: unknown,
 ): unknown => read(lookup, "extensionHandlers.toolCallTimeoutMs", settings);
 
-type Config = Pick<Facts, "roles" | "overrides" | "disabled">;
+type Config = Pick<
+	Facts,
+	"roles" | "overrides" | "disabled" | "maxEffort" | "effortEnabled"
+>;
 
+// The effort settings close no gate. A ceiling that cannot be read reads as null, no omp value, so omp's effort stays.
+// A per-task effort setting that is not true counts as off: omp still lets the item's effort win when it is on.
 function readConfig(lookup: Lookup, settings: unknown): Config | undefined {
 	const roles = read(lookup, "modelRoles", settings);
 	const overrides = read(lookup, "task.agentModelOverrides", settings);
 	const disabled = read(lookup, "task.disabledAgents", settings);
+	const maxEffort = read(lookup, "task.maxEffort", settings, null);
+	const effortEnabled = read(lookup, "task.enableEffort", settings) === true;
 	return isRecord(roles) && isRecord(overrides) && Array.isArray(disabled)
-		? { roles, overrides, disabled }
+		? { roles, overrides, disabled, maxEffort, effortEnabled }
 		: undefined;
 }
 
