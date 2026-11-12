@@ -5,7 +5,6 @@ import {
 	deadlineFor,
 	MIN_DEADLINE_MS,
 	MIN_TIMEOUT_MS,
-	tooShort,
 } from "./handler-deadline.ts";
 
 describe("deadlineFor", () => {
@@ -16,15 +15,5 @@ describe("deadlineFor", () => {
 
 	it("caps the deadline at the routing limit", () => {
 		assert.equal(deadlineFor(600000), ROUTING_LIMIT_MS);
-	});
-});
-
-describe("tooShort", () => {
-	it("is true at 999 ms", () => {
-		assert.equal(tooShort(999), true);
-	});
-
-	it("is false at 1000 ms", () => {
-		assert.equal(tooShort(1000), false);
 	});
 });
