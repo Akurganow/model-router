@@ -3,6 +3,20 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.19.2 - 2026-11-12
+#### Bug Fixes
+- (**openclaw**) log a line at the routing limit and on a cancel (255b2ed)
+#### Documentation
+- (**openclaw**) say the plugin had not finished routing, and link the Codex fact (a8ff6a6)
+- (**openclaw**) document the timeout and cancel lines and the hook facts behind them (06bbc06)
+#### Tests
+- (**openclaw**) abort the hook's signal after a routed line (4c31ebe)
+#### Refactoring
+- (**openclaw**) arm the spawn line writer inside routeSpawn (c1fb782)
+
+- - -
+
+
 ## v0.19.1 - 2026-11-11
 #### Bug Fixes
 - the routed-effort store drops the least recently used subagent (61fc1e4)

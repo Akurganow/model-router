@@ -1,6 +1,6 @@
 {
 	"name": "model-router",
-	"version": "0.19.1",
+	"version": "0.19.2",
 	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev. For each routed Agent call it sends the task text, condensed to at most 12,000 characters, and the agent's description, cut to 500 characters, both with token-shaped strings such as keys masked, and the call's one-line description as written, unmasked, to api.typesafe.ai, openrouter.ai or both, as its provider option allows, each with its own key. The built-in general-purpose and claude agents send a fixed text in place of their description. The scope option picks the calls: core routes the four built-in agents, extended also routes user, project and plugin agents and sends their text. A config tool opens the plugin's own dialog to change both options. A key set as an environment variable is visible to every process Claude Code starts.",
 	"author": {
 		"name": "Akurganow",
