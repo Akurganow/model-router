@@ -3,14 +3,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { order, PROVIDER_VALUES } from "./provider.ts";
-import {
-	agentDiscoveryFailed,
-	agentUnknown,
-	KEY_UNSET,
-	outsideCoreScope,
-	setsOwnModel,
-	UNREADABLE,
-} from "./reasons.ts";
 import { SCOPE_VALUES } from "./scope.ts";
 import {
 	alreadyValue,
@@ -404,13 +396,4 @@ test("the reasons of an unchanged value read after the setting name", () => {
 
 test("the tool label names the router", () => {
 	assert.match(TOOL_LABEL, /Model Router/);
-});
-
-test("the fixed skip reasons read as they do in the log", () => {
-	assert.equal(KEY_UNSET, "key unset");
-	assert.equal(UNREADABLE, "settings unreadable");
-	assert.equal(outsideCoreScope("scout"), "scout is outside the core scope");
-	assert.equal(agentDiscoveryFailed("scout"), "scout agent discovery failed");
-	assert.equal(agentUnknown("scout"), "scout agent unknown");
-	assert.equal(setsOwnModel("scout"), "scout sets its own model");
 });

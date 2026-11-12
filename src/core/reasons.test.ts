@@ -57,6 +57,15 @@ const spells = (code: string, text: string): boolean =>
 		? code.includes(text)
 		: ['"', "'", "`"].some((quote) => code.includes(quote + text + quote));
 
+test("the fixed skip reasons read as they do in the log", () => {
+	assert.equal(KEY_UNSET, "key unset");
+	assert.equal(UNREADABLE, "settings unreadable");
+	assert.equal(outsideCoreScope("scout"), "scout is outside the core scope");
+	assert.equal(agentDiscoveryFailed("scout"), "scout agent discovery failed");
+	assert.equal(agentUnknown("scout"), "scout agent unknown");
+	assert.equal(setsOwnModel("scout"), "scout sets its own model");
+});
+
 test("no other source file spells a shared reason", () => {
 	const texts = [
 		CALLER_EFFORT,
