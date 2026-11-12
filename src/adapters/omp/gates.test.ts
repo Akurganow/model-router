@@ -17,6 +17,8 @@ import {
 	OR_KEY,
 	OR_VARIABLE,
 	setEnv,
+	throws,
+	unreadable,
 	useWorld,
 } from "./fakes.ts";
 import { checkGates } from "./gates.ts";
@@ -43,13 +45,6 @@ const routing = (result: Awaited<ReturnType<typeof checkGates>>) =>
 		: { attempts: result.attempts, keys: result.keys };
 const gates = async () =>
 	routing(await checkGates(world.imports, world.pi, ctx()));
-const throws = () => {
-	throw new Error("boom");
-};
-const unreadable = () => [
-	{ ...world.imports, getPluginSettings: async () => throws() },
-	{ ...world.imports, getPluginsLockfile: throws },
-];
 
 test("with every gate open the attempts and their key come back", async () => {
 	assert.deepEqual(await gates(), open());
@@ -187,7 +182,7 @@ test("a missing lockfile or a value stored under another name means typesafe", a
 });
 
 test("a settings read that throws closes the gate and reads no key", async () => {
-	for (const imports of unreadable())
+	for (const imports of unreadable(world.imports))
 		assert.deepEqual(await checkGates(imports, world.pi, ctx()), {
 			closed: UNREADABLE,
 		});

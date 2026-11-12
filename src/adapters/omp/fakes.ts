@@ -48,6 +48,16 @@ export const lockfileScoped = (scope: unknown) => ({
 	settings: { [PLUGIN]: { scope } },
 });
 
+export const throws = () => {
+	throw new Error("boom");
+};
+
+// Imports whose settings read fails, once through the settings call and once through the lockfile.
+export const unreadable = (imports: OmpImports) => [
+	{ ...imports, getPluginSettings: async () => throws() },
+	{ ...imports, getPluginsLockfile: throws },
+];
+
 export function setEnv(name: string, value: string | undefined): void {
 	if (value === undefined) delete process.env[name];
 	else process.env[name] = value;

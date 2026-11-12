@@ -1,16 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { lockfileScoped, useWorld } from "./fakes.ts";
+import { lockfileScoped, unreadable, useWorld } from "./fakes.ts";
 import { narrow, readSettings } from "./settings.ts";
 
 const world = useWorld();
-const throws = () => {
-	throw new Error("boom");
-};
-const unreadable = () => [
-	{ ...world.imports, getPluginSettings: async () => throws() },
-	{ ...world.imports, getPluginsLockfile: throws },
-];
 
 test("one read gives the provider and the scope", async () => {
 	assert.deepEqual(await readSettings(world.imports, "/work"), {
@@ -43,7 +36,7 @@ for (const [name, global, project, scope] of scopes)
 	});
 
 test("an unreadable lockfile or settings read gives no settings", async () => {
-	for (const imports of unreadable())
+	for (const imports of unreadable(world.imports))
 		assert.equal(await readSettings(imports, "/work"), undefined);
 	world.lockfile = "{ not json";
 	assert.equal(await readSettings(world.imports, "/work"), undefined);

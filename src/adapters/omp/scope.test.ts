@@ -10,7 +10,7 @@ import {
 	UNREADABLE,
 } from "../../core/reasons.ts";
 import { AGENTS, extend } from "./fake-agents.ts";
-import { lockfileScoped, useWorld } from "./fakes.ts";
+import { lockfileScoped, throws, useWorld } from "./fakes.ts";
 import { createExtension } from "./router.ts";
 
 const world = useWorld();
@@ -122,9 +122,7 @@ test("extended: a failed discovery skips every item with its reason", async () =
 		...world.pi,
 		pi: {
 			...world.pi.pi,
-			discoverAgents: async () => {
-				throw new Error("boom");
-			},
+			discoverAgents: async () => throws(),
 		},
 	};
 	createExtension(world.imports)(broken);
