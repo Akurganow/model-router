@@ -4,9 +4,7 @@ import { ROUTING_LIMIT_MS } from "../../core/compose.ts";
 import { jevAnswer } from "../../core/jev-fakes.ts";
 import { effortFor } from "../../core/ladder.ts";
 import type { Level } from "../../core/part.ts";
-import { plan } from "../../core/provider.ts";
-import { useWorld } from "./fakes.ts";
-import type { Batch } from "./gates.ts";
+import { batch, useWorld } from "./fakes.ts";
 import { createExtension } from "./router.ts";
 import { type Pending, scoreItems } from "./score.ts";
 
@@ -87,29 +85,15 @@ test("a reply whose own body is unusable still scores the item", async () => {
 });
 
 describe("omp per-item line", () => {
-	const batch = (): Batch => ({
-		attempts: plan("typesafe", { typesafe: true, openrouter: false }),
-		keys: { typesafe: "ts-key" },
-		facts: {
-			scope: "core",
-			roles: {},
-			overrides: {},
-			disabled: [],
-			agents: world.agents,
-			noModels: undefined,
-			maxEffort: undefined,
-			effortEnabled: false,
-		},
-	});
 	const lines = async (tasks: [string, string?][]) => {
 		const items: Pending[] = tasks.map(([task, agent], index) => ({
 			index,
 			item: { task },
 			agent: agent ?? "task",
 		}));
-		return (await scoreItems(items, "", batch(), ROUTING_LIMIT_MS)).map(
-			({ stored }) => ({ role: stored.routed?.role, line: stored.line }),
-		);
+		return (
+			await scoreItems(items, "", batch(world.agents), ROUTING_LIMIT_MS)
+		).map(({ stored }) => ({ role: stored.routed?.role, line: stored.line }));
 	};
 
 	test("level 0 names @smol, level 1 changes nothing and level 2 names @slow", async () => {

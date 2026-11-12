@@ -22,6 +22,7 @@ import {
 	KEY_VARIABLE,
 	lockfileScoped,
 	lockfileWith,
+	logged,
 	OR_VARIABLE,
 	setEnv,
 	useWorld,
@@ -453,30 +454,9 @@ test("a command and the tool share one queue, and a failed write does not stop t
 	assert.equal(attempts, 2);
 });
 
-// Each host call in order: the dialog reads the settings before it asks and again before it writes.
-function logged(answer: string) {
-	const log: string[] = [];
-	install({
-		...world.imports,
-		getPluginSettings: async (name, cwd) => {
-			log.push("read");
-			return world.imports.getPluginSettings(name, cwd);
-		},
-		writeSetting: async (cwd, plugin, key, value) => {
-			log.push(`write ${key}=${value}`);
-			return world.imports.writeSetting(cwd, plugin, key, value);
-		},
-	});
-	world.select = async () => {
-		log.push("select");
-		return answer;
-	};
-	return log;
-}
-
 test("a scope pick is read, asked, read again, written and read back, in that order", async () => {
 	world.lockfile = lockfileScoped("core");
-	const log = logged(labelOf("scope", "extended"));
+	const log = logged(world, install, labelOf("scope", "extended"));
 	assert.equal(await world.callTool({ setting: "scope" }), "scope: extended");
 	const { question, options } = ask("scope", "core");
 	assert.deepEqual(world.dialogs, [{ title: question, options }]);

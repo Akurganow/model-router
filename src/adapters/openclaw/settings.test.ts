@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-	KEY_FIELDS,
-	KEY_VARIABLES,
-	type Provider,
-} from "../../core/provider.ts";
-import { createFakeApi } from "./fakes.ts";
+import { KEY_VARIABLES } from "../../core/provider.ts";
+import { createFakeApi, traced, tracedEnv } from "./fakes.ts";
 import {
 	PLUGIN_ID,
 	pluginEntry,
@@ -240,39 +236,13 @@ test("a blank key or variable is no key, and a padded one is trimmed", () => {
 	);
 });
 
-// A settings object that records each key field read into the trace.
-const traced = (
-	trace: string[],
-	fields: Partial<Record<Provider, unknown>>,
-) => {
-	const settings: Record<string, unknown> = {};
-	for (const provider of Object.keys(KEY_FIELDS) as Provider[])
-		Object.defineProperty(settings, KEY_FIELDS[provider], {
-			enumerable: true,
-			get: () => {
-				trace.push(`field ${KEY_FIELDS[provider]}`);
-				return fields[provider];
-			},
-		});
-	return settings;
-};
-
-// An environment that answers from ENV and records each variable read.
-const tracedEnv = (trace: string[]) =>
-	new Proxy({} as Record<string, string | undefined>, {
-		get: (_, name) => {
-			trace.push(`env ${String(name)}`);
-			return ENV[name as keyof typeof ENV];
-		},
-	});
-
 test("the live config is read before the plugin config, and the variable last", () => {
 	const trace: string[] = [];
 	const keys = readKeys(
 		live(traced(trace, {})),
 		traced(trace, {}),
 		"typesafe",
-		tracedEnv(trace),
+		tracedEnv(trace, ENV),
 	);
 	assert.deepEqual(keys, { typesafe: "env-ts-key" });
 	assert.deepEqual(trace, [
@@ -288,7 +258,7 @@ test("a key in the live config stops the lookup before the plugin config", () =>
 		live(traced(trace, { typesafe: "live-ts" })),
 		traced(trace, { typesafe: "plugin-ts" }),
 		"typesafe",
-		tracedEnv(trace),
+		tracedEnv(trace, ENV),
 	);
 	assert.deepEqual(keys, { typesafe: "live-ts" });
 	assert.deepEqual(trace, ["field api_key"]);
@@ -300,7 +270,7 @@ test("a provider takes its key from the live config and the other from the varia
 		live(traced(trace, { typesafe: "live-ts" })),
 		undefined,
 		"auto",
-		tracedEnv(trace),
+		tracedEnv(trace, ENV),
 	);
 	assert.deepEqual(keys, { typesafe: "live-ts", openrouter: "env-or-key" });
 	assert.deepEqual(trace, [

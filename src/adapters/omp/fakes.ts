@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, mock } from "node:test";
 import { jevAnswer, streamed } from "../../core/jev-fakes.ts";
-import { KEY_VARIABLES } from "../../core/provider.ts";
+import { KEY_VARIABLES, plan } from "../../core/provider.ts";
 import { TOOL_NAME } from "../../core/settings.ts";
+import type { Batch } from "./gates.ts";
 import type {
 	CommandSpec,
 	Context,
@@ -347,3 +348,44 @@ export function useWorld() {
 			(state.commands[name] as CommandSpec).handler(args, buildCtx(state)()),
 	});
 }
+
+// Each host call in order: the dialog reads the settings before it asks and again before it writes.
+export function logged(
+	world: ReturnType<typeof useWorld>,
+	install: (imports: OmpImports) => void,
+	answer: string,
+) {
+	const log: string[] = [];
+	install({
+		...world.imports,
+		getPluginSettings: async (name, cwd) => {
+			log.push("read");
+			return world.imports.getPluginSettings(name, cwd);
+		},
+		writeSetting: async (cwd, plugin, key, value) => {
+			log.push(`write ${key}=${value}`);
+			return world.imports.writeSetting(cwd, plugin, key, value);
+		},
+	});
+	world.select = async () => {
+		log.push("select");
+		return answer;
+	};
+	return log;
+}
+
+// A batch that scores through the typesafe key, over the agents omp discovered.
+export const batch = (agents: DiscoveredAgent[]): Batch => ({
+	attempts: plan("typesafe", { typesafe: true, openrouter: false }),
+	keys: { typesafe: "ts-key" },
+	facts: {
+		scope: "core",
+		roles: {},
+		overrides: {},
+		disabled: [],
+		agents,
+		noModels: undefined,
+		maxEffort: undefined,
+		effortEnabled: false,
+	},
+});

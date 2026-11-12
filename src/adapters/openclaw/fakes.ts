@@ -1,5 +1,6 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { jevAnswer, streamed } from "../../core/jev-fakes.ts";
+import { KEY_FIELDS, type Provider } from "../../core/provider.ts";
 import type {
 	BeforeToolCallHandler,
 	CommandDefinition,
@@ -265,3 +266,32 @@ export function createJevFetch(initial: Levels = { tier: 1, work: 1 }) {
 	};
 	return { fetch, levels, mode, requests };
 }
+
+// A settings object that records each key field read into the trace.
+export const traced = (
+	trace: string[],
+	fields: Partial<Record<Provider, unknown>>,
+) => {
+	const settings: Record<string, unknown> = {};
+	for (const provider of Object.keys(KEY_FIELDS) as Provider[])
+		Object.defineProperty(settings, KEY_FIELDS[provider], {
+			enumerable: true,
+			get: () => {
+				trace.push(`field ${KEY_FIELDS[provider]}`);
+				return fields[provider];
+			},
+		});
+	return settings;
+};
+
+// An environment that answers from env and records each variable read.
+export const tracedEnv = (
+	trace: string[],
+	env: Record<string, string | undefined>,
+) =>
+	new Proxy({} as Record<string, string | undefined>, {
+		get: (_, name) => {
+			trace.push(`env ${String(name)}`);
+			return env[String(name)];
+		},
+	});
