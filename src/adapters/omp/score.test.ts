@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ROUTING_LIMIT_MS } from "../../core/compose.ts";
+import { jevAnswer } from "../../core/jev-fakes.ts";
 import { effortFor } from "../../core/ladder.ts";
 import type { Level } from "../../core/part.ts";
 import { plan } from "../../core/provider.ts";
@@ -64,6 +65,25 @@ test("a skipped item names no effort", async () => {
 	world.credential = async () => undefined;
 	await world.toolCall("c", { tasks: [{ task: "level0 work2" }] });
 	assert.equal(world.notes[0], "model-router task 1: skipped, key unset");
+});
+
+test("a reply whose own body is unusable still scores the item", async () => {
+	install();
+	world.answer = async () =>
+		({
+			status: 200,
+			statusText: "OK",
+			headers: new Headers({ "content-type": "application/json" }),
+			text: async () => JSON.stringify(jevAnswer(2, 0)),
+			get body(): never {
+				throw new Error("Body already used");
+			},
+		}) as unknown as Response;
+	await world.toolCall("c", { tasks: [{ task: "buffered reply" }] });
+	assert.equal(
+		world.notes[0],
+		`model-router task 1: L2 @slow · low · p=0.90/0.90${SUFFIX}`,
+	);
 });
 
 describe("omp per-item line", () => {
