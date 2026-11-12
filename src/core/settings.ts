@@ -12,7 +12,6 @@ export const KEY_SETTINGS = ["typesafe_key", "openrouter_key"] as const;
 export const SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS] as const;
 export type ValueSetting = (typeof VALUE_SETTINGS)[number];
 export type KeySetting = (typeof KEY_SETTINGS)[number];
-export type SettingName = (typeof SETTING_NAMES)[number];
 type KeyState = "set" | "unset" | "saved, checking";
 
 export const TOOL_NAME = "model_router_config";
