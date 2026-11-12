@@ -13,8 +13,8 @@ An unknown value acts as `typesafe`.
 With `auto` or `openrouter-first` and one key set, the plugin uses that key's provider alone.
 With both keys set, one task may reach both companies.
 The second provider gets the task only when the first fails.
-The failures that count are a connection error, a timeout, and HTTP status 401, 402, 403, 404, 408, 429 or 5xx.
-It never gets the task after 400, 422, a cancel, the routing limit or a bad reply.
+The failures that count are a `network error`, a `timeout`, and HTTP status 401, 402, 403, 404, 408, 429 or 5xx.
+It never gets the task after 400, 422, `cancelled`, the routing limit or a bad reply.
 
 ## Keys
 
