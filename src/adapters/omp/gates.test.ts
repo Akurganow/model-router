@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
-import { plan } from "../../core/provider.ts";
+import { narrow, plan } from "../../core/provider.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
@@ -403,5 +403,33 @@ test("a spawn keeps the agent's own model role or nothing", async () => {
 	for (const name of ["task", "helper"])
 		assert.deepEqual(await forAgent(name, "smol"), {
 			closed: `${name} spawns with another model role`,
+		});
+});
+
+test("a project only narrows auto or openrouter-first to one provider", () => {
+	const projects = [
+		"auto",
+		"openrouter-first",
+		"typesafe",
+		"openrouter",
+		"unknown",
+		undefined,
+	];
+	const ORF = "openrouter-first";
+	const table: [unknown, string[]][] = [
+		["auto", ["auto", "auto", "typesafe", "openrouter", "auto", "auto"]],
+		[ORF, [ORF, ORF, "typesafe", "openrouter", ORF, ORF]],
+		["typesafe", Array(6).fill("typesafe")],
+		["openrouter", Array(6).fill("openrouter")],
+		["unknown", Array(6).fill("typesafe")],
+		[undefined, Array(6).fill("typesafe")],
+	];
+	for (const [global, expected] of table)
+		projects.forEach((project, i) => {
+			assert.equal(
+				narrow(global, project),
+				expected[i],
+				`${String(global)} narrowed by ${String(project)}`,
+			);
 		});
 });

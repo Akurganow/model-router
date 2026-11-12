@@ -15,7 +15,6 @@ import {
 	FIRST_ATTEMPT_TIMEOUT_MS,
 	fallsBack,
 	HOSTS,
-	narrow,
 	order,
 	PROVIDER_VALUES,
 	parseProvider,
@@ -194,34 +193,6 @@ test("does not fall back after 400, 422, an abort or a non-API error", () => {
 		LIMIT_REACHED,
 	];
 	for (const err of stay) assert.equal(fallsBack(err), false, String(err));
-});
-
-test("a project only narrows auto or openrouter-first to one provider", () => {
-	const projects = [
-		"auto",
-		"openrouter-first",
-		"typesafe",
-		"openrouter",
-		"unknown",
-		undefined,
-	];
-	const ORF = "openrouter-first";
-	const table: [unknown, string[]][] = [
-		["auto", ["auto", "auto", "typesafe", "openrouter", "auto", "auto"]],
-		[ORF, [ORF, ORF, "typesafe", "openrouter", ORF, ORF]],
-		["typesafe", Array(6).fill("typesafe")],
-		["openrouter", Array(6).fill("openrouter")],
-		["unknown", Array(6).fill("typesafe")],
-		[undefined, Array(6).fill("typesafe")],
-	];
-	for (const [global, expected] of table)
-		projects.forEach((project, i) => {
-			assert.equal(
-				narrow(global, project),
-				expected[i],
-				`${String(global)} narrowed by ${String(project)}`,
-			);
-		});
 });
 
 test("parseProvider keeps a known value and drops anything else", () => {
