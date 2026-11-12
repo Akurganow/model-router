@@ -958,6 +958,14 @@ var ORDER = {
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
+function collectKeys(value, lookup) {
+  const keys = {};
+  for (const provider of order(value)) {
+    const key = lookup(provider);
+    if (key !== void 0) keys[provider] = key;
+  }
+  return keys;
+}
 function plan(value, keys) {
   const providers = order(value).filter((p) => Boolean(keys[p]));
   return providers.map(
@@ -1273,12 +1281,10 @@ function readSettings(live, pluginConfig) {
 }
 function readKeys(live, pluginConfig, providerValue, env) {
   const from = sources(live, pluginConfig);
-  const keys = {};
-  for (const provider of order(providerValue)) {
-    const key = firstValid(from, KEY_FIELDS[provider], nonEmpty) ?? nonEmpty(env[KEY_VARIABLES[provider]]);
-    if (key !== void 0) keys[provider] = key;
-  }
-  return keys;
+  return collectKeys(
+    providerValue,
+    (provider) => firstValid(from, KEY_FIELDS[provider], nonEmpty) ?? nonEmpty(env[KEY_VARIABLES[provider]])
+  );
 }
 function readState(api, env) {
   const config = readLive(api);

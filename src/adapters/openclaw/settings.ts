@@ -1,8 +1,8 @@
 import {
+	collectKeys,
 	KEY_FIELDS,
 	KEY_VARIABLES,
 	type Keys,
-	order,
 	type ProviderValue,
 	parseProvider,
 	resolve,
@@ -113,14 +113,12 @@ export function readKeys(
 	env: Environment,
 ): Keys {
 	const from = sources(live, pluginConfig);
-	const keys: Keys = {};
-	for (const provider of order(providerValue)) {
-		const key =
+	return collectKeys(
+		providerValue,
+		(provider) =>
 			firstValid(from, KEY_FIELDS[provider], nonEmpty) ??
-			nonEmpty(env[KEY_VARIABLES[provider]]);
-		if (key !== undefined) keys[provider] = key;
-	}
-	return keys;
+			nonEmpty(env[KEY_VARIABLES[provider]]),
+	);
 }
 
 export type State = {

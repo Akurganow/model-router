@@ -1206,6 +1206,14 @@ var NARROWABLE = ["auto", "openrouter-first"];
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
+async function collectKeysAsync(value, lookup2) {
+  const keys = {};
+  for (const provider of order(value)) {
+    const key = await lookup2(provider);
+    if (key !== void 0) keys[provider] = key;
+  }
+  return keys;
+}
 function plan(value, keys) {
   const providers = order(value).filter((p) => Boolean(keys[p]));
   return providers.map(
@@ -1425,11 +1433,10 @@ async function readGlobal(path, plugin) {
   return isRecord(mine) ? mine : {};
 }
 async function findKeys(ctx, value) {
-  const keys = {};
-  for (const provider of order(value)) {
-    const key = await findKey(ctx, provider);
-    if (key !== void 0) keys[provider] = key;
-  }
+  const keys = await collectKeysAsync(
+    value,
+    (provider) => findKey(ctx, provider)
+  );
   return { attempts: plan(value, keys), keys };
 }
 async function findKey(ctx, provider) {

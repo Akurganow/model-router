@@ -1182,6 +1182,14 @@ var ORDER = {
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
+async function collectKeysAsync(value, lookup) {
+  const keys = {};
+  for (const provider of order(value)) {
+    const key = await lookup(provider);
+    if (key !== void 0) keys[provider] = key;
+  }
+  return keys;
+}
 function plan(value, keys) {
   const providers = order(value).filter((p) => Boolean(keys[p]));
   return providers.map(
@@ -1524,12 +1532,10 @@ async function denied($, call) {
 
 // src/adapters/claude/keys.ts
 async function readKeys($, options, provider) {
-  const keys = {};
-  for (const name of order(provider)) {
-    const key = nonEmpty(options[KEY_FIELDS[name]]) ?? nonEmpty(await keyVariable($, name));
-    if (key !== void 0) keys[name] = key;
-  }
-  return keys;
+  return collectKeysAsync(
+    provider,
+    async (name) => nonEmpty(options[KEY_FIELDS[name]]) ?? nonEmpty(await keyVariable($, name))
+  );
 }
 function keyVariable($, provider) {
   return provider === "typesafe" ? $.env.get("TYPESAFE_API_KEY") : $.env.get("OPENROUTER_API_KEY");

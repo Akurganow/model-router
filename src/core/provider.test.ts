@@ -10,6 +10,8 @@ import {
 } from "@typesafe-ai/sdk";
 import { LIMIT_REACHED } from "./compose.ts";
 import {
+	collectKeys,
+	collectKeysAsync,
 	FIRST_ATTEMPT_TIMEOUT_MS,
 	fallsBack,
 	HOSTS,
@@ -76,6 +78,97 @@ test("order lists the providers a value allows, without keys", () => {
 	assert.deepEqual(order("openrouter-first"), ["openrouter", "typesafe"]);
 	assert.deepEqual(order("openrouter"), ["openrouter"]);
 	assert.deepEqual(order("toString"), ["typesafe"]);
+});
+
+const LOOKED_UP = { typesafe: "ts-key", openrouter: "or-key" };
+
+test("collectKeys looks up the providers a value allows, in order, and keeps the defined keys", () => {
+	const table: [unknown, string[]][] = [
+		["auto", ["typesafe", "openrouter"]],
+		["openrouter-first", ["openrouter", "typesafe"]],
+		["typesafe", ["typesafe"]],
+		["openrouter", ["openrouter"]],
+		["unknown", ["typesafe"]],
+		[undefined, ["typesafe"]],
+	];
+	for (const [value, providers] of table) {
+		const asked: string[] = [];
+		const keys = collectKeys(value, (provider) => {
+			asked.push(provider);
+			return LOOKED_UP[provider];
+		});
+		assert.deepEqual(asked, providers, String(value));
+		assert.deepEqual(Object.keys(keys), providers, String(value));
+		for (const p of providers)
+			assert.equal(
+				keys[p as keyof typeof keys],
+				LOOKED_UP[p as keyof typeof LOOKED_UP],
+			);
+	}
+});
+
+test("collectKeys leaves out a provider whose lookup gives undefined", () => {
+	assert.deepEqual(
+		collectKeys("auto", (p) => (p === "openrouter" ? "or-key" : undefined)),
+		{ openrouter: "or-key" },
+	);
+	assert.deepEqual(
+		collectKeys("auto", () => undefined),
+		{},
+	);
+});
+
+test("collectKeys keeps an empty key and passes a throw through", () => {
+	assert.deepEqual(
+		collectKeys("typesafe", () => ""),
+		{ typesafe: "" },
+	);
+	assert.throws(
+		() =>
+			collectKeys("auto", () => {
+				throw new Error("lookup failed");
+			}),
+		/lookup failed/,
+	);
+});
+
+test("collectKeysAsync awaits each lookup before it starts the next", async () => {
+	const trace: string[] = [];
+	const keys = await collectKeysAsync("openrouter-first", async (provider) => {
+		trace.push(`start ${provider}`);
+		await new Promise((resolve) => setTimeout(resolve, 5));
+		trace.push(`end ${provider}`);
+		return provider === "typesafe" ? undefined : LOOKED_UP[provider];
+	});
+	assert.deepEqual(keys, { openrouter: "or-key" });
+	assert.deepEqual(trace, [
+		"start openrouter",
+		"end openrouter",
+		"start typesafe",
+		"end typesafe",
+	]);
+});
+
+test("collectKeysAsync never looks up a provider the value leaves out", async () => {
+	const asked: string[] = [];
+	const keys = await collectKeysAsync("typesafe", async (provider) => {
+		asked.push(provider);
+		return LOOKED_UP[provider];
+	});
+	assert.deepEqual(keys, { typesafe: "ts-key" });
+	assert.deepEqual(asked, ["typesafe"]);
+});
+
+test("collectKeysAsync stops at a rejection and passes it through", async () => {
+	const asked: string[] = [];
+	await assert.rejects(
+		collectKeysAsync("auto", async (provider) => {
+			asked.push(provider);
+			throw new Error("lookup failed");
+		}),
+		/lookup failed/,
+	);
+	assert.deepEqual(asked, ["typesafe"]);
 });
 
 test("falls back after a connection error, a timeout and the listed statuses", () => {

@@ -1,7 +1,7 @@
 import {
+	collectKeysAsync,
 	KEY_FIELDS,
 	type Keys,
-	order,
 	type Provider,
 } from "../../core/provider.ts";
 import { nonEmpty } from "../../utils/text.ts";
@@ -19,14 +19,12 @@ export async function readKeys(
 	options: Options,
 	provider: unknown,
 ): Promise<Keys> {
-	const keys: Keys = {};
-	for (const name of order(provider)) {
-		const key =
+	return collectKeysAsync(
+		provider,
+		async (name) =>
 			nonEmpty(options[KEY_FIELDS[name]]) ??
-			nonEmpty(await keyVariable($, name));
-		if (key !== undefined) keys[name] = key;
-	}
-	return keys;
+			nonEmpty(await keyVariable($, name)),
+	);
 }
 
 // plugin validate lists the variables a module reads, so each $.env.get names its variable literally.
