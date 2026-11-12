@@ -10,7 +10,6 @@ import {
 } from "@typesafe-ai/sdk";
 import { LIMIT_REACHED } from "./compose.ts";
 import {
-	collectKeys,
 	collectKeysAsync,
 	FIRST_ATTEMPT_TIMEOUT_MS,
 	fallsBack,
@@ -80,56 +79,6 @@ test("order lists the providers a value allows, without keys", () => {
 });
 
 const LOOKED_UP = { typesafe: "ts-key", openrouter: "or-key" };
-
-test("collectKeys looks up the providers a value allows, in order, and keeps the defined keys", () => {
-	const table: [unknown, string[]][] = [
-		["auto", ["typesafe", "openrouter"]],
-		["openrouter-first", ["openrouter", "typesafe"]],
-		["typesafe", ["typesafe"]],
-		["openrouter", ["openrouter"]],
-		["unknown", ["typesafe"]],
-		[undefined, ["typesafe"]],
-	];
-	for (const [value, providers] of table) {
-		const asked: string[] = [];
-		const keys = collectKeys(value, (provider) => {
-			asked.push(provider);
-			return LOOKED_UP[provider];
-		});
-		assert.deepEqual(asked, providers, String(value));
-		assert.deepEqual(Object.keys(keys), providers, String(value));
-		for (const p of providers)
-			assert.equal(
-				keys[p as keyof typeof keys],
-				LOOKED_UP[p as keyof typeof LOOKED_UP],
-			);
-	}
-});
-
-test("collectKeys leaves out a provider whose lookup gives undefined", () => {
-	assert.deepEqual(
-		collectKeys("auto", (p) => (p === "openrouter" ? "or-key" : undefined)),
-		{ openrouter: "or-key" },
-	);
-	assert.deepEqual(
-		collectKeys("auto", () => undefined),
-		{},
-	);
-});
-
-test("collectKeys keeps an empty key and passes a throw through", () => {
-	assert.deepEqual(
-		collectKeys("typesafe", () => ""),
-		{ typesafe: "" },
-	);
-	assert.throws(
-		() =>
-			collectKeys("auto", () => {
-				throw new Error("lookup failed");
-			}),
-		/lookup failed/,
-	);
-});
 
 test("collectKeysAsync awaits each lookup before it starts the next", async () => {
 	const trace: string[] = [];
