@@ -1742,6 +1742,7 @@ function decisionSuffix({
 var HANDLER_MARGIN_MS = 2e3;
 var MIN_DEADLINE_MS = 1e3;
 var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
+var tooShort = (deadline) => deadline < MIN_DEADLINE_MS;
 var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
 
 // src/adapters/omp/deadline.ts
@@ -1749,7 +1750,7 @@ var DEFAULT_TIMEOUT_MS = 3e4;
 function budgetFor(value) {
   const timeout = typeof value === "number" && Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS;
   const deadline = deadlineFor(timeout);
-  if (deadline >= MIN_DEADLINE_MS) return { deadline };
+  if (!tooShort(deadline)) return { deadline };
   return {
     closed: `tool call timeout ${timeout} ms leaves ${Math.max(0, deadline)} ms to route`
   };

@@ -1,14 +1,15 @@
+import { ROUTING_LIMIT_MS } from "../../core/compose.ts";
+import {
+	deadlineFor,
+	HANDLER_MARGIN_MS,
+	MIN_TIMEOUT_MS,
+	tooShort,
+} from "../../core/handler-deadline.ts";
 import { LINE_PREFIX } from "../../core/line.ts";
 import { realClock } from "../../utils/clock.ts";
 import { streamedFetch } from "../../utils/fetch.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { registerConfigCommands, registerConfigTool } from "./config.ts";
-import {
-	deadlineFor,
-	HOOK_TIMEOUT_MS,
-	MIN_DEADLINE_MS,
-	MIN_TIMEOUT_MS,
-} from "./deadline.ts";
 import {
 	createBeforeToolCall,
 	HOOK,
@@ -19,6 +20,8 @@ import { PLUGIN_ID, pluginEntry } from "./settings.ts";
 import type { OpenClawApi, OpenClawConfig, RegistrationMode } from "./types.ts";
 
 const HOOK_TIMEOUT_MAX_MS = 600000;
+// The timeout the plugin registers its hook with: the routing limit plus the margin.
+export const HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HANDLER_MARGIN_MS;
 
 /**
  * Tells whether a value is an integer timeout above 0 and at most
@@ -78,7 +81,7 @@ const HOOK_MODES: readonly RegistrationMode[] = ["full", "discovery"];
 function registerRouting(api: OpenClawApi, deps: RouterDeps): void {
 	const timeout = effectiveTimeout(api.config);
 	const deadline = deadlineFor(timeout);
-	if (api.registrationMode === "full" && deadline < MIN_DEADLINE_MS)
+	if (api.registrationMode === "full" && tooShort(deadline))
 		warn(
 			api,
 			`the hook timeout is ${timeout} ms, which leaves ${deadline} ms to route; the plugin routes nothing. Set it to ${MIN_TIMEOUT_MS} ms or more.`,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { LIMIT_REACHED } from "../../core/compose.ts";
-import { MIN_DEADLINE_MS } from "./deadline.ts";
+import { MIN_DEADLINE_MS } from "../../core/handler-deadline.ts";
 import {
 	CONTEXT,
 	DEADLINE_MS,

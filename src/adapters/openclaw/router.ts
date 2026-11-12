@@ -3,6 +3,7 @@ import { routingState } from "../../core/brief.ts";
 import { abortCategory, LIMIT_REACHED, route } from "../../core/compose.ts";
 import { decide } from "../../core/decide.ts";
 import { work } from "../../core/effort.ts";
+import { tooShort } from "../../core/handler-deadline.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
 import { tier } from "../../core/model.ts";
@@ -18,7 +19,6 @@ import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import { slotResolves } from "./checks.ts";
-import { MIN_DEADLINE_MS } from "./deadline.ts";
 import { type Gate, gateSpawn } from "./gates.ts";
 import { readSpawn, type SpawnRequest } from "./params.ts";
 import {
@@ -218,7 +218,7 @@ export function createBeforeToolCall(
 ): BeforeToolCallHandler {
 	return async (event: BeforeToolCallEvent, ctx: ToolContext) => {
 		try {
-			if (deadlineMs < MIN_DEADLINE_MS || event?.toolName !== SPAWN_TOOL)
+			if (tooShort(deadlineMs) || event?.toolName !== SPAWN_TOOL)
 				return undefined;
 			const requester = nonEmpty(ctx?.agentId);
 			const request = readSpawn(event.params);
