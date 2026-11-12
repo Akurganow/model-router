@@ -21,7 +21,7 @@ import type { OpenClawApi, OpenClawConfig, RegistrationMode } from "./types.ts";
 
 const HOOK_TIMEOUT_MAX_MS = 600000;
 // The timeout the plugin registers its hook with: the routing limit plus the margin.
-export const HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HANDLER_MARGIN_MS;
+const HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HANDLER_MARGIN_MS;
 
 /**
  * Tells whether a value is an integer timeout above 0 and at most

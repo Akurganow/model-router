@@ -2092,7 +2092,6 @@ function createPlugin(deps = {
 }
 var index_default = createPlugin();
 export {
-  HOOK_TIMEOUT_MS,
   createPlugin,
   index_default as default
 };

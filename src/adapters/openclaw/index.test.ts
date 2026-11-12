@@ -6,7 +6,7 @@ import { deadlineFor } from "../../core/handler-deadline.ts";
 import { keyLine } from "../../core/settings.ts";
 import { createFakeClock } from "../../utils/fake-clock.ts";
 import { createFakeApi, createJevFetch } from "./fakes.ts";
-import plugin, { createPlugin, HOOK_TIMEOUT_MS } from "./index.ts";
+import plugin, { createPlugin } from "./index.ts";
 import { SPAWN_TOOL } from "./router.ts";
 import { PLUGIN_ID } from "./settings.ts";
 import type { OpenClawApi, OpenClawConfig } from "./types.ts";
@@ -70,8 +70,9 @@ describe("registration", () => {
 	});
 
 	it("gives the registered hook timeout the full routing limit", () => {
-		assert.equal(deadlineFor(HOOK_TIMEOUT_MS), ROUTING_LIMIT_MS);
-		assert.ok(deadlineFor(HOOK_TIMEOUT_MS - 1) < ROUTING_LIMIT_MS);
+		const timeoutMs = install().hooks[0]?.options?.timeoutMs as number;
+		assert.equal(deadlineFor(timeoutMs), ROUTING_LIMIT_MS);
+		assert.ok(deadlineFor(timeoutMs - 1) < ROUTING_LIMIT_MS);
 	});
 
 	it("registers the read-only tool and both owner-only commands", () => {
