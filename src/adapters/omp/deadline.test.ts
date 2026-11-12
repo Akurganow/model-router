@@ -23,6 +23,7 @@ describe("budgetFor", () => {
 
 	for (const [timeout, deadline] of [
 		[3000, 1000],
+		[3001, 1001],
 		[4000, 2000],
 		[9000, 7000],
 		[10000, 8000],
