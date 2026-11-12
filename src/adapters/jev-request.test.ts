@@ -1,4 +1,4 @@
-// Pins what each adapter sends Jev and prints for one task, so the merge of the shared call changes neither.
+// Checks the request each adapter sends Jev for one task, and the line it prints for a routed reply and for a reply without the work part.
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_ROLE } from "../core/brief.ts";

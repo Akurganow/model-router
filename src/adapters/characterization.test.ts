@@ -1,4 +1,4 @@
-// Pins the decision line suffix that Claude Code and omp print.
+// Checks the Jev suffix of the decision line the Claude Code adapter logs, and the line the omp adapter notes for each item.
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ROUTING_LIMIT_MS } from "../core/compose.ts";
