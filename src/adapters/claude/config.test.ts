@@ -272,6 +272,11 @@ test("the settings report lists the values and each key the provider allows", as
 	resetConfig();
 	const cases: [Record<string, unknown>, string[], string][] = [
 		[
+			{},
+			[],
+			"provider: undefined (typesafe)\nscope: core\ntypesafe key: unset",
+		],
+		[
 			{ provider: "auto", scope: "extended", api_key: "k-1" },
 			["OPENROUTER_API_KEY"],
 			"provider: auto (typesafe, then openrouter)\nscope: extended\ntypesafe key: set\nopenrouter key: set",
@@ -280,6 +285,11 @@ test("the settings report lists the values and each key the provider allows", as
 			{ provider: "openrouter-first" },
 			["TYPESAFE_API_KEY"],
 			"provider: openrouter-first (openrouter, then typesafe)\nscope: core\nopenrouter key: unset\ntypesafe key: set",
+		],
+		[
+			{ provider: "openrouter", openrouter_api_key: "k-2", api_key: "k-1" },
+			[],
+			"provider: openrouter (openrouter)\nscope: core\nopenrouter key: set",
 		],
 		[
 			{ provider: "auto", api_key: "  ", openrouter_api_key: "" },
