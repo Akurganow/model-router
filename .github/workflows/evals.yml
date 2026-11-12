@@ -21,10 +21,18 @@ on:
         required: false
         default: ""
       ref:
-        description: Tag or branch to install the plugin from, or empty for the ref of this run. It must hold scripts/build.ts, .github/actions/setup-node, .github/actions/setup-claude-code and .github/actions/setup-omp
+        description: Tag or branch to install the plugin from, or empty for the ref of this run. It must hold scripts/build.ts, .github/actions/setup-node, .github/actions/setup-claude-code and .github/actions/setup-omp with its minimum and latest pins
         type: string
         required: false
         default: ""
+      omp:
+        description: Which omp pin the omp job installs, the latest omp release or the minimum the README names
+        type: choice
+        required: false
+        default: latest
+        options:
+          - minimum
+          - latest
 
 permissions:
   contents: read
@@ -89,7 +97,21 @@ jobs:
 
       - uses: ./.github/actions/setup-node
 
+      # A ref from before the two omp pins has a setup-omp that ignores the
+      # pin input and installs its one pin, so the paid run would test another
+      # omp than the one picked.
+      - name: Check that the ref holds the omp pin
+        env:
+          PIN: ${{ inputs.omp }}
+        run: |
+          if [ ! -f ".github/actions/setup-omp/$PIN/package.json" ]; then
+            echo "::error::The ref has no .github/actions/setup-omp/$PIN/package.json, so it predates the omp pins. Dispatch a ref that holds the $PIN pin."
+            exit 1
+          fi
+
       - uses: ./.github/actions/setup-omp
+        with:
+          pin: ${{ inputs.omp }}
 
       # The plugin runs the bundle, so the cases use a fresh build of src/ at this ref.
       - name: Build the plugin bundles
