@@ -1,5 +1,5 @@
 import type { Fetch } from "@typesafe-ai/sdk";
-import { prepareBrief } from "./brief.ts";
+import { descriptionText, prepareBrief } from "./brief.ts";
 import { abortCategory, route } from "./compose.ts";
 import { type Clock, raceDeadline } from "./deadline.ts";
 import { decide } from "./decide.ts";
@@ -108,7 +108,7 @@ async function score(
 		parts: [tier, work],
 		state: {
 			role: gate.role,
-			description: gate.description,
+			description: descriptionText(gate.description),
 			task: prepareBrief(gate.task),
 		},
 		attempts: plan(settings.provider, keys),

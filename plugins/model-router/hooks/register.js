@@ -1599,7 +1599,7 @@ async function routeSpawn($, spawn, next, options) {
     return next(spawn);
   const state = {
     role: roleFor(spawn.subagentType),
-    description: spawn.description,
+    description: descriptionText(spawn.description),
     task: prepareBrief(spawn.prompt)
   };
   const keys = await readKeys($, options, options.provider);

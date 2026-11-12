@@ -1823,7 +1823,7 @@ async function score({ deps, signal }, settings, keys, gate) {
     parts: [tier, work],
     state: {
       role: gate.role,
-      description: gate.description,
+      description: descriptionText(gate.description),
       task: prepareBrief(gate.task)
     },
     attempts: plan(settings.provider, keys),

@@ -1757,7 +1757,7 @@ function scoreItem(item, context, role, routing, signal) {
     parts: [tier],
     state: {
       role,
-      description: typeof item.name === "string" ? item.name : "",
+      description: descriptionText(item.name),
       task: buildPrompt(item.task, context)
     },
     ...routing,

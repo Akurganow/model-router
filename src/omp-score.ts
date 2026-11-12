@@ -1,4 +1,4 @@
-import { buildPrompt } from "./brief.ts";
+import { buildPrompt, descriptionText } from "./brief.ts";
 import {
 	type Decision,
 	LIMIT_REACHED,
@@ -86,7 +86,7 @@ function scoreItem(
 		parts: [tier],
 		state: {
 			role,
-			description: typeof item.name === "string" ? item.name : "",
+			description: descriptionText(item.name),
 			task: buildPrompt(item.task, context),
 		},
 		...routing,

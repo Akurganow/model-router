@@ -1,5 +1,10 @@
 import type { Fetch } from "@typesafe-ai/sdk";
-import { DEFAULT_ROLE, prepareBrief, roleText } from "./brief.ts";
+import {
+	DEFAULT_ROLE,
+	descriptionText,
+	prepareBrief,
+	roleText,
+} from "./brief.ts";
 import {
 	configCall,
 	configCommand,
@@ -174,7 +179,7 @@ async function routeSpawn(
 		return next(spawn);
 	const state = {
 		role: roleFor(spawn.subagentType),
-		description: spawn.description,
+		description: descriptionText(spawn.description),
 		task: prepareBrief(spawn.prompt),
 	};
 	const keys = await readKeys($, options, options.provider);
