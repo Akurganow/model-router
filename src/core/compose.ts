@@ -22,7 +22,16 @@ import {
 	type Keys,
 	type Provider,
 } from "./provider.ts";
-import { BAD_REPLY, CANCELLED, FAILED, KEY_UNSET, TIMEOUT } from "./reasons.ts";
+import {
+	BAD_REPLY,
+	CANCELLED,
+	FAILED,
+	httpStatus,
+	KEY_UNSET,
+	NETWORK_ERROR,
+	REJECTED_REQUEST,
+	TIMEOUT,
+} from "./reasons.ts";
 
 export const ROUTING_LIMIT_MS = 8000;
 // Adapters abort their signal with this reason when the limit runs out, so a timeout differs from a cancel.
@@ -66,10 +75,10 @@ export function abortCategory(signal: AbortSignal): string {
 // The category comes from the error class or status, never from its message: messages can echo the key or the body.
 function skipCategory(err: unknown, signal: AbortSignal): string {
 	if (err instanceof APIUserAbortError) return abortCategory(signal);
-	if (err instanceof APIError) return `HTTP ${err.status}`;
+	if (err instanceof APIError) return httpStatus(err.status);
 	if (err instanceof APITimeoutError) return TIMEOUT;
-	if (err instanceof APIConnectionError) return "network error";
-	if (err instanceof TypeSafeError) return "rejected request";
+	if (err instanceof APIConnectionError) return NETWORK_ERROR;
+	if (err instanceof TypeSafeError) return REJECTED_REQUEST;
 	return FAILED;
 }
 

@@ -1245,6 +1245,9 @@ var KEY_UNSET = "key unset";
 var BAD_REPLY = "bad reply";
 var TIMEOUT = "timeout";
 var FAILED = "failed";
+var NETWORK_ERROR = "network error";
+var REJECTED_REQUEST = "rejected request";
+var httpStatus = (status) => `HTTP ${status}`;
 var CANCELLED = "cancelled";
 var outsideCoreScope = (id) => `${id} is outside the core scope`;
 var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
@@ -1677,10 +1680,10 @@ function abortCategory(signal) {
 }
 function skipCategory(err, signal) {
   if (err instanceof APIUserAbortError) return abortCategory(signal);
-  if (err instanceof APIError) return `HTTP ${err.status}`;
+  if (err instanceof APIError) return httpStatus(err.status);
   if (err instanceof APITimeoutError) return TIMEOUT;
-  if (err instanceof APIConnectionError) return "network error";
-  if (err instanceof TypeSafeError) return "rejected request";
+  if (err instanceof APIConnectionError) return NETWORK_ERROR;
+  if (err instanceof TypeSafeError) return REJECTED_REQUEST;
   return FAILED;
 }
 async function route(input) {

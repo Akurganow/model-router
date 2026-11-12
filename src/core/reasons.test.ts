@@ -10,11 +10,14 @@ import {
 	CANCELLED,
 	CONFIG_EFFORT,
 	FAILED,
+	httpStatus,
 	KEY_UNSET,
 	modelUnresolved,
 	modelUnset,
+	NETWORK_ERROR,
 	NO_END_MODEL,
 	outsideCoreScope,
+	REJECTED_REQUEST,
 	SUBAGENT_MODEL_SET,
 	setsOwnModel,
 	TIMEOUT,
@@ -26,6 +29,9 @@ test("the shared reasons keep the texts the harnesses print", () => {
 	assert.equal(CONFIG_EFFORT, "config effort");
 	assert.equal(SUBAGENT_MODEL_SET, "subagent model set");
 	assert.equal(NO_END_MODEL, "no small or large model");
+	assert.equal(NETWORK_ERROR, "network error");
+	assert.equal(REJECTED_REQUEST, "rejected request");
+	assert.equal(httpStatus(503), "HTTP 503");
 	assert.equal(modelUnset("small"), "small model unset");
 	assert.equal(modelUnset("large"), "large model unset");
 	assert.equal(modelUnresolved("small"), "small model unresolved");
@@ -63,11 +69,14 @@ test("no other source file spells a shared reason", () => {
 		TIMEOUT,
 		FAILED,
 		CANCELLED,
+		NETWORK_ERROR,
+		REJECTED_REQUEST,
 		...[
 			outsideCoreScope,
 			agentDiscoveryFailed,
 			agentUnknown,
 			setsOwnModel,
+			httpStatus,
 			modelUnset,
 			modelUnresolved,
 		].flatMap(around),
