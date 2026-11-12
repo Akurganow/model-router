@@ -4,7 +4,7 @@ import { KEY_VARIABLES } from "../../core/provider.ts";
 import type { Engine, Options } from "./host.ts";
 import { readKeys } from "./keys.ts";
 
-// The host needs a literal name in each $.env.get call, so claude-keys cannot read the table.
+// The host needs a literal name in each $.env.get call, so claude/keys.ts cannot read the table.
 test("the key variables read by name are the ones in the provider table", async () => {
 	const reads: string[] = [];
 	const engine = {

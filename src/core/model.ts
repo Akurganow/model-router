@@ -1,6 +1,6 @@
 import { fromMiddle, type Part } from "./part.ts";
 
-// Fitted on calibration.jsonl, see docs/model-choice.md.
+// Fitted on calibration.jsonl, see plugins/model-router/docs/model-choice.md.
 const TIER_DOWN = 2 ** 0.25;
 const TIER_UP = 2 ** 0.5;
 

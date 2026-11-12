@@ -69,7 +69,7 @@ export async function openBatch(
  * global value otherwise. A project may only narrow the provider, and its scope
  * wins both ways. Returns undefined when the settings are unreadable. When omp
  * gave no installed name, reads use the catalogue name. Writes still refuse, in
- * omp-config. Never throws.
+ * omp/config.ts. Never throws.
  */
 export async function readSettings(
 	omp: OmpImports,
