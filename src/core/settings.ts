@@ -29,10 +29,6 @@ export const PROVIDER_NAMES: Readonly<Record<Provider, string>> = {
 	openrouter: "OpenRouter",
 };
 
-export const KEY_MAX_LENGTH = 512;
-// A dialog that asks for text pads its options with these labels.
-const PADDED_LABELS: readonly string[] = ["Yes", "No"];
-const LINE_BREAK = /[\r\n\u2028\u2029]/;
 const LABEL_SEPARATOR = " - ";
 
 type ValueText = {
@@ -180,21 +176,6 @@ export const settingsReport = (
 		...extra,
 		...keys.map(([name, state]) => keyLine(name, state)),
 	].join("\n");
-
-export function keyFrom(answer: unknown): string | undefined {
-	if (typeof answer !== "string" || LINE_BREAK.test(answer)) return undefined;
-	const key = answer.trim();
-	return key === "" ||
-		key.length > KEY_MAX_LENGTH ||
-		PADDED_LABELS.includes(key)
-		? undefined
-		: key;
-}
-
-export const keyQuestion = (provider: Provider, replaces: boolean): string =>
-	`Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's credential store.${
-		replaces ? " It replaces the key that is set now." : ""
-	}`;
 
 export const toolDescription = (names: readonly string[]): string =>
 	`Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;

@@ -1,13 +1,33 @@
+import type { Provider } from "../../core/provider.ts";
 import {
 	type KeySetting,
-	keyFrom,
 	keyLine,
 	keyNotSaved,
 	keyProvider,
-	keyQuestion,
+	PROVIDER_NAMES,
 } from "../../core/settings.ts";
 import { findKey } from "./gates.ts";
 import type { Context } from "./types.ts";
+
+export const KEY_MAX_LENGTH = 512;
+// A dialog that asks for text pads its options with these labels.
+const PADDED_LABELS: readonly string[] = ["Yes", "No"];
+const LINE_BREAK = /[\r\n\u2028\u2029]/;
+
+export function keyFrom(answer: unknown): string | undefined {
+	if (typeof answer !== "string" || LINE_BREAK.test(answer)) return undefined;
+	const key = answer.trim();
+	return key === "" ||
+		key.length > KEY_MAX_LENGTH ||
+		PADDED_LABELS.includes(key)
+		? undefined
+		: key;
+}
+
+export const keyQuestion = (provider: Provider, replaces: boolean): string =>
+	`Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's credential store.${
+		replaces ? " It replaces the key that is set now." : ""
+	}`;
 
 // The answer goes to omp's credential store and nowhere else. A failure says only that the key was not saved,
 // because an error from the dialog or the store can hold the key.

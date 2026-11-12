@@ -1276,9 +1276,6 @@ var PROVIDER_NAMES = {
   typesafe: "TypeSafe",
   openrouter: "OpenRouter"
 };
-var KEY_MAX_LENGTH = 512;
-var PADDED_LABELS = ["Yes", "No"];
-var LINE_BREAK = /[\r\n\u2028\u2029]/;
 var LABEL_SEPARATOR = " - ";
 var TEXTS = {
   provider: {
@@ -1348,12 +1345,6 @@ var settingsReport = (provider, scope, extra, keys) => [
   ...extra,
   ...keys.map(([name, state]) => keyLine(name, state))
 ].join("\n");
-function keyFrom(answer) {
-  if (typeof answer !== "string" || LINE_BREAK.test(answer)) return void 0;
-  const key = answer.trim();
-  return key === "" || key.length > KEY_MAX_LENGTH || PADDED_LABELS.includes(key) ? void 0 : key;
-}
-var keyQuestion = (provider, replaces) => `Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's credential store.${replaces ? " It replaces the key that is set now." : ""}`;
 var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
 var TOOL_LABEL = "Model Router settings";
 var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
@@ -1523,6 +1514,15 @@ function modelsGate(ctx) {
 }
 
 // src/adapters/omp/key.ts
+var KEY_MAX_LENGTH = 512;
+var PADDED_LABELS = ["Yes", "No"];
+var LINE_BREAK = /[\r\n\u2028\u2029]/;
+function keyFrom(answer) {
+  if (typeof answer !== "string" || LINE_BREAK.test(answer)) return void 0;
+  const key = answer.trim();
+  return key === "" || key.length > KEY_MAX_LENGTH || PADDED_LABELS.includes(key) ? void 0 : key;
+}
+var keyQuestion = (provider, replaces) => `Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's credential store.${replaces ? " It replaces the key that is set now." : ""}`;
 async function changeKey(ctx, setting) {
   const provider = keyProvider(setting);
   if (!ctx.hasUI) return keyNotSaved(provider);

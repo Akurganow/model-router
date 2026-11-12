@@ -1,13 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-	KEY_MAX_LENGTH,
-	keyFrom,
-	keyLine,
-	keyNotSaved,
-	keyQuestion,
-} from "../../core/settings.ts";
+import { keyLine, keyNotSaved } from "../../core/settings.ts";
 import { KEY, useWorld } from "./fakes.ts";
+import { KEY_MAX_LENGTH, keyFrom, keyQuestion } from "./key.ts";
 import { createExtension } from "./router.ts";
 
 const world = useWorld();
