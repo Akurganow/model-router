@@ -1,4 +1,4 @@
-// src/timers.ts
+// src/adapters/claude/timers.ts
 var after;
 function installTimers(implementation) {
   after = implementation;
@@ -18,7 +18,7 @@ function clearTimeout(timer) {
   timer?.cancel();
 }
 
-// src/part.ts
+// src/core/part.ts
 var LEVELS = [0, 1, 2];
 var fromMiddle = (down, up) => (p) => {
   const low = p[0] > down * p[1];
@@ -45,7 +45,7 @@ function parseProbabilities(answers, key) {
   return { 0: p0, 1: p1, 2: p2 };
 }
 
-// src/brief.ts
+// src/core/brief.ts
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
 var NO_DESCRIPTION = "An agent with no description.";
@@ -252,25 +252,6 @@ function routingState(raw) {
     description: descriptionText(raw.description),
     task: buildPrompt(raw.task, raw.context ?? "")
   };
-}
-
-// src/claude-host.ts
-var EFFORTS_MAX = 1024;
-function passOn(_, e, next) {
-  return next(e);
-}
-async function* passStep(_, e, next) {
-  return yield* next(e);
-}
-async function denied($, call) {
-  const {
-    tool,
-    tool_use_id: _id,
-    agentId: _agentId,
-    requestMeta: _meta,
-    ...input
-  } = call;
-  return (await $.tool.check({ tool, input })).decision === "deny";
 }
 
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
@@ -1182,7 +1163,7 @@ var parseBody = async (res) => {
   }
 };
 
-// src/provider.ts
+// src/core/provider.ts
 var PROVIDER_VALUES = [
   "auto",
   "openrouter-first",
@@ -1238,26 +1219,31 @@ function fallsBack(err) {
   return FALLBACK_STATUSES.has(status) || status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
 }
 
-// src/claude-keys.ts
-async function readKeys($, options, provider) {
-  const keys = {};
-  for (const name of order(provider)) {
-    const key = nonEmpty(options[KEY_FIELDS[name]]) ?? nonEmpty(await keyVariable($, name));
-    if (key !== void 0) keys[name] = key;
-  }
-  return keys;
-}
-function keyVariable($, provider) {
-  return provider === "typesafe" ? $.env.get("TYPESAFE_API_KEY") : $.env.get("OPENROUTER_API_KEY");
+// src/core/client.ts
+function createClient(provider, apiKey, model, fetchFn) {
+  if (!Object.hasOwn(HOSTS, provider))
+    throw new Error(`createClient: no host for ${provider}`);
+  if (!apiKey)
+    throw new Error(
+      `createClient: no ${provider} key. Pass a non-empty key for ${provider}.`
+    );
+  return new TypeSafeClient({
+    apiKey,
+    baseURL: HOSTS[provider],
+    logLevel: "off",
+    defaultModel: model,
+    compression: false,
+    fetch: fetchFn
+  });
 }
 
-// src/scope.ts
+// src/core/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
 var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
 var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
-// src/settings.ts
+// src/core/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
 var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
 var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
@@ -1322,107 +1308,7 @@ var COMMAND_DESCRIPTIONS = {
   scope: describeCommand("scope")
 };
 
-// src/claude-config.ts
-var ROW_PREFIX = "model-router.";
-var PERSON = "composer";
-var TOOL_SPEC = {
-  name: "config",
-  description: toolDescription(VALUE_SETTINGS),
-  inputSchema: {
-    type: "object",
-    properties: { setting: { type: "string", enum: VALUE_SETTINGS } }
-  }
-};
-var written = {};
-var queue = Promise.resolve();
-function resetConfig() {
-  for (const setting of VALUE_SETTINGS) delete written[setting];
-  queue = Promise.resolve();
-}
-var current = (options, setting) => written[setting] ?? options[setting];
-async function registerConfigTool($, e, next) {
-  await $.tool.register(TOOL_SPEC);
-  return next(e);
-}
-async function write($, setting, value) {
-  try {
-    const { deny } = await $.config.set({
-      key: `${ROW_PREFIX}${setting}`,
-      value
-    });
-    if (deny !== void 0) return unchanged(setting, deny);
-    written[setting] = value;
-    return valueLine(setting, value);
-  } catch (err) {
-    return unchangedBy(setting, err);
-  }
-}
-async function choose($, setting, options) {
-  const { question, options: labels } = ask(setting, current(options, setting));
-  let answer2;
-  try {
-    answer2 = await $.ui.ask(question, { options: labels, header: setting });
-  } catch {
-    return unchanged(setting, NO_ANSWER);
-  }
-  const value = pick(setting, answer2);
-  if (value === void 0) return unchanged(setting, NOT_OFFERED);
-  if (value === current(options, setting))
-    return unchanged(setting, alreadyValue(value));
-  return write($, setting, value);
-}
-async function read($, options) {
-  const provider = current(options, "provider");
-  const keys = await readKeys($, options, provider);
-  return [
-    valueLine("provider", provider),
-    valueLine("scope", current(options, "scope")),
-    ...order(provider).map(
-      (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
-    )
-  ].join("\n");
-}
-async function answer($, call, options) {
-  if (await denied($, call)) return { deny: REFUSED };
-  const { setting } = call;
-  if (setting === void 0) return { result: await read($, options) };
-  if (isValueSetting(setting))
-    return { result: await choose($, setting, options) };
-  return { result: badCall(VALUE_SETTINGS) };
-}
-function configCall($, call, options) {
-  const run = queue.then(() => answer($, call, options));
-  queue = run.catch(() => void 0);
-  return run;
-}
-async function configCommand($, e, setting, options) {
-  const args = e.args.trim();
-  if (args !== "" && !isValue(setting, args))
-    return { text: useOneOf(setting) };
-  if (args === "" || e.origin.kind !== PERSON)
-    return { text: valueLine(setting, current(options, setting)) };
-  return { text: await write($, setting, args) };
-}
-
-// src/client.ts
-function createClient(provider, apiKey, model, fetchFn) {
-  if (!Object.hasOwn(HOSTS, provider))
-    throw new Error(`createClient: no host for ${provider}`);
-  if (!apiKey)
-    throw new Error(
-      `createClient: no ${provider} key. Pass a non-empty key for ${provider}.`
-    );
-  return new TypeSafeClient({
-    apiKey,
-    baseURL: HOSTS[provider],
-    logLevel: "off",
-    defaultModel: model,
-    compression: false,
-    fetch: fetchFn
-  });
-}
-
-// src/compose.ts
+// src/core/compose.ts
 var ROUTING_LIMIT_MS = 8e3;
 var TIMEOUT = "timeout";
 var FAILED = "failed";
@@ -1517,7 +1403,7 @@ function decisionSuffix({
   return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
 }
 
-// src/decide.ts
+// src/core/decide.ts
 var BAD_REPLY = { skipped: "bad reply" };
 var levelOf = (decision, key) => {
   const part = decision.parts[key];
@@ -1543,7 +1429,7 @@ function decide2(decision, tierKey, workKey) {
   };
 }
 
-// src/effort.ts
+// src/core/effort.ts
 var WORK_DOWN = 2 ** 1.25;
 var WORK_UP = 2 ** 0.5;
 var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
@@ -1562,7 +1448,7 @@ var work = {
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
-// src/ladder.ts
+// src/core/ladder.ts
 var EFFORT_BY_TIER = {
   0: ["medium", "high", "xhigh"],
   1: ["low", "medium", "high"],
@@ -1570,7 +1456,7 @@ var EFFORT_BY_TIER = {
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
-// src/line.ts
+// src/core/line.ts
 var NO_CHANGE = "no change";
 function routedLine({
   level,
@@ -1585,7 +1471,7 @@ function routedLine({
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 
-// src/model.ts
+// src/core/model.ts
 var TIER_DOWN = 2 ** 0.25;
 var TIER_UP = 2 ** 0.5;
 var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
@@ -1604,10 +1490,124 @@ var tier = {
   pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
 
-// src/reasons.ts
+// src/core/reasons.ts
 var CALLER_EFFORT = "caller effort";
 
-// src/claude.ts
+// src/adapters/claude/host.ts
+var EFFORTS_MAX = 1024;
+function passOn(_, e, next) {
+  return next(e);
+}
+async function* passStep(_, e, next) {
+  return yield* next(e);
+}
+async function denied($, call) {
+  const {
+    tool,
+    tool_use_id: _id,
+    agentId: _agentId,
+    requestMeta: _meta,
+    ...input
+  } = call;
+  return (await $.tool.check({ tool, input })).decision === "deny";
+}
+
+// src/adapters/claude/keys.ts
+async function readKeys($, options, provider) {
+  const keys = {};
+  for (const name of order(provider)) {
+    const key = nonEmpty(options[KEY_FIELDS[name]]) ?? nonEmpty(await keyVariable($, name));
+    if (key !== void 0) keys[name] = key;
+  }
+  return keys;
+}
+function keyVariable($, provider) {
+  return provider === "typesafe" ? $.env.get("TYPESAFE_API_KEY") : $.env.get("OPENROUTER_API_KEY");
+}
+
+// src/adapters/claude/config.ts
+var ROW_PREFIX = "model-router.";
+var PERSON = "composer";
+var TOOL_SPEC = {
+  name: "config",
+  description: toolDescription(VALUE_SETTINGS),
+  inputSchema: {
+    type: "object",
+    properties: { setting: { type: "string", enum: VALUE_SETTINGS } }
+  }
+};
+var written = {};
+var queue = Promise.resolve();
+function resetConfig() {
+  for (const setting of VALUE_SETTINGS) delete written[setting];
+  queue = Promise.resolve();
+}
+var current = (options, setting) => written[setting] ?? options[setting];
+async function registerConfigTool($, e, next) {
+  await $.tool.register(TOOL_SPEC);
+  return next(e);
+}
+async function write($, setting, value) {
+  try {
+    const { deny } = await $.config.set({
+      key: `${ROW_PREFIX}${setting}`,
+      value
+    });
+    if (deny !== void 0) return unchanged(setting, deny);
+    written[setting] = value;
+    return valueLine(setting, value);
+  } catch (err) {
+    return unchangedBy(setting, err);
+  }
+}
+async function choose($, setting, options) {
+  const { question, options: labels } = ask(setting, current(options, setting));
+  let answer2;
+  try {
+    answer2 = await $.ui.ask(question, { options: labels, header: setting });
+  } catch {
+    return unchanged(setting, NO_ANSWER);
+  }
+  const value = pick(setting, answer2);
+  if (value === void 0) return unchanged(setting, NOT_OFFERED);
+  if (value === current(options, setting))
+    return unchanged(setting, alreadyValue(value));
+  return write($, setting, value);
+}
+async function read($, options) {
+  const provider = current(options, "provider");
+  const keys = await readKeys($, options, provider);
+  return [
+    valueLine("provider", provider),
+    valueLine("scope", current(options, "scope")),
+    ...order(provider).map(
+      (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
+    )
+  ].join("\n");
+}
+async function answer($, call, options) {
+  if (await denied($, call)) return { deny: REFUSED };
+  const { setting } = call;
+  if (setting === void 0) return { result: await read($, options) };
+  if (isValueSetting(setting))
+    return { result: await choose($, setting, options) };
+  return { result: badCall(VALUE_SETTINGS) };
+}
+function configCall($, call, options) {
+  const run = queue.then(() => answer($, call, options));
+  queue = run.catch(() => void 0);
+  return run;
+}
+async function configCommand($, e, setting, options) {
+  const args = e.args.trim();
+  if (args !== "" && !isValue(setting, args))
+    return { text: useOneOf(setting) };
+  if (args === "" || e.origin.kind !== PERSON)
+    return { text: valueLine(setting, current(options, setting)) };
+  return { text: await write($, setting, args) };
+}
+
+// src/adapters/claude/index.ts
 var MODELS = ["haiku", "sonnet", "opus"];
 var BUILT_IN = "built-in";
 var ENGINE = "engine";

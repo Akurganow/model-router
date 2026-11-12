@@ -4,21 +4,21 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { ROUTING_LIMIT_MS } from "../src/compose.ts";
 import {
 	ESCALATION_SKILL,
 	HERMES_TEXTS,
 	taskParameterTexts,
-} from "../src/hermes-texts.ts";
-import { EFFORTS, effortFor } from "../src/ladder.ts";
-import { LEVELS } from "../src/part.ts";
+} from "../src/adapters/hermes/texts.ts";
+import { ROUTING_LIMIT_MS } from "../src/core/compose.ts";
+import { EFFORTS, effortFor } from "../src/core/ladder.ts";
+import { LEVELS } from "../src/core/part.ts";
 import {
 	KEY_VARIABLES,
 	order,
 	PROVIDER_VALUES,
 	resolve as resolveProvider,
-} from "../src/provider.ts";
-import { slotForLevel } from "../src/reasons.ts";
+} from "../src/core/provider.ts";
+import { slotForLevel } from "../src/core/reasons.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { formatJson } from "./build/json.ts";
 import { HERMES_OUTPUTS } from "./build/outputs.ts";
@@ -228,7 +228,10 @@ const box = useTempRoot("build-hermes-");
 
 test("the bundle builds under the cap and equals the committed bundle", async () => {
 	const out = join(box.root, "route.mjs");
-	assert.deepEqual(await buildBundle("hermes", "src/hermes.ts", out), []);
+	assert.deepEqual(
+		await buildBundle("hermes", "src/adapters/hermes/index.ts", out),
+		[],
+	);
 	const code = readFileSync(out, "utf8");
 	assert.ok(Buffer.byteLength(code) < MAX_BUNDLE_BYTES);
 	assert.equal(code, read(HERMES_OUTPUTS.bundle));
@@ -237,8 +240,8 @@ test("the bundle builds under the cap and equals the committed bundle", async ()
 test("two builds of the bundle give identical bytes", async () => {
 	const first = join(box.root, "first.mjs");
 	const second = join(box.root, "second.mjs");
-	await buildBundle("hermes", "src/hermes.ts", first);
-	await buildBundle("hermes", "src/hermes.ts", second);
+	await buildBundle("hermes", "src/adapters/hermes/index.ts", first);
+	await buildBundle("hermes", "src/adapters/hermes/index.ts", second);
 	assert.equal(readFileSync(first, "utf8"), readFileSync(second, "utf8"));
 });
 

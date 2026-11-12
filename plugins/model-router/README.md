@@ -380,7 +380,7 @@ Claude Code then refuses adds a second line, `denied`.
   the call. Name `effort` in the Agent call.
 - A kind of task lands on the wrong tier: add a labelled brief to
   `calibration.jsonl` at the repository root and reword a tier text in
-  `src/model.ts`. Then run the calibration script.
+  `src/core/model.ts`. Then run the calibration script.
 
 ### Keys in the desktop app
 

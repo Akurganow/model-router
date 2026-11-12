@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { BUDGET_CHARS, ROLE_CAP } from "../src/brief.ts";
-import { PROVIDER_VALUES } from "../src/provider.ts";
-import { SCOPE_VALUES } from "../src/scope.ts";
-import { VALUE_SETTINGS, type ValueSetting } from "../src/settings.ts";
+import { BUDGET_CHARS, ROLE_CAP } from "../src/core/brief.ts";
+import { PROVIDER_VALUES } from "../src/core/provider.ts";
+import { SCOPE_VALUES } from "../src/core/scope.ts";
+import { VALUE_SETTINGS, type ValueSetting } from "../src/core/settings.ts";
 import { loadSource } from "./build/source.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));

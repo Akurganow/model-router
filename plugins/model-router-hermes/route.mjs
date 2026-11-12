@@ -907,7 +907,7 @@ var parseBody = async (res) => {
   }
 };
 
-// src/provider.ts
+// src/core/provider.ts
 var PROVIDER_VALUES = [
   "auto",
   "openrouter-first",
@@ -959,7 +959,7 @@ function fallsBack(err) {
   return FALLBACK_STATUSES.has(status) || status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
 }
 
-// src/client.ts
+// src/core/client.ts
 function createClient(provider, apiKey, model, fetchFn) {
   if (!Object.hasOwn(HOSTS, provider))
     throw new Error(`createClient: no host for ${provider}`);
@@ -977,7 +977,7 @@ function createClient(provider, apiKey, model, fetchFn) {
   });
 }
 
-// src/part.ts
+// src/core/part.ts
 var LEVELS = [0, 1, 2];
 var fromMiddle = (down, up) => (p) => {
   const low = p[0] > down * p[1];
@@ -1004,13 +1004,13 @@ function parseProbabilities(answers, key) {
   return { 0: p0, 1: p1, 2: p2 };
 }
 
-// src/scope.ts
+// src/core/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
 var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
 var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
-// src/settings.ts
+// src/core/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
 var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
 var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
@@ -1048,7 +1048,7 @@ var COMMAND_DESCRIPTIONS = {
   scope: describeCommand("scope")
 };
 
-// src/compose.ts
+// src/core/compose.ts
 var TIMEOUT = "timeout";
 var FAILED = "failed";
 var CANCELLED = "cancelled";
@@ -1142,7 +1142,7 @@ function decisionSuffix({
   return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
 }
 
-// src/deadline.ts
+// src/utils/deadline.ts
 var realClock = {
   after: (ms, fn) => {
     const timer = setTimeout(fn, ms);
@@ -1182,7 +1182,7 @@ async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
   }
 }
 
-// src/fetch.ts
+// src/utils/fetch.ts
 var oneChunk = (bytes) => new ReadableStream({
   start(controller) {
     controller.enqueue(bytes);
@@ -1199,7 +1199,7 @@ var streamedFetch = async (url, init) => {
   });
 };
 
-// src/brief.ts
+// src/core/brief.ts
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
 var NO_DESCRIPTION = "An agent with no description.";
@@ -1411,7 +1411,7 @@ function routingState(raw) {
   };
 }
 
-// src/decide.ts
+// src/core/decide.ts
 var BAD_REPLY = { skipped: "bad reply" };
 var levelOf = (decision, key) => {
   const part = decision.parts[key];
@@ -1437,7 +1437,7 @@ function decide2(decision, tierKey, workKey) {
   };
 }
 
-// src/effort.ts
+// src/core/effort.ts
 var WORK_DOWN = 2 ** 1.25;
 var WORK_UP = 2 ** 0.5;
 var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
@@ -1456,7 +1456,50 @@ var work = {
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
-// src/reasons.ts
+// src/core/ladder.ts
+var EFFORT_BY_TIER = {
+  0: ["medium", "high", "xhigh"],
+  1: ["low", "medium", "high"],
+  2: ["low", "medium", "high"]
+};
+var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
+
+// src/core/line.ts
+var LINE_PREFIX = "model-router ";
+var NO_CHANGE = "no change";
+function routedLine({
+  level,
+  target,
+  effort,
+  probabilities,
+  suffix
+}) {
+  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
+  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+}
+var SKIPPED_PREFIX = "skipped, ";
+var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
+
+// src/core/model.ts
+var TIER_DOWN = 2 ** 0.25;
+var TIER_UP = 2 ** 0.5;
+var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
+var TIER_TEXTS = [
+  "Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
+  "Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
+  "Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."
+];
+var tier = {
+  key: "tier",
+  question: {
+    type: "score",
+    instructions: TIER_INSTRUCTIONS,
+    criteria: TIER_TEXTS
+  },
+  pick: fromMiddle(TIER_DOWN, TIER_UP)
+};
+
+// src/core/reasons.ts
 var CALLER_EFFORT = "caller effort";
 var CONFIG_EFFORT = "config effort";
 var SLOTS = ["small", "large"];
@@ -1467,7 +1510,7 @@ var LEVEL_SLOTS = {
 var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
 var modelUnset = (slot) => `${slot} model unset`;
 
-// src/hermes-request.ts
+// src/adapters/hermes/request.ts
 var KEPT_EFFORTS = ["config", "caller"];
 var readKeys = (value) => Object.fromEntries(
   PROVIDERS.flatMap((provider) => {
@@ -1506,50 +1549,7 @@ function readRequest(raw) {
   };
 }
 
-// src/ladder.ts
-var EFFORT_BY_TIER = {
-  0: ["medium", "high", "xhigh"],
-  1: ["low", "medium", "high"],
-  2: ["low", "medium", "high"]
-};
-var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
-
-// src/line.ts
-var LINE_PREFIX = "model-router ";
-var NO_CHANGE = "no change";
-function routedLine({
-  level,
-  target,
-  effort,
-  probabilities,
-  suffix
-}) {
-  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
-}
-var SKIPPED_PREFIX = "skipped, ";
-var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
-
-// src/model.ts
-var TIER_DOWN = 2 ** 0.25;
-var TIER_UP = 2 ** 0.5;
-var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
-var TIER_TEXTS = [
-  "Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
-  "Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
-  "Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."
-];
-var tier = {
-  key: "tier",
-  question: {
-    type: "score",
-    instructions: TIER_INSTRUCTIONS,
-    criteria: TIER_TEXTS
-  },
-  pick: fromMiddle(TIER_DOWN, TIER_UP)
-};
-
-// src/hermes-route.ts
+// src/adapters/hermes/route.ts
 var skippedBy = (reason) => ({ skipped: reason });
 var skip2 = (reason) => ({
   outcome: "skip",
@@ -1621,7 +1621,7 @@ async function routeRequest(raw, deps) {
   }
 }
 
-// src/hermes.ts
+// src/adapters/hermes/index.ts
 async function readStdin() {
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);

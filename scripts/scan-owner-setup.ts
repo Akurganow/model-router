@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { generatedFiles } from "./build/copies.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 
-// The two key shapes are two of the shapes the redaction in src/brief.ts
+// The two key shapes are two of the shapes the redaction in src/core/brief.ts
 // masks, and the bearer rule ignores case as that redaction does. It also needs
 // a digit and 16 characters, because prose such as "the bearer token" and the
 // masked form "Bearer ***" must pass.

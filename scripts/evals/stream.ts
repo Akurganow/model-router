@@ -18,7 +18,7 @@ export function jsonLines(text: string): Record<string, unknown>[] {
 	return events;
 }
 
-// decisionSuffix in src/compose.ts writes " · jev <model>" with the model cut to these characters.
+// decisionSuffix in src/core/compose.ts writes " · jev <model>" with the model cut to these characters.
 const JEV_SEGMENT = / · jev (?<jev>[A-Za-z0-9._/-]+)/;
 
 export function jevModel(line: string): string | null {

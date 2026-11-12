@@ -1,12 +1,12 @@
-// src/omp.ts
+// src/adapters/omp/index.ts
 import { lookup } from "@oh-my-pi/pi-coding-agent/config/registry";
 import { getPluginSettings } from "@oh-my-pi/pi-coding-agent/extensibility/plugins/loader";
 import { getPluginsLockfile } from "@oh-my-pi/pi-utils";
 
-// src/omp-name.ts
+// src/adapters/omp/name.ts
 import { readFileSync } from "node:fs";
 
-// src/part.ts
+// src/core/part.ts
 var LEVELS = [0, 1, 2];
 var fromMiddle = (down, up) => (p) => {
   const low = p[0] > down * p[1];
@@ -33,7 +33,7 @@ function parseProbabilities(answers, key) {
   return { 0: p0, 1: p1, 2: p2 };
 }
 
-// src/omp-name.ts
+// src/adapters/omp/name.ts
 var FALLBACK_NAME = "model-router-omp";
 function readInstalledName(moduleUrl) {
   try {
@@ -47,7 +47,7 @@ function readInstalledName(moduleUrl) {
   }
 }
 
-// src/brief.ts
+// src/core/brief.ts
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
 var NO_DESCRIPTION = "An agent with no description.";
@@ -259,7 +259,7 @@ function routingState(raw) {
   };
 }
 
-// src/line.ts
+// src/core/line.ts
 var LINE_PREFIX = "model-router ";
 var NO_CHANGE = "no change";
 var ENTRY_SEPARATOR = " | ";
@@ -275,9 +275,6 @@ function routedLine({
 }
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
-
-// src/omp-gates.ts
-import { readFile } from "node:fs/promises";
 
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
 var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
@@ -1188,7 +1185,7 @@ var parseBody = async (res) => {
   }
 };
 
-// src/provider.ts
+// src/core/provider.ts
 var PROVIDER_VALUES = [
   "auto",
   "openrouter-first",
@@ -1249,13 +1246,13 @@ function narrow(global, project) {
   return NARROWABLE.includes(value) && (project === "typesafe" || project === "openrouter") ? project : value;
 }
 
-// src/scope.ts
+// src/core/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
 var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
 var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
-// src/settings.ts
+// src/core/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
 var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
 var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
@@ -1347,7 +1344,10 @@ var COMMAND_DESCRIPTIONS = {
   scope: describeCommand("scope")
 };
 
-// src/omp-items.ts
+// src/adapters/omp/gates.ts
+import { readFile } from "node:fs/promises";
+
+// src/adapters/omp/items.ts
 var TASK = "task";
 var BUNDLED = "bundled";
 var ROLE_MARK = "@";
@@ -1389,7 +1389,7 @@ function roleOf(name, facts) {
   return name === TASK && found?.source === BUNDLED ? DEFAULT_ROLE : roleText(found?.description);
 }
 
-// src/omp-gates.ts
+// src/adapters/omp/gates.ts
 var ROLES = { small: "@smol", large: "@slow" };
 async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
   const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
@@ -1493,7 +1493,7 @@ function modelsGate(ctx) {
   return Object.values(ROLES).some((role) => resolves(ctx, role)) ? void 0 : noModel(`${ROLES.small} or ${ROLES.large}`);
 }
 
-// src/omp-key.ts
+// src/adapters/omp/key.ts
 async function changeKey(ctx, setting) {
   const provider = keyProvider(setting);
   if (!ctx.hasUI) return keyNotSaved(provider);
@@ -1512,7 +1512,7 @@ async function changeKey(ctx, setting) {
   }
 }
 
-// src/omp-config.ts
+// src/adapters/omp/config.ts
 var COMMAND_PREFIX = "model-router:";
 var LINE_BREAK2 = "\n";
 function say(ctx, text) {
@@ -1619,7 +1619,7 @@ function registerConfig(omp, pi) {
   });
 }
 
-// src/client.ts
+// src/core/client.ts
 function createClient(provider, apiKey, model, fetchFn) {
   if (!Object.hasOwn(HOSTS, provider))
     throw new Error(`createClient: no host for ${provider}`);
@@ -1637,7 +1637,7 @@ function createClient(provider, apiKey, model, fetchFn) {
   });
 }
 
-// src/compose.ts
+// src/core/compose.ts
 var ROUTING_LIMIT_MS = 8e3;
 var TIMEOUT = "timeout";
 var FAILED = "failed";
@@ -1732,13 +1732,13 @@ function decisionSuffix({
   return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
 }
 
-// src/handler-deadline.ts
+// src/core/handler-deadline.ts
 var HANDLER_MARGIN_MS = 2e3;
 var MIN_DEADLINE_MS = 1e3;
 var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
 var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
 
-// src/omp-deadline.ts
+// src/adapters/omp/deadline.ts
 var DEFAULT_TIMEOUT_MS = 3e4;
 function budgetFor(value) {
   const timeout = typeof value === "number" && Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS;
@@ -1749,11 +1749,11 @@ function budgetFor(value) {
   };
 }
 
-// src/reasons.ts
+// src/core/reasons.ts
 var CALLER_EFFORT = "caller effort";
 var CONFIG_EFFORT = "config effort";
 
-// src/omp-effort.ts
+// src/adapters/omp/effort.ts
 var NO_PATTERNS = "no model patterns";
 var SELECTORS = [
   "inherit",
@@ -1815,7 +1815,7 @@ function modelFor(role, plan2, patterns) {
   return "set" in plan2 ? patterns.map((p) => `${p}:${plan2.set}`) : void 0;
 }
 
-// src/decide.ts
+// src/core/decide.ts
 var BAD_REPLY = { skipped: "bad reply" };
 var levelOf = (decision, key) => {
   const part = decision.parts[key];
@@ -1841,7 +1841,7 @@ function decide2(decision, tierKey, workKey) {
   };
 }
 
-// src/effort.ts
+// src/core/effort.ts
 var WORK_DOWN = 2 ** 1.25;
 var WORK_UP = 2 ** 0.5;
 var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
@@ -1860,24 +1860,7 @@ var work = {
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
-// src/fetch.ts
-var oneChunk = (bytes) => new ReadableStream({
-  start(controller) {
-    controller.enqueue(bytes);
-    controller.close();
-  }
-});
-var streamedFetch = async (url, init) => {
-  const reply2 = await globalThis.fetch(url, init);
-  const bytes = new TextEncoder().encode(await reply2.text());
-  return new Response(oneChunk(bytes), {
-    status: reply2.status,
-    statusText: reply2.statusText,
-    headers: reply2.headers
-  });
-};
-
-// src/ladder.ts
+// src/core/ladder.ts
 var EFFORT_BY_TIER = {
   0: ["medium", "high", "xhigh"],
   1: ["low", "medium", "high"],
@@ -1885,7 +1868,7 @@ var EFFORT_BY_TIER = {
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
-// src/model.ts
+// src/core/model.ts
 var TIER_DOWN = 2 ** 0.25;
 var TIER_UP = 2 ** 0.5;
 var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
@@ -1904,7 +1887,24 @@ var tier = {
   pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
 
-// src/omp-score.ts
+// src/utils/fetch.ts
+var oneChunk = (bytes) => new ReadableStream({
+  start(controller) {
+    controller.enqueue(bytes);
+    controller.close();
+  }
+});
+var streamedFetch = async (url, init) => {
+  const reply2 = await globalThis.fetch(url, init);
+  const bytes = new TextEncoder().encode(await reply2.text());
+  return new Response(oneChunk(bytes), {
+    status: reply2.status,
+    statusText: reply2.statusText,
+    headers: reply2.headers
+  });
+};
+
+// src/adapters/omp/score.ts
 var MAX_PARALLEL = 4;
 var ROLE_BY_LEVEL = {
   0: ROLES.small,
@@ -1979,7 +1979,7 @@ async function mapLimit(items, limit, fn) {
   return results;
 }
 
-// src/omp-store.ts
+// src/adapters/omp/store.ts
 var STORE_MAX = 64;
 function link({ byKey }, entry2, key) {
   entry2.keys.add(key);
@@ -2052,7 +2052,7 @@ function createStore() {
   };
 }
 
-// src/omp-router.ts
+// src/adapters/omp/router.ts
 function isEligible(item) {
   if (!isRecord(item)) return false;
   const { agent, task } = item;
@@ -2161,12 +2161,12 @@ function createExtension(omp) {
   };
 }
 
-// src/omp.ts
+// src/adapters/omp/index.ts
 async function writeSetting(cwd, plugin, key, value) {
   const { PluginManager } = await import("@oh-my-pi/pi-coding-agent/extensibility/plugins/manager");
   await new PluginManager(cwd).setPluginSetting(plugin, key, value);
 }
-var omp_default = createExtension({
+var index_default = createExtension({
   plugin: readInstalledName(import.meta.url),
   lookup,
   getPluginsLockfile,
@@ -2174,5 +2174,5 @@ var omp_default = createExtension({
   writeSetting
 });
 export {
-  omp_default as default
+  index_default as default
 };

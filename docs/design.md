@@ -23,7 +23,7 @@ The source holds no value list.
 The value lists in the manifests come from `src/`, so a manifest cannot offer a value the code does not know.
 The option texts are prose, so a test holds them to `src/` instead.
 Each names every provider or scope value, except omp's provider text, which names `auto` and `openrouter-first` only.
-Each character limit in the source states the number `src/brief.ts` enforces.
+Each character limit in the source states the number `src/core/brief.ts` enforces.
 
 `scripts/build.ts` reads the source, and the renderers in `scripts/build/` write each copy.
 It writes the Claude manifest, both catalogues and the omp `package.json`.
@@ -142,7 +142,7 @@ It publishes only while the `NPM_PUBLISH` variable is `true` and the registry la
 The repository is public.
 The `scan` job checks the added lines of a pull request and every generated file for two markers.
 One is an absolute home path, in the macOS, Linux or Windows form, also after `file://`.
-The other is a key-shaped string with the `sk-` or `Bearer` prefix that the redaction in `src/brief.ts` masks.
+The other is a key-shaped string with the `sk-` or `Bearer` prefix that the redaction in `src/core/brief.ts` masks.
 The scan keeps these two of the redaction's shapes because the others, such as a password in a URL, also match the repository's own texts.
 A new shape joins the scan only when no text in the repository has to contain it.
 Paths written from `~` pass.

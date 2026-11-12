@@ -1,3 +1,46 @@
+// src/core/line.ts
+var LINE_PREFIX = "model-router ";
+var NO_CHANGE = "no change";
+function routedLine({
+  level,
+  target,
+  effort,
+  probabilities,
+  suffix
+}) {
+  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
+  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+}
+var SKIPPED_PREFIX = "skipped, ";
+var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
+
+// src/core/part.ts
+var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
+};
+var PROBABILITY_DIGITS = 2;
+var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+var isRecord = (v) => typeof v === "object" && v !== null;
+function parseProbabilities(answers, key) {
+  const a = isRecord(answers) ? answers[key] : void 0;
+  if (!isRecord(a)) return void 0;
+  const { type, probabilities } = a;
+  if (type !== "score" || !isRecord(probabilities)) return void 0;
+  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
+  const { 0: p0, 1: p1, 2: p2 } = probabilities;
+  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
 var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
 var APIPromise = class APIPromise2 extends Promise {
@@ -100,21 +143,21 @@ var TypeSafeError = class extends Error {
     this.name = new.target.name;
   }
 };
-var isRecord = (value) => typeof value === "object" && value !== null;
+var isRecord2 = (value) => typeof value === "object" && value !== null;
 var extractMessage = (body) => {
   if (typeof body === "string") return body || void 0;
-  if (!isRecord(body)) return void 0;
+  if (!isRecord2(body)) return void 0;
   const { error, message, detail } = body;
   if (typeof error === "string") return error;
-  if (isRecord(error) && typeof error.message === "string") return error.message;
+  if (isRecord2(error) && typeof error.message === "string") return error.message;
   if (typeof message === "string") return message;
   if (typeof detail === "string") return detail;
-  if (isRecord(detail) && typeof detail.message === "string") return detail.message;
+  if (isRecord2(detail) && typeof detail.message === "string") return detail.message;
   if (Array.isArray(detail)) return describeValidationErrors(detail);
 };
 var describeValidationErrors = (errors) => {
   const parts = errors.flatMap((e) => {
-    if (!isRecord(e) || typeof e.msg !== "string") return [];
+    if (!isRecord2(e) || typeof e.msg !== "string") return [];
     const loc = Array.isArray(e.loc) ? e.loc.filter((x) => x !== "body").join(".") : "";
     return [loc ? `${loc}: ${e.msg}` : e.msg];
   });
@@ -907,7 +950,7 @@ var parseBody = async (res) => {
   }
 };
 
-// src/provider.ts
+// src/core/provider.ts
 var PROVIDER_VALUES = [
   "auto",
   "openrouter-first",
@@ -967,7 +1010,7 @@ function fallsBack(err) {
   return FALLBACK_STATUSES.has(status) || status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
 }
 
-// src/client.ts
+// src/core/client.ts
 function createClient(provider, apiKey, model, fetchFn) {
   if (!Object.hasOwn(HOSTS, provider))
     throw new Error(`createClient: no host for ${provider}`);
@@ -985,40 +1028,13 @@ function createClient(provider, apiKey, model, fetchFn) {
   });
 }
 
-// src/part.ts
-var LEVELS = [0, 1, 2];
-var fromMiddle = (down, up) => (p) => {
-  const low = p[0] > down * p[1];
-  const high = p[2] > up * p[1];
-  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
-  return low ? 0 : high ? 2 : 1;
-};
-var PROBABILITY_DIGITS = 2;
-var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
-};
-var isRecord2 = (v) => typeof v === "object" && v !== null;
-function parseProbabilities(answers, key) {
-  const a = isRecord2(answers) ? answers[key] : void 0;
-  if (!isRecord2(a)) return void 0;
-  const { type, probabilities } = a;
-  if (type !== "score" || !isRecord2(probabilities)) return void 0;
-  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
-  const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
-    return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
-}
-
-// src/scope.ts
+// src/core/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
 var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
 var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
-// src/settings.ts
+// src/core/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
 var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
 var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
@@ -1081,7 +1097,7 @@ var COMMAND_DESCRIPTIONS = {
   scope: describeCommand("scope")
 };
 
-// src/compose.ts
+// src/core/compose.ts
 var ROUTING_LIMIT_MS = 8e3;
 var TIMEOUT = "timeout";
 var FAILED = "failed";
@@ -1153,7 +1169,7 @@ function skip(failed) {
   };
 }
 function decide(parts, result) {
-  const { answers, model, usage } = isRecord2(result) ? result : {};
+  const { answers, model, usage } = isRecord(result) ? result : {};
   const decided = {};
   for (const part of parts) {
     const probabilities = parseProbabilities(answers, part.key);
@@ -1163,7 +1179,7 @@ function decide(parts, result) {
   return {
     parts: decided,
     model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
-    usage: isRecord2(usage) ? usage : void 0
+    usage: isRecord(usage) ? usage : void 0
   };
 }
 function decisionSuffix({
@@ -1176,7 +1192,7 @@ function decisionSuffix({
   return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
 }
 
-// src/deadline.ts
+// src/utils/deadline.ts
 var realClock = {
   after: (ms, fn) => {
     const timer = setTimeout(fn, ms);
@@ -1216,7 +1232,7 @@ async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
   }
 }
 
-// src/fetch.ts
+// src/utils/fetch.ts
 var oneChunk = (bytes) => new ReadableStream({
   start(controller) {
     controller.enqueue(bytes);
@@ -1233,23 +1249,7 @@ var streamedFetch = async (url, init) => {
   });
 };
 
-// src/line.ts
-var LINE_PREFIX = "model-router ";
-var NO_CHANGE = "no change";
-function routedLine({
-  level,
-  target,
-  effort,
-  probabilities,
-  suffix
-}) {
-  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
-}
-var SKIPPED_PREFIX = "skipped, ";
-var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
-
-// src/openclaw-settings.ts
+// src/adapters/openclaw/settings.ts
 var PLUGIN_ID = "model-router-openclaw";
 var pluginEntry = (config) => config?.plugins?.entries?.[PLUGIN_ID];
 function withPluginSetting(draft, setting, value) {
@@ -1264,7 +1264,7 @@ function withPluginSetting(draft, setting, value) {
   };
 }
 function sources(live, pluginConfig) {
-  return [pluginEntry(live)?.config, pluginConfig].filter(isRecord2);
+  return [pluginEntry(live)?.config, pluginConfig].filter(isRecord);
 }
 function firstValid(from, field, parse) {
   for (const settings of from) {
@@ -1308,7 +1308,7 @@ function readState(api, env) {
   };
 }
 
-// src/openclaw-config.ts
+// src/adapters/openclaw/config.ts
 var COMMAND_NAMES = VALUE_SETTINGS.map(commandName);
 var ADMIN_SCOPE = "operator.admin";
 var LINE_BREAK = "\n";
@@ -1344,7 +1344,7 @@ function howToChange(setting) {
   return isKeySetting(setting) ? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.` : badCall(TOOL_SETTINGS);
 }
 function runTool(api, env, params) {
-  const { setting } = isRecord2(params) ? params : {};
+  const { setting } = isRecord(params) ? params : {};
   return setting === void 0 ? readAll(readState(api, env)) : howToChange(setting);
 }
 var isOwner = (ctx) => ctx.senderIsOwner === true;
@@ -1414,16 +1414,16 @@ function registerConfigCommands(api, env) {
     });
 }
 
-// src/handler-deadline.ts
+// src/core/handler-deadline.ts
 var HANDLER_MARGIN_MS = 2e3;
 var MIN_DEADLINE_MS = 1e3;
 var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
 var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
 
-// src/openclaw-deadline.ts
+// src/adapters/openclaw/deadline.ts
 var HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HANDLER_MARGIN_MS;
 
-// src/brief.ts
+// src/core/brief.ts
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
 var NO_DESCRIPTION = "An agent with no description.";
@@ -1632,7 +1632,7 @@ function routingState(raw) {
   };
 }
 
-// src/decide.ts
+// src/core/decide.ts
 var BAD_REPLY = { skipped: "bad reply" };
 var levelOf = (decision, key) => {
   const part = decision.parts[key];
@@ -1658,7 +1658,7 @@ function decide2(decision, tierKey, workKey) {
   };
 }
 
-// src/effort.ts
+// src/core/effort.ts
 var WORK_DOWN = 2 ** 1.25;
 var WORK_UP = 2 ** 0.5;
 var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
@@ -1677,7 +1677,7 @@ var work = {
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
-// src/ladder.ts
+// src/core/ladder.ts
 var EFFORT_BY_TIER = {
   0: ["medium", "high", "xhigh"],
   1: ["low", "medium", "high"],
@@ -1685,7 +1685,7 @@ var EFFORT_BY_TIER = {
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
-// src/model.ts
+// src/core/model.ts
 var TIER_DOWN = 2 ** 0.25;
 var TIER_UP = 2 ** 0.5;
 var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
@@ -1704,7 +1704,20 @@ var tier = {
   pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
 
-// src/openclaw-checks.ts
+// src/core/reasons.ts
+var CALLER_EFFORT = "caller effort";
+var CONFIG_EFFORT = "config effort";
+var SUBAGENT_MODEL_SET = "subagent model set";
+var NO_END_MODEL = "no small or large model";
+var LEVEL_SLOTS = {
+  0: "small",
+  2: "large"
+};
+var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
+var modelUnset = (slot) => `${slot} model unset`;
+var modelUnresolved = (slot) => `${slot} model unresolved`;
+
+// src/adapters/openclaw/checks.ts
 async function slotResolves(runtime, cfg, agentId, slot) {
   try {
     const target = agentId === void 0 ? { cfg } : { cfg, agentId };
@@ -1729,7 +1742,7 @@ async function slotResolves(runtime, cfg, agentId, slot) {
   }
 }
 
-// src/openclaw-agents.ts
+// src/adapters/openclaw/agents.ts
 var DEFAULT_AGENT_ID = "main";
 var MAX_ID_LENGTH = 64;
 var VALID_ID = new RegExp(
@@ -1749,21 +1762,21 @@ function normalizeAgentId(value) {
 var sameAgent = (a, b) => normalizeAgentId(a) === normalizeAgentId(b);
 function findAgent(config, id) {
   const agents = config?.agents;
-  if (id === void 0 || !isRecord2(agents)) return void 0;
+  if (id === void 0 || !isRecord(agents)) return void 0;
   const wanted = normalizeAgentId(id);
   const { entries, list } = agents;
   if (entries !== void 0) {
-    if (!isRecord2(entries)) return void 0;
+    if (!isRecord(entries)) return void 0;
     const key = Object.keys(entries).find(
-      (candidate) => isRecord2(entries[candidate]) && normalizeAgentId(candidate) === wanted
+      (candidate) => isRecord(entries[candidate]) && normalizeAgentId(candidate) === wanted
     );
     return key === void 0 ? void 0 : entries[key];
   }
   if (!Array.isArray(list)) return void 0;
-  return list.filter(isRecord2).find(({ id: itemId }) => normalizeAgentId(itemId) === wanted);
+  return list.filter(isRecord).find(({ id: itemId }) => normalizeAgentId(itemId) === wanted);
 }
 
-// src/openclaw-params.ts
+// src/adapters/openclaw/params.ts
 var snakeCase = (key) => key.replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2").replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
 function readParam(params, key) {
   if (Object.hasOwn(params, key)) return params[key];
@@ -1801,27 +1814,14 @@ function readSpawn(params) {
   };
 }
 
-// src/reasons.ts
-var CALLER_EFFORT = "caller effort";
-var CONFIG_EFFORT = "config effort";
-var SUBAGENT_MODEL_SET = "subagent model set";
-var NO_END_MODEL = "no small or large model";
-var LEVEL_SLOTS = {
-  0: "small",
-  2: "large"
-};
-var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
-var modelUnset = (slot) => `${slot} model unset`;
-var modelUnresolved = (slot) => `${slot} model unresolved`;
-
-// src/openclaw-gates.ts
+// src/adapters/openclaw/gates.ts
 var PASS = { outcome: "pass" };
 var skip2 = (reason) => ({ outcome: "skip", reason });
 var NO_MODEL_VALUE = "default";
 function at(value, ...path) {
   let node = value;
   for (const key of path) {
-    if (!isRecord2(node) || !Object.hasOwn(node, key)) return void 0;
+    if (!isRecord(node) || !Object.hasOwn(node, key)) return void 0;
     node = node[key];
   }
   return node;
@@ -1891,7 +1891,7 @@ function gateSpawn(input) {
   };
 }
 
-// src/openclaw-router.ts
+// src/adapters/openclaw/router.ts
 var SPAWN_TOOL = "sessions_spawn";
 var HOOK = "before_tool_call";
 var SLOT_MODELS = {
@@ -2008,12 +2008,12 @@ function createBeforeToolCall(api, deadlineMs, deps) {
   };
 }
 
-// src/openclaw.ts
+// src/adapters/openclaw/index.ts
 var HOOK_TIMEOUT_MAX_MS = 6e5;
 var usable = (value) => typeof value === "number" && Number.isInteger(value) && value > 0 && value <= HOOK_TIMEOUT_MAX_MS;
 function effectiveTimeout(config) {
   const hooks = pluginEntry(config)?.hooks;
-  const perHook = isRecord2(hooks?.timeouts) ? hooks.timeouts.before_tool_call : void 0;
+  const perHook = isRecord(hooks?.timeouts) ? hooks.timeouts.before_tool_call : void 0;
   return [perHook, hooks?.timeoutMs].find(usable) ?? HOOK_TIMEOUT_MS;
 }
 function warn(api, message) {
@@ -2060,8 +2060,8 @@ function createPlugin(deps = {
 }) {
   return { id: PLUGIN_ID, register: (api) => register(api, deps) };
 }
-var openclaw_default = createPlugin();
+var index_default = createPlugin();
 export {
   createPlugin,
-  openclaw_default as default
+  index_default as default
 };

@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { createPlugin } from "../src/openclaw.ts";
-import { SPAWN_TOOL } from "../src/openclaw-router.ts";
-import type { OpenClawApi } from "../src/openclaw-types.ts";
+import { createPlugin } from "../src/adapters/openclaw/index.ts";
+import { SPAWN_TOOL } from "../src/adapters/openclaw/router.ts";
+import type { OpenClawApi } from "../src/adapters/openclaw/types.ts";
 import {
 	inspectProblems,
 	main,

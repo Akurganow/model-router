@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
-import { work } from "../../src/effort.ts";
-import { tier } from "../../src/model.ts";
-import type { Level, Probabilities } from "../../src/part.ts";
+import { work } from "../../src/core/effort.ts";
+import { tier } from "../../src/core/model.ts";
+import type { Level, Probabilities } from "../../src/core/part.ts";
 import { readRows } from "../compare-rules.ts";
 import {
 	decide,

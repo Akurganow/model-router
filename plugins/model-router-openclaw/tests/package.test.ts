@@ -4,12 +4,12 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { type Schema, validate } from "../../../scripts/build/schema.ts";
-import { createFakeApi } from "../../../src/openclaw-fakes.ts";
+import { createFakeApi } from "../../../src/adapters/openclaw/fakes.ts";
 import {
 	PLUGIN_ID,
 	readKeys,
 	readSettings,
-} from "../../../src/openclaw-settings.ts";
+} from "../../../src/adapters/openclaw/settings.ts";
 
 const PLUGIN = join(import.meta.dirname, "..");
 const TREE = join(PLUGIN, "..", "..", "packages", "model-router");
