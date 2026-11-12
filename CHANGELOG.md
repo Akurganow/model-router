@@ -3,6 +3,23 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.21.0 - 2026-11-12
+#### Features
+- (**omp**) set the routed effort on a subagent (f52368b)
+#### Bug Fixes
+- (**omp**) read task.enableEffort whenever the effort is planned (8427ffe)
+- (**omp**) count a pattern's level at level 1 only, and an item's effort only while omp applies it (effe85b)
+#### Documentation
+- (**omp**) record the live runs of the routed effort (4504616)
+- (**omp**) document the routed effort and omp's thinking levels (2d2a604)
+#### Refactoring
+- (**omp**) drop an unused spawn field (51fa30e)
+#### Miscellaneous Chores
+- (**evals**) let a later omp entry for the same item replace the batch entry (a729274)
+
+- - -
+
+
 ## v0.20.1 - 2026-11-12
 #### Bug Fixes
 - mask long URL credentials, keep text after a quoted header, close fences only at a real closer (d27bb1f)
