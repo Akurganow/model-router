@@ -362,3 +362,33 @@ test("a spawn keeps the agent's own model role or nothing", async () => {
 			closed: `${name} spawns with another model role`,
 		});
 });
+
+// What counts as set is tested with isSet. These values are the ones the gate tests above do not feed to the fields it reads.
+const SET_VALUES: readonly [string, unknown, boolean][] = [
+	["undefined", undefined, false],
+	["zero", 0, true],
+	["an empty object", {}, true],
+];
+
+for (const [name, value, set] of SET_VALUES) {
+	const closed = (reason: string) => (set ? { closed: reason } : open());
+
+	test(`${name} as the task model role ${set ? "is" : "is not"} a user choice`, async () => {
+		world.config.modelRoles = { task: value };
+		assert.deepEqual(await forAgent("task"), closed("task model role set"));
+	});
+
+	test(`${name} as the task model override ${set ? "is" : "is not"} a user choice`, async () => {
+		world.config["task.agentModelOverrides"] = { task: value };
+		assert.deepEqual(await forAgent("task"), closed("task model override set"));
+	});
+
+	test(`${name} as another agent's model override ${set ? "is" : "is not"} a user choice`, async () => {
+		extend(world);
+		world.config["task.agentModelOverrides"] = { scout: value };
+		assert.deepEqual(
+			await forAgent("scout"),
+			closed("scout model override set"),
+		);
+	});
+}
