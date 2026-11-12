@@ -452,3 +452,97 @@ test("a command and the tool share one queue, and a failed write does not stop t
 	assert.equal(world.dialogs.length, 1);
 	assert.equal(attempts, 2);
 });
+
+// Each host call in order: the dialog reads the settings before it asks and again before it writes.
+function logged(answer: string) {
+	const log: string[] = [];
+	install({
+		...world.imports,
+		getPluginSettings: async (name, cwd) => {
+			log.push("read");
+			return world.imports.getPluginSettings(name, cwd);
+		},
+		writeSetting: async (cwd, plugin, key, value) => {
+			log.push(`write ${key}=${value}`);
+			return world.imports.writeSetting(cwd, plugin, key, value);
+		},
+	});
+	world.select = async () => {
+		log.push("select");
+		return answer;
+	};
+	return log;
+}
+
+test("a scope pick is read, asked, read again, written and read back, in that order", async () => {
+	world.lockfile = lockfileScoped("core");
+	const log = logged(labelOf("scope", "extended"));
+	assert.equal(await world.callTool({ setting: "scope" }), "scope: extended");
+	const { question, options } = ask("scope", "core");
+	assert.deepEqual(world.dialogs, [{ title: question, options }]);
+	assert.deepEqual(log, [
+		"read",
+		"select",
+		"read",
+		"write scope=extended",
+		"read",
+	]);
+});
+
+// The report lists the stored provider, the scope and one line for each key the provider allows.
+test("the settings report lists the values and the key state of each allowed provider", async () => {
+	install();
+	const cases: {
+		provider: string;
+		scope: string;
+		typesafe: boolean;
+		openrouter: boolean;
+		text: string;
+	}[] = [
+		{
+			provider: "auto",
+			scope: "core",
+			typesafe: true,
+			openrouter: true,
+			text: "provider: auto (typesafe, then openrouter)\nscope: core\ntypesafe key: set\nopenrouter key: set",
+		},
+		{
+			provider: "auto",
+			scope: "extended",
+			typesafe: false,
+			openrouter: true,
+			text: "provider: auto (typesafe, then openrouter)\nscope: extended\ntypesafe key: unset\nopenrouter key: set",
+		},
+		{
+			provider: "openrouter-first",
+			scope: "core",
+			typesafe: true,
+			openrouter: false,
+			text: "provider: openrouter-first (openrouter, then typesafe)\nscope: core\nopenrouter key: unset\ntypesafe key: set",
+		},
+		{
+			provider: "typesafe",
+			scope: "extended",
+			typesafe: false,
+			openrouter: true,
+			text: "provider: typesafe (typesafe)\nscope: extended\ntypesafe key: unset",
+		},
+		{
+			provider: "openrouter",
+			scope: "core",
+			typesafe: true,
+			openrouter: false,
+			text: "provider: openrouter (openrouter)\nscope: core\nopenrouter key: unset",
+		},
+	];
+	for (const { provider, scope, typesafe, openrouter, text } of cases) {
+		world.lockfile = {
+			plugins: {},
+			settings: { "model-router-omp": { provider, scope } },
+		};
+		world.credential = async (name) =>
+			(name === "typesafe" ? typesafe : openrouter) ? "a-key" : undefined;
+		setEnv(OR_VARIABLE, undefined);
+		assert.equal(await world.callTool({}), text, `${provider} ${scope}`);
+	}
+});
