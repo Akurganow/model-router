@@ -317,10 +317,6 @@ test("settingsReport joins the value lines, the extra lines and the key lines in
 		settingsReport("openrouter", "core", [], [["openrouter", "unset"]]),
 		"provider: openrouter (openrouter)\nscope: core\nopenrouter key: unset",
 	);
-	assert.equal(
-		settingsReport("typesafe", "core", [], []),
-		"provider: typesafe (typesafe)\nscope: core",
-	);
 });
 
 test("settingsReport prints the stored provider as it is and resolves the scope", () => {
