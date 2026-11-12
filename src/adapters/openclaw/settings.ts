@@ -1,4 +1,3 @@
-import { isRecord, nonEmpty } from "../../core/part.ts";
 import {
 	KEY_FIELDS,
 	KEY_VARIABLES,
@@ -9,6 +8,8 @@ import {
 	resolve,
 } from "../../core/provider.ts";
 import { parseScope, resolveScope, type Scope } from "../../core/scope.ts";
+import { isRecord } from "../../utils/guards.ts";
+import { nonEmpty } from "../../utils/text.ts";
 import type { OpenClawApi, OpenClawConfig } from "./types.ts";
 
 export const PLUGIN_ID = "model-router-openclaw";

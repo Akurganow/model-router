@@ -1,7 +1,8 @@
 import { contextText } from "../../core/brief.ts";
-import { isRecord, nonEmpty } from "../../core/part.ts";
 import { type Keys, PROVIDERS } from "../../core/provider.ts";
 import { type EndSlot, SLOTS } from "../../core/reasons.ts";
+import { isRecord } from "../../utils/guards.ts";
+import { nonEmpty } from "../../utils/text.ts";
 
 // Whose effort replaces the ladder's. Python ranks the delegation section above the caller.
 export const KEPT_EFFORTS = ["config", "caller"] as const;

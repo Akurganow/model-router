@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import type { RouteInput } from "../../core/compose.ts";
-import { isRecord, nonEmpty } from "../../core/part.ts";
 import {
 	KEY_VARIABLES,
 	type Keys,
@@ -12,6 +11,8 @@ import {
 } from "../../core/provider.ts";
 import { resolveScope, type Scope } from "../../core/scope.ts";
 import { KEY_UNSET, UNREADABLE } from "../../core/settings.ts";
+import { isRecord } from "../../utils/guards.ts";
+import { nonEmpty } from "../../utils/text.ts";
 import { type Facts, type Spawning, spawnCheck, TASK } from "./items.ts";
 import { FALLBACK_NAME } from "./name.ts";
 import type { Context, Lookup, OmpImports, Pi } from "./types.ts";

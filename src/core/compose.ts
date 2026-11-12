@@ -7,10 +7,10 @@ import {
 	TypeSafeError,
 	type Usage,
 } from "@typesafe-ai/sdk";
+import { isRecord } from "../utils/guards.ts";
 import type { RoutingState } from "./brief.ts";
 import { createClient } from "./client.ts";
 import {
-	isRecord,
 	type Level,
 	type Part,
 	type Probabilities,

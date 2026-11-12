@@ -1,26 +1,17 @@
-import { LIMIT_REACHED } from "../core/compose.ts";
-
-export type Clock = {
-	after: (ms: number, fn: () => void) => { cancel: () => void };
-};
-
-export const realClock: Clock = {
-	after: (ms, fn) => {
-		const timer = setTimeout(fn, ms);
-		return { cancel: () => clearTimeout(timer) };
-	},
-};
+import type { Clock } from "./clock.ts";
 
 /**
  * Runs `work` against a deadline. It never rejects. It returns nothing when the work fails,
  * when the deadline passes, or when `hostSignal` aborts before the work ends.
- * The work gets a signal that the deadline and `hostSignal` both abort.
+ * The work gets a signal that the deadline and `hostSignal` both abort;
+ * the deadline aborts it with `reason`.
  */
 export async function raceDeadline<T>(
 	work: (signal: AbortSignal) => Promise<T | undefined>,
 	deadlineMs: number,
 	clock: Clock,
 	hostSignal: AbortSignal | undefined,
+	reason: unknown,
 ): Promise<T | undefined> {
 	try {
 		const stop = new AbortController();
@@ -29,7 +20,7 @@ export async function raceDeadline<T>(
 		);
 		return await new Promise<T | undefined>((settle) => {
 			const timer = clock.after(deadlineMs, () => {
-				stop.abort(LIMIT_REACHED);
+				stop.abort(reason);
 				settle(undefined);
 			});
 			/**

@@ -1,5 +1,4 @@
 import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "../../core/brief.ts";
-import { isRecord, nonEmpty } from "../../core/part.ts";
 import {
 	CALLER_EFFORT,
 	CONFIG_EFFORT,
@@ -14,6 +13,8 @@ import {
 	setsOwnModel,
 	UNREADABLE,
 } from "../../core/settings.ts";
+import { isRecord } from "../../utils/guards.ts";
+import { nonEmpty } from "../../utils/text.ts";
 import { findAgent, sameAgent } from "./agents.ts";
 import { isSet, type SpawnRequest } from "./params.ts";
 import type { OpenClawSettings } from "./settings.ts";

@@ -18,32 +18,11 @@ function clearTimeout(timer) {
   timer?.cancel();
 }
 
-// src/core/part.ts
-var LEVELS = [0, 1, 2];
-var fromMiddle = (down, up) => (p) => {
-  const low = p[0] > down * p[1];
-  const high = p[2] > up * p[1];
-  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
-  return low ? 0 : high ? 2 : 1;
-};
-var PROBABILITY_DIGITS = 2;
-var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+// src/utils/text.ts
 var nonEmpty = (value) => {
   const text = typeof value === "string" ? value.trim() : "";
   return text === "" ? void 0 : text;
 };
-var isRecord = (v) => typeof v === "object" && v !== null;
-function parseProbabilities(answers, key) {
-  const a = isRecord(answers) ? answers[key] : void 0;
-  if (!isRecord(a)) return void 0;
-  const { type, probabilities } = a;
-  if (type !== "score" || !isRecord(probabilities)) return void 0;
-  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
-  const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
-    return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
-}
 
 // src/core/brief.ts
 var BUDGET_CHARS = 12e3;
@@ -356,21 +335,21 @@ var TypeSafeError = class extends Error {
     this.name = new.target.name;
   }
 };
-var isRecord2 = (value) => typeof value === "object" && value !== null;
+var isRecord = (value) => typeof value === "object" && value !== null;
 var extractMessage = (body) => {
   if (typeof body === "string") return body || void 0;
-  if (!isRecord2(body)) return void 0;
+  if (!isRecord(body)) return void 0;
   const { error, message, detail } = body;
   if (typeof error === "string") return error;
-  if (isRecord2(error) && typeof error.message === "string") return error.message;
+  if (isRecord(error) && typeof error.message === "string") return error.message;
   if (typeof message === "string") return message;
   if (typeof detail === "string") return detail;
-  if (isRecord2(detail) && typeof detail.message === "string") return detail.message;
+  if (isRecord(detail) && typeof detail.message === "string") return detail.message;
   if (Array.isArray(detail)) return describeValidationErrors(detail);
 };
 var describeValidationErrors = (errors) => {
   const parts = errors.flatMap((e) => {
-    if (!isRecord2(e) || typeof e.msg !== "string") return [];
+    if (!isRecord(e) || typeof e.msg !== "string") return [];
     const loc = Array.isArray(e.loc) ? e.loc.filter((x) => x !== "body").join(".") : "";
     return [loc ? `${loc}: ${e.msg}` : e.msg];
   });
@@ -1163,6 +1142,9 @@ var parseBody = async (res) => {
   }
 };
 
+// src/utils/guards.ts
+var isRecord2 = (v) => typeof v === "object" && v !== null;
+
 // src/core/provider.ts
 var PROVIDER_VALUES = [
   "auto",
@@ -1237,6 +1219,31 @@ function createClient(provider, apiKey, model, fetchFn) {
   });
 }
 
+// src/core/part.ts
+var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
+};
+var PROBABILITY_DIGITS = 2;
+var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+function parseProbabilities(answers, key) {
+  const a = isRecord2(answers) ? answers[key] : void 0;
+  if (!isRecord2(a)) return void 0;
+  const { type, probabilities } = a;
+  if (type !== "score" || !isRecord2(probabilities)) return void 0;
+  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
+  const { 0: p0, 1: p1, 2: p2 } = probabilities;
+  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+
+// src/utils/error.ts
+var errorText = (err) => err instanceof Error ? err.message : String(err);
+
 // src/core/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
@@ -1277,7 +1284,6 @@ var isValue = (setting, value) => TEXTS[setting].values.some((known) => known ==
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
-var errorText = (err) => err instanceof Error ? err.message : String(err);
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var KEY_UNSET = "key unset";
@@ -1380,7 +1386,7 @@ function skip(failed) {
   };
 }
 function decide(parts, result) {
-  const { answers, model, usage } = isRecord(result) ? result : {};
+  const { answers, model, usage } = isRecord2(result) ? result : {};
   const decided = {};
   for (const part of parts) {
     const probabilities = parseProbabilities(answers, part.key);
@@ -1390,7 +1396,7 @@ function decide(parts, result) {
   return {
     parts: decided,
     model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
-    usage: isRecord(usage) ? usage : void 0
+    usage: isRecord2(usage) ? usage : void 0
   };
 }
 function decisionSuffix({

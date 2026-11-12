@@ -9,8 +9,9 @@ import type {
 	OpenClawApi,
 	RegistrationMode,
 } from "../src/adapters/openclaw/types.ts";
-import { nonEmpty } from "../src/core/part.ts";
-import { errorText, TOOL_NAME } from "../src/core/settings.ts";
+import { TOOL_NAME } from "../src/core/settings.ts";
+import { errorText } from "../src/utils/error.ts";
+import { nonEmpty } from "../src/utils/text.ts";
 import { NPM_ROOT } from "./build/outputs.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 

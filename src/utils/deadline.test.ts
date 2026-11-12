@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it, mock } from "node:test";
-import { LIMIT_REACHED } from "../core/compose.ts";
-import { type Clock, raceDeadline } from "./deadline.ts";
+import type { Clock } from "./clock.ts";
+import { raceDeadline } from "./deadline.ts";
 import { createFakeClock } from "./fake-clock.ts";
+
+const REASON = Symbol("deadline passed");
 
 describe("raceDeadline", () => {
 	const DEADLINE_MS = 5000;
@@ -14,6 +16,7 @@ describe("raceDeadline", () => {
 			DEADLINE_MS,
 			time.clock,
 			undefined,
+			REASON,
 		);
 		assert.equal(result, "done");
 		assert.deepEqual(time.delays(), [DEADLINE_MS]);
@@ -26,7 +29,7 @@ describe("raceDeadline", () => {
 			throw new Error("work");
 		};
 		assert.equal(
-			await raceDeadline(work, DEADLINE_MS, time.clock, undefined),
+			await raceDeadline(work, DEADLINE_MS, time.clock, undefined, REASON),
 			undefined,
 		);
 	});
@@ -42,10 +45,11 @@ describe("raceDeadline", () => {
 			DEADLINE_MS,
 			time.clock,
 			undefined,
+			REASON,
 		);
 		time.fire();
 		assert.equal(await pending, undefined);
-		assert.equal(seen?.reason, LIMIT_REACHED);
+		assert.equal(seen?.reason, REASON);
 	});
 
 	it("returns nothing when the host signal aborts before the work ends", async () => {
@@ -60,6 +64,7 @@ describe("raceDeadline", () => {
 			DEADLINE_MS,
 			time.clock,
 			host.signal,
+			REASON,
 		);
 		host.abort();
 		release("late");
@@ -74,6 +79,7 @@ describe("raceDeadline", () => {
 			DEADLINE_MS,
 			time.clock,
 			host.signal,
+			REASON,
 		);
 		host.abort();
 		assert.equal(await pending, undefined);
@@ -87,6 +93,7 @@ describe("raceDeadline", () => {
 			DEADLINE_MS,
 			time.clock,
 			AbortSignal.abort(),
+			REASON,
 		);
 		assert.equal(await pending, undefined);
 		assert.equal(time.live(), 0);
@@ -106,6 +113,7 @@ describe("raceDeadline", () => {
 			DEADLINE_MS,
 			throwingCancel,
 			host.signal,
+			REASON,
 		);
 		host.abort();
 		assert.equal(await pending, undefined);
@@ -121,6 +129,7 @@ describe("raceDeadline", () => {
 			DEADLINE_MS,
 			time.clock,
 			host.signal,
+			REASON,
 		);
 		assert.equal(added.mock.calls[0]?.arguments[0], "abort");
 		assert.equal(removed.mock.calls[0]?.arguments[0], "abort");
@@ -137,7 +146,13 @@ describe("raceDeadline", () => {
 			},
 		};
 		assert.equal(
-			await raceDeadline(async () => "x", DEADLINE_MS, clock, undefined),
+			await raceDeadline(
+				async () => "x",
+				DEADLINE_MS,
+				clock,
+				undefined,
+				REASON,
+			),
 			undefined,
 		);
 		const time = createFakeClock();
@@ -147,6 +162,7 @@ describe("raceDeadline", () => {
 				DEADLINE_MS,
 				time.clock,
 				{} as AbortSignal,
+				REASON,
 			),
 			undefined,
 		);

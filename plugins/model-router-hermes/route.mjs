@@ -907,6 +907,9 @@ var parseBody = async (res) => {
   }
 };
 
+// src/utils/guards.ts
+var isRecord2 = (v) => typeof v === "object" && v !== null;
+
 // src/core/provider.ts
 var PROVIDER_VALUES = [
   "auto",
@@ -987,11 +990,6 @@ var fromMiddle = (down, up) => (p) => {
 };
 var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
-};
-var isRecord2 = (v) => typeof v === "object" && v !== null;
 function parseProbabilities(answers, key) {
   const a = isRecord2(answers) ? answers[key] : void 0;
   if (!isRecord2(a)) return void 0;
@@ -1142,45 +1140,13 @@ function decisionSuffix({
   return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
 }
 
-// src/utils/deadline.ts
+// src/utils/clock.ts
 var realClock = {
   after: (ms, fn) => {
     const timer = setTimeout(fn, ms);
     return { cancel: () => clearTimeout(timer) };
   }
 };
-async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
-  try {
-    const stop = new AbortController();
-    const signal = AbortSignal.any(
-      hostSignal ? [stop.signal, hostSignal] : [stop.signal]
-    );
-    return await new Promise((settle) => {
-      const timer = clock.after(deadlineMs, () => {
-        stop.abort(LIMIT_REACHED);
-        settle(void 0);
-      });
-      const onHostAbort = () => {
-        settle(void 0);
-        try {
-          timer.cancel();
-        } catch {
-        }
-      };
-      hostSignal?.addEventListener("abort", onHostAbort, { once: true });
-      if (hostSignal?.aborted) onHostAbort();
-      work2(signal).then(
-        (result) => signal.aborted ? void 0 : result,
-        () => void 0
-      ).then(settle).finally(() => {
-        timer.cancel();
-        hostSignal?.removeEventListener("abort", onHostAbort);
-      }).catch(() => void 0);
-    });
-  } catch {
-    return void 0;
-  }
-}
 
 // src/utils/fetch.ts
 var oneChunk = (bytes) => new ReadableStream({
@@ -1197,6 +1163,12 @@ var streamedFetch = async (url, init) => {
     statusText: reply.statusText,
     headers: reply.headers
   });
+};
+
+// src/utils/text.ts
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
 };
 
 // src/core/brief.ts
@@ -1510,6 +1482,40 @@ var LEVEL_SLOTS = {
 var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
 var modelUnset = (slot) => `${slot} model unset`;
 
+// src/utils/deadline.ts
+async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
+  try {
+    const stop = new AbortController();
+    const signal = AbortSignal.any(
+      hostSignal ? [stop.signal, hostSignal] : [stop.signal]
+    );
+    return await new Promise((settle) => {
+      const timer = clock.after(deadlineMs, () => {
+        stop.abort(reason);
+        settle(void 0);
+      });
+      const onHostAbort = () => {
+        settle(void 0);
+        try {
+          timer.cancel();
+        } catch {
+        }
+      };
+      hostSignal?.addEventListener("abort", onHostAbort, { once: true });
+      if (hostSignal?.aborted) onHostAbort();
+      work2(signal).then(
+        (result) => signal.aborted ? void 0 : result,
+        () => void 0
+      ).then(settle).finally(() => {
+        timer.cancel();
+        hostSignal?.removeEventListener("abort", onHostAbort);
+      }).catch(() => void 0);
+    });
+  } catch {
+    return void 0;
+  }
+}
+
 // src/adapters/hermes/request.ts
 var KEPT_EFFORTS = ["config", "caller"];
 var readKeys = (value) => Object.fromEntries(
@@ -1612,7 +1618,8 @@ async function routeRequest(raw, deps) {
       (signal) => scored(request, deps, signal),
       request.budgetMs,
       deps.clock,
-      void 0
+      void 0,
+      LIMIT_REACHED
     );
     if (decided === void 0) return skip2(TIMEOUT);
     return "skipped" in decided ? skip2(decided.skipped) : answer(request, decided);

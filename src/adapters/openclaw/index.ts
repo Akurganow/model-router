@@ -1,7 +1,7 @@
 import { LINE_PREFIX } from "../../core/line.ts";
-import { isRecord } from "../../core/part.ts";
-import { realClock } from "../../utils/deadline.ts";
+import { realClock } from "../../utils/clock.ts";
 import { streamedFetch } from "../../utils/fetch.ts";
+import { isRecord } from "../../utils/guards.ts";
 import { registerConfigCommands, registerConfigTool } from "./config.ts";
 import {
 	deadlineFor,

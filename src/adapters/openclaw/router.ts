@@ -1,12 +1,12 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { routingState } from "../../core/brief.ts";
-import { abortCategory, route } from "../../core/compose.ts";
+import { abortCategory, LIMIT_REACHED, route } from "../../core/compose.ts";
 import { decide } from "../../core/decide.ts";
 import { work } from "../../core/effort.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
 import { tier } from "../../core/model.ts";
-import { type Level, nonEmpty } from "../../core/part.ts";
+import type { Level } from "../../core/part.ts";
 import { type Keys, plan } from "../../core/provider.ts";
 import {
 	type EndSlot,
@@ -14,7 +14,9 @@ import {
 	modelUnset,
 	slotForLevel,
 } from "../../core/reasons.ts";
-import { type Clock, raceDeadline } from "../../utils/deadline.ts";
+import type { Clock } from "../../utils/clock.ts";
+import { raceDeadline } from "../../utils/deadline.ts";
+import { nonEmpty } from "../../utils/text.ts";
 import { slotResolves } from "./checks.ts";
 import { MIN_DEADLINE_MS } from "./deadline.ts";
 import { type Gate, gateSpawn } from "./gates.ts";
@@ -225,6 +227,7 @@ export function createBeforeToolCall(
 				deadlineMs,
 				deps.clock,
 				ctx?.abortSignal,
+				LIMIT_REACHED,
 			);
 		} catch {
 			// Reading a malformed event or context can throw.

@@ -1,10 +1,10 @@
-import { nonEmpty } from "../../core/part.ts";
 import {
 	KEY_FIELDS,
 	type Keys,
 	order,
 	type Provider,
 } from "../../core/provider.ts";
+import { nonEmpty } from "../../utils/text.ts";
 import type { Engine, Options } from "./host.ts";
 
 /**

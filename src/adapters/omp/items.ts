@@ -1,5 +1,4 @@
 import { DEFAULT_ROLE, roleText } from "../../core/brief.ts";
-import { nonEmpty } from "../../core/part.ts";
 import type { Scope } from "../../core/scope.ts";
 import {
 	agentDiscoveryFailed,
@@ -7,6 +6,7 @@ import {
 	outsideCoreScope,
 	setsOwnModel,
 } from "../../core/settings.ts";
+import { nonEmpty } from "../../utils/text.ts";
 import type { DiscoveredAgent } from "./types.ts";
 
 export const TASK = "task";

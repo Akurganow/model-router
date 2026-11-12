@@ -1,3 +1,4 @@
+import { errorText } from "../utils/error.ts";
 import {
 	order,
 	PROVIDER_VALUES,
@@ -94,10 +95,6 @@ export const useOneOf = (setting: ValueSetting): string =>
 
 export const unchanged = (setting: ValueSetting, reason: string): string =>
 	`${setting} unchanged: ${reason}`;
-
-/** Returns the message of an Error, or the string form of any other thrown value. */
-export const errorText = (err: unknown): string =>
-	err instanceof Error ? err.message : String(err);
 
 /** Returns the unchanged line for a thrown value, whatever its type. */
 export const unchangedBy = (setting: ValueSetting, err: unknown): string =>

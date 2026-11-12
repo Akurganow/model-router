@@ -1,4 +1,4 @@
-import { nonEmpty } from "./part.ts";
+import { nonEmpty } from "../utils/text.ts";
 
 export const BUDGET_CHARS = 12000;
 export const ROLE_CAP = 500;

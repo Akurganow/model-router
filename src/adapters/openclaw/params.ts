@@ -1,4 +1,4 @@
-import { nonEmpty } from "../../core/part.ts";
+import { nonEmpty } from "../../utils/text.ts";
 
 type Params = Readonly<Record<string, unknown>>;
 

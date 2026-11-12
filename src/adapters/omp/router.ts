@@ -1,6 +1,6 @@
 import { contextText } from "../../core/brief.ts";
 import { ENTRY_SEPARATOR, LINE_PREFIX, skippedLine } from "../../core/line.ts";
-import { isRecord } from "../../core/part.ts";
+import { isRecord } from "../../utils/guards.ts";
 import { registerConfig, say } from "./config.ts";
 import { budgetFor } from "./deadline.ts";
 import { lineFor, modelFor, planEffort } from "./effort.ts";

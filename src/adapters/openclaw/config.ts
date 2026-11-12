@@ -1,11 +1,9 @@
-import { isRecord } from "../../core/part.ts";
 import { type Keys, order, type Provider } from "../../core/provider.ts";
 import {
 	alreadyValue,
 	badCall,
 	COMMAND_DESCRIPTIONS,
 	commandName,
-	errorText,
 	isKeySetting,
 	isValue,
 	isValueSetting,
@@ -21,6 +19,8 @@ import {
 	type ValueSetting,
 	valueLine,
 } from "../../core/settings.ts";
+import { errorText } from "../../utils/error.ts";
+import { isRecord } from "../../utils/guards.ts";
 import {
 	type Environment,
 	PLUGIN_ID,

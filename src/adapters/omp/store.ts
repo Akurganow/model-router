@@ -1,4 +1,5 @@
-import { isRecord, nonEmpty } from "../../core/part.ts";
+import { isRecord } from "../../utils/guards.ts";
+import { nonEmpty } from "../../utils/text.ts";
 import type { Routed } from "./effort.ts";
 
 export const STORE_MAX = 64;

@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type BuildOptions, build } from "esbuild";
-import { errorText } from "../src/core/settings.ts";
+import { errorText } from "../src/utils/error.ts";
 import { renderClaude } from "./build/claude.ts";
 import { copyNpmFiles } from "./build/copies.ts";
 import { renderHermes } from "./build/hermes.ts";

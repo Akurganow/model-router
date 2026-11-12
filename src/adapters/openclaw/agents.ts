@@ -1,4 +1,4 @@
-import { isRecord } from "../../core/part.ts";
+import { isRecord } from "../../utils/guards.ts";
 import type { OpenClawConfig } from "./types.ts";
 
 const DEFAULT_AGENT_ID = "main";

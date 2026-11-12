@@ -1,4 +1,3 @@
-import { isRecord } from "../../core/part.ts";
 import { order } from "../../core/provider.ts";
 import {
 	alreadyValue,
@@ -25,6 +24,7 @@ import {
 	type ValueSetting,
 	valueLine,
 } from "../../core/settings.ts";
+import { isRecord } from "../../utils/guards.ts";
 import { findKey, readSettings, type Settings } from "./gates.ts";
 import { changeKey } from "./key.ts";
 import type { Context, OmpImports, Pi, ToolReply } from "./types.ts";

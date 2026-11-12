@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { isRecord } from "../../core/part.ts";
+import { isRecord } from "../../utils/guards.ts";
 
 // The name of the catalogue package. Reads fall back to it when the installed name is unreadable.
 export const FALLBACK_NAME = "model-router-omp";

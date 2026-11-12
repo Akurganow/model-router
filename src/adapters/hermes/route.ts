@@ -1,6 +1,12 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import { DEFAULT_ROLE, routingState } from "../../core/brief.ts";
-import { FAILED, route, type Skipped, TIMEOUT } from "../../core/compose.ts";
+import {
+	FAILED,
+	LIMIT_REACHED,
+	route,
+	type Skipped,
+	TIMEOUT,
+} from "../../core/compose.ts";
 import { type DecidedWithWork, decide } from "../../core/decide.ts";
 import { work } from "../../core/effort.ts";
 import { effortFor } from "../../core/ladder.ts";
@@ -14,7 +20,8 @@ import {
 	modelUnset,
 	slotForLevel,
 } from "../../core/reasons.ts";
-import { type Clock, raceDeadline } from "../../utils/deadline.ts";
+import type { Clock } from "../../utils/clock.ts";
+import { raceDeadline } from "../../utils/deadline.ts";
 import { type HermesRequest, type KeptEffort, readRequest } from "./request.ts";
 
 export type HermesDeps = { readonly fetchFn: Fetch; readonly clock: Clock };
@@ -132,6 +139,7 @@ export async function routeRequest(
 			request.budgetMs,
 			deps.clock,
 			undefined,
+			LIMIT_REACHED,
 		);
 		if (decided === undefined) return skip(TIMEOUT);
 		return "skipped" in decided
