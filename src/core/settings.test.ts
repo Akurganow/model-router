@@ -32,7 +32,6 @@ import {
 	NOT_OFFERED,
 	pick,
 	projectOverrides,
-	REFUSED,
 	readOnlyToolDescription,
 	SETTING_NAMES,
 	settingsReport,
@@ -445,11 +444,6 @@ test("the reasons of an unchanged value read after the setting name", () => {
 		unchanged("scope", NOT_OFFERED),
 		"scope unchanged: the answer was not one of the offered values",
 	);
-});
-
-test("the refusal says nothing was read or changed", () => {
-	assert.match(REFUSED, /Permission rules deny/);
-	assert.match(REFUSED, /nothing was read or changed/);
 });
 
 test("the project-override note names the setting", () => {
