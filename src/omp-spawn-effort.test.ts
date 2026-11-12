@@ -438,3 +438,61 @@ test("a gate that closes at spawn skips level 1 with the item's effort too", asy
 		"model-router task 1: skipped, task model override set",
 	]);
 });
+
+test("per-task effort turned on after the batch keeps the item's effort at spawn and says so", async () => {
+	world.config["task.enableEffort"] = false;
+	createExtension(world.imports)(world.pi);
+	await world.toolCall("c", { tasks: [{ task: "level0", effort: "hi" }] });
+	world.config["task.enableEffort"] = true;
+	assert.deepEqual(await world.spawn("c:0", { patterns: PLAIN }), {
+		model: "@smol",
+		note: `model-router L0 @smol · caller effort · p=0.90/0.90${SUFFIX}`,
+	});
+	assert.deepEqual(world.notes, [
+		`model-router ${entry(0, "high")}`,
+		`model-router ${entry(0, "caller effort")}`,
+	]);
+});
+
+test("per-task effort turned off after the batch sets the capped ladder effort at spawn and says so", async () => {
+	world.config["task.enableEffort"] = true;
+	world.config["task.maxEffort"] = "medium";
+	createExtension(world.imports)(world.pi);
+	await world.toolCall("c", { tasks: [{ task: "level0", effort: "hi" }] });
+	world.config["task.enableEffort"] = false;
+	assert.deepEqual(await world.spawn("c:0", { patterns: PLAIN }), {
+		model: "@smol:medium",
+		note: `model-router L0 @smol · medium · p=0.90/0.90${SUFFIX}`,
+	});
+	assert.deepEqual(world.notes, [
+		`model-router ${entry(0, "caller effort")}`,
+		`model-router ${entry(0, "medium")}`,
+	]);
+});
+
+test("level 1 follows per-task effort turned off after the batch", async () => {
+	world.config["task.enableEffort"] = true;
+	createExtension(world.imports)(world.pi);
+	await world.toolCall("c", { tasks: [{ task: "level1", effort: "lo" }] });
+	world.config["task.enableEffort"] = false;
+	assert.deepEqual(await world.spawn("c:0", { patterns: PLAIN }), {
+		model: ["prov/parent:medium"],
+		note: `model-router L1 no change · medium · p=0.90/0.90${SUFFIX}`,
+	});
+	assert.deepEqual(world.notes.slice(1), [
+		`model-router ${entry(1, "medium")}`,
+	]);
+});
+
+for (const enabled of [true, false])
+	test(`per-task effort left ${enabled ? "on" : "off"} prints one line and today's model`, async () => {
+		world.config["task.enableEffort"] = enabled;
+		createExtension(world.imports)(world.pi);
+		await world.toolCall("c", { tasks: [{ task: "level0", effort: "hi" }] });
+		const label = enabled ? "caller effort" : "high";
+		assert.deepEqual(await world.spawn("c:0", { patterns: PLAIN }), {
+			model: enabled ? "@smol" : "@smol:high",
+			note: `model-router L0 @smol · ${label} · p=0.90/0.90${SUFFIX}`,
+		});
+		assert.deepEqual(world.notes, [`model-router ${entry(0, label)}`]);
+	});

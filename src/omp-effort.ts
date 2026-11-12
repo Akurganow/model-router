@@ -91,27 +91,28 @@ export type Routed = {
 	readonly level: Level;
 	readonly role: string | undefined;
 	readonly ladder: Effort;
-	readonly callerEffort: boolean;
+	// Whether the item named an effort. omp applies it only while `task.enableEffort` is on, read when the plan is made.
+	readonly itemEffort: boolean;
 	readonly probabilities: string;
 	readonly suffix: string;
 };
 
-export type EffortFacts = Pick<Facts, "roles" | "maxEffort">;
+export type EffortFacts = Pick<Facts, "roles" | "maxEffort" | "effortEnabled">;
 
 /**
  * Returns the effort to set on a spawn, or the label of the one that stays.
- * The item's own effort stays first, then a level on the role, then, at the
+ * The item's own effort stays first while omp applies it, then a level on the role, then, at the
  * middle level, a level on a pattern the spawn carries, then a ceiling below
  * `low`. An end level's role replaces the patterns, so their levels do not
  * count there. The middle level with no patterns sets nothing. Patterns are
  * undefined before the spawn. Never throws.
  */
 export function planEffort(
-	{ role, ladder, callerEffort }: Routed,
-	{ roles, maxEffort }: EffortFacts,
+	{ role, ladder, itemEffort }: Routed,
+	{ roles, maxEffort, effortEnabled }: EffortFacts,
 	patterns?: readonly string[],
 ): EffortPlan {
-	if (callerEffort) return { kept: CALLER_EFFORT };
+	if (itemEffort && effortEnabled) return { kept: CALLER_EFFORT };
 	if (
 		role !== undefined &&
 		roleCarriesLevel(role.slice(ROLE_MARK.length), roles)

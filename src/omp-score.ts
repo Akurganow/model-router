@@ -120,7 +120,7 @@ function toStored(
 		level: decided.tier,
 		role: ROLE_BY_LEVEL[decided.tier],
 		ladder: effortFor(decided.tier, decided.work),
-		callerEffort: item.effort !== undefined && facts.effortEnabled,
+		itemEffort: item.effort !== undefined,
 		probabilities: decided.probabilities,
 		suffix: decided.suffix,
 	};

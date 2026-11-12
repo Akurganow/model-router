@@ -81,12 +81,16 @@ const routed = (role: string | undefined): Routed => ({
 	level: role === undefined ? 1 : 0,
 	role,
 	ladder: "high",
-	callerEffort: false,
+	itemEffort: false,
 	probabilities: "0.90/0.90",
 	suffix: "",
 });
 const planFor = (roles: Record<string, unknown>) =>
-	planEffort(routed("@smol"), { roles, maxEffort: undefined }, ["prov/parent"]);
+	planEffort(
+		routed("@smol"),
+		{ roles, maxEffort: undefined, effortEnabled: false },
+		["prov/parent"],
+	);
 const KEPT = { kept: "config effort" };
 const SET = { set: "high" };
 
@@ -117,7 +121,7 @@ test("a role that only the prototype holds is no configured role", () => {
 });
 
 test("level 1 keeps a level on a pattern, an end level does not", () => {
-	const facts = { roles: {}, maxEffort: undefined };
+	const facts = { roles: {}, maxEffort: undefined, effortEnabled: false };
 	assert.deepEqual(planEffort(routed(undefined), facts, ["prov/p:low"]), KEPT);
 	assert.deepEqual(planEffort(routed("@smol"), facts, ["prov/p:low"]), SET);
 });

@@ -1791,8 +1791,8 @@ function capped(effort, ceiling) {
   if (top < LOWEST) return void 0;
   return CEILINGS.indexOf(effort) <= top ? effort : CEILINGS[top];
 }
-function planEffort({ role, ladder, callerEffort }, { roles, maxEffort }, patterns) {
-  if (callerEffort) return { kept: CALLER_EFFORT };
+function planEffort({ role, ladder, itemEffort }, { roles, maxEffort, effortEnabled }, patterns) {
+  if (itemEffort && effortEnabled) return { kept: CALLER_EFFORT };
   if (role !== void 0 && roleCarriesLevel(role.slice(ROLE_MARK.length), roles))
     return { kept: CONFIG_EFFORT };
   if (role === void 0 && patterns?.some(carriesLevel))
@@ -1961,7 +1961,7 @@ function toStored(decision, item, facts) {
     level: decided.tier,
     role: ROLE_BY_LEVEL[decided.tier],
     ladder: effortFor(decided.tier, decided.work),
-    callerEffort: item.effort !== void 0 && facts.effortEnabled,
+    itemEffort: item.effort !== void 0,
     probabilities: decided.probabilities,
     suffix: decided.suffix
   };
