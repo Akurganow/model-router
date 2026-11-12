@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { FULL, FULL_SUFFIX, routed, SPAWN } from "./fakes.ts";
+import {
+	type Answers,
+	FULL,
+	FULL_SUFFIX,
+	type Once,
+	routed,
+	SPAWN,
+} from "./fakes.ts";
 
 // Rows are the tier level, columns the work level. The values are written out, not read from the ladder.
 const LADDER = [
@@ -58,5 +65,23 @@ describe("Claude Code reply and effort edge cases", () => {
 		]);
 		assert.equal(spawned?.model, "haiku");
 		assert.equal(requestEffort, "max");
+	});
+});
+
+describe("decision line suffix", () => {
+	const line = async (extra: Answers, run: Partial<Once> = {}) =>
+		(await routed({ tier: 1, work: 1, ...extra }, run)).logs[0];
+	const BASE = "L1 sonnet · medium · p=0.90/0.90";
+
+	test("the Jev model and the token counts follow the probabilities", async () => {
+		assert.equal(await line(FULL), `${BASE}${FULL_SUFFIX}`);
+	});
+
+	test("usage with one count, or a count that is not a whole number, adds no tokens", async () => {
+		assert.equal(await line({ usage: { input_tokens: 5 } }), BASE);
+		assert.equal(
+			await line({ usage: { input_tokens: 5, output_tokens: 1.5 } }),
+			BASE,
+		);
 	});
 });

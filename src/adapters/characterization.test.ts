@@ -3,34 +3,10 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ROUTING_LIMIT_MS } from "../core/compose.ts";
 import { plan } from "../core/provider.ts";
-import {
-	type Answers,
-	FULL,
-	FULL_SUFFIX,
-	type Once,
-	routed,
-} from "./claude/fakes.ts";
+import { FULL_SUFFIX } from "./claude/fakes.ts";
 import { useWorld } from "./omp/fakes.ts";
 import type { Batch } from "./omp/gates.ts";
 import { type Pending, scoreItems } from "./omp/score.ts";
-
-describe("decision line suffix", () => {
-	const line = async (extra: Answers, run: Partial<Once> = {}) =>
-		(await routed({ tier: 1, work: 1, ...extra }, run)).logs[0];
-	const BASE = "L1 sonnet · medium · p=0.90/0.90";
-
-	test("the Jev model and the token counts follow the probabilities", async () => {
-		assert.equal(await line(FULL), `${BASE}${FULL_SUFFIX}`);
-	});
-
-	test("usage with one count, or a count that is not a whole number, adds no tokens", async () => {
-		assert.equal(await line({ usage: { input_tokens: 5 } }), BASE);
-		assert.equal(
-			await line({ usage: { input_tokens: 5, output_tokens: 1.5 } }),
-			BASE,
-		);
-	});
-});
 
 describe("omp per-item line", () => {
 	const world = useWorld();
