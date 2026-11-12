@@ -23,7 +23,7 @@ for (const tier of LEVELS)
 			});
 			assert.equal(
 				world.notes[0],
-				`model-router task 1: L${tier} ${TARGETS[tier]} · ${effortFor(tier, work)} · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok`,
+				`model-router task 1: L${tier} ${TARGETS[tier]} · ${effortFor(tier, work)} · p=0.90/0.90${SUFFIX}`,
 			);
 		});
 
