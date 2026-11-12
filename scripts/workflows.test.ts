@@ -294,3 +294,202 @@ test("a push to main reuses the merged head's verdict when plugin and policy are
 test("the policy scan runs on Sonnet 5.5", () => {
 	assert.match(scan, /^ {6}ANTHROPIC_MODEL: claude-sonnet-5-5$/m);
 });
+
+const SETUP_OMP = ".github/actions/setup-omp";
+const OMP_PINS = ["minimum", "latest"] as const;
+const OMP_PACKAGE = "@oh-my-pi/pi-coding-agent";
+const ompVersion = (pin: string): string =>
+	json(`${SETUP_OMP}/${pin}/package.json`).dependencies[OMP_PACKAGE];
+const escapeRegExp = (text: string) =>
+	text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+
+test("each omp pin locks the version its package.json pins", () => {
+	for (const pin of OMP_PINS) {
+		const version = ompVersion(pin);
+		assert.match(version, /^\d+\.\d+\.\d+$/, pin);
+		// bun.lock is not JSON: it keeps trailing commas.
+		const lock = read(`${SETUP_OMP}/${pin}/bun.lock`);
+		assert.match(
+			lock,
+			new RegExp(
+				`"workspaces": \\{\\s*"": \\{\\s*"dependencies": \\{\\s*"${escapeRegExp(OMP_PACKAGE)}": "${escapeRegExp(version)}"`,
+			),
+			pin,
+		);
+		assert.match(
+			lock,
+			new RegExp(
+				`"${escapeRegExp(OMP_PACKAGE)}": \\["${escapeRegExp(OMP_PACKAGE)}@${escapeRegExp(version)}", "", \\{.*\\}, "sha512-[^"]+"\\]`,
+			),
+			pin,
+		);
+	}
+});
+
+test("the README names the minimum omp pin as the minimum version", () => {
+	const version = escapeRegExp(ompVersion("minimum"));
+	const readme = read("README.md");
+	assert.match(
+		readme,
+		new RegExp(`^\\| Oh My Pi \\|.*\\| v${version} \\|`, "m"),
+	);
+	assert.match(readme, new RegExp(`v${version} or later`));
+});
+
+test("the latest omp pin is not older than the minimum", () => {
+	const parts = (pin: string) => ompVersion(pin).split(".").map(Number);
+	const [latest, minimum] = [parts("latest"), parts("minimum")];
+	const order = latest
+		.map((part, i) => part - (minimum[i] ?? 0))
+		.find((diff) => diff !== 0);
+	assert.ok((order ?? 0) >= 0, `${latest.join(".")} < ${minimum.join(".")}`);
+});
+
+test("the install and package jobs run once per omp pin and check the load", () => {
+	const ci = read(".github/workflows/ci.yml");
+	for (const job of ["install", "package"]) {
+		const block = jobBlock(ci, job);
+		assert.match(
+			block,
+			new RegExp(
+				`^ {4}name: ${job} \\(omp \\$\\{\\{ matrix\\.omp \\}\\}\\)$`,
+				"m",
+			),
+			job,
+		);
+		assert.match(block, /^ {6}fail-fast: false$/m, job);
+		assert.match(block, /^ {8}omp: \[minimum, latest\]$/m, job);
+		assert.match(
+			block,
+			/- uses: \.\/\.github\/actions\/setup-omp\n {8}with:\n {10}pin: \$\{\{ matrix\.omp \}\}\n/,
+			job,
+		);
+		const setup = block.indexOf("uses: ./.github/actions/setup-omp");
+		const load = block.indexOf("run: node scripts/check-omp-load.ts");
+		assert.ok(load > setup, `${job} runs no load check after setup-omp`);
+		// omp reads PI_CONFIG_DIR relative to the home folder.
+		const config = block.indexOf(
+			'echo "PI_CODING_AGENT_DIR=$RUNNER_TEMP/omp-config/agent"',
+		);
+		assert.ok(
+			config !== -1 && config < setup,
+			`${job} keeps no omp config under the runner's temp folder before setup-omp`,
+		);
+		assert.match(
+			block,
+			/PI_CONFIG_DIR=\$\(realpath -m --relative-to="\$HOME" "\$RUNNER_TEMP\/omp-config"\)/,
+			job,
+		);
+	}
+});
+
+test("the setup-omp action installs the chosen pin outside the checkout with scripts off", () => {
+	const action = read(`${SETUP_OMP}/action.yml`);
+	assert.match(
+		action,
+		/^inputs:\n {2}pin:\n(?: {4}.*\n)* {4}required: true\n/m,
+	);
+	// The input reaches the script through env, so its text cannot run as a command.
+	assert.match(action, /^ {8}PIN: \$\{\{ inputs\.pin \}\}$/m);
+	assert.doesNotMatch(
+		action.slice(action.indexOf("run: |")),
+		/\$\{\{ inputs\./,
+	);
+	assert.match(action, /minimum\|latest\)/);
+	assert.match(action, /RUNNER_TEMP\/omp-\$PIN/);
+	assert.match(action, /bun install --frozen-lockfile --ignore-scripts/);
+	assert.match(action, /GITHUB_PATH/);
+	assert.match(action, /omp --version \| grep -F/);
+	// Renovate raises the Bun version, so the test asks for an exact version, not which one.
+	assert.match(action, /bun-version: "\d+\.\d+\.\d+"/);
+});
+
+test("the evals workflow installs the latest omp unless the dispatch picks the minimum", () => {
+	const evals = read(".github/workflows/evals.yml");
+	assert.match(
+		evals,
+		/^ {6}omp:\n(?: {8}.*\n)* {8}type: choice\n(?: {8}.*\n)* {8}default: latest\n/m,
+	);
+	assert.match(evals, /^ {10}- minimum\n {10}- latest$/m);
+	assert.match(
+		jobBlock(evals, "omp"),
+		/- uses: \.\/\.github\/actions\/setup-omp\n {8}with:\n {10}pin: \$\{\{ inputs\.omp \}\}\n/,
+	);
+});
+
+test("the evals omp job stops when the ref predates the omp pin it picked", () => {
+	const block = jobBlock(read(".github/workflows/evals.yml"), "omp");
+	const setup = block.indexOf("- uses: ./.github/actions/setup-omp");
+	const guard = block.lastIndexOf("      - name: ", setup);
+	assert.ok(guard !== -1, "no step before setup-omp");
+	const step = block.slice(guard, setup);
+	// An older setup-omp ignores the pin input and installs its one pin, so the run would test another omp.
+	assert.match(step, /^ {10}PIN: \$\{\{ inputs\.omp \}\}$/m);
+	assert.match(
+		step,
+		/if \[ ! -f "\.github\/actions\/setup-omp\/\$PIN\/package\.json" \]; then/,
+	);
+	assert.match(step, /::error::/);
+	assert.match(step, /exit 1/);
+});
+
+test("Renovate raises the latest omp pin at once and leaves the minimum to a person", () => {
+	type Rule = {
+		matchManagers?: string[];
+		matchFileNames?: string[];
+		minimumReleaseAge?: unknown;
+		schedule?: string[];
+		dependencyDashboardApproval?: boolean;
+		enabled?: boolean;
+		groupName?: string;
+	};
+	const rules: Rule[] = json(".github/renovate.json").packageRules;
+	const forFile = (file: string) =>
+		rules.filter(({ matchFileNames }) => matchFileNames?.includes(file));
+	const [latest, ...moreLatest] = forFile(`${SETUP_OMP}/latest/package.json`);
+	assert.ok(latest, "no rule for the latest omp pin");
+	assert.equal(moreLatest.length, 0);
+	assert.equal(latest.minimumReleaseAge, null);
+	assert.deepEqual(latest.schedule, ["at any time"]);
+	assert.equal(latest.groupName, "omp latest");
+	const [minimum, ...moreMinimum] = forFile(
+		`${SETUP_OMP}/minimum/package.json`,
+	);
+	assert.ok(minimum, "no rule for the minimum omp pin");
+	assert.equal(moreMinimum.length, 0);
+	// A person raises the minimum together with the README; Renovate proposes nothing for it.
+	assert.equal(minimum.enabled, false);
+	assert.ok(!("dependencyDashboardApproval" in minimum));
+	assert.ok(
+		rules.every(
+			({ matchFileNames, groupName }) =>
+				groupName !== "omp" &&
+				!matchFileNames?.some((file) => file.startsWith("evals/omp")),
+		),
+	);
+});
+
+test("Renovate titles bumps of CI-only pins ci, so they release nothing", () => {
+	const rules: {
+		matchFileNames?: string[];
+		matchPackageNames?: string[];
+		semanticCommitType?: string;
+		groupName?: string;
+	}[] = json(".github/renovate.json").packageRules;
+	const ci = rules.findIndex(
+		({ matchFileNames, semanticCommitType }) =>
+			matchFileNames?.includes(".github/actions/**") &&
+			semanticCommitType === "ci",
+	);
+	assert.notEqual(ci, -1, "no rule gives the CI pins the ci type");
+	// A later rule overrides an earlier one, so the type rule must follow every group rule.
+	const lastGroup = rules.findLastIndex(
+		({ groupName }) => groupName !== undefined,
+	);
+	assert.ok(ci > lastGroup, "a group rule follows the ci type rule");
+	// The SDK ships inside every bundle, so its bump releases a version.
+	const sdk = rules.find(({ matchPackageNames }) =>
+		matchPackageNames?.includes("@typesafe-ai/sdk"),
+	);
+	assert.equal(sdk?.semanticCommitType, "fix");
+});

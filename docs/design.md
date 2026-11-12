@@ -93,6 +93,10 @@ The job runs no build, because a user installs the committed files.
 Claude Code runs `claude plugin marketplace add "$PWD"` and `claude plugin install model-router@model-router`.
 omp runs `omp plugin marketplace add "$PWD"` and `omp plugin install model-router@model-router`.
 Those commands install from the checkout with no account signed in.
+The job runs once per omp pin: the minimum omp the README names, and the latest omp release.
+The README promises the minimum, and a user who installs omp today gets the latest.
+After the omp install, `scripts/check-omp-load.ts` starts omp in rpc mode with a stub model, sends no prompt and asks for the commands.
+The plugin's commands come back only when omp loaded its extension, so the check proves the load and not only the install.
 The evals workflow keeps its secrets for the step that runs cases ([Claude Code](clients.md#install-and-update), [omp](clients.md#omp-install-and-update)).
 Before the installs, the job runs `claude plugin validate --strict` on the plugin and on the Claude catalogue.
 Both an unknown field and a missing catalogue description raise warnings, and `--strict` fails on warnings ([Claude Code](clients.md#catalogue), [validate](clients.md#validate-and-test)).
@@ -107,8 +111,9 @@ It runs `npm publish --dry-run`, which packs and checks the package and sends no
 The dry run passes without a registry login, so it does not show that the registry would accept a publish.
 It then installs the tarball into a pinned OpenClaw, and checks the install report and that the installed bundle registers its hook, tool and commands against a recording `api`.
 It unpacks the tarball and installs the folder into a pinned omp, because omp installs a registry name, a git spec or a folder, not a tarball.
+The job runs once per omp pin, as the `install` job does, and runs the same load check after the omp install.
 Both harnesses keep their state and config under the runner's temp folder.
-The OpenClaw pin tracks the latest release, so a Renovate rule raises it with no age delay ([CONTRIBUTING.md](../CONTRIBUTING.md#dependencies)).
+The OpenClaw pin and the latest omp pin track the latest release, so Renovate rules raise them with no age delay ([CONTRIBUTING.md](../CONTRIBUTING.md#dependencies)).
 The OpenClaw facts behind these steps are in [OpenClaw install and update](clients.md#openclaw-install-and-update) and [OpenClaw entry and registration](clients.md#openclaw-entry-and-registration).
 
 **Deviation: no Gateway in the package job.**
@@ -138,6 +143,8 @@ The repository is public.
 The `scan` job checks the added lines of a pull request and every generated file for two markers.
 One is an absolute home path, in the macOS, Linux or Windows form, also after `file://`.
 The other is a key-shaped string with the `sk-` or `Bearer` prefix that the redaction in `src/brief.ts` masks.
+The scan keeps these two of the redaction's shapes because the others, such as a password in a URL, also match the repository's own texts.
+A new shape joins the scan only when no text in the repository has to contain it.
 Paths written from `~` pass.
 The `Bearer` rule departs from the redaction on purpose.
 The redaction masks any token after `Bearer`, in any case.

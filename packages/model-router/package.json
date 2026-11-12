@@ -1,6 +1,6 @@
 {
 	"name": "@akurganow/model-router",
-	"version": "0.20.0",
+	"version": "0.20.1",
 	"private": false,
 	"type": "module",
 	"description": "Routes subagents to a model and effort that fits the task, judged by Jev. One package for OpenClaw and Oh My Pi.",

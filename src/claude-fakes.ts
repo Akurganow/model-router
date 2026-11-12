@@ -62,10 +62,12 @@ export async function routedCall(
 	env: Record<string, string>,
 	offers: readonly Offer[] = [BUILT_IN_DEFAULT],
 	subagentType = "general-purpose",
+	description = SPAWN.description,
 ) {
 	const reads: string[] = [];
 	const requests: { url: string; model: unknown }[] = [];
 	const roles: unknown[] = [];
+	const descriptions: unknown[] = [];
 	const $ = {
 		clock: CLOCK,
 		env: {
@@ -79,6 +81,7 @@ export async function routedCall(
 				const body = JSON.parse(init.body);
 				requests.push({ url, model: body.model });
 				roles.push(body.state.role);
+				descriptions.push(body.state.description);
 				return { status: 200, ok: true, headers: {}, text: ANSWER };
 			},
 		},
@@ -88,6 +91,6 @@ export async function routedCall(
 	const next = nextHook();
 	const hooks = registered(options);
 	for (const offer of offers) await hooks["agent.offer"]?.($, offer, next);
-	await hooks[AGENT_CALL]?.($, { ...SPAWN, subagentType }, next);
-	return { reads, requests, roles };
+	await hooks[AGENT_CALL]?.($, { ...SPAWN, subagentType, description }, next);
+	return { reads, requests, roles, descriptions };
 }

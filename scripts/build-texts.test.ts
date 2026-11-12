@@ -77,15 +77,15 @@ test("every character limit in the source states the number src/ enforces", () =
 	assert.deepEqual([...seen].sort(), Object.keys(LIMITS).sort());
 });
 
-// Every plugin sends a call's one-line description or label as written, so no text may put it under the masking.
-const ONE_LINE = /\b(one-line|label|descriptions)\b/;
-const UNMASKED = /one-line (description|label) as written, unmasked/;
+// Every plugin masks a call's one-line description or label like the task text, so no text may call it unmasked.
+const ONE_LINE = /\bone-line (description|label)\b/;
+const UNMASKED = /\b(unmasked|as written)\b/;
 
-test("no manifest or catalogue text puts the one-line description or label under masking", () => {
+test("no manifest or catalogue text calls the one-line description or label unmasked", () => {
 	for (const [path, text] of stringsOf(source.descriptions, "$.descriptions")) {
 		for (const sentence of text.split(/(?<=\.)\s+/)) {
-			if (!ONE_LINE.test(sentence) || !/\bmasked\b/.test(sentence)) continue;
-			assert.match(sentence, UNMASKED, `${path}: ${sentence}`);
+			if (!ONE_LINE.test(sentence)) continue;
+			assert.doesNotMatch(sentence, UNMASKED, `${path}: ${sentence}`);
 		}
 	}
 });

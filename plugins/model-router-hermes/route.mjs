@@ -1202,20 +1202,125 @@ var streamedFetch = async (url, init) => {
 // src/brief.ts
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
+var NO_DESCRIPTION = "An agent with no description.";
 var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
 var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
 var HEAD_SHARE = 2 / 3;
 var CONTEXT_CAP_CHARS = 3e3;
 var CONTEXT_MIN_CHARS = 500;
 var CONTEXT_LABEL = "\n\nBatch context:\n";
-var REDACT_PATTERNS = [
-  [/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer ***"],
-  [/\bsk-[A-Za-z0-9_-]{8,}/g, "***"],
-  [
-    /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"]*"?|'[^']*'?|[^\s"']+)/gi,
-    "$1$2***"
-  ]
+var PEM_LABEL = "[ A-Z0-9_-]{0,100}PRIVATE KEY(?: BLOCK)?-----";
+var AWS_ID = "(?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}(?![A-Za-z0-9])";
+var AUTH_SCHEMES = [
+  "AWS4-HMAC-SHA256",
+  "ApiKey",
+  "Basic",
+  "Bearer",
+  "Concealed",
+  "Digest",
+  "DPoP",
+  "GNAP",
+  "HOBA",
+  "Mutual",
+  "Negotiate",
+  "NTLM",
+  "OAuth",
+  "PrivateToken",
+  "SCRAM-SHA-1",
+  "SCRAM-SHA-256",
+  "Token",
+  "vapid"
+].join("|");
+var AUTH_HEAD = `\\bAuthorization["']?\\s*[:=]\\s*`;
+var AUTH_SCHEME = `(?:${AUTH_SCHEMES})[ \\t]+`;
+var quotedRun = (quote) => `[^${quote}\\\\\\n]*(?:\\\\.[^${quote}\\\\\\n]*)*`;
+var TOKEN_PREFIXES = {
+  "GitHub token": "gh[pousr]_[A-Za-z0-9]{36,}",
+  "GitHub fine-grained token": "github_pat_[A-Za-z0-9_]{22,}",
+  "GitLab token": "glpat-[A-Za-z0-9_-]{20,}",
+  "Slack token": "xox[abeoprs]-[A-Za-z0-9-]{10,}",
+  "Slack app token": "xapp-\\d-[A-Za-z0-9-]{10,}",
+  "Slack webhook": "hooks\\.slack\\.com/(?:services|workflows|triggers)/[A-Za-z0-9+/]{20,}",
+  "AWS access key id": AWS_ID,
+  "Google API key": "AIza[A-Za-z0-9_-]{35,}",
+  "Stripe key": "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
+  "npm token": "npm_[A-Za-z0-9]{36,}",
+  "Hugging Face token": "hf_[A-Za-z]{34,}",
+  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
+};
+var REDACTIONS = [
+  {
+    name: "PEM private key",
+    pattern: new RegExp(
+      `-----BEGIN${PEM_LABEL}(?:(?:[^-]|-(?!----))*-----END${PEM_LABEL}|(?:(?:\\s|\\\\[rn])+[A-Za-z0-9+/=]{16,})*)`,
+      "gi"
+    ),
+    replacement: "***"
+  },
+  {
+    name: "URL credentials",
+    pattern: /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]*:[^\s/?#'"]+@/gi,
+    replacement: "$1***@"
+  },
+  {
+    name: "Authorization header",
+    pattern: new RegExp(
+      `(${AUTH_HEAD}["']?${AUTH_SCHEME})(?:${[
+        `(?<="${AUTH_SCHEME})${quotedRun('"')}`,
+        `(?<='${AUTH_SCHEME})${quotedRun("'")}`,
+        `(?<="${AUTH_HEAD}${AUTH_SCHEME})${quotedRun('"')}`,
+        `(?<='${AUTH_HEAD}${AUTH_SCHEME})${quotedRun("'")}`,
+        "[^\\n]*"
+      ].join("|")})|(${AUTH_HEAD}["']?)[A-Za-z0-9._~+/=-]{16,}`,
+      "gi"
+    ),
+    replacement: "$1$2***"
+  },
+  {
+    name: "AWS secret",
+    pattern: new RegExp(
+      `((?<![A-Za-z0-9])${AWS_ID}[^\\n]{0,100}?)(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{40}(?![A-Za-z0-9+/=])`,
+      "g"
+    ),
+    replacement: "$1***"
+  },
+  {
+    name: "JSON Web Token",
+    pattern: /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}={0,2}\.ey[A-Za-z0-9_-]{8,}={0,2}\.[A-Za-z0-9_-]*/g,
+    replacement: "***"
+  },
+  {
+    name: "token prefixes",
+    pattern: new RegExp(
+      `(?<![A-Za-z0-9])(?:${Object.values(TOKEN_PREFIXES).join("|")})`,
+      "g"
+    ),
+    replacement: "***"
+  },
+  {
+    name: "Bearer token",
+    pattern: /Bearer\s+[A-Za-z0-9._~+/=-]+/gi,
+    replacement: "Bearer ***"
+  },
+  { name: "sk- key", pattern: /\bsk-[A-Za-z0-9_-]{8,}/g, replacement: "***" },
+  {
+    name: "curl user",
+    pattern: /((?<!\S)(?:-[A-Za-z]{0,8}u|--(?:proxy-)?user)(?:\s+|=)?)(?:"[^"\n:]*:[^"\n]*"|'[^'\n:]*:[^'\n]*'|[^\s"':]+:[^\s"']+)/g,
+    replacement: "$1***"
+  },
+  {
+    name: "password is",
+    pattern: /\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)(?::\s*|\s+))(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    replacement: "$1$2***"
+  },
+  {
+    name: "secret name",
+    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    replacement: "$1$2***"
+  }
 ];
+var FENCE_OPENER = /(?<![`~])(?:(`{3,})[^\n`]*|(~{3,})[^\n~]*)\n/g;
+var FENCE_CLOSER = /^ {0,3}(`{3,}|~{3,})[ \t]*\r?$/;
 function prepareBrief(text, budget = BUDGET_CHARS) {
   const condensed = condense(redact2(text));
   if (condensed.length <= budget) return condensed;
@@ -1225,14 +1330,55 @@ function prepareBrief(text, budget = BUDGET_CHARS) {
   return `${condensed.slice(0, head)}${OMISSION_MARKER}${condensed.slice(condensed.length - tail)}`;
 }
 function condense(text) {
-  return text.replace(/```[^\n]*\n([\s\S]*?)```/g, (_, block) => {
-    const lines = block.replace(/\n$/, "").split("\n").length;
-    return `[an exact block of ${lines} lines is given verbatim]`;
-  }).replace(/\n{3,}/g, "\n\n");
+  return condenseFences(text).replace(/\n{3,}/g, "\n\n");
+}
+function condenseFences(text) {
+  const lines = text.split("\n");
+  const starts = [];
+  let offset = 0;
+  for (const line2 of lines) {
+    starts.push(offset);
+    offset += line2.length + 1;
+  }
+  const runs = lines.map((line2) => FENCE_CLOSER.exec(line2)?.[1] ?? "");
+  const longest = {
+    "`": longestAfter(runs, "`"),
+    "~": longestAfter(runs, "~")
+  };
+  const opener = new RegExp(FENCE_OPENER);
+  let out = "";
+  let kept = 0;
+  let line = 0;
+  for (let open = opener.exec(text); open; open = opener.exec(text)) {
+    const run = open[1] ?? open[2] ?? "";
+    const first = open.index + open[0].length;
+    while ((starts[line] ?? Number.POSITIVE_INFINITY) < first) line++;
+    const char = run.startsWith("`") ? "`" : "~";
+    if ((longest[char][line] ?? 0) < run.length) continue;
+    let close = line;
+    while (!closes(runs[close] ?? "", run)) close++;
+    const count = close - line;
+    out += `${text.slice(kept, open.index)}[an exact block of ${count} ${count === 1 ? "line" : "lines"} is given verbatim]`;
+    kept = (starts[close] ?? 0) + (lines[close]?.length ?? 0);
+    opener.lastIndex = kept;
+  }
+  return out + text.slice(kept);
+}
+var closes = (closer, opener) => closer.startsWith(opener.charAt(0)) && closer.length >= opener.length;
+function longestAfter(runs, char) {
+  const longest = new Array(runs.length + 1).fill(0);
+  for (let k = runs.length - 1; k >= 0; k--) {
+    const run = runs[k] ?? "";
+    longest[k] = Math.max(
+      longest[k + 1] ?? 0,
+      run.startsWith(char) ? run.length : 0
+    );
+  }
+  return longest;
 }
 function redact2(text) {
-  return REDACT_PATTERNS.reduce(
-    (t, [pattern, replacement]) => t.replace(pattern, replacement),
+  return REDACTIONS.reduce(
+    (t, { pattern, replacement }) => t.replace(pattern, replacement),
     text
   );
 }
@@ -1253,6 +1399,16 @@ function descriptionText(description) {
   const text = redact2(description).replace(/\s+/g, " ").trim();
   const cut = text.slice(0, ROLE_CAP);
   return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
+}
+function roleText(description) {
+  return descriptionText(description) || NO_DESCRIPTION;
+}
+function routingState(raw) {
+  return {
+    role: roleText(raw.role),
+    description: descriptionText(raw.description),
+    task: buildPrompt(raw.task, raw.context ?? "")
+  };
 }
 
 // src/decide.ts
@@ -1407,11 +1563,12 @@ async function score(request, { fetchFn }, signal) {
   const { keys } = request;
   const decision = await route({
     parts: [tier, work],
-    state: {
+    state: routingState({
       role: DEFAULT_ROLE,
-      description: descriptionText(request.description),
-      task: buildPrompt(request.task, request.context)
-    },
+      description: request.description,
+      task: request.task,
+      context: request.context
+    }),
     attempts: plan(request.provider, keys),
     keys,
     fetchFn,

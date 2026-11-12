@@ -278,11 +278,11 @@ The second provider gets a request only after the first fails, as [Limits and re
 The request body holds:
 
 - The item's task text and the batch `context`. Together they stay within 12,000 characters, and the context takes at most 3,000 of them.
-- The item's name, sent as the description.
+- The item's name, masked like the task text and sent as the description.
 - The agent text: the bundled `task` agent sends one fixed text, and every other agent sends its description, masked and cut to 500 characters. [PRIVACY.md](PRIVACY.md) has the details, and [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent) says why.
 - The `jev-latest` alias and two fixed questions: one about judgment and one about work.
 
-Before sending, the plugin condenses the task text. It replaces each fenced code block with a line count. It masks Bearer tokens, `sk-` keys, and values assigned to names that end in KEY, TOKEN, SECRET or PASSWORD.
+Before sending, the plugin condenses the task text. It replaces each fenced code block with a line count, and it masks token-shaped strings, as [The task text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-task-text) lists.
 
 Under `extended`, the descriptions and task text of your user, project and plugin agents leave too. The request leaves when omp prepares the `task` call, before omp's approval gate runs. [PRIVACY.md](PRIVACY.md) has the full list, the project scope risks and the key handling.
 

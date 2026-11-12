@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import type { Fetch } from "@typesafe-ai/sdk";
-import { prepareBrief, roleText } from "../src/brief.ts";
+import { prepareBrief, routingState } from "../src/brief.ts";
 import {
 	type Decision,
 	LIMIT_REACHED,
@@ -50,11 +50,11 @@ export async function runCase(
 	try {
 		return await route({
 			parts: [tier, work],
-			state: {
-				role: roleText(c.role),
+			state: routingState({
+				role: c.role,
 				description: c.description,
-				task: prepareBrief(c.text),
-			},
+				task: c.text,
+			}),
 			attempts,
 			keys,
 			fetchFn,
