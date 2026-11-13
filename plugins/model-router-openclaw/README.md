@@ -5,7 +5,7 @@ An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model an
 ## What it does
 
 - It scores each routed `sessions_spawn` call through Jev, using the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
-- Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A level whose slot has no model OpenClaw can run keeps OpenClaw's model and gets the effort alone, as [Routing](#routing) says.
+- Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A slot can be unset, or name a model OpenClaw cannot run. Its level then keeps OpenClaw's model and gets the effort alone, as [Routing](#routing) says.
 - It sets `thinking` from a fixed ladder of efforts, as [Routing](#routing) says.
 - It sets only a model you assigned, and never a model that OpenClaw cannot resolve with a credential.
 - It never overrides a model you chose, nor an effort the spawn or the global config sets. [Which spawns are routed](#which-spawns-are-routed) lists the model rules, and [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the effort rules.
@@ -38,7 +38,7 @@ A running local Gateway applies the install, the enable and later config changes
 
 ## Set up
 
-Routing needs a model in a slot and a key. The [setup skill](openclaw-skills/model-router-setup/SKILL.md) walks through them. Ask OpenClaw to run `model-router-setup`.
+Routing needs a key. The models in the slots decide what each level runs on. The [setup skill](openclaw-skills/model-router-setup/SKILL.md) walks through them. Ask OpenClaw to run `model-router-setup`.
 
 1. Assign `small_model`, `middle_model` and `large_model` in OpenClaw's config. Write each as the full `provider/model` id, because OpenClaw expands a bare name to a ref it may not know, and the child then fails. Use the Control UI page `/settings/plugins/model-router-openclaw`, or run:
 
@@ -137,17 +137,19 @@ Given `provider` or `scope`, the tool returns the command to type. Given `small_
 
 ## Routing
 
-| Level | Judgment the task needs | Model the plugin sets |
-| --- | --- | --- |
-| 0 | Lookup or transcription | `small_model` |
-| 1 | Bounded judgment | `middle_model` |
-| 2 | Open judgment | `large_model` |
+| Level | Judgment the task needs | Slot | Model the plugin sets |
+| --- | --- | --- | --- |
+| 0 | Lookup or transcription | `small` | `small_model` |
+| 1 | Bounded judgment | `middle` | `middle_model` |
+| 2 | Open judgment | `large` | `large_model` |
 
 The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors.
 
-After scoring, the plugin checks the slot the level picks. The slot is unset when it names no model, and unresolved when OpenClaw cannot resolve its string for the target agent or holds no credential for its provider. The check makes no network request. An unset or unresolved slot keeps the model OpenClaw would give the spawn. The plugin still sets the effort unless you set one, and the line names the slot: `L1 middle model unset` or `L2 large model unresolved`. [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) has the rule all three plugins share. With a key set and no model set, the plugin still sends each routed spawn to the provider for scoring and sets the effort.
+After scoring, the plugin checks the slot the level picks. The slot is unset when it names no model. It is unresolved when OpenClaw cannot resolve its string for the target agent, or holds no credential for its provider. [Choosing models](#choosing-models) names a case. The check makes no network request.
 
-A downgrade to a release without `middle_model` makes OpenClaw reject the setting, because OpenClaw checks the plugin's config against the manifest's closed schema. [OpenClaw package files](../../docs/clients.md#openclaw-package-files) has the source.
+An unset or unresolved slot keeps the model OpenClaw would give the spawn, and the line names the slot: `L1 middle model unset` or `L2 large model unresolved`. The plugin still sets the effort, except where [Efforts the plugin keeps](#efforts-the-plugin-keeps) says otherwise. [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) has the rule the omp, OpenClaw and Hermes plugins share.
+
+Before you downgrade to a release without `middle_model`, remove the `middle_model` setting. OpenClaw checks the plugin's config against the manifest's closed schema, so it rejects a setting the older manifest lacks. [OpenClaw package files](../../docs/clients.md#openclaw-package-files) has the source.
 
 The work question picks the effort. The plugin sets `thinking` to one of these values and to no other:
 

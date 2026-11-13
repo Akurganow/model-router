@@ -9,7 +9,7 @@ description: >
 
 # model-router
 
-model-router scores each eligible batch item through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it gives the agent the `smol` role for level 0, the `middle` role for level 1 or the `slow` role for level 2, with a thinking level from the work question. A level whose role is not set in `modelRoles`, or does not resolve, keeps the agent's model and sets the thinking level alone. The line then names the slot, such as `L1 middle model unset`. An effort the item or the user's settings set is kept, as the [README](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#efforts-the-plugin-keeps) lists.
+model-router scores each eligible batch item through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it gives the agent the `smol` role for level 0, the `middle` role for level 1 or the `slow` role for level 2. The thinking level comes from the work question. A level whose role is not set in `modelRoles`, or does not resolve, keeps the agent's model and sets the thinking level alone. The line then names the slot, such as `L1 middle model unset`. An effort the item or the user's settings set is kept, as the [README](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#efforts-the-plugin-keeps) lists.
 
 - The batch line starts with `model-router`. It shows each decision, or the reason an item ran unrouted.
 - The `scope` setting decides which agents the plugin routes. The [README](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#scope) lists them and the skip reasons.
@@ -23,6 +23,8 @@ Escalate when a subagent reports BLOCKED, fails the check its brief names, or tw
 1. If the report shows skipped steps (a file not read, tests not run), re-dispatch to the same agent with a brief that names those steps. When the item's schema lists `effort`, set it one step up: `med`, then `hi`. The plugin keeps an item's `effort`.
 2. Otherwise, re-dispatch to an agent whose model is stronger.
 3. If the stronger agent also fails, stop and report to the user.
+
+A batch line entry that reads `<slot> model unset` or `<slot> model unresolved` means that level gave no role, and the agent ran on its own model.
 
 To find a stronger agent, read the agents the task tool lists. Bundled agents and the user's own agents both appear. Check an agent's model in its definition or in `task.agentModelOverrides` before you name it.
 

@@ -25,6 +25,10 @@ and their keys:
 
 With both keys under `auto` or `openrouter-first`, one task may reach both companies.
 
+A model setting does not decide whether a request leaves: with a key set and
+no model set, each routed task is still sent for scoring, as
+[A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) says.
+
 [Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
 gives the fallback rules.
 
@@ -96,10 +100,6 @@ requests above.
 
 ## Requests and billing
 
-No gate checks the model slots: with a key set and no model set, the plugin
-still sends each routed task to the provider for scoring and sets the effort,
-as [Models](README.md#models) says.
-
 One task sends at most four requests, as
 [Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider)
 explains.
@@ -134,7 +134,7 @@ the gateway and of the plugin host. Like any key in the environment, it is
 visible to the programs Hermes starts. Keep a key out of the environment of
 programs you do not trust.
 
-At each task the plugin reads three of its own settings through Hermes:
+At each task the plugin reads four of its own settings through Hermes:
 `provider`, `small_model`, `middle_model` and `large_model`. It reads the task's
 `description`, `reasoning_effort` and `level` parameters. Of those, only the
 description leaves your machine, in the request. It also reads the `delegation`

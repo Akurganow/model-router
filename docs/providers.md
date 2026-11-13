@@ -43,12 +43,17 @@ Each README names the harness setting of each slot.
 A slot is set when it names a model the harness can run.
 It is unset when it names no model, and unresolved when it names a model the harness cannot run.
 For an unset or unresolved slot, the task keeps the model the harness gives it.
-The plugin still sets the effort, unless the task or the user's settings set one.
+For a task it scores, the plugin still sets the effort, except where the README's list of kept efforts says otherwise.
 The routing line names the slot and its state in place of a model, as in `L1 middle model unset` or `L2 large model unresolved`.
+
+An unset slot is your choice and needs no fix: its level runs on the harness's model.
+An unresolved slot names a model the harness cannot run, so fix that model or clear the slot.
+Each README says what makes a model unresolved in its harness.
 
 No gate checks the models, and no task skips because a slot has no model.
 So with a key set and no model set, the plugin still sends each routed task to the provider for scoring and sets the effort.
-A check of the picked slot that does not finish within the routing limit skips the task with `timeout`.
+In OpenClaw and Hermes Agent, a check of the picked slot that does not finish within the routing limit skips the task with `timeout`.
+Oh My Pi's role check returns at once, so it has no such skip.
 
 ## The request
 
@@ -163,7 +168,8 @@ A missing key, a closed gate, an error, a timeout or a failed check leaves the t
 
 ## The routing line
 
-A routed line holds the chosen level as `L<level>`, the model or role it sets, and `p=` with the probability of each chosen level, one for each question the plugin asks.
+A routed line holds the chosen level as `L<level>`, then the model or role it sets, or the state of a slot with no model.
+It then holds `p=` with the probability of each chosen level, one for each question the plugin asks.
 Each plugin's README gives the exact shape.
 When the reply carries them, the line also names the Jev model and the token counts.
 

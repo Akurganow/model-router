@@ -6,7 +6,7 @@ A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks
 
 - It is a delegation backend named `model-router`. It scores each `delegate_task` task through Jev, using the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - It routes the tasks of `delegate_task` only. The main turn is never routed.
-- Level 0 gives the task your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A level whose slot has no model Hermes can run keeps Hermes's model and gets the effort alone, as [Models](#models) says.
+- Level 0 gives the task your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A slot can be unset, or name a model Hermes cannot run. Its level then keeps Hermes's model and gets the effort alone, as [Models](#models) says.
 - It sets the effort from a fixed ladder, as [Routing](#routing) says.
 - It sets only a model you assigned, and never a model that Hermes cannot resolve offline with a credential that needs no network refresh.
 - It never overrides a model you chose, nor an effort the `delegation` section sets. [Precedence](#precedence) gives the whole order for the model and the effort.
@@ -33,7 +33,7 @@ A gateway keeps a loaded plugin between turns. After a plugin update, or after a
 
 ## Set up
 
-Routing needs the plugin enabled, the backend on, a key and a model in a slot. The [setup skill](skills/model-router-setup/SKILL.md) walks through them. Ask Hermes to load `model-router-hermes:model-router-setup`.
+Routing needs the plugin enabled, the backend on and a key. The models in the slots decide what each level runs on. The [setup skill](skills/model-router-setup/SKILL.md) walks through them. Ask Hermes to load `model-router-hermes:model-router-setup`.
 
 1. A backend change applies from the next session. In a running session, type `/delegation model-router --now`.
 2. Add a [key](#keys).
@@ -117,17 +117,17 @@ A slot that fails any check is unresolved. A provider that signs in with OAuth r
 
 The plugin does not check a model that the catalogue lists and the provider rejects at run time. The child then fails on the model. [Fails open](PRIVACY.md#fails-open) says so.
 
-An unset or unresolved slot keeps the route Hermes would give the task. The plugin still sets the effort unless you set one, and the line names the slot: `L1 middle model unset` or `L2 large model unresolved`. [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) has the rule all three plugins share. With a key set and no model set, the plugin still sends each routed task to the provider for scoring and sets the effort.
+An unset or unresolved slot keeps the route Hermes would give the task, and the line names the slot: `L1 middle model unset` or `L2 large model unresolved`. For a task it scores, the plugin still sets the effort, except where [Precedence](#precedence) says otherwise. [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) has the rule the omp, OpenClaw and Hermes plugins share.
 
 [Facts behind this section](../../docs/clients.md#hermes-model-and-credential-checks)
 
 ## Routing
 
-| Level | Judgment the task needs | Model the plugin sets |
-| --- | --- | --- |
-| 0 | Lookup or transcription | `small_model` |
-| 1 | Bounded judgment | `middle_model` |
-| 2 | Open judgment | `large_model` |
+| Level | Judgment the task needs | Slot | Model the plugin sets |
+| --- | --- | --- | --- |
+| 0 | Lookup or transcription | `small` | `small_model` |
+| 1 | Bounded judgment | `middle` | `middle_model` |
+| 2 | Open judgment | `large` | `large_model` |
 
 The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors. A level whose slot is unset or unresolved runs the child on the route Hermes would give it, as [Models](#models) says.
 
@@ -172,7 +172,7 @@ A task that sets `level`:
 
 The delegating model should leave `reasoning_effort` and `level` unset on a first dispatch. The escalation skill, `model-router-hermes:model-router`, says when to set them. [The skill](skills/model-router/SKILL.md) follows the escalation steps of the other plugins.
 
-The parameters are part of the session's tool list. After an install or an update, they apply from the next session, or at once after `/delegation model-router --now`. The tool's description and the `level` text sit in Hermes's cached prompt prefix, so an update that changes them makes the prompt cache miss once.
+The parameters are part of the session's tool list. After an install or an update, they apply from the next session, or at once after `/delegation model-router --now`. The parameters' schema, with the `level` text, is part of Hermes's cached prompt. An update that changes it makes the prompt cache miss once.
 
 [Facts behind this section](../../docs/clients.md#hermes-task-parameters)
 

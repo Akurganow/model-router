@@ -418,6 +418,8 @@ The running facts used omp from npm with a local stand-in model provider and cal
 These facts hold at omp 18.12.6 and 18.18.9.
 The running facts used omp from npm, a probe extension, a throwaway agent folder and a local stand-in model provider, and called no paid model.
 
+- omp knows 16 roles, and `middle` is not one of them. Only `smol`, `slow` and the kind roles have catalogue priority lists.
+  (source: [`config/model-roles.ts` L56–L91 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-roles.ts#L56-L91), [the same lines at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-roles.ts#L56-L91); [`tui/src/overlays/model-browser.ts` L55–L103 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/tui/src/overlays/model-browser.ts#L55-L103), [L61–L109 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/tui/src/overlays/model-browser.ts#L61-L109))
 - `modelRoles` accepts any role name, so a role such as `middle` needs no change in omp.
   (source: [`config/model-settings.ts` L109 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-settings.ts#L109), [the same line at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-settings.ts#L109))
 - A custom role that `modelRoles` names resolves: `ctx.models.resolve("@mid")` gave the configured model, and a spawn hook that returned `@mid:medium` ran it at `medium`.

@@ -26,6 +26,10 @@ and their keys:
 
 With both keys under `auto` or `openrouter-first`, one item may reach both companies.
 
+A model role does not decide whether a request leaves: with a key set and no
+role set, each routed item is still sent for scoring, as
+[A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) says.
+
 [Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
 gives the fallback rules.
 
@@ -93,15 +97,13 @@ that declare no model.
 - A project can set `scope` in its plugin settings, and its value overrides
   yours. A project that sets `extended` sends the descriptions and task text of
   your agents to your provider without your choice, and it can raise spend,
-  because routed agents may run on the `slow` model role.
+  because routed agents may run on the `smol`, `middle` and `slow` model roles
+  you set.
 
 ## Requests and billing
 
 The plugin scores each routed item on its own. An item a closed gate stops is
-not routed and sends nothing. No gate checks the model roles: with a key set
-and no role set, the plugin still sends each routed item to the provider for
-scoring and sets the effort, as
-[Models](README.md#models) says. An item that starts after the batch's scoring
+not routed and sends nothing. An item that starts after the batch's scoring
 limit has passed sends nothing either, so a batch can send fewer requests than it
 has routed items.
 

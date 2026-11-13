@@ -21,6 +21,8 @@ Escalate when a subagent reports BLOCKED, fails the check its brief names, or tw
 3. If the stronger model also fails, raise `thinking` one step at a time up to `xhigh`.
 4. If `xhigh` also fails, stop and report to the person.
 
+A line that reads `<slot> model unset` or `<slot> model unresolved` means that level set no model, and the spawn ran on OpenClaw's own model.
+
 Use a flagship model only when the person opted in. Do not change a setting to reach one without their word.
 
 ## Re-dispatch

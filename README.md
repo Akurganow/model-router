@@ -291,6 +291,8 @@ plugin prints one line per batch, like this example:
 model-router task 1: L0 @smol · high · p=0.91/0.84 | task 2: L1 middle model unset · medium · p=0.62/0.70 | task 3: skipped, timeout
 ```
 
+An entry such as `L1 middle model unset` is no error: the level ran on the
+agent's model, as [Models](plugins/model-router-omp/README.md#models) says.
 [Gate reasons](plugins/model-router-omp/README.md#gate-reasons) and
 [Item reasons](plugins/model-router-omp/README.md#item-reasons) explain each
 `skipped` entry. No line prints when `task.batch` is off or the batch has no

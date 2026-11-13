@@ -28,6 +28,10 @@ and their keys:
 
 With both keys under `auto` or `openrouter-first`, one spawn may reach both companies.
 
+A model setting does not decide whether a request leaves: with a key set and
+no model set, each routed spawn is still sent for scoring, as
+[A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) says.
+
 [Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
 gives the fallback rules.
 
@@ -96,10 +100,6 @@ that does not set its own model, as well as
   [Efforts the plugin keeps](README.md#efforts-the-plugin-keeps) lists when.
 
 ## Requests and billing
-
-No gate checks the model slots: with a key set and no model set, the plugin
-still sends each routed spawn to the provider for scoring and sets the effort,
-as [Routing](README.md#routing) says.
 
 One spawn sends at most four requests.
 [Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider)
