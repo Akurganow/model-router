@@ -98,6 +98,10 @@ const newState = () => ({
 	config: {} as Config,
 	agents: [] as DiscoveredAgent[],
 	resolvable: new Set<string>(),
+	// The entries ctx.models.list() returns, and each role omp's registry writes.
+	list: (() => []) as () => readonly unknown[],
+	entryWrites: [] as { id: string; key: string; value: string }[],
+	writeEntry: (() => undefined) as () => void,
 	credential: (async (provider) => STORED[provider]) as (
 		provider: string,
 	) => Promise<string | undefined>,
@@ -153,11 +157,22 @@ const fakeFetch = (state: State) => async (url: string, init: RequestInit) => {
 	return state.answer(sent, state.sent.length, init.signal as AbortSignal);
 };
 
+// Like omp's registry, a record entry write replaces that entry and leaves the others.
 const buildLookup =
 	(state: State): Lookup =>
 	(id) => {
-		const value = (state.config as Record<string, unknown>)[id];
-		return value === undefined ? undefined : { get: () => value };
+		const config = state.config as Record<string, unknown>;
+		const value = config[id];
+		return value === undefined
+			? undefined
+			: {
+					get: () => value,
+					setEntry: (_scope, key, entry) => {
+						state.writeEntry();
+						state.entryWrites.push({ id, key, value: entry });
+						config[id] = { ...(value as object), [key]: entry };
+					},
+				};
 	};
 
 const lockSettings = (state: State, name: string): unknown => {
@@ -222,6 +237,15 @@ const buildPi = (state: State): Pi => ({
 			values,
 			optional: () => ({ values, optional: true }),
 		}),
+		array: (items) => ({
+			items,
+			optional: () => ({
+				items,
+				optional: true,
+				describe: (description) => ({ items, optional: true, description }),
+			}),
+		}),
+		string: () => "string",
 	},
 	pi: {
 		settings: {},
@@ -259,6 +283,7 @@ const buildCtx = (state: State) => (): Context => ({
 	},
 	models: {
 		resolve: (spec) => (state.resolvable.has(spec) ? {} : undefined),
+		list: () => state.list(),
 	},
 });
 

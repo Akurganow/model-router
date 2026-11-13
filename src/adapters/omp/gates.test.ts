@@ -281,7 +281,7 @@ test("the batch reads each slot from modelRoles and the resolver", async () => {
 
 test("a throwing resolver leaves the gate open and each named slot unresolved", async () => {
 	world.config.modelRoles = { smol: "a/small", slow: "a/large" };
-	const broken = { ...ctx(), models: { resolve: throws } };
+	const broken = { ...ctx(), models: { ...ctx().models, resolve: throws } };
 	const batch = await checkGates(world.imports, world.pi, broken);
 	assert.ok(!("closed" in batch));
 	assert.deepEqual(batch.facts.models, {

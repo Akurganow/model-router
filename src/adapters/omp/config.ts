@@ -1,3 +1,8 @@
+import {
+	CANDIDATES_DESCRIPTION,
+	modelToolSentences,
+	runModels,
+} from "../../core/models.ts";
 import { type Keys, order } from "../../core/provider.ts";
 import { UNREADABLE } from "../../core/reasons.ts";
 import {
@@ -21,14 +26,17 @@ import {
 	type ValueSetting,
 	valueLine,
 } from "../../core/settings.ts";
+import { SLOT_SETTINGS, SLOTS, slotLine } from "../../core/slots.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { serializer } from "../../utils/serializer.ts";
 import { changeKey } from "./key.ts";
+import { configured, modelPort, slotName } from "./models.ts";
 import { findKey, readSettings, type Settings } from "./settings.ts";
 import type { Context, OmpImports, Pi, ToolReply } from "./types.ts";
 
 const COMMAND_PREFIX = "model-router:";
 const LINE_BREAK = "\n";
+const TOOL_SETTINGS = [...SETTING_NAMES, ...SLOT_SETTINGS, "models"];
 
 export const projectOverrides = (setting: ValueSetting): string =>
 	`A project value for ${setting} overrides it.`;
@@ -53,7 +61,8 @@ async function withSettings(
 }
 
 // A key is only checked for presence. Nothing about it leaves this function.
-const readAll = (omp: OmpImports, ctx: Context): Promise<string> =>
+// A model line shows the role as configured and runs no check.
+const readAll = (omp: OmpImports, pi: Pi, ctx: Context): Promise<string> =>
 	withSettings(omp, ctx, async ({ provider, scope }) => {
 		const names = order(provider);
 		const found = await Promise.all(names.map((name) => findKey(ctx, name)));
@@ -62,7 +71,10 @@ const readAll = (omp: OmpImports, ctx: Context): Promise<string> =>
 			const key = found[i];
 			if (key !== undefined) keys[name] = key;
 		});
-		return settingsReport(provider, scope, [], keys);
+		const models = SLOTS.map((slot) =>
+			slotLine(slotName(slot), configured(omp, pi, slot)),
+		);
+		return settingsReport(provider, scope, models, keys);
 	});
 
 /**
@@ -114,15 +126,19 @@ async function dialog(
 
 async function runTool(
 	omp: OmpImports,
+	pi: Pi,
 	ctx: Context,
 	params: unknown,
 ): Promise<string> {
-	const { setting } = isRecord(params) ? params : {};
-	if (setting === undefined) return readAll(omp, ctx);
+	const { setting, candidates } = isRecord(params) ? params : {};
+	if (setting === undefined) return readAll(omp, pi, ctx);
 	if (isValueSetting(setting)) return dialog(omp, ctx, setting);
-	return isKeySetting(setting)
-		? changeKey(ctx, setting)
-		: badCall(SETTING_NAMES);
+	if (isKeySetting(setting)) return changeKey(ctx, setting);
+	const models = await runModels(modelPort(omp, pi, ctx), {
+		setting,
+		candidates,
+	});
+	return models ?? badCall(TOOL_SETTINGS);
 }
 
 async function runCommand(
@@ -154,13 +170,23 @@ export function registerConfig(omp: OmpImports, pi: Pi): void {
 	pi.registerTool({
 		name: TOOL_NAME,
 		label: TOOL_LABEL,
-		description: toolDescription(SETTING_NAMES),
+		description: [
+			toolDescription(
+				TOOL_SETTINGS,
+				"the provider, the scope and the three models",
+			),
+			modelToolSentences(true),
+		].join(" "),
 		parameters: pi.zod.object({
-			setting: pi.zod.enum(SETTING_NAMES).optional(),
+			setting: pi.zod.enum(TOOL_SETTINGS).optional(),
+			candidates: pi.zod
+				.array(pi.zod.string())
+				.optional()
+				.describe(CANDIDATES_DESCRIPTION),
 		}),
 		loadMode: "essential",
 		approval: "write",
 		execute: (_id, params, _signal, _update, ctx) =>
-			serial(async () => reply(await runTool(omp, ctx, params))),
+			serial(async () => reply(await runTool(omp, pi, ctx, params))),
 	});
 }

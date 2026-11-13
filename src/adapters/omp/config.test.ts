@@ -8,9 +8,7 @@ import {
 	COMMAND_DESCRIPTIONS,
 	NO_ANSWER,
 	NOT_OFFERED,
-	SETTING_NAMES,
 	TOOL_NAME,
-	toolDescription,
 	unchanged,
 	useOneOf,
 	type ValueSetting,
@@ -25,6 +23,7 @@ import {
 	logged,
 	OR_VARIABLE,
 	setEnv,
+	throws,
 	useWorld,
 } from "./fakes.ts";
 import { createExtension } from "./router.ts";
@@ -48,6 +47,19 @@ const choose = (setting: ValueSetting, value: string) => {
 	world.select = async () => labelOf(setting, value);
 };
 const lines = (...parts: string[]) => parts.join("\n");
+const TOOL_SETTINGS = [
+	"provider",
+	"scope",
+	"typesafe_key",
+	"openrouter_key",
+	"small_model",
+	"middle_model",
+	"large_model",
+	"models",
+];
+// The fresh fake config sets the smol and slow roles and leaves the middle role unset.
+const SLOT_LINES =
+	"small_model (smol role): prov/small\nmiddle_model (middle role): unset\nlarge_model (slow role): prov/large";
 const SETTLE_MS = 20;
 const DIALOG_WAIT_MS = 5000;
 /**
@@ -82,16 +94,31 @@ test("the commands and the tool register under their names", () => {
 	assert.deepEqual(Object.keys(world.tools), [TOOL_NAME]);
 });
 
-test("the tool is essential, needs the write tier and takes an optional setting enum", () => {
+test("the tool is essential, needs the write tier and takes an optional setting enum and candidates", () => {
 	install();
 	const tool = world.tools[TOOL_NAME];
-	assert.equal(tool?.description, toolDescription(SETTING_NAMES));
 	assert.equal(tool?.loadMode, "essential");
 	assert.equal(tool?.approval, "write");
 	assert.equal(typeof tool?.label, "string");
 	assert.deepEqual(tool?.parameters, {
-		shape: { setting: { values: SETTING_NAMES, optional: true } },
+		shape: {
+			setting: { values: TOOL_SETTINGS, optional: true },
+			candidates: {
+				items: "string",
+				optional: true,
+				description:
+					"Up to four model ids from the models list. The person picks in the plugin's dialog. Never a value to write.",
+			},
+		},
 	});
+});
+
+test("the tool description names the three models, the model settings and the candidates", () => {
+	install();
+	assert.equal(
+		world.tools[TOOL_NAME]?.description,
+		"Reads the router's settings. With no input it returns the provider, the scope and the three models, and whether each key the provider allows is set. With a setting name (provider, scope, typesafe_key, openrouter_key, small_model, middle_model, large_model, models) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog. With models it returns the models the person can run. For a model setting, pass up to four ids from models as candidates: the dialog offers them and an entry that shows the whole list.",
+	);
 });
 
 test("with no setting the tool reads both values and the key state of each allowed provider", async () => {
@@ -102,6 +129,7 @@ test("with no setting the tool reads both values and the key state of each allow
 		lines(
 			valueLine("provider", "auto"),
 			valueLine("scope", "core"),
+			SLOT_LINES,
 			"typesafe key: set",
 			"openrouter key: set",
 		),
@@ -290,7 +318,7 @@ test("an unknown setting is a bad call and writes nothing", async () => {
 	install();
 	assert.equal(
 		await world.callTool({ setting: "tier" }),
-		badCall(SETTING_NAMES),
+		badCall(TOOL_SETTINGS),
 	);
 	assert.equal(world.writes.length, 0);
 });
@@ -526,35 +554,35 @@ test("the settings report lists the values and the key state of each allowed pro
 			scope: "core",
 			typesafe: true,
 			openrouter: true,
-			text: "provider: auto (typesafe, then openrouter)\nscope: core\ntypesafe key: set\nopenrouter key: set",
+			text: "provider: auto (typesafe, then openrouter)\nscope: core\nsmall_model (smol role): prov/small\nmiddle_model (middle role): unset\nlarge_model (slow role): prov/large\ntypesafe key: set\nopenrouter key: set",
 		},
 		{
 			provider: "auto",
 			scope: "extended",
 			typesafe: false,
 			openrouter: true,
-			text: "provider: auto (typesafe, then openrouter)\nscope: extended\ntypesafe key: unset\nopenrouter key: set",
+			text: "provider: auto (typesafe, then openrouter)\nscope: extended\nsmall_model (smol role): prov/small\nmiddle_model (middle role): unset\nlarge_model (slow role): prov/large\ntypesafe key: unset\nopenrouter key: set",
 		},
 		{
 			provider: "openrouter-first",
 			scope: "core",
 			typesafe: true,
 			openrouter: false,
-			text: "provider: openrouter-first (openrouter, then typesafe)\nscope: core\nopenrouter key: unset\ntypesafe key: set",
+			text: "provider: openrouter-first (openrouter, then typesafe)\nscope: core\nsmall_model (smol role): prov/small\nmiddle_model (middle role): unset\nlarge_model (slow role): prov/large\nopenrouter key: unset\ntypesafe key: set",
 		},
 		{
 			provider: "typesafe",
 			scope: "extended",
 			typesafe: false,
 			openrouter: true,
-			text: "provider: typesafe (typesafe)\nscope: extended\ntypesafe key: unset",
+			text: "provider: typesafe (typesafe)\nscope: extended\nsmall_model (smol role): prov/small\nmiddle_model (middle role): unset\nlarge_model (slow role): prov/large\ntypesafe key: unset",
 		},
 		{
 			provider: "openrouter",
 			scope: "core",
 			typesafe: true,
 			openrouter: false,
-			text: "provider: openrouter (openrouter)\nscope: core\nopenrouter key: unset",
+			text: "provider: openrouter (openrouter)\nscope: core\nsmall_model (smol role): prov/small\nmiddle_model (middle role): unset\nlarge_model (slow role): prov/large\nopenrouter key: unset",
 		},
 	];
 	for (const { provider, scope, typesafe, openrouter, text } of cases) {
@@ -567,4 +595,160 @@ test("the settings report lists the values and the key state of each allowed pro
 		setEnv(OR_VARIABLE, undefined);
 		assert.equal(await world.callTool({}), text, `${provider} ${scope}`);
 	}
+});
+
+const STUB_MODELS = [
+	{
+		provider: "stub",
+		id: "small",
+		cost: { input: 0.1, output: 0.4, cacheRead: 0, cacheWrite: 0 },
+		contextWindow: 128000,
+	},
+	{
+		provider: "stub",
+		id: "middle",
+		cost: { input: 1, output: 5, cacheRead: 0, cacheWrite: 0 },
+		contextWindow: 200000,
+	},
+	{
+		provider: "plan",
+		id: "large",
+		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+		pricingStatus: "included",
+		contextWindow: 1000000,
+	},
+];
+
+test("the report shows each slot's configured patterns or unset", async () => {
+	install();
+	world.config.modelRoles = { smol: ["a/s", "a/t"], middle: "  ", slow: "a/l" };
+	assert.equal(
+		await world.callTool({}),
+		"provider: typesafe (typesafe)\nscope: core\nsmall_model (smol role): a/s, a/t\nmiddle_model (middle role): unset\nlarge_model (slow role): a/l\ntypesafe key: set",
+	);
+});
+
+test("the report runs no model check", async () => {
+	install();
+	world.resolvable = new Set();
+	world.list = throws;
+	assert.match(
+		await world.callTool({}),
+		/small_model \(smol role\): prov\/small/,
+	);
+});
+
+test("models lists what omp's list holds, with the detail of each", async () => {
+	install();
+	world.list = () => STUB_MODELS;
+	assert.equal(
+		await world.callTool({ setting: "models" }),
+		"models the person can run: 3\n- stub/small ($0.1 in, $0.4 out per 1M tokens, 128K context)\n- stub/middle ($1 in, $5 out per 1M tokens, 200K context)\n- plan/large (1M context)",
+	);
+	world.list = throws;
+	assert.equal(
+		await world.callTool({ setting: "models" }),
+		"models unavailable: boom",
+	);
+});
+
+test("a model setting opens the dialog over the candidates and writes the picked role", async () => {
+	install();
+	world.list = () => STUB_MODELS;
+	world.select = async () =>
+		"stub/middle - $1 in, $5 out per 1M tokens, 200K context";
+	assert.equal(
+		await world.callTool({
+			setting: "middle_model",
+			candidates: ["stub/middle", "made/up", "plan/large"],
+		}),
+		"middle_model (middle role): stub/middle",
+	);
+	assert.deepEqual(world.dialogs, [
+		{
+			title:
+				"Which model should the middle level run? middle_model is unset now.",
+			options: [
+				"stub/middle - $1 in, $5 out per 1M tokens, 200K context",
+				"plan/large - 1M context",
+				"Show the whole list",
+			],
+		},
+	]);
+	assert.deepEqual(world.entryWrites, [
+		{ id: "modelRoles", key: "middle", value: "stub/middle" },
+	]);
+	assert.equal(world.writes.length, 0);
+	assert.match(
+		await world.callTool({}),
+		/middle_model \(middle role\): stub\/middle\n/,
+	);
+});
+
+test("the small dialog names the current role and omp's other uses of smol", async () => {
+	install();
+	world.list = () => STUB_MODELS;
+	world.select = async () => "Show the whole list";
+	await world.callTool({ setting: "small_model" });
+	assert.equal(
+		world.dialogs[0]?.title,
+		"Which model should the small level run? small_model is prov/small now. omp also uses smol for the scout and sonic agents, commit messages, session titles and the prewalk hand-off.",
+	);
+	assert.deepEqual(world.dialogs[0]?.options, ["Show the whole list"]);
+	assert.equal(world.dialogs.length, 2);
+	assert.deepEqual(world.dialogs[1]?.options, [
+		"stub/small - $0.1 in, $0.4 out per 1M tokens, 128K context",
+		"stub/middle - $1 in, $5 out per 1M tokens, 200K context",
+		"plan/large - 1M context",
+	]);
+});
+
+test("a write that throws leaves the role unchanged and says why", async () => {
+	install();
+	world.list = () => STUB_MODELS;
+	world.select = async () => "plan/large - 1M context";
+	world.writeEntry = throws;
+	assert.equal(
+		await world.callTool({
+			setting: "large_model",
+			candidates: ["plan/large"],
+		}),
+		"large_model unchanged: boom",
+	);
+	assert.deepEqual(world.config.modelRoles, {
+		smol: "prov/small",
+		slow: "prov/large",
+	});
+});
+
+test("a dismissed model dialog writes nothing", async () => {
+	install();
+	world.list = () => STUB_MODELS;
+	assert.equal(
+		await world.callTool({
+			setting: "middle_model",
+			candidates: ["stub/middle"],
+		}),
+		"middle_model unchanged: no answer from the dialog",
+	);
+	assert.deepEqual(world.entryWrites, []);
+});
+
+test("without a UI a model setting returns the user path and opens no dialog", async () => {
+	install();
+	world.hasUI = false;
+	world.list = () => STUB_MODELS;
+	assert.equal(
+		await world.callTool({
+			setting: "middle_model",
+			candidates: ["stub/middle"],
+		}),
+		"middle_model is the middle role. Add it in /models under Roles with + New role… and the name middle, or under modelRoles.middle in config.yml.",
+	);
+	assert.equal(world.dialogs.length, 0);
+	assert.deepEqual(world.entryWrites, []);
+	assert.match(
+		await world.callTool({ setting: "models" }),
+		/^models the person can run: 3\n/,
+	);
 });

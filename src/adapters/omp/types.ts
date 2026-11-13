@@ -1,8 +1,12 @@
 // The parts of omp's extension API this adapter uses, from extensibility/extensions/types.ts at omp 18.12.6.
 // Nothing here imports omp: only the entry imports omp's modules, and the bundle leaves them external.
-export type Lookup = (
-	id: string,
-) => { get(scope: unknown): unknown } | undefined;
+// setEntry writes one entry of a record setting into the user's global config.yml.
+export type Lookup = (id: string) =>
+	| {
+			get(scope: unknown): unknown;
+			setEntry?(scope: unknown, key: string, value: string): void;
+	  }
+	| undefined;
 
 // The omp functions the entry imports. Tests hand in fakes.
 export type OmpImports = {
@@ -42,7 +46,8 @@ export type Context = {
 		getApiKeyForProvider(provider: string): Promise<string | undefined>;
 		authStorage: { credentials: Credentials };
 	};
-	models: { resolve(spec: string): unknown };
+	// list() returns omp's Model entries: the models whose provider has configured auth.
+	models: { resolve(spec: string): unknown; list(): readonly unknown[] };
 };
 
 export type ToolCallEvent = {
@@ -109,6 +114,8 @@ export type CommandSpec = {
 };
 
 type Schema = { optional(): unknown };
+// omp's zod facade keeps a schema optional when describe follows optional.
+type Optional = { optional(): { describe(description: string): unknown } };
 
 export type Pi = {
 	on<E extends keyof Handlers>(event: E, handler: Handlers[E]): void;
@@ -117,6 +124,8 @@ export type Pi = {
 	zod: {
 		object(shape: Record<string, unknown>): unknown;
 		enum(values: readonly string[]): Schema;
+		array(items: unknown): Optional;
+		string(): unknown;
 	};
 	pi: {
 		settings: unknown;

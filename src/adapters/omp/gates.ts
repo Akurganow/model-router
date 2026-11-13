@@ -23,7 +23,11 @@ import {
 import type { Context, OmpImports, Pi } from "./types.ts";
 
 // The modelRoles key that holds each slot's model.
-const ROLE_NAMES = { small: "smol", middle: "middle", large: "slow" } as const;
+export const ROLE_NAMES = {
+	small: "smol",
+	middle: "middle",
+	large: "slow",
+} as const;
 
 export type Batch = Routing & { readonly facts: Facts };
 type Closed = { readonly closed: string };

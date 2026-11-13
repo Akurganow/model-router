@@ -1,8 +1,11 @@
 // omp is not installed here. The adapter's entry imports these modules and the bundle leaves them external.
 declare module "@oh-my-pi/pi-coding-agent/config/registry" {
-	export function lookup(
-		id: string,
-	): { get(scope: unknown): unknown } | undefined;
+	export function lookup(id: string):
+		| {
+				get(scope: unknown): unknown;
+				setEntry?(scope: unknown, key: string, value: string): void;
+		  }
+		| undefined;
 }
 
 declare module "@oh-my-pi/pi-coding-agent/extensibility/plugins/loader" {

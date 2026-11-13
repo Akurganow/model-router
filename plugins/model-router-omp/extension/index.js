@@ -274,6 +274,10 @@ function pickModel(level, state) {
   const slot = slotForLevel(level);
   return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model ${state.state}` };
 }
+var slotLine = (name, shown) => `${name}: ${shown ?? "unset"}`;
+
+// src/utils/error.ts
+var errorText = (err) => err instanceof Error ? err.message : String(err);
 
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
 var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
@@ -381,13 +385,13 @@ var isRecord2 = (value) => typeof value === "object" && value !== null;
 var extractMessage = (body) => {
   if (typeof body === "string") return body || void 0;
   if (!isRecord2(body)) return void 0;
-  const { error, message, detail } = body;
+  const { error, message, detail: detail2 } = body;
   if (typeof error === "string") return error;
   if (isRecord2(error) && typeof error.message === "string") return error.message;
   if (typeof message === "string") return message;
-  if (typeof detail === "string") return detail;
-  if (isRecord2(detail) && typeof detail.message === "string") return detail.message;
-  if (Array.isArray(detail)) return describeValidationErrors(detail);
+  if (typeof detail2 === "string") return detail2;
+  if (isRecord2(detail2) && typeof detail2.message === "string") return detail2.message;
+  if (Array.isArray(detail2)) return describeValidationErrors(detail2);
 };
 var describeValidationErrors = (errors) => {
   const parts = errors.flatMap((e) => {
@@ -415,8 +419,8 @@ var APIError = class APIError2 extends TypeSafeError {
     this.requestId = requestIdFrom(headers);
   }
   static describe(status, body) {
-    const detail = extractMessage(body);
-    if (detail) return `${status} ${detail}`;
+    const detail2 = extractMessage(body);
+    if (detail2) return `${status} ${detail2}`;
     if (body === void 0) return `${status} status code (no body)`;
     const raw = typeof body === "string" ? body : JSON.stringify(body);
     return `${status} ${raw.length > MAX_RAW_BODY_IN_MESSAGE ? `${raw.slice(0, MAX_RAW_BODY_IN_MESSAGE)}\u2026` : raw}`;
@@ -578,7 +582,7 @@ var collectAssets = (value, found, visited) => {
 };
 var serializeRequest = (payload, assets = {}) => {
   const names = new Map(Object.entries(assets).map(([name, asset]) => [asset, name]));
-  const known = new Map(Object.values(assets).map((asset) => [String(asset), asset]));
+  const known2 = new Map(Object.values(assets).map((asset) => [String(asset), asset]));
   const json = JSON.stringify(payload, function(key, value) {
     if (typeof value === "number" && !Number.isFinite(value)) return String(value);
     const original = this[key];
@@ -586,12 +590,12 @@ var serializeRequest = (payload, assets = {}) => {
     if (isImage(original)) {
       const name = names.get(original);
       if (name !== void 0) return name;
-      known.set(String(original), original);
+      known2.set(String(original), original);
     } else if (isTextWithAssets(original)) {
       let text = original.text;
       for (const asset of original.assets) {
         const name = names.get(asset);
-        if (name === void 0) known.set(String(asset), asset);
+        if (name === void 0) known2.set(String(asset), asset);
         else text = text.replaceAll(String(asset), name);
       }
       return text;
@@ -604,7 +608,7 @@ var serializeRequest = (payload, assets = {}) => {
   const missing = /* @__PURE__ */ new Set();
   for (const [reference] of json.matchAll(REFERENCE)) {
     if (sent.has(reference)) continue;
-    const asset = known.get(reference);
+    const asset = known2.get(reference);
     if (asset === void 0) missing.add(reference);
     else sent.set(reference, asset);
   }
@@ -1248,30 +1252,10 @@ function fallsBack(err) {
   return FALLBACK_STATUSES.has(status) || status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
 }
 
-// src/core/reasons.ts
-var CALLER_EFFORT = "caller effort";
-var CONFIG_EFFORT = "config effort";
-var UNREADABLE = "settings unreadable";
-var KEY_UNSET = "key unset";
-var BAD_REPLY = "bad reply";
-var TIMEOUT = "timeout";
-var FAILED = "failed";
-var NETWORK_ERROR = "network error";
-var REJECTED_REQUEST = "rejected request";
-var httpStatus = (status) => `HTTP ${status}`;
-var CANCELLED = "cancelled";
-var outsideCoreScope = (id) => `${id} is outside the core scope`;
-var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
-var agentUnknown = (id) => `${id} agent unknown`;
-var setsOwnModel = (id) => `${id} sets its own model`;
-
-// src/utils/error.ts
-var errorText = (err) => err instanceof Error ? err.message : String(err);
-
 // src/core/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
-var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
+var parseScope = (value) => SCOPE_VALUES.find((known2) => known2 === value);
 var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/core/settings.ts
@@ -1312,10 +1296,10 @@ var TEXTS = {
     }
   }
 };
-var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
-var isKeySetting = (name) => KEY_SETTINGS.some((known) => known === name);
+var isValueSetting = (name) => VALUE_SETTINGS.some((known2) => known2 === name);
+var isKeySetting = (name) => KEY_SETTINGS.some((known2) => known2 === name);
 var keyProvider = (setting) => KEY_PROVIDERS[setting];
-var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
+var isValue = (setting, value) => TEXTS[setting].values.some((known2) => known2 === value);
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
@@ -1368,6 +1352,136 @@ var COMMAND_DESCRIPTIONS = {
   provider: describeCommand("provider"),
   scope: describeCommand("scope")
 };
+
+// src/core/models.ts
+var MODELS = "models";
+var MAX_CANDIDATES = 4;
+var SHOW_ALL = "Show the whole list";
+var ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@/+-]{0,99}$/;
+var significant = new Intl.NumberFormat("en-US", {
+  maximumSignificantDigits: 3,
+  useGrouping: false
+});
+var compact = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumSignificantDigits: 3
+});
+var known = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0;
+function detail({ input, output, context }) {
+  const prices2 = [
+    known(input) ? `$${significant.format(input)} in` : void 0,
+    known(output) ? `$${significant.format(output)} out` : void 0
+  ].filter((part) => part !== void 0);
+  const parts = [
+    prices2.length > 0 ? `${prices2.join(", ")} per 1M tokens` : void 0,
+    known(context) ? `${compact.format(context)} context` : void 0
+  ].filter((part) => part !== void 0);
+  return parts.length > 0 ? parts.join(", ") : void 0;
+}
+var usable = (listed2) => listed2.filter(
+  (model) => typeof model.id === "string" && ID_PATTERN.test(model.id)
+);
+function listing(listed2) {
+  const models = usable(listed2);
+  return [
+    `models the person can run: ${models.length}`,
+    ...models.map((model) => {
+      const words = detail(model);
+      return words === void 0 ? `- ${model.id}` : `- ${model.id} (${words})`;
+    })
+  ].join("\n");
+}
+var unavailable = (err) => `models unavailable: ${errorText(err)}`;
+var label2 = (model) => {
+  const words = detail(model);
+  return words === void 0 ? model.id : `${model.id}${LABEL_SEPARATOR}${words}`;
+};
+async function ask2(writer2, slot, question, options) {
+  try {
+    return await writer2.select(slot, question, options);
+  } catch {
+    return void 0;
+  }
+}
+async function choose(port, writer2, slot, candidates) {
+  const setting = slotSetting(slot);
+  const refusal = writer2.authorize();
+  if (refusal !== void 0) return unchanged(setting, refusal);
+  let models;
+  try {
+    models = usable(await port.list());
+  } catch (err) {
+    return unchanged(setting, unavailable(err));
+  }
+  if (models.length === 0) return unchanged(setting, listing(models));
+  let current;
+  try {
+    current = await writer2.current(slot);
+  } catch (err) {
+    return unchangedBy(setting, err);
+  }
+  const question = `Which model should the ${slot} level run? ${setting} is ${current ?? "unset"} now.`;
+  const first = [];
+  for (const id of Array.isArray(candidates) ? candidates : []) {
+    const model2 = models.find((listed2) => listed2.id === id);
+    if (model2 !== void 0 && !first.includes(model2)) first.push(model2);
+    if (first.length === MAX_CANDIDATES) break;
+  }
+  let answer = await ask2(writer2, slot, question, [
+    ...first.map(label2),
+    SHOW_ALL
+  ]);
+  let from = first;
+  if (answer === SHOW_ALL) {
+    answer = await ask2(writer2, slot, question, models.map(label2));
+    from = models;
+  }
+  if (answer === void 0) return unchanged(setting, NO_ANSWER);
+  const model = from.find((listed2) => label2(listed2) === answer);
+  if (model === void 0) return unchanged(setting, NOT_OFFERED);
+  try {
+    return slotLine(writer2.name(slot), await writer2.write(slot, model.id));
+  } catch (err) {
+    return unchangedBy(setting, err);
+  }
+}
+async function runModels(port, params) {
+  const { setting, candidates } = params;
+  if (setting === MODELS) {
+    try {
+      return listing(await port.list());
+    } catch (err) {
+      return unavailable(err);
+    }
+  }
+  const slot = SLOTS.find((each) => slotSetting(each) === setting);
+  if (slot === void 0) return void 0;
+  return port.writer === null ? port.help(slot) : choose(port, port.writer, slot, candidates);
+}
+var modelToolSentences = (writable) => [
+  "With models it returns the models the person can run.",
+  ...writable ? [
+    "For a model setting, pass up to four ids from models as candidates: the dialog offers them and an entry that shows the whole list."
+  ] : []
+].join(" ");
+var CANDIDATES_DESCRIPTION = "Up to four model ids from the models list. The person picks in the plugin's dialog. Never a value to write.";
+
+// src/core/reasons.ts
+var CALLER_EFFORT = "caller effort";
+var CONFIG_EFFORT = "config effort";
+var UNREADABLE = "settings unreadable";
+var KEY_UNSET = "key unset";
+var BAD_REPLY = "bad reply";
+var TIMEOUT = "timeout";
+var FAILED = "failed";
+var NETWORK_ERROR = "network error";
+var REJECTED_REQUEST = "rejected request";
+var httpStatus = (status) => `HTTP ${status}`;
+var CANCELLED = "cancelled";
+var outsideCoreScope = (id) => `${id} is outside the core scope`;
+var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
+var agentUnknown = (id) => `${id} agent unknown`;
+var setsOwnModel = (id) => `${id} sets its own model`;
 
 // src/utils/serializer.ts
 function serializer() {
@@ -1475,244 +1589,6 @@ async function changeKey(ctx, setting) {
   }
 }
 
-// src/adapters/omp/config.ts
-var COMMAND_PREFIX = "model-router:";
-var LINE_BREAK2 = "\n";
-var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
-function say(ctx, text) {
-  try {
-    if (ctx.hasUI) ctx.ui.notify(text);
-    else process.stderr.write(`${text}
-`);
-  } catch {
-  }
-}
-async function withSettings(omp, ctx, show) {
-  const settings = await readSettings(omp, ctx.cwd);
-  return settings === void 0 ? UNREADABLE : show(settings);
-}
-var readAll = (omp, ctx) => withSettings(omp, ctx, async ({ provider, scope }) => {
-  const names = order(provider);
-  const found = await Promise.all(names.map((name) => findKey(ctx, name)));
-  const keys = {};
-  names.forEach((name, i) => {
-    const key = found[i];
-    if (key !== void 0) keys[name] = key;
-  });
-  return settingsReport(provider, scope, [], keys);
-});
-async function apply(omp, ctx, setting, value) {
-  if (!isValue(setting, value)) return useOneOf(setting);
-  const { plugin } = omp;
-  const before = await readSettings(omp, ctx.cwd);
-  if (before === void 0 || plugin === void 0)
-    return unchanged(setting, UNREADABLE);
-  if (before[setting] === value) return unchanged(setting, alreadyValue(value));
-  try {
-    await omp.writeSetting(ctx.cwd, plugin, setting, value);
-  } catch (err) {
-    return unchangedBy(setting, err);
-  }
-  const now = (await readSettings(omp, ctx.cwd))?.[setting] ?? value;
-  const line = valueLine(setting, now);
-  return now === value ? line : [line, projectOverrides(setting)].join(LINE_BREAK2);
-}
-async function dialog(omp, ctx, setting) {
-  if (!ctx.hasUI) return unchanged(setting, NO_ANSWER);
-  const shown = await readSettings(omp, ctx.cwd);
-  return chooseValue(
-    setting,
-    shown?.[setting],
-    (question, options) => ctx.ui.select(question, options),
-    (value) => apply(omp, ctx, setting, value)
-  );
-}
-async function runTool(omp, ctx, params) {
-  const { setting } = isRecord(params) ? params : {};
-  if (setting === void 0) return readAll(omp, ctx);
-  if (isValueSetting(setting)) return dialog(omp, ctx, setting);
-  return isKeySetting(setting) ? changeKey(ctx, setting) : badCall(SETTING_NAMES);
-}
-async function runCommand(omp, ctx, setting, args) {
-  const value = args.trim();
-  return value === "" ? withSettings(
-    omp,
-    ctx,
-    (settings) => valueLine(setting, settings[setting])
-  ) : apply(omp, ctx, setting, value);
-}
-var reply = (text) => ({
-  content: [{ type: "text", text }]
-});
-function registerConfig(omp, pi) {
-  const serial = serializer();
-  for (const setting of VALUE_SETTINGS)
-    pi.registerCommand(`${COMMAND_PREFIX}${setting}`, {
-      description: COMMAND_DESCRIPTIONS[setting],
-      handler: (args, ctx) => serial(async () => say(ctx, await runCommand(omp, ctx, setting, args)))
-    });
-  pi.registerTool({
-    name: TOOL_NAME,
-    label: TOOL_LABEL,
-    description: toolDescription(SETTING_NAMES),
-    parameters: pi.zod.object({
-      setting: pi.zod.enum(SETTING_NAMES).optional()
-    }),
-    loadMode: "essential",
-    approval: "write",
-    execute: (_id, params, _signal, _update, ctx) => serial(async () => reply(await runTool(omp, ctx, params)))
-  });
-}
-
-// src/core/client.ts
-function createClient(provider, apiKey, model, fetchFn) {
-  if (!Object.hasOwn(HOSTS, provider))
-    throw new Error(`createClient: no host for ${provider}`);
-  if (!apiKey)
-    throw new Error(
-      `createClient: no ${provider} key. Pass a non-empty key for ${provider}.`
-    );
-  return new TypeSafeClient({
-    apiKey,
-    baseURL: HOSTS[provider],
-    logLevel: "off",
-    defaultModel: model,
-    compression: false,
-    fetch: fetchFn
-  });
-}
-
-// src/core/part.ts
-var LEVELS = [0, 1, 2];
-var fromMiddle = (down, up) => (p) => {
-  const low = p[0] > down * p[1];
-  const high = p[2] > up * p[1];
-  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
-  return low ? 0 : high ? 2 : 1;
-};
-var PROBABILITY_DIGITS = 2;
-var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
-function parseProbabilities(answers, key) {
-  const a = isRecord(answers) ? answers[key] : void 0;
-  if (!isRecord(a)) return void 0;
-  const { type, probabilities } = a;
-  if (type !== "score" || !isRecord(probabilities)) return void 0;
-  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
-  const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
-    return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
-}
-
-// src/core/compose.ts
-var ROUTING_LIMIT_MS = 8e3;
-var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
-var MODEL_CHARS_MAX = 40;
-var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
-function abortCategory(signal) {
-  return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
-}
-function skipCategory(err, signal) {
-  if (err instanceof APIUserAbortError) return abortCategory(signal);
-  if (err instanceof APIError) return httpStatus(err.status);
-  if (err instanceof APITimeoutError) return TIMEOUT;
-  if (err instanceof APIConnectionError) return NETWORK_ERROR;
-  if (err instanceof TypeSafeError) return REJECTED_REQUEST;
-  return FAILED;
-}
-async function route(input) {
-  const { parts, attempts, signal } = input;
-  if (attempts.length === 0) return { skipped: KEY_UNSET };
-  const failed = [];
-  for (const [i, attempt2] of attempts.entries()) {
-    let result;
-    try {
-      result = await ask2(input, attempt2);
-    } catch (err) {
-      failed.push({
-        provider: attempt2.provider,
-        reason: skipCategory(err, signal)
-      });
-      if (!fallsBack(err)) break;
-      if (i < attempts.length - 1) input.onFallback?.(attempt2.provider);
-      continue;
-    }
-    const decision = parseReply(parts, result);
-    if ("skipped" in decision) {
-      failed.push({ provider: attempt2.provider, reason: decision.skipped });
-      break;
-    }
-    const [first] = failed;
-    if (!first) return decision;
-    const via = {
-      provider: attempt2.provider,
-      first: first.provider,
-      reason: first.reason
-    };
-    return { ...decision, via };
-  }
-  return skip(failed);
-}
-function ask2(input, attempt2) {
-  const { parts, state, keys, fetchFn, signal } = input;
-  const { provider, model, ...overrides } = attempt2;
-  return createClient(provider, keys[provider], model, fetchFn).systemOne(
-    {
-      state,
-      model,
-      questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
-    },
-    { ...overrides, signal }
-  );
-}
-function skip(failed) {
-  const [first, ...rest] = failed;
-  if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
-  return {
-    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
-  };
-}
-function parseReply(parts, result) {
-  const { answers, model, usage } = isRecord(result) ? result : {};
-  const decided = {};
-  for (const part of parts) {
-    const probabilities = parseProbabilities(answers, part.key);
-    if (!probabilities) return { skipped: BAD_REPLY };
-    decided[part.key] = { level: part.pick(probabilities), probabilities };
-  }
-  return {
-    parts: decided,
-    model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
-    usage: isRecord(usage) ? usage : void 0
-  };
-}
-function decisionSuffix({
-  model,
-  usage,
-  via
-}) {
-  const input = usage?.input_tokens;
-  const output = usage?.output_tokens;
-  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
-}
-
-// src/core/handler-deadline.ts
-var HANDLER_MARGIN_MS = 2e3;
-var MIN_DEADLINE_MS = 1e3;
-var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
-var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
-
-// src/adapters/omp/deadline.ts
-var DEFAULT_TIMEOUT_MS = 3e4;
-function budgetFor(value) {
-  const timeout = isPositiveNumber(value) ? value : DEFAULT_TIMEOUT_MS;
-  const deadline = deadlineFor(timeout);
-  if (deadline >= MIN_DEADLINE_MS) return { deadline };
-  return {
-    closed: `tool call timeout ${timeout} ms leaves ${Math.max(0, deadline)} ms to route`
-  };
-}
-
 // src/adapters/omp/items.ts
 var TASK = "task";
 var BUNDLED = "bundled";
@@ -1817,7 +1693,11 @@ function modelFor(model, plan2, patterns) {
 }
 
 // src/adapters/omp/gates.ts
-var ROLE_NAMES = { small: "smol", middle: "middle", large: "slow" };
+var ROLE_NAMES = {
+  small: "smol",
+  middle: "middle",
+  large: "slow"
+};
 async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
   const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
   if ("closed" in batch) return batch;
@@ -1857,6 +1737,335 @@ async function discover(pi, ctx) {
   } catch {
     return void 0;
   }
+}
+
+// src/adapters/omp/models.ts
+var ROLES = "modelRoles";
+var HELP = {
+  small: "small_model is omp's smol role (Fast). Set it in /models under Roles, or under modelRoles.smol in config.yml.",
+  middle: "middle_model is the middle role. Add it in /models under Roles with + New role\u2026 and the name middle, or under modelRoles.middle in config.yml.",
+  large: "large_model is omp's slow role (Thinking). Set it in /models under Roles, or under modelRoles.slow in config.yml."
+};
+var OTHER_USES = {
+  small: "omp also uses smol for the scout and sonic agents, commit messages, session titles and the prewalk hand-off.",
+  large: "omp also uses slow for the reviewer agent and the advisor."
+};
+var slotName = (slot) => `${slotSetting(slot)} (${ROLE_NAMES[slot]} role)`;
+function configured(omp, pi, slot) {
+  let roles;
+  try {
+    roles = omp.lookup(ROLES)?.get(pi.pi.settings);
+  } catch {
+    return void 0;
+  }
+  const name = ROLE_NAMES[slot];
+  const value = isRecord(roles) && Object.hasOwn(roles, name) ? roles[name] : void 0;
+  const patterns = patternsOf(value);
+  return patterns.length > 0 ? patterns.join(", ") : void 0;
+}
+var rate = (value) => typeof value === "number" && value !== 0;
+function prices(model) {
+  const { cost, pricingStatus } = model;
+  if (!isRecord(cost)) return {};
+  const { input, output, cacheRead, cacheWrite } = cost;
+  const fixed = [input, output, cacheRead, cacheWrite].some(rate) || pricingStatus === "free";
+  if (!fixed) return {};
+  return {
+    ...typeof input === "number" ? { input } : {},
+    ...typeof output === "number" ? { output } : {}
+  };
+}
+function listed(model) {
+  if (!isRecord(model)) return [];
+  const { provider, id, contextWindow } = model;
+  if (typeof provider !== "string" || typeof id !== "string") return [];
+  return [
+    {
+      id: `${provider}/${id}`,
+      ...prices(model),
+      ...typeof contextWindow === "number" ? { context: contextWindow } : {}
+    }
+  ];
+}
+function writer(omp, pi, ctx) {
+  return {
+    authorize: () => void 0,
+    name: slotName,
+    current: async (slot) => configured(omp, pi, slot),
+    select: (slot, question, options) => {
+      const note = OTHER_USES[slot];
+      return ctx.ui.select(
+        note === void 0 ? question : `${question} ${note}`,
+        options
+      );
+    },
+    // setEntry writes this one role into the user's global config.yml and keeps the others.
+    write: async (slot, id) => {
+      const roles = omp.lookup(ROLES);
+      if (roles?.setEntry === void 0) throw new Error(UNREADABLE);
+      roles.setEntry(pi.pi.settings, ROLE_NAMES[slot], id);
+      return configured(omp, pi, slot);
+    }
+  };
+}
+var modelPort = (omp, pi, ctx) => ({
+  list: async () => ctx.models.list().flatMap(listed),
+  help: (slot) => HELP[slot],
+  writer: ctx.hasUI ? writer(omp, pi, ctx) : null
+});
+
+// src/adapters/omp/config.ts
+var COMMAND_PREFIX = "model-router:";
+var LINE_BREAK2 = "\n";
+var TOOL_SETTINGS = [...SETTING_NAMES, ...SLOT_SETTINGS, "models"];
+var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
+function say(ctx, text) {
+  try {
+    if (ctx.hasUI) ctx.ui.notify(text);
+    else process.stderr.write(`${text}
+`);
+  } catch {
+  }
+}
+async function withSettings(omp, ctx, show) {
+  const settings = await readSettings(omp, ctx.cwd);
+  return settings === void 0 ? UNREADABLE : show(settings);
+}
+var readAll = (omp, pi, ctx) => withSettings(omp, ctx, async ({ provider, scope }) => {
+  const names = order(provider);
+  const found = await Promise.all(names.map((name) => findKey(ctx, name)));
+  const keys = {};
+  names.forEach((name, i) => {
+    const key = found[i];
+    if (key !== void 0) keys[name] = key;
+  });
+  const models = SLOTS.map(
+    (slot) => slotLine(slotName(slot), configured(omp, pi, slot))
+  );
+  return settingsReport(provider, scope, models, keys);
+});
+async function apply(omp, ctx, setting, value) {
+  if (!isValue(setting, value)) return useOneOf(setting);
+  const { plugin } = omp;
+  const before = await readSettings(omp, ctx.cwd);
+  if (before === void 0 || plugin === void 0)
+    return unchanged(setting, UNREADABLE);
+  if (before[setting] === value) return unchanged(setting, alreadyValue(value));
+  try {
+    await omp.writeSetting(ctx.cwd, plugin, setting, value);
+  } catch (err) {
+    return unchangedBy(setting, err);
+  }
+  const now = (await readSettings(omp, ctx.cwd))?.[setting] ?? value;
+  const line = valueLine(setting, now);
+  return now === value ? line : [line, projectOverrides(setting)].join(LINE_BREAK2);
+}
+async function dialog(omp, ctx, setting) {
+  if (!ctx.hasUI) return unchanged(setting, NO_ANSWER);
+  const shown = await readSettings(omp, ctx.cwd);
+  return chooseValue(
+    setting,
+    shown?.[setting],
+    (question, options) => ctx.ui.select(question, options),
+    (value) => apply(omp, ctx, setting, value)
+  );
+}
+async function runTool(omp, pi, ctx, params) {
+  const { setting, candidates } = isRecord(params) ? params : {};
+  if (setting === void 0) return readAll(omp, pi, ctx);
+  if (isValueSetting(setting)) return dialog(omp, ctx, setting);
+  if (isKeySetting(setting)) return changeKey(ctx, setting);
+  const models = await runModels(modelPort(omp, pi, ctx), {
+    setting,
+    candidates
+  });
+  return models ?? badCall(TOOL_SETTINGS);
+}
+async function runCommand(omp, ctx, setting, args) {
+  const value = args.trim();
+  return value === "" ? withSettings(
+    omp,
+    ctx,
+    (settings) => valueLine(setting, settings[setting])
+  ) : apply(omp, ctx, setting, value);
+}
+var reply = (text) => ({
+  content: [{ type: "text", text }]
+});
+function registerConfig(omp, pi) {
+  const serial = serializer();
+  for (const setting of VALUE_SETTINGS)
+    pi.registerCommand(`${COMMAND_PREFIX}${setting}`, {
+      description: COMMAND_DESCRIPTIONS[setting],
+      handler: (args, ctx) => serial(async () => say(ctx, await runCommand(omp, ctx, setting, args)))
+    });
+  pi.registerTool({
+    name: TOOL_NAME,
+    label: TOOL_LABEL,
+    description: [
+      toolDescription(
+        TOOL_SETTINGS,
+        "the provider, the scope and the three models"
+      ),
+      modelToolSentences(true)
+    ].join(" "),
+    parameters: pi.zod.object({
+      setting: pi.zod.enum(TOOL_SETTINGS).optional(),
+      candidates: pi.zod.array(pi.zod.string()).optional().describe(CANDIDATES_DESCRIPTION)
+    }),
+    loadMode: "essential",
+    approval: "write",
+    execute: (_id, params, _signal, _update, ctx) => serial(async () => reply(await runTool(omp, pi, ctx, params)))
+  });
+}
+
+// src/core/client.ts
+function createClient(provider, apiKey, model, fetchFn) {
+  if (!Object.hasOwn(HOSTS, provider))
+    throw new Error(`createClient: no host for ${provider}`);
+  if (!apiKey)
+    throw new Error(
+      `createClient: no ${provider} key. Pass a non-empty key for ${provider}.`
+    );
+  return new TypeSafeClient({
+    apiKey,
+    baseURL: HOSTS[provider],
+    logLevel: "off",
+    defaultModel: model,
+    compression: false,
+    fetch: fetchFn
+  });
+}
+
+// src/core/part.ts
+var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
+};
+var PROBABILITY_DIGITS = 2;
+var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+function parseProbabilities(answers, key) {
+  const a = isRecord(answers) ? answers[key] : void 0;
+  if (!isRecord(a)) return void 0;
+  const { type, probabilities } = a;
+  if (type !== "score" || !isRecord(probabilities)) return void 0;
+  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
+  const { 0: p0, 1: p1, 2: p2 } = probabilities;
+  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+
+// src/core/compose.ts
+var ROUTING_LIMIT_MS = 8e3;
+var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
+var MODEL_CHARS_MAX = 40;
+var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+function abortCategory(signal) {
+  return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
+}
+function skipCategory(err, signal) {
+  if (err instanceof APIUserAbortError) return abortCategory(signal);
+  if (err instanceof APIError) return httpStatus(err.status);
+  if (err instanceof APITimeoutError) return TIMEOUT;
+  if (err instanceof APIConnectionError) return NETWORK_ERROR;
+  if (err instanceof TypeSafeError) return REJECTED_REQUEST;
+  return FAILED;
+}
+async function route(input) {
+  const { parts, attempts, signal } = input;
+  if (attempts.length === 0) return { skipped: KEY_UNSET };
+  const failed = [];
+  for (const [i, attempt2] of attempts.entries()) {
+    let result;
+    try {
+      result = await ask3(input, attempt2);
+    } catch (err) {
+      failed.push({
+        provider: attempt2.provider,
+        reason: skipCategory(err, signal)
+      });
+      if (!fallsBack(err)) break;
+      if (i < attempts.length - 1) input.onFallback?.(attempt2.provider);
+      continue;
+    }
+    const decision = parseReply(parts, result);
+    if ("skipped" in decision) {
+      failed.push({ provider: attempt2.provider, reason: decision.skipped });
+      break;
+    }
+    const [first] = failed;
+    if (!first) return decision;
+    const via = {
+      provider: attempt2.provider,
+      first: first.provider,
+      reason: first.reason
+    };
+    return { ...decision, via };
+  }
+  return skip(failed);
+}
+function ask3(input, attempt2) {
+  const { parts, state, keys, fetchFn, signal } = input;
+  const { provider, model, ...overrides } = attempt2;
+  return createClient(provider, keys[provider], model, fetchFn).systemOne(
+    {
+      state,
+      model,
+      questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
+    },
+    { ...overrides, signal }
+  );
+}
+function skip(failed) {
+  const [first, ...rest] = failed;
+  if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
+  return {
+    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
+  };
+}
+function parseReply(parts, result) {
+  const { answers, model, usage } = isRecord(result) ? result : {};
+  const decided = {};
+  for (const part of parts) {
+    const probabilities = parseProbabilities(answers, part.key);
+    if (!probabilities) return { skipped: BAD_REPLY };
+    decided[part.key] = { level: part.pick(probabilities), probabilities };
+  }
+  return {
+    parts: decided,
+    model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
+    usage: isRecord(usage) ? usage : void 0
+  };
+}
+function decisionSuffix({
+  model,
+  usage,
+  via
+}) {
+  const input = usage?.input_tokens;
+  const output = usage?.output_tokens;
+  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
+}
+
+// src/core/handler-deadline.ts
+var HANDLER_MARGIN_MS = 2e3;
+var MIN_DEADLINE_MS = 1e3;
+var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
+var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
+
+// src/adapters/omp/deadline.ts
+var DEFAULT_TIMEOUT_MS = 3e4;
+function budgetFor(value) {
+  const timeout = isPositiveNumber(value) ? value : DEFAULT_TIMEOUT_MS;
+  const deadline = deadlineFor(timeout);
+  if (deadline >= MIN_DEADLINE_MS) return { deadline };
+  return {
+    closed: `tool call timeout ${timeout} ms leaves ${Math.max(0, deadline)} ms to route`
+  };
 }
 
 // src/core/tier.ts
