@@ -187,6 +187,15 @@ test("the target's subagent model skips the spawn", () => {
 	assert.equal(skipped(other(cfg)), "subagent model set");
 });
 
+test("a blank or null target's subagent model routes the spawn, and an object skips it", () => {
+	for (const model of ["", "  ", null])
+		routed(other(known({ subagents: { model } })));
+	assert.equal(
+		skipped(other(known({ subagents: { model: { primary: "a/b" } } }))),
+		"subagent model set",
+	);
+});
+
 test("the default subagent model skips the spawn", () => {
 	const config = agents({ defaults: { subagents: { model: "a/b" } } });
 	assert.equal(skipped(gate({ config })), "subagent model set");
