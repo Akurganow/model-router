@@ -1,11 +1,11 @@
 ---
 name: model-router-setup
-description: Use to set up model-router in OpenClaw: choose its provider or scope, add a TypeSafe or OpenRouter key, find why routing is off, or check routing.
+description: Use to set up model-router in OpenClaw: choose its provider or scope, add a TypeSafe or OpenRouter key, set the three models, find why routing is off, or check routing.
 ---
 
 # model-router setup for OpenClaw
 
-model-router scores each routed `sessions_spawn` call with Jev, on TypeSafe or OpenRouter. It gives the subagent the person's `small_model` for lookup work, or their `large_model` for open judgment. This setup picks the provider and the scope, checks the keys, lists the reasons routing is off, and ends with a routing check.
+model-router scores each routed `sessions_spawn` call with Jev, on TypeSafe or OpenRouter. It gives the subagent the person's `small_model` for lookup work, their `middle_model` for bounded judgment, or their `large_model` for open judgment. This setup picks the provider and the scope, checks the keys, helps set the three models, lists the reasons routing is off, and ends with a routing check.
 
 ## Rules
 
@@ -17,7 +17,6 @@ model-router scores each routed `sessions_spawn` call with Jev, on TypeSafe or O
 - Run the setup the same way on the first run and on every re-run.
 - Never take a key through chat. If a key arrives, do not repeat or store it. Tell the person to rotate it.
 - Never display a key or any other credential.
-- Propose no models. Assigning `small_model` and `large_model` is the person's job.
 - Tell the person to write each slot as the full `provider/model` id. A bare model name expands to a ref OpenClaw may not know, and the child then fails.
 - Skip a step the person declines. Name the skipped steps in the closing summary.
 - Keep each message short. Show raw output only when the person needs it.
@@ -61,7 +60,16 @@ The key question has three answers:
 
 If a key is missing for every allowed provider, say that every call skips with `key unset` until one exists. With `auto` or `openrouter-first` and one key, say that its provider scores alone.
 
-## Step 4. Scope
+## Step 4. Models
+
+1. Call the tool with no setting. It shows `small_model`, `middle_model` and `large_model`, each with its configured value or `unset`. A slot with no model runs on the model OpenClaw gives, and the plugin still sets the effort unless the person set one.
+2. When a slot is unset, or the person asks: call the tool with setting `models`. For each slot propose up to four ids from that list only, in chat: cheap and fast for small, mid-priced for middle, strongest for large. Use a price only where the list shows one, and say when it shows none. OpenClaw's list shows context sizes and no prices.
+3. Call the tool with the slot setting and give the person the text it returns. It says where the setting lives and the command to run.
+4. When the person says it is done, call the tool with no setting and show the three lines again.
+
+The tool can show the old value until OpenClaw replaces the plugin, as in Step 2.
+
+## Step 5. Scope
 
 1. Call the tool with setting `scope`.
 2. Show the command and the allowed values it returns.
@@ -73,13 +81,13 @@ The tool can show the old value until OpenClaw replaces the plugin, as in Step 2
 
 [Scope](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#scope) says what each value routes.
 
-## Step 5. List the reasons routing is off
+## Step 6. List the reasons routing is off
 
 Check each cause on the [No line at all?](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#no-line-at-all) list and each skip reason in [Which spawns are routed](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#which-spawns-are-routed). Report every reason that holds, not only the first.
 
 For each reason that holds, tell the person which setting to change, and where. [Set up](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#set-up) shows how to assign a model. The person runs the change. This skill changes none of them.
 
-## Step 6. Routing check
+## Step 7. Routing check
 
 1. If the plugin was just enabled or installed, or a key variable changed, ask the person to restart the Gateway. Then return to this step.
 2. Ask the routing-check question with the answers "Check" and "Skip".
@@ -89,7 +97,7 @@ For each reason that holds, tell the person which setting to change, and where. 
 6. OpenClaw shows no chat line. Read the Gateway log with `openclaw logs --plain`, or ask the person to read it.
 7. Take the first `model-router` line logged after the noted time. An older line belongs to another spawn.
 8. If no such line exists, report it and check each cause on the [No line at all?](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#no-line-at-all) list.
-9. Check that the line names a level, a model or `no change`, and an effort.
+9. Check that the line names a level, a model or why its slot has none, and an effort.
 10. If the line names a skip reason, stop and report it.
 11. Check `resolvedModel` against the line. Report the result in one line.
 
@@ -97,9 +105,9 @@ The routing-check question reads: "To check routing I will spawn one small subag
 
 Read the line as follows:
 
-- A level 0 or 2 line names the slot string, and `resolvedModel` matches it. A level 1 line reads `no change`, and the spawn keeps OpenClaw's own model. [The log line](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#the-log-line) explains the rest of the line.
+- A line that names a slot string has `resolvedModel` matching it. A line that reads `<slot> model unset` or `<slot> model unresolved` keeps OpenClaw's own model, and points to step 4. [The log line](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#the-log-line) explains the rest of the line.
 - `key unset` points to step 3.
-- Any other reason in step 5 points to step 5.
+- Any other reason in step 6 points to step 6.
 - `timeout`, `network error` or an HTTP status points to the provider or the network.
 
 When the check fails after a model was set, say that OpenClaw can still say no, as [Fails open](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/PRIVACY.md#fails-open) explains.
