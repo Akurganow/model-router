@@ -17,6 +17,8 @@ BLOCKED = (
     "hermes_cli.left_core_migration",
     "hermes_cli.runtime_provider",
     "agent.models_dev",
+    "hermes_cli.models",
+    "hermes_cli.models_catalog_static",
 )
 
 
@@ -51,6 +53,12 @@ class MissingModulesTest(unittest.TestCase):
                 api.list_models("openrouter")
             with self.assertRaises(ImportError):
                 api.get_secret("TYPESAFE_API_KEY")
+            with self.assertRaises(ImportError):
+                api.provider_ids()
+            with self.assertRaises(ImportError):
+                api.has_credentials("openrouter")
+            with self.assertRaises(ImportError):
+                api.model_info("openrouter", "m")
 
 
 class LiveFunctionsTest(unittest.TestCase):
@@ -73,6 +81,18 @@ class LiveFunctionsTest(unittest.TestCase):
             calls.append(("models", provider, allow_network))
             return ["m"]
 
+        def get_model_info(provider, model, allow_network=True):
+            calls.append(("info", provider, model, allow_network))
+            return "info"
+
+        def listed_canonical_providers():
+            calls.append(("providers",))
+            return [types.SimpleNamespace(slug="openrouter"), types.SimpleNamespace(slug="bedrock")]
+
+        def provider_has_credentials(provider):
+            calls.append(("credentials", provider))
+            return provider == "openrouter"
+
         modules = {
             "agent.secret_scope": module("agent.secret_scope", get_secret=lambda name: f"v-{name}"),
             "hermes_constants": module(
@@ -91,7 +111,16 @@ class LiveFunctionsTest(unittest.TestCase):
             "hermes_cli.runtime_provider": module(
                 "hermes_cli.runtime_provider", resolve_runtime_provider=resolve
             ),
-            "agent.models_dev": module("agent.models_dev", list_provider_models=list_models),
+            "agent.models_dev": module(
+                "agent.models_dev", list_provider_models=list_models, get_model_info=get_model_info
+            ),
+            "hermes_cli.models": module(
+                "hermes_cli.models", _provider_has_credentials=provider_has_credentials
+            ),
+            "hermes_cli.models_catalog_static": module(
+                "hermes_cli.models_catalog_static",
+                listed_canonical_providers=listed_canonical_providers,
+            ),
         }
         api = hermes_api.live_api()
         with fake_modules(**modules):
@@ -102,11 +131,17 @@ class LiveFunctionsTest(unittest.TestCase):
             self.assertTrue(api.is_refreshable("x"))
             api.resolve_runtime("openrouter", "m")
             self.assertEqual(api.list_models("openrouter"), ["m"])
+            self.assertEqual(api.provider_ids(), ["openrouter", "bedrock"])
+            self.assertTrue(api.has_credentials("openrouter"))
+            self.assertEqual(api.model_info("openrouter", "m"), "info")
         self.assertEqual(
             calls,
             [
                 ("resolve", {"requested": "openrouter", "target_model": "m"}, True),
                 ("models", "openrouter", False),
+                ("providers",),
+                ("credentials", "openrouter"),
+                ("info", "openrouter", "m", False),
             ],
         )
 

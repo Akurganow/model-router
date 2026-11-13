@@ -43,13 +43,15 @@ test("the tool and command names and texts equal the src/ values", () => {
 		"small_model",
 		"middle_model",
 		"large_model",
+		"models",
 	]);
+	assert.equal(texts.modelsSetting, "models");
 });
 
 test("the tool description is the text that names every setting, changes nothing and returns no key", () => {
 	assert.equal(
 		texts.toolDescription,
-		"Reads the router's settings. With no input it returns the provider, the three models, and whether each key the provider allows is set. With a setting name (provider, typesafe_key, openrouter_key, small_model, middle_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key.",
+		"Reads the router's settings. With no input it returns the provider, the three models, and whether each key the provider allows is set. With a setting name (provider, typesafe_key, openrouter_key, small_model, middle_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key. With models it returns the models the person can run.",
 	);
 });
 
@@ -83,7 +85,10 @@ test("a write from a non-local session is refused with its own reason", () => {
 });
 
 test("the help texts say where each setting changes and never ask for a key in chat", () => {
-	assert.deepEqual(Object.keys(texts.help), texts.settings);
+	assert.deepEqual(
+		Object.keys(texts.help),
+		texts.settings.filter((name: string) => name !== texts.modelsSetting),
+	);
 	assert.ok(texts.help.provider.includes(`/${texts.commandName} <value>`));
 	assert.ok(texts.help.provider.includes(texts.useOneOf));
 	for (const name of PROVIDERS) {
@@ -116,6 +121,19 @@ test("the slot templates and separators are the ones Python fills", () => {
 	assert.equal(texts.modelUnset, "{name}: unset");
 	assert.equal(texts.lineBreak, "\n");
 	assert.equal(texts.errorPrefix, "error: ");
+});
+
+test("the models texts are the finished lines Python prints when Node cannot word the list", () => {
+	assert.deepEqual(texts.modelsUnavailable, {
+		nodeNotFound: "models unavailable: node not found",
+		failed: "models unavailable: failed",
+		timeout: "models unavailable: timeout",
+		error: "models unavailable: {error}",
+	});
+	assert.equal(
+		texts.badCall,
+		"Unknown setting. Pass no setting, or one of: provider, typesafe_key, openrouter_key, small_model, middle_model, large_model, models",
+	);
 });
 
 test("the rendered texts equal the builder's output for the plugin name", () => {

@@ -70,15 +70,17 @@
 		"toolName": "model_router_config",
 		"toolset": "model_router",
 		"toolLabel": "Model Router settings",
-		"toolDescription": "Reads the router's settings. With no input it returns the provider, the three models, and whether each key the provider allows is set. With a setting name (provider, typesafe_key, openrouter_key, small_model, middle_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key.",
+		"toolDescription": "Reads the router's settings. With no input it returns the provider, the three models, and whether each key the provider allows is set. With a setting name (provider, typesafe_key, openrouter_key, small_model, middle_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key. With models it returns the models the person can run.",
 		"settings": [
 			"provider",
 			"typesafe_key",
 			"openrouter_key",
 			"small_model",
 			"middle_model",
-			"large_model"
+			"large_model",
+			"models"
 		],
+		"modelsSetting": "models",
 		"commandName": "model-router-provider",
 		"commandDescription": "Shows or changes which providers score subagent calls: auto, openrouter-first, typesafe, openrouter.",
 		"argsHint": "<auto|openrouter-first|typesafe|openrouter>",
@@ -98,7 +100,7 @@
 		},
 		"refused": "provider unchanged: only a local session can change it",
 		"localPlatforms": ["local", "cli", "tui", "desktop"],
-		"badCall": "Unknown setting. Pass no setting, or one of: provider, typesafe_key, openrouter_key, small_model, middle_model, large_model",
+		"badCall": "Unknown setting. Pass no setting, or one of: provider, typesafe_key, openrouter_key, small_model, middle_model, large_model, models",
 		"keyLines": {
 			"typesafe": {
 				"set": "typesafe key: set",
@@ -112,6 +114,12 @@
 		"unset": "unset",
 		"modelLine": "{name}: {provider} {model}",
 		"modelUnset": "{name}: unset",
+		"modelsUnavailable": {
+			"nodeNotFound": "models unavailable: node not found",
+			"failed": "models unavailable: failed",
+			"timeout": "models unavailable: timeout",
+			"error": "models unavailable: {error}"
+		},
 		"lineBreak": "\n",
 		"errorPrefix": "error: ",
 		"help": {

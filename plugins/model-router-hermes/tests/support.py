@@ -21,6 +21,9 @@ from node_stub import make_node_stub
 
 PLUGIN_DIR = Path(__file__).resolve().parent.parent
 FIXTURES = sorted((PLUGIN_DIR / "tests" / "fixtures").glob("*.json"))
+MODELS_FIXTURE = json.loads(
+    (PLUGIN_DIR / "tests" / "fixtures" / "models" / "listing.json").read_text(encoding="utf-8")
+)
 # Hermes accepts these efforts for a delegated task.
 HERMES_EFFORTS = {"minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
 
@@ -194,8 +197,43 @@ def fake_api(**overrides: Any) -> Any:
         is_refreshable=lambda provider: False,
         resolve_runtime=lambda provider, model: None,
         list_models=lambda provider: ["small-model", "middle-model", "large-model"],
+        provider_ids=lambda: [],
+        has_credentials=lambda provider: True,
+        model_info=lambda provider, model: None,
     )
     return dataclasses.replace(api, **overrides)
+
+
+@dataclasses.dataclass(frozen=True)
+class FakeModelInfo:
+    """The fields of Hermes's ModelInfo the shim reads; a price of 0.0 means Hermes has none."""
+
+    cost_input: float = 0.0
+    cost_output: float = 0.0
+    context_window: int = 0
+
+    def has_cost_data(self) -> bool:
+        return self.cost_input > 0 or self.cost_output > 0
+
+
+def hermes_of(fixture: dict[str, Any], **overrides: Any) -> Any:
+    """A HermesApi that lists the providers, models and model data of a models fixture."""
+    hermes = fixture["hermes"]
+    auth_types = hermes.get("authTypes", {})
+
+    def model_info(provider, model):
+        info = hermes["info"].get(provider, {}).get(model)
+        return None if info is None else FakeModelInfo(**info)
+
+    authenticated = {entry["id"]: entry["authenticated"] for entry in hermes["providers"]}
+    return fake_api(
+        provider_ids=lambda: list(authenticated),
+        has_credentials=lambda provider: authenticated[provider],
+        auth_type=lambda provider: auth_types.get(provider, "api_key"),
+        list_models=lambda provider: list(hermes["models"].get(provider, [])),
+        model_info=model_info,
+        **overrides,
+    )
 
 
 def short_constants(routing_ms: int = 1000, grace_ms: int = 2000) -> dict[str, Any]:

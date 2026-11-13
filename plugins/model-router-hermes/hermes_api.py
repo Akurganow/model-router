@@ -18,6 +18,13 @@ class HermesApi:
     # Raises when the provider has no credentials that resolve without the network.
     resolve_runtime: Callable[[str, str], object]
     list_models: Callable[[str], list]
+    # The provider ids Hermes's own provider list offers, as its /model command shows them.
+    provider_ids: Callable[[], list]
+    # Hermes's own "authenticated" flag of that list. Ask it only for a provider whose credentials
+    # stay offline: for bedrock it probes the cloud metadata endpoint.
+    has_credentials: Callable[[str], bool]
+    # A model's catalogue record offline, or None; its prices read 0.0 unless has_cost_data() is true.
+    model_info: Callable[[str, str], object]
 
 
 def _get_secret(name):
@@ -63,6 +70,24 @@ def _list_models(provider):
     return list_provider_models(provider, allow_network=False)
 
 
+def _provider_ids():
+    from hermes_cli.models_catalog_static import listed_canonical_providers
+
+    return [entry.slug for entry in listed_canonical_providers()]
+
+
+def _has_credentials(provider):
+    from hermes_cli.models import _provider_has_credentials
+
+    return _provider_has_credentials(provider)
+
+
+def _model_info(provider, model):
+    from agent.models_dev import get_model_info
+
+    return get_model_info(provider, model, allow_network=False)
+
+
 def live_api():
     return HermesApi(
         get_secret=_get_secret,
@@ -71,4 +96,7 @@ def live_api():
         is_refreshable=_is_refreshable,
         resolve_runtime=_resolve_runtime,
         list_models=_list_models,
+        provider_ids=_provider_ids,
+        has_credentials=_has_credentials,
+        model_info=_model_info,
     )

@@ -1,0 +1,73 @@
+{
+	"description": "Python lists the authenticated providers whose credentials stay offline, with a price only where Hermes has cost data; Node joins provider and model, drops a bad id and words the list.",
+	"hermes": {
+		"providers": [
+			{ "id": "openrouter", "authenticated": true },
+			{ "id": "deepseek", "authenticated": true },
+			{ "id": "nous", "authenticated": true },
+			{ "id": "gemini", "authenticated": false }
+		],
+		"authTypes": { "nous": "oauth_device_code" },
+		"models": {
+			"openrouter": ["vendor/fast", "vendor/free", "~vendor/latest"],
+			"deepseek": ["deepseek-flash", "deepseek-pro"],
+			"nous": ["hermes-4"],
+			"gemini": ["gemini-3"]
+		},
+		"info": {
+			"openrouter": {
+				"vendor/fast": {
+					"cost_input": 0.25,
+					"cost_output": 2.0,
+					"context_window": 1048576
+				},
+				"vendor/free": {
+					"cost_input": 0.0,
+					"cost_output": 0.0,
+					"context_window": 131072
+				},
+				"~vendor/latest": {
+					"cost_input": 1.0,
+					"cost_output": 1.0,
+					"context_window": 0
+				}
+			},
+			"deepseek": {
+				"deepseek-pro": {
+					"cost_input": 1.5,
+					"cost_output": 6.0,
+					"context_window": 0
+				}
+			}
+		}
+	},
+	"request": {
+		"op": "models",
+		"listed": [
+			{
+				"provider": "openrouter",
+				"model": "vendor/fast",
+				"input": 0.25,
+				"output": 2.0,
+				"context": 1048576
+			},
+			{ "provider": "openrouter", "model": "vendor/free", "context": 131072 },
+			{
+				"provider": "openrouter",
+				"model": "~vendor/latest",
+				"input": 1.0,
+				"output": 1.0
+			},
+			{ "provider": "deepseek", "model": "deepseek-flash" },
+			{
+				"provider": "deepseek",
+				"model": "deepseek-pro",
+				"input": 1.5,
+				"output": 6.0
+			}
+		]
+	},
+	"response": {
+		"text": "models the person can run: 4\n- openrouter/vendor/fast ($0.25 in, $2 out per 1M tokens, 1.05M context)\n- openrouter/vendor/free (131K context)\n- deepseek/deepseek-flash\n- deepseek/deepseek-pro ($1.5 in, $6 out per 1M tokens)"
+	}
+}

@@ -12,6 +12,7 @@ from support import CONSTANTS, REAL_HERMES, FakeCtx, fake_api, good_settings, ma
 
 checks = submodule("checks")
 hermes_api = submodule("hermes_api")
+config_tool = submodule("config_tool")
 
 
 @unittest.skipUnless(REAL_HERMES, "the real Hermes modules do not import here")
@@ -196,6 +197,81 @@ class HermesApiOnHermesTest(unittest.TestCase):
         ):
             models = hermes_api.live_api().list_models("deepseek")
         self.assertEqual(models, ["deepseek-chat"])
+
+    PRICED = {
+        "deepseek": {
+            "id": "deepseek",
+            "models": {
+                "deepseek-chat": {
+                    "id": "deepseek-chat",
+                    "cost": {"input": 0.28, "output": 0.42},
+                    "limit": {"context": 128000},
+                }
+            },
+        }
+    }
+
+    def offline_home(self, cache, environ=None):
+        """A Hermes home holding only a catalogue cache, with every socket call refused."""
+        import agent.models_dev as models_dev
+
+        home = tempfile.TemporaryDirectory()
+        self.addCleanup(home.cleanup)
+        Path(home.name, "models_dev_cache.json").write_text(json.dumps(cache), encoding="utf-8")
+        patches = [
+            mock.patch.dict(os.environ, {"HERMES_HOME": home.name, **(environ or {})}),
+            mock.patch.object(models_dev, "_models_dev_cache", {}),
+            mock.patch.object(socket.socket, "connect", _no_network),
+            mock.patch.object(socket.socket, "connect_ex", _no_network),
+            mock.patch.object(socket, "create_connection", _no_network),
+        ]
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_model_info_reads_prices_and_context_offline(self):
+        self.offline_home(self.PRICED)
+        info = hermes_api.live_api().model_info("deepseek", "deepseek-chat")
+        self.assertTrue(info.has_cost_data())
+        self.assertEqual(
+            (info.cost_input, info.cost_output, info.context_window), (0.28, 0.42, 128000)
+        )
+
+    def test_model_info_reads_no_price_as_no_cost_data(self):
+        self.offline_home({"deepseek": {"id": "deepseek", "models": {"free": {"id": "free"}}}})
+        info = hermes_api.live_api().model_info("deepseek", "free")
+        self.assertFalse(info.has_cost_data())
+        self.assertEqual((info.cost_input, info.cost_output), (0.0, 0.0))
+
+    def test_the_provider_ids_and_their_flag_are_those_of_hermess_provider_list(self):
+        # list_available_providers itself asks bedrock's status, which probes the network, so the shim calls its parts.
+        from hermes_cli.models import list_available_providers
+
+        self.offline_home({}, {"DEEPSEEK_API_KEY": "probe-fake"})
+        api = hermes_api.live_api()
+        ids = api.provider_ids()
+        self.assertIn("openrouter", ids)
+        self.assertIn("bedrock", ids)
+        offline = [p for p in ids if checks.credentials_stay_offline(p, api)]
+        self.assertNotIn("bedrock", offline)
+        self.assertIn(True, [api.has_credentials(p) for p in offline])
+        # Sockets stay blocked here, so bedrock's probe fails and the list still comes back.
+        hermes = {entry["id"]: entry["authenticated"] for entry in list_available_providers()}
+        self.assertEqual({p: api.has_credentials(p) for p in offline}, {p: hermes[p] for p in offline})
+
+    def test_the_models_list_reads_hermes_offline(self):
+        self.offline_home(self.PRICED, {"DEEPSEEK_API_KEY": "probe-fake"})
+        listed = config_tool.listed_models(hermes_api.live_api())
+        self.assertIn(
+            {
+                "provider": "deepseek",
+                "model": "deepseek-chat",
+                "input": 0.28,
+                "output": 0.42,
+                "context": 128000,
+            },
+            listed,
+        )
 
     def test_resolve_runtime_provider_takes_the_keywords_the_shim_passes(self):
         from hermes_cli.runtime_provider import resolve_runtime_provider

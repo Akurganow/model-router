@@ -90,8 +90,8 @@ def parse_response(text):
     return _checked(reply)
 
 
-def run_node(command, request, timeout_s):
-    """Runs `command` (a list, no shell) with the request on stdin; returns a Skip or a Route."""
+def _run(command, request, timeout_s):
+    """Runs `command` (a list, no shell) with the request on stdin; returns its stdout as text."""
     try:
         done = subprocess.run(
             command,
@@ -109,6 +109,22 @@ def run_node(command, request, timeout_s):
     if done.returncode != 0:
         raise NodeFailed("node exited non-zero")
     try:
-        return parse_response(done.stdout.decode("utf-8"))
+        return done.stdout.decode("utf-8")
     except UnicodeDecodeError:
         raise NodeFailed("reply is not text") from None
+
+
+def run_node(command, request, timeout_s):
+    """Runs a routing request; returns a Skip or a Route."""
+    return parse_response(_run(command, request, timeout_s))
+
+
+def run_models(command, request, timeout_s):
+    """Runs a models request; returns the text Node worded."""
+    try:
+        reply = json.loads(_run(command, request, timeout_s))
+    except ValueError:
+        raise NodeFailed("reply is not one JSON object") from None
+    if not isinstance(reply, dict) or not isinstance(reply.get("text"), str):
+        raise NodeFailed("reply has no text")
+    return reply["text"]

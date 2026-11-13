@@ -3,6 +3,7 @@ import shutil
 import unittest
 
 from support import (
+    MODELS_FIXTURE,
     fake_api,
     good_settings,
     FIXTURES,
@@ -68,6 +69,12 @@ class RealBundleTest(unittest.TestCase):
                     20,
                 )
                 self.assertEqual(result, node.Skip(fixture["response"]["line"]))
+
+    def test_the_models_fixture(self):
+        text = node.run_models(
+            [shutil.which("node"), str(PLUGIN_DIR / "route.mjs")], MODELS_FIXTURE["request"], 20
+        )
+        self.assertEqual(text, MODELS_FIXTURE["response"]["text"])
 
 
 if __name__ == "__main__":

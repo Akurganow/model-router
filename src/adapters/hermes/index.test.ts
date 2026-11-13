@@ -7,6 +7,7 @@ import { buildPrompt, DEFAULT_ROLE, ROLE_CAP } from "../../core/brief.ts";
 import { ROUTING_LIMIT_MS } from "../../core/compose.ts";
 import { createFakeClock } from "../../utils/fake-clock.ts";
 import { createScriptedJev, type Step } from "./fakes.ts";
+import { answerModels } from "./models.ts";
 import { readRequest } from "./request.ts";
 import { routeRequest } from "./route.ts";
 
@@ -369,6 +370,88 @@ describe("failures", () => {
 	});
 });
 
+const MODELS_FIXTURE = JSON.parse(
+	readFileSync(join(FIXTURES, "models", "listing.json"), "utf8"),
+) as { request: unknown; response: unknown };
+
+describe("the models operation", () => {
+	const words = (listed: unknown) => answerModels({ op: "models", listed });
+
+	it("joins provider and model and words prices and context where the entry has them", () => {
+		assert.deepEqual(
+			words([
+				{
+					provider: "openrouter",
+					model: "a/b",
+					input: 1,
+					output: 5,
+					context: 200000,
+				},
+				{ provider: "anthropic", model: "claude-x", context: 1000000 },
+				{ provider: "xai", model: "grok", input: 0.5 },
+				{ provider: "deepseek", model: "deepseek-flash" },
+			]),
+			{
+				text: "models the person can run: 4\n- openrouter/a/b ($1 in, $5 out per 1M tokens, 200K context)\n- anthropic/claude-x (1M context)\n- xai/grok ($0.5 in per 1M tokens)\n- deepseek/deepseek-flash",
+			},
+		);
+	});
+
+	it("drops an entry with a bad id, and an entry that names no provider or model", () => {
+		assert.deepEqual(
+			words([
+				{ provider: "openrouter", model: "~vendor/latest" },
+				{ provider: "openrouter", model: "a b" },
+				{ provider: "", model: "m" },
+				{ provider: "p" },
+				{ model: "m" },
+				{ provider: 1, model: "m" },
+				null,
+				"p/m",
+				["p", "m"],
+				{ provider: "p", model: "kept" },
+			]),
+			{ text: "models the person can run: 1\n- p/kept" },
+		);
+	});
+
+	it("drops a number that is not a known price or context and keeps the model", () => {
+		assert.deepEqual(
+			words([
+				{ provider: "p", model: "m", input: "1", output: -1, context: null },
+			]),
+			{ text: "models the person can run: 1\n- p/m" },
+		);
+	});
+
+	it("answers an empty list, and a list that is not an array, with no model", () => {
+		for (const listed of [[], undefined, null, "p/m", { provider: "p" }])
+			assert.deepEqual(words(listed), {
+				text: "models the person can run: 0",
+			});
+	});
+
+	it("leaves a request with no models op to routing", () => {
+		for (const raw of [
+			REQUEST,
+			{ ...REQUEST, op: "route" },
+			{ ...REQUEST, op: "Models" },
+			{ listed: [] },
+			null,
+			[],
+			"models",
+		])
+			assert.equal(answerModels(raw), undefined);
+	});
+
+	it("answers the fixture both sides replay", () => {
+		assert.deepEqual(
+			answerModels(MODELS_FIXTURE.request),
+			MODELS_FIXTURE.response,
+		);
+	});
+});
+
 describe("the entry", () => {
 	const entry = join(import.meta.dirname, "index.ts");
 	const call = (input: string) =>
@@ -381,6 +464,12 @@ describe("the entry", () => {
 			result.stdout,
 			`${JSON.stringify({ outcome: "skip", line: "model-router skipped, key unset" })}\n`,
 		);
+	});
+
+	it("answers the models op with its text and exits 0", () => {
+		const result = call(JSON.stringify(MODELS_FIXTURE.request));
+		assert.equal(result.status, 0);
+		assert.equal(result.stdout, `${JSON.stringify(MODELS_FIXTURE.response)}\n`);
 	});
 
 	for (const input of ["", "not json", "[1"])

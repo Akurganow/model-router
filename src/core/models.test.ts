@@ -6,6 +6,7 @@ import {
 	type Listed,
 	listing,
 	type ModelPort,
+	modelsUnavailable,
 	modelToolSentences,
 	runModels,
 	type Writer,
@@ -187,6 +188,13 @@ test("runModels reports a list that rejects or throws", async () => {
 	assert.equal(
 		await runModels(thrower, { setting: "models" }),
 		"models unavailable: no list",
+	);
+});
+
+test("modelsUnavailable words a reason given as text", () => {
+	assert.equal(
+		modelsUnavailable("node not found"),
+		"models unavailable: node not found",
 	);
 });
 

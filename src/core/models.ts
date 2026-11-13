@@ -104,8 +104,11 @@ export function listing(listed: readonly Listed[]): string {
 	].join("\n");
 }
 
-const unavailable = (err: unknown): string =>
-	`models unavailable: ${errorText(err)}`;
+/** The line the models setting gives when the list cannot be read. */
+export const modelsUnavailable = (reason: string): string =>
+	`models unavailable: ${reason}`;
+
+const unavailable = (err: unknown): string => modelsUnavailable(errorText(err));
 
 const label = (model: Listed): string => {
 	const words = detail(model);

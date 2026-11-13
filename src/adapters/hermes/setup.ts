@@ -1,9 +1,11 @@
+import { modelsUnavailable, modelToolSentences } from "../../core/models.ts";
 import {
 	KEY_VARIABLES,
 	PROVIDER_VALUES,
 	PROVIDERS,
 	type Provider,
 } from "../../core/provider.ts";
+import { FAILED, TIMEOUT } from "../../core/reasons.ts";
 import {
 	alreadyValue,
 	badCall,
@@ -20,8 +22,13 @@ import {
 	valueSettingHelp,
 } from "../../core/settings.ts";
 import { SLOT_SETTINGS, type SlotSetting, slotLine } from "../../core/slots.ts";
+import { HERMES_TEXTS } from "./texts.ts";
 
+// The settings whose call returns how the person changes them.
 const SETTINGS = ["provider", ...KEY_SETTINGS, ...SLOT_SETTINGS] as const;
+// The setting whose call returns the models the person can run, worded by Node.
+const MODELS_SETTING = "models";
+const TOOL_SETTINGS = [...SETTINGS, MODELS_SETTING];
 
 // Hermes puts a plugin tool in a toolset of its own, and a plugin toolset is on in a default session.
 const TOOLSET = "model_router";
@@ -36,7 +43,7 @@ const MODEL_SHOWN = "{provider} {model}";
 const NEVER_IN_CHAT = "Never type a key into the chat.";
 
 const toolDescription = (): string =>
-	readOnlyToolDescription(["the provider", "the three models"], SETTINGS);
+	`${readOnlyToolDescription(["the provider", "the three models"], SETTINGS)} ${modelToolSentences(false)}`;
 
 // Only the TypeSafe key is a plugin setting; Hermes reads the OpenRouter key from the environment alone.
 const ENV_FILE = "in the .env file of the Hermes home";
@@ -64,7 +71,8 @@ export function setupTexts(pluginName: string) {
 		toolset: TOOLSET,
 		toolLabel: TOOL_LABEL,
 		toolDescription: toolDescription(),
-		settings: [...SETTINGS],
+		settings: TOOL_SETTINGS,
+		modelsSetting: MODELS_SETTING,
 		commandName: commandName("provider"),
 		commandDescription: COMMAND_DESCRIPTIONS.provider,
 		argsHint: `<${PROVIDER_VALUES.join("|")}>`,
@@ -81,11 +89,18 @@ export function setupTexts(pluginName: string) {
 		),
 		refused: unchanged("provider", NOT_LOCAL),
 		localPlatforms: [...LOCAL_PLATFORMS],
-		badCall: badCall(SETTINGS),
+		badCall: badCall(TOOL_SETTINGS),
 		keyLines: Object.fromEntries(PROVIDERS.map((name) => [name, states(name)])),
 		unset: UNSET,
 		modelLine: slotLine("{name}", MODEL_SHOWN),
 		modelUnset: slotLine("{name}"),
+		// Python prints one of these when Node cannot word the list, and fills {error} when Hermes cannot list it.
+		modelsUnavailable: {
+			nodeNotFound: modelsUnavailable(HERMES_TEXTS.reasons.nodeNotFound),
+			failed: modelsUnavailable(FAILED),
+			timeout: modelsUnavailable(TIMEOUT),
+			error: modelsUnavailable("{error}"),
+		},
 		lineBreak: LINE_BREAK,
 		errorPrefix: "error: ",
 		help: {

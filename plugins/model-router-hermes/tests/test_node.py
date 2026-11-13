@@ -212,5 +212,46 @@ class RunTest(unittest.TestCase):
                 node.run_node(["node"], {}, 2)
 
 
+
+class ModelsRunTest(unittest.TestCase):
+    """The models op: the same process rules, and a reply that is one text."""
+
+    def setUp(self):
+        self._dir = temp_dir()
+        self.dir = Path(self._dir.name)
+        self.addCleanup(self._dir.cleanup)
+
+    def run_models(self, stub, timeout=5):
+        request = {"op": "models", "listed": [{"provider": "p", "model": "m"}]}
+        return node.run_models([sys.executable, str(stub.script)], request, timeout)
+
+    def test_the_request_goes_on_stdin_and_the_text_comes_back(self):
+        stub = make_node_stub(self.dir, reply={"text": "models the person can run: 1\n- p/m"})
+        self.assertEqual(self.run_models(stub), "models the person can run: 1\n- p/m")
+        self.assertEqual(
+            json.loads(stub.captured()["stdin"]),
+            {"op": "models", "listed": [{"provider": "p", "model": "m"}]},
+        )
+        self.assertEqual(stub.captured()["argv"], [str(stub.script)])
+
+    def test_a_reply_that_is_not_one_text_fails(self):
+        for reply in ({}, {"text": 3}, {"text": None}, skip_reply(), ["text"], "text"):
+            with self.subTest(reply), self.assertRaises(node.NodeFailed):
+                self.run_models(make_node_stub(self.dir, reply=reply))
+        for raw in ("garbage\n", "", '{"text": "a"}\n{"text": "b"}\n'):
+            with self.subTest(raw), self.assertRaises(node.NodeFailed):
+                self.run_models(make_node_stub(self.dir, raw=raw))
+
+    def test_non_zero_exit_fails(self):
+        stub = make_node_stub(self.dir, reply={"text": "t"}, exit_code=1)
+        with self.assertRaises(node.NodeFailed):
+            self.run_models(stub)
+
+    def test_timeout_kills_the_process(self):
+        stub = make_node_stub(self.dir, reply={"text": "t"}, sleep=30)
+        with self.assertRaises(node.NodeTimeout):
+            self.run_models(stub, timeout=0.6)
+
+
 if __name__ == "__main__":
     unittest.main()

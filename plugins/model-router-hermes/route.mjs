@@ -35,224 +35,6 @@ var streamedFetch = async (url, init) => {
   });
 };
 
-// src/utils/text.ts
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
-};
-
-// src/core/brief.ts
-var BUDGET_CHARS = 12e3;
-var ROLE_CAP = 500;
-var NO_DESCRIPTION = "An agent with no description.";
-var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
-var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
-var HEAD_SHARE = 2 / 3;
-var CONTEXT_CAP_CHARS = 3e3;
-var CONTEXT_MIN_CHARS = 500;
-var CONTEXT_LABEL = "\n\nBatch context:\n";
-var PEM_LABEL = "[ A-Z0-9_-]{0,100}PRIVATE KEY(?: BLOCK)?-----";
-var AWS_ID = "(?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}(?![A-Za-z0-9])";
-var AUTH_SCHEMES = [
-  "AWS4-HMAC-SHA256",
-  "ApiKey",
-  "Basic",
-  "Bearer",
-  "Concealed",
-  "Digest",
-  "DPoP",
-  "GNAP",
-  "HOBA",
-  "Mutual",
-  "Negotiate",
-  "NTLM",
-  "OAuth",
-  "PrivateToken",
-  "SCRAM-SHA-1",
-  "SCRAM-SHA-256",
-  "Token",
-  "vapid"
-].join("|");
-var AUTH_HEAD = `\\bAuthorization["']?\\s*[:=]\\s*`;
-var AUTH_SCHEME = `(?:${AUTH_SCHEMES})[ \\t]+`;
-var quotedRun = (quote) => `[^${quote}\\\\\\n]*(?:\\\\.[^${quote}\\\\\\n]*)*`;
-var TOKEN_PREFIXES = {
-  "GitHub token": "gh[pousr]_[A-Za-z0-9]{36,}",
-  "GitHub fine-grained token": "github_pat_[A-Za-z0-9_]{22,}",
-  "GitLab token": "glpat-[A-Za-z0-9_-]{20,}",
-  "Slack token": "xox[abeoprs]-[A-Za-z0-9-]{10,}",
-  "Slack app token": "xapp-\\d-[A-Za-z0-9-]{10,}",
-  "Slack webhook": "hooks\\.slack\\.com/(?:services|workflows|triggers)/[A-Za-z0-9+/]{20,}",
-  "AWS access key id": AWS_ID,
-  "Google API key": "AIza[A-Za-z0-9_-]{35,}",
-  "Stripe key": "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
-  "npm token": "npm_[A-Za-z0-9]{36,}",
-  "Hugging Face token": "hf_[A-Za-z]{34,}",
-  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
-};
-var REDACTIONS = [
-  {
-    name: "PEM private key",
-    pattern: new RegExp(
-      `-----BEGIN${PEM_LABEL}(?:(?:[^-]|-(?!----))*-----END${PEM_LABEL}|(?:(?:\\s|\\\\[rn])+[A-Za-z0-9+/=]{16,})*)`,
-      "gi"
-    ),
-    replacement: "***"
-  },
-  {
-    name: "URL credentials",
-    pattern: /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]*:[^\s/?#'"]+@/gi,
-    replacement: "$1***@"
-  },
-  {
-    name: "Authorization header",
-    pattern: new RegExp(
-      `(${AUTH_HEAD}["']?${AUTH_SCHEME})(?:${[
-        `(?<="${AUTH_SCHEME})${quotedRun('"')}`,
-        `(?<='${AUTH_SCHEME})${quotedRun("'")}`,
-        `(?<="${AUTH_HEAD}${AUTH_SCHEME})${quotedRun('"')}`,
-        `(?<='${AUTH_HEAD}${AUTH_SCHEME})${quotedRun("'")}`,
-        "[^\\n]*"
-      ].join("|")})|(${AUTH_HEAD}["']?)[A-Za-z0-9._~+/=-]{16,}`,
-      "gi"
-    ),
-    replacement: "$1$2***"
-  },
-  {
-    name: "AWS secret",
-    pattern: new RegExp(
-      `((?<![A-Za-z0-9])${AWS_ID}[^\\n]{0,100}?)(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{40}(?![A-Za-z0-9+/=])`,
-      "g"
-    ),
-    replacement: "$1***"
-  },
-  {
-    name: "JSON Web Token",
-    pattern: /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}={0,2}\.ey[A-Za-z0-9_-]{8,}={0,2}\.[A-Za-z0-9_-]*/g,
-    replacement: "***"
-  },
-  {
-    name: "token prefixes",
-    pattern: new RegExp(
-      `(?<![A-Za-z0-9])(?:${Object.values(TOKEN_PREFIXES).join("|")})`,
-      "g"
-    ),
-    replacement: "***"
-  },
-  {
-    name: "Bearer token",
-    pattern: /Bearer\s+[A-Za-z0-9._~+/=-]+/gi,
-    replacement: "Bearer ***"
-  },
-  { name: "sk- key", pattern: /\bsk-[A-Za-z0-9_-]{8,}/g, replacement: "***" },
-  {
-    name: "curl user",
-    pattern: /((?<!\S)(?:-[A-Za-z]{0,8}u|--(?:proxy-)?user)(?:\s+|=)?)(?:"[^"\n:]*:[^"\n]*"|'[^'\n:]*:[^'\n]*'|[^\s"':]+:[^\s"']+)/g,
-    replacement: "$1***"
-  },
-  {
-    name: "password is",
-    pattern: /\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)(?::\s*|\s+))(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
-    replacement: "$1$2***"
-  },
-  {
-    name: "secret name",
-    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
-    replacement: "$1$2***"
-  }
-];
-var FENCE_OPENER = /(?<![`~])(?:(`{3,})[^\n`]*|(~{3,})[^\n~]*)\n/g;
-var FENCE_CLOSER = /^ {0,3}(`{3,}|~{3,})[ \t]*\r?$/;
-function prepareBrief(text, budget = BUDGET_CHARS) {
-  const condensed = condense(redact(text));
-  if (condensed.length <= budget) return condensed;
-  const kept = budget - OMISSION_MARKER.length;
-  const head = Math.floor(kept * HEAD_SHARE);
-  const tail = kept - head;
-  return `${condensed.slice(0, head)}${OMISSION_MARKER}${condensed.slice(condensed.length - tail)}`;
-}
-function condense(text) {
-  return condenseFences(text).replace(/\n{3,}/g, "\n\n");
-}
-function condenseFences(text) {
-  const lines = text.split("\n");
-  const starts = [];
-  let offset = 0;
-  for (const line2 of lines) {
-    starts.push(offset);
-    offset += line2.length + 1;
-  }
-  const runs = lines.map((line2) => FENCE_CLOSER.exec(line2)?.[1] ?? "");
-  const longest = {
-    "`": longestAfter(runs, "`"),
-    "~": longestAfter(runs, "~")
-  };
-  const opener = new RegExp(FENCE_OPENER);
-  let out = "";
-  let kept = 0;
-  let line = 0;
-  for (let open = opener.exec(text); open; open = opener.exec(text)) {
-    const run = open[1] ?? open[2] ?? "";
-    const first = open.index + open[0].length;
-    while ((starts[line] ?? Number.POSITIVE_INFINITY) < first) line++;
-    const char = run.startsWith("`") ? "`" : "~";
-    if ((longest[char][line] ?? 0) < run.length) continue;
-    let close = line;
-    while (!closes(runs[close] ?? "", run)) close++;
-    const count = close - line;
-    out += `${text.slice(kept, open.index)}[an exact block of ${count} ${count === 1 ? "line" : "lines"} is given verbatim]`;
-    kept = (starts[close] ?? 0) + (lines[close]?.length ?? 0);
-    opener.lastIndex = kept;
-  }
-  return out + text.slice(kept);
-}
-var closes = (closer, opener) => closer.startsWith(opener.charAt(0)) && closer.length >= opener.length;
-function longestAfter(runs, char) {
-  const longest = new Array(runs.length + 1).fill(0);
-  for (let k = runs.length - 1; k >= 0; k--) {
-    const run = runs[k] ?? "";
-    longest[k] = Math.max(
-      longest[k + 1] ?? 0,
-      run.startsWith(char) ? run.length : 0
-    );
-  }
-  return longest;
-}
-function redact(text) {
-  return REDACTIONS.reduce(
-    (t, { pattern, replacement }) => t.replace(pattern, replacement),
-    text
-  );
-}
-function buildPrompt(task, context) {
-  const brief = prepareBrief(task);
-  const budget = Math.min(
-    BUDGET_CHARS - brief.length - CONTEXT_LABEL.length,
-    CONTEXT_CAP_CHARS
-  );
-  if (context === "" || budget < CONTEXT_MIN_CHARS) return brief;
-  return `${brief}${CONTEXT_LABEL}${prepareBrief(context, budget)}`;
-}
-function contextText(context) {
-  return typeof context === "string" && nonEmpty(context) !== void 0 ? context : "";
-}
-function descriptionText(description) {
-  if (typeof description !== "string") return "";
-  const text = redact(description).replace(/\s+/g, " ").trim();
-  const cut = text.slice(0, ROLE_CAP);
-  return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
-}
-function roleText(description) {
-  return descriptionText(description) || NO_DESCRIPTION;
-}
-function routingState(raw) {
-  return {
-    role: roleText(raw.role),
-    description: descriptionText(raw.description),
-    task: buildPrompt(raw.task, raw.context ?? "")
-  };
-}
-
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
 var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
 var APIPromise = class APIPromise2 extends Promise {
@@ -359,13 +141,13 @@ var isRecord = (value) => typeof value === "object" && value !== null;
 var extractMessage = (body) => {
   if (typeof body === "string") return body || void 0;
   if (!isRecord(body)) return void 0;
-  const { error, message, detail } = body;
+  const { error, message, detail: detail2 } = body;
   if (typeof error === "string") return error;
   if (isRecord(error) && typeof error.message === "string") return error.message;
   if (typeof message === "string") return message;
-  if (typeof detail === "string") return detail;
-  if (isRecord(detail) && typeof detail.message === "string") return detail.message;
-  if (Array.isArray(detail)) return describeValidationErrors(detail);
+  if (typeof detail2 === "string") return detail2;
+  if (isRecord(detail2) && typeof detail2.message === "string") return detail2.message;
+  if (Array.isArray(detail2)) return describeValidationErrors(detail2);
 };
 var describeValidationErrors = (errors) => {
   const parts = errors.flatMap((e) => {
@@ -393,8 +175,8 @@ var APIError = class APIError2 extends TypeSafeError {
     this.requestId = requestIdFrom(headers);
   }
   static describe(status, body) {
-    const detail = extractMessage(body);
-    if (detail) return `${status} ${detail}`;
+    const detail2 = extractMessage(body);
+    if (detail2) return `${status} ${detail2}`;
     if (body === void 0) return `${status} status code (no body)`;
     const raw = typeof body === "string" ? body : JSON.stringify(body);
     return `${status} ${raw.length > MAX_RAW_BODY_IN_MESSAGE ? `${raw.slice(0, MAX_RAW_BODY_IN_MESSAGE)}\u2026` : raw}`;
@@ -556,7 +338,7 @@ var collectAssets = (value, found, visited) => {
 };
 var serializeRequest = (payload, assets = {}) => {
   const names = new Map(Object.entries(assets).map(([name, asset]) => [asset, name]));
-  const known = new Map(Object.values(assets).map((asset) => [String(asset), asset]));
+  const known2 = new Map(Object.values(assets).map((asset) => [String(asset), asset]));
   const json = JSON.stringify(payload, function(key, value) {
     if (typeof value === "number" && !Number.isFinite(value)) return String(value);
     const original = this[key];
@@ -564,12 +346,12 @@ var serializeRequest = (payload, assets = {}) => {
     if (isImage(original)) {
       const name = names.get(original);
       if (name !== void 0) return name;
-      known.set(String(original), original);
+      known2.set(String(original), original);
     } else if (isTextWithAssets(original)) {
       let text = original.text;
       for (const asset of original.assets) {
         const name = names.get(asset);
-        if (name === void 0) known.set(String(asset), asset);
+        if (name === void 0) known2.set(String(asset), asset);
         else text = text.replaceAll(String(asset), name);
       }
       return text;
@@ -582,7 +364,7 @@ var serializeRequest = (payload, assets = {}) => {
   const missing = /* @__PURE__ */ new Set();
   for (const [reference] of json.matchAll(REFERENCE)) {
     if (sent.has(reference)) continue;
-    const asset = known.get(reference);
+    const asset = known2.get(reference);
     if (asset === void 0) missing.add(reference);
     else sent.set(reference, asset);
   }
@@ -748,13 +530,13 @@ var redactKey = (value) => {
   const tail = secret && secret.length > 8 ? secret.slice(-4) : "";
   return `${scheme ? `${scheme} ` : ""}***${tail}`;
 };
-var redact2 = (name, value) => {
+var redact = (name, value) => {
   const lower = name.toLowerCase();
   if (KEY_HEADERS.has(lower)) return redactKey(value);
   if (OPAQUE_HEADERS.has(lower)) return "***";
   return value;
 };
-var redactHeaders = (headers) => Object.fromEntries(Object.entries(headers).map(([name, value]) => [name, redact2(name, value)]));
+var redactHeaders = (headers) => Object.fromEntries(Object.entries(headers).map(([name, value]) => [name, redact(name, value)]));
 var isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 var validateChoice = (name, { criteria }) => {
   if (!isObject(criteria)) throw new TypeSafeError(`Choice question "${name}" has criteria that are not a map; choice criteria must be a map of labels to descriptions.`);
@@ -1162,11 +944,13 @@ var parseBody = async (res) => {
   }
 };
 
-// src/utils/guards.ts
-var isRecord2 = (v) => typeof v === "object" && v !== null;
-var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
-
 // src/core/provider.ts
+var PROVIDER_VALUES = [
+  "auto",
+  "openrouter-first",
+  "typesafe",
+  "openrouter"
+];
 var PROVIDERS = ["typesafe", "openrouter"];
 var HOSTS = {
   typesafe: "https://api.typesafe.ai",
@@ -1210,6 +994,344 @@ function fallsBack(err) {
   if (!(err instanceof APIError)) return false;
   const { status } = err;
   return FALLBACK_STATUSES.has(status) || status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
+}
+
+// src/core/scope.ts
+var SCOPE_VALUES = ["core", "extended"];
+var DEFAULT_SCOPE = "core";
+var parseScope = (value) => SCOPE_VALUES.find((known2) => known2 === value);
+var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
+
+// src/core/settings.ts
+var VALUE_SETTINGS = ["provider", "scope"];
+var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
+var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
+var TEXTS = {
+  provider: {
+    values: PROVIDER_VALUES,
+    resolve,
+    about: "which providers score subagent calls",
+    question: "Which providers should score subagent calls?",
+    consequences: {
+      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
+      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
+      typesafe: "TypeSafe only",
+      openrouter: "OpenRouter only"
+    }
+  },
+  scope: {
+    values: SCOPE_VALUES,
+    resolve: resolveScope,
+    about: "which agent calls the router routes",
+    question: "Which agent calls should the router route?",
+    consequences: {
+      core: "today's routing: built-in general agents only",
+      extended: "also routes other agents that pass no model"
+    }
+  }
+};
+function describeCommand(setting) {
+  const { about, values } = TEXTS[setting];
+  return `Shows or changes ${about}: ${values.join(", ")}.`;
+}
+var COMMAND_DESCRIPTIONS = {
+  provider: describeCommand("provider"),
+  scope: describeCommand("scope")
+};
+
+// src/core/slots.ts
+var SLOTS = ["small", "middle", "large"];
+var slotForLevel = (level) => SLOTS[level];
+var slotSetting = (slot) => `${slot}_model`;
+var SLOT_SETTINGS = SLOTS.map(slotSetting);
+var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
+var slotState = (model, resolved) => {
+  if (model === void 0) return { state: "unset" };
+  return resolved ? { state: "set", model } : { state: "unresolved" };
+};
+function pickModel(level, state) {
+  const slot = slotForLevel(level);
+  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model ${state.state}` };
+}
+
+// src/core/models.ts
+var ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@/+-]{0,99}$/;
+var significant = new Intl.NumberFormat("en-US", {
+  maximumSignificantDigits: 3,
+  useGrouping: false
+});
+var compact = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumSignificantDigits: 3
+});
+var known = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0;
+function detail({ input, output, context }) {
+  const prices = [
+    known(input) ? `$${significant.format(input)} in` : void 0,
+    known(output) ? `$${significant.format(output)} out` : void 0
+  ].filter((part) => part !== void 0);
+  const parts = [
+    prices.length > 0 ? `${prices.join(", ")} per 1M tokens` : void 0,
+    known(context) ? `${compact.format(context)} context` : void 0
+  ].filter((part) => part !== void 0);
+  return parts.length > 0 ? parts.join(", ") : void 0;
+}
+var usable = (listed) => listed.filter(
+  (model) => typeof model.id === "string" && ID_PATTERN.test(model.id)
+);
+function listing(listed) {
+  const models = usable(listed);
+  return [
+    `models the person can run: ${models.length}`,
+    ...models.map((model) => {
+      const words = detail(model);
+      return words === void 0 ? `- ${model.id}` : `- ${model.id} (${words})`;
+    })
+  ].join("\n");
+}
+
+// src/utils/text.ts
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+
+// src/utils/guards.ts
+var isRecord2 = (v) => typeof v === "object" && v !== null;
+var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
+
+// src/adapters/hermes/models.ts
+var MODELS_OP = "models";
+var numbers = (fields) => Object.fromEntries(
+  Object.entries(fields).filter(([, value]) => typeof value === "number")
+);
+function toListed(entry) {
+  if (!isRecord2(entry) || Array.isArray(entry)) return [];
+  const { provider, model, input, output, context } = entry;
+  if (typeof provider !== "string" || typeof model !== "string") return [];
+  return [
+    { id: `${provider}/${model}`, ...numbers({ input, output, context }) }
+  ];
+}
+function answerModels(raw) {
+  if (!isRecord2(raw)) return void 0;
+  const { op, listed } = raw;
+  if (op !== MODELS_OP) return void 0;
+  return {
+    text: listing(Array.isArray(listed) ? listed.flatMap(toListed) : [])
+  };
+}
+
+// src/core/brief.ts
+var BUDGET_CHARS = 12e3;
+var ROLE_CAP = 500;
+var NO_DESCRIPTION = "An agent with no description.";
+var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
+var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
+var HEAD_SHARE = 2 / 3;
+var CONTEXT_CAP_CHARS = 3e3;
+var CONTEXT_MIN_CHARS = 500;
+var CONTEXT_LABEL = "\n\nBatch context:\n";
+var PEM_LABEL = "[ A-Z0-9_-]{0,100}PRIVATE KEY(?: BLOCK)?-----";
+var AWS_ID = "(?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}(?![A-Za-z0-9])";
+var AUTH_SCHEMES = [
+  "AWS4-HMAC-SHA256",
+  "ApiKey",
+  "Basic",
+  "Bearer",
+  "Concealed",
+  "Digest",
+  "DPoP",
+  "GNAP",
+  "HOBA",
+  "Mutual",
+  "Negotiate",
+  "NTLM",
+  "OAuth",
+  "PrivateToken",
+  "SCRAM-SHA-1",
+  "SCRAM-SHA-256",
+  "Token",
+  "vapid"
+].join("|");
+var AUTH_HEAD = `\\bAuthorization["']?\\s*[:=]\\s*`;
+var AUTH_SCHEME = `(?:${AUTH_SCHEMES})[ \\t]+`;
+var quotedRun = (quote) => `[^${quote}\\\\\\n]*(?:\\\\.[^${quote}\\\\\\n]*)*`;
+var TOKEN_PREFIXES = {
+  "GitHub token": "gh[pousr]_[A-Za-z0-9]{36,}",
+  "GitHub fine-grained token": "github_pat_[A-Za-z0-9_]{22,}",
+  "GitLab token": "glpat-[A-Za-z0-9_-]{20,}",
+  "Slack token": "xox[abeoprs]-[A-Za-z0-9-]{10,}",
+  "Slack app token": "xapp-\\d-[A-Za-z0-9-]{10,}",
+  "Slack webhook": "hooks\\.slack\\.com/(?:services|workflows|triggers)/[A-Za-z0-9+/]{20,}",
+  "AWS access key id": AWS_ID,
+  "Google API key": "AIza[A-Za-z0-9_-]{35,}",
+  "Stripe key": "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
+  "npm token": "npm_[A-Za-z0-9]{36,}",
+  "Hugging Face token": "hf_[A-Za-z]{34,}",
+  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
+};
+var REDACTIONS = [
+  {
+    name: "PEM private key",
+    pattern: new RegExp(
+      `-----BEGIN${PEM_LABEL}(?:(?:[^-]|-(?!----))*-----END${PEM_LABEL}|(?:(?:\\s|\\\\[rn])+[A-Za-z0-9+/=]{16,})*)`,
+      "gi"
+    ),
+    replacement: "***"
+  },
+  {
+    name: "URL credentials",
+    pattern: /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]*:[^\s/?#'"]+@/gi,
+    replacement: "$1***@"
+  },
+  {
+    name: "Authorization header",
+    pattern: new RegExp(
+      `(${AUTH_HEAD}["']?${AUTH_SCHEME})(?:${[
+        `(?<="${AUTH_SCHEME})${quotedRun('"')}`,
+        `(?<='${AUTH_SCHEME})${quotedRun("'")}`,
+        `(?<="${AUTH_HEAD}${AUTH_SCHEME})${quotedRun('"')}`,
+        `(?<='${AUTH_HEAD}${AUTH_SCHEME})${quotedRun("'")}`,
+        "[^\\n]*"
+      ].join("|")})|(${AUTH_HEAD}["']?)[A-Za-z0-9._~+/=-]{16,}`,
+      "gi"
+    ),
+    replacement: "$1$2***"
+  },
+  {
+    name: "AWS secret",
+    pattern: new RegExp(
+      `((?<![A-Za-z0-9])${AWS_ID}[^\\n]{0,100}?)(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{40}(?![A-Za-z0-9+/=])`,
+      "g"
+    ),
+    replacement: "$1***"
+  },
+  {
+    name: "JSON Web Token",
+    pattern: /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}={0,2}\.ey[A-Za-z0-9_-]{8,}={0,2}\.[A-Za-z0-9_-]*/g,
+    replacement: "***"
+  },
+  {
+    name: "token prefixes",
+    pattern: new RegExp(
+      `(?<![A-Za-z0-9])(?:${Object.values(TOKEN_PREFIXES).join("|")})`,
+      "g"
+    ),
+    replacement: "***"
+  },
+  {
+    name: "Bearer token",
+    pattern: /Bearer\s+[A-Za-z0-9._~+/=-]+/gi,
+    replacement: "Bearer ***"
+  },
+  { name: "sk- key", pattern: /\bsk-[A-Za-z0-9_-]{8,}/g, replacement: "***" },
+  {
+    name: "curl user",
+    pattern: /((?<!\S)(?:-[A-Za-z]{0,8}u|--(?:proxy-)?user)(?:\s+|=)?)(?:"[^"\n:]*:[^"\n]*"|'[^'\n:]*:[^'\n]*'|[^\s"':]+:[^\s"']+)/g,
+    replacement: "$1***"
+  },
+  {
+    name: "password is",
+    pattern: /\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)(?::\s*|\s+))(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    replacement: "$1$2***"
+  },
+  {
+    name: "secret name",
+    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    replacement: "$1$2***"
+  }
+];
+var FENCE_OPENER = /(?<![`~])(?:(`{3,})[^\n`]*|(~{3,})[^\n~]*)\n/g;
+var FENCE_CLOSER = /^ {0,3}(`{3,}|~{3,})[ \t]*\r?$/;
+function prepareBrief(text, budget = BUDGET_CHARS) {
+  const condensed = condense(redact2(text));
+  if (condensed.length <= budget) return condensed;
+  const kept = budget - OMISSION_MARKER.length;
+  const head = Math.floor(kept * HEAD_SHARE);
+  const tail = kept - head;
+  return `${condensed.slice(0, head)}${OMISSION_MARKER}${condensed.slice(condensed.length - tail)}`;
+}
+function condense(text) {
+  return condenseFences(text).replace(/\n{3,}/g, "\n\n");
+}
+function condenseFences(text) {
+  const lines = text.split("\n");
+  const starts = [];
+  let offset = 0;
+  for (const line2 of lines) {
+    starts.push(offset);
+    offset += line2.length + 1;
+  }
+  const runs = lines.map((line2) => FENCE_CLOSER.exec(line2)?.[1] ?? "");
+  const longest = {
+    "`": longestAfter(runs, "`"),
+    "~": longestAfter(runs, "~")
+  };
+  const opener = new RegExp(FENCE_OPENER);
+  let out = "";
+  let kept = 0;
+  let line = 0;
+  for (let open = opener.exec(text); open; open = opener.exec(text)) {
+    const run = open[1] ?? open[2] ?? "";
+    const first = open.index + open[0].length;
+    while ((starts[line] ?? Number.POSITIVE_INFINITY) < first) line++;
+    const char = run.startsWith("`") ? "`" : "~";
+    if ((longest[char][line] ?? 0) < run.length) continue;
+    let close = line;
+    while (!closes(runs[close] ?? "", run)) close++;
+    const count = close - line;
+    out += `${text.slice(kept, open.index)}[an exact block of ${count} ${count === 1 ? "line" : "lines"} is given verbatim]`;
+    kept = (starts[close] ?? 0) + (lines[close]?.length ?? 0);
+    opener.lastIndex = kept;
+  }
+  return out + text.slice(kept);
+}
+var closes = (closer, opener) => closer.startsWith(opener.charAt(0)) && closer.length >= opener.length;
+function longestAfter(runs, char) {
+  const longest = new Array(runs.length + 1).fill(0);
+  for (let k = runs.length - 1; k >= 0; k--) {
+    const run = runs[k] ?? "";
+    longest[k] = Math.max(
+      longest[k + 1] ?? 0,
+      run.startsWith(char) ? run.length : 0
+    );
+  }
+  return longest;
+}
+function redact2(text) {
+  return REDACTIONS.reduce(
+    (t, { pattern, replacement }) => t.replace(pattern, replacement),
+    text
+  );
+}
+function buildPrompt(task, context) {
+  const brief = prepareBrief(task);
+  const budget = Math.min(
+    BUDGET_CHARS - brief.length - CONTEXT_LABEL.length,
+    CONTEXT_CAP_CHARS
+  );
+  if (context === "" || budget < CONTEXT_MIN_CHARS) return brief;
+  return `${brief}${CONTEXT_LABEL}${prepareBrief(context, budget)}`;
+}
+function contextText(context) {
+  return typeof context === "string" && nonEmpty(context) !== void 0 ? context : "";
+}
+function descriptionText(description) {
+  if (typeof description !== "string") return "";
+  const text = redact2(description).replace(/\s+/g, " ").trim();
+  const cut = text.slice(0, ROLE_CAP);
+  return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
+}
+function roleText(description) {
+  return descriptionText(description) || NO_DESCRIPTION;
+}
+function routingState(raw) {
+  return {
+    role: roleText(raw.role),
+    description: descriptionText(raw.description),
+    task: buildPrompt(raw.task, raw.context ?? "")
+  };
 }
 
 // src/core/client.ts
@@ -1432,21 +1554,6 @@ function routedLine({
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 
-// src/core/slots.ts
-var SLOTS = ["small", "middle", "large"];
-var slotForLevel = (level) => SLOTS[level];
-var slotSetting = (slot) => `${slot}_model`;
-var SLOT_SETTINGS = SLOTS.map(slotSetting);
-var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
-var slotState = (model, resolved) => {
-  if (model === void 0) return { state: "unset" };
-  return resolved ? { state: "set", model } : { state: "unresolved" };
-};
-function pickModel(level, state) {
-  const slot = slotForLevel(level);
-  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model ${state.state}` };
-}
-
 // src/utils/deadline.ts
 async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
   try {
@@ -1596,7 +1703,7 @@ async function readStdin() {
 async function main() {
   try {
     const raw = JSON.parse(await readStdin());
-    const response = await routeRequest(raw, {
+    const response = answerModels(raw) ?? await routeRequest(raw, {
       fetchFn: streamedFetch,
       clock: realClock
     });
