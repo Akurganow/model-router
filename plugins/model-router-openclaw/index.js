@@ -1275,7 +1275,7 @@ var slotLine = (name, shown) => `${name}: ${shown ?? "unset"}`;
 var MODELS = "models";
 var MAX_CANDIDATES = 4;
 var SHOW_ALL = "Show the whole list";
-var ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@/+-]{0,99}$/;
+var ID_PATTERN = /^[A-Za-z0-9~][A-Za-z0-9._:@/+~-]{0,99}$/;
 var significant = new Intl.NumberFormat("en-US", {
   maximumSignificantDigits: 3,
   useGrouping: false
@@ -1284,20 +1284,23 @@ var compact = new Intl.NumberFormat("en-US", {
   notation: "compact",
   maximumSignificantDigits: 3
 });
-var known = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0;
-function detail({ input, output, context }) {
+var known = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value + 0 : void 0;
+function detail(model) {
+  const input = known(model.input);
+  const output = known(model.output);
+  const context = known(model.context);
   const prices = [
-    known(input) ? `$${significant.format(input)} in` : void 0,
-    known(output) ? `$${significant.format(output)} out` : void 0
+    input === void 0 ? void 0 : `$${significant.format(input)} in`,
+    output === void 0 ? void 0 : `$${significant.format(output)} out`
   ].filter((part) => part !== void 0);
   const parts = [
     prices.length > 0 ? `${prices.join(", ")} per 1M tokens` : void 0,
-    known(context) ? `${compact.format(context)} context` : void 0
+    context === void 0 ? void 0 : `${compact.format(context)} context`
   ].filter((part) => part !== void 0);
   return parts.length > 0 ? parts.join(", ") : void 0;
 }
 var usable = (listed) => listed.filter(
-  (model) => typeof model.id === "string" && ID_PATTERN.test(model.id)
+  (model) => isRecord2(model) && typeof model["id"] === "string" && ID_PATTERN.test(model["id"])
 );
 function listing(listed) {
   const models = usable(listed);
@@ -1309,7 +1312,8 @@ function listing(listed) {
     })
   ].join("\n");
 }
-var unavailable = (err) => `models unavailable: ${errorText(err)}`;
+var modelsUnavailable = (reason) => `models unavailable: ${reason}`;
+var unavailable = (err) => modelsUnavailable(errorText(err));
 var label = (model) => {
   const words = detail(model);
   return words === void 0 ? model.id : `${model.id}${LABEL_SEPARATOR}${words}`;
@@ -1323,7 +1327,12 @@ async function ask2(writer, slot, question, options) {
 }
 async function choose(port, writer, slot, candidates) {
   const setting = slotSetting(slot);
-  const refusal = writer.authorize();
+  let refusal;
+  try {
+    refusal = writer.authorize();
+  } catch (err) {
+    return unchangedBy(setting, err);
+  }
   if (refusal !== void 0) return unchanged(setting, refusal);
   let models;
   try {
@@ -1345,12 +1354,14 @@ async function choose(port, writer, slot, candidates) {
     if (model2 !== void 0 && !first.includes(model2)) first.push(model2);
     if (first.length === MAX_CANDIDATES) break;
   }
-  let answer = await ask2(writer, slot, question, [
-    ...first.map(label),
-    SHOW_ALL
-  ]);
-  let from = first;
-  if (answer === SHOW_ALL) {
+  let from = first.length > 0 ? first : models;
+  let answer = await ask2(
+    writer,
+    slot,
+    question,
+    first.length > 0 ? [...first.map(label), SHOW_ALL] : models.map(label)
+  );
+  if (first.length > 0 && answer === SHOW_ALL) {
     answer = await ask2(writer, slot, question, models.map(label));
     from = models;
   }
