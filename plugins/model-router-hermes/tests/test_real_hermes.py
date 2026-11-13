@@ -243,21 +243,15 @@ class HermesApiOnHermesTest(unittest.TestCase):
         self.assertFalse(info.has_cost_data())
         self.assertEqual((info.cost_input, info.cost_output), (0.0, 0.0))
 
-    def test_the_provider_ids_and_their_flag_are_those_of_hermess_provider_list(self):
-        # list_available_providers itself asks bedrock's status, which probes the network, so the shim calls its parts.
-        from hermes_cli.models import list_available_providers
-
+    def test_list_providers_names_each_provider_and_whether_it_is_authenticated(self):
         self.offline_home({}, {"DEEPSEEK_API_KEY": "probe-fake"})
-        api = hermes_api.live_api()
-        ids = api.provider_ids()
-        self.assertIn("openrouter", ids)
-        self.assertIn("bedrock", ids)
-        offline = [p for p in ids if checks.credentials_stay_offline(p, api)]
-        self.assertNotIn("bedrock", offline)
-        self.assertIn(True, [api.has_credentials(p) for p in offline])
-        # Sockets stay blocked here, so bedrock's probe fails and the list still comes back.
-        hermes = {entry["id"]: entry["authenticated"] for entry in list_available_providers()}
-        self.assertEqual({p: api.has_credentials(p) for p in offline}, {p: hermes[p] for p in offline})
+        providers = hermes_api.live_api().list_providers()
+        self.assertIn({"id": "deepseek", "authenticated": True}, [
+            {"id": entry["id"], "authenticated": entry["authenticated"]} for entry in providers
+        ])
+        for entry in providers:
+            self.assertIsInstance(entry["id"], str)
+            self.assertIsInstance(entry["authenticated"], bool)
 
     def test_the_models_list_reads_hermes_offline(self):
         self.offline_home(self.PRICED, {"DEEPSEEK_API_KEY": "probe-fake"})

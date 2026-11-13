@@ -181,7 +181,7 @@ class ModelsSettingTest(unittest.TestCase):
             return infos[model]
 
         api = fake_api(
-            provider_ids=lambda: ["openrouter"],
+            list_providers=lambda: [{"id": "openrouter", "authenticated": True}],
             list_models=lambda provider: [*infos, "broken"],
             model_info=broken,
         )
@@ -197,15 +197,27 @@ class ModelsSettingTest(unittest.TestCase):
             ],
         )
 
-    def test_only_a_provider_with_offline_credentials_that_hermes_holds_is_listed(self):
-        asked = []
-        held = {"openrouter", "nous", "qwen-oauth", "broken", "flag-fails", "xai"}
+    def test_only_an_authenticated_provider_with_offline_credentials_is_listed(self):
+        providers = [
+            {"id": "openrouter", "authenticated": True},
+            {"id": "gemini", "authenticated": False},
+            {"id": "deepseek"},
+            {"id": "nous", "authenticated": True},
+            {"id": "qwen-oauth", "authenticated": True},
+            {"id": "anthropic", "authenticated": True},
+            {"id": "broken", "authenticated": True},
+            {"id": "rule-fails", "authenticated": True},
+            {"id": "xai", "authenticated": True},
+            {"id": 3, "authenticated": True},
+            {"authenticated": True},
+            "openrouter",
+            None,
+        ]
 
-        def has_credentials(provider):
-            asked.append(provider)
-            if provider == "flag-fails":
-                raise RuntimeError("auth store unreadable")
-            return provider in held
+        def auth_type(provider):
+            if provider == "rule-fails":
+                raise RuntimeError("registry unreadable")
+            return "oauth_device_code" if provider == "nous" else "api_key"
 
         def list_models(provider):
             if provider == "broken":
@@ -213,21 +225,9 @@ class ModelsSettingTest(unittest.TestCase):
             return [f"{provider}-model"]
 
         api = fake_api(
-            provider_ids=lambda: [
-                "openrouter",
-                "gemini",
-                "nous",
-                "qwen-oauth",
-                "anthropic",
-                "broken",
-                "flag-fails",
-                "xai",
-                3,
-                None,
-            ],
-            auth_type=lambda provider: "oauth_device_code" if provider == "nous" else "api_key",
+            list_providers=lambda: providers,
+            auth_type=auth_type,
             is_refreshable=lambda provider: provider == "qwen-oauth",
-            has_credentials=has_credentials,
             list_models=list_models,
         )
         self.assertEqual(
@@ -237,20 +237,18 @@ class ModelsSettingTest(unittest.TestCase):
                 {"provider": "xai", "model": "xai-model"},
             ],
         )
-        # A provider whose credentials need the network is never asked about: for bedrock that ask probes the network.
-        self.assertEqual(asked, ["openrouter", "gemini", "broken", "flag-fails", "xai"])
 
     def test_anthropic_is_listed_only_with_its_api_key_and_no_oauth_token(self):
         api = fake_api(
             secrets={"ANTHROPIC_API_KEY": "anthropic-secret"},
-            provider_ids=lambda: ["anthropic"],
+            list_providers=lambda: [{"id": "anthropic", "authenticated": True}],
             list_models=lambda provider: ["claude-x"],
         )
         self.assertEqual(self.listed(api), [{"provider": "anthropic", "model": "claude-x"}])
 
     def test_a_model_id_that_is_not_text_is_left_out(self):
         api = fake_api(
-            provider_ids=lambda: ["openrouter"],
+            list_providers=lambda: [{"id": "openrouter", "authenticated": True}],
             list_models=lambda provider: ["kept", None, 3, ["x"]],
         )
         self.assertEqual(self.listed(api), [{"provider": "openrouter", "model": "kept"}])
@@ -260,7 +258,7 @@ class ModelsSettingTest(unittest.TestCase):
 
     def test_without_node_it_prints_node_not_found_and_gathers_nothing(self):
         gathered = []
-        api = fake_api(find_node=lambda: None, provider_ids=lambda: gathered.append(1) or [])
+        api = fake_api(find_node=lambda: None, list_providers=lambda: gathered.append(1) or [])
         handler = self.handler(api)
         self.assertEqual(call(handler, MODELS), UNAVAILABLE["nodeNotFound"])
         self.assertEqual(UNAVAILABLE["nodeNotFound"], "models unavailable: node not found")
@@ -284,11 +282,12 @@ class ModelsSettingTest(unittest.TestCase):
         def boom():
             raise RuntimeError("provider list unreadable")
 
-        handler = self.handler(fake_api(provider_ids=boom))
+        handler = self.handler(fake_api(list_providers=boom))
         self.assertEqual(call(handler, MODELS), "models unavailable: provider list unreadable")
         self.assertFalse(self.stub.capture.exists())
 
-    def test_the_listing_opens_no_socket(self):
+    def test_the_plugins_own_code_opens_no_socket(self):
+        # With a fake Hermes every socket call below is the plugin's; Node runs in a child process.
         attempts = []
 
         def blocked(*args, **kwargs):

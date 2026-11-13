@@ -397,11 +397,11 @@ describe("the models operation", () => {
 		);
 	});
 
-	it("drops an entry with a bad id, and an entry that names no provider or model", () => {
+	it("drops an entry with a bad id or no provider or model, and keeps an id with a tilde", () => {
 		assert.deepEqual(
 			words([
-				{ provider: "openrouter", model: "~vendor/latest" },
 				{ provider: "openrouter", model: "a b" },
+				{ provider: "openrouter", model: "a\nb" },
 				{ provider: "", model: "m" },
 				{ provider: "p" },
 				{ model: "m" },
@@ -410,8 +410,11 @@ describe("the models operation", () => {
 				"p/m",
 				["p", "m"],
 				{ provider: "p", model: "kept" },
+				{ provider: "openrouter", model: "~vendor/latest" },
 			]),
-			{ text: "models the person can run: 1\n- p/kept" },
+			{
+				text: "models the person can run: 2\n- p/kept\n- openrouter/~vendor/latest",
+			},
 		);
 	});
 

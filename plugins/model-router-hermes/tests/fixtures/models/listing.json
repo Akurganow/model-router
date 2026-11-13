@@ -1,15 +1,34 @@
 {
-	"description": "Python lists the authenticated providers whose credentials stay offline, with a price only where Hermes has cost data; Node joins provider and model, drops a bad id and words the list.",
+	"description": "Python lists the authenticated providers whose credentials stay offline, with a price only where Hermes has cost data; Node joins provider and model, keeps an id with a tilde, drops a bad id and words the list.",
 	"hermes": {
 		"providers": [
-			{ "id": "openrouter", "authenticated": true },
-			{ "id": "deepseek", "authenticated": true },
-			{ "id": "nous", "authenticated": true },
-			{ "id": "gemini", "authenticated": false }
+			{
+				"id": "openrouter",
+				"authenticated": true
+			},
+			{
+				"id": "deepseek",
+				"authenticated": true
+			},
+			{
+				"id": "nous",
+				"authenticated": true
+			},
+			{
+				"id": "gemini",
+				"authenticated": false
+			}
 		],
-		"authTypes": { "nous": "oauth_device_code" },
+		"authTypes": {
+			"nous": "oauth_device_code"
+		},
 		"models": {
-			"openrouter": ["vendor/fast", "vendor/free", "~vendor/latest"],
+			"openrouter": [
+				"vendor/fast",
+				"vendor/free",
+				"~vendor/latest",
+				"vendor/bad id"
+			],
 			"deepseek": ["deepseek-flash", "deepseek-pro"],
 			"nous": ["hermes-4"],
 			"gemini": ["gemini-3"]
@@ -51,14 +70,25 @@
 				"output": 2.0,
 				"context": 1048576
 			},
-			{ "provider": "openrouter", "model": "vendor/free", "context": 131072 },
+			{
+				"provider": "openrouter",
+				"model": "vendor/free",
+				"context": 131072
+			},
 			{
 				"provider": "openrouter",
 				"model": "~vendor/latest",
 				"input": 1.0,
 				"output": 1.0
 			},
-			{ "provider": "deepseek", "model": "deepseek-flash" },
+			{
+				"provider": "openrouter",
+				"model": "vendor/bad id"
+			},
+			{
+				"provider": "deepseek",
+				"model": "deepseek-flash"
+			},
 			{
 				"provider": "deepseek",
 				"model": "deepseek-pro",
@@ -68,6 +98,6 @@
 		]
 	},
 	"response": {
-		"text": "models the person can run: 4\n- openrouter/vendor/fast ($0.25 in, $2 out per 1M tokens, 1.05M context)\n- openrouter/vendor/free (131K context)\n- deepseek/deepseek-flash\n- deepseek/deepseek-pro ($1.5 in, $6 out per 1M tokens)"
+		"text": "models the person can run: 5\n- openrouter/vendor/fast ($0.25 in, $2 out per 1M tokens, 1.05M context)\n- openrouter/vendor/free (131K context)\n- openrouter/~vendor/latest ($1 in, $1 out per 1M tokens)\n- deepseek/deepseek-flash\n- deepseek/deepseek-pro ($1.5 in, $6 out per 1M tokens)"
 	}
 }

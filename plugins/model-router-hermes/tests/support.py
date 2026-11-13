@@ -197,8 +197,7 @@ def fake_api(**overrides: Any) -> Any:
         is_refreshable=lambda provider: False,
         resolve_runtime=lambda provider, model: None,
         list_models=lambda provider: ["small-model", "middle-model", "large-model"],
-        provider_ids=lambda: [],
-        has_credentials=lambda provider: True,
+        list_providers=lambda: [],
         model_info=lambda provider, model: None,
     )
     return dataclasses.replace(api, **overrides)
@@ -225,10 +224,8 @@ def hermes_of(fixture: dict[str, Any], **overrides: Any) -> Any:
         info = hermes["info"].get(provider, {}).get(model)
         return None if info is None else FakeModelInfo(**info)
 
-    authenticated = {entry["id"]: entry["authenticated"] for entry in hermes["providers"]}
     return fake_api(
-        provider_ids=lambda: list(authenticated),
-        has_credentials=lambda provider: authenticated[provider],
+        list_providers=lambda: [dict(entry) for entry in hermes["providers"]],
         auth_type=lambda provider: auth_types.get(provider, "api_key"),
         list_models=lambda provider: list(hermes["models"].get(provider, [])),
         model_info=model_info,

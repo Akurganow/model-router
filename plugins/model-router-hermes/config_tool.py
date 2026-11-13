@@ -36,14 +36,19 @@ def _read_all(ctx, api, constants):
     return texts["lineBreak"].join(lines)
 
 
-def _models_of(provider, api):
-    """The provider's model ids; none when its credentials need the network, Hermes holds none, or it cannot list them.
+def _keeps(entry, api):
+    """Whether the list holds the models of one entry of Hermes's provider list.
 
-    The credential rule runs first, so Hermes is never asked about a provider whose check reaches the network."""
+    Hermes counts the provider as authenticated, and the slot check reads its credentials offline."""
+    return bool(entry.get("authenticated")) and checks.credentials_stay_offline(entry["id"], api)
+
+
+def _models_of(entry, api):
+    """The model ids of a provider the list keeps; none when Hermes cannot list them."""
     try:
-        if not checks.credentials_stay_offline(provider, api) or not api.has_credentials(provider):
+        if not _keeps(entry, api):
             return []
-        return [model for model in api.list_models(provider) or [] if isinstance(model, str)]
+        return [model for model in api.list_models(entry["id"]) or [] if isinstance(model, str)]
     except Exception:
         return []
 
@@ -65,12 +70,12 @@ def _numbers(api, provider, model):
 
 
 def listed_models(api):
-    """Each model of each provider whose credentials Hermes holds and reads offline."""
+    """Each model of each provider of Hermes's provider list that the list keeps."""
     return [
-        {"provider": provider, "model": model, **_numbers(api, provider, model)}
-        for provider in api.provider_ids()
-        if isinstance(provider, str)
-        for model in _models_of(provider, api)
+        {"provider": entry["id"], "model": model, **_numbers(api, entry["id"], model)}
+        for entry in api.list_providers()
+        if isinstance(entry, dict) and isinstance(entry.get("id"), str)
+        for model in _models_of(entry, api)
     ]
 
 
