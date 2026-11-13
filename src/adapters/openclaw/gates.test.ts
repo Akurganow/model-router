@@ -403,6 +403,20 @@ test("effort step 5: otherwise the ladder effort is set", () => {
 	assert.deepEqual(effort(gate({ config: {} })), { kind: "set" });
 });
 
+test("a blank or null default subagent thinking sets the effort", () => {
+	for (const value of ["", "  ", null])
+		assert.deepEqual(effort(gate({ config: thinking(value) })), {
+			kind: "set",
+		});
+});
+
+test("a blank or null requester subagent thinking sets the effort under core", () => {
+	for (const value of ["", "  ", null])
+		assert.deepEqual(effort(gate({ config: thinking(undefined, value) })), {
+			kind: "set",
+		});
+});
+
 test("an unreadable config skips the route with settings unreadable", () => {
 	assert.equal(skipped(gate({ config: undefined })), UNREADABLE);
 });
