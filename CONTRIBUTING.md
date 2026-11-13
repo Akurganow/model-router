@@ -258,7 +258,7 @@ the hook by hand instead:
 
 ### Changes larger than one pull request
 
-Some changes must release whole but pass the pull request size limit that
+Some changes must release whole but exceed the pull request size limit that
 [AGENTS.md](AGENTS.md#commits-and-pull-requests) sets. Such a change goes
 through an `integration/<name>` branch cut from `main`. Each part is a pull
 request into that branch and passes CI and review there. CI runs on a pull
