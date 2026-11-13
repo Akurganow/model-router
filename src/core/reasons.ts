@@ -1,4 +1,4 @@
-// A skip reason or effort label that two or more adapters print lives here, and no other file spells its text.
+// A skip reason that more than one file spells, or that the core prints for every adapter, lives here.
 // A reason that one adapter prints lives in that adapter.
 export const CALLER_EFFORT = "caller effort";
 export const CONFIG_EFFORT = "config effort";
