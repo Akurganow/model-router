@@ -177,19 +177,10 @@ resolve to a model. For each batch it also reads omp's
 it. Nothing from these leaves your machine, except the
 agent text of each routed agent, which the request carries as described above.
 
-When the `model_router_config` tool is called with `models` or a model setting,
-the plugin reads the models omp lists, through `ctx.models.list()`: each
-model's id, price card and context size. The list goes back as the tool's
-result, so it reaches the model of your omp session like any tool result. No
-scoring request carries it. The plugin's own code opens no connection to read
-the list. When you pick a model in the plugin's dialog, the plugin writes that
-one role into `modelRoles` of your global `config.yml`, and keeps the other
-roles.
-
 The lines the plugin prints per batch go to your omp notifications, or to
 standard error when omp has no UI. The setup skill changes only what you
-choose in the plugin's dialogs: the global `provider` and `scope` settings, a
-key, and a model role.
+choose in the plugin's dialogs: the global `provider` and `scope` settings and
+a key.
 
 ## Your choices
 

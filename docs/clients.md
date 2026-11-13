@@ -868,6 +868,9 @@ Every running fact names its OpenClaw version and the date it ran.
   Without `agentDir` it returned false for the same provider.
   A provider with no key returned false, and so did a provider served only by the Claude CLI backend.
   (running: OpenClaw 2026.10.10, `isProviderApiKeyConfiguredAsync` with and without `agentDir` for four providers)
+- The steps of the plugin's slot check, `slotResolves` in `src/adapters/openclaw/checks.ts`, returned false for `local/local-e`, a model of a provider on a loopback base URL with no key, with and without the agent id `main`.
+  They returned true for a provider with a fake key and false for a remote provider with no key.
+  (running: OpenClaw 2026.10.10 and 2026.11.1, 2026-11-13, a state folder written for the run under `env -i`, custom providers declared in its config, and a probe plugin that ran the steps of `slotResolves` for each model)
 
 ### OpenClaw commands and owner check
 
