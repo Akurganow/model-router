@@ -29,6 +29,11 @@ def _effort_set(value):
     return value is not None and stripped(value) != ""
 
 
+# The states of a slot. Node words each one, so these are tokens of the protocol, not texts.
+SET = "set"
+UNSET = "unset"
+UNRESOLVED = "unresolved"
+
 # Node names a kept effort by its source, so only Python ranks the sources.
 KEPT_BY_CONFIG = "config"
 KEPT_BY_CALLER = "caller"
@@ -78,7 +83,7 @@ class Router:
         return {**base, "reasoning_effort": effort}
 
     def _logged(self, route):
-        # A pinned task carries no label, as other harnesses print no line for a caller's model.
+        # A pinned task whose slot is set carries no label, as other harnesses print no line for a caller's model.
         if "label" in route:
             self._log.info(route["label"])
         return route
@@ -99,8 +104,6 @@ class Router:
         # These gates read Hermes state, and a skipped task starts no Node.
         if not keys:
             return self._skip(base, "keyUnset")
-        if not any(slot.has_model for slot in slot_settings.values()):
-            return self._skip(base, "noEndModel")
         if _subagent_model_set(config):
             return self._skip(base, "subagentModelSet")
         node_path = self._api.find_node()
@@ -122,17 +125,24 @@ class Router:
         return self._ask_node(node_path, request, base, slot_settings, window)
 
     def _pinned(self, level, config, base, slot_settings, window):
-        """The pass-through of a pinned level: no Jev call and no label, as on the other harnesses."""
+        """The pass-through of a pinned level: no Jev call, and a label only when its slot has no model."""
         if _subagent_model_set(config):
             return self._skip(base, "subagentModelSet")
         name = self._constants["levelSlots"][level]
-        if name is None:
-            return dict(base)
         slot = slot_settings[name]
-        failure = self._slot_failure(name, slot, window)
-        if failure is not None:
-            return self._skip(base, failure)
-        return {**base, "model": slot.model, "provider": slot.provider}
+        state = self._slot_state(slot, window)
+        if state == SET:
+            return {**base, "model": slot.model, "provider": slot.provider}
+        return {**base, "label": self._constants["slots"][name]["pinned"][state]}
+
+    def _slot_state(self, slot, window):
+        """set when the slot's model resolves offline in time, else unset or unresolved.
+
+        A check that does not finish in time counts as unresolved, so the task keeps Hermes's model."""
+        if not slot.has_model:
+            return UNSET
+        wait_s = max(window.remaining_ms(), 0) / MS_PER_SECOND
+        return SET if checks.slot_resolved_within(slot, self._api, wait_s) else UNRESOLVED
 
     def _slot_failure(self, name, slot, window):
         """None when the slot's model resolves offline in time, else the skips key that says why not."""

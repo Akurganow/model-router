@@ -197,7 +197,7 @@ def fake_api(**overrides: Any) -> Any:
         auth_type=lambda provider: "api_key",
         is_refreshable=lambda provider: False,
         resolve_runtime=lambda provider, model: None,
-        list_models=lambda provider: ["small-model", "large-model"],
+        list_models=lambda provider: ["small-model", "middle-model", "large-model"],
     )
     return dataclasses.replace(api, **overrides)
 
