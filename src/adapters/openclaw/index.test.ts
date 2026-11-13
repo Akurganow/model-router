@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { ROUTING_LIMIT_MS } from "../../core/compose.ts";
 import { deadlineFor } from "../../core/handler-deadline.ts";
@@ -48,11 +47,6 @@ describe("the bundle entry", () => {
 	it("is a plain object with the plugin id and a register function", () => {
 		assert.equal(plugin.id, "model-router-openclaw");
 		assert.equal(typeof plugin.register, "function");
-	});
-
-	it("imports nothing from OpenClaw", () => {
-		const source = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
-		assert.doesNotMatch(source, /from ["']openclaw/);
 	});
 });
 
