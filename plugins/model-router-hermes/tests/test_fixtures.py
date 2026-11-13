@@ -4,6 +4,7 @@ import unittest
 
 from support import (
     default_route,
+    good_settings,
     FIXTURES,
     PLUGIN_DIR,
     RouterCase,
@@ -16,13 +17,26 @@ node = submodule("node")
 class FixtureReplayTest(RouterCase):
     """Each fixture's response, replayed through a Node stand-in, becomes the expected route."""
 
-    def expected(self, response, config):
+    @staticmethod
+    def set_slots(request):
+        """The slots the fixture's request names a model for, as the shim would have found them set."""
+        models = request.get("models") if isinstance(request, dict) else None
+        unresolved = request.get("unresolved") or [] if isinstance(request, dict) else []
+        if not isinstance(models, dict):
+            return set()
+        return {
+            name
+            for name, model in models.items()
+            if isinstance(model, str) and model.strip() and name not in unresolved
+        }
+
+    def expected(self, response, config, set_slots):
         base = default_route(config)
         if response["outcome"] == "skip":
             return {**base, "label": response["line"]}
         slot, effort = response["slot"], response["effort"]
         route = {**base, "label": response["line"]}
-        if slot is not None:
+        if slot in set_slots:
             route.update(model=f"{slot}-model", provider="openrouter")
         if effort is not None:
             route["reasoning_effort"] = effort
@@ -33,10 +47,20 @@ class FixtureReplayTest(RouterCase):
         config = {"api_mode": "chat_completions", "service_tier": "fast"}
         for path in FIXTURES:
             fixture = json.loads(path.read_text(encoding="utf-8"))
+            set_slots = self.set_slots(fixture["request"])
+            settings = good_settings(
+                **{
+                    f"{name}_model": (
+                        {"provider": "openrouter", "model": f"{name}-model"}
+                        if name in set_slots
+                        else None
+                    )
+                    for name in ("small", "middle", "large")
+                }
+            )
             with self.subTest(path.name):
-                route, _ = self.route(config, reply=fixture["response"])
-                self.assertEqual(route, self.expected(fixture["response"], config))
-
+                route, _ = self.route(config, reply=fixture["response"], settings=settings)
+                self.assertEqual(route, self.expected(fixture["response"], config, set_slots))
 
 @unittest.skipUnless(shutil.which("node"), "node is not installed")
 class RealBundleTest(unittest.TestCase):

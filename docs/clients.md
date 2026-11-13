@@ -413,6 +413,23 @@ The running facts used omp from npm with a local stand-in model provider and cal
   With the setting at 2000 and a `tool_call` handler that slept 3000 ms, the `task` call ended with `Extension <path> timed out after 2000ms`, and no subagent request reached the provider.
   (running: omp 18.12.6 and 18.18.9, 2026-11-11, `omp -p` with a probe extension)
 
+### omp model roles
+
+These facts hold at omp 18.12.6 and 18.18.9.
+The running facts used omp from npm, a probe extension, a throwaway agent folder and a local stand-in model provider, and called no paid model.
+
+- `modelRoles` accepts any role name, so a role such as `middle` needs no change in omp.
+  (source: [`config/model-settings.ts` L109 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-settings.ts#L109), [the same line at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-settings.ts#L109))
+- A custom role that `modelRoles` names resolves: `ctx.models.resolve("@mid")` gave the configured model, and a spawn hook that returned `@mid:medium` ran it at `medium`.
+  A custom role that `modelRoles` does not name gives `undefined`, and a hook that returned it failed the subagent with `Error: No model selected.` and exit code 1.
+  (running: omp 18.12.6 and 18.18.9, 2026-11-12)
+- `ctx.models.resolve` resolves against `modelRegistry.getAvailable()`, which checks configured auth without running a key command.
+  A built-in provider with no credential gives `undefined`, for the model id and for a role that names it.
+  A `models.yml` provider whose `apiKey` is a command that prints nothing gives a full model, and `getApiKeyForProvider` gives `undefined` for it. A hook that returned that role ran the child on the parent's model, with exit 0 and no error.
+  (running: omp 18.12.6 and 18.18.9, 2026-11-13;
+  source: [`extensibility/extensions/model-api.ts` L19–L38 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/model-api.ts#L19-L38), [the same lines at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/model-api.ts#L19-L38),
+  [`config/model-registry.ts` L3093 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-registry.ts#L3093), [L3475–L3509 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-registry.ts#L3475-L3509))
+
 ### omp thinking levels
 
 These facts hold at omp 18.12.6 and 18.18.9.
@@ -1166,6 +1183,9 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
   (source: [`left_core_migration.py` L709–L720 at v0.22.6](https://github.com/NousResearch/hermes-agent/blob/f0d94882e89ab8d4098b5bb2f166adfb9ee0a0ab/hermes_cli/left_core_migration.py#L709-L720), read 2026-11-06)
 - Hermes ingests an `OPENROUTER_API_KEY` from the environment into the home's credential pool at start-up and prints one line to standard error. The resolve source then reads `env:OPENROUTER_API_KEY`.
   (running: Hermes v0.22.7, 2026-11-06)
+
+- One offline slot check (`checks.slot_resolves`) took 3.5 to 5.3 ms warm and 3.9 to 13.8 ms on its first call, for openrouter, anthropic, openai, gemini, deepseek and xai, with sockets blocked. The first call of a process took 21 ms.
+  (running: Hermes v0.23.1, 2026-11-13, one cold and ten warm calls per provider under `hermes --run-module unittest discover`)
 
 ### Hermes runtime, logs and environment
 

@@ -14,7 +14,6 @@ from support import (
     skip_reply,
     skipped_label,
     submodule,
-    unresolved_label,
 )
 
 PARAMETERS = CONSTANTS["taskParameters"]
@@ -24,10 +23,6 @@ NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 def item(**params):
     return {"goal": "do the thing", "context": None, "index": 0, **params}
-
-
-def unset_label(slot):
-    return CONSTANTS["skips"][CONSTANTS["slots"][slot]["unset"]]
 
 
 class DeclarationTest(unittest.TestCase):
@@ -141,7 +136,7 @@ class CallerEffortTest(RouterCase):
             api=fake_api(list_models=lambda provider: []),
             reasoning_effort="low",
         )
-        self.assertEqual(route, {"reasoning_effort": "low", "label": unresolved_label("small")})
+        self.assertEqual(route, {"reasoning_effort": "low", "label": PREFIX + "L"})
 
     def test_the_caller_effort_rides_on_the_failed_skip(self):
         router = make_router()

@@ -73,6 +73,7 @@ export async function openBatch(
  * not name through the default model or its own list, so only a role that
  * modelRoles names counts as set, and only while omp resolves it. A role omp
  * cannot resolve would fail the child with `No model selected.` Never throws.
+ * Source: docs/clients.md#omp-model-roles.
  */
 export function slotModel(
 	ctx: Context,

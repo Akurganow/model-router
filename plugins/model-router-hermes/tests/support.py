@@ -103,10 +103,6 @@ def skipped_label(reason_key: str) -> str:
     return CONSTANTS["skips"][reason_key]
 
 
-def unresolved_label(slot: str) -> str:
-    return CONSTANTS["skips"][CONSTANTS["slots"][slot]["unresolved"]]
-
-
 class FakeCtx:
     """The part of the Hermes plugin context the plugin uses.
 

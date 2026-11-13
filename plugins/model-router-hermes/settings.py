@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Slot:
-    """A small or large model: a Hermes provider name and a model id, both trimmed."""
+    """A small, middle or large model: a Hermes provider name and a model id, both trimmed."""
 
     provider: str
     model: str

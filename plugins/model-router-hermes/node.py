@@ -37,7 +37,7 @@ class Skip:
 
 @dataclass(frozen=True)
 class Route:
-    """slot names the model slot the route takes; None leaves the task's own model.
+    """slot names the model slot of the level; the router applies its model only when it is set.
 
     This module checks only the shape: whether a slot or an effort exists is the router's to say."""
 
