@@ -17,7 +17,6 @@ model-router scores each `delegate_task` task with Jev, on TypeSafe or OpenRoute
 - Run the setup the same way on the first run and on every re-run.
 - Never take a key through chat. If a key arrives, do not repeat or store it. Tell the person to rotate it.
 - Never display a key or any other credential.
-- Propose no models. Assigning `small_model` and `large_model` is the person's job.
 - Skip a step the person declines. Name the skipped steps in the closing summary.
 - Keep each message short. Show raw output only when the person needs it.
 
@@ -72,10 +71,11 @@ If a key is missing for every allowed provider, say that every task skips with `
 
 ## Step 5. Models
 
-1. Call the tool with setting `small_model`, then `middle_model`, then `large_model`.
-2. Show the answers. Each names where the slot is set and the command to run.
-3. Ask the person to assign the slots they want and tell you when it is done.
-4. Call the tool with no setting. Report the three model lines.
+1. Call the tool with no setting. Show the `small_model`, `middle_model` and `large_model` lines, each with its value or `unset`.
+2. Say that a slot with no model is no fault: its level runs on the model Hermes gives, and the plugin still sets the effort.
+3. When the person wants a model in a slot, propose one only from the models Hermes itself lists.
+4. Call the tool with that slot setting and give the person the text it returns.
+5. Change a setting only on the person's word. The plugin has no tool that lists or sets a model.
 
 Each slot is a mapping with two fields. `provider` is a Hermes provider id, such as `openrouter`. `model` is an id from Hermes's offline model list for that provider. A slot with no `model` counts as unset.
 
