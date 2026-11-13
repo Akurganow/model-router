@@ -689,13 +689,17 @@ test("the small dialog names the current role and omp's other uses of smol", asy
 	install();
 	world.list = () => STUB_MODELS;
 	world.select = async () => "Show the whole list";
-	await world.callTool({ setting: "small_model" });
+	await world.callTool({ setting: "small_model", candidates: ["stub/small"] });
 	assert.equal(
 		world.dialogs[0]?.title,
 		"Which model should the small level run? small_model is prov/small now. omp also uses smol for the scout and sonic agents, commit messages, session titles and the prewalk hand-off.",
 	);
-	assert.deepEqual(world.dialogs[0]?.options, ["Show the whole list"]);
+	assert.deepEqual(world.dialogs[0]?.options, [
+		"stub/small - $0.1 in, $0.4 out per 1M tokens, 128K context",
+		"Show the whole list",
+	]);
 	assert.equal(world.dialogs.length, 2);
+	assert.equal(world.dialogs[1]?.title, world.dialogs[0]?.title);
 	assert.deepEqual(world.dialogs[1]?.options, [
 		"stub/small - $0.1 in, $0.4 out per 1M tokens, 128K context",
 		"stub/middle - $1 in, $5 out per 1M tokens, 200K context",
