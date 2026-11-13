@@ -363,9 +363,12 @@ test("a spawn keeps the agent's own model role or nothing", async () => {
 		});
 });
 
-// isSet counts any value but undefined, null and blank text as set. These rows feed the values no other gate test feeds: undefined is unset, zero and an empty object are set.
+// isSet counts any value but undefined, null and blank text as set. These rows feed the values no other gate test feeds: undefined, blank text and null are unset; zero and an empty object are set.
 const SET_VALUES: readonly [string, unknown, boolean][] = [
 	["undefined", undefined, false],
+	["an empty string", "", false],
+	["a string of spaces", "  ", false],
+	["null", null, false],
 	["zero", 0, true],
 	["an empty object", {}, true],
 ];
