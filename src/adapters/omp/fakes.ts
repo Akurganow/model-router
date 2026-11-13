@@ -124,8 +124,9 @@ const newState = () => ({
 });
 type State = ReturnType<typeof newState>;
 
+// The small and large roles are set; the middle role is not, as for a user who set none.
 const freshConfig = (): Config => ({
-	modelRoles: {},
+	modelRoles: { smol: "prov/small", slow: "prov/large" },
 	"task.agentModelOverrides": {},
 	"task.disabledAgents": [],
 });
@@ -136,7 +137,7 @@ function reset(state: State): void {
 		agents: [
 			{ name: "task", source: "bundled", description: TASK_DESCRIPTION },
 		],
-		resolvable: new Set(["@smol", "@slow"]),
+		resolvable: new Set(["@smol", "@middle", "@slow"]),
 	});
 }
 
@@ -384,7 +385,11 @@ export const batch = (agents: DiscoveredAgent[]): Batch => ({
 		overrides: {},
 		disabled: [],
 		agents,
-		noModels: undefined,
+		models: {
+			small: { state: "set", model: "@smol" },
+			middle: { state: "unset" },
+			large: { state: "set", model: "@slow" },
+		},
 		maxEffort: undefined,
 		effortEnabled: false,
 	},

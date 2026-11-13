@@ -1,4 +1,4 @@
-"""The read-only config tool: the provider, both models and which keys are set.
+"""The read-only config tool: the provider, the three models and which keys are set.
 
 It changes nothing and returns presence only, never a key or its length."""
 

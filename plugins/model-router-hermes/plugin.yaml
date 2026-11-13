@@ -1,7 +1,7 @@
 {
   "name": "model-router-hermes",
   "version": "0.21.0",
-  "description": "Routes Hermes Agent delegated tasks to your small or large model and an effort that fits the task, judged by Jev. For each routed task it sends the task text, condensed to at most 12,000 characters, and the task's context, shortened to fit, both with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows, each with its own key. It sends a fixed text in place of an agent description, and the task's description parameter, masked the same way and cut to 500 characters, when the delegating model sets one. The plugin sets a model only from your small_model and large_model settings, and only after Hermes resolves its provider offline and lists the model. A key set as an environment variable is visible to every process Hermes starts.",
+  "description": "Routes Hermes Agent delegated tasks to your small, middle or large model and an effort that fits the task, judged by Jev. It scores a task even when you set no model, and sets the effort unless you set one. For each routed task it sends the task text, condensed to at most 12,000 characters, and the task's context, shortened to fit, both with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows, each with its own key. It sends a fixed text in place of an agent description, and the task's description parameter, masked the same way and cut to 500 characters, when the delegating model sets one. The plugin sets a model only from your small_model, middle_model and large_model settings, and only after Hermes resolves its provider offline and lists the model. A key set as an environment variable is visible to every process Hermes starts.",
   "author": "Akurganow",
   "kind": "backend",
   "requires_hermes": ">=0.22.6",
@@ -24,12 +24,17 @@
     "small_model": {
       "type": "dict",
       "label": "Small model",
-      "description": "The model a delegated task gets when Jev rates its task small, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it."
+      "description": "The model a delegated task gets when Jev rates its task small, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
+    },
+    "middle_model": {
+      "type": "dict",
+      "label": "Middle model",
+      "description": "The model a delegated task gets when Jev rates its task middle, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
     },
     "large_model": {
       "type": "dict",
       "label": "Large model",
-      "description": "The model a delegated task gets when Jev rates its task large, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it."
+      "description": "The model a delegated task gets when Jev rates its task large, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
     },
     "typesafe_api_key": {
       "type": "secret",

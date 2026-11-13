@@ -90,22 +90,14 @@ class GateTest(RouterCase):
                 self.assertEqual(route["label"], PREFIX + "skipped, test")
                 self.assertTrue(stub.capture.exists())
 
-    def test_no_end_model(self):
+    def test_no_model_in_any_slot_still_asks_node(self):
         for small, large in ((None, None), ({}, {"model": " "}), ({"provider": "p"}, "m")):
             with self.subTest((small, large)):
-                self.assertSkipped(
-                    "noEndModel",
-                    settings=good_settings(small_model=small, large_model=large),
+                route, stub = self.route(
+                    settings=good_settings(small_model=small, large_model=large)
                 )
-
-    def test_one_end_model_is_enough(self):
-        for settings in (
-            good_settings(small_model=None),
-            good_settings(large_model=None),
-        ):
-            route, stub = self.route(settings=settings)
-            self.assertEqual(route["label"], PREFIX + "skipped, test")
-            self.assertTrue(stub.capture.exists())
+                self.assertEqual(route["label"], PREFIX + "skipped, test")
+                self.assertTrue(stub.capture.exists())
 
     def test_subagent_model_set(self):
         for key in ("model", "provider", "base_url", "api_key"):
@@ -134,7 +126,6 @@ class GateTest(RouterCase):
         clock = FakeClock()
         secrets = {}
         config = {"model": "m"}
-        settings = good_settings(small_model=None, large_model=None)
         node_path = [None]
 
         def find_node():
@@ -146,13 +137,12 @@ class GateTest(RouterCase):
 
         steps = [
             ("keyUnset", lambda: secrets.update(TYPESAFE_API_KEY="ts-secret-one")),
-            ("noEndModel", lambda: settings.update(small_model={"provider": "p", "model": "m"})),
             ("subagentModelSet", lambda: config.clear()),
             ("nodeNotFound", lambda: node_path.__setitem__(0, sys.executable)),
             ("timeout", lambda: None),
         ]
         for reason, fix in steps:
-            route, stub = self.route(dict(config), settings=settings, api=build(), clock=clock)
+            route, stub = self.route(dict(config), api=build(), clock=clock)
             self.assertEqual(route["label"], skipped_label(reason))
             self.assertNodeNotRun(stub)
             fix()

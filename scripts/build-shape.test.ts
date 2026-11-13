@@ -2,8 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { VALUE_SETTINGS } from "../src/core/settings.ts";
+import { SLOT_SETTINGS } from "../src/core/slots.ts";
 import type { Schema } from "./build/schema.ts";
-import { type Install, loadSchema, type Source } from "./build/source.ts";
+import {
+	type Install,
+	loadSchema,
+	loadSource,
+	type Source,
+} from "./build/source.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const schema = loadSchema(ROOT);
@@ -82,6 +88,7 @@ const FIXTURE: Source = {
 		hostFloor: "1.0.0",
 		uiHints: {
 			small_model: HINT,
+			middle_model: HINT,
 			large_model: HINT,
 			api_key: SECRET_HINT,
 			openrouter_api_key: SECRET_HINT,
@@ -92,7 +99,12 @@ const FIXTURE: Source = {
 		pluginName: "n",
 		backendName: "b",
 		requiresHermes: ">=1.0.0",
-		settings: { small_model: HINT, large_model: HINT, typesafe_api_key: HINT },
+		settings: {
+			small_model: HINT,
+			middle_model: HINT,
+			large_model: HINT,
+			typesafe_api_key: HINT,
+		},
 		install: INSTALL,
 	},
 	npm: {
@@ -167,4 +179,21 @@ test("the option and command maps hold one key per value setting", () => {
 	);
 	assert.deepEqual(requiredAt("options").sort(), settings);
 	assert.deepEqual(requiredAt("claude", "commandContents").sort(), settings);
+});
+
+// The builders read a hint for each slot setting, so the source must name one for each, in the slot order.
+test("the source names a hint for each slot setting of OpenClaw and Hermes", () => {
+	const source = loadSource(ROOT);
+	const slotKeys = (hints: object, others: readonly string[]) =>
+		Object.keys(hints).filter((key) => !others.includes(key));
+	const EXPECTED = ["small_model", "middle_model", "large_model"];
+	assert.deepEqual(
+		slotKeys(source.openclaw.uiHints, ["api_key", "openrouter_api_key"]),
+		EXPECTED,
+	);
+	assert.deepEqual(
+		slotKeys(source.hermes.settings, ["typesafe_api_key"]),
+		EXPECTED,
+	);
+	assert.deepEqual(SLOT_SETTINGS, EXPECTED);
 });

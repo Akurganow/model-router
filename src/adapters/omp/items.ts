@@ -6,6 +6,7 @@ import {
 	setsOwnModel,
 } from "../../core/reasons.ts";
 import type { Scope } from "../../core/scope.ts";
+import type { SlotModels } from "../../core/slots.ts";
 import { isSet } from "../../utils/guards.ts";
 import type { DiscoveredAgent } from "./types.ts";
 
@@ -23,7 +24,7 @@ export type Facts = {
 	readonly overrides: Readonly<Record<string, unknown>>;
 	readonly disabled: readonly unknown[];
 	readonly agents: readonly DiscoveredAgent[] | undefined;
-	readonly noModels: string | undefined;
+	readonly models: SlotModels;
 	// Undefined when omp has no such setting, and null when its read throws. omp does not cap a level the spawn hook sets.
 	readonly maxEffort: unknown;
 	// omp passes an item's `effort` on only while `task.enableEffort` is true.
@@ -83,8 +84,8 @@ const modelGate = (model: unknown) =>
 
 /**
  * Judges one item alone and returns the reason to skip it, or undefined when it
- * may be routed. A scope, a user choice, the seance gate, the item's own model,
- * the agent gate or a missing model role gives the reason, in that order. Never
+ * may be routed. A scope, a user choice, the seance gate, the item's own model
+ * or the agent gate gives the reason, in that order. Never
  * throws. The batch drops out-of-scope items before it judges them, so the
  * scope check acts at spawn time: after a switch to the core scope, it skips a
  * bundled agent that the agent gate would pass.
@@ -99,8 +100,7 @@ export function itemCheck(
 		userChoice(name, facts) ??
 		seanceGate(name) ??
 		modelGate(model) ??
-		agentGate(name, facts) ??
-		facts.noModels
+		agentGate(name, facts)
 	);
 }
 

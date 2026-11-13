@@ -5,7 +5,7 @@ description: Use to pick a model or effort for a subagent by hand, when one repo
 
 # model-router
 
-model-router scores each routed `sessions_spawn` call through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it sets `model` to the person's `small_model` for level 0, or to their `large_model` for level 2. Level 1 keeps OpenClaw's own model. It also sets `thinking` to an effort of the ladder: `low`, `medium`, `high` or `xhigh`.
+model-router scores each routed `sessions_spawn` call through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it sets `model` to the person's `small_model` for level 0, their `middle_model` for level 1 or their `large_model` for level 2. A level whose slot is unset, or names a model OpenClaw cannot resolve, keeps OpenClaw's own model. The line then names the slot, such as `L1 middle model unset`. It also sets `thinking` to an effort of the ladder: `low`, `medium`, `high` or `xhigh`.
 
 - The plugin writes a `model-router` line to the Gateway log. It shows each decision, or the reason a spawn ran unrouted.
 - The `scope` setting decides which spawns the plugin routes. [Scope](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#scope) defines [the spawn of the requesting agent itself](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#the-spawn-of-the-requesting-agent-itself).
@@ -20,6 +20,8 @@ Escalate when a subagent reports BLOCKED, fails the check its brief names, or tw
 2. Otherwise, re-dispatch with a stronger `model` and a new brief.
 3. If the stronger model also fails, raise `thinking` one step at a time up to `xhigh`.
 4. If `xhigh` also fails, stop and report to the person.
+
+A line that reads `<slot> model unset` or `<slot> model unresolved` means that level set no model, and the spawn ran on OpenClaw's own model. When the re-dispatched spawn shows such a line again, stop and report to the person.
 
 Use a flagship model only when the person opted in. Do not change a setting to reach one without their word.
 
@@ -46,4 +48,4 @@ Replace `<stronger-model>` with a model the person's config lists. If you do not
 
 Ask the person to run `openclaw plugins disable model-router-openclaw`. To turn routing back on, they run `openclaw plugins enable model-router-openclaw`.
 
-To find the settings that turn routing off, or to change the options, run the `model-router-setup` skill. To change one option, the person types `/model-router-provider` or `/model-router-scope`. They assign `small_model` and `large_model` in OpenClaw's config.
+To find the settings that turn routing off, or to change the options, run the `model-router-setup` skill. To change one option, the person types `/model-router-provider` or `/model-router-scope`. They assign `small_model`, `middle_model` and `large_model` in OpenClaw's config.

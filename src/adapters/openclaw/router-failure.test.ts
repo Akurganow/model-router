@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { LIMIT_REACHED } from "../../core/compose.ts";
 import { MIN_DEADLINE_MS } from "../../core/handler-deadline.ts";
+import type { RuntimeMember } from "./fakes.ts";
 import {
 	CONTEXT,
 	DEADLINE_MS,
+	JEV,
 	lines,
 	settle,
 	setup,
@@ -37,9 +39,6 @@ describe("failure", () => {
 				};
 			},
 		],
-		["the default model resolve", (s) => s.runtime.throwOn.add("defaultModel")],
-		["the model resolve", (s) => s.runtime.throwOn.add("allowedRef")],
-		["the credential check", (s) => s.runtime.throwOn.add("credential")],
 		[
 			"the logger",
 			(s) => {
@@ -54,6 +53,22 @@ describe("failure", () => {
 			const s = setup({ levels: { tier: 0, work: 1 } });
 			inject(s);
 			assert.equal(await s.call(), undefined);
+		});
+
+	// A check that throws leaves its slot unresolved, so the spawn keeps its model and still gets the effort.
+	const checks: [string, RuntimeMember][] = [
+		["the default model resolve", "defaultModel"],
+		["the model resolve", "allowedRef"],
+		["the credential check", "credential"],
+	];
+	for (const [name, member] of checks)
+		it(`keeps the spawn's model and sets the effort when ${name} throws`, async () => {
+			const s = setup({ levels: { tier: 0, work: 1 } });
+			s.runtime.throwOn.add(member);
+			assert.deepEqual(await s.call(), { params: { thinking: "high" } });
+			assert.deepEqual(lines(s), [
+				`model-router L0 small model unresolved · high · p=0.90/0.90${JEV}`,
+			]);
 		});
 
 	it("returns nothing when the event params throw", async () => {

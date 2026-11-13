@@ -1,30 +1,51 @@
 import type { Level } from "./part.ts";
-import { modelUnset } from "./reasons.ts";
 
-// An end tier names its slot in the skip text and the setting that holds its model.
-export const SLOTS = ["small", "large"] as const;
-export type EndSlot = (typeof SLOTS)[number];
-// The slot each end level takes its model from. The middle level changes no model and names none.
-export const LEVEL_SLOTS: Readonly<Record<0 | 2, EndSlot>> = {
-	0: "small",
-	2: "large",
+// The slots in level order: level 0 takes its model from small, 1 from middle, 2 from large.
+export const SLOTS = ["small", "middle", "large"] as const;
+export type Slot = (typeof SLOTS)[number];
+export const slotForLevel = (level: Level): Slot => SLOTS[level];
+export type SlotSetting = `${Slot}_model`;
+export const slotSetting = (slot: Slot): SlotSetting => `${slot}_model`;
+
+export const SLOT_SETTINGS: readonly SlotSetting[] = SLOTS.map(slotSetting);
+
+// Builds a record by slot. The one cast lives here, so a caller cannot leave a slot out.
+export const slotRecord = <T>(
+	make: (slot: Slot) => T,
+): Readonly<Record<Slot, T>> =>
+	Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)])) as Record<
+		Slot,
+		T
+	>;
+
+// What an adapter knows of one slot: a model it can apply, a model the harness cannot run, or none.
+export type SlotModel =
+	| { readonly state: "set"; readonly model: string }
+	| { readonly state: "unresolved" | "unset" };
+export type SlotModels = Readonly<Record<Slot, SlotModel>>;
+
+// The one rule for a slot's state: no model is unset, and a model is set only when the harness resolves it.
+export const slotState = (
+	model: string | undefined,
+	resolved: boolean,
+): SlotModel => {
+	if (model === undefined) return { state: "unset" };
+	return resolved ? { state: "set", model } : { state: "unresolved" };
 };
-export const slotForLevel = (level: Level): EndSlot | null =>
-	level === 1 ? null : LEVEL_SLOTS[level];
-export type SlotSetting = `${EndSlot}_model`;
-export const slotSetting = (slot: EndSlot): SlotSetting => `${slot}_model`;
 
-// What a level does to the model: the middle keeps it, an end level names its slot and model, or its slot has no model.
-type LevelModel =
-	| { readonly slot: null; readonly model?: undefined }
-	| { readonly slot: EndSlot; readonly model: string }
-	| { readonly skipped: string };
-export const modelForLevel = (
-	level: Level,
-	models: Readonly<Record<EndSlot, string | undefined>>,
-): LevelModel => {
+// A slot with no model keeps the harness's model, so the line names the slot and its state in place of a model.
+type Picked = {
+	readonly slot: Slot;
+	readonly model: string | undefined;
+	readonly target: string;
+};
+export function pickModel(level: Level, state: SlotModel): Picked {
 	const slot = slotForLevel(level);
-	if (slot === null) return { slot };
-	const model = models[slot];
-	return model === undefined ? { skipped: modelUnset(slot) } : { slot, model };
-};
+	return state.state === "set"
+		? { slot, model: state.model, target: state.model }
+		: { slot, model: undefined, target: `${slot} model ${state.state}` };
+}
+
+// The report line of one slot: its configured value, or unset.
+export const slotLine = (name: string, shown?: string): string =>
+	`${name}: ${shown ?? "unset"}`;

@@ -1021,7 +1021,6 @@ function parseProbabilities(answers, key) {
 var CALLER_EFFORT = "caller effort";
 var CONFIG_EFFORT = "config effort";
 var SUBAGENT_MODEL_SET = "subagent model set";
-var NO_END_MODEL = "no small or large model";
 var UNREADABLE = "settings unreadable";
 var KEY_UNSET = "key unset";
 var BAD_REPLY = "bad reply";
@@ -1035,8 +1034,6 @@ var outsideCoreScope = (id) => `${id} is outside the core scope`;
 var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
 var agentUnknown = (id) => `${id} agent unknown`;
 var setsOwnModel = (id) => `${id} sets its own model`;
-var modelUnset = (slot) => `${slot} model unset`;
-var modelUnresolved = (slot) => `${slot} model unresolved`;
 
 // src/core/compose.ts
 var ROUTING_LIMIT_MS = 8e3;
@@ -1138,7 +1135,7 @@ var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARG
 
 // src/core/line.ts
 var LINE_PREFIX = "model-router ";
-var NO_CHANGE = "no change";
+var pinnedLine = (level, target) => `L${level} ${target}`;
 function routedLine({
   level,
   target,
@@ -1147,7 +1144,7 @@ function routedLine({
   suffix
 }) {
   const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+  return `${pinnedLine(level, target)}${effortSegment} \xB7 p=${probabilities}${suffix}`;
 }
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
@@ -1255,6 +1252,22 @@ var COMMAND_DESCRIPTIONS = {
   scope: describeCommand("scope")
 };
 
+// src/core/slots.ts
+var SLOTS = ["small", "middle", "large"];
+var slotForLevel = (level) => SLOTS[level];
+var slotSetting = (slot) => `${slot}_model`;
+var SLOT_SETTINGS = SLOTS.map(slotSetting);
+var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
+var slotState = (model, resolved) => {
+  if (model === void 0) return { state: "unset" };
+  return resolved ? { state: "set", model } : { state: "unresolved" };
+};
+function pickModel(level, state) {
+  const slot = slotForLevel(level);
+  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model ${state.state}` };
+}
+var slotLine = (name, shown) => `${name}: ${shown ?? "unset"}`;
+
 // src/adapters/openclaw/settings.ts
 var PLUGIN_ID = "model-router-openclaw";
 var pluginEntry = (config) => config?.plugins?.entries?.[PLUGIN_ID];
@@ -1291,8 +1304,7 @@ function readSettings(live, pluginConfig) {
   return {
     provider: resolve(firstValid(from, "provider", parseProvider)),
     scope: resolveScope(firstValid(from, "scope", parseScope)),
-    smallModel: firstValid(from, "small_model", nonEmpty),
-    largeModel: firstValid(from, "large_model", nonEmpty)
+    models: slotRecord((slot) => firstValid(from, slotSetting(slot), nonEmpty))
   };
 }
 function collectKeys(value, lookup) {
@@ -1324,23 +1336,18 @@ function readState(api, env) {
 var COMMAND_NAMES = VALUE_SETTINGS.map(commandName);
 var ADMIN_SCOPE = "operator.admin";
 var LINE_BREAK = "\n";
-var UNSET = "unset";
 var NOT_OWNER = "only the owner can change it";
-var MODEL_SETTINGS = ["small_model", "large_model"];
+var MODEL_SETTINGS = SLOT_SETTINGS;
 var TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
 var TOOL_DESCRIPTION = readOnlyToolDescription(
-  ["the provider", "the scope", "both models"],
+  ["the provider", "the scope", "the three models"],
   TOOL_SETTINGS
 );
-var modelLine = (name, model) => `${name}: ${model ?? UNSET}`;
 function readAll({ settings, keys }) {
   return settingsReport(
     settings.provider,
     settings.scope,
-    [
-      modelLine("small_model", settings.smallModel),
-      modelLine("large_model", settings.largeModel)
-    ],
+    SLOTS.map((slot) => slotLine(slotSetting(slot), settings.models[slot])),
     keys
   );
 }
@@ -1704,19 +1711,6 @@ var EFFORT_BY_TIER = {
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
-// src/core/slots.ts
-var LEVEL_SLOTS = {
-  0: "small",
-  2: "large"
-};
-var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
-var modelForLevel = (level, models) => {
-  const slot = slotForLevel(level);
-  if (slot === null) return { slot };
-  const model = models[slot];
-  return model === void 0 ? { skipped: modelUnset(slot) } : { slot, model };
-};
-
 // src/utils/deadline.ts
 async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
   try {
@@ -1752,7 +1746,7 @@ async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
 }
 
 // src/adapters/openclaw/checks.ts
-async function slotResolves(runtime, cfg, agentId, slot) {
+async function slotResolves(runtime, cfg, agentId, model) {
   try {
     const target = agentId === void 0 ? { cfg } : { cfg, agentId };
     const { modelConfig, modelAuth, agent } = runtime;
@@ -1760,7 +1754,7 @@ async function slotResolves(runtime, cfg, agentId, slot) {
     const resolved = modelConfig.resolveAllowedModelRef({
       ...target,
       catalog: [],
-      raw: slot,
+      raw: model,
       defaultProvider
     });
     if ("error" in resolved) return false;
@@ -1869,8 +1863,6 @@ function gateSpawn(input) {
     const reason = otherAgentSkip(named, input);
     if (reason !== void 0) return skip2(reason);
   }
-  if (settings.smallModel === void 0 && settings.largeModel === void 0)
-    return skip2(NO_END_MODEL);
   if (config === void 0) return skip2(UNREADABLE);
   return {
     outcome: "route",
@@ -1964,16 +1956,10 @@ async function score({ deps, signal }, settings, keys, gate) {
     signal
   });
 }
-async function slotFor(runtime, settings, { config, target }, level) {
-  const picked = modelForLevel(level, {
-    small: settings.smallModel,
-    large: settings.largeModel
-  });
-  if ("skipped" in picked) return picked;
-  const { slot, model } = picked;
-  if (slot !== null && !await slotResolves(runtime, config, target, model))
-    return { skipped: modelUnresolved(slot) };
-  return { model };
+async function slotOf(runtime, settings, { config, target }, level) {
+  const model = settings.models[slotForLevel(level)];
+  const resolved = model !== void 0 && await slotResolves(runtime, config, target, model);
+  return slotState(model, resolved);
 }
 async function routeSpawn(spawn) {
   const { api, deps, signal, request, requester } = spawn;
@@ -1998,15 +1984,17 @@ async function routeGated(spawn, settings, keys, gate, log) {
   if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
   const decided = await score(spawn, settings, keys, gate);
   if ("skipped" in decided) return void log(skippedLine(decided.skipped));
-  const slot = await slotFor(api.runtime, settings, gate, decided.tier);
-  if ("skipped" in slot) return void log(skippedLine(slot.skipped));
-  const { model } = slot;
+  const picked = pickModel(
+    decided.tier,
+    await slotOf(api.runtime, settings, gate, decided.tier)
+  );
+  const { model } = picked;
   const kept = gate.effort.kind === "keep" ? gate.effort.label : void 0;
   const effort = effortFor(decided.tier, decided.work);
   log(
     routedLine({
       level: decided.tier,
-      target: model,
+      target: picked.target,
       effort: kept ?? effort,
       probabilities: decided.probabilities,
       suffix: decided.suffix

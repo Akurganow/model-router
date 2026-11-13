@@ -1,5 +1,18 @@
 import { KEY_UNSET, UNREADABLE } from "../../core/reasons.ts";
-import { type Facts, type Spawning, spawnCheck, TASK } from "./items.ts";
+import {
+	type Slot,
+	type SlotModel,
+	slotRecord,
+	slotState,
+} from "../../core/slots.ts";
+import { patternsOf } from "./effort.ts";
+import {
+	type Facts,
+	ROLE_MARK,
+	type Spawning,
+	spawnCheck,
+	TASK,
+} from "./items.ts";
 import {
 	findKeys,
 	type Routing,
@@ -9,7 +22,8 @@ import {
 } from "./settings.ts";
 import type { Context, OmpImports, Pi } from "./types.ts";
 
-export const ROLES = { small: "@smol", large: "@slow" } as const;
+// The modelRoles key that holds each slot's model.
+const ROLE_NAMES = { small: "smol", middle: "middle", large: "slow" } as const;
 
 export type Batch = Routing & { readonly facts: Facts };
 type Closed = { readonly closed: string };
@@ -45,14 +59,33 @@ export async function openBatch(
 	const config = readConfig(omp.lookup, pi.pi.settings);
 	if (config === undefined) return { closed: UNREADABLE };
 	const agents = await discover(pi, ctx);
-	const noModels = modelsGate(ctx);
+	const models = slotRecord((slot) => slotModel(ctx, config.roles, slot));
 	return {
 		...routing,
-		facts: { ...config, scope: settings.scope, agents, noModels },
+		facts: { ...config, scope: settings.scope, agents, models },
 	};
 }
 
-export function resolves(ctx: Context, role: string): boolean {
+/**
+ * Returns the state of a slot's role. omp resolves a role that modelRoles does
+ * not name through the default model or its own list, so only a role that
+ * modelRoles names counts as set, and only while omp resolves it. A role omp
+ * cannot resolve would fail the child with `No model selected.` Never throws.
+ * Source: docs/clients.md#omp-model-roles.
+ */
+export function slotModel(
+	ctx: Context,
+	roles: Readonly<Record<string, unknown>>,
+	slot: Slot,
+): SlotModel {
+	const name = ROLE_NAMES[slot];
+	const value = Object.hasOwn(roles, name) ? roles[name] : undefined;
+	const named = patternsOf(value).length > 0;
+	const role = ROLE_MARK + name;
+	return slotState(named ? role : undefined, named && resolves(ctx, role));
+}
+
+function resolves(ctx: Context, role: string): boolean {
 	try {
 		return ctx.models.resolve(role) !== undefined;
 	} catch {
@@ -66,12 +99,4 @@ async function discover(pi: Pi, ctx: Context): Promise<Facts["agents"]> {
 	} catch {
 		return undefined;
 	}
-}
-
-export const noModel = (role: string) => `no ${role} model`;
-
-function modelsGate(ctx: Context): string | undefined {
-	return Object.values(ROLES).some((role) => resolves(ctx, role))
-		? undefined
-		: noModel(`${ROLES.small} or ${ROLES.large}`);
 }

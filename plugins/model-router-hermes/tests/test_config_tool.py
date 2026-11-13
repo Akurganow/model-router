@@ -26,7 +26,7 @@ def call(handler, args=None, **kwargs):
 
 
 class ReadAllTest(unittest.TestCase):
-    def test_no_input_gives_the_provider_both_models_and_the_key_lines(self):
+    def test_no_input_gives_the_provider_the_three_models_and_the_key_lines(self):
         handler = handler_for(
             good_settings(provider="auto", large_model=None), {"TYPESAFE_API_KEY": "x"}
         )
@@ -36,6 +36,7 @@ class ReadAllTest(unittest.TestCase):
                 [
                     TEXTS["providerLines"]["auto"],
                     "small_model: openrouter small-model",
+                    "middle_model: unset",
                     "large_model: unset",
                     TEXTS["keyLines"]["typesafe"]["set"],
                     TEXTS["keyLines"]["openrouter"]["unset"],
@@ -48,7 +49,7 @@ class ReadAllTest(unittest.TestCase):
             with self.subTest(value):
                 lines = call(handler_for(good_settings(provider=value), SECRETS)).split(LINES)
                 self.assertEqual(
-                    lines[3:], [TEXTS["keyLines"][name]["set"] for name in names]
+                    lines[4:], [TEXTS["keyLines"][name]["set"] for name in names]
                 )
 
     def test_an_unset_provider_reads_as_the_default(self):
@@ -71,7 +72,29 @@ class ReadAllTest(unittest.TestCase):
         settings = good_settings(small_model={"model": "m/x"}, large_model={"provider": "p"})
         lines = call(handler_for(settings)).split(LINES)
         self.assertEqual(lines[1], "small_model: unset m/x")
-        self.assertEqual(lines[2], TEXTS["modelUnset"].format(name="large_model"))
+        self.assertEqual(lines[3], "large_model: unset")
+
+    def test_the_report_shows_a_model_as_configured_and_runs_no_check(self):
+        calls = []
+        settings = good_settings(middle_model={"provider": "openrouter", "model": "middle-model"})
+        handler = handler_for(settings, list_models=lambda provider: calls.append(provider) or [])
+        self.assertEqual(
+            call(handler).split(LINES)[1:4],
+            [
+                "small_model: openrouter small-model",
+                "middle_model: openrouter middle-model",
+                "large_model: openrouter large-model",
+            ],
+        )
+        self.assertEqual(calls, [])
+
+    def test_a_blank_spaces_or_missing_model_is_unset_in_every_slot(self):
+        for index, slot in enumerate(("small", "middle", "large"), start=1):
+            for value in ({"provider": "openrouter", "model": ""}, {"model": "   "}, None):
+                with self.subTest(slot=slot, value=value):
+                    settings = good_settings(**{f"{slot}_model": value})
+                    lines = call(handler_for(settings)).split(LINES)
+                    self.assertEqual(lines[index], f"{slot}_model: unset")
 
     def test_extra_keywords_from_hermes_are_accepted(self):
         self.assertIn("provider", call(handler_for(), task_id="t", parent_agent=None))

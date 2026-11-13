@@ -44,12 +44,13 @@ test("the manifest names the plugin, its version, its tool and its skills", () =
 	assert.deepEqual(manifest.skills, source.openclaw.skills);
 });
 
-test("the config schema holds the six settings and refuses any other key", () => {
+test("the config schema holds the seven settings and refuses any other key", () => {
 	assert.equal(schema.additionalProperties, false);
 	assert.deepEqual(Object.keys(schema.properties ?? {}), [
 		"provider",
 		"scope",
 		"small_model",
+		"middle_model",
 		"large_model",
 		"api_key",
 		"openrouter_api_key",
@@ -60,10 +61,13 @@ test("each default in the manifest is the value the code applies to an empty con
 	const settings = readSettings(undefined, {});
 	assert.equal(property("provider")?.default, settings.provider);
 	assert.equal(property("scope")?.default, settings.scope);
-	assert.equal(property("small_model")?.default, undefined);
-	assert.equal(property("large_model")?.default, undefined);
-	assert.equal(settings.smallModel, undefined);
-	assert.equal(settings.largeModel, undefined);
+	for (const slot of ["small_model", "middle_model", "large_model"])
+		assert.equal(property(slot)?.default, undefined, slot);
+	assert.deepEqual(settings.models, {
+		small: undefined,
+		middle: undefined,
+		large: undefined,
+	});
 	assert.deepEqual(readKeys(undefined, {}, settings.provider, {}), {});
 });
 
@@ -103,7 +107,7 @@ test("the key names in the source are the setting names the code reads", () => {
 test("both keys are sensitive secret inputs, and the slots are not", () => {
 	const keys = Object.values(KEY_FIELDS);
 	for (const key of keys) assert.equal(manifest.uiHints[key].sensitive, true);
-	for (const slot of ["small_model", "large_model"])
+	for (const slot of ["small_model", "middle_model", "large_model"])
 		assert.equal(manifest.uiHints[slot].sensitive, undefined);
 	assert.deepEqual(
 		manifest.configContracts.secretInputs.paths.map(
@@ -163,5 +167,17 @@ test("the bundle holds no absolute path", () => {
 	assert.doesNotMatch(
 		read(OPENCLAW_OUTPUTS.bundle),
 		/(^|[\s"'`(])\/(Users|home|private|tmp)\//,
+	);
+});
+
+test("the manifest and the middle hint say the effort is set unless the user sets one", () => {
+	assert.ok(
+		manifest.description.includes(
+			"It scores a task even when you set no model, and sets the effort unless you set one.",
+		),
+	);
+	assert.equal(
+		manifest.uiHints.middle_model.help,
+		"The model a spawn gets when Jev rates its task middle, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one.",
 	);
 });

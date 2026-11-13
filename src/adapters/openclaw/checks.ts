@@ -8,7 +8,7 @@ export async function slotResolves(
 	runtime: PluginRuntime,
 	cfg: OpenClawConfig,
 	agentId: string | undefined,
-	slot: string,
+	model: string,
 ): Promise<boolean> {
 	try {
 		const target = agentId === undefined ? { cfg } : { cfg, agentId };
@@ -18,7 +18,7 @@ export async function slotResolves(
 		const resolved = modelConfig.resolveAllowedModelRef({
 			...target,
 			catalog: [],
-			raw: slot,
+			raw: model,
 			defaultProvider,
 		});
 		if ("error" in resolved) return false;

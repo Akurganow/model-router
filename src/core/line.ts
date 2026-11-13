@@ -2,8 +2,7 @@ import type { Level } from "./part.ts";
 
 type RoutedLine = {
 	readonly level: Level;
-	// A level that changes nothing has no target.
-	readonly target: string | undefined;
+	readonly target: string;
 	// A harness that sets no effort leaves the segment out.
 	readonly effort?: string;
 	readonly probabilities: string;
@@ -11,12 +10,15 @@ type RoutedLine = {
 };
 
 export const LINE_PREFIX = "model-router ";
-export const NO_CHANGE = "no change";
 export const ENTRY_SEPARATOR = " | ";
 
+// A level pinned by the caller has no probabilities, so its line stops after the target.
+export const pinnedLine = (level: Level, target: string): string =>
+	`L${level} ${target}`;
+
 /**
- * Returns the routing line: the level, the target or "no change", the effort
- * when given, the probabilities and the suffix. Never throws.
+ * Returns the routing line: the level, the target, the effort when given, the
+ * probabilities and the suffix. Never throws.
  */
 export function routedLine({
 	level,
@@ -26,7 +28,7 @@ export function routedLine({
 	suffix,
 }: RoutedLine): string {
 	const effortSegment = effort === undefined ? "" : ` · ${effort}`;
-	return `L${level} ${target ?? NO_CHANGE}${effortSegment} · p=${probabilities}${suffix}`;
+	return `${pinnedLine(level, target)}${effortSegment} · p=${probabilities}${suffix}`;
 }
 
 const SKIPPED_PREFIX = "skipped, ";

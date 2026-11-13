@@ -18,30 +18,36 @@
 	"efforts": ["low", "medium", "high", "xhigh"],
 	"skips": {
 		"keyUnset": "model-router skipped, key unset",
-		"noEndModel": "model-router skipped, no small or large model",
 		"subagentModelSet": "model-router skipped, subagent model set",
 		"nodeNotFound": "model-router skipped, node not found",
 		"timeout": "model-router skipped, timeout",
-		"failed": "model-router skipped, failed",
-		"smallModelUnset": "model-router skipped, small model unset",
-		"smallModelUnresolved": "model-router skipped, small model unresolved",
-		"largeModelUnset": "model-router skipped, large model unset",
-		"largeModelUnresolved": "model-router skipped, large model unresolved"
+		"failed": "model-router skipped, failed"
 	},
 	"slots": {
 		"small": {
 			"setting": "small_model",
-			"unset": "smallModelUnset",
-			"unresolved": "smallModelUnresolved"
+			"pinned": {
+				"unset": "model-router L0 small model unset",
+				"unresolved": "model-router L0 small model unresolved"
+			}
+		},
+		"middle": {
+			"setting": "middle_model",
+			"pinned": {
+				"unset": "model-router L1 middle model unset",
+				"unresolved": "model-router L1 middle model unresolved"
+			}
 		},
 		"large": {
 			"setting": "large_model",
-			"unset": "largeModelUnset",
-			"unresolved": "largeModelUnresolved"
+			"pinned": {
+				"unset": "model-router L2 large model unset",
+				"unresolved": "model-router L2 large model unresolved"
+			}
 		}
 	},
 	"levels": [0, 1, 2],
-	"levelSlots": ["small", null, "large"],
+	"levelSlots": ["small", "middle", "large"],
 	"taskParameters": {
 		"description": {
 			"type": "string",
@@ -55,7 +61,7 @@
 		"level": {
 			"type": "integer",
 			"enum": [0, 1, 2],
-			"description": "Leave it unset unless you re-dispatch a failed task. 0 runs the child on the user's small model, 1 on the model Hermes gives it, 2 on the large model, and model-router asks Jev nothing. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins."
+			"description": "Leave it unset unless you re-dispatch a failed task. 0 runs the child on the user's small model, 1 on the user's middle model, 2 on the large model, and model-router asks Jev nothing. A level whose model is not set runs on the model Hermes gives it. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins."
 		}
 	},
 	"delegationAddendum": "model-router picks each task's model and effort. Give every task a description. Leave reasoning_effort and level unset unless you re-dispatch a failed task; the model-router-hermes:model-router skill says how.",
@@ -64,12 +70,13 @@
 		"toolName": "model_router_config",
 		"toolset": "model_router",
 		"toolLabel": "Model Router settings",
-		"toolDescription": "Reads the router's settings. With no input it returns the provider, both models, and whether each key the provider allows is set. With a setting name (provider, typesafe_key, openrouter_key, small_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key.",
+		"toolDescription": "Reads the router's settings. With no input it returns the provider, the three models, and whether each key the provider allows is set. With a setting name (provider, typesafe_key, openrouter_key, small_model, middle_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key.",
 		"settings": [
 			"provider",
 			"typesafe_key",
 			"openrouter_key",
 			"small_model",
+			"middle_model",
 			"large_model"
 		],
 		"commandName": "model-router-provider",
@@ -91,7 +98,7 @@
 		},
 		"refused": "provider unchanged: only a local session can change it",
 		"localPlatforms": ["local", "cli", "tui", "desktop"],
-		"badCall": "Unknown setting. Pass no setting, or one of: provider, typesafe_key, openrouter_key, small_model, large_model",
+		"badCall": "Unknown setting. Pass no setting, or one of: provider, typesafe_key, openrouter_key, small_model, middle_model, large_model",
 		"keyLines": {
 			"typesafe": {
 				"set": "typesafe key: set",
@@ -112,6 +119,7 @@
 			"typesafe_key": "Set TYPESAFE_API_KEY in the .env file of the Hermes home, or enter the key in the plugin's settings form in Hermes Desktop. Never type a key into the chat.",
 			"openrouter_key": "Set OPENROUTER_API_KEY in the .env file of the Hermes home. Never type a key into the chat.",
 			"small_model": "small_model is set in the plugin's settings form in Hermes Desktop, or in config.yaml under plugins.entries.model-router-hermes.settings.small_model, or with: hermes config set plugins.entries.model-router-hermes.settings.small_model '{\"provider\": \"<provider>\", \"model\": \"<model>\"}'",
+			"middle_model": "middle_model is set in the plugin's settings form in Hermes Desktop, or in config.yaml under plugins.entries.model-router-hermes.settings.middle_model, or with: hermes config set plugins.entries.model-router-hermes.settings.middle_model '{\"provider\": \"<provider>\", \"model\": \"<model>\"}'",
 			"large_model": "large_model is set in the plugin's settings form in Hermes Desktop, or in config.yaml under plugins.entries.model-router-hermes.settings.large_model, or with: hermes config set plugins.entries.model-router-hermes.settings.large_model '{\"provider\": \"<provider>\", \"model\": \"<model>\"}'"
 		}
 	}

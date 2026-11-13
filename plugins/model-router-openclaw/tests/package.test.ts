@@ -104,6 +104,7 @@ test("the config schema rejects no field the code reads", () => {
 	assert.deepEqual(fields, [
 		"api_key",
 		"large_model",
+		"middle_model",
 		"openrouter_api_key",
 		"provider",
 		"scope",
@@ -116,6 +117,7 @@ test("the config schema rejects no field the code reads", () => {
 			provider: "auto",
 			scope: "extended",
 			small_model: "a/b",
+			middle_model: "e/f",
 			large_model: "c/d",
 			api_key: "k",
 			openrouter_api_key: "o",

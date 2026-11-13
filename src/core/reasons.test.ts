@@ -12,10 +12,7 @@ import {
 	FAILED,
 	httpStatus,
 	KEY_UNSET,
-	modelUnresolved,
-	modelUnset,
 	NETWORK_ERROR,
-	NO_END_MODEL,
 	outsideCoreScope,
 	REJECTED_REQUEST,
 	SUBAGENT_MODEL_SET,
@@ -29,7 +26,6 @@ const CONSTANTS: [string, string][] = [
 	[CALLER_EFFORT, "caller effort"],
 	[CONFIG_EFFORT, "config effort"],
 	[SUBAGENT_MODEL_SET, "subagent model set"],
-	[NO_END_MODEL, "no small or large model"],
 	[UNREADABLE, "settings unreadable"],
 	[KEY_UNSET, "key unset"],
 	[BAD_REPLY, "bad reply"],
@@ -58,10 +54,16 @@ const BUILDERS: Builder[] = [
 	{ build: agentUnknown, arg: "scout", text: "scout agent unknown" },
 	{ build: setsOwnModel, arg: "scout", text: "scout sets its own model" },
 	{ build: httpStatus, arg: 503, text: "HTTP 503" },
-	{ build: modelUnset, arg: "small", text: "small model unset" },
-	{ build: modelUnset, arg: "large", text: "large model unset" },
-	{ build: modelUnresolved, arg: "small", text: "small model unresolved" },
-	{ build: modelUnresolved, arg: "large", text: "large model unresolved" },
+];
+
+// The texts of a slot with no model. pickModel in core/slots.ts computes them, so no source file spells one.
+const SLOT_TEXTS = [
+	"small model unset",
+	"middle model unset",
+	"large model unset",
+	"small model unresolved",
+	"middle model unresolved",
+	"large model unresolved",
 ];
 
 test("the shared reasons keep the texts the harnesses print", () => {
@@ -93,6 +95,7 @@ test("no other source file spells a shared reason", () => {
 	const texts = [
 		...CONSTANTS.map(([reason]) => reason),
 		...[...new Set(BUILDERS.map(({ build }) => build))].flatMap(around),
+		...SLOT_TEXTS,
 	];
 	const files = readdirSync(SOURCES, {
 		recursive: true,

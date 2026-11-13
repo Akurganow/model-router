@@ -1626,7 +1626,7 @@ var EFFORT_BY_TIER = {
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
 // src/core/line.ts
-var NO_CHANGE = "no change";
+var pinnedLine = (level, target) => `L${level} ${target}`;
 function routedLine({
   level,
   target,
@@ -1635,7 +1635,7 @@ function routedLine({
   suffix
 }) {
   const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+  return `${pinnedLine(level, target)}${effortSegment} \xB7 p=${probabilities}${suffix}`;
 }
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;

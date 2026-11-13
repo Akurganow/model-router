@@ -78,7 +78,7 @@ class Router:
         return {**base, "reasoning_effort": effort}
 
     def _logged(self, route):
-        # A pinned task carries no label, as other harnesses print no line for a caller's model.
+        # A pinned task whose slot is set carries no label, as other harnesses print no line for a caller's model.
         if "label" in route:
             self._log.info(route["label"])
         return route
@@ -99,8 +99,6 @@ class Router:
         # These gates read Hermes state, and a skipped task starts no Node.
         if not keys:
             return self._skip(base, "keyUnset")
-        if not any(slot.has_model for slot in slot_settings.values()):
-            return self._skip(base, "noEndModel")
         if _subagent_model_set(config):
             return self._skip(base, "subagentModelSet")
         node_path = self._api.find_node()
@@ -122,28 +120,25 @@ class Router:
         return self._ask_node(node_path, request, base, slot_settings, window)
 
     def _pinned(self, level, config, base, slot_settings, window):
-        """The pass-through of a pinned level: no Jev call and no label, as on the other harnesses."""
+        """The pass-through of a pinned level: no Jev call, and a label only when its slot has no model."""
         if _subagent_model_set(config):
             return self._skip(base, "subagentModelSet")
         name = self._constants["levelSlots"][level]
-        if name is None:
-            return dict(base)
         slot = slot_settings[name]
-        failure = self._slot_failure(name, slot, window)
-        if failure is not None:
-            return self._skip(base, failure)
+        labels = self._constants["slots"][name]["pinned"]
+        if not slot.has_model:
+            return {**base, "label": labels["unset"]}
+        resolved = self._resolved(slot, window)
+        if resolved is None:
+            return self._skip(base, "timeout")
+        if not resolved:
+            return {**base, "label": labels["unresolved"]}
         return {**base, "model": slot.model, "provider": slot.provider}
 
-    def _slot_failure(self, name, slot, window):
-        """None when the slot's model resolves offline in time, else the skips key that says why not."""
-        spec = self._constants["slots"][name]
-        if not slot.has_model:
-            return spec["unset"]
+    def _resolved(self, slot, window):
+        """True or False when the slot's offline check finishes within the window, else None."""
         wait_s = max(window.remaining_ms(), 0) / MS_PER_SECOND
-        resolved = checks.slot_resolved_within(slot, self._api, wait_s)
-        if resolved is None:
-            return "timeout"
-        return None if resolved else spec["unresolved"]
+        return checks.slot_resolved_within(slot, self._api, wait_s)
 
     def _ask_node(self, node_path, request, base, slot_settings, window):
         timeout_s = (request["budgetMs"] + self._constants["graceMs"]) / MS_PER_SECOND
@@ -157,7 +152,7 @@ class Router:
 
     def _in_protocol(self, answer):
         """Whether a route names a slot and an effort the settings and the ladder hold."""
-        return (answer.slot is None or answer.slot in self._constants["slots"]) and (
+        return answer.slot in self._constants["slots"] and (
             answer.effort is None or answer.effort in self._constants["efforts"]
         )
 
@@ -168,12 +163,18 @@ class Router:
             return route
         if not self._in_protocol(answer):
             return self._skip(base, "failed")
-        if answer.slot is not None:
-            slot = slot_settings[answer.slot]
-            failure = self._slot_failure(answer.slot, slot, window)
-            if failure is not None:
-                return self._skip(base, failure)
-            route.update(model=slot.model, provider=slot.provider)
+        # Only the slot Node picked is checked, and a slot with no usable model keeps Hermes's model.
+        slot = slot_settings[answer.slot]
+        if slot.has_model:
+            resolved = self._resolved(slot, window)
+            if resolved is None:
+                return self._skip(base, "timeout")
+            if resolved:
+                route.update(model=slot.model, provider=slot.provider)
+            elif answer.unresolved_line is None:
+                return self._skip(base, "failed")
+            else:
+                route["label"] = answer.unresolved_line
         if answer.effort is not None:
             route["reasoning_effort"] = answer.effort
         return route

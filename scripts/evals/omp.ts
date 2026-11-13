@@ -1,8 +1,4 @@
-import {
-	ENTRY_SEPARATOR,
-	LINE_PREFIX,
-	NO_CHANGE,
-} from "../../src/core/line.ts";
+import { ENTRY_SEPARATOR, LINE_PREFIX } from "../../src/core/line.ts";
 import type { Level } from "../../src/core/part.ts";
 import { get, isRecord, jevModel, jsonLines } from "./stream.ts";
 import type { Adapter, Evidence } from "./types.ts";
@@ -11,12 +7,13 @@ const SPAWN_TOOL = "task";
 // Background tasks, omp's default, let print mode exit before the subagent's answer arrives.
 const SETTINGS_OVERLAY = "omp-evals.yml";
 // The extension prints "model-router task <n>: L<level> <role> · <effort> · p=<tier>/<work>" to stderr when omp has no UI.
-// A batch is one line of entries joined by " | ". The role is "no change" when the task keeps its model.
+// A batch is one line of entries joined by " | ". A slot with no model prints "<slot> model <state>" in place of the role.
 // The effort is a level, or the label of the effort omp keeps, such as "caller effort".
+// The eval scripts read the plugin from outside and import no adapter, so the role mark is spelled again here.
+const ROLE_MARK = "@";
 const ENTRY_NUMBER = /^task (\d+): /;
-const DECISION_ENTRY = new RegExp(
-	`^task \\d+: L(?<tier>[012]) (?<target>@\\w+|${NO_CHANGE}) · (?<effort>[^·]+?) · p=\\d+(?:\\.\\d+)?/\\d+(?:\\.\\d+)?`,
-);
+const DECISION_ENTRY =
+	/^task \d+: L(?<tier>[012]) (?<target>@\w+|\w+ model \w+) · (?<effort>[^·]+?) · p=\d+(?:\.\d+)?\/\d+(?:\.\d+)?/;
 
 function spawnCount(stdout: string): number {
 	let count = 0;
@@ -116,7 +113,6 @@ function record(
 	evidence.line = groups ? entry : null;
 	evidence.tier = tier === undefined ? null : (Number(tier) as Level);
 	evidence.effort = effort ?? null;
-	evidence.target =
-		target === undefined || target === NO_CHANGE ? null : target;
+	evidence.target = target?.startsWith(ROLE_MARK) ? target : null;
 	evidence.jev = groups ? jevModel(entry) : null;
 }

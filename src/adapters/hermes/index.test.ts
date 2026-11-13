@@ -7,6 +7,7 @@ import { buildPrompt, DEFAULT_ROLE, ROLE_CAP } from "../../core/brief.ts";
 import { ROUTING_LIMIT_MS } from "../../core/compose.ts";
 import { createFakeClock } from "../../utils/fake-clock.ts";
 import { createScriptedJev, type Step } from "./fakes.ts";
+import { readRequest } from "./request.ts";
 import { routeRequest } from "./route.ts";
 
 const FIXTURES = join(
@@ -167,73 +168,127 @@ describe("the kept effort", () => {
 				slot: "large",
 				effort: "high",
 				line: "model-router L2 openai/large · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+				unresolvedLine:
+					"model-router L2 large model unresolved · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
 			});
 		});
 });
 
 describe("the slot and model each level takes", () => {
 	const SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
-	const MODELS = { small: "openai/small", large: "openai/large" };
-	type Models = { small?: string; large?: string };
+	const line = (tier: number, target: string, effort: string) =>
+		`model-router L${tier} ${target} · ${effort} · p=0.90/0.90${SUFFIX}`;
 
-	const route = (
-		tier: number,
-		slot: string | null,
-		target: string,
-		effort: string,
-	) => ({
-		outcome: "route",
-		slot,
-		effort,
-		line: `model-router L${tier} ${target} · ${effort} · p=0.90/0.90${SUFFIX}`,
-	});
-	const skip = (reason: string) => ({
-		outcome: "skip",
-		line: `model-router skipped, ${reason}`,
-	});
-
-	// Level 1 changes no model, so it needs neither slot; an end level needs its own slot only.
+	// Each level reads its own slot only, and a slot with no model still gets the ladder's effort.
+	// A slot with a model also gets the line Python prints when its check fails.
 	// The ladder's effort at work level 1 is high at level 0 and medium at the other levels.
-	// The rows left out sit in plugins/model-router-hermes/tests/fixtures/: both models set at each level in l0-routed, l1-routed and l2-routed,
-	// level 0 with the large model only in small-model-unset, and level 2 with the small model only in large-model-unset.
-	const ROWS: readonly [0 | 1 | 2, string, Models, object][] = [
+	const ROWS: readonly [0 | 1 | 2, string, object, object][] = [
 		[
 			0,
-			"the small model only",
-			{ small: MODELS.small },
-			route(0, "small", MODELS.small, "high"),
+			"the small model",
+			{ small: "openai/small" },
+			{
+				outcome: "route",
+				slot: "small",
+				effort: "high",
+				line: line(0, "openai/small", "high"),
+				unresolvedLine: line(0, "small model unresolved", "high"),
+			},
 		],
-		[0, "no model", {}, skip("small model unset")],
+		[
+			0,
+			"no model",
+			{},
+			{
+				outcome: "route",
+				slot: "small",
+				effort: "high",
+				line: line(0, "small model unset", "high"),
+				unresolvedLine: null,
+			},
+		],
 		[
 			1,
-			"the small model only",
-			{ small: MODELS.small },
-			route(1, null, "no change", "medium"),
+			"the middle model",
+			{ middle: "openai/middle" },
+			{
+				outcome: "route",
+				slot: "middle",
+				effort: "medium",
+				line: line(1, "openai/middle", "medium"),
+				unresolvedLine: line(1, "middle model unresolved", "medium"),
+			},
 		],
 		[
 			1,
-			"the large model only",
-			{ large: MODELS.large },
-			route(1, null, "no change", "medium"),
+			"the small and large models",
+			{ small: "openai/small", large: "openai/large" },
+			{
+				outcome: "route",
+				slot: "middle",
+				effort: "medium",
+				line: line(1, "middle model unset", "medium"),
+				unresolvedLine: null,
+			},
 		],
-		[1, "no model", {}, route(1, null, "no change", "medium")],
 		[
 			2,
-			"the large model only",
-			{ large: MODELS.large },
-			route(2, "large", MODELS.large, "medium"),
+			"the large model",
+			{ large: "openai/large" },
+			{
+				outcome: "route",
+				slot: "large",
+				effort: "medium",
+				line: line(2, "openai/large", "medium"),
+				unresolvedLine: line(2, "large model unresolved", "medium"),
+			},
 		],
-		[2, "no model", {}, skip("large model unset")],
+		[
+			2,
+			"no model",
+			{},
+			{
+				outcome: "route",
+				slot: "large",
+				effort: "medium",
+				line: line(2, "large model unset", "medium"),
+				unresolvedLine: null,
+			},
+		],
 	];
 
 	for (const [tier, name, models, expected] of ROWS)
-		it(`level ${tier} with ${name} set gives ${JSON.stringify(expected)}`, async () => {
+		it(`level ${tier} with ${name} gives ${JSON.stringify(expected)}`, async () => {
 			const steps = [
 				{ host: "api.typesafe.ai", reply: { levels: { tier, work: 1 } } },
 			] satisfies Step[];
-			const { response } = run({ ...REQUEST, models }, steps);
+			const { response, jev } = run({ ...REQUEST, models }, steps);
 			assert.deepEqual(await response, expected);
+			assert.deepEqual(jev.hosts, ["api.typesafe.ai"]);
 		});
+});
+
+describe("the models of a request", () => {
+	const models = (raw: unknown) => (readRequest(raw) ?? assert.fail()).models;
+
+	for (const [name, value] of [
+		["blank", ""],
+		["spaces", "   "],
+		["null", null],
+	] as const)
+		it(`a model that is ${name} is undefined, in every slot`, () => {
+			assert.deepEqual(models({ models: { middle: value } }).middle, undefined);
+			assert.deepEqual(models({ models: { small: value } }).small, undefined);
+			assert.deepEqual(models({ models: { large: value } }).large, undefined);
+		});
+
+	it("a missing middle model is undefined, and the others keep theirs, trimmed", () => {
+		assert.deepEqual(models({ models: { small: " a/s ", large: "a/l" } }), {
+			small: "a/s",
+			middle: undefined,
+			large: "a/l",
+		});
+	});
 });
 
 describe("failures", () => {

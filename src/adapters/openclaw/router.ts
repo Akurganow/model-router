@@ -7,8 +7,12 @@ import { effortFor } from "../../core/ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
 import type { Level } from "../../core/part.ts";
 import { type Keys, plan } from "../../core/provider.ts";
-import { modelUnresolved } from "../../core/reasons.ts";
-import { modelForLevel } from "../../core/slots.ts";
+import {
+	pickModel,
+	type SlotModel,
+	slotForLevel,
+	slotState,
+} from "../../core/slots.ts";
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
 import { nonEmpty } from "../../utils/text.ts";
@@ -106,30 +110,21 @@ async function score(
 	});
 }
 
-type Slot =
-	| { readonly model: string | undefined }
-	| { readonly skipped: string };
-
 /**
- * Returns the model slot for a tier. The middle tier keeps the spawn's own model
- * and returns no model. An end tier needs its slot set and resolved for the
- * agent, or the result names why it is skipped. Never rejects.
+ * Returns the state of the slot the level picks: its model when OpenClaw
+ * resolves it for the agent, `unresolved` when it does not, and `unset` when
+ * the setting names none. Only that slot is checked. Never rejects.
  */
-async function slotFor(
+async function slotOf(
 	runtime: PluginRuntime,
 	settings: OpenClawSettings,
 	{ config, target }: Route,
 	level: Level,
-): Promise<Slot> {
-	const picked = modelForLevel(level, {
-		small: settings.smallModel,
-		large: settings.largeModel,
-	});
-	if ("skipped" in picked) return picked;
-	const { slot, model } = picked;
-	if (slot !== null && !(await slotResolves(runtime, config, target, model)))
-		return { skipped: modelUnresolved(slot) };
-	return { model };
+): Promise<SlotModel> {
+	const model = settings.models[slotForLevel(level)];
+	const resolved =
+		model !== undefined && (await slotResolves(runtime, config, target, model));
+	return slotState(model, resolved);
 }
 
 /**
@@ -172,15 +167,17 @@ async function routeGated(
 	if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
 	const decided = await score(spawn, settings, keys, gate);
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
-	const slot = await slotFor(api.runtime, settings, gate, decided.tier);
-	if ("skipped" in slot) return void log(skippedLine(slot.skipped));
-	const { model } = slot;
+	const picked = pickModel(
+		decided.tier,
+		await slotOf(api.runtime, settings, gate, decided.tier),
+	);
+	const { model } = picked;
 	const kept = gate.effort.kind === "keep" ? gate.effort.label : undefined;
 	const effort = effortFor(decided.tier, decided.work);
 	log(
 		routedLine({
 			level: decided.tier,
-			target: model,
+			target: picked.target,
 			effort: kept ?? effort,
 			probabilities: decided.probabilities,
 			suffix: decided.suffix,

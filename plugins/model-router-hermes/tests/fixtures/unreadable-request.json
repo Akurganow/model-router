@@ -2,5 +2,12 @@
 	"description": "A request that is not an object gives the failed skip.",
 	"request": "not an object",
 	"jev": [],
-	"response": { "outcome": "skip", "line": "model-router skipped, failed" }
+	"response": {
+		"outcome": "skip",
+		"line": "model-router skipped, failed"
+	},
+	"route": {
+		"api_mode": "chat_completions",
+		"label": "model-router skipped, failed"
+	}
 }

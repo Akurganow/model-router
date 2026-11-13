@@ -8,7 +8,7 @@ description: >
 
 # model-router setup for Oh My Pi
 
-model-router scores each routed `task` spawn with Jev, on TypeSafe or OpenRouter. It gives the agent the `smol` role for lookup work, or the `slow` role for open judgment. This setup picks the provider and the scope, checks the keys, lists the reasons routing is off, and ends with a routing check.
+model-router scores each routed `task` spawn with Jev, on TypeSafe or OpenRouter. It gives the agent the `smol` role for lookup work, the `middle` role for bounded judgment, or the `slow` role for open judgment. This setup picks the provider and the scope, checks the keys, lists the reasons routing is off, and ends with a routing check.
 
 ## Rules
 
@@ -19,7 +19,6 @@ model-router scores each routed `task` spawn with Jev, on TypeSafe or OpenRouter
 - Never take a key through a button or a free-text answer to your own question. If a key arrives, do not repeat or store it. Tell the user to rotate it.
 - Never display a key or any other credential.
 - Ask before you create a missing file. Create a JSON file holding an empty object.
-- Propose no models. Assigning the `smol` and `slow` roles is the user's job.
 - If the tool returns `<setting> unchanged: no answer from the dialog`, say that no dialog answered. Name the command the user can type: `/model-router:provider <value>` or `/model-router:scope <value>`.
 - Skip a step the user declines. Name the skipped steps in the closing summary.
 - Keep each message short. Show raw output only when the user needs it.
@@ -68,14 +67,23 @@ Without a UI, offer buttons 2 to 4 as numbered text.
 
 If a key is missing for every allowed provider, say that every call skips with `key unset` until one exists. With `auto` or `openrouter-first` and one key, say that its provider scores alone.
 
-## Step 4. Scope
+## Step 4. Models
+
+1. Tell the user that the three slots are omp's `smol`, `middle` and `slow` roles, for levels 0, 1 and 2.
+2. Tell the user where to see and set a role: the Roles view of `/models`, whose `+ New role…` row adds `middle`, or `modelRoles` in omp's `config.yml`. [Models](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#models) says what a value looks like.
+3. Say that a role with no model is no fault: its level runs on the agent's model, and the plugin still sets the effort.
+4. When the user wants a model in a role, propose one only from the models omp itself lists in `/models`.
+5. When the user says a role is changed, ask them to check it in the Roles view of `/models`.
+6. Change a role only on the user's word. The plugin has no tool that lists or sets a model.
+
+## Step 5. Scope
 
 1. Call the tool with setting `scope`.
 2. Report the line it returns.
 
 The [Scope](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#scope) section of the README says what each value routes. If the output adds `A project value for scope overrides it.`, tell the user.
 
-## Step 5. List the reasons routing is off
+## Step 6. List the reasons routing is off
 
 Check each reason below. Report every reason that holds, not only the first.
 
@@ -83,20 +91,17 @@ Check each reason below. Report every reason that holds, not only the first.
 - `task.batch` is off. The call has no `tasks` list, so the plugin prints no line.
 - A batch gate is closed, as [Gate reasons](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#gate-reasons) lists. Every item skips with the gate's reason.
 - An item check fails, as [Item reasons](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#item-reasons) lists. That item skips with its own reason.
-- Neither `smol` nor `slow` resolves. The reason is `no @smol or @slow model`.
-
-Check whether `smol` and `slow` resolve, not only whether they are set. An unset role can still resolve through omp's `default` role or its built-in list. Level 0 needs `smol`. Level 2 needs `slow`.
 
 For each reason that holds, tell the user which setting to change, and where. This skill changes none of them.
 
-## Step 6. Routing check
+## Step 7. Routing check
 
 1. If the plugin was just enabled or installed, or a key variable changed, ask the user to restart omp. Then return to this step.
 2. Ask the routing-check question with the buttons "Check" and "Skip".
 3. On Skip, record "routing check: skipped" and go to the closing summary.
 4. On Check, spawn one `task` item with no `agent` and the text "Reply with the single word ok."
 5. Read the batch line, which starts with `model-router`. If no line appears, check `task.batch` and that the plugin is enabled.
-6. Check that the entry names a level, either a role or `no change`, and an effort or a kept label such as `caller effort`.
+6. Check that the entry names a level, either a role such as `L1 @middle` or a slot such as `L1 middle model unset` or `L2 large model unresolved`, and an effort or a kept label such as `caller effort`.
 7. If the entry names a skip reason, stop and report it.
 8. If omp records the model the subagent ran on, check it against the entry.
 9. Report the result in one line.
@@ -105,11 +110,11 @@ The routing-check question reads: "To check routing I will spawn one small subag
 
 Read the entry as follows:
 
-- The model matches the role the entry names. For `no change`, it is the model omp uses without routing.
+- The model matches the role the entry names. For an unset or unresolved slot, it is the model omp uses without routing.
 - The thinking level matches the effort the entry names, within the range the model supports. A kept label means omp's own level.
 - After a fallback, it ends with ` · via <provider> (<first provider> <reason>)`.
 - `key unset` points to step 3.
-- A gate or item reason points to step 5.
+- A gate or item reason points to step 6.
 - `timeout`, `network error` or an HTTP status points to the provider or the network.
 - After both providers fail, the entry names each provider with its reason, for example `skipped, typesafe HTTP 503, openrouter timeout`.
 

@@ -36,7 +36,7 @@ class NodeRequestTest(RouterCase):
                 "provider": "typesafe",
                 "keys": {"typesafe": "typesafe-secret-one"},
                 "budgetMs": 1000,
-                "models": {"small": "small-model", "large": "large-model"},
+                "models": {"small": "small-model", "middle": None, "large": "large-model"},
                 "keptEffort": None,
                 "description": "",
             },
@@ -77,10 +77,23 @@ class NodeRequestTest(RouterCase):
         request = self.request(
             settings=good_settings(
                 small_model={"provider": "p", "model": " "},
+                middle_model={"provider": "p", "model": " m "},
                 large_model={"provider": "p", "model": " l "},
             )
         )
-        self.assertEqual(request["models"], {"small": None, "large": "l"})
+        self.assertEqual(request["models"], {"small": None, "middle": "m", "large": "l"})
+
+    def test_a_blank_spaces_or_missing_model_is_sent_as_none_in_every_slot(self):
+        for slot in ("small", "middle", "large"):
+            for value in ({"provider": "p", "model": ""}, {"model": "   "}, None):
+                with self.subTest(slot=slot, value=value):
+                    request = self.request(settings=good_settings(**{f"{slot}_model": value}))
+                    self.assertIsNone(request["models"][slot])
+
+    def test_no_slot_is_checked_before_node(self):
+        calls = []
+        self.request(api=fake_api(list_models=lambda provider: calls.append(provider) or []))
+        self.assertEqual(calls, [])
 
     def test_a_config_effort_is_kept_by_config(self):
         for value, kept in (

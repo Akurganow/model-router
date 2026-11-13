@@ -2,7 +2,7 @@
 
 model-router for OpenClaw is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-12.
+2026-11-13.
 
 ## Where requests go
 
@@ -27,6 +27,10 @@ and their keys:
 | `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
 
 With both keys under `auto` or `openrouter-first`, one spawn may reach both companies.
+
+A model setting does not decide whether a request leaves: with a key set and
+no model set, each routed spawn is still sent for scoring, as
+[A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) says.
 
 [Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
 gives the fallback rules.
@@ -138,15 +142,15 @@ says what it reports.
 The commands `/model-router-provider` and `/model-router-scope` write the
 plugin's `provider` or `scope` setting into OpenClaw's configuration. They
 refuse unless the sender is the owner. The plugin writes no other setting and no
-file. You assign `small_model` and `large_model` yourself, in OpenClaw's
-configuration.
+file. You assign `small_model`, `middle_model` and `large_model` yourself, in
+OpenClaw's configuration.
 
 At each spawn the plugin reads OpenClaw's live configuration: its own settings,
 `agents.defaults.subagents.model` and `.thinking`, and for the requesting agent
 and, under `extended`, the target agent, `description`, `model`,
 `subagents.model` and `subagents.thinking`. It finds an agent as
-[The agent roster](README.md#the-agent-roster) says. For a model it is about to
-set, it asks OpenClaw to resolve the model string and to report whether a
+[The agent roster](README.md#the-agent-roster) says. For the model of the slot
+the level picks, it asks OpenClaw to resolve the model string and to report whether a
 credential exists for that model's provider. These calls make no network
 request and refresh no credential. Nothing from these reads leaves your
 machine, except the role text the request carries as described above.
