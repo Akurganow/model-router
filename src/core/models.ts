@@ -157,12 +157,15 @@ async function choose(
 		if (model !== undefined && !first.includes(model)) first.push(model);
 		if (first.length === MAX_CANDIDATES) break;
 	}
-	let answer = await ask(writer, slot, question, [
-		...first.map(label),
-		SHOW_ALL,
-	]);
-	let from = first;
-	if (answer === SHOW_ALL) {
+	// With no valid candidate the person goes straight to the whole list.
+	let from = first.length > 0 ? first : models;
+	let answer = await ask(
+		writer,
+		slot,
+		question,
+		first.length > 0 ? [...first.map(label), SHOW_ALL] : models.map(label),
+	);
+	if (first.length > 0 && answer === SHOW_ALL) {
 		answer = await ask(writer, slot, question, models.map(label));
 		from = models;
 	}

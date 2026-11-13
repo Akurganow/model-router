@@ -230,7 +230,11 @@ test("the question names an unset slot", async () => {
 			slot: "middle",
 			question:
 				"Which model should the middle level run? middle_model is unset now.",
-			options: ["Show the whole list"],
+			options: [
+				"a/small - $1 in, $5 out per 1M tokens, 200K context",
+				"a/middle - 1M context",
+				"a/large",
+			],
 		},
 	]);
 });
@@ -246,7 +250,7 @@ test("the question names the configured value of a set slot", async () => {
 	);
 });
 
-test("candidates that are not a list of ids offer only the whole list", async () => {
+test("with no valid candidate the one dialog offers the whole list", async () => {
 	for (const candidates of [
 		undefined,
 		null,
@@ -256,15 +260,35 @@ test("candidates that are not a list of ids offer only the whole list", async ()
 		{ 0: "a/small" },
 		[],
 		[null, 1, "", "   "],
+		["x/unlisted", " a/small"],
 	]) {
-		const { port, calls } = fakePort();
-		await runModels(port, { setting: "small_model", candidates });
+		const { port, calls } = fakePort({ answers: ["a/large"] });
+		assert.equal(
+			await runModels(port, { setting: "small_model", candidates }),
+			"small_model (small role): a/large",
+			JSON.stringify(candidates),
+		);
 		assert.deepEqual(
-			calls.asked[0]?.options,
-			["Show the whole list"],
+			calls.asked.map((asked) => asked.options),
+			[
+				[
+					"a/small - $1 in, $5 out per 1M tokens, 200K context",
+					"a/middle - 1M context",
+					"a/large",
+				],
+			],
 			JSON.stringify(candidates),
 		);
 	}
+});
+test("with no valid candidate the whole-list entry is not an offered answer", async () => {
+	const { port, calls } = fakePort({ answers: ["Show the whole list"] });
+	assert.equal(
+		await runModels(port, { setting: "small_model" }),
+		"small_model unchanged: the answer was not one of the offered values",
+	);
+	assert.equal(calls.asked.length, 1);
+	assert.deepEqual(calls.written, []);
 });
 
 test("candidates keep listed ids in the agent's order, once, at most four, labelled from the list", async () => {
@@ -348,7 +372,10 @@ test("no answer from either dialog writes nothing", async () => {
 	for (const answers of [[undefined], ["Show the whole list", undefined]]) {
 		const { port, calls } = fakePort({ answers });
 		assert.equal(
-			await runModels(port, { setting: "middle_model" }),
+			await runModels(port, {
+				setting: "middle_model",
+				candidates: ["a/small"],
+			}),
 			"middle_model unchanged: no answer from the dialog",
 		);
 		assert.deepEqual(calls.written, []);
