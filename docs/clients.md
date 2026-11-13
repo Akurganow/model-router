@@ -1179,11 +1179,10 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
   (source: [`credential_pool.py` L1943–L1956](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/credential_pool.py#L1943-L1956),
   [`runtime_provider.py` L829–L838](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/runtime_provider.py#L829-L838),
   [`runtime_provider_custom.py` L508–L516](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/runtime_provider_custom.py#L508-L516), read 2026-11-06)
-- `installs_held` first appears in Hermes v0.22.6. At v0.22.5 (commit `bf0203a794a0`), `hermes_cli/left_core_migration.py` has neither `installs_held` nor `recover_for_provider`, so the slot check's import fails there and every end level would skip as unresolved. Every other Hermes function, context method, task key and manifest field the plugin uses exists at v0.22.5. The plugin therefore requires v0.22.6.
+- `installs_held` first appears in Hermes v0.22.6. At v0.22.5 (commit `bf0203a794a0`), `hermes_cli/left_core_migration.py` has neither `installs_held` nor `recover_for_provider`, so the slot check's import fails there and every slot would read as unresolved. Every other Hermes function, context method, task key and manifest field the plugin uses exists at v0.22.5. The plugin therefore requires v0.22.6.
   (source: [`left_core_migration.py` L709–L720 at v0.22.6](https://github.com/NousResearch/hermes-agent/blob/f0d94882e89ab8d4098b5bb2f166adfb9ee0a0ab/hermes_cli/left_core_migration.py#L709-L720), read 2026-11-06)
 - Hermes ingests an `OPENROUTER_API_KEY` from the environment into the home's credential pool at start-up and prints one line to standard error. The resolve source then reads `env:OPENROUTER_API_KEY`.
   (running: Hermes v0.22.7, 2026-11-06)
-
 - One offline slot check (`checks.slot_resolves`) took 3.5 to 5.3 ms warm and 3.9 to 13.8 ms on its first call, for openrouter, anthropic, openai, gemini, deepseek and xai, with sockets blocked. The first call of a process took 21 ms.
   (running: Hermes v0.23.1, 2026-11-13, one cold and ten warm calls per provider under `hermes --run-module unittest discover`)
 
