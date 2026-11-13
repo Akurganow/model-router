@@ -6,6 +6,7 @@ import {
 	type Listed,
 	listing,
 	type ModelPort,
+	modelsUnavailable,
 	modelToolSentences,
 	runModels,
 	type Writer,
@@ -178,6 +179,10 @@ test("runModels lists the models for the models setting", async () => {
 		await runModels(empty, { setting: "models" }),
 		"models the person can run: 0",
 	);
+});
+
+test("modelsUnavailable words the reason after the prefix", () => {
+	assert.equal(modelsUnavailable("{error}"), "models unavailable: {error}");
 });
 
 test("runModels reports a list that rejects or throws", async () => {
