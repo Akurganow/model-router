@@ -29,11 +29,6 @@ def _effort_set(value):
     return value is not None and stripped(value) != ""
 
 
-# The states of a slot. Node words each one, so these are tokens of the protocol, not texts.
-SET = "set"
-UNSET = "unset"
-UNRESOLVED = "unresolved"
-
 # Node names a kept effort by its source, so only Python ranks the sources.
 KEPT_BY_CONFIG = "config"
 KEPT_BY_CALLER = "caller"
@@ -109,9 +104,6 @@ class Router:
         node_path = self._api.find_node()
         if not node_path:
             return self._skip(base, "nodeNotFound")
-        # One offline check takes a few milliseconds (docs/clients.md#hermes-model-and-credential-checks),
-        # so every slot is checked before Node and Node words the line.
-        states = {name: self._slot_state(slot, window) for name, slot in slot_settings.items()}
         budget_ms = math.floor(window.remaining_ms())
         if budget_ms <= 0:
             return self._skip(base, "timeout")
@@ -121,15 +113,11 @@ class Router:
             "provider": provider,
             "keys": keys,
             "budgetMs": budget_ms,
-            "models": {
-                name: slot.model if states[name] == SET else None
-                for name, slot in slot_settings.items()
-            },
-            "unresolved": [name for name, state in states.items() if state == UNRESOLVED],
+            "models": {name: slot.model or None for name, slot in slot_settings.items()},
             "keptEffort": _kept_effort(config, params.caller_effort(task, self._constants)),
             "description": params.description(task),
         }
-        return self._ask_node(node_path, request, base, slot_settings, states)
+        return self._ask_node(node_path, request, base, slot_settings, window)
 
     def _pinned(self, level, config, base, slot_settings, window):
         """The pass-through of a pinned level: no Jev call, and a label only when its slot has no model."""
@@ -137,21 +125,22 @@ class Router:
             return self._skip(base, "subagentModelSet")
         name = self._constants["levelSlots"][level]
         slot = slot_settings[name]
-        state = self._slot_state(slot, window)
-        if state == SET:
-            return {**base, "model": slot.model, "provider": slot.provider}
-        return {**base, "label": self._constants["slots"][name]["pinned"][state]}
-
-    def _slot_state(self, slot, window):
-        """set when the slot's model resolves offline in time, else unset or unresolved.
-
-        A check that does not finish in time counts as unresolved, so the task keeps Hermes's model."""
+        labels = self._constants["slots"][name]["pinned"]
         if not slot.has_model:
-            return UNSET
-        wait_s = max(window.remaining_ms(), 0) / MS_PER_SECOND
-        return SET if checks.slot_resolved_within(slot, self._api, wait_s) else UNRESOLVED
+            return {**base, "label": labels["unset"]}
+        resolved = self._resolved(slot, window)
+        if resolved is None:
+            return self._skip(base, "timeout")
+        if not resolved:
+            return {**base, "label": labels["unresolved"]}
+        return {**base, "model": slot.model, "provider": slot.provider}
 
-    def _ask_node(self, node_path, request, base, slot_settings, states):
+    def _resolved(self, slot, window):
+        """True or False when the slot's offline check finishes within the window, else None."""
+        wait_s = max(window.remaining_ms(), 0) / MS_PER_SECOND
+        return checks.slot_resolved_within(slot, self._api, wait_s)
+
+    def _ask_node(self, node_path, request, base, slot_settings, window):
         timeout_s = (request["budgetMs"] + self._constants["graceMs"]) / MS_PER_SECOND
         try:
             answer = node.run_node([node_path, self._script], request, timeout_s)
@@ -159,7 +148,7 @@ class Router:
             return self._skip(base, "timeout")
         except node.NodeFailed:
             return self._skip(base, "failed")
-        return self._apply(answer, base, slot_settings, states)
+        return self._apply(answer, base, slot_settings, window)
 
     def _in_protocol(self, answer):
         """Whether a route names a slot and an effort the settings and the ladder hold."""
@@ -167,17 +156,25 @@ class Router:
             answer.effort is None or answer.effort in self._constants["efforts"]
         )
 
-    def _apply(self, answer, base, slot_settings, states):
+    def _apply(self, answer, base, slot_settings, window):
         # Node's lines are finished, prefix included.
         route = {**base, "label": answer.line}
         if isinstance(answer, node.Skip):
             return route
         if not self._in_protocol(answer):
             return self._skip(base, "failed")
-        # A slot with no usable model keeps Hermes's model; Node's line already names it.
-        if states[answer.slot] == SET:
-            slot = slot_settings[answer.slot]
-            route.update(model=slot.model, provider=slot.provider)
+        # Only the slot Node picked is checked, and a slot with no usable model keeps Hermes's model.
+        slot = slot_settings[answer.slot]
+        if slot.has_model:
+            resolved = self._resolved(slot, window)
+            if resolved is None:
+                return self._skip(base, "timeout")
+            if resolved:
+                route.update(model=slot.model, provider=slot.provider)
+            elif answer.unresolved_line is None:
+                return self._skip(base, "failed")
+            else:
+                route["label"] = answer.unresolved_line
         if answer.effort is not None:
             route["reasoning_effort"] = answer.effort
         return route

@@ -1,6 +1,6 @@
 import { contextText } from "../../core/brief.ts";
 import { ENTRY_SEPARATOR, LINE_PREFIX, skippedLine } from "../../core/line.ts";
-import { pickModel } from "../../core/slots.ts";
+import { pickModel, slotForLevel } from "../../core/slots.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { registerConfig, say } from "./config.ts";
 import { budgetFor } from "./deadline.ts";
@@ -127,7 +127,10 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		if ("closed" in gates)
 			return void report(ctx, [entry(taken.index, skippedLine(gates.closed))]);
 		const patterns = event.patterns ?? [];
-		const picked = pickModel(routed.level, gates.facts.models);
+		const picked = pickModel(
+			routed.level,
+			gates.facts.models[slotForLevel(routed.level)],
+		);
 		const plan = planEffort(routed, picked.model, gates.facts, patterns);
 		const line = lineFor(routed, picked.target, plan);
 		if (line !== taken.stored.line) report(ctx, [entry(taken.index, line)]);

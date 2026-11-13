@@ -1256,40 +1256,17 @@ var COMMAND_DESCRIPTIONS = {
 var SLOTS = ["small", "middle", "large"];
 var slotForLevel = (level) => SLOTS[level];
 var slotSetting = (slot) => `${slot}_model`;
-function pickModel(level, models) {
-  const slot = slotForLevel(level);
-  const picked = models[slot];
-  return picked.state === "set" ? { slot, model: picked.model, target: picked.model } : { slot, model: void 0, target: `${slot} model ${picked.state}` };
-}
-var slotLine = (name, state, shown) => {
-  if (state === "unset") return `${name}: unset`;
-  return state === "set" ? `${name}: ${shown}` : `${name}: ${shown} (unresolved)`;
+var SLOT_SETTINGS = SLOTS.map(slotSetting);
+var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
+var slotState = (model, resolved) => {
+  if (model === void 0) return { state: "unset" };
+  return resolved ? { state: "set", model } : { state: "unresolved" };
 };
-
-// src/adapters/openclaw/checks.ts
-async function slotResolves(runtime, cfg, agentId, slot) {
-  try {
-    const target = agentId === void 0 ? { cfg } : { cfg, agentId };
-    const { modelConfig, modelAuth, agent } = runtime;
-    const { provider: defaultProvider } = modelConfig.resolveDefaultModelForAgent(target);
-    const resolved = modelConfig.resolveAllowedModelRef({
-      ...target,
-      catalog: [],
-      raw: slot,
-      defaultProvider
-    });
-    if ("error" in resolved) return false;
-    const agentDir = agentId === void 0 ? void 0 : agent.resolveAgentDir(cfg, agentId);
-    const credential = {
-      provider: resolved.ref.provider,
-      cfg,
-      ...agentDir ? { agentDir } : {}
-    };
-    return await modelAuth.isProviderApiKeyConfiguredAsync(credential) === true;
-  } catch {
-    return false;
-  }
+function pickModel(level, state) {
+  const slot = slotForLevel(level);
+  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model ${state.state}` };
 }
+var slotLine = (name, shown) => `${name}: ${shown ?? "unset"}`;
 
 // src/adapters/openclaw/settings.ts
 var PLUGIN_ID = "model-router-openclaw";
@@ -1327,11 +1304,7 @@ function readSettings(live, pluginConfig) {
   return {
     provider: resolve(firstValid(from, "provider", parseProvider)),
     scope: resolveScope(firstValid(from, "scope", parseScope)),
-    models: {
-      small: firstValid(from, slotSetting("small"), nonEmpty),
-      middle: firstValid(from, slotSetting("middle"), nonEmpty),
-      large: firstValid(from, slotSetting("large"), nonEmpty)
-    }
+    models: slotRecord((slot) => firstValid(from, slotSetting(slot), nonEmpty))
   };
 }
 function collectKeys(value, lookup) {
@@ -1364,23 +1337,19 @@ var COMMAND_NAMES = VALUE_SETTINGS.map(commandName);
 var ADMIN_SCOPE = "operator.admin";
 var LINE_BREAK = "\n";
 var NOT_OWNER = "only the owner can change it";
-var MODEL_SETTINGS = SLOTS.map(slotSetting);
+var MODEL_SETTINGS = SLOT_SETTINGS;
 var TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
 var TOOL_DESCRIPTION = readOnlyToolDescription(
   ["the provider", "the scope", "the three models"],
   TOOL_SETTINGS
 );
-async function readAll(api, { config, settings, keys }) {
-  const models = await Promise.all(
-    SLOTS.map(async (slot) => {
-      const model = settings.models[slot];
-      const name = slotSetting(slot);
-      if (model === void 0) return slotLine(name, "unset", "");
-      const resolves = config !== void 0 && await slotResolves(api.runtime, config, void 0, model);
-      return slotLine(name, resolves ? "set" : "unresolved", model);
-    })
+function readAll({ settings, keys }) {
+  return settingsReport(
+    settings.provider,
+    settings.scope,
+    SLOTS.map((slot) => slotLine(slotSetting(slot), settings.models[slot])),
+    keys
   );
-  return settingsReport(settings.provider, settings.scope, models, keys);
 }
 var isModelSetting = (setting) => MODEL_SETTINGS.some((known) => known === setting);
 var modelSettingHelp = (setting) => `${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`;
@@ -1389,9 +1358,9 @@ function howToChange(setting) {
   if (isValueSetting(setting)) return valueSettingHelp(setting);
   return isKeySetting(setting) ? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.` : badCall(TOOL_SETTINGS);
 }
-async function runTool(api, env, params) {
+function runTool(api, env, params) {
   const { setting } = isRecord2(params) ? params : {};
-  return setting === void 0 ? readAll(api, readState(api, env)) : howToChange(setting);
+  return setting === void 0 ? readAll(readState(api, env)) : howToChange(setting);
 }
 var isOwner = (ctx) => ctx.senderIsOwner === true;
 async function write(api, ctx, setting, value) {
@@ -1436,7 +1405,7 @@ function registerConfigTool(api, env) {
     },
     execute: async (_id, params) => {
       try {
-        return textOf(await runTool(api, env, params));
+        return textOf(runTool(api, env, params));
       } catch (err) {
         return textOf(failure(err));
       }
@@ -1776,6 +1745,31 @@ async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
   }
 }
 
+// src/adapters/openclaw/checks.ts
+async function slotResolves(runtime, cfg, agentId, model) {
+  try {
+    const target = agentId === void 0 ? { cfg } : { cfg, agentId };
+    const { modelConfig, modelAuth, agent } = runtime;
+    const { provider: defaultProvider } = modelConfig.resolveDefaultModelForAgent(target);
+    const resolved = modelConfig.resolveAllowedModelRef({
+      ...target,
+      catalog: [],
+      raw: model,
+      defaultProvider
+    });
+    if ("error" in resolved) return false;
+    const agentDir = agentId === void 0 ? void 0 : agent.resolveAgentDir(cfg, agentId);
+    const credential = {
+      provider: resolved.ref.provider,
+      cfg,
+      ...agentDir ? { agentDir } : {}
+    };
+    return await modelAuth.isProviderApiKeyConfiguredAsync(credential) === true;
+  } catch {
+    return false;
+  }
+}
+
 // src/adapters/openclaw/agents.ts
 var DEFAULT_AGENT_ID = "main";
 var MAX_ID_LENGTH = 64;
@@ -1962,18 +1956,10 @@ async function score({ deps, signal }, settings, keys, gate) {
     signal
   });
 }
-async function slotModels(runtime, settings, { config, target }) {
-  const check = async (slot) => {
-    const model = settings.models[slot];
-    if (model === void 0) return { state: "unset" };
-    return await slotResolves(runtime, config, target, model) ? { state: "set", model } : { state: "unresolved" };
-  };
-  const [small, middle, large] = await Promise.all([
-    check("small"),
-    check("middle"),
-    check("large")
-  ]);
-  return { small, middle, large };
+async function slotOf(runtime, settings, { config, target }, level) {
+  const model = settings.models[slotForLevel(level)];
+  const resolved = model !== void 0 && await slotResolves(runtime, config, target, model);
+  return slotState(model, resolved);
 }
 async function routeSpawn(spawn) {
   const { api, deps, signal, request, requester } = spawn;
@@ -2000,7 +1986,7 @@ async function routeGated(spawn, settings, keys, gate, log) {
   if ("skipped" in decided) return void log(skippedLine(decided.skipped));
   const picked = pickModel(
     decided.tier,
-    await slotModels(api.runtime, settings, gate)
+    await slotOf(api.runtime, settings, gate, decided.tier)
   );
   const { model } = picked;
   const kept = gate.effort.kind === "keep" ? gate.effort.label : void 0;

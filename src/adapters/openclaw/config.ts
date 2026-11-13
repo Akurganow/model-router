@@ -21,6 +21,7 @@ import {
 	valueSettingHelp,
 } from "../../core/settings.ts";
 import {
+	SLOT_SETTINGS,
 	SLOTS,
 	type SlotSetting,
 	slotLine,
@@ -28,7 +29,6 @@ import {
 } from "../../core/slots.ts";
 import { errorText } from "../../utils/error.ts";
 import { isRecord } from "../../utils/guards.ts";
-import { slotResolves } from "./checks.ts";
 import {
 	type Environment,
 	PLUGIN_ID,
@@ -48,7 +48,7 @@ const ADMIN_SCOPE = "operator.admin";
 const LINE_BREAK = "\n";
 
 export const NOT_OWNER = "only the owner can change it";
-const MODEL_SETTINGS: readonly SlotSetting[] = SLOTS.map(slotSetting);
+const MODEL_SETTINGS = SLOT_SETTINGS;
 // No chat command sets a model, but the tool still answers where it is set, so
 // the schema has to let the name through: OpenClaw checks arguments before execute.
 const TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
@@ -58,27 +58,17 @@ export const TOOL_DESCRIPTION = readOnlyToolDescription(
 );
 
 /**
- * Returns the report: the provider, the scope, the three models, and one line
- * per provider that says whether its key is set or unset. A model is unset,
- * set, or set but unresolved for the live config. A key is only checked for
- * presence. Nothing about it leaves this function.
+ * Returns the report: the provider, the scope, the three models as configured,
+ * and one line per provider that says whether its key is set or unset. A key
+ * is only checked for presence. Nothing about it leaves this function.
  */
-async function readAll(
-	api: OpenClawApi,
-	{ config, settings, keys }: State,
-): Promise<string> {
-	const models = await Promise.all(
-		SLOTS.map(async (slot) => {
-			const model = settings.models[slot];
-			const name = slotSetting(slot);
-			if (model === undefined) return slotLine(name, "unset", "");
-			const resolves =
-				config !== undefined &&
-				(await slotResolves(api.runtime, config, undefined, model));
-			return slotLine(name, resolves ? "set" : "unresolved", model);
-		}),
+function readAll({ settings, keys }: State): string {
+	return settingsReport(
+		settings.provider,
+		settings.scope,
+		SLOTS.map((slot) => slotLine(slotSetting(slot), settings.models[slot])),
+		keys,
 	);
-	return settingsReport(settings.provider, settings.scope, models, keys);
 }
 
 const isModelSetting = (setting: unknown): setting is SlotSetting =>
@@ -110,14 +100,10 @@ function howToChange(setting: unknown): string {
  * no setting, otherwise how to change that setting. Params that are not an
  * object count as no input. An error from reading the state propagates.
  */
-async function runTool(
-	api: OpenClawApi,
-	env: Environment,
-	params: unknown,
-): Promise<string> {
+function runTool(api: OpenClawApi, env: Environment, params: unknown): string {
 	const { setting } = isRecord(params) ? params : {};
 	return setting === undefined
-		? readAll(api, readState(api, env))
+		? readAll(readState(api, env))
 		: howToChange(setting);
 }
 
@@ -207,7 +193,7 @@ export function registerConfigTool(api: OpenClawApi, env: Environment): void {
 		},
 		execute: async (_id, params) => {
 			try {
-				return textOf(await runTool(api, env, params));
+				return textOf(runTool(api, env, params));
 			} catch (err) {
 				return textOf(failure(err));
 			}

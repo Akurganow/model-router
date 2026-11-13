@@ -263,10 +263,16 @@ var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 // src/core/slots.ts
 var SLOTS = ["small", "middle", "large"];
 var slotForLevel = (level) => SLOTS[level];
-function pickModel(level, models) {
+var slotSetting = (slot) => `${slot}_model`;
+var SLOT_SETTINGS = SLOTS.map(slotSetting);
+var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
+var slotState = (model, resolved) => {
+  if (model === void 0) return { state: "unset" };
+  return resolved ? { state: "set", model } : { state: "unresolved" };
+};
+function pickModel(level, state) {
   const slot = slotForLevel(level);
-  const picked = models[slot];
-  return picked.state === "set" ? { slot, model: picked.model, target: picked.model } : { slot, model: void 0, target: `${slot} model ${picked.state}` };
+  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model ${state.state}` };
 }
 
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
@@ -1825,9 +1831,7 @@ async function openBatch(omp, pi, ctx, settings) {
   const config = readConfig(omp.lookup, pi.pi.settings);
   if (config === void 0) return { closed: UNREADABLE };
   const agents = await discover(pi, ctx);
-  const models = Object.fromEntries(
-    SLOTS.map((slot) => [slot, slotModel(ctx, config.roles, slot)])
-  );
+  const models = slotRecord((slot) => slotModel(ctx, config.roles, slot));
   return {
     ...routing,
     facts: { ...config, scope: settings.scope, agents, models }
@@ -1835,9 +1839,10 @@ async function openBatch(omp, pi, ctx, settings) {
 }
 function slotModel(ctx, roles, slot) {
   const name = ROLE_NAMES[slot];
-  if (patternsOf(roles[name]).length === 0) return { state: "unset" };
+  const value = Object.hasOwn(roles, name) ? roles[name] : void 0;
+  const named = patternsOf(value).length > 0;
   const role = ROLE_MARK + name;
-  return resolves(ctx, role) ? { state: "set", model: role } : { state: "unresolved" };
+  return slotState(named ? role : void 0, named && resolves(ctx, role));
 }
 function resolves(ctx, role) {
   try {
@@ -1997,7 +2002,10 @@ function toStored(decided, item, facts) {
     probabilities: decided.probabilities,
     suffix: decided.suffix
   };
-  const picked = pickModel(decided.tier, facts.models);
+  const picked = pickModel(
+    decided.tier,
+    facts.models[slotForLevel(decided.tier)]
+  );
   const plan2 = planEffort(routed, picked.model, facts);
   return { line: lineFor(routed, picked.target, plan2), routed };
 }
@@ -2150,7 +2158,10 @@ function createRouter(omp, pi) {
     if ("closed" in gates)
       return void report(ctx, [entry(taken.index, skippedLine(gates.closed))]);
     const patterns = event.patterns ?? [];
-    const picked = pickModel(routed.level, gates.facts.models);
+    const picked = pickModel(
+      routed.level,
+      gates.facts.models[slotForLevel(routed.level)]
+    );
     const plan2 = planEffort(routed, picked.model, gates.facts, patterns);
     const line = lineFor(routed, picked.target, plan2);
     if (line !== taken.stored.line) report(ctx, [entry(taken.index, line)]);

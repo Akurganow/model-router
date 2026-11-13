@@ -15,9 +15,10 @@ import {
 } from "../../src/core/provider.ts";
 import {
 	pickModel,
-	SLOTS,
-	type SlotModels,
+	SLOT_SETTINGS,
+	type Slot,
 	slotForLevel,
+	slotRecord,
 	slotSetting,
 } from "../../src/core/slots.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
@@ -44,7 +45,7 @@ const configSchema = (source: Source): JsonObject => ({
 		description: source.options.provider.descriptions.hermes,
 	},
 	...Object.fromEntries(
-		SLOTS.map(slotSetting).map((setting) => [
+		SLOT_SETTINGS.map((setting) => [
 			setting,
 			{ type: "dict", ...describe(source.hermes.settings[setting]) },
 		]),
@@ -70,13 +71,13 @@ const manifest = (source: Source): JsonObject => ({
 const skipLine = (reason: string): string =>
 	`${LINE_PREFIX}${skippedLine(reason)}`;
 
-// Every slot in one state, so pickModel words the target and the builder spells no slot text.
-const allIn = (state: "unset" | "unresolved"): SlotModels =>
-	Object.fromEntries(SLOTS.map((slot) => [slot, { state }])) as SlotModels;
+const levelOf = (slot: Slot): Level =>
+	LEVELS.find((level) => slotForLevel(level) === slot) ?? 0;
 
-// The label of a pinned level whose slot has no model. It carries no probabilities, since Jev was not asked.
-const pinnedLabel = (level: Level, state: "unset" | "unresolved"): string =>
-	LINE_PREFIX + pinnedLine(level, pickModel(level, allIn(state)).target);
+// The label of a pinned level whose slot has no model, worded by pickModel. It carries no probabilities, since Jev was not asked.
+const pinnedLabel = (slot: Slot, state: "unset" | "unresolved"): string =>
+	LINE_PREFIX +
+	pinnedLine(levelOf(slot), pickModel(levelOf(slot), { state }).target);
 
 // What the Python shim needs and must not retype: the limits, the provider rules, the efforts, the finished skip lines and the pinned labels.
 const constants = (source: Source): JsonObject => {
@@ -94,18 +95,13 @@ const constants = (source: Source): JsonObject => {
 		skips: Object.fromEntries(
 			Object.entries(reasons).map(([key, reason]) => [key, skipLine(reason)]),
 		),
-		slots: Object.fromEntries(
-			LEVELS.map((level) => [
-				slotForLevel(level),
-				{
-					setting: slotSetting(slotForLevel(level)),
-					pinned: {
-						unset: pinnedLabel(level, "unset"),
-						unresolved: pinnedLabel(level, "unresolved"),
-					},
-				},
-			]),
-		),
+		slots: slotRecord((slot) => ({
+			setting: slotSetting(slot),
+			pinned: {
+				unset: pinnedLabel(slot, "unset"),
+				unresolved: pinnedLabel(slot, "unresolved"),
+			},
+		})),
 		levels: [...LEVELS],
 		// Indexed by level: the slot each level takes its model from.
 		levelSlots: LEVELS.map(slotForLevel),

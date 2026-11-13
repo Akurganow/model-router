@@ -1,9 +1,9 @@
 import { KEY_UNSET, UNREADABLE } from "../../core/reasons.ts";
 import {
-	SLOTS,
 	type Slot,
 	type SlotModel,
-	type SlotModels,
+	slotRecord,
+	slotState,
 } from "../../core/slots.ts";
 import { patternsOf } from "./effort.ts";
 import {
@@ -59,9 +59,7 @@ export async function openBatch(
 	const config = readConfig(omp.lookup, pi.pi.settings);
 	if (config === undefined) return { closed: UNREADABLE };
 	const agents = await discover(pi, ctx);
-	const models = Object.fromEntries(
-		SLOTS.map((slot) => [slot, slotModel(ctx, config.roles, slot)]),
-	) as SlotModels;
+	const models = slotRecord((slot) => slotModel(ctx, config.roles, slot));
 	return {
 		...routing,
 		facts: { ...config, scope: settings.scope, agents, models },
@@ -81,11 +79,10 @@ export function slotModel(
 	slot: Slot,
 ): SlotModel {
 	const name = ROLE_NAMES[slot];
-	if (patternsOf(roles[name]).length === 0) return { state: "unset" };
+	const value = Object.hasOwn(roles, name) ? roles[name] : undefined;
+	const named = patternsOf(value).length > 0;
 	const role = ROLE_MARK + name;
-	return resolves(ctx, role)
-		? { state: "set", model: role }
-		: { state: "unresolved" };
+	return slotState(named ? role : undefined, named && resolves(ctx, role));
 }
 
 function resolves(ctx: Context, role: string): boolean {

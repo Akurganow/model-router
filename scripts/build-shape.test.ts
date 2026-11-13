@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { VALUE_SETTINGS } from "../src/core/settings.ts";
-import { SLOTS, slotSetting } from "../src/core/slots.ts";
+import { SLOT_SETTINGS } from "../src/core/slots.ts";
 import type { Schema } from "./build/schema.ts";
 import {
 	type Install,
@@ -186,14 +186,14 @@ test("the source names a hint for each slot setting of OpenClaw and Hermes", () 
 	const source = loadSource(ROOT);
 	const slotKeys = (hints: object, others: readonly string[]) =>
 		Object.keys(hints).filter((key) => !others.includes(key));
-	const SLOT_SETTINGS = ["small_model", "middle_model", "large_model"];
+	const EXPECTED = ["small_model", "middle_model", "large_model"];
 	assert.deepEqual(
 		slotKeys(source.openclaw.uiHints, ["api_key", "openrouter_api_key"]),
-		SLOT_SETTINGS,
+		EXPECTED,
 	);
 	assert.deepEqual(
 		slotKeys(source.hermes.settings, ["typesafe_api_key"]),
-		SLOT_SETTINGS,
+		EXPECTED,
 	);
-	assert.deepEqual(SLOTS.map(slotSetting), SLOT_SETTINGS);
+	assert.deepEqual(SLOT_SETTINGS, EXPECTED);
 });

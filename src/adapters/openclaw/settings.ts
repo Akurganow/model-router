@@ -9,7 +9,7 @@ import {
 	resolve,
 } from "../../core/provider.ts";
 import { parseScope, resolveScope, type Scope } from "../../core/scope.ts";
-import { type Slot, slotSetting } from "../../core/slots.ts";
+import { type Slot, slotRecord, slotSetting } from "../../core/slots.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import type { OpenClawApi, OpenClawConfig } from "./types.ts";
@@ -96,11 +96,7 @@ export function readSettings(
 	return {
 		provider: resolve(firstValid(from, "provider", parseProvider)),
 		scope: resolveScope(firstValid(from, "scope", parseScope)),
-		models: {
-			small: firstValid(from, slotSetting("small"), nonEmpty),
-			middle: firstValid(from, slotSetting("middle"), nonEmpty),
-			large: firstValid(from, slotSetting("large"), nonEmpty),
-		},
+		models: slotRecord((slot) => firstValid(from, slotSetting(slot), nonEmpty)),
 	};
 }
 

@@ -265,6 +265,15 @@ test("no model in any slot still scores each item and sets the effort", async ()
 	});
 });
 
+test("a role that modelRoles names and omp does not resolve reads as unresolved in the batch", async () => {
+	install();
+	world.resolvable.delete("@smol");
+	await world.toolCall("c", { tasks: [{ task: "level0 a" }] });
+	assert.deepEqual(world.notes, [
+		"model-router task 1: L0 small model unresolved · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	]);
+});
+
 test("a set middle role gives level 1 its role and the effort", async () => {
 	install();
 	world.config.modelRoles = {

@@ -13,7 +13,6 @@
 			"middle": "openai/middle",
 			"large": "openai/large"
 		},
-		"unresolved": [],
 		"keptEffort": null
 	},
 	"jev": [
@@ -31,6 +30,14 @@
 		"outcome": "route",
 		"slot": "middle",
 		"effort": "medium",
-		"line": "model-router L1 openai/middle · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+		"line": "model-router L1 openai/middle · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"unresolvedLine": "model-router L1 middle model unresolved · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+	},
+	"route": {
+		"api_mode": "chat_completions",
+		"model": "middle-model",
+		"provider": "openrouter",
+		"reasoning_effort": "medium",
+		"label": "model-router L1 openai/middle · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
 	}
 }

@@ -174,6 +174,10 @@ test("the task parameters are the texts src/ gives, with the ladder and the leve
 	assert.equal(description.type, "string");
 	assert.deepEqual(reasoning_effort.enum, [...EFFORTS]);
 	assert.deepEqual(level, { ...level, type: "integer", enum: [0, 1, 2] });
+	assert.equal(
+		level.description,
+		"Leave it unset unless you re-dispatch a failed task. 0 runs the child on the user's small model, 1 on the user's middle model, 2 on the large model, and model-router asks Jev nothing. A level whose model is not set runs on the model Hermes gives it. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins.",
+	);
 	assert.ok(
 		constants.delegationAddendum.includes(
 			`${source.hermes.pluginName}:${ESCALATION_SKILL}`,

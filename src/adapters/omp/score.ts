@@ -8,7 +8,7 @@ import { type DecidedWithWork, scoreWork } from "../../core/decide.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { skippedLine } from "../../core/line.ts";
 import type { Provider } from "../../core/provider.ts";
-import { pickModel } from "../../core/slots.ts";
+import { pickModel, slotForLevel } from "../../core/slots.ts";
 import { streamedFetch } from "../../utils/fetch.ts";
 import { lineFor, planEffort, type Routed } from "./effort.ts";
 import type { Batch } from "./gates.ts";
@@ -112,7 +112,10 @@ function toStored(
 		probabilities: decided.probabilities,
 		suffix: decided.suffix,
 	};
-	const picked = pickModel(decided.tier, facts.models);
+	const picked = pickModel(
+		decided.tier,
+		facts.models[slotForLevel(decided.tier)],
+	);
 	const plan = planEffort(routed, picked.model, facts);
 	return { line: lineFor(routed, picked.target, plan), routed };
 }

@@ -5,12 +5,13 @@ import { scoreWork } from "../../core/decide.ts";
 import { MIN_DEADLINE_MS } from "../../core/handler-deadline.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
+import type { Level } from "../../core/part.ts";
 import { type Keys, plan } from "../../core/provider.ts";
 import {
 	pickModel,
-	type Slot,
 	type SlotModel,
-	type SlotModels,
+	slotForLevel,
+	slotState,
 } from "../../core/slots.ts";
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
@@ -110,29 +111,20 @@ async function score(
 }
 
 /**
- * Returns what each slot holds: its model when the setting names one that
- * OpenClaw resolves for the agent, `unresolved` when it names one that it does
- * not, and `unset` when it names none. Every slot with a model is checked at
- * once. Never rejects.
+ * Returns the state of the slot the level picks: its model when OpenClaw
+ * resolves it for the agent, `unresolved` when it does not, and `unset` when
+ * the setting names none. Only that slot is checked. Never rejects.
  */
-async function slotModels(
+async function slotOf(
 	runtime: PluginRuntime,
 	settings: OpenClawSettings,
 	{ config, target }: Route,
-): Promise<SlotModels> {
-	const check = async (slot: Slot): Promise<SlotModel> => {
-		const model = settings.models[slot];
-		if (model === undefined) return { state: "unset" };
-		return (await slotResolves(runtime, config, target, model))
-			? { state: "set", model }
-			: { state: "unresolved" };
-	};
-	const [small, middle, large] = await Promise.all([
-		check("small"),
-		check("middle"),
-		check("large"),
-	]);
-	return { small, middle, large };
+	level: Level,
+): Promise<SlotModel> {
+	const model = settings.models[slotForLevel(level)];
+	const resolved =
+		model !== undefined && (await slotResolves(runtime, config, target, model));
+	return slotState(model, resolved);
 }
 
 /**
@@ -177,7 +169,7 @@ async function routeGated(
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
 	const picked = pickModel(
 		decided.tier,
-		await slotModels(api.runtime, settings, gate),
+		await slotOf(api.runtime, settings, gate, decided.tier),
 	);
 	const { model } = picked;
 	const kept = gate.effort.kind === "keep" ? gate.effort.label : undefined;

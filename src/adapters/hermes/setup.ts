@@ -19,14 +19,8 @@ import {
 	valueLine,
 	valueSettingHelp,
 } from "../../core/settings.ts";
-import {
-	SLOTS,
-	type SlotSetting,
-	slotLine,
-	slotSetting,
-} from "../../core/slots.ts";
+import { SLOT_SETTINGS, type SlotSetting, slotLine } from "../../core/slots.ts";
 
-const SLOT_SETTINGS = SLOTS.map(slotSetting);
 const SETTINGS = ["provider", ...KEY_SETTINGS, ...SLOT_SETTINGS] as const;
 
 // Hermes puts a plugin tool in a toolset of its own, and a plugin toolset is on in a default session.
@@ -90,9 +84,8 @@ export function setupTexts(pluginName: string) {
 		badCall: badCall(SETTINGS),
 		keyLines: Object.fromEntries(PROVIDERS.map((name) => [name, states(name)])),
 		unset: UNSET,
-		modelLine: slotLine("{name}", "set", MODEL_SHOWN),
-		modelUnresolved: slotLine("{name}", "unresolved", MODEL_SHOWN),
-		modelUnset: slotLine("{name}", "unset", MODEL_SHOWN),
+		modelLine: slotLine("{name}", MODEL_SHOWN),
+		modelUnset: slotLine("{name}"),
 		lineBreak: LINE_BREAK,
 		errorPrefix: "error: ",
 		help: {

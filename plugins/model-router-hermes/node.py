@@ -37,13 +37,15 @@ class Skip:
 
 @dataclass(frozen=True)
 class Route:
-    """slot names the model slot of the level; the router applies its model only when it is set.
+    """slot names the model slot of the level; the router applies its model only when it resolves.
 
+    unresolved_line is the label for a slot whose model does not resolve; None when the slot has no model.
     This module checks only the shape: whether a slot or an effort exists is the router's to say."""
 
-    slot: object
+    slot: str
     effort: object
     line: str
+    unresolved_line: object
 
 
 # Node's fetch reads the proxy variables only when this switch is set.
@@ -69,12 +71,13 @@ def _checked(reply):
         return Skip(reply["line"])
     if (
         reply.get("outcome") == "route"
-        and "slot" in reply
+        and isinstance(reply.get("slot"), str)
         and "effort" in reply
-        and _is_text_or_none(reply["slot"])
         and _is_text_or_none(reply["effort"])
+        and "unresolvedLine" in reply
+        and _is_text_or_none(reply["unresolvedLine"])
     ):
-        return Route(reply["slot"], reply["effort"], reply["line"])
+        return Route(reply["slot"], reply["effort"], reply["line"], reply["unresolvedLine"])
     raise NodeFailed("reply is outside the protocol")
 
 

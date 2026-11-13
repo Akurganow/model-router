@@ -228,10 +228,22 @@ def default_route(config: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in config.items() if k != "service_tier"}
 
 
+UNRESOLVED_LINE = PREFIX + "L1 test unresolved line"
+
+
 def route_reply(
-    slot: str | None, effort: str | None, line: str = PREFIX + "L1 test line"
+    slot: str | None,
+    effort: str | None,
+    line: str = PREFIX + "L1 test line",
+    unresolved_line: str | None = UNRESOLVED_LINE,
 ) -> dict[str, Any]:
-    return {"outcome": "route", "slot": slot, "effort": effort, "line": line}
+    return {
+        "outcome": "route",
+        "slot": slot,
+        "effort": effort,
+        "line": line,
+        "unresolvedLine": unresolved_line,
+    }
 
 
 def skip_reply(line: str = PREFIX + "skipped, test") -> dict[str, Any]:

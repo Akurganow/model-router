@@ -277,61 +277,27 @@ describe("the tool reads", () => {
 		);
 	});
 
-	it("marks a model the runtime cannot resolve as unresolved", async () => {
+	it("shows a configured model as it is and runs no check", async () => {
 		const fake = setup({
 			small_model: "openai/gpt-5-mini",
 			middle_model: "openai/gpt-5",
 			api_key: TYPESAFE_KEY,
 		});
 		fake.runtime.answers.resolved = { error: "not allowed" };
+		fake.runtime.answers.credential = false;
 		assert.equal(
 			await runTool(fake),
 			lines(
 				valueLine("provider", "typesafe"),
 				valueLine("scope", "core"),
-				"small_model: openai/gpt-5-mini (unresolved)",
-				"middle_model: openai/gpt-5 (unresolved)",
+				"small_model: openai/gpt-5-mini",
+				"middle_model: openai/gpt-5",
 				"large_model: unset",
 				keyLine("typesafe", "set"),
 			),
 		);
-	});
-
-	it("marks a model whose provider has no credential as unresolved", async () => {
-		const fake = setup({
-			large_model: "anthropic/claude-opus-5-5",
-			api_key: TYPESAFE_KEY,
-		});
-		fake.runtime.answers.credential = false;
-		assert.match(
-			await runTool(fake),
-			/\nlarge_model: anthropic\/claude-opus-5-5 \(unresolved\)\n/,
-		);
-	});
-
-	it("marks a set model as unresolved when the live config cannot be read", async () => {
-		const fake = createFakeApi({
-			pluginConfig: { small_model: "openai/gpt-5-mini" },
-		});
-		registerConfig(fake.api, NO_ENV);
-		fake.runtime.throwOn.add("config");
-		const result = await fake.tools[0]?.execute("call-1", {});
-		assert.match(
-			result?.content[0]?.text ?? "",
-			/\nsmall_model: openai\/gpt-5-mini \(unresolved\)\n/,
-		);
 		assert.equal(fake.runtime.calls.allowedRef.length, 0);
-	});
-
-	it("checks each model against the live config, with no agent", async () => {
-		const fake = setup({ small_model: "openai/a", large_model: "openai/b" });
-		await runTool(fake);
-		assert.deepEqual(
-			fake.runtime.calls.allowedRef.map(({ raw }) => raw).sort(),
-			["openai/a", "openai/b"],
-		);
-		for (const call of fake.runtime.calls.allowedRef)
-			assert.equal("agentId" in call, false);
+		assert.equal(fake.runtime.calls.credential.length, 0);
 	});
 
 	it("counts a key from the environment as set", async () => {

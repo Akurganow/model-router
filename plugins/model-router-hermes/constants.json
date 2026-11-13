@@ -111,7 +111,6 @@
 		},
 		"unset": "unset",
 		"modelLine": "{name}: {provider} {model}",
-		"modelUnresolved": "{name}: {provider} {model} (unresolved)",
 		"modelUnset": "{name}: unset",
 		"lineBreak": "\n",
 		"errorPrefix": "error: ",

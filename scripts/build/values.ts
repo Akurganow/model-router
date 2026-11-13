@@ -6,16 +6,15 @@ import {
 	VALUE_SETTINGS,
 	type ValueSetting,
 } from "../../src/core/settings.ts";
-import { SLOTS, type SlotSetting, slotSetting } from "../../src/core/slots.ts";
+import { SLOT_SETTINGS, type SlotSetting } from "../../src/core/slots.ts";
 
 // Every fact the renderers take from src/ comes through this module, so a
 // manifest can never name a value or a command text the code does not know.
 export {
 	COMMAND_DESCRIPTIONS,
 	KEY_FIELDS,
-	SLOTS,
+	SLOT_SETTINGS,
 	type SlotSetting,
-	slotSetting,
 	TOOL_NAME,
 	VALUE_SETTINGS,
 	type ValueSetting,

@@ -37,7 +37,6 @@ class NodeRequestTest(RouterCase):
                 "keys": {"typesafe": "typesafe-secret-one"},
                 "budgetMs": 1000,
                 "models": {"small": "small-model", "middle": None, "large": "large-model"},
-                "unresolved": [],
                 "keptEffort": None,
                 "description": "",
             },
@@ -74,49 +73,27 @@ class NodeRequestTest(RouterCase):
         request = self.request(settings=good_settings(provider="bogus"))
         self.assertEqual(request["provider"], CONSTANTS["providers"]["default"])
 
-    def test_a_slot_with_a_model_hermes_cannot_reach_is_sent_unresolved(self):
+    def test_models(self):
         request = self.request(
             settings=good_settings(
                 small_model={"provider": "p", "model": " "},
-                middle_model={"provider": "openrouter", "model": " middle-model "},
+                middle_model={"provider": "p", "model": " m "},
                 large_model={"provider": "p", "model": " l "},
             )
         )
-        self.assertEqual(
-            request["models"], {"small": None, "middle": "middle-model", "large": None}
-        )
-        self.assertEqual(request["unresolved"], ["large"])
+        self.assertEqual(request["models"], {"small": None, "middle": "m", "large": "l"})
 
-    def test_a_blank_spaces_or_missing_middle_model_is_sent_unset(self):
-        for value in ({"provider": "openrouter", "model": ""}, {"model": "   "}, None):
-            with self.subTest(value):
-                request = self.request(settings=good_settings(middle_model=value))
-                self.assertIsNone(request["models"]["middle"])
-                self.assertEqual(request["unresolved"], [])
+    def test_a_blank_spaces_or_missing_model_is_sent_as_none_in_every_slot(self):
+        for slot in ("small", "middle", "large"):
+            for value in ({"provider": "p", "model": ""}, {"model": "   "}, None):
+                with self.subTest(slot=slot, value=value):
+                    request = self.request(settings=good_settings(**{f"{slot}_model": value}))
+                    self.assertIsNone(request["models"][slot])
 
-    def test_no_model_at_all_sends_every_slot_unset(self):
-        request = self.request(settings=good_settings(small_model=None, large_model=None))
-        self.assertEqual(request["models"], {"small": None, "middle": None, "large": None})
-        self.assertEqual(request["unresolved"], [])
-
-    def test_every_slot_with_a_model_is_checked_once_before_node(self):
+    def test_no_slot_is_checked_before_node(self):
         calls = []
-        api = fake_api(
-            list_models=lambda provider: calls.append(provider) or ["small-model", "large-model"]
-        )
-        request = self.request(api=api)
-        self.assertEqual(calls, ["openrouter", "openrouter"])
-        self.assertEqual(request["unresolved"], [])
-
-    def test_a_check_that_does_not_finish_in_time_is_unresolved(self):
-        checks = submodule("checks")
-        answers = {"small-model": None, "large-model": True}
-        with mock.patch.object(
-            checks, "slot_resolved_within", lambda slot, api, wait: answers[slot.model]
-        ):
-            request = self.request()
-        self.assertEqual(request["models"], {"small": None, "middle": None, "large": "large-model"})
-        self.assertEqual(request["unresolved"], ["small"])
+        self.request(api=fake_api(list_models=lambda provider: calls.append(provider) or []))
+        self.assertEqual(calls, [])
 
     def test_a_config_effort_is_kept_by_config(self):
         for value, kept in (

@@ -11,15 +11,15 @@ import {
 	FAILED,
 	TIMEOUT,
 } from "../../core/reasons.ts";
-import { pickModel, type Slot } from "../../core/slots.ts";
+import {
+	pickModel,
+	type Slot,
+	slotForLevel,
+	slotState,
+} from "../../core/slots.ts";
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
-import {
-	type HermesRequest,
-	type KeptEffort,
-	readRequest,
-	slotModels,
-} from "./request.ts";
+import { type HermesRequest, type KeptEffort, readRequest } from "./request.ts";
 
 type HermesDeps = { readonly fetchFn: Fetch; readonly clock: Clock };
 type HermesResponse =
@@ -30,6 +30,8 @@ type HermesResponse =
 			// Null when the request names a kept effort.
 			readonly effort: string | null;
 			readonly line: string;
+			// The line Python prints when its check of the slot's model fails; null for a slot with no model.
+			readonly unresolvedLine: string | null;
 	  }
 	| { readonly outcome: "skip"; readonly line: string };
 
@@ -90,25 +92,29 @@ function answer(
 	decided: DecidedWithWork,
 ): HermesResponse {
 	const level = decided.tier;
-	const { slot, target } = pickModel(level, slotModels(request));
+	const slot = slotForLevel(level);
+	const model = request.models[slot];
 	const effort = effortFor(level, decided.work);
 	const kept =
 		request.keptEffort === undefined
 			? undefined
 			: KEPT_LABELS[request.keptEffort];
+	// Python checks the slot's model after this answer, so both outcomes of that check get a finished line.
+	const lineFor = (resolved: boolean) =>
+		LINE_PREFIX +
+		routedLine({
+			level,
+			target: pickModel(level, slotState(model, resolved)).target,
+			effort: kept ?? effort,
+			probabilities: decided.probabilities,
+			suffix: decided.suffix,
+		});
 	return {
 		outcome: "route",
 		slot,
 		effort: kept === undefined ? effort : null,
-		line:
-			LINE_PREFIX +
-			routedLine({
-				level,
-				target,
-				effort: kept ?? effort,
-				probabilities: decided.probabilities,
-				suffix: decided.suffix,
-			}),
+		line: lineFor(true),
+		unresolvedLine: model === undefined ? null : lineFor(false),
 	};
 }
 

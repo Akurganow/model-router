@@ -9,6 +9,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { LINE_PREFIX, routedLine } from "../src/core/line.ts";
+import { pickModel, type SlotModel } from "../src/core/slots.ts";
 import { type Case, check, validateCases } from "./evals/cases.ts";
 import { claude } from "./evals/claude.ts";
 import { omp } from "./evals/omp.ts";
@@ -417,3 +419,27 @@ test("runCase stores no warning when Jev answers as the fitted model", () => {
 	assert.equal(result.passed, true);
 	assert.deepEqual(result.warnings, []);
 });
+
+// The parser keeps its own pattern, so a line the core builds must still read as a decision.
+for (const [state, tier, target] of [
+	[{ state: "set", model: "@middle" }, 1, "@middle"],
+	[{ state: "unset" }, 1, null],
+	[{ state: "unresolved" }, 2, null],
+] as const satisfies readonly [SlotModel, 0 | 1 | 2, string | null][])
+	test(`omp: a core line for a slot that is ${state.state} reads as a decision`, () => {
+		const line = routedLine({
+			level: tier,
+			target: pickModel(tier, state).target,
+			effort: "medium",
+			probabilities: "0.80/0.55",
+			suffix: " · jev jev-1.14.0 · 812/9 tok",
+		});
+		const evidence = omp.parse({
+			stdout: "",
+			stderr: `${LINE_PREFIX}task 1: ${line}\n`,
+		});
+		assert.equal(evidence.routed, true);
+		assert.equal(evidence.tier, tier);
+		assert.equal(evidence.effort, "medium");
+		assert.equal(evidence.target, target);
+	});

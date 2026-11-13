@@ -71,26 +71,30 @@ class ReadAllTest(unittest.TestCase):
     def test_an_incomplete_model_slot_shows_the_missing_part_as_unset(self):
         settings = good_settings(small_model={"model": "m/x"}, large_model={"provider": "p"})
         lines = call(handler_for(settings)).split(LINES)
-        self.assertEqual(lines[1], "small_model: unset m/x (unresolved)")
+        self.assertEqual(lines[1], "small_model: unset m/x")
         self.assertEqual(lines[3], "large_model: unset")
 
-    def test_a_model_hermes_cannot_reach_offline_is_unresolved(self):
+    def test_the_report_shows_a_model_as_configured_and_runs_no_check(self):
+        calls = []
         settings = good_settings(middle_model={"provider": "openrouter", "model": "middle-model"})
-        lines = call(handler_for(settings, list_models=lambda provider: ["small-model"]))
+        handler = handler_for(settings, list_models=lambda provider: calls.append(provider) or [])
         self.assertEqual(
-            lines.split(LINES)[1:4],
+            call(handler).split(LINES)[1:4],
             [
                 "small_model: openrouter small-model",
-                "middle_model: openrouter middle-model (unresolved)",
-                "large_model: openrouter large-model (unresolved)",
+                "middle_model: openrouter middle-model",
+                "large_model: openrouter large-model",
             ],
         )
+        self.assertEqual(calls, [])
 
-    def test_a_blank_spaces_or_missing_middle_model_is_unset(self):
-        for value in ({"provider": "openrouter", "model": ""}, {"model": "   "}, None):
-            with self.subTest(value):
-                lines = call(handler_for(good_settings(middle_model=value))).split(LINES)
-                self.assertEqual(lines[2], "middle_model: unset")
+    def test_a_blank_spaces_or_missing_model_is_unset_in_every_slot(self):
+        for index, slot in enumerate(("small", "middle", "large"), start=1):
+            for value in ({"provider": "openrouter", "model": ""}, {"model": "   "}, None):
+                with self.subTest(slot=slot, value=value):
+                    settings = good_settings(**{f"{slot}_model": value})
+                    lines = call(handler_for(settings)).split(LINES)
+                    self.assertEqual(lines[index], f"{slot}_model: unset")
 
     def test_extra_keywords_from_hermes_are_accepted(self):
         self.assertIn("provider", call(handler_for(), task_id="t", parent_agent=None))

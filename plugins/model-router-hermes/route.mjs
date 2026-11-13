@@ -1435,10 +1435,16 @@ var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 // src/core/slots.ts
 var SLOTS = ["small", "middle", "large"];
 var slotForLevel = (level) => SLOTS[level];
-function pickModel(level, models) {
+var slotSetting = (slot) => `${slot}_model`;
+var SLOT_SETTINGS = SLOTS.map(slotSetting);
+var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
+var slotState = (model, resolved) => {
+  if (model === void 0) return { state: "unset" };
+  return resolved ? { state: "set", model } : { state: "unresolved" };
+};
+function pickModel(level, state) {
   const slot = slotForLevel(level);
-  const picked = models[slot];
-  return picked.state === "set" ? { slot, model: picked.model, target: picked.model } : { slot, model: void 0, target: `${slot} model ${picked.state}` };
+  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model ${state.state}` };
 }
 
 // src/utils/deadline.ts
@@ -1483,13 +1489,7 @@ var readKeys = (value) => Object.fromEntries(
     return key === void 0 ? [] : [[provider, key]];
   })
 );
-var readModels = (value) => Object.fromEntries(
-  SLOTS.map((slot) => [
-    slot,
-    isRecord2(value) ? nonEmpty(value[slot]) : void 0
-  ])
-);
-var readUnresolved = (value) => Array.isArray(value) ? SLOTS.filter((slot) => value.some((name) => nonEmpty(name) === slot)) : [];
+var readModels = (value) => slotRecord((slot) => isRecord2(value) ? nonEmpty(value[slot]) : void 0);
 var readBudget = (value) => isPositiveNumber(value) ? value : void 0;
 function readRequest(raw) {
   if (!isRecord2(raw) || Array.isArray(raw)) return void 0;
@@ -1500,7 +1500,6 @@ function readRequest(raw) {
     keys,
     budgetMs,
     models,
-    unresolved,
     keptEffort,
     description
   } = raw;
@@ -1511,21 +1510,10 @@ function readRequest(raw) {
     keys: readKeys(keys),
     budgetMs: readBudget(budgetMs),
     models: readModels(models),
-    unresolved: readUnresolved(unresolved),
     keptEffort: KEPT_EFFORTS.find((source) => source === keptEffort),
     description: typeof description === "string" ? description : ""
   };
 }
-var slotModels = ({ models, unresolved }) => Object.fromEntries(
-  SLOTS.map((slot) => {
-    const model = models[slot];
-    if (unresolved.includes(slot)) return [slot, { state: "unresolved" }];
-    return [
-      slot,
-      model === void 0 ? { state: "unset" } : { state: "set", model }
-    ];
-  })
-);
 
 // src/adapters/hermes/route.ts
 var skippedBy = (reason) => ({ skipped: reason });
@@ -1561,20 +1549,23 @@ async function scored(request, deps, signal) {
 }
 function answer(request, decided) {
   const level = decided.tier;
-  const { slot, target } = pickModel(level, slotModels(request));
+  const slot = slotForLevel(level);
+  const model = request.models[slot];
   const effort = effortFor(level, decided.work);
   const kept = request.keptEffort === void 0 ? void 0 : KEPT_LABELS[request.keptEffort];
+  const lineFor = (resolved) => LINE_PREFIX + routedLine({
+    level,
+    target: pickModel(level, slotState(model, resolved)).target,
+    effort: kept ?? effort,
+    probabilities: decided.probabilities,
+    suffix: decided.suffix
+  });
   return {
     outcome: "route",
     slot,
     effort: kept === void 0 ? effort : null,
-    line: LINE_PREFIX + routedLine({
-      level,
-      target,
-      effort: kept ?? effort,
-      probabilities: decided.probabilities,
-      suffix: decided.suffix
-    })
+    line: lineFor(true),
+    unresolvedLine: model === void 0 ? null : lineFor(false)
   };
 }
 async function routeRequest(raw, deps) {

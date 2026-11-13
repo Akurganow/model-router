@@ -30,6 +30,13 @@
 		"outcome": "route",
 		"slot": "large",
 		"effort": null,
-		"line": "model-router L2 openai/large · caller effort · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+		"line": "model-router L2 openai/large · caller effort · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"unresolvedLine": "model-router L2 large model unresolved · caller effort · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+	},
+	"route": {
+		"api_mode": "chat_completions",
+		"model": "large-model",
+		"provider": "openrouter",
+		"label": "model-router L2 openai/large · caller effort · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
 	}
 }

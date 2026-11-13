@@ -13,7 +13,6 @@
 			"middle": null,
 			"large": null
 		},
-		"unresolved": [],
 		"keptEffort": null
 	},
 	"jev": [
@@ -31,6 +30,12 @@
 		"outcome": "route",
 		"slot": "large",
 		"effort": "high",
-		"line": "model-router L2 large model unset · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+		"line": "model-router L2 large model unset · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"unresolvedLine": null
+	},
+	"route": {
+		"api_mode": "chat_completions",
+		"reasoning_effort": "high",
+		"label": "model-router L2 large model unset · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
 	}
 }

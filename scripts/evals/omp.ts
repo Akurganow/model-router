@@ -9,6 +9,7 @@ const SETTINGS_OVERLAY = "omp-evals.yml";
 // The extension prints "model-router task <n>: L<level> <role> · <effort> · p=<tier>/<work>" to stderr when omp has no UI.
 // A batch is one line of entries joined by " | ". A slot with no model prints "<slot> model <state>" in place of the role.
 // The effort is a level, or the label of the effort omp keeps, such as "caller effort".
+// The eval scripts read the plugin from outside and import no adapter, so the role mark is spelled again here.
 const ROLE_MARK = "@";
 const ENTRY_NUMBER = /^task (\d+): /;
 const DECISION_ENTRY =

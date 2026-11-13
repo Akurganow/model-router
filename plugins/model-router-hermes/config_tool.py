@@ -4,17 +4,17 @@ It changes nothing and returns presence only, never a key or its length."""
 
 import json
 
-from . import checks
 from .constants import CONSTANTS
 from .hermes_api import live_api
 from .settings import found_keys, read_provider, read_slot
 
 
-def _slot_line(texts, api, name, slot):
+def _slot_line(texts, name, slot):
     if not slot.has_model:
         return texts["modelUnset"].format(name=name)
-    template = texts["modelLine" if checks.slot_resolves(slot, api) else "modelUnresolved"]
-    return template.format(name=name, provider=slot.provider or texts["unset"], model=slot.model)
+    return texts["modelLine"].format(
+        name=name, provider=slot.provider or texts["unset"], model=slot.model
+    )
 
 
 def _read_all(ctx, api, constants):
@@ -23,7 +23,7 @@ def _read_all(ctx, api, constants):
     provider = read_provider(ctx, constants)
     keys = found_keys(api, constants, provider)
     lines = [texts["providerLines"][provider]]
-    lines += [_slot_line(texts, api, name, read_slot(ctx, name)) for name in settings]
+    lines += [_slot_line(texts, name, read_slot(ctx, name)) for name in settings]
     lines += [
         texts["keyLines"][name]["set" if name in keys else "unset"]
         for name in constants["providers"]["order"][provider]

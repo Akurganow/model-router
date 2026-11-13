@@ -3,8 +3,7 @@ import { OPENCLAW_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";
 import {
 	KEY_FIELDS,
-	SLOTS,
-	slotSetting,
+	SLOT_SETTINGS,
 	TOOL_NAME,
 	VALUE_SETTINGS,
 } from "./values.ts";
@@ -29,7 +28,7 @@ const configSchema = (source: Source): JsonObject => ({
 			]),
 		),
 		...Object.fromEntries(
-			[...SLOTS.map(slotSetting), ...SECRET_KEYS].map((name) => [
+			[...SLOT_SETTINGS, ...SECRET_KEYS].map((name) => [
 				name,
 				{ type: source.openclaw.settingType },
 			]),

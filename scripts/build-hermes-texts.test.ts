@@ -112,10 +112,7 @@ test("the provider help is the chat command and the allowed values, one per line
 
 test("the slot templates and separators are the ones Python fills", () => {
 	assert.equal(texts.modelLine, "{name}: {provider} {model}");
-	assert.equal(
-		texts.modelUnresolved,
-		"{name}: {provider} {model} (unresolved)",
-	);
+	assert.equal("modelUnresolved" in texts, false);
 	assert.equal(texts.modelUnset, "{name}: unset");
 	assert.equal(texts.lineBreak, "\n");
 	assert.equal(texts.errorPrefix, "error: ");

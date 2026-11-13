@@ -331,6 +331,17 @@ for (const slot of ["small", "middle", "large"] as const) {
 	}
 }
 
+test("a role that only the prototype holds is unset", () => {
+	world.resolvable = new Set(["@smol", "@middle", "@slow"]);
+	const roles = Object.create({
+		smol: "prov/small",
+		middle: "prov/mid",
+		slow: "prov/large",
+	}) as Record<string, unknown>;
+	for (const slot of ["small", "middle", "large"] as const)
+		assert.deepEqual(slotModel(ctx(), roles, slot), { state: "unset" });
+});
+
 test("a role that modelRoles does not name is unset, even when omp resolves it", () => {
 	world.resolvable = new Set(["@smol", "@middle", "@slow"]);
 	for (const slot of ["small", "middle", "large"] as const)

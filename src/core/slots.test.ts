@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
 	pickModel,
+	SLOT_SETTINGS,
 	SLOTS,
-	type SlotModels,
 	slotForLevel,
 	slotLine,
+	slotRecord,
 	slotSetting,
+	slotState,
 } from "./slots.ts";
 
 test("the slots run small, middle, large in level order", () => {
@@ -25,37 +27,25 @@ test("slotSetting names the setting of each slot", () => {
 	assert.equal(slotSetting("large"), "large_model");
 });
 
-const SET: SlotModels = {
-	small: { state: "set", model: "a/small" },
-	middle: { state: "set", model: "a/middle" },
-	large: { state: "set", model: "a/large" },
-};
-const UNSET: SlotModels = {
-	small: { state: "unset" },
-	middle: { state: "unset" },
-	large: { state: "unset" },
-};
-const UNRESOLVED: SlotModels = {
-	small: { state: "unresolved" },
-	middle: { state: "unresolved" },
-	large: { state: "unresolved" },
-};
+const SET = { state: "set", model: "a/model" } as const;
+const UNSET = { state: "unset" } as const;
+const UNRESOLVED = { state: "unresolved" } as const;
 
 test("pickModel gives a set slot its model as the target", () => {
 	assert.deepEqual(pickModel(0, SET), {
 		slot: "small",
-		model: "a/small",
-		target: "a/small",
+		model: "a/model",
+		target: "a/model",
 	});
 	assert.deepEqual(pickModel(1, SET), {
 		slot: "middle",
-		model: "a/middle",
-		target: "a/middle",
+		model: "a/model",
+		target: "a/model",
 	});
 	assert.deepEqual(pickModel(2, SET), {
 		slot: "large",
-		model: "a/large",
-		target: "a/large",
+		model: "a/model",
+		target: "a/model",
 	});
 });
 
@@ -95,32 +85,38 @@ test("pickModel gives an unresolved slot no model and names it in the target", (
 	});
 });
 
-test("pickModel reads only the slot of the level", () => {
-	assert.deepEqual(pickModel(0, { ...UNSET, small: SET.small }), {
-		slot: "small",
-		model: "a/small",
-		target: "a/small",
-	});
-	assert.deepEqual(pickModel(2, { ...SET, large: UNSET.large }), {
-		slot: "large",
-		model: undefined,
-		target: "large model unset",
-	});
-	assert.deepEqual(pickModel(1, { ...UNRESOLVED, middle: SET.middle }), {
-		slot: "middle",
-		model: "a/middle",
-		target: "a/middle",
-	});
+test("slotState gives no model unset, a resolved model set, and any other unresolved", () => {
+	assert.deepEqual(slotState(undefined, true), { state: "unset" });
+	assert.deepEqual(slotState(undefined, false), { state: "unset" });
+	assert.deepEqual(slotState("a/m", true), { state: "set", model: "a/m" });
+	assert.deepEqual(slotState("a/m", false), { state: "unresolved" });
 });
 
-test("slotLine words the report line of each state", () => {
+test("slotRecord builds one entry per slot in level order", () => {
+	assert.deepEqual(
+		slotRecord((slot) => `${slot}!`),
+		{ small: "small!", middle: "middle!", large: "large!" },
+	);
+	assert.deepEqual(Object.keys(slotRecord(() => 0)), [
+		"small",
+		"middle",
+		"large",
+	]);
+});
+
+test("SLOT_SETTINGS names the three settings in level order", () => {
+	assert.deepEqual(SLOT_SETTINGS, [
+		"small_model",
+		"middle_model",
+		"large_model",
+	]);
+});
+
+test("slotLine words the report line of a slot with and without a model", () => {
 	assert.equal(
-		slotLine("small_model", "set", "anthropic/claude-haiku-4-5"),
+		slotLine("small_model", "anthropic/claude-haiku-4-5"),
 		"small_model: anthropic/claude-haiku-4-5",
 	);
-	assert.equal(
-		slotLine("large_model", "unresolved", "openai/gpt-5"),
-		"large_model: openai/gpt-5 (unresolved)",
-	);
-	assert.equal(slotLine("middle_model", "unset", "x"), "middle_model: unset");
+	assert.equal(slotLine("middle_model"), "middle_model: unset");
+	assert.equal(slotLine("middle_model", undefined), "middle_model: unset");
 });

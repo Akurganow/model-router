@@ -484,18 +484,23 @@ describe("model checks", () => {
 		assert.equal("agentDir" in (s.runtime.calls.credential[0] ?? {}), false);
 	});
 
-	it("checks every slot that holds a model, whatever the level", async () => {
-		const s = setup({
-			levels: { tier: 1, work: 1 },
-			settings: { middle_model: "openai/middle" },
-		});
-		await s.call();
-		assert.deepEqual(s.runtime.calls.allowedRef.map(({ raw }) => raw).sort(), [
-			"openai/large",
-			"openai/middle",
-			"openai/small",
-		]);
-		assert.equal(s.runtime.calls.credential.length, 3);
+	it("checks only the slot the level picks", async () => {
+		for (const [tier, raw] of [
+			[0, "openai/small"],
+			[1, "openai/middle"],
+			[2, "openai/large"],
+		] as const) {
+			const s = setup({
+				levels: { tier, work: 1 },
+				settings: { middle_model: "openai/middle" },
+			});
+			await s.call();
+			assert.deepEqual(
+				s.runtime.calls.allowedRef.map((call) => call.raw),
+				[raw],
+			);
+			assert.equal(s.runtime.calls.credential.length, 1);
+		}
 	});
 
 	it("checks no slot that holds no model", async () => {

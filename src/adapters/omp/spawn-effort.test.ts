@@ -392,6 +392,29 @@ for (const row of ROWS)
 		]);
 	});
 
+test("extended: level 1 with a set middle role gives a bundled scout that role and the effort", async () => {
+	extend(world);
+	world.config.modelRoles = {
+		smol: "prov/small",
+		middle: "prov/mid",
+		slow: "prov/large",
+	};
+	createExtension(world.imports)(world.pi);
+	await world.toolCall("c", {
+		tasks: [{ task: "level1 work1", agent: "scout" }],
+	});
+	assert.deepEqual(
+		await world.spawn("c:0", { agent: "scout", patterns: ["prov/small"] }),
+		{
+			model: "@middle:medium",
+			note: "model-router L1 @middle · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		},
+	);
+	assert.deepEqual(world.notes, [
+		"model-router task 1: L1 @middle · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	]);
+});
+
 test("a ceiling lowered after the batch caps the spawn and says so", async () => {
 	createExtension(world.imports)(world.pi);
 	await world.toolCall("c", { tasks: [{ task: "level0 work2" }] });
