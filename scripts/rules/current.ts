@@ -1,5 +1,5 @@
-import { work } from "../../src/effort.ts";
-import { tier } from "../../src/model.ts";
+import { tier } from "../../src/core/tier.ts";
+import { work } from "../../src/core/work.ts";
 import type { Rule } from "../compare-rules.ts";
 
 const rule: Rule = {

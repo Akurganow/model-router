@@ -1,13 +1,17 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { COMMAND_NAMES } from "../src/openclaw-config.ts";
-import { createFakeApi } from "../src/openclaw-fakes.ts";
-import { HOOK, SPAWN_TOOL } from "../src/openclaw-router.ts";
-import { PLUGIN_ID } from "../src/openclaw-settings.ts";
-import type { OpenClawApi, RegistrationMode } from "../src/openclaw-types.ts";
-import { nonEmpty } from "../src/part.ts";
-import { errorText, TOOL_NAME } from "../src/settings.ts";
+import { COMMAND_NAMES } from "../src/adapters/openclaw/config.ts";
+import { createFakeApi } from "../src/adapters/openclaw/fakes.ts";
+import { HOOK, SPAWN_TOOL } from "../src/adapters/openclaw/router.ts";
+import { PLUGIN_ID } from "../src/adapters/openclaw/settings.ts";
+import type {
+	OpenClawApi,
+	RegistrationMode,
+} from "../src/adapters/openclaw/types.ts";
+import { TOOL_NAME } from "../src/core/settings.ts";
+import { errorText } from "../src/utils/error.ts";
+import { nonEmpty } from "../src/utils/text.ts";
 import { NPM_ROOT } from "./build/outputs.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 

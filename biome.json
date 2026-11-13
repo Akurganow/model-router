@@ -1,6 +1,10 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
-	"vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
 	"files": {
 		"includes": [
 			"**",
@@ -12,7 +16,209 @@
 		]
 	},
 	"linter": {
-		"rules": { "preset": "recommended" },
-		"domains": { "project": "recommended", "types": "recommended" }
-	}
+		"rules": {
+			"preset": "recommended"
+		},
+		"domains": {
+			"project": "recommended",
+			"types": "recommended"
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["src/utils/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["**/core/**", "**/adapters/**"],
+										"message": "A utils/ file imports only other utils/ files, never core/ or an adapter."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/core/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["**/adapters/**"],
+										"message": "A core/ file imports no adapter."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/core/tier.ts", "src/core/work.ts"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"**/adapters/**",
+											"**/tier.ts",
+											"**/work.ts",
+											"**/client.ts",
+											"**/compose.ts"
+										],
+										"message": "A part imports no adapter, no client file and not the other part."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/adapters/claude/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["**/omp/**", "**/openclaw/**", "**/hermes/**"],
+										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/adapters/omp/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["**/claude/**", "**/openclaw/**", "**/hermes/**"],
+										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/adapters/openclaw/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["**/claude/**", "**/omp/**", "**/hermes/**"],
+										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/adapters/openclaw/index.ts"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"paths": {
+									"openclaw": "The bundle entry imports nothing from OpenClaw."
+								},
+								"patterns": [
+									{
+										"group": [
+											"openclaw/**",
+											"**/claude/**",
+											"**/omp/**",
+											"**/hermes/**"
+										],
+										"message": "The bundle entry imports no other adapter and nothing from OpenClaw."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/adapters/hermes/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["**/claude/**", "**/omp/**", "**/openclaw/**"],
+										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["scripts/set-version.ts", "scripts/manifests.ts"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"paths": {
+									"esbuild": "The version writer and the check load no esbuild."
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	],
+	"plugins": [
+		"./scripts/lint/literal-import.grit",
+		"./scripts/lint/utils-reexport.grit"
+	]
 }

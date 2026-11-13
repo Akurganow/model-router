@@ -20,7 +20,7 @@ work.
 ## The three tiers
 
 Jev scores the task against the three tier texts in `TIER_TEXTS` in
-`src/model.ts`:
+`src/core/tier.ts`:
 
 <table>
 <tr><th>Level</th><th>Model</th><th>Tier text</th></tr>
@@ -60,7 +60,7 @@ when unsure. Tier 2 takes the tasks whose brief leaves the approach open.
 
 ## The default level
 
-`fromMiddle`, in `src/part.ts`, picks the level for both questions. Jev
+`fromMiddle`, in `src/core/part.ts`, picks the level for both questions. Jev
 returns a probability for each of the three levels. The router stays at the
 middle level unless an end is more than a fixed factor times as likely as the
 middle. When both ends pass, the likelier end wins. Equal ends stay at the
@@ -84,8 +84,8 @@ and picks the ends on demand, so the factors rest on measurement.
 | tier | 2^0.25 = 1.19 | 2^0.5 = 1.41 |
 | work | 2^1.25 = 2.38 | 2^0.5 = 1.41 |
 
-`TIER_DOWN` and `TIER_UP` sit in `src/model.ts`. `WORK_DOWN` and `WORK_UP`
-sit in `src/effort.ts`.
+`TIER_DOWN` and `TIER_UP` sit in `src/core/tier.ts`. `WORK_DOWN` and `WORK_UP`
+sit in `src/core/work.ts`.
 
 ### How the factors were measured
 
@@ -134,7 +134,7 @@ new Jev release.
 
 Jev reads the agent's role with the task. Claude Code's `general-purpose` and
 `claude` agents and omp's bundled `task` agent send one fixed text instead of
-their harness's description. The text is `DEFAULT_ROLE` in `src/brief.ts`.
+their harness's description. The text is `DEFAULT_ROLE` in `src/core/brief.ts`.
 
 Under Claude Code's `extended` scope, a `general-purpose` or `claude` agent you
 define sends its own description, as
@@ -182,7 +182,7 @@ current factors. Per-harness weights do not fix the shift. Fixing the input does
 
 Jev answers a second question in the same request: how much work the task
 takes once the judgment is settled. It scores the three `WORK_TEXTS` texts
-in `src/effort.ts`:
+in `src/core/work.ts`:
 
 - **0.** A short task: one or two mechanical steps in one place, nothing to
   diagnose, and the given command is the whole check.

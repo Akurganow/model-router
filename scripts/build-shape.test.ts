@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { VALUE_SETTINGS } from "../src/settings.ts";
+import { VALUE_SETTINGS } from "../src/core/settings.ts";
 import type { Schema } from "./build/schema.ts";
 import { type Install, loadSchema, type Source } from "./build/source.ts";
 

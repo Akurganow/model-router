@@ -1,24 +1,24 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import type { Fetch } from "@typesafe-ai/sdk";
-import { prepareBrief, routingState } from "../src/brief.ts";
+import { prepareBrief, routingState } from "../src/core/brief.ts";
 import {
 	type Decision,
 	LIMIT_REACHED,
 	ROUTING_LIMIT_MS,
 	route,
 	type Skipped,
-} from "../src/compose.ts";
-import { work } from "../src/effort.ts";
-import { tier } from "../src/model.ts";
-import { formatProbability } from "../src/part.ts";
+} from "../src/core/compose.ts";
+import { formatProbability } from "../src/core/part.ts";
 import {
 	type Attempt,
 	HOSTS,
 	type Keys,
 	type Provider,
 	plan,
-} from "../src/provider.ts";
-import { PROVIDER_NAMES } from "../src/settings.ts";
+} from "../src/core/provider.ts";
+import { PROVIDER_NAMES } from "../src/core/settings.ts";
+import { tier } from "../src/core/tier.ts";
+import { work } from "../src/core/work.ts";
 import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";
 import { fitWarnings } from "./jev-fit.ts";
 

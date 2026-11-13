@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { setupTexts } from "../src/hermes-setup.ts";
-import { KEY_VARIABLES, PROVIDER_VALUES, PROVIDERS } from "../src/provider.ts";
+import { setupTexts } from "../src/adapters/hermes/setup.ts";
+import {
+	KEY_VARIABLES,
+	PROVIDER_VALUES,
+	PROVIDERS,
+} from "../src/core/provider.ts";
 import {
 	alreadyValue,
 	badCall,
@@ -14,7 +18,7 @@ import {
 	unchanged,
 	useOneOf,
 	valueLine,
-} from "../src/settings.ts";
+} from "../src/core/settings.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { HERMES_OUTPUTS } from "./build/outputs.ts";
 import { loadSource } from "./build/source.ts";
@@ -41,12 +45,11 @@ test("the tool and command names and texts equal the src/ values", () => {
 	]);
 });
 
-test("the tool description names every setting, changes nothing and returns no key", () => {
-	for (const name of texts.settings)
-		assert.ok(texts.toolDescription.includes(name), name);
-	assert.match(texts.toolDescription, /changes nothing/);
-	assert.match(texts.toolDescription, /never returns a key/);
-	assert.doesNotMatch(texts.toolDescription, /scope/);
+test("the tool description is the text that names every setting, changes nothing and returns no key", () => {
+	assert.equal(
+		texts.toolDescription,
+		"Reads the router's settings. With no input it returns the provider, both models, and whether each key the provider allows is set. With a setting name (provider, typesafe_key, openrouter_key, small_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key.",
+	);
 });
 
 test("the provider texts equal the shared builders", () => {
@@ -97,6 +100,13 @@ test("the help texts say where each setting changes and never ask for a key in c
 		);
 		assert.match(help, /hermes config set/);
 	}
+});
+
+test("the provider help is the chat command and the allowed values, one per line", () => {
+	assert.equal(
+		texts.help.provider,
+		"Type /model-router-provider <value> in the chat.\nprovider: use one of auto, openrouter-first, typesafe, openrouter",
+	);
 });
 
 test("the slot templates and separators are the ones Python fills", () => {

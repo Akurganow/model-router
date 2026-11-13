@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { mock, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { SOURCE_PATH } from "./build/source.ts";
@@ -96,13 +95,6 @@ test("the writer writes the source only, and the check names the manifests the b
 		before,
 	);
 	assert.match(checkVersions(box.root).join("\n"), /1\.2\.3.*0\.11\.0/s);
-});
-
-test("the writer and the check import no esbuild", () => {
-	for (const file of ["./set-version.ts", "./manifests.ts"]) {
-		const source = readFileSync(new URL(file, import.meta.url), "utf8");
-		assert.doesNotMatch(source, /esbuild/);
-	}
 });
 
 test("the command refuses a version that is not X.Y.Z with exit code 2", () => {

@@ -70,7 +70,7 @@ test("two builds give identical bytes", async () => {
 test("the output names the shim by repo-relative path only", async () => {
 	await buildClaude(GOOD);
 	const code = readFileSync(outPath(), "utf8");
-	assert.match(code, /^\/\/ src\/timers\.ts$/m);
+	assert.match(code, /^\/\/ src\/adapters\/claude\/timers\.ts$/m);
 	assert.equal(
 		code.includes(fileURLToPath(new URL("../", import.meta.url))),
 		false,

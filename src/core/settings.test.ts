@@ -1,0 +1,399 @@
+/// <reference types="node" />
+
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { order, PROVIDER_VALUES } from "./provider.ts";
+import { SCOPE_VALUES } from "./scope.ts";
+import {
+	alreadyValue,
+	ask,
+	badCall,
+	COMMAND_DESCRIPTIONS,
+	chooseValue,
+	isKeySetting,
+	isValue,
+	isValueSetting,
+	KEY_SETTINGS,
+	keyLine,
+	keyNotSaved,
+	keyProvider,
+	NO_ANSWER,
+	NOT_OFFERED,
+	pick,
+	readOnlyToolDescription,
+	SETTING_NAMES,
+	settingsReport,
+	TOOL_LABEL,
+	toolDescription,
+	unchanged,
+	useOneOf,
+	VALUE_SETTINGS,
+	valueLine,
+	valueSettingHelp,
+} from "./settings.ts";
+
+test("lists the four setting names, value settings first", () => {
+	assert.deepEqual(SETTING_NAMES, [
+		"provider",
+		"scope",
+		"typesafe_key",
+		"openrouter_key",
+	]);
+	assert.deepEqual(VALUE_SETTINGS, ["provider", "scope"]);
+	assert.deepEqual(KEY_SETTINGS, ["typesafe_key", "openrouter_key"]);
+});
+
+test("predicates tell value settings, key settings and other input apart", () => {
+	for (const name of VALUE_SETTINGS) {
+		assert.equal(isValueSetting(name), true, name);
+		assert.equal(isKeySetting(name), false, name);
+	}
+	for (const name of KEY_SETTINGS) {
+		assert.equal(isValueSetting(name), false, name);
+		assert.equal(isKeySetting(name), true, name);
+	}
+	for (const other of ["", "key", "toString", 1, null, undefined]) {
+		assert.equal(isValueSetting(other), false, String(other));
+		assert.equal(isKeySetting(other), false, String(other));
+	}
+});
+
+test("each key setting belongs to one provider", () => {
+	assert.equal(keyProvider("typesafe_key"), "typesafe");
+	assert.equal(keyProvider("openrouter_key"), "openrouter");
+});
+
+test("isValue accepts the listed values of its own setting only", () => {
+	for (const value of PROVIDER_VALUES) {
+		assert.equal(isValue("provider", value), true, value);
+		assert.equal(isValue("scope", value), false, value);
+	}
+	for (const value of SCOPE_VALUES) {
+		assert.equal(isValue("scope", value), true, value);
+		assert.equal(isValue("provider", value), false, value);
+	}
+	for (const other of ["", "Auto", "toString", 1, null, undefined])
+		assert.equal(isValue("provider", other), false, String(other));
+});
+
+test("the provider line equals the text the command prints today", () => {
+	for (const value of PROVIDER_VALUES)
+		assert.equal(
+			valueLine("provider", value),
+			`provider: ${value} (${order(value).join(", then ")})`,
+		);
+	assert.equal(
+		valueLine("provider", "auto"),
+		"provider: auto (typesafe, then openrouter)",
+	);
+	assert.equal(
+		valueLine("provider", "typesafe"),
+		"provider: typesafe (typesafe)",
+	);
+});
+
+test("the scope line shows the resolved value", () => {
+	assert.equal(valueLine("scope", "extended"), "scope: extended");
+	assert.equal(valueLine("scope", "core"), "scope: core");
+	assert.equal(valueLine("scope", undefined), "scope: core");
+	assert.equal(valueLine("scope", "bogus"), "scope: core");
+});
+
+test("use-one-of and unchanged texts name the setting", () => {
+	assert.equal(
+		useOneOf("provider"),
+		"provider: use one of auto, openrouter-first, typesafe, openrouter",
+	);
+	assert.equal(useOneOf("scope"), "scope: use one of core, extended");
+	assert.equal(
+		unchanged("scope", "already core"),
+		"scope unchanged: already core",
+	);
+	assert.equal(unchanged("provider", "denied"), "provider unchanged: denied");
+});
+
+test("key status lines name the provider", () => {
+	for (const provider of ["typesafe", "openrouter"] as const) {
+		assert.equal(keyLine(provider, "set"), `${provider} key: set`);
+		assert.equal(keyLine(provider, "unset"), `${provider} key: unset`);
+		assert.equal(
+			keyLine(provider, "saved, checking"),
+			`${provider} key: saved, checking`,
+		);
+		assert.equal(keyNotSaved(provider), `${provider} key not saved`);
+	}
+});
+
+test("a dialog puts the current value first and keeps the declared order", () => {
+	for (const [setting, values] of [
+		["provider", PROVIDER_VALUES],
+		["scope", SCOPE_VALUES],
+	] as const)
+		for (const current of values) {
+			const { question, options } = ask(setting, current);
+			assert.ok(question.endsWith("?"), question);
+			assert.deepEqual(
+				options.map((label) => label.split(" - ")[0]),
+				[current, ...values.filter((value) => value !== current)],
+			);
+		}
+});
+
+test("a dialog treats an unknown current value as the default", () => {
+	const first = (setting: "provider" | "scope", current: unknown) =>
+		ask(setting, current).options[0]?.split(" - ")[0];
+	assert.equal(first("provider", "bogus"), "typesafe");
+	assert.equal(first("provider", undefined), "typesafe");
+	assert.equal(first("scope", "bogus"), "core");
+	assert.equal(first("scope", undefined), "core");
+});
+
+test("every label is a value, a dash and a one-line consequence, never recommended", () => {
+	for (const setting of VALUE_SETTINGS)
+		for (const label of ask(setting, undefined).options) {
+			assert.match(label, /^[a-z-]+ - [^\n]+$/, label);
+			assert.doesNotMatch(label, /recommend/i, label);
+		}
+});
+
+test("labels carry the consequences of each value", () => {
+	assert.deepEqual(ask("provider", "typesafe").options, [
+		"typesafe - TypeSafe only",
+		"auto - TypeSafe, then OpenRouter if TypeSafe fails",
+		"openrouter-first - OpenRouter, then TypeSafe if OpenRouter fails",
+		"openrouter - OpenRouter only",
+	]);
+	assert.deepEqual(ask("scope", "core").options, [
+		"core - today's routing: built-in general agents only",
+		"extended - also routes other agents that pass no model",
+	]);
+});
+
+test("pick maps an exact label to its value and refuses anything else", () => {
+	for (const setting of VALUE_SETTINGS) {
+		const values = setting === "provider" ? PROVIDER_VALUES : SCOPE_VALUES;
+		for (const current of values) {
+			const { options } = ask(setting, current);
+			for (const label of options) {
+				assert.equal(pick(setting, label), label.split(" - ")[0], label);
+				assert.equal(pick(setting, `${label} `), undefined);
+				assert.equal(pick(setting, label.toUpperCase()), undefined);
+			}
+		}
+	}
+	for (const other of ["auto", "extended", "", "Yes", "No", 1, null, undefined])
+		assert.equal(pick("provider", other), undefined, String(other));
+	assert.equal(pick("scope", "typesafe - TypeSafe only"), undefined);
+});
+
+test("chooseValue asks the dialog's question and applies the picked value", async () => {
+	const asked: unknown[] = [];
+	const applied: string[] = [];
+	const text = await chooseValue(
+		"scope",
+		"extended",
+		async (question, options) => {
+			asked.push({ question, options });
+			return ask("scope", undefined).options[1];
+		},
+		async (value) => {
+			applied.push(value);
+			return `applied ${value}`;
+		},
+	);
+	assert.equal(text, "applied extended");
+	assert.deepEqual(applied, ["extended"]);
+	assert.deepEqual(asked, [ask("scope", "extended")]);
+});
+
+test("chooseValue maps no answer to the no-answer line and applies nothing", async () => {
+	let applied = 0;
+	const text = await chooseValue(
+		"provider",
+		undefined,
+		async () => undefined,
+		async () => {
+			applied += 1;
+			return "";
+		},
+	);
+	assert.equal(text, unchanged("provider", NO_ANSWER));
+	assert.equal(applied, 0);
+});
+
+test("chooseValue maps a select that rejects or throws to the no-answer line and applies nothing", async () => {
+	let applied = 0;
+	const apply = async () => {
+		applied += 1;
+		return "";
+	};
+	assert.equal(
+		await chooseValue(
+			"provider",
+			undefined,
+			async () => {
+				throw new Error("dialog gone");
+			},
+			apply,
+		),
+		unchanged("provider", NO_ANSWER),
+	);
+	assert.equal(
+		await chooseValue(
+			"provider",
+			undefined,
+			() => Promise.reject(new Error("dialog gone")),
+			apply,
+		),
+		unchanged("provider", NO_ANSWER),
+	);
+	assert.equal(applied, 0);
+});
+
+test("chooseValue maps an unknown answer to the not-offered line and never echoes it", async () => {
+	let applied = 0;
+	for (const answer of ["auto", "", "secret-text", "auto - TypeSafe only"]) {
+		const text = await chooseValue(
+			"provider",
+			"auto",
+			async () => answer,
+			async () => {
+				applied += 1;
+				return "";
+			},
+		);
+		assert.equal(text, unchanged("provider", NOT_OFFERED));
+		assert.equal(text.includes("secret-text"), false);
+	}
+	assert.equal(applied, 0);
+});
+
+test("chooseValue returns what apply returns, and a throw passes through", async () => {
+	const label = ask("provider", "auto").options[0] ?? "";
+	assert.equal(
+		await chooseValue(
+			"provider",
+			"auto",
+			async () => label,
+			async (value) => unchanged("provider", alreadyValue(value)),
+		),
+		"provider unchanged: already auto",
+	);
+	await assert.rejects(
+		chooseValue(
+			"provider",
+			"auto",
+			async () => label,
+			async () => {
+				throw new Error("apply failed");
+			},
+		),
+		{ message: "apply failed" },
+	);
+});
+
+test("settingsReport joins the value lines, the extra lines and the key lines in order", () => {
+	assert.equal(
+		settingsReport("auto", "extended", ["small_model: a/b"], {
+			typesafe: "key-1",
+		}),
+		"provider: auto (typesafe, then openrouter)\nscope: extended\nsmall_model: a/b\ntypesafe key: set\nopenrouter key: unset",
+	);
+});
+
+test("settingsReport lists the providers the value allows, in their order", () => {
+	assert.equal(
+		settingsReport("openrouter-first", "core", [], { typesafe: "key-1" }),
+		"provider: openrouter-first (openrouter, then typesafe)\nscope: core\nopenrouter key: unset\ntypesafe key: set",
+	);
+	assert.equal(
+		settingsReport("openrouter", "core", [], { typesafe: "key-1" }),
+		"provider: openrouter (openrouter)\nscope: core\nopenrouter key: unset",
+	);
+});
+
+test("settingsReport never prints a key", () => {
+	const report = settingsReport("auto", "core", [], {
+		typesafe: "key-1",
+		openrouter: "key-2",
+	});
+	assert.doesNotMatch(report, /key-[12]/);
+});
+
+test("settingsReport prints the stored provider as it is and resolves the scope", () => {
+	assert.equal(
+		settingsReport(undefined, "bogus", [], { typesafe: "key-1" }),
+		"provider: undefined (typesafe)\nscope: core\ntypesafe key: set",
+	);
+});
+
+test("the tool description lists the names it is given", () => {
+	for (const names of [SETTING_NAMES, VALUE_SETTINGS]) {
+		const text = toolDescription(names);
+		assert.ok(text.includes(`(${names.join(", ")})`));
+		assert.match(text, /no input/);
+		assert.match(text, /asks the person/);
+		assert.match(text, /Never pass a value/);
+	}
+	assert.doesNotMatch(toolDescription(VALUE_SETTINGS), /_key/);
+});
+
+test("the read-only tool description joins what it returns and the names", () => {
+	assert.equal(
+		readOnlyToolDescription(["the provider", "both models"], ["a", "b"]),
+		"Reads the router's settings. With no input it returns the provider, both models, and whether each key the provider allows is set. With a setting name (a, b) it returns how the person changes that setting. It changes nothing and never returns a key.",
+	);
+	assert.match(
+		readOnlyToolDescription(["x"], SETTING_NAMES),
+		/returns x, and whether/,
+	);
+});
+
+test("the value setting help gives the command line, then the allowed values", () => {
+	assert.equal(
+		valueSettingHelp("provider"),
+		"Type /model-router-provider <value> in the chat.\nprovider: use one of auto, openrouter-first, typesafe, openrouter",
+	);
+	assert.equal(
+		valueSettingHelp("scope"),
+		"Type /model-router-scope <value> in the chat.\nscope: use one of core, extended",
+	);
+});
+
+test("the bad-call text lists the names it is given", () => {
+	assert.ok(badCall(SETTING_NAMES).endsWith(SETTING_NAMES.join(", ")));
+	assert.ok(badCall(VALUE_SETTINGS).endsWith("provider, scope"));
+});
+
+test("each value setting has a command description listing its values", () => {
+	assert.deepEqual(Object.keys(COMMAND_DESCRIPTIONS), [...VALUE_SETTINGS]);
+	assert.ok(COMMAND_DESCRIPTIONS.provider.includes(PROVIDER_VALUES.join(", ")));
+	assert.ok(COMMAND_DESCRIPTIONS.scope.includes(SCOPE_VALUES.join(", ")));
+	for (const text of Object.values(COMMAND_DESCRIPTIONS))
+		assert.doesNotMatch(text, /claude|\bomp\b/i);
+});
+
+test("no text names a harness", () => {
+	const texts = [
+		toolDescription(SETTING_NAMES),
+		badCall(SETTING_NAMES),
+		...VALUE_SETTINGS.flatMap((s) => ask(s, undefined).options),
+	];
+	for (const text of texts) assert.doesNotMatch(text, /claude|\bomp\b/i, text);
+});
+
+test("the reasons of an unchanged value read after the setting name", () => {
+	assert.equal(alreadyValue("core"), "already core");
+	assert.equal(
+		unchanged("scope", NO_ANSWER),
+		"scope unchanged: no answer from the dialog",
+	);
+	assert.equal(
+		unchanged("scope", NOT_OFFERED),
+		"scope unchanged: the answer was not one of the offered values",
+	);
+});
+
+test("the tool label names the router", () => {
+	assert.match(TOOL_LABEL, /Model Router/);
+});

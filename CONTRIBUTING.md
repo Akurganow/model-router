@@ -6,12 +6,38 @@ every commit as a [conventional commit](#commits).
 
 ## Repository layout
 
-- `src/` holds the parts, the composer, the client, the brief and the two
-  adapters. Its tests sit beside the sources as `src/*.test.ts`.
-- `src/model.ts` holds the tier texts, and `src/effort.ts` holds the work
-  texts. Neither imports the other.
-- `src/part.ts` holds the shared types and the answer check. `src/model.ts`
-  and `src/effort.ts` both build on it.
+- `src/` holds the sources in three layers: `src/core/`, `src/utils/` and
+  `src/adapters/<harness>/`. Each test sits beside the source it tests.
+  - `utils/` imports only `utils/`. `core/` imports only `core/` and
+    `utils/`. An adapter imports only itself, `core/` and `utils/`.
+  - Biome enforces these directions. The `noRestrictedImports` overrides in
+    `biome.json` ban the imports of each layer. Two plugins in
+    `scripts/lint/` ban a computed `import()` in `src/` and a re-export in
+    `src/utils/`.
+  - `scripts/lint.test.ts` plants one fault for each rule and checks that
+    Biome reports it.
+  - [AGENTS.md](AGENTS.md#a-rule-about-the-source-goes-to-biome-first)
+    says when a new rule goes to Biome and when to a test.
+  - `scripts/layout.test.ts` checks where the files sit:
+    - every file under `src/` except `src/tsconfig.json` sits in `core/`,
+      `utils/` or one adapter folder;
+    - only a test sits directly in `src/adapters/`;
+    - each adapter folder holds an `index.ts`, the adapter's entry.
+
+  No tool checks the table below. Use it to place new code.
+
+  | Code | Home |
+  | --- | --- |
+  | A routing concept that two or more adapters use | `src/core/` |
+  | A general helper with two or more users | `src/utils/` |
+  | Anything one adapter uses | that adapter's folder |
+  | A test double | The layer of the code it replaces, in a `*fake*` file |
+  | A test directly in `src/adapters/` | It imports two or more adapters |
+  | A non-test file of `utils/` | Two or more users outside `utils/` |
+
+  In the last row, tests and scripts count as users.
+- `src/core/part.ts` holds the shared types and the answer check.
+  `src/core/tier.ts` and `src/core/work.ts` both build on it.
 - `plugins/model-router` is the Claude Code plugin.
 - `plugins/model-router-omp` is the omp plugin.
 - `plugins/model-router-openclaw` is the OpenClaw plugin.
@@ -45,7 +71,8 @@ every commit as a [conventional commit](#commits).
 - `scripts/scan-owner-setup.ts` scans for owner-setup facts. See
   [Continuous integration](#continuous-integration).
 - `docs/clients.md` cites how each client loads a package.
-  `docs/design.md` gives the reasons for this layout and for the CI checks.
+  `docs/design.md` gives the reasons for the generated copies, the single
+  version and the CI checks.
   `docs/providers.md` holds what the four plugins do the same way when they ask Jev.
 - `evals/` and `scripts/evals.ts` run real clients against the plugins.
 
@@ -187,8 +214,8 @@ Each case in `calibration.jsonl` names its source, its license and the basis
 of its label. For a label that the brief supports both ways, set the array
 `contested` to `["expected"]`, `["work"]` or both.
 
-Fix a miss by rewording a tier text in `src/model.ts` or a work-level text in
-`src/effort.ts`. Then rebuild with `node scripts/build.ts`. Never lower the
+Fix a miss by rewording a tier text in `src/core/tier.ts` or a work-level text in
+`src/core/work.ts`. Then rebuild with `node scripts/build.ts`. Never lower the
 bar.
 
 The masked prompt keeps the key out of command lines and shell history. Pipe

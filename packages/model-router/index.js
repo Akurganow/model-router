@@ -907,7 +907,17 @@ var parseBody = async (res) => {
   }
 };
 
-// src/provider.ts
+// src/utils/text.ts
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+
+// src/utils/guards.ts
+var isRecord2 = (v) => typeof v === "object" && v !== null;
+var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
+
+// src/core/provider.ts
 var PROVIDER_VALUES = [
   "auto",
   "openrouter-first",
@@ -967,7 +977,7 @@ function fallsBack(err) {
   return FALLBACK_STATUSES.has(status) || status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
 }
 
-// src/client.ts
+// src/core/client.ts
 function createClient(provider, apiKey, model, fetchFn) {
   if (!Object.hasOwn(HOSTS, provider))
     throw new Error(`createClient: no host for ${provider}`);
@@ -985,7 +995,7 @@ function createClient(provider, apiKey, model, fetchFn) {
   });
 }
 
-// src/part.ts
+// src/core/part.ts
 var LEVELS = [0, 1, 2];
 var fromMiddle = (down, up) => (p) => {
   const low = p[0] > down * p[1];
@@ -995,11 +1005,6 @@ var fromMiddle = (down, up) => (p) => {
 };
 var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
-};
-var isRecord2 = (v) => typeof v === "object" && v !== null;
 function parseProbabilities(answers, key) {
   const a = isRecord2(answers) ? answers[key] : void 0;
   if (!isRecord2(a)) return void 0;
@@ -1012,13 +1017,176 @@ function parseProbabilities(answers, key) {
   return { 0: p0, 1: p1, 2: p2 };
 }
 
-// src/scope.ts
+// src/core/reasons.ts
+var CALLER_EFFORT = "caller effort";
+var CONFIG_EFFORT = "config effort";
+var SUBAGENT_MODEL_SET = "subagent model set";
+var NO_END_MODEL = "no small or large model";
+var UNREADABLE = "settings unreadable";
+var KEY_UNSET = "key unset";
+var BAD_REPLY = "bad reply";
+var TIMEOUT = "timeout";
+var FAILED = "failed";
+var NETWORK_ERROR = "network error";
+var REJECTED_REQUEST = "rejected request";
+var httpStatus = (status) => `HTTP ${status}`;
+var CANCELLED = "cancelled";
+var outsideCoreScope = (id) => `${id} is outside the core scope`;
+var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
+var agentUnknown = (id) => `${id} agent unknown`;
+var setsOwnModel = (id) => `${id} sets its own model`;
+var modelUnset = (slot) => `${slot} model unset`;
+var modelUnresolved = (slot) => `${slot} model unresolved`;
+
+// src/core/compose.ts
+var ROUTING_LIMIT_MS = 8e3;
+var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
+var MODEL_CHARS_MAX = 40;
+var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+function abortCategory(signal) {
+  return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
+}
+function skipCategory(err, signal) {
+  if (err instanceof APIUserAbortError) return abortCategory(signal);
+  if (err instanceof APIError) return httpStatus(err.status);
+  if (err instanceof APITimeoutError) return TIMEOUT;
+  if (err instanceof APIConnectionError) return NETWORK_ERROR;
+  if (err instanceof TypeSafeError) return REJECTED_REQUEST;
+  return FAILED;
+}
+async function route(input) {
+  const { parts, attempts, signal } = input;
+  if (attempts.length === 0) return { skipped: KEY_UNSET };
+  const failed = [];
+  for (const [i, attempt] of attempts.entries()) {
+    let result;
+    try {
+      result = await ask(input, attempt);
+    } catch (err) {
+      failed.push({
+        provider: attempt.provider,
+        reason: skipCategory(err, signal)
+      });
+      if (!fallsBack(err)) break;
+      if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
+      continue;
+    }
+    const decision = parseReply(parts, result);
+    if ("skipped" in decision) {
+      failed.push({ provider: attempt.provider, reason: decision.skipped });
+      break;
+    }
+    const [first] = failed;
+    if (!first) return decision;
+    const via = {
+      provider: attempt.provider,
+      first: first.provider,
+      reason: first.reason
+    };
+    return { ...decision, via };
+  }
+  return skip(failed);
+}
+function ask(input, attempt) {
+  const { parts, state, keys, fetchFn, signal } = input;
+  const { provider, model, ...overrides } = attempt;
+  return createClient(provider, keys[provider], model, fetchFn).systemOne(
+    {
+      state,
+      model,
+      questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
+    },
+    { ...overrides, signal }
+  );
+}
+function skip(failed) {
+  const [first, ...rest] = failed;
+  if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
+  return {
+    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
+  };
+}
+function parseReply(parts, result) {
+  const { answers, model, usage } = isRecord2(result) ? result : {};
+  const decided = {};
+  for (const part of parts) {
+    const probabilities = parseProbabilities(answers, part.key);
+    if (!probabilities) return { skipped: BAD_REPLY };
+    decided[part.key] = { level: part.pick(probabilities), probabilities };
+  }
+  return {
+    parts: decided,
+    model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
+    usage: isRecord2(usage) ? usage : void 0
+  };
+}
+function decisionSuffix({
+  model,
+  usage,
+  via
+}) {
+  const input = usage?.input_tokens;
+  const output = usage?.output_tokens;
+  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
+}
+
+// src/core/handler-deadline.ts
+var HANDLER_MARGIN_MS = 2e3;
+var MIN_DEADLINE_MS = 1e3;
+var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
+var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
+
+// src/core/line.ts
+var LINE_PREFIX = "model-router ";
+var NO_CHANGE = "no change";
+function routedLine({
+  level,
+  target,
+  effort,
+  probabilities,
+  suffix
+}) {
+  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
+  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+}
+var SKIPPED_PREFIX = "skipped, ";
+var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
+
+// src/utils/clock.ts
+var realClock = {
+  after: (ms, fn) => {
+    const timer = setTimeout(fn, ms);
+    return { cancel: () => clearTimeout(timer) };
+  }
+};
+
+// src/utils/fetch.ts
+var oneChunk = (bytes) => new ReadableStream({
+  start(controller) {
+    controller.enqueue(bytes);
+    controller.close();
+  }
+});
+var streamedFetch = async (url, init) => {
+  const reply = await globalThis.fetch(url, init);
+  const bytes = new TextEncoder().encode(await reply.text());
+  return new Response(oneChunk(bytes), {
+    status: reply.status,
+    statusText: reply.statusText,
+    headers: reply.headers
+  });
+};
+
+// src/utils/error.ts
+var errorText = (err) => err instanceof Error ? err.message : String(err);
+
+// src/core/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
 var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
 var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
-// src/settings.ts
+// src/core/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
 var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
 var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
@@ -1059,17 +1227,23 @@ var keyProvider = (setting) => KEY_PROVIDERS[setting];
 var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
+var valueSettingHelp = (setting) => [
+  `Type /${commandName(setting)} <value> in the chat.`,
+  useOneOf(setting)
+].join("\n");
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
-var errorText = (err) => err instanceof Error ? err.message : String(err);
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
-var UNREADABLE = "settings unreadable";
-var KEY_UNSET = "key unset";
-var outsideCoreScope = (id) => `${id} is outside the core scope`;
-var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
-var agentUnknown = (id) => `${id} agent unknown`;
-var setsOwnModel = (id) => `${id} sets its own model`;
 var keyLine = (provider, state) => `${provider} key: ${state}`;
+var settingsReport = (provider, scope, extra, keys) => [
+  valueLine("provider", provider),
+  valueLine("scope", scope),
+  ...extra,
+  ...order(provider).map(
+    (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
+  )
+].join("\n");
+var readOnlyToolDescription = (returned, names) => `Reads the router's settings. With no input it returns ${returned.join(", ")}, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
 var TOOL_LABEL = "Model Router settings";
 var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
 function describeCommand(setting) {
@@ -1081,175 +1255,7 @@ var COMMAND_DESCRIPTIONS = {
   scope: describeCommand("scope")
 };
 
-// src/compose.ts
-var ROUTING_LIMIT_MS = 8e3;
-var TIMEOUT = "timeout";
-var FAILED = "failed";
-var CANCELLED = "cancelled";
-var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
-var MODEL_CHARS_MAX = 40;
-var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
-function abortCategory(signal) {
-  return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
-}
-function skipCategory(err, signal) {
-  if (err instanceof APIUserAbortError) return abortCategory(signal);
-  if (err instanceof APIError) return `HTTP ${err.status}`;
-  if (err instanceof APITimeoutError) return TIMEOUT;
-  if (err instanceof APIConnectionError) return "network error";
-  if (err instanceof TypeSafeError) return "rejected request";
-  return FAILED;
-}
-async function route(input) {
-  const { parts, attempts, signal } = input;
-  if (attempts.length === 0) return { skipped: KEY_UNSET };
-  const failed = [];
-  for (const [i, attempt] of attempts.entries()) {
-    let result;
-    try {
-      result = await ask(input, attempt);
-    } catch (err) {
-      failed.push({
-        provider: attempt.provider,
-        reason: skipCategory(err, signal)
-      });
-      if (!fallsBack(err)) break;
-      if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
-      continue;
-    }
-    const decision = decide(parts, result);
-    if ("skipped" in decision) {
-      failed.push({ provider: attempt.provider, reason: decision.skipped });
-      break;
-    }
-    const [first] = failed;
-    if (!first) return decision;
-    const via = {
-      provider: attempt.provider,
-      first: first.provider,
-      reason: first.reason
-    };
-    return { ...decision, via };
-  }
-  return skip(failed);
-}
-function ask(input, attempt) {
-  const { parts, state, keys, fetchFn, signal } = input;
-  const { provider, model, ...overrides } = attempt;
-  return createClient(provider, keys[provider], model, fetchFn).systemOne(
-    {
-      state,
-      model,
-      questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
-    },
-    { ...overrides, signal }
-  );
-}
-function skip(failed) {
-  const [first, ...rest] = failed;
-  if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
-  return {
-    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
-  };
-}
-function decide(parts, result) {
-  const { answers, model, usage } = isRecord2(result) ? result : {};
-  const decided = {};
-  for (const part of parts) {
-    const probabilities = parseProbabilities(answers, part.key);
-    if (!probabilities) return { skipped: "bad reply" };
-    decided[part.key] = { level: part.pick(probabilities), probabilities };
-  }
-  return {
-    parts: decided,
-    model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
-    usage: isRecord2(usage) ? usage : void 0
-  };
-}
-function decisionSuffix({
-  model,
-  usage,
-  via
-}) {
-  const input = usage?.input_tokens;
-  const output = usage?.output_tokens;
-  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
-}
-
-// src/deadline.ts
-var realClock = {
-  after: (ms, fn) => {
-    const timer = setTimeout(fn, ms);
-    return { cancel: () => clearTimeout(timer) };
-  }
-};
-async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
-  try {
-    const stop = new AbortController();
-    const signal = AbortSignal.any(
-      hostSignal ? [stop.signal, hostSignal] : [stop.signal]
-    );
-    return await new Promise((settle) => {
-      const timer = clock.after(deadlineMs, () => {
-        stop.abort(LIMIT_REACHED);
-        settle(void 0);
-      });
-      const onHostAbort = () => {
-        settle(void 0);
-        try {
-          timer.cancel();
-        } catch {
-        }
-      };
-      hostSignal?.addEventListener("abort", onHostAbort, { once: true });
-      if (hostSignal?.aborted) onHostAbort();
-      work2(signal).then(
-        (result) => signal.aborted ? void 0 : result,
-        () => void 0
-      ).then(settle).finally(() => {
-        timer.cancel();
-        hostSignal?.removeEventListener("abort", onHostAbort);
-      }).catch(() => void 0);
-    });
-  } catch {
-    return void 0;
-  }
-}
-
-// src/fetch.ts
-var oneChunk = (bytes) => new ReadableStream({
-  start(controller) {
-    controller.enqueue(bytes);
-    controller.close();
-  }
-});
-var streamedFetch = async (url, init) => {
-  const reply = await globalThis.fetch(url, init);
-  const bytes = new TextEncoder().encode(await reply.text());
-  return new Response(oneChunk(bytes), {
-    status: reply.status,
-    statusText: reply.statusText,
-    headers: reply.headers
-  });
-};
-
-// src/line.ts
-var LINE_PREFIX = "model-router ";
-var NO_CHANGE = "no change";
-function routedLine({
-  level,
-  target,
-  effort,
-  probabilities,
-  suffix
-}) {
-  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
-}
-var SKIPPED_PREFIX = "skipped, ";
-var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
-
-// src/openclaw-settings.ts
+// src/adapters/openclaw/settings.ts
 var PLUGIN_ID = "model-router-openclaw";
 var pluginEntry = (config) => config?.plugins?.entries?.[PLUGIN_ID];
 function withPluginSetting(draft, setting, value) {
@@ -1289,14 +1295,20 @@ function readSettings(live, pluginConfig) {
     largeModel: firstValid(from, "large_model", nonEmpty)
   };
 }
-function readKeys(live, pluginConfig, providerValue, env) {
-  const from = sources(live, pluginConfig);
+function collectKeys(value, lookup) {
   const keys = {};
-  for (const provider of order(providerValue)) {
-    const key = firstValid(from, KEY_FIELDS[provider], nonEmpty) ?? nonEmpty(env[KEY_VARIABLES[provider]]);
+  for (const provider of order(value)) {
+    const key = lookup(provider);
     if (key !== void 0) keys[provider] = key;
   }
   return keys;
+}
+function readKeys(live, pluginConfig, providerValue, env) {
+  const from = sources(live, pluginConfig);
+  return collectKeys(
+    providerValue,
+    (provider) => firstValid(from, KEY_FIELDS[provider], nonEmpty) ?? nonEmpty(env[KEY_VARIABLES[provider]])
+  );
 }
 function readState(api, env) {
   const config = readLive(api);
@@ -1308,7 +1320,7 @@ function readState(api, env) {
   };
 }
 
-// src/openclaw-config.ts
+// src/adapters/openclaw/config.ts
 var COMMAND_NAMES = VALUE_SETTINGS.map(commandName);
 var ADMIN_SCOPE = "operator.admin";
 var LINE_BREAK = "\n";
@@ -1316,31 +1328,27 @@ var UNSET = "unset";
 var NOT_OWNER = "only the owner can change it";
 var MODEL_SETTINGS = ["small_model", "large_model"];
 var TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
-var TOOL_DESCRIPTION = `Reads the router's settings. With no input it returns the provider, the scope, both models, and whether each key the provider allows is set. With a setting name (${TOOL_SETTINGS.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
+var TOOL_DESCRIPTION = readOnlyToolDescription(
+  ["the provider", "the scope", "both models"],
+  TOOL_SETTINGS
+);
 var modelLine = (name, model) => `${name}: ${model ?? UNSET}`;
-function keyLines(providers, keys) {
-  return providers.map(
-    (name) => keyLine(name, keys[name] === void 0 ? UNSET : "set")
-  );
-}
 function readAll({ settings, keys }) {
-  return [
-    valueLine("provider", settings.provider),
-    valueLine("scope", settings.scope),
-    modelLine("small_model", settings.smallModel),
-    modelLine("large_model", settings.largeModel),
-    ...keyLines(order(settings.provider), keys)
-  ].join(LINE_BREAK);
+  return settingsReport(
+    settings.provider,
+    settings.scope,
+    [
+      modelLine("small_model", settings.smallModel),
+      modelLine("large_model", settings.largeModel)
+    ],
+    keys
+  );
 }
 var isModelSetting = (setting) => MODEL_SETTINGS.some((known) => known === setting);
 var modelSettingHelp = (setting) => `${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`;
 function howToChange(setting) {
   if (isModelSetting(setting)) return modelSettingHelp(setting);
-  if (isValueSetting(setting))
-    return [
-      `Type /${commandName(setting)} <value> in the chat.`,
-      useOneOf(setting)
-    ].join(LINE_BREAK);
+  if (isValueSetting(setting)) return valueSettingHelp(setting);
   return isKeySetting(setting) ? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.` : badCall(TOOL_SETTINGS);
 }
 function runTool(api, env, params) {
@@ -1414,16 +1422,7 @@ function registerConfigCommands(api, env) {
     });
 }
 
-// src/handler-deadline.ts
-var HANDLER_MARGIN_MS = 2e3;
-var MIN_DEADLINE_MS = 1e3;
-var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
-var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
-
-// src/openclaw-deadline.ts
-var HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HANDLER_MARGIN_MS;
-
-// src/brief.ts
+// src/core/brief.ts
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
 var NO_DESCRIPTION = "An agent with no description.";
@@ -1632,60 +1631,7 @@ function routingState(raw) {
   };
 }
 
-// src/decide.ts
-var BAD_REPLY = { skipped: "bad reply" };
-var levelOf = (decision, key) => {
-  const part = decision.parts[key];
-  return part && {
-    level: part.level,
-    probability: formatProbability(part.probabilities[part.level])
-  };
-};
-function decide2(decision, tierKey, workKey) {
-  if ("skipped" in decision) return decision;
-  const tier2 = levelOf(decision, tierKey);
-  if (!tier2) return BAD_REPLY;
-  const suffix = decisionSuffix(decision);
-  if (workKey === void 0)
-    return { tier: tier2.level, probabilities: tier2.probability, suffix };
-  const work2 = levelOf(decision, workKey);
-  if (!work2) return BAD_REPLY;
-  return {
-    tier: tier2.level,
-    work: work2.level,
-    probabilities: `${tier2.probability}/${work2.probability}`,
-    suffix
-  };
-}
-
-// src/effort.ts
-var WORK_DOWN = 2 ** 1.25;
-var WORK_UP = 2 ** 0.5;
-var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
-var WORK_TEXTS = [
-  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
-  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
-  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
-];
-var work = {
-  key: "work",
-  question: {
-    type: "score",
-    instructions: WORK_INSTRUCTIONS,
-    criteria: WORK_TEXTS
-  },
-  pick: fromMiddle(WORK_DOWN, WORK_UP)
-};
-
-// src/ladder.ts
-var EFFORT_BY_TIER = {
-  0: ["medium", "high", "xhigh"],
-  1: ["low", "medium", "high"],
-  2: ["low", "medium", "high"]
-};
-var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
-
-// src/model.ts
+// src/core/tier.ts
 var TIER_DOWN = 2 ** 0.25;
 var TIER_UP = 2 ** 0.5;
 var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
@@ -1704,7 +1650,108 @@ var tier = {
   pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
 
-// src/openclaw-checks.ts
+// src/core/work.ts
+var WORK_DOWN = 2 ** 1.25;
+var WORK_UP = 2 ** 0.5;
+var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
+var WORK_TEXTS = [
+  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
+  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
+  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
+];
+var work = {
+  key: "work",
+  question: {
+    type: "score",
+    instructions: WORK_INSTRUCTIONS,
+    criteria: WORK_TEXTS
+  },
+  pick: fromMiddle(WORK_DOWN, WORK_UP)
+};
+
+// src/core/decide.ts
+var BAD = { skipped: BAD_REPLY };
+var levelOf = (decision, key) => {
+  const part = decision.parts[key];
+  return part && {
+    level: part.level,
+    probability: formatProbability(part.probabilities[part.level])
+  };
+};
+function decide(decision, tierKey, workKey) {
+  if ("skipped" in decision) return decision;
+  const tier2 = levelOf(decision, tierKey);
+  if (!tier2) return BAD;
+  const work2 = levelOf(decision, workKey);
+  if (!work2) return BAD;
+  return {
+    tier: tier2.level,
+    work: work2.level,
+    probabilities: `${tier2.probability}/${work2.probability}`,
+    suffix: decisionSuffix(decision)
+  };
+}
+async function scoreWork(input) {
+  const decision = await route({ ...input, parts: [tier, work] });
+  return decide(decision, tier.key, work.key);
+}
+
+// src/core/ladder.ts
+var EFFORT_BY_TIER = {
+  0: ["medium", "high", "xhigh"],
+  1: ["low", "medium", "high"],
+  2: ["low", "medium", "high"]
+};
+var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
+
+// src/core/slots.ts
+var LEVEL_SLOTS = {
+  0: "small",
+  2: "large"
+};
+var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
+var modelForLevel = (level, models) => {
+  const slot = slotForLevel(level);
+  if (slot === null) return { slot };
+  const model = models[slot];
+  return model === void 0 ? { skipped: modelUnset(slot) } : { slot, model };
+};
+
+// src/utils/deadline.ts
+async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
+  try {
+    const stop = new AbortController();
+    const signal = AbortSignal.any(
+      hostSignal ? [stop.signal, hostSignal] : [stop.signal]
+    );
+    return await new Promise((settle) => {
+      const timer = clock.after(deadlineMs, () => {
+        stop.abort(reason);
+        settle(void 0);
+      });
+      const onHostAbort = () => {
+        settle(void 0);
+        try {
+          timer.cancel();
+        } catch {
+        }
+      };
+      hostSignal?.addEventListener("abort", onHostAbort, { once: true });
+      if (hostSignal?.aborted) onHostAbort();
+      work2(signal).then(
+        (result) => signal.aborted ? void 0 : result,
+        () => void 0
+      ).then(settle).finally(() => {
+        timer.cancel();
+        hostSignal?.removeEventListener("abort", onHostAbort);
+      }).catch(() => void 0);
+    });
+  } catch {
+    return void 0;
+  }
+}
+
+// src/adapters/openclaw/checks.ts
 async function slotResolves(runtime, cfg, agentId, slot) {
   try {
     const target = agentId === void 0 ? { cfg } : { cfg, agentId };
@@ -1729,7 +1776,7 @@ async function slotResolves(runtime, cfg, agentId, slot) {
   }
 }
 
-// src/openclaw-agents.ts
+// src/adapters/openclaw/agents.ts
 var DEFAULT_AGENT_ID = "main";
 var MAX_ID_LENGTH = 64;
 var VALID_ID = new RegExp(
@@ -1763,58 +1810,7 @@ function findAgent(config, id) {
   return list.filter(isRecord2).find(({ id: itemId }) => normalizeAgentId(itemId) === wanted);
 }
 
-// src/openclaw-params.ts
-var snakeCase = (key) => key.replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2").replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
-function readParam(params, key) {
-  if (Object.hasOwn(params, key)) return params[key];
-  const snake = snakeCase(key);
-  return Object.hasOwn(params, snake) ? params[snake] : void 0;
-}
-var readStringParam = (params, key) => nonEmpty(readParam(params, key));
-var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
-var SUBAGENT_RUNTIME = "subagent";
-function readAgent(params) {
-  const raw = readParam(params, "agentId");
-  if (typeof raw !== "string")
-    return isSet(raw) ? { kind: "invalid" } : { kind: "none" };
-  const id = nonEmpty(raw);
-  return id === void 0 ? { kind: "none" } : { kind: "id", id };
-}
-function readRuntime(params) {
-  const { runtime } = params;
-  if (!isSet(runtime)) return void 0;
-  return runtime === SUBAGENT_RUNTIME ? SUBAGENT_RUNTIME : "other";
-}
-function readSpawn(params) {
-  const { task, taskName, visible, context, mode, thread } = params;
-  return {
-    task: typeof task === "string" ? task : void 0,
-    agent: readAgent(params),
-    model: readStringParam(params, "model"),
-    thinking: readStringParam(params, "thinking"),
-    description: readStringParam(params, "label") ?? nonEmpty(taskName) ?? "",
-    runtime: readRuntime(params),
-    visible: visible === true,
-    context: context === "fork" || context === "isolated" ? context : void 0,
-    mode: mode === "run" || mode === "session" ? mode : void 0,
-    thread: thread === true
-  };
-}
-
-// src/reasons.ts
-var CALLER_EFFORT = "caller effort";
-var CONFIG_EFFORT = "config effort";
-var SUBAGENT_MODEL_SET = "subagent model set";
-var NO_END_MODEL = "no small or large model";
-var LEVEL_SLOTS = {
-  0: "small",
-  2: "large"
-};
-var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
-var modelUnset = (slot) => `${slot} model unset`;
-var modelUnresolved = (slot) => `${slot} model unresolved`;
-
-// src/openclaw-gates.ts
+// src/adapters/openclaw/gates.ts
 var PASS = { outcome: "pass" };
 var skip2 = (reason) => ({ outcome: "skip", reason });
 var NO_MODEL_VALUE = "default";
@@ -1891,13 +1887,46 @@ function gateSpawn(input) {
   };
 }
 
-// src/openclaw-router.ts
+// src/adapters/openclaw/params.ts
+var snakeCase = (key) => key.replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2").replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+function readParam(params, key) {
+  if (Object.hasOwn(params, key)) return params[key];
+  const snake = snakeCase(key);
+  return Object.hasOwn(params, snake) ? params[snake] : void 0;
+}
+var readStringParam = (params, key) => nonEmpty(readParam(params, key));
+var SUBAGENT_RUNTIME = "subagent";
+function readAgent(params) {
+  const raw = readParam(params, "agentId");
+  if (typeof raw !== "string")
+    return isSet(raw) ? { kind: "invalid" } : { kind: "none" };
+  const id = nonEmpty(raw);
+  return id === void 0 ? { kind: "none" } : { kind: "id", id };
+}
+function readRuntime(params) {
+  const { runtime } = params;
+  if (!isSet(runtime)) return void 0;
+  return runtime === SUBAGENT_RUNTIME ? SUBAGENT_RUNTIME : "other";
+}
+function readSpawn(params) {
+  const { task, taskName, visible, context, mode, thread } = params;
+  return {
+    task: typeof task === "string" ? task : void 0,
+    agent: readAgent(params),
+    model: readStringParam(params, "model"),
+    thinking: readStringParam(params, "thinking"),
+    description: readStringParam(params, "label") ?? nonEmpty(taskName) ?? "",
+    runtime: readRuntime(params),
+    visible: visible === true,
+    context: context === "fork" || context === "isolated" ? context : void 0,
+    mode: mode === "run" || mode === "session" ? mode : void 0,
+    thread: thread === true
+  };
+}
+
+// src/adapters/openclaw/router.ts
 var SPAWN_TOOL = "sessions_spawn";
 var HOOK = "before_tool_call";
-var SLOT_MODELS = {
-  small: (s) => s.smallModel,
-  large: (s) => s.largeModel
-};
 function spawnLine(api, signal) {
   let open = true;
   const onAbort = () => {
@@ -1923,8 +1952,7 @@ function spawnLine(api, signal) {
   };
 }
 async function score({ deps, signal }, settings, keys, gate) {
-  const decision = await route({
-    parts: [tier, work],
+  return scoreWork({
     state: routingState({
       role: gate.role,
       description: gate.description,
@@ -1935,15 +1963,16 @@ async function score({ deps, signal }, settings, keys, gate) {
     fetchFn: deps.fetchFn,
     signal
   });
-  return decide2(decision, tier.key, work.key);
 }
 async function slotFor(runtime, settings, { config, target }, level) {
-  const name = slotForLevel(level);
-  if (name === null) return { model: void 0 };
-  const model = SLOT_MODELS[name](settings);
-  if (model === void 0) return { skipped: modelUnset(name) };
-  if (!await slotResolves(runtime, config, target, model))
-    return { skipped: modelUnresolved(name) };
+  const picked = modelForLevel(level, {
+    small: settings.smallModel,
+    large: settings.largeModel
+  });
+  if ("skipped" in picked) return picked;
+  const { slot, model } = picked;
+  if (slot !== null && !await slotResolves(runtime, config, target, model))
+    return { skipped: modelUnresolved(slot) };
   return { model };
 }
 async function routeSpawn(spawn) {
@@ -2000,7 +2029,8 @@ function createBeforeToolCall(api, deadlineMs, deps) {
         (signal) => routeSpawn({ api, deps, signal, request, requester }),
         deadlineMs,
         deps.clock,
-        ctx?.abortSignal
+        ctx?.abortSignal,
+        LIMIT_REACHED
       );
     } catch {
       return void 0;
@@ -2008,8 +2038,9 @@ function createBeforeToolCall(api, deadlineMs, deps) {
   };
 }
 
-// src/openclaw.ts
+// src/adapters/openclaw/index.ts
 var HOOK_TIMEOUT_MAX_MS = 6e5;
+var HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HANDLER_MARGIN_MS;
 var usable = (value) => typeof value === "number" && Number.isInteger(value) && value > 0 && value <= HOOK_TIMEOUT_MAX_MS;
 function effectiveTimeout(config) {
   const hooks = pluginEntry(config)?.hooks;
@@ -2060,8 +2091,8 @@ function createPlugin(deps = {
 }) {
   return { id: PLUGIN_ID, register: (api) => register(api, deps) };
 }
-var openclaw_default = createPlugin();
+var index_default = createPlugin();
 export {
   createPlugin,
-  openclaw_default as default
+  index_default as default
 };

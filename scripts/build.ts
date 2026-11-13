@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type BuildOptions, build } from "esbuild";
-import { errorText } from "../src/settings.ts";
+import { errorText } from "../src/utils/error.ts";
 import { renderClaude } from "./build/claude.ts";
 import { copyNpmFiles } from "./build/copies.ts";
 import { renderHermes } from "./build/hermes.ts";
@@ -21,7 +21,7 @@ import { renderReadme } from "./build/readme.ts";
 import { loadSource, type Source } from "./build/source.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
-const TIMERS = "src/timers.ts";
+const TIMERS = "src/adapters/claude/timers.ts";
 export const MAX_BUNDLE_BYTES = 1048576;
 const TIMER_NAMES = ["setTimeout", "clearTimeout"];
 
@@ -100,22 +100,22 @@ export const BUNDLES: readonly {
 }[] = [
 	{
 		harness: "claude",
-		entry: "src/claude.ts",
+		entry: "src/adapters/claude/index.ts",
 		out: CLAUDE_OUTPUTS.bundle,
 	},
 	{
 		harness: "omp",
-		entry: "src/omp.ts",
+		entry: "src/adapters/omp/index.ts",
 		out: OMP_OUTPUTS.bundle,
 	},
 	{
 		harness: "openclaw",
-		entry: "src/openclaw.ts",
+		entry: "src/adapters/openclaw/index.ts",
 		out: OPENCLAW_OUTPUTS.bundle,
 	},
 	{
 		harness: "hermes",
-		entry: "src/hermes.ts",
+		entry: "src/adapters/hermes/index.ts",
 		out: HERMES_OUTPUTS.bundle,
 	},
 ];

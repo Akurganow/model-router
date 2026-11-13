@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { PROVIDER_VALUES } from "../../../src/provider.ts";
-import { SCOPE_VALUES } from "../../../src/scope.ts";
+import { PROVIDER_VALUES } from "../../../src/core/provider.ts";
+import { SCOPE_VALUES } from "../../../src/core/scope.ts";
 
 const PLUGIN = join(import.meta.dirname, "..");
 const ENTRY = "./extension/index.js";

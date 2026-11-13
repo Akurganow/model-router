@@ -75,7 +75,7 @@ test("text that only names a bearer token or masks one passes", () => {
 	assert.deepEqual(findMarkers("Bearer a1"), []);
 });
 
-test("the bearer rule ignores case, as the redaction in src/brief.ts does", () => {
+test("the bearer rule ignores case, as the redaction in src/core/brief.ts does", () => {
 	const lower = BEARER_TOKEN.replace("Bearer", "bearer");
 	assert.deepEqual(findMarkers(`Authorization: ${lower}`), ["Bearer token"]);
 	const bearer = MARKERS.find(({ kind }) => kind === "Bearer token");
@@ -106,8 +106,8 @@ test("one line with two kinds reports both", () => {
 	]);
 });
 
-test("the two key prefixes are the ones src/brief.ts redacts", () => {
-	const brief = readFileSync(join(ROOT, "src/brief.ts"), "utf8");
+test("the two key prefixes are the ones src/core/brief.ts redacts", () => {
+	const brief = readFileSync(join(ROOT, "src/core/brief.ts"), "utf8");
 	assert.ok(brief.includes("\\bsk-[A-Za-z0-9_-]{8,}"));
 	assert.ok(brief.includes("Bearer\\s+[A-Za-z0-9._~+/=-]+/gi"));
 });

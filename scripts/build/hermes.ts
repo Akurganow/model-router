@@ -1,23 +1,25 @@
-import { ROUTING_LIMIT_MS } from "../../src/compose.ts";
-import { setupTexts } from "../../src/hermes-setup.ts";
-import { HERMES_TEXTS, taskParameterTexts } from "../../src/hermes-texts.ts";
-import { EFFORTS } from "../../src/ladder.ts";
-import { LINE_PREFIX, skippedLine } from "../../src/line.ts";
-import { LEVELS } from "../../src/part.ts";
+import { setupTexts } from "../../src/adapters/hermes/setup.ts";
+import {
+	HERMES_TEXTS,
+	taskParameterTexts,
+} from "../../src/adapters/hermes/texts.ts";
+import { ROUTING_LIMIT_MS } from "../../src/core/compose.ts";
+import { EFFORTS } from "../../src/core/ladder.ts";
+import { LINE_PREFIX, skippedLine } from "../../src/core/line.ts";
+import { LEVELS } from "../../src/core/part.ts";
 import {
 	KEY_VARIABLES,
 	order,
 	PROVIDER_VALUES,
 	resolve as resolveProvider,
-} from "../../src/provider.ts";
+} from "../../src/core/provider.ts";
+import { modelUnresolved, modelUnset } from "../../src/core/reasons.ts";
 import {
 	type EndSlot,
-	modelUnresolved,
-	modelUnset,
 	SLOTS,
 	slotForLevel,
 	slotSetting,
-} from "../../src/reasons.ts";
+} from "../../src/core/slots.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";

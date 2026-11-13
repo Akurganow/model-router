@@ -1,0 +1,7 @@
+language js
+
+`import($arg)` where {
+	$filename <: r".*/src/(?:core|utils|adapters)/.*",
+	$arg <: not r"^(?:\"[^\"]*\"|'[^']*')(?:\s*,[\s\S]*)?$",
+	register_diagnostic(span=$arg, message="import() takes a string literal, so the import rules can read it.", severity="error")
+}

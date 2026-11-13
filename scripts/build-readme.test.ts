@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { errorText } from "../src/settings.ts";
+import { errorText } from "../src/utils/error.ts";
 import { README_OUTPUT } from "./build/outputs.ts";
 import {
 	anchorOf,

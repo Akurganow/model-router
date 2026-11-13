@@ -542,7 +542,7 @@ Every running fact names its OpenClaw version and the date it ran.
   [`status.ts` L284](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/status.ts#L284),
   [`loader-registration-plan.ts` L48–L50](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/loader-registration-plan.ts#L48-L50),
   [`plugin-registration.types.ts` L494–L509](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/plugin-registration.types.ts#L494-L509);
-  this repository's `src/openclaw.ts` registers only the tool in `tool-discovery` mode;
+  this repository's `src/adapters/openclaw/index.ts` registers only the tool in `tool-discovery` mode;
   running: OpenClaw 2026.10.10, `inspect --runtime --json` of the packed tarball listed `tools: ["model_router_config"]`, `hooks: []` and `commands: []`)
 - The `package` job installed the packed tarball and ran `openclaw plugins inspect model-router-openclaw --runtime --json`.
   `scripts/check-openclaw-install.ts` read the report and passed.

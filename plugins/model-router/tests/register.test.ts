@@ -1,7 +1,7 @@
 import { expect, test } from "claude-code/testing";
 import { ANSWER, agentCall, callOnce, KEYED, PROMPT } from "./harness.ts";
 
-// The plugin folder cannot import src/brief.ts, so the test pins the start of the fixed role.
+// The plugin folder cannot import src/core/brief.ts, so the test pins the start of the fixed role.
 const DEFAULT_ROLE_PREFIX =
 	"General-purpose agent for researching complex questions, searching";
 const EXTENDED = { options: { api_key: "test-key", scope: "extended" } };

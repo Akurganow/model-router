@@ -1,4 +1,4 @@
-import type { Level } from "../../src/part.ts";
+import type { Level } from "../../src/core/part.ts";
 
 // What a headless run proves about routing. A field the client does not show is null.
 export type Evidence = {

@@ -3,10 +3,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { PLUGIN_ID, readKeys, readSettings } from "../src/openclaw-settings.ts";
-import { KEY_FIELDS } from "../src/provider.ts";
-import { SCOPE_VALUES } from "../src/scope.ts";
-import { TOOL_NAME } from "../src/settings.ts";
+import {
+	PLUGIN_ID,
+	readKeys,
+	readSettings,
+} from "../src/adapters/openclaw/settings.ts";
+import { KEY_FIELDS } from "../src/core/provider.ts";
+import { SCOPE_VALUES } from "../src/core/scope.ts";
+import { TOOL_NAME } from "../src/core/settings.ts";
 import { formatJson } from "./build/json.ts";
 import { renderOpenclaw } from "./build/openclaw.ts";
 import { OPENCLAW_OUTPUTS } from "./build/outputs.ts";
@@ -138,7 +142,10 @@ const box = useTempRoot("build-openclaw-");
 
 test("the bundle builds under the cap and equals the committed bundle", async () => {
 	const out = join(box.root, "index.js");
-	assert.deepEqual(await buildBundle("openclaw", "src/openclaw.ts", out), []);
+	assert.deepEqual(
+		await buildBundle("openclaw", "src/adapters/openclaw/index.ts", out),
+		[],
+	);
 	const code = readFileSync(out, "utf8");
 	assert.ok(Buffer.byteLength(code) < MAX_BUNDLE_BYTES);
 	assert.equal(code, read(OPENCLAW_OUTPUTS.bundle));
@@ -147,8 +154,8 @@ test("the bundle builds under the cap and equals the committed bundle", async ()
 test("two builds of the bundle give identical bytes", async () => {
 	const first = join(box.root, "first.js");
 	const second = join(box.root, "second.js");
-	await buildBundle("openclaw", "src/openclaw.ts", first);
-	await buildBundle("openclaw", "src/openclaw.ts", second);
+	await buildBundle("openclaw", "src/adapters/openclaw/index.ts", first);
+	await buildBundle("openclaw", "src/adapters/openclaw/index.ts", second);
 	assert.equal(readFileSync(first, "utf8"), readFileSync(second, "utf8"));
 });
 

@@ -1,3 +1,259 @@
+// src/core/reasons.ts
+var CALLER_EFFORT = "caller effort";
+var CONFIG_EFFORT = "config effort";
+var KEY_UNSET = "key unset";
+var BAD_REPLY = "bad reply";
+var TIMEOUT = "timeout";
+var FAILED = "failed";
+var NETWORK_ERROR = "network error";
+var REJECTED_REQUEST = "rejected request";
+var httpStatus = (status) => `HTTP ${status}`;
+var CANCELLED = "cancelled";
+var modelUnset = (slot) => `${slot} model unset`;
+
+// src/utils/clock.ts
+var realClock = {
+  after: (ms, fn) => {
+    const timer = setTimeout(fn, ms);
+    return { cancel: () => clearTimeout(timer) };
+  }
+};
+
+// src/utils/fetch.ts
+var oneChunk = (bytes) => new ReadableStream({
+  start(controller) {
+    controller.enqueue(bytes);
+    controller.close();
+  }
+});
+var streamedFetch = async (url, init) => {
+  const reply = await globalThis.fetch(url, init);
+  const bytes = new TextEncoder().encode(await reply.text());
+  return new Response(oneChunk(bytes), {
+    status: reply.status,
+    statusText: reply.statusText,
+    headers: reply.headers
+  });
+};
+
+// src/utils/text.ts
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+
+// src/core/brief.ts
+var BUDGET_CHARS = 12e3;
+var ROLE_CAP = 500;
+var NO_DESCRIPTION = "An agent with no description.";
+var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
+var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
+var HEAD_SHARE = 2 / 3;
+var CONTEXT_CAP_CHARS = 3e3;
+var CONTEXT_MIN_CHARS = 500;
+var CONTEXT_LABEL = "\n\nBatch context:\n";
+var PEM_LABEL = "[ A-Z0-9_-]{0,100}PRIVATE KEY(?: BLOCK)?-----";
+var AWS_ID = "(?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}(?![A-Za-z0-9])";
+var AUTH_SCHEMES = [
+  "AWS4-HMAC-SHA256",
+  "ApiKey",
+  "Basic",
+  "Bearer",
+  "Concealed",
+  "Digest",
+  "DPoP",
+  "GNAP",
+  "HOBA",
+  "Mutual",
+  "Negotiate",
+  "NTLM",
+  "OAuth",
+  "PrivateToken",
+  "SCRAM-SHA-1",
+  "SCRAM-SHA-256",
+  "Token",
+  "vapid"
+].join("|");
+var AUTH_HEAD = `\\bAuthorization["']?\\s*[:=]\\s*`;
+var AUTH_SCHEME = `(?:${AUTH_SCHEMES})[ \\t]+`;
+var quotedRun = (quote) => `[^${quote}\\\\\\n]*(?:\\\\.[^${quote}\\\\\\n]*)*`;
+var TOKEN_PREFIXES = {
+  "GitHub token": "gh[pousr]_[A-Za-z0-9]{36,}",
+  "GitHub fine-grained token": "github_pat_[A-Za-z0-9_]{22,}",
+  "GitLab token": "glpat-[A-Za-z0-9_-]{20,}",
+  "Slack token": "xox[abeoprs]-[A-Za-z0-9-]{10,}",
+  "Slack app token": "xapp-\\d-[A-Za-z0-9-]{10,}",
+  "Slack webhook": "hooks\\.slack\\.com/(?:services|workflows|triggers)/[A-Za-z0-9+/]{20,}",
+  "AWS access key id": AWS_ID,
+  "Google API key": "AIza[A-Za-z0-9_-]{35,}",
+  "Stripe key": "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
+  "npm token": "npm_[A-Za-z0-9]{36,}",
+  "Hugging Face token": "hf_[A-Za-z]{34,}",
+  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
+};
+var REDACTIONS = [
+  {
+    name: "PEM private key",
+    pattern: new RegExp(
+      `-----BEGIN${PEM_LABEL}(?:(?:[^-]|-(?!----))*-----END${PEM_LABEL}|(?:(?:\\s|\\\\[rn])+[A-Za-z0-9+/=]{16,})*)`,
+      "gi"
+    ),
+    replacement: "***"
+  },
+  {
+    name: "URL credentials",
+    pattern: /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]*:[^\s/?#'"]+@/gi,
+    replacement: "$1***@"
+  },
+  {
+    name: "Authorization header",
+    pattern: new RegExp(
+      `(${AUTH_HEAD}["']?${AUTH_SCHEME})(?:${[
+        `(?<="${AUTH_SCHEME})${quotedRun('"')}`,
+        `(?<='${AUTH_SCHEME})${quotedRun("'")}`,
+        `(?<="${AUTH_HEAD}${AUTH_SCHEME})${quotedRun('"')}`,
+        `(?<='${AUTH_HEAD}${AUTH_SCHEME})${quotedRun("'")}`,
+        "[^\\n]*"
+      ].join("|")})|(${AUTH_HEAD}["']?)[A-Za-z0-9._~+/=-]{16,}`,
+      "gi"
+    ),
+    replacement: "$1$2***"
+  },
+  {
+    name: "AWS secret",
+    pattern: new RegExp(
+      `((?<![A-Za-z0-9])${AWS_ID}[^\\n]{0,100}?)(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{40}(?![A-Za-z0-9+/=])`,
+      "g"
+    ),
+    replacement: "$1***"
+  },
+  {
+    name: "JSON Web Token",
+    pattern: /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}={0,2}\.ey[A-Za-z0-9_-]{8,}={0,2}\.[A-Za-z0-9_-]*/g,
+    replacement: "***"
+  },
+  {
+    name: "token prefixes",
+    pattern: new RegExp(
+      `(?<![A-Za-z0-9])(?:${Object.values(TOKEN_PREFIXES).join("|")})`,
+      "g"
+    ),
+    replacement: "***"
+  },
+  {
+    name: "Bearer token",
+    pattern: /Bearer\s+[A-Za-z0-9._~+/=-]+/gi,
+    replacement: "Bearer ***"
+  },
+  { name: "sk- key", pattern: /\bsk-[A-Za-z0-9_-]{8,}/g, replacement: "***" },
+  {
+    name: "curl user",
+    pattern: /((?<!\S)(?:-[A-Za-z]{0,8}u|--(?:proxy-)?user)(?:\s+|=)?)(?:"[^"\n:]*:[^"\n]*"|'[^'\n:]*:[^'\n]*'|[^\s"':]+:[^\s"']+)/g,
+    replacement: "$1***"
+  },
+  {
+    name: "password is",
+    pattern: /\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)(?::\s*|\s+))(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    replacement: "$1$2***"
+  },
+  {
+    name: "secret name",
+    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    replacement: "$1$2***"
+  }
+];
+var FENCE_OPENER = /(?<![`~])(?:(`{3,})[^\n`]*|(~{3,})[^\n~]*)\n/g;
+var FENCE_CLOSER = /^ {0,3}(`{3,}|~{3,})[ \t]*\r?$/;
+function prepareBrief(text, budget = BUDGET_CHARS) {
+  const condensed = condense(redact(text));
+  if (condensed.length <= budget) return condensed;
+  const kept = budget - OMISSION_MARKER.length;
+  const head = Math.floor(kept * HEAD_SHARE);
+  const tail = kept - head;
+  return `${condensed.slice(0, head)}${OMISSION_MARKER}${condensed.slice(condensed.length - tail)}`;
+}
+function condense(text) {
+  return condenseFences(text).replace(/\n{3,}/g, "\n\n");
+}
+function condenseFences(text) {
+  const lines = text.split("\n");
+  const starts = [];
+  let offset = 0;
+  for (const line2 of lines) {
+    starts.push(offset);
+    offset += line2.length + 1;
+  }
+  const runs = lines.map((line2) => FENCE_CLOSER.exec(line2)?.[1] ?? "");
+  const longest = {
+    "`": longestAfter(runs, "`"),
+    "~": longestAfter(runs, "~")
+  };
+  const opener = new RegExp(FENCE_OPENER);
+  let out = "";
+  let kept = 0;
+  let line = 0;
+  for (let open = opener.exec(text); open; open = opener.exec(text)) {
+    const run = open[1] ?? open[2] ?? "";
+    const first = open.index + open[0].length;
+    while ((starts[line] ?? Number.POSITIVE_INFINITY) < first) line++;
+    const char = run.startsWith("`") ? "`" : "~";
+    if ((longest[char][line] ?? 0) < run.length) continue;
+    let close = line;
+    while (!closes(runs[close] ?? "", run)) close++;
+    const count = close - line;
+    out += `${text.slice(kept, open.index)}[an exact block of ${count} ${count === 1 ? "line" : "lines"} is given verbatim]`;
+    kept = (starts[close] ?? 0) + (lines[close]?.length ?? 0);
+    opener.lastIndex = kept;
+  }
+  return out + text.slice(kept);
+}
+var closes = (closer, opener) => closer.startsWith(opener.charAt(0)) && closer.length >= opener.length;
+function longestAfter(runs, char) {
+  const longest = new Array(runs.length + 1).fill(0);
+  for (let k = runs.length - 1; k >= 0; k--) {
+    const run = runs[k] ?? "";
+    longest[k] = Math.max(
+      longest[k + 1] ?? 0,
+      run.startsWith(char) ? run.length : 0
+    );
+  }
+  return longest;
+}
+function redact(text) {
+  return REDACTIONS.reduce(
+    (t, { pattern, replacement }) => t.replace(pattern, replacement),
+    text
+  );
+}
+function buildPrompt(task, context) {
+  const brief = prepareBrief(task);
+  const budget = Math.min(
+    BUDGET_CHARS - brief.length - CONTEXT_LABEL.length,
+    CONTEXT_CAP_CHARS
+  );
+  if (context === "" || budget < CONTEXT_MIN_CHARS) return brief;
+  return `${brief}${CONTEXT_LABEL}${prepareBrief(context, budget)}`;
+}
+function contextText(context) {
+  return typeof context === "string" && nonEmpty(context) !== void 0 ? context : "";
+}
+function descriptionText(description) {
+  if (typeof description !== "string") return "";
+  const text = redact(description).replace(/\s+/g, " ").trim();
+  const cut = text.slice(0, ROLE_CAP);
+  return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
+}
+function roleText(description) {
+  return descriptionText(description) || NO_DESCRIPTION;
+}
+function routingState(raw) {
+  return {
+    role: roleText(raw.role),
+    description: descriptionText(raw.description),
+    task: buildPrompt(raw.task, raw.context ?? "")
+  };
+}
+
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
 var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
 var APIPromise = class APIPromise2 extends Promise {
@@ -493,13 +749,13 @@ var redactKey = (value) => {
   const tail = secret && secret.length > 8 ? secret.slice(-4) : "";
   return `${scheme ? `${scheme} ` : ""}***${tail}`;
 };
-var redact = (name, value) => {
+var redact2 = (name, value) => {
   const lower = name.toLowerCase();
   if (KEY_HEADERS.has(lower)) return redactKey(value);
   if (OPAQUE_HEADERS.has(lower)) return "***";
   return value;
 };
-var redactHeaders = (headers) => Object.fromEntries(Object.entries(headers).map(([name, value]) => [name, redact(name, value)]));
+var redactHeaders = (headers) => Object.fromEntries(Object.entries(headers).map(([name, value]) => [name, redact2(name, value)]));
 var isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 var validateChoice = (name, { criteria }) => {
   if (!isObject(criteria)) throw new TypeSafeError(`Choice question "${name}" has criteria that are not a map; choice criteria must be a map of labels to descriptions.`);
@@ -907,13 +1163,11 @@ var parseBody = async (res) => {
   }
 };
 
-// src/provider.ts
-var PROVIDER_VALUES = [
-  "auto",
-  "openrouter-first",
-  "typesafe",
-  "openrouter"
-];
+// src/utils/guards.ts
+var isRecord2 = (v) => typeof v === "object" && v !== null;
+var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
+
+// src/core/provider.ts
 var PROVIDERS = ["typesafe", "openrouter"];
 var HOSTS = {
   typesafe: "https://api.typesafe.ai",
@@ -959,7 +1213,7 @@ function fallsBack(err) {
   return FALLBACK_STATUSES.has(status) || status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
 }
 
-// src/client.ts
+// src/core/client.ts
 function createClient(provider, apiKey, model, fetchFn) {
   if (!Object.hasOwn(HOSTS, provider))
     throw new Error(`createClient: no host for ${provider}`);
@@ -977,7 +1231,7 @@ function createClient(provider, apiKey, model, fetchFn) {
   });
 }
 
-// src/part.ts
+// src/core/part.ts
 var LEVELS = [0, 1, 2];
 var fromMiddle = (down, up) => (p) => {
   const low = p[0] > down * p[1];
@@ -987,11 +1241,6 @@ var fromMiddle = (down, up) => (p) => {
 };
 var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
-};
-var isRecord2 = (v) => typeof v === "object" && v !== null;
 function parseProbabilities(answers, key) {
   const a = isRecord2(answers) ? answers[key] : void 0;
   if (!isRecord2(a)) return void 0;
@@ -1004,54 +1253,7 @@ function parseProbabilities(answers, key) {
   return { 0: p0, 1: p1, 2: p2 };
 }
 
-// src/scope.ts
-var SCOPE_VALUES = ["core", "extended"];
-var DEFAULT_SCOPE = "core";
-var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
-var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
-
-// src/settings.ts
-var VALUE_SETTINGS = ["provider", "scope"];
-var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
-var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
-var TEXTS = {
-  provider: {
-    values: PROVIDER_VALUES,
-    resolve,
-    about: "which providers score subagent calls",
-    question: "Which providers should score subagent calls?",
-    consequences: {
-      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
-      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
-      typesafe: "TypeSafe only",
-      openrouter: "OpenRouter only"
-    }
-  },
-  scope: {
-    values: SCOPE_VALUES,
-    resolve: resolveScope,
-    about: "which agent calls the router routes",
-    question: "Which agent calls should the router route?",
-    consequences: {
-      core: "today's routing: built-in general agents only",
-      extended: "also routes other agents that pass no model"
-    }
-  }
-};
-var KEY_UNSET = "key unset";
-function describeCommand(setting) {
-  const { about, values } = TEXTS[setting];
-  return `Shows or changes ${about}: ${values.join(", ")}.`;
-}
-var COMMAND_DESCRIPTIONS = {
-  provider: describeCommand("provider"),
-  scope: describeCommand("scope")
-};
-
-// src/compose.ts
-var TIMEOUT = "timeout";
-var FAILED = "failed";
-var CANCELLED = "cancelled";
+// src/core/compose.ts
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 var MODEL_CHARS_MAX = 40;
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
@@ -1060,10 +1262,10 @@ function abortCategory(signal) {
 }
 function skipCategory(err, signal) {
   if (err instanceof APIUserAbortError) return abortCategory(signal);
-  if (err instanceof APIError) return `HTTP ${err.status}`;
+  if (err instanceof APIError) return httpStatus(err.status);
   if (err instanceof APITimeoutError) return TIMEOUT;
-  if (err instanceof APIConnectionError) return "network error";
-  if (err instanceof TypeSafeError) return "rejected request";
+  if (err instanceof APIConnectionError) return NETWORK_ERROR;
+  if (err instanceof TypeSafeError) return REJECTED_REQUEST;
   return FAILED;
 }
 async function route(input) {
@@ -1083,7 +1285,7 @@ async function route(input) {
       if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
       continue;
     }
-    const decision = decide(parts, result);
+    const decision = parseReply(parts, result);
     if ("skipped" in decision) {
       failed.push({ provider: attempt.provider, reason: decision.skipped });
       break;
@@ -1118,12 +1320,12 @@ function skip(failed) {
     skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
   };
 }
-function decide(parts, result) {
+function parseReply(parts, result) {
   const { answers, model, usage } = isRecord2(result) ? result : {};
   const decided = {};
   for (const part of parts) {
     const probabilities = parseProbabilities(answers, part.key);
-    if (!probabilities) return { skipped: "bad reply" };
+    if (!probabilities) return { skipped: BAD_REPLY };
     decided[part.key] = { level: part.pick(probabilities), probabilities };
   }
   return {
@@ -1142,14 +1344,111 @@ function decisionSuffix({
   return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
 }
 
-// src/deadline.ts
-var realClock = {
-  after: (ms, fn) => {
-    const timer = setTimeout(fn, ms);
-    return { cancel: () => clearTimeout(timer) };
-  }
+// src/core/tier.ts
+var TIER_DOWN = 2 ** 0.25;
+var TIER_UP = 2 ** 0.5;
+var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
+var TIER_TEXTS = [
+  "Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
+  "Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
+  "Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."
+];
+var tier = {
+  key: "tier",
+  question: {
+    type: "score",
+    instructions: TIER_INSTRUCTIONS,
+    criteria: TIER_TEXTS
+  },
+  pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
-async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
+
+// src/core/work.ts
+var WORK_DOWN = 2 ** 1.25;
+var WORK_UP = 2 ** 0.5;
+var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
+var WORK_TEXTS = [
+  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
+  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
+  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
+];
+var work = {
+  key: "work",
+  question: {
+    type: "score",
+    instructions: WORK_INSTRUCTIONS,
+    criteria: WORK_TEXTS
+  },
+  pick: fromMiddle(WORK_DOWN, WORK_UP)
+};
+
+// src/core/decide.ts
+var BAD = { skipped: BAD_REPLY };
+var levelOf = (decision, key) => {
+  const part = decision.parts[key];
+  return part && {
+    level: part.level,
+    probability: formatProbability(part.probabilities[part.level])
+  };
+};
+function decide(decision, tierKey, workKey) {
+  if ("skipped" in decision) return decision;
+  const tier2 = levelOf(decision, tierKey);
+  if (!tier2) return BAD;
+  const work2 = levelOf(decision, workKey);
+  if (!work2) return BAD;
+  return {
+    tier: tier2.level,
+    work: work2.level,
+    probabilities: `${tier2.probability}/${work2.probability}`,
+    suffix: decisionSuffix(decision)
+  };
+}
+async function scoreWork(input) {
+  const decision = await route({ ...input, parts: [tier, work] });
+  return decide(decision, tier.key, work.key);
+}
+
+// src/core/ladder.ts
+var EFFORT_BY_TIER = {
+  0: ["medium", "high", "xhigh"],
+  1: ["low", "medium", "high"],
+  2: ["low", "medium", "high"]
+};
+var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
+
+// src/core/line.ts
+var LINE_PREFIX = "model-router ";
+var NO_CHANGE = "no change";
+function routedLine({
+  level,
+  target,
+  effort,
+  probabilities,
+  suffix
+}) {
+  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
+  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+}
+var SKIPPED_PREFIX = "skipped, ";
+var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
+
+// src/core/slots.ts
+var SLOTS = ["small", "large"];
+var LEVEL_SLOTS = {
+  0: "small",
+  2: "large"
+};
+var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
+var modelForLevel = (level, models) => {
+  const slot = slotForLevel(level);
+  if (slot === null) return { slot };
+  const model = models[slot];
+  return model === void 0 ? { skipped: modelUnset(slot) } : { slot, model };
+};
+
+// src/utils/deadline.ts
+async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
   try {
     const stop = new AbortController();
     const signal = AbortSignal.any(
@@ -1157,7 +1456,7 @@ async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
     );
     return await new Promise((settle) => {
       const timer = clock.after(deadlineMs, () => {
-        stop.abort(LIMIT_REACHED);
+        stop.abort(reason);
         settle(void 0);
       });
       const onHostAbort = () => {
@@ -1182,292 +1481,7 @@ async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
   }
 }
 
-// src/fetch.ts
-var oneChunk = (bytes) => new ReadableStream({
-  start(controller) {
-    controller.enqueue(bytes);
-    controller.close();
-  }
-});
-var streamedFetch = async (url, init) => {
-  const reply = await globalThis.fetch(url, init);
-  const bytes = new TextEncoder().encode(await reply.text());
-  return new Response(oneChunk(bytes), {
-    status: reply.status,
-    statusText: reply.statusText,
-    headers: reply.headers
-  });
-};
-
-// src/brief.ts
-var BUDGET_CHARS = 12e3;
-var ROLE_CAP = 500;
-var NO_DESCRIPTION = "An agent with no description.";
-var DEFAULT_ROLE = "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you.";
-var OMISSION_MARKER = "\n[middle of the brief omitted]\n";
-var HEAD_SHARE = 2 / 3;
-var CONTEXT_CAP_CHARS = 3e3;
-var CONTEXT_MIN_CHARS = 500;
-var CONTEXT_LABEL = "\n\nBatch context:\n";
-var PEM_LABEL = "[ A-Z0-9_-]{0,100}PRIVATE KEY(?: BLOCK)?-----";
-var AWS_ID = "(?:A3T[A-Z0-9]|AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}(?![A-Za-z0-9])";
-var AUTH_SCHEMES = [
-  "AWS4-HMAC-SHA256",
-  "ApiKey",
-  "Basic",
-  "Bearer",
-  "Concealed",
-  "Digest",
-  "DPoP",
-  "GNAP",
-  "HOBA",
-  "Mutual",
-  "Negotiate",
-  "NTLM",
-  "OAuth",
-  "PrivateToken",
-  "SCRAM-SHA-1",
-  "SCRAM-SHA-256",
-  "Token",
-  "vapid"
-].join("|");
-var AUTH_HEAD = `\\bAuthorization["']?\\s*[:=]\\s*`;
-var AUTH_SCHEME = `(?:${AUTH_SCHEMES})[ \\t]+`;
-var quotedRun = (quote) => `[^${quote}\\\\\\n]*(?:\\\\.[^${quote}\\\\\\n]*)*`;
-var TOKEN_PREFIXES = {
-  "GitHub token": "gh[pousr]_[A-Za-z0-9]{36,}",
-  "GitHub fine-grained token": "github_pat_[A-Za-z0-9_]{22,}",
-  "GitLab token": "glpat-[A-Za-z0-9_-]{20,}",
-  "Slack token": "xox[abeoprs]-[A-Za-z0-9-]{10,}",
-  "Slack app token": "xapp-\\d-[A-Za-z0-9-]{10,}",
-  "Slack webhook": "hooks\\.slack\\.com/(?:services|workflows|triggers)/[A-Za-z0-9+/]{20,}",
-  "AWS access key id": AWS_ID,
-  "Google API key": "AIza[A-Za-z0-9_-]{35,}",
-  "Stripe key": "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
-  "npm token": "npm_[A-Za-z0-9]{36,}",
-  "Hugging Face token": "hf_[A-Za-z]{34,}",
-  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
-};
-var REDACTIONS = [
-  {
-    name: "PEM private key",
-    pattern: new RegExp(
-      `-----BEGIN${PEM_LABEL}(?:(?:[^-]|-(?!----))*-----END${PEM_LABEL}|(?:(?:\\s|\\\\[rn])+[A-Za-z0-9+/=]{16,})*)`,
-      "gi"
-    ),
-    replacement: "***"
-  },
-  {
-    name: "URL credentials",
-    pattern: /(?<![a-z0-9+.-])([a-z][a-z0-9+.-]{0,30}:\/\/)[^\s:@/?#'"]*:[^\s/?#'"]+@/gi,
-    replacement: "$1***@"
-  },
-  {
-    name: "Authorization header",
-    pattern: new RegExp(
-      `(${AUTH_HEAD}["']?${AUTH_SCHEME})(?:${[
-        `(?<="${AUTH_SCHEME})${quotedRun('"')}`,
-        `(?<='${AUTH_SCHEME})${quotedRun("'")}`,
-        `(?<="${AUTH_HEAD}${AUTH_SCHEME})${quotedRun('"')}`,
-        `(?<='${AUTH_HEAD}${AUTH_SCHEME})${quotedRun("'")}`,
-        "[^\\n]*"
-      ].join("|")})|(${AUTH_HEAD}["']?)[A-Za-z0-9._~+/=-]{16,}`,
-      "gi"
-    ),
-    replacement: "$1$2***"
-  },
-  {
-    name: "AWS secret",
-    pattern: new RegExp(
-      `((?<![A-Za-z0-9])${AWS_ID}[^\\n]{0,100}?)(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{40}(?![A-Za-z0-9+/=])`,
-      "g"
-    ),
-    replacement: "$1***"
-  },
-  {
-    name: "JSON Web Token",
-    pattern: /(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{8,}={0,2}\.ey[A-Za-z0-9_-]{8,}={0,2}\.[A-Za-z0-9_-]*/g,
-    replacement: "***"
-  },
-  {
-    name: "token prefixes",
-    pattern: new RegExp(
-      `(?<![A-Za-z0-9])(?:${Object.values(TOKEN_PREFIXES).join("|")})`,
-      "g"
-    ),
-    replacement: "***"
-  },
-  {
-    name: "Bearer token",
-    pattern: /Bearer\s+[A-Za-z0-9._~+/=-]+/gi,
-    replacement: "Bearer ***"
-  },
-  { name: "sk- key", pattern: /\bsk-[A-Za-z0-9_-]{8,}/g, replacement: "***" },
-  {
-    name: "curl user",
-    pattern: /((?<!\S)(?:-[A-Za-z]{0,8}u|--(?:proxy-)?user)(?:\s+|=)?)(?:"[^"\n:]*:[^"\n]*"|'[^'\n:]*:[^'\n]*'|[^\s"':]+:[^\s"']+)/g,
-    replacement: "$1***"
-  },
-  {
-    name: "password is",
-    pattern: /\b(pass(?:word|phrase)|passwd)(\s+(?:is|was)(?::\s*|\s+))(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
-    replacement: "$1$2***"
-  },
-  {
-    name: "secret name",
-    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
-    replacement: "$1$2***"
-  }
-];
-var FENCE_OPENER = /(?<![`~])(?:(`{3,})[^\n`]*|(~{3,})[^\n~]*)\n/g;
-var FENCE_CLOSER = /^ {0,3}(`{3,}|~{3,})[ \t]*\r?$/;
-function prepareBrief(text, budget = BUDGET_CHARS) {
-  const condensed = condense(redact2(text));
-  if (condensed.length <= budget) return condensed;
-  const kept = budget - OMISSION_MARKER.length;
-  const head = Math.floor(kept * HEAD_SHARE);
-  const tail = kept - head;
-  return `${condensed.slice(0, head)}${OMISSION_MARKER}${condensed.slice(condensed.length - tail)}`;
-}
-function condense(text) {
-  return condenseFences(text).replace(/\n{3,}/g, "\n\n");
-}
-function condenseFences(text) {
-  const lines = text.split("\n");
-  const starts = [];
-  let offset = 0;
-  for (const line2 of lines) {
-    starts.push(offset);
-    offset += line2.length + 1;
-  }
-  const runs = lines.map((line2) => FENCE_CLOSER.exec(line2)?.[1] ?? "");
-  const longest = {
-    "`": longestAfter(runs, "`"),
-    "~": longestAfter(runs, "~")
-  };
-  const opener = new RegExp(FENCE_OPENER);
-  let out = "";
-  let kept = 0;
-  let line = 0;
-  for (let open = opener.exec(text); open; open = opener.exec(text)) {
-    const run = open[1] ?? open[2] ?? "";
-    const first = open.index + open[0].length;
-    while ((starts[line] ?? Number.POSITIVE_INFINITY) < first) line++;
-    const char = run.startsWith("`") ? "`" : "~";
-    if ((longest[char][line] ?? 0) < run.length) continue;
-    let close = line;
-    while (!closes(runs[close] ?? "", run)) close++;
-    const count = close - line;
-    out += `${text.slice(kept, open.index)}[an exact block of ${count} ${count === 1 ? "line" : "lines"} is given verbatim]`;
-    kept = (starts[close] ?? 0) + (lines[close]?.length ?? 0);
-    opener.lastIndex = kept;
-  }
-  return out + text.slice(kept);
-}
-var closes = (closer, opener) => closer.startsWith(opener.charAt(0)) && closer.length >= opener.length;
-function longestAfter(runs, char) {
-  const longest = new Array(runs.length + 1).fill(0);
-  for (let k = runs.length - 1; k >= 0; k--) {
-    const run = runs[k] ?? "";
-    longest[k] = Math.max(
-      longest[k + 1] ?? 0,
-      run.startsWith(char) ? run.length : 0
-    );
-  }
-  return longest;
-}
-function redact2(text) {
-  return REDACTIONS.reduce(
-    (t, { pattern, replacement }) => t.replace(pattern, replacement),
-    text
-  );
-}
-function buildPrompt(task, context) {
-  const brief = prepareBrief(task);
-  const budget = Math.min(
-    BUDGET_CHARS - brief.length - CONTEXT_LABEL.length,
-    CONTEXT_CAP_CHARS
-  );
-  if (context === "" || budget < CONTEXT_MIN_CHARS) return brief;
-  return `${brief}${CONTEXT_LABEL}${prepareBrief(context, budget)}`;
-}
-function contextText(context) {
-  return typeof context === "string" && nonEmpty(context) !== void 0 ? context : "";
-}
-function descriptionText(description) {
-  if (typeof description !== "string") return "";
-  const text = redact2(description).replace(/\s+/g, " ").trim();
-  const cut = text.slice(0, ROLE_CAP);
-  return /[\uD800-\uDBFF]$/.test(cut) && text.length > ROLE_CAP ? cut.slice(0, -1) : cut;
-}
-function roleText(description) {
-  return descriptionText(description) || NO_DESCRIPTION;
-}
-function routingState(raw) {
-  return {
-    role: roleText(raw.role),
-    description: descriptionText(raw.description),
-    task: buildPrompt(raw.task, raw.context ?? "")
-  };
-}
-
-// src/decide.ts
-var BAD_REPLY = { skipped: "bad reply" };
-var levelOf = (decision, key) => {
-  const part = decision.parts[key];
-  return part && {
-    level: part.level,
-    probability: formatProbability(part.probabilities[part.level])
-  };
-};
-function decide2(decision, tierKey, workKey) {
-  if ("skipped" in decision) return decision;
-  const tier2 = levelOf(decision, tierKey);
-  if (!tier2) return BAD_REPLY;
-  const suffix = decisionSuffix(decision);
-  if (workKey === void 0)
-    return { tier: tier2.level, probabilities: tier2.probability, suffix };
-  const work2 = levelOf(decision, workKey);
-  if (!work2) return BAD_REPLY;
-  return {
-    tier: tier2.level,
-    work: work2.level,
-    probabilities: `${tier2.probability}/${work2.probability}`,
-    suffix
-  };
-}
-
-// src/effort.ts
-var WORK_DOWN = 2 ** 1.25;
-var WORK_UP = 2 ** 0.5;
-var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
-var WORK_TEXTS = [
-  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
-  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
-  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
-];
-var work = {
-  key: "work",
-  question: {
-    type: "score",
-    instructions: WORK_INSTRUCTIONS,
-    criteria: WORK_TEXTS
-  },
-  pick: fromMiddle(WORK_DOWN, WORK_UP)
-};
-
-// src/reasons.ts
-var CALLER_EFFORT = "caller effort";
-var CONFIG_EFFORT = "config effort";
-var SLOTS = ["small", "large"];
-var LEVEL_SLOTS = {
-  0: "small",
-  2: "large"
-};
-var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
-var modelUnset = (slot) => `${slot} model unset`;
-
-// src/hermes-request.ts
+// src/adapters/hermes/request.ts
 var KEPT_EFFORTS = ["config", "caller"];
 var readKeys = (value) => Object.fromEntries(
   PROVIDERS.flatMap((provider) => {
@@ -1481,7 +1495,7 @@ var readModels = (value) => Object.fromEntries(
     isRecord2(value) ? nonEmpty(value[slot]) : void 0
   ])
 );
-var readBudget = (value) => typeof value === "number" && Number.isFinite(value) && value > 0 ? value : void 0;
+var readBudget = (value) => isPositiveNumber(value) ? value : void 0;
 function readRequest(raw) {
   if (!isRecord2(raw) || Array.isArray(raw)) return void 0;
   const {
@@ -1506,50 +1520,7 @@ function readRequest(raw) {
   };
 }
 
-// src/ladder.ts
-var EFFORT_BY_TIER = {
-  0: ["medium", "high", "xhigh"],
-  1: ["low", "medium", "high"],
-  2: ["low", "medium", "high"]
-};
-var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
-
-// src/line.ts
-var LINE_PREFIX = "model-router ";
-var NO_CHANGE = "no change";
-function routedLine({
-  level,
-  target,
-  effort,
-  probabilities,
-  suffix
-}) {
-  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
-}
-var SKIPPED_PREFIX = "skipped, ";
-var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
-
-// src/model.ts
-var TIER_DOWN = 2 ** 0.25;
-var TIER_UP = 2 ** 0.5;
-var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
-var TIER_TEXTS = [
-  "Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
-  "Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
-  "Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."
-];
-var tier = {
-  key: "tier",
-  question: {
-    type: "score",
-    instructions: TIER_INSTRUCTIONS,
-    criteria: TIER_TEXTS
-  },
-  pick: fromMiddle(TIER_DOWN, TIER_UP)
-};
-
-// src/hermes-route.ts
+// src/adapters/hermes/route.ts
 var skippedBy = (reason) => ({ skipped: reason });
 var skip2 = (reason) => ({
   outcome: "skip",
@@ -1561,8 +1532,7 @@ var KEPT_LABELS = {
 };
 async function score(request, { fetchFn }, signal) {
   const { keys } = request;
-  const decision = await route({
-    parts: [tier, work],
+  return scoreWork({
     state: routingState({
       role: DEFAULT_ROLE,
       description: request.description,
@@ -1574,7 +1544,6 @@ async function score(request, { fetchFn }, signal) {
     fetchFn,
     signal
   });
-  return decide2(decision, tier.key, work.key);
 }
 async function scored(request, deps, signal) {
   try {
@@ -1585,9 +1554,9 @@ async function scored(request, deps, signal) {
 }
 function answer(request, decided) {
   const level = decided.tier;
-  const slot = slotForLevel(level);
-  const target = slot === null ? void 0 : request.models[slot];
-  if (slot !== null && target === void 0) return skip2(modelUnset(slot));
+  const picked = modelForLevel(level, request.models);
+  if ("skipped" in picked) return skip2(picked.skipped);
+  const { slot, model: target } = picked;
   const effort = effortFor(level, decided.work);
   const kept = request.keptEffort === void 0 ? void 0 : KEPT_LABELS[request.keptEffort];
   return {
@@ -1612,7 +1581,8 @@ async function routeRequest(raw, deps) {
       (signal) => scored(request, deps, signal),
       request.budgetMs,
       deps.clock,
-      void 0
+      void 0,
+      LIMIT_REACHED
     );
     if (decided === void 0) return skip2(TIMEOUT);
     return "skipped" in decided ? skip2(decided.skipped) : answer(request, decided);
@@ -1621,7 +1591,7 @@ async function routeRequest(raw, deps) {
   }
 }
 
-// src/hermes.ts
+// src/adapters/hermes/index.ts
 async function readStdin() {
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
