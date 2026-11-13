@@ -82,14 +82,12 @@ no request. That list is the whole request, and
 
 ## The program the plugin starts
 
-The plugin starts one Node program, `route.mjs`, for each task it routes, and
-once for each `models` call of the config tool. It uses Hermes's own Node and
-never the Node on `PATH`. For a task, the program makes the requests above. For
-a `models` call, it words the list and makes no request.
+The plugin starts one Node program, `route.mjs`, for each task it routes. It
+uses Hermes's own Node and never the Node on `PATH`. The program makes the
+requests above.
 
-- For a task, the plugin hands the program the task text, the context, the
-  description and the keys on standard input. For a `models` call, it hands
-  the list alone. A key never appears in the program's environment or
+- The plugin hands the program the task text, the context, the description
+  and the keys on standard input. A key never appears in the program's environment or
   arguments.
 - The program's environment holds only `PATH`, `HOME`, `TMPDIR`,
   `SYSTEMROOT`, the proxy variables `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`
@@ -160,16 +158,6 @@ request, as described above.
 The `model_router_config` tool only reads.
 [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool)
 says what it reports.
-
-With the setting `models`, the tool asks Hermes which providers it marks
-authenticated, through `list_available_providers()`. For each of them it reads
-the model ids, prices and context sizes from Hermes's offline catalogue. The
-list goes back as the tool's result, so it reaches the model of your session
-like any tool result. No scoring request carries it. The plugin's own code
-opens no connection to read the list. Hermes's provider check can try a cloud
-metadata address for its `bedrock` provider: that is Hermes's behaviour, as
-[Hermes model and credential checks](../../docs/clients.md#hermes-model-and-credential-checks)
-records.
 
 The command `/model-router-provider` writes the plugin's `provider` setting
 into Hermes's configuration. It writes only from a local session, which is a
