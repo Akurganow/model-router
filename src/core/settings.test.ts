@@ -110,6 +110,10 @@ test("use-one-of and unchanged texts name the setting", () => {
 		"scope unchanged: already core",
 	);
 	assert.equal(unchanged("provider", "denied"), "provider unchanged: denied");
+	assert.equal(
+		unchanged("middle_model", NO_ANSWER),
+		"middle_model unchanged: no answer from the dialog",
+	);
 });
 
 test("key status lines name the provider", () => {
@@ -336,6 +340,20 @@ test("the tool description lists the names it is given", () => {
 		assert.match(text, /Never pass a value/);
 	}
 	assert.doesNotMatch(toolDescription(VALUE_SETTINGS), /_key/);
+});
+
+test("the tool description names what a call with no input returns", () => {
+	assert.equal(
+		toolDescription(["provider", "scope"]),
+		"Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (provider, scope) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.",
+	);
+	assert.equal(
+		toolDescription(
+			["middle_model"],
+			"the provider, the scope and the three models",
+		),
+		"Reads the router's settings. With no input it returns the provider, the scope and the three models, and whether each key the provider allows is set. With a setting name (middle_model) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.",
+	);
 });
 
 test("the read-only tool description joins what it returns and the names", () => {

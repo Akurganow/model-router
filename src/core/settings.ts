@@ -7,6 +7,7 @@ import {
 	resolve as resolveProvider,
 } from "./provider.ts";
 import { resolveScope, SCOPE_VALUES } from "./scope.ts";
+import type { SlotSetting } from "./slots.ts";
 
 export const VALUE_SETTINGS = ["provider", "scope"] as const;
 export const KEY_SETTINGS = ["typesafe_key", "openrouter_key"] as const;
@@ -29,7 +30,7 @@ export const PROVIDER_NAMES: Readonly<Record<Provider, string>> = {
 	openrouter: "OpenRouter",
 };
 
-const LABEL_SEPARATOR = " - ";
+export const LABEL_SEPARATOR = " - ";
 
 type ValueText = {
 	readonly values: readonly string[];
@@ -92,12 +93,16 @@ export const valueSettingHelp = (setting: ValueSetting): string =>
 		useOneOf(setting),
 	].join("\n");
 
-export const unchanged = (setting: ValueSetting, reason: string): string =>
-	`${setting} unchanged: ${reason}`;
+export const unchanged = (
+	setting: ValueSetting | SlotSetting,
+	reason: string,
+): string => `${setting} unchanged: ${reason}`;
 
 /** Returns the unchanged line for a thrown value, whatever its type. */
-export const unchangedBy = (setting: ValueSetting, err: unknown): string =>
-	unchanged(setting, errorText(err));
+export const unchangedBy = (
+	setting: ValueSetting | SlotSetting,
+	err: unknown,
+): string => unchanged(setting, errorText(err));
 
 export const alreadyValue = (value: string): string => `already ${value}`;
 
@@ -178,8 +183,12 @@ export const settingsReport = (
 		),
 	].join("\n");
 
-export const toolDescription = (names: readonly string[]): string =>
-	`Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
+/** `returned` says what a call with no input returns before the key lines. */
+export const toolDescription = (
+	names: readonly string[],
+	returned = "the provider and scope",
+): string =>
+	`Reads the router's settings. With no input it returns ${returned}, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
 
 /**
  * Returns the description of the read-only settings tool. `returned` lists what
