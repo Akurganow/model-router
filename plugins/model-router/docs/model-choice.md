@@ -70,8 +70,9 @@ The middle is the default level. In Claude Code, level 1 sets `sonnet` and
 the ladder's effort. In
 [OpenClaw](../../model-router-openclaw/README.md#routing),
 [Hermes](../../model-router-hermes/README.md#routing) and
-[omp](../../model-router-omp/README.md#routing), it keeps the model the
-harness would pick and sets the ladder's effort. The
+[omp](../../model-router-omp/README.md#routing), level 1 runs on the middle
+model where one is set, and keeps the model the harness would pick where none
+is. It sets the ladder's effort either way, unless the user set an effort. The
 router suggests the small model or the slow one only on clear evidence. The
 harnesses and routers surveyed in the
 [findings record](https://github.com/Akurganow/model-router/issues/57#issuecomment-6626365731)

@@ -418,6 +418,13 @@ The running facts used omp from npm with a local stand-in model provider and cal
 These facts hold at omp 18.12.6 and 18.18.9.
 The running facts used omp from npm, a probe extension, a throwaway agent folder and a local stand-in model provider, and called no paid model.
 
+- omp knows 16 roles, and `middle` is not one of them. Only `smol`, `slow` and the kind roles have catalogue priority lists.
+  (source: [`config/model-roles.ts` L56–L91 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-roles.ts#L56-L91), [the same lines at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-roles.ts#L56-L91); [`tui/src/overlays/model-browser.ts` L55–L103 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/tui/src/overlays/model-browser.ts#L55-L103), [L61–L109 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/tui/src/overlays/model-browser.ts#L61-L109))
+- Model roles live under `modelRoles` in `config.yml`, not in `models.yml`.
+  A role's value is a model selector such as `provider/modelId`, and a chat role's value can end in a thinking selector such as `:low`.
+  (documentation: [`docs/models.md` L686, L699 and L749 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/docs/models.md#L686), [L807, L820 and L871 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/docs/models.md#L807))
+- The Roles view of `/models` names `smol` Fast and `slow` Thinking, and ends with a `+ New role…` row that adds a custom role.
+  (source: [`config/model-roles.ts` L58–L59 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-roles.ts#L58-L59), [the same lines at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-roles.ts#L58-L59), [`overlays/model-hub.ts` L82 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/tui/src/overlays/model-hub.ts#L82), [the same line at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/tui/src/overlays/model-hub.ts#L82))
 - `modelRoles` accepts any role name, so a role such as `middle` needs no change in omp.
   (source: [`config/model-settings.ts` L109 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-settings.ts#L109), [the same line at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-settings.ts#L109))
 - A custom role that `modelRoles` names resolves: `ctx.models.resolve("@mid")` gave the configured model, and a spawn hook that returned `@mid:medium` ran it at `medium`.
@@ -429,6 +436,13 @@ The running facts used omp from npm, a probe extension, a throwaway agent folder
   (running: omp 18.12.6 and 18.18.9, 2026-11-13;
   source: [`extensibility/extensions/model-api.ts` L19–L38 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/model-api.ts#L19-L38), [the same lines at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/model-api.ts#L19-L38),
   [`config/model-registry.ts` L3093 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-registry.ts#L3093), [L3475–L3509 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-registry.ts#L3475-L3509))
+- A `smol` or `slow` role that `modelRoles` does not name resolves through an explicitly configured `default` model before omp's built-in priority list.
+  With `smol` unset, `ctx.models.resolve("@smol")` gave the `default` model.
+  (running: omp 18.12.6 and 18.18.9, 2026-11-12;
+  source: [`config/model-resolver.ts` L1102–L1104 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-resolver.ts#L1102-L1104), [L1168–L1170 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-resolver.ts#L1168-L1170))
+- A child's retry fallback chain is `retry.fallbackChains` at the spawn's own model role, kept from before the role's expansion, and otherwise at `default`.
+  A role that a spawn hook returns does not change the spawn's role, so `retry.fallbackChains.middle` does not reach a spawn the plugin gives `@middle`.
+  (source: [`task/executor.ts` L285–L326](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/executor.ts#L285-L326) and [L4414–L4423 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/executor.ts#L4414-L4423), [L319–L353](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/executor.ts#L319-L353) and [L4733–L4741 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/executor.ts#L4733-L4741), not run)
 
 ### omp thinking levels
 
@@ -614,6 +628,14 @@ Every running fact names its OpenClaw version and the date it ran.
   `id` is the key in `plugins.entries.<id>`.
   `uiHints` carries labels and sensitivity hints, and `skills` lists skill folders relative to the plugin root.
   (documentation: [Plugin manifest, Top-level field reference](https://docs.openclaw.ai/plugins/manifest#top-level-field-reference))
+- OpenClaw validates a plugin's config against the manifest's `configSchema` when it reads or writes the config and before the plugin loads.
+  This plugin's schema sets `additionalProperties: false`, so a setting the manifest does not declare fails validation.
+  (documentation: [Plugin manifest, JSON Schema requirements](https://docs.openclaw.ai/plugins/manifest#json-schema-requirements))
+  `openclaw config set plugins.entries.model-router-openclaw.config.unknown_model x/y` exited 1 and saved nothing.
+  It printed `Config change declined. No settings were saved.` and `Config validation failed: plugins.entries.model-router-openclaw.config: invalid config: must not have additional properties: "unknown_model"`.
+  With that key written into the config file by hand, `openclaw gateway run` refused to start.
+  `openclaw config validate` named the same cause and offered `openclaw doctor --fix`.
+  (running: OpenClaw 2026.11.1 and 2026.10.10, 2026-11-13, the built plugin loaded through `plugins.load.paths` on a copy of the configuration; both versions alike)
 - `activation.onStartup` set to `true` imports the plugin when the Gateway starts.
   (documentation: [Manifest capabilities, activation reference](https://docs.openclaw.ai/plugins/manifest/capabilities#activation-reference))
 - `contracts.tools` lists the tool names a plugin owns, and a runtime `api.registerTool` call must match it.
@@ -851,6 +873,9 @@ Every running fact names its OpenClaw version and the date it ran.
   Without `agentDir` it returned false for the same provider.
   A provider with no key returned false, and so did a provider served only by the Claude CLI backend.
   (running: OpenClaw 2026.10.10, `isProviderApiKeyConfiguredAsync` with and without `agentDir` for four providers)
+- The steps of the plugin's slot check, `slotResolves` in `src/adapters/openclaw/checks.ts`, returned false for `local/local-e`, a model of a provider on a loopback base URL with no key, with and without the agent id `main`.
+  They returned true for a provider with a fake key and false for a remote provider with no key.
+  (running: OpenClaw 2026.10.10 and 2026.11.1, 2026-11-13, a state folder written for the run under `env -i`, custom providers declared in its config, and a probe plugin that ran the steps of `slotResolves` for each model)
 
 ### OpenClaw commands and owner check
 

@@ -2,7 +2,7 @@
 
 model-router for Oh My Pi is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-12.
+2026-11-13.
 
 ## Where requests go
 
@@ -25,6 +25,10 @@ and their keys:
 | `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
 
 With both keys under `auto` or `openrouter-first`, one item may reach both companies.
+
+A model role does not decide whether a request leaves: with a key set and no
+role set, each routed item is still sent for scoring, as
+[A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) says.
 
 [Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
 gives the fallback rules.
@@ -93,7 +97,8 @@ that declare no model.
 - A project can set `scope` in its plugin settings, and its value overrides
   yours. A project that sets `extended` sends the descriptions and task text of
   your agents to your provider without your choice, and it can raise spend,
-  because routed agents may run on the `slow` model role.
+  because routed agents may run on the `smol`, `middle` and `slow` model roles
+  you set.
 
 ## Requests and billing
 
@@ -122,7 +127,7 @@ The providers' privacy policies are linked at
 ## What the plugin stores
 
 The plugin keeps no file of its own. In memory it holds up to 64 routing
-decisions, each a level, a model role, an effort and its log line. A decision leaves when its
+decisions, each a level, an effort and its log line. A decision leaves when its
 subagent spawns, when its task call ends before omp reports the subagent's id,
 or when newer decisions push it out.
 
@@ -166,7 +171,7 @@ whether your own agent replaced a bundled one or sets its own model.
 `modelRoles`, `task.maxEffort` and `task.enableEffort` also decide whether it
 keeps your effort or caps its own. As each routed subagent starts, it reads the
 model patterns and the model role omp sends with the spawn, and the item's
-`effort`. It also checks whether the `@smol` and `@slow` roles
+`effort`. It also checks whether the `smol`, `middle` and `slow` roles
 resolve to a model. For each batch it also reads omp's
 `extensionHandlers.toolCallTimeoutMs` setting, to fit its scoring time into
 it. Nothing from these leaves your machine, except the

@@ -2,7 +2,7 @@
 
 model-router for Hermes Agent is a plugin published by Akurganow. This policy
 says what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-12.
+2026-11-13.
 
 ## Where requests go
 
@@ -24,6 +24,10 @@ and their keys:
 | `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
 
 With both keys under `auto` or `openrouter-first`, one task may reach both companies.
+
+A model setting does not decide whether a request leaves: with a key set and
+no model set, each routed task is still sent for scoring, as
+[A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) says.
 
 [Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
 gives the fallback rules.
@@ -130,8 +134,8 @@ the gateway and of the plugin host. Like any key in the environment, it is
 visible to the programs Hermes starts. Keep a key out of the environment of
 programs you do not trust.
 
-At each task the plugin reads three of its own settings through Hermes:
-`provider`, `small_model` and `large_model`. It reads the task's
+At each task the plugin reads four of its own settings through Hermes:
+`provider`, `small_model`, `middle_model` and `large_model`. It reads the task's
 `description`, `reasoning_effort` and `level` parameters. Of those, only the
 description leaves your machine, in the request. It also reads the `delegation`
 section of Hermes's configuration, which Hermes passes with the task. It uses
@@ -143,7 +147,7 @@ as Hermes's own default backend does, with a model, a provider and an effort
 changed when it routes. When the section sets no effort, every route carries
 the task's `reasoning_effort` parameter.
 
-For a model it is about to set, the plugin asks Hermes to resolve the model's
+For the model of the slot the level picks, the plugin asks Hermes to resolve the model's
 provider and to list the provider's models from Hermes's cached catalogue. For a slot that names
 `anthropic`, it reads whether `ANTHROPIC_API_KEY`, `ANTHROPIC_TOKEN` and
 `CLAUDE_CODE_OAUTH_TOKEN` are set, to decide whether the credential stays
@@ -158,8 +162,8 @@ says what it reports.
 The command `/model-router-provider` writes the plugin's `provider` setting
 into Hermes's configuration. It writes only from a local session, which is a
 Hermes CLI, TUI or Desktop session. The plugin writes no other setting, no
-file, and never `delegation.backend`. You assign `small_model` and
-`large_model` yourself, in Hermes's configuration.
+file, and never `delegation.backend`. You assign `small_model`,
+`middle_model` and `large_model` yourself, in Hermes's configuration.
 
 The plugin writes one line per routed or skipped task. It puts the line in the
 task's `route.label`, which Hermes shows with the child's progress and result,
