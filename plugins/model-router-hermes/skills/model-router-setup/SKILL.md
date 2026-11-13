@@ -1,11 +1,11 @@
 ---
 name: model-router-setup
-description: Use to set up model-router in Hermes Agent: turn the delegation backend on, choose its provider, add a TypeSafe or OpenRouter key, assign the small and large models, find why routing is off, or check routing.
+description: Use to set up model-router in Hermes Agent: turn the delegation backend on, choose its provider, add a TypeSafe or OpenRouter key, assign the small, middle and large models, find why routing is off, or check routing.
 ---
 
 # model-router setup for Hermes Agent
 
-model-router scores each `delegate_task` task with Jev, on TypeSafe or OpenRouter. It gives the task the person's `small_model` for lookup work, or their `large_model` for open judgment. This setup turns the backend on, picks the provider, checks the keys, assigns the two models, lists the reasons routing is off, and ends with a routing check.
+model-router scores each `delegate_task` task with Jev, on TypeSafe or OpenRouter. It gives the task the person's `small_model` for lookup work, their `middle_model` for bounded judgment, or their `large_model` for open judgment. This setup turns the backend on, picks the provider, checks the keys, assigns the three models, lists the reasons routing is off, and ends with a routing check.
 
 ## Rules
 
@@ -43,7 +43,7 @@ A backend change applies from the next session. In a running session the person 
 1. Call the tool with no setting.
 2. Show the lines it returns.
 
-The tool returns the `provider` line, the `small_model` and `large_model` lines, and `<provider> key: set` or `<provider> key: unset` for each provider the `provider` value allows. A model line reads `<name>: <provider> <model>` or `<name>: unset`.
+The tool returns the `provider` line, the `small_model`, `middle_model` and `large_model` lines, and `<provider> key: set` or `<provider> key: unset` for each provider the `provider` value allows. A model line reads `<name>: <provider> <model>` or `<name>: unset`.
 
 ## Step 3. Provider
 
@@ -72,22 +72,20 @@ If a key is missing for every allowed provider, say that every task skips with `
 
 ## Step 5. Models
 
-1. Call the tool with setting `small_model`, then with `large_model`.
+1. Call the tool with setting `small_model`, then `middle_model`, then `large_model`.
 2. Show the answers. Each names where the slot is set and the command to run.
 3. Ask the person to assign the slots they want and tell you when it is done.
-4. Call the tool with no setting. Report the two model lines.
+4. Call the tool with no setting. Report the three model lines.
 
 Each slot is a mapping with two fields. `provider` is a Hermes provider id, such as `openrouter`. `model` is an id from Hermes's offline model list for that provider. A slot with no `model` counts as unset.
 
-The plugin resolves a slot before it uses it. It skips the slot when the provider needs a network call to refresh its credentials, or when the model is not in the offline list. [Models](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#models) says what the plugin needs.
+The plugin checks the slot a task picks before it uses it. When the provider needs a network call to refresh its credentials, or the model is not in the offline list, the label reads `<slot> model unresolved`, and the task runs on the model Hermes gives. [Models](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#models) says what the plugin needs.
 
 ## Step 6. List the reasons routing is off
 
 Check each reason below and report every one that holds, not only the first. The label of a skipped task reads `model-router skipped, <reason>`. [Which tasks are routed](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#which-tasks-are-routed) explains each reason.
 
 - `key unset`: Step 4.
-- `no small or large model`, `small model unset` or `large model unset`: Step 5.
-- `small model unresolved` or `large model unresolved`: Step 5. Ask the person to check the slot against Hermes's provider list.
 - `subagent model set`: the person's `delegation` section. The person decides whether to clear it.
 - `node not found`: the person installs a Node for Hermes.
 - `timeout`, `failed`, or an HTTP status: no setting fixes it.
@@ -105,7 +103,7 @@ A routed line that reads `config effort` in place of an effort is not a skip: `d
 5. Read the `route.label` field of the result. It shows the plugin's line in every plugin isolation mode. The plugin's own log drops INFO lines by default.
 6. If the label holds no `model-router` line, report it and check Step 1 and Step 6.
 7. If the label names a skip reason, stop and report it with its step.
-8. Otherwise check that the label names a level, a model or `no change`, and an effort. Report the result in one line.
+8. Otherwise check that the label names a level, a model or a slot whose model is unset or unresolved, and an effort. Report the result in one line.
 
 The routing-check question reads: "To check routing I will delegate one small task. It spends a little model usage."
 

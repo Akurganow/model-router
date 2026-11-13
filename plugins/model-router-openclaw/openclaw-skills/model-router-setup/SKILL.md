@@ -5,7 +5,7 @@ description: Use to set up model-router in OpenClaw: choose its provider or scop
 
 # model-router setup for OpenClaw
 
-model-router scores each routed `sessions_spawn` call with Jev, on TypeSafe or OpenRouter. It gives the subagent the person's `small_model` for lookup work, or their `large_model` for open judgment. This setup picks the provider and the scope, checks the keys, lists the reasons routing is off, and ends with a routing check.
+model-router scores each routed `sessions_spawn` call with Jev, on TypeSafe or OpenRouter. It gives the subagent the person's `small_model` for lookup work, their `middle_model` for bounded judgment, or their `large_model` for open judgment. This setup picks the provider and the scope, checks the keys, lists the reasons routing is off, and ends with a routing check.
 
 ## Rules
 
@@ -89,7 +89,7 @@ For each reason that holds, tell the person which setting to change, and where. 
 6. OpenClaw shows no chat line. Read the Gateway log with `openclaw logs --plain`, or ask the person to read it.
 7. Take the first `model-router` line logged after the noted time. An older line belongs to another spawn.
 8. If no such line exists, report it and check each cause on the [No line at all?](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#no-line-at-all) list.
-9. Check that the line names a level, a model or `no change`, and an effort.
+9. Check that the line names a level, a model or a slot whose model is unset or unresolved, and an effort.
 10. If the line names a skip reason, stop and report it.
 11. Check `resolvedModel` against the line. Report the result in one line.
 
@@ -97,7 +97,7 @@ The routing-check question reads: "To check routing I will spawn one small subag
 
 Read the line as follows:
 
-- A level 0 or 2 line names the slot string, and `resolvedModel` matches it. A level 1 line reads `no change`, and the spawn keeps OpenClaw's own model. [The log line](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#the-log-line) explains the rest of the line.
+- A line that names a slot string has `resolvedModel` matching it. A line that reads `<slot> model unset` or `<slot> model unresolved` keeps OpenClaw's own model. [The log line](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#the-log-line) explains the rest of the line.
 - `key unset` points to step 3.
 - Any other reason in step 5 points to step 5.
 - `timeout`, `network error` or an HTTP status points to the provider or the network.
