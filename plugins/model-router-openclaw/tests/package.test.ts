@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
@@ -40,6 +41,20 @@ test("the bundle imports only node: built-ins, and OpenClaw's model list when th
 		[MODEL_LIST],
 	);
 	assert.doesNotMatch(bundle, /\brequire\(\s*"(?!node:)/);
+});
+
+test("the bundle loads and registers where no openclaw package resolves, and its models call says why", async () => {
+	assert.throws(() => createRequire(bundlePath).resolve("openclaw"), {
+		code: "MODULE_NOT_FOUND",
+	});
+	const { default: plugin } = await import(pathToFileURL(bundlePath).href);
+	const fake = createFakeApi();
+	plugin.register(fake.api);
+	const result = await fake.tools[0]?.execute("call-1", { setting: "models" });
+	assert.match(
+		result?.content[0]?.text ?? "",
+		/^models unavailable: Cannot find package 'openclaw'/,
+	);
 });
 
 test("the default export carries the plugin id and a register function", async () => {
