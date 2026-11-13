@@ -166,6 +166,38 @@ test("the provider dialog opens with the current value first and writes the pick
 	assert.equal(text, valueLine("provider", "openrouter-first"));
 });
 
+test("the provider dialog lists a stored openrouter-first first, then the rest", async () => {
+	install();
+	world.lockfile = lockfileWith("openrouter-first");
+	await world.callTool({ setting: "provider" });
+	assert.deepEqual(world.dialogs, [
+		{
+			title: "Which providers should score subagent calls?",
+			options: [
+				"openrouter-first - OpenRouter, then TypeSafe if OpenRouter fails",
+				"auto - TypeSafe, then OpenRouter if TypeSafe fails",
+				"typesafe - TypeSafe only",
+				"openrouter - OpenRouter only",
+			],
+		},
+	]);
+});
+
+test("the scope dialog lists a stored extended first, then core", async () => {
+	install();
+	world.lockfile = lockfileScoped("extended");
+	await world.callTool({ setting: "scope" });
+	assert.deepEqual(world.dialogs, [
+		{
+			title: "Which agent calls should the router route?",
+			options: [
+				"extended - also routes other agents that pass no model",
+				"core - today's routing: built-in general agents only",
+			],
+		},
+	]);
+});
+
 test("the scope dialog writes the pick, and the next read shows it", async () => {
 	install();
 	choose("scope", "extended");
