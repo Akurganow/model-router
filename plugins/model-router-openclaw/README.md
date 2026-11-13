@@ -40,7 +40,7 @@ A running local Gateway applies the install, the enable and later config changes
 
 Routing needs a key. The models in the slots decide what each level runs on. The [setup skill](openclaw-skills/model-router-setup/SKILL.md) walks through them. Ask OpenClaw to run `model-router-setup`.
 
-1. Assign `small_model`, `middle_model` and `large_model` in OpenClaw's config. Write each as the full `provider/model` id, because OpenClaw expands a bare name to a ref it may not know, and the child then fails. Use the Control UI page `/settings/plugins/model-router-openclaw`, or run:
+1. Assign any of `small_model`, `middle_model` and `large_model` in OpenClaw's config. Each slot is optional: a slot you leave unset runs its level on OpenClaw's model. Write each as the full `provider/model` id, because OpenClaw expands a bare name to a ref it may not know, and the child then fails. Use the Control UI page `/settings/plugins/model-router-openclaw`, or run:
 
    ```bash
    openclaw config set plugins.entries.model-router-openclaw.config.small_model <provider/model>

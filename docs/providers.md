@@ -51,7 +51,7 @@ An unresolved slot names a model the harness cannot run, so fix that model or cl
 Each README says what makes a model unresolved in its harness.
 
 No gate checks the models, and no task skips because a slot has no model.
-So with a key set and no model set, the plugin still sends each routed task to the provider for scoring and sets the effort.
+So with a key set and no model set, the plugin still sends each task it scores to the provider and sets its effort.
 In OpenClaw and Hermes Agent, a check of the picked slot that does not finish within the routing limit skips the task with `timeout`.
 Oh My Pi's role check returns at once, so it has no such skip.
 

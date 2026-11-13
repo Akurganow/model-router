@@ -37,7 +37,7 @@ Routing needs the plugin enabled, the backend on and a key. The models in the sl
 
 1. A backend change applies from the next session. In a running session, type `/delegation model-router --now`.
 2. Add a [key](#keys).
-3. Assign `small_model`, `middle_model` and `large_model`, as [Models](#models) says.
+3. Assign any of `small_model`, `middle_model` and `large_model`, as [Models](#models) says. Each slot is optional: a slot you leave unset runs its level on Hermes's model.
 4. Pick the [provider](#provider) if the default does not fit.
 5. Delegate one small task, and read its [label](#the-label-and-the-log).
 

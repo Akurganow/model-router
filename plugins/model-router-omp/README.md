@@ -85,7 +85,7 @@ The plugin skips an item, with the reason in the [batch line](#the-batch-line), 
 - The agent is not in omp's agent list.
 - omp's agent discovery failed.
 
-Every routed agent gets the roles of [Models](#models): `@smol` at level 0, `@middle` at level 1 and `@slow` at level 2. A set role replaces a bundled agent's own role at every level. Each level also sets the effort, as [Effort](#effort) says.
+Every routed agent gets the roles of [Models](#models), each while it is set: `@smol` at level 0, `@middle` at level 1 and `@slow` at level 2. A set role replaces a bundled agent's own role at every level. Each level also sets the effort, as [Effort](#effort) says.
 
 A project's plugin settings may set `scope` to either value. A project value overrides your global one in both directions. `provider` differs: a project may only narrow it. [PRIVACY.md](PRIVACY.md#the-extended-scope) says what a project that sets `extended` changes.
 

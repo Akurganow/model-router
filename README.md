@@ -63,8 +63,9 @@ starts Hermes's own Node once per task to run the scoring step.
 has the rules.
 
 In Oh My Pi, OpenClaw and Hermes Agent, a level whose model you did not set
-keeps the model the harness gives it, and the plugin still sets the effort.
-[A slot with no model](docs/providers.md#a-slot-with-no-model) has the rule.
+keeps the model the harness gives it, and the plugin still sets the effort
+unless you set one. [A slot with no model](docs/providers.md#a-slot-with-no-model)
+has the rule.
 
 The npm package `@akurganow/model-router` carries the OpenClaw plugin. Oh My Pi
 can install the same package as a second route, as [its README](plugins/model-router-omp/README.md)
