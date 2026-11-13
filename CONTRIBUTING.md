@@ -8,22 +8,21 @@ every commit as a [conventional commit](#commits).
 
 - `src/` holds the sources in three layers: `src/core/`, `src/utils/` and
   `src/adapters/<harness>/`. Each test sits beside the source it tests.
-  `scripts/layout.test.ts` checks that:
-  - every file under `src/` except `src/tsconfig.json` sits in `core/`,
-    `utils/` or one adapter folder, and only a test sits directly in
-    `src/adapters/`;
-  - `utils/` imports only `utils/`, `core/` imports only `core/` and
-    `utils/`, and an adapter imports only itself, `core/` and `utils/`;
-  - a relative import stays inside `src/`, and no specifier starts with `#`
-    or `/`;
-  - every `import()` takes a string literal;
-  - each adapter folder holds an `index.ts`, the adapter's entry;
-  - each test directly in `src/adapters/` imports two or more adapters;
-  - each non-test file of `utils/` has two or more users outside `utils/`,
-    where tests and scripts count as users;
-  - no file of `utils/` re-exports from another file.
+  - `utils/` imports only `utils/`. `core/` imports only `core/` and
+    `utils/`. An adapter imports only itself, `core/` and `utils/`.
+  - Biome enforces these directions. The `noRestrictedImports` overrides in
+    `biome.json` ban the imports of each layer. Two plugins in
+    `scripts/lint/` ban a computed `import()` in `src/` and a re-export in
+    `src/utils/`.
+  - `scripts/lint.test.ts` plants one fault for each rule and checks that
+    Biome reports it.
+  - `scripts/layout.test.ts` checks where the files sit:
+    - every file under `src/` except `src/tsconfig.json` sits in `core/`,
+      `utils/` or one adapter folder;
+    - only a test sits directly in `src/adapters/`;
+    - each adapter folder holds an `index.ts`, the adapter's entry.
 
-  To place new code, use this table. The test does not check it.
+  No tool checks the table below. Use it to place new code.
 
   | Code | Home |
   | --- | --- |
@@ -31,6 +30,10 @@ every commit as a [conventional commit](#commits).
   | A general helper with two or more users | `src/utils/` |
   | Anything one adapter uses | that adapter's folder |
   | A test double | The layer of the code it replaces, in a `*fake*` file |
+  | A test directly in `src/adapters/` | It imports two or more adapters |
+  | A non-test file of `utils/` | Two or more users outside `utils/` |
+
+  In the last row, tests and scripts count as users.
 - `src/core/part.ts` holds the shared types and the answer check.
   `src/core/tier.ts` and `src/core/work.ts` both build on it.
 - `plugins/model-router` is the Claude Code plugin.
