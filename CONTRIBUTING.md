@@ -266,7 +266,10 @@ request of any base, and `.coderabbit.yaml` adds the `integration/.*` bases
 to the review. When all parts are in, the branch merges into `main` with a
 merge commit, never a squash. `cog.toml` sets `ignore_merge_commits`, so the
 release counts the commits inside that merge. The release workflow runs only
-on a push to `main`, so that merge is the change's one release.
+on a push to `main`, so that merge is the change's one release. The final
+pull request into `main` holds every part, so it can exceed the size limit.
+It is the one exception: each of its parts was reviewed in its own pull
+request.
 
 ## Dependencies
 
