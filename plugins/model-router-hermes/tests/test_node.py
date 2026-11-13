@@ -33,15 +33,24 @@ class ResponseTest(unittest.TestCase):
         self.assertEqual(self.parse(skip_reply("skipped, x")), node.Skip("skipped, x"))
 
     def test_route_at_each_slot_and_effort(self):
-        for slot in (None, *SLOTS):
+        for slot in SLOTS:
             for effort in (None, *EFFORTS):
-                self.assertEqual(
-                    self.parse(route_reply(slot, effort, "L")), node.Route(slot, effort, "L")
-                )
+                for unresolved in (None, "U"):
+                    self.assertEqual(
+                        self.parse(route_reply(slot, effort, "L", unresolved)),
+                        node.Route(slot, effort, "L", unresolved),
+                    )
 
     def test_a_slot_or_effort_outside_the_settings_still_has_the_right_shape(self):
         # The router, not this module, knows which slots and efforts exist.
-        self.assertEqual(self.parse(route_reply("medium", "max", "L")), node.Route("medium", "max", "L"))
+        self.assertEqual(
+            self.parse(route_reply("medium", "max", "L", "U")), node.Route("medium", "max", "L", "U")
+        )
+
+    def test_a_route_with_no_slot_fails(self):
+        for slot in (None, 1, ["small"]):
+            with self.subTest(slot), self.assertRaises(node.NodeFailed):
+                self.parse(route_reply(slot, "low"))
 
     def test_outside_the_protocol_fails(self):
         bad = [
@@ -52,8 +61,10 @@ class ResponseTest(unittest.TestCase):
             {"outcome": "skip", "line": 3},
             {"outcome": "other", "line": "x"},
             route_reply(1, "low"),
-            route_reply(None, 5),
-            route_reply(None, "low", 3),
+            route_reply("small", 5),
+            route_reply("small", "low", 3),
+            route_reply("small", "low", "L", 3),
+            {"outcome": "route", "slot": "small", "effort": "low", "line": "x"},
             {"outcome": "route", "line": "x"},
             {"outcome": "route", "slot": "small", "line": "x"},
             {"outcome": "route", "effort": None, "line": "x"},
@@ -142,7 +153,10 @@ class RunTest(unittest.TestCase):
     def test_request_goes_on_stdin_and_the_reply_comes_back(self):
         stub = make_node_stub(self.dir, reply=route_reply("small", "low"))
         result = run(stub, {"task": "t", "keys": {"typesafe": "k-one"}})
-        self.assertEqual(result, node.Route("small", "low", PREFIX + "L1 test line"))
+        self.assertEqual(
+            result,
+            node.Route("small", "low", PREFIX + "L1 test line", PREFIX + "L1 test unresolved line"),
+        )
         captured = stub.captured()
         self.assertEqual(json.loads(captured["stdin"])["keys"], {"typesafe": "k-one"})
         self.assertEqual(captured["argv"], [str(stub.script)])

@@ -1,6 +1,6 @@
 import { contextText } from "../../core/brief.ts";
 import { type Keys, PROVIDERS } from "../../core/provider.ts";
-import { type EndSlot, SLOTS } from "../../core/slots.ts";
+import { type Slot, slotRecord } from "../../core/slots.ts";
 import { isPositiveNumber, isRecord } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 
@@ -17,7 +17,7 @@ export type HermesRequest = {
 	// Undefined unless the budget is a positive finite number.
 	readonly budgetMs: number | undefined;
 	// A blank or missing model is undefined.
-	readonly models: Readonly<Record<EndSlot, string | undefined>>;
+	readonly models: Readonly<Record<Slot, string | undefined>>;
 	// Undefined when the ladder's effort applies.
 	readonly keptEffort: KeptEffort | undefined;
 	// The task's description parameter, or empty text.
@@ -33,12 +33,7 @@ const readKeys = (value: unknown): Keys =>
 	);
 
 const readModels = (value: unknown): HermesRequest["models"] =>
-	Object.fromEntries(
-		SLOTS.map((slot) => [
-			slot,
-			isRecord(value) ? nonEmpty(value[slot]) : undefined,
-		]),
-	) as HermesRequest["models"];
+	slotRecord((slot) => (isRecord(value) ? nonEmpty(value[slot]) : undefined));
 
 const readBudget = (value: unknown): number | undefined =>
 	isPositiveNumber(value) ? value : undefined;

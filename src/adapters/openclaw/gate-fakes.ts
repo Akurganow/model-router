@@ -8,8 +8,7 @@ import type { OpenClawConfig } from "./types.ts";
 export const SETTINGS: OpenClawSettings = {
 	provider: "typesafe",
 	scope: "core",
-	smallModel: "openai/small",
-	largeModel: "openai/large",
+	models: { small: "openai/small", middle: undefined, large: "openai/large" },
 };
 export const REQUESTER = "main";
 export const OTHER = "writer";

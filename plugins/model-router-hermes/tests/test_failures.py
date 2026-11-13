@@ -36,7 +36,7 @@ class FailureTest(RouterCase):
             "array": dict(raw="[]\n"),
             "unknown outcome": dict(reply={"outcome": "maybe", "line": "x"}),
             "bad slot": dict(reply=route_reply("medium", "low")),
-            "bad effort": dict(reply=route_reply(None, "max")),
+            "bad effort": dict(reply=route_reply("middle", "max")),
             "line not text": dict(reply={"outcome": "skip", "line": 4}),
         }
         for name, kwargs in cases.items():

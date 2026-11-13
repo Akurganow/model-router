@@ -5,7 +5,6 @@ import {
 	CALLER_EFFORT,
 	CONFIG_EFFORT,
 	KEY_UNSET,
-	NO_END_MODEL,
 	outsideCoreScope,
 	SUBAGENT_MODEL_SET,
 	setsOwnModel,
@@ -184,8 +183,6 @@ export function gateSpawn(input: GateInput): Gate {
 		const reason = otherAgentSkip(named, input);
 		if (reason !== undefined) return skip(reason);
 	}
-	if (settings.smallModel === undefined && settings.largeModel === undefined)
-		return skip(NO_END_MODEL);
 	// Without the config the user's own subagent model and effort cannot be checked.
 	if (config === undefined) return skip(UNREADABLE);
 	return {

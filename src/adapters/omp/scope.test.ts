@@ -107,7 +107,11 @@ test("extended: each skipped item names its reason and the rest are still scored
 
 test("extended: a task model role skips the task item alone", async () => {
 	extend(world);
-	world.config.modelRoles = { task: "m" };
+	world.config.modelRoles = {
+		task: "m",
+		smol: "prov/small",
+		slow: "prov/large",
+	};
 	install();
 	await world.toolCall("c", {
 		tasks: [{ task: "level2 a" }, { task: "level2 b", agent: "scout" }],

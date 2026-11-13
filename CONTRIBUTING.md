@@ -256,6 +256,21 @@ the hook by hand instead:
 2. Copy the hook's script from `cog.toml` into `hooks/commit-msg` in that folder.
 3. Make `hooks/commit-msg` executable.
 
+### Changes larger than one pull request
+
+Some changes must release whole but exceed the pull request size limit that
+[AGENTS.md](AGENTS.md#commits-and-pull-requests) sets. Such a change goes
+through an `integration/<name>` branch cut from `main`. Each part is a pull
+request into that branch and passes CI and review there. CI runs on a pull
+request of any base, and `.coderabbit.yaml` adds the `integration/.*` bases
+to the review. When all parts are in, the branch merges into `main` with a
+merge commit, never a squash. `cog.toml` sets `ignore_merge_commits`, so the
+release counts the commits inside that merge. The release workflow runs only
+on a push to `main`, so that merge is the change's one release. The final
+pull request into `main` holds every part, so it can exceed the size limit.
+It is the one exception: each of its parts was reviewed in its own pull
+request.
+
 ## Dependencies
 
 `package.json` and `package-lock.json` pin every dependency to an exact

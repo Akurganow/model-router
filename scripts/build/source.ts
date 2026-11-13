@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Schema, validate } from "./schema.ts";
-import type { ValueSetting } from "./values.ts";
+import type { SlotSetting, ValueSetting } from "./values.ts";
 
 export const SOURCE_PATH = "metadata/source.json";
 export const SCHEMA_PATH = "metadata/source.schema.json";
@@ -95,9 +95,7 @@ export type Source = {
 		readonly skills: readonly string[];
 		// One OpenClaw version behind compat, build and install.minHostVersion.
 		readonly hostFloor: string;
-		readonly uiHints: {
-			readonly small_model: Hint;
-			readonly large_model: Hint;
+		readonly uiHints: Readonly<Record<SlotSetting, Hint>> & {
 			readonly api_key: Hint & { readonly sensitive: boolean };
 			readonly openrouter_api_key: Hint & { readonly sensitive: boolean };
 		};
@@ -107,9 +105,7 @@ export type Source = {
 		readonly pluginName: string;
 		readonly backendName: string;
 		readonly requiresHermes: string;
-		readonly settings: {
-			readonly small_model: Hint;
-			readonly large_model: Hint;
+		readonly settings: Readonly<Record<SlotSetting, Hint>> & {
 			readonly typesafe_api_key: Hint;
 		};
 		readonly install: Install;

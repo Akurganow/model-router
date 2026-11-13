@@ -211,16 +211,18 @@ test("level 1 with no model patterns returns nothing and says why", async () => 
 	await world.toolCall("c", { tasks: [{ task: "level1 a" }] });
 	assert.equal(await world.spawn("c:0"), undefined);
 	assert.deepEqual(world.notes.slice(1), [
-		"model-router task 1: L1 no change · no model patterns · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"model-router task 1: L1 middle model unset · no model patterns · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
 	]);
 });
 
-test("a role that does not resolve is not returned", async () => {
+test("a role that stops resolving before the spawn is not returned, and the line says so", async () => {
 	install();
 	await twoTasks();
 	world.resolvable.delete("@slow");
 	assert.equal(await world.spawn("c:1"), undefined);
-	assert.deepEqual(world.notes.slice(1), [skipAt(2, "no @slow model")]);
+	assert.deepEqual(world.notes.slice(1), [
+		"model-router task 2: L2 large model unresolved · no model patterns · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	]);
 	assert.equal((await world.spawn("c:0"))?.model, "@smol:high");
 });
 
@@ -249,6 +251,50 @@ for (const [name, close, reason] of [
 		assert.equal(await world.spawn("c:0"), undefined);
 		assert.deepEqual(world.notes.slice(1), [skipAt(1, reason)]);
 	});
+
+test("a role that stops resolving before the spawn gives the spawn's patterns the effort", async () => {
+	install();
+	await twoTasks();
+	world.resolvable.delete("@slow");
+	assert.deepEqual(await world.spawn("c:1", { patterns: ["prov/parent"] }), {
+		model: ["prov/parent:medium"],
+		note: "model-router L2 large model unresolved · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	});
+	assert.deepEqual(world.notes.slice(1), [
+		"model-router task 2: L2 large model unresolved · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	]);
+});
+
+test("a role removed from modelRoles before the spawn reads as unset there", async () => {
+	install();
+	await twoTasks();
+	world.config.modelRoles = { smol: "prov/small" };
+	assert.deepEqual(await world.spawn("c:1", { patterns: ["prov/parent"] }), {
+		model: ["prov/parent:medium"],
+		note: "model-router L2 large model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	});
+	assert.deepEqual(world.notes.slice(1), [
+		"model-router task 2: L2 large model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	]);
+});
+
+test("a slot set after the batch gives the spawn its role, and both lines are printed", async () => {
+	install();
+	await world.toolCall("c", { tasks: [{ task: "level1 a" }] });
+	world.config.modelRoles = {
+		smol: "prov/small",
+		middle: "prov/mid",
+		slow: "prov/large",
+	};
+	assert.deepEqual(await world.spawn("c:0", { patterns: ["prov/parent"] }), {
+		model: "@middle:medium",
+		note: "model-router L1 @middle · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	});
+	assert.deepEqual(world.notes, [
+		"model-router task 1: L1 middle model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"model-router task 1: L1 @middle · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	]);
+});
 
 test("the store keeps 64 decisions and drops the oldest", async () => {
 	install();

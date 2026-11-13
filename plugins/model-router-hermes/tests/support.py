@@ -103,10 +103,6 @@ def skipped_label(reason_key: str) -> str:
     return CONSTANTS["skips"][reason_key]
 
 
-def unresolved_label(slot: str) -> str:
-    return CONSTANTS["skips"][CONSTANTS["slots"][slot]["unresolved"]]
-
-
 class FakeCtx:
     """The part of the Hermes plugin context the plugin uses.
 
@@ -197,7 +193,7 @@ def fake_api(**overrides: Any) -> Any:
         auth_type=lambda provider: "api_key",
         is_refreshable=lambda provider: False,
         resolve_runtime=lambda provider, model: None,
-        list_models=lambda provider: ["small-model", "large-model"],
+        list_models=lambda provider: ["small-model", "middle-model", "large-model"],
     )
     return dataclasses.replace(api, **overrides)
 
@@ -232,10 +228,22 @@ def default_route(config: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in config.items() if k != "service_tier"}
 
 
+UNRESOLVED_LINE = PREFIX + "L1 test unresolved line"
+
+
 def route_reply(
-    slot: str | None, effort: str | None, line: str = PREFIX + "L1 test line"
+    slot: str | None,
+    effort: str | None,
+    line: str = PREFIX + "L1 test line",
+    unresolved_line: str | None = UNRESOLVED_LINE,
 ) -> dict[str, Any]:
-    return {"outcome": "route", "slot": slot, "effort": effort, "line": line}
+    return {
+        "outcome": "route",
+        "slot": slot,
+        "effort": effort,
+        "line": line,
+        "unresolvedLine": unresolved_line,
+    }
 
 
 def skip_reply(line: str = PREFIX + "skipped, test") -> dict[str, Any]:

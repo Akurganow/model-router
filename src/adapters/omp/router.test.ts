@@ -180,7 +180,7 @@ test("the batch makes one line with one entry per scored item", async () => {
 		],
 	});
 	assert.deepEqual(world.notes, [
-		`${PREFIX}task 1: L0 @smol · high · p=0.90/0.90${SUFFIX} | task 2: L1 no change · medium · p=0.90/0.90${SUFFIX} | task 3: L2 @slow · medium · p=0.90/0.90${SUFFIX}`,
+		`${PREFIX}task 1: L0 @smol · high · p=0.90/0.90${SUFFIX} | task 2: L1 middle model unset · medium · p=0.90/0.90${SUFFIX} | task 3: L2 @slow · medium · p=0.90/0.90${SUFFIX}`,
 	]);
 });
 
@@ -237,7 +237,6 @@ const closed: [string, string, () => void][] = [
 		() => (world.config["task.disabledAgents"] = ["task"]),
 	],
 	["custom task agent", "agent", () => (world.agents = [])],
-	["no @smol or @slow model", "models", () => world.resolvable.clear()],
 ];
 for (const [reason, name, close] of closed)
 	test(`a closed ${name} gate sends nothing and the line names the reason`, async () => {
@@ -249,6 +248,48 @@ for (const [reason, name, close] of closed)
 			`${PREFIX}task 1: skipped, ${reason} | task 2: skipped, ${reason}`,
 		]);
 	});
+
+test("no model in any slot still scores each item and sets the effort", async () => {
+	install();
+	world.config.modelRoles = {};
+	await world.toolCall("c", {
+		tasks: [{ task: "level0 a" }, { task: "level1 b" }, { task: "level2 c" }],
+	});
+	assert.equal(world.sent.length, 3);
+	assert.deepEqual(world.notes, [
+		`${PREFIX}task 1: L0 small model unset · high · p=0.90/0.90${SUFFIX} | task 2: L1 middle model unset · medium · p=0.90/0.90${SUFFIX} | task 3: L2 large model unset · medium · p=0.90/0.90${SUFFIX}`,
+	]);
+	assert.deepEqual(await world.spawn("c:2", { patterns: ["prov/parent"] }), {
+		model: ["prov/parent:medium"],
+		note: `${PREFIX}L2 large model unset · medium · p=0.90/0.90${SUFFIX}`,
+	});
+});
+
+test("a role that modelRoles names and omp does not resolve reads as unresolved in the batch", async () => {
+	install();
+	world.resolvable.delete("@smol");
+	await world.toolCall("c", { tasks: [{ task: "level0 a" }] });
+	assert.deepEqual(world.notes, [
+		"model-router task 1: L0 small model unresolved · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	]);
+});
+
+test("a set middle role gives level 1 its role and the effort", async () => {
+	install();
+	world.config.modelRoles = {
+		smol: "prov/small",
+		middle: "prov/mid",
+		slow: "prov/large",
+	};
+	await world.toolCall("c", { tasks: [{ task: "level1 a" }] });
+	assert.deepEqual(world.notes, [
+		`${PREFIX}task 1: L1 @middle · medium · p=0.90/0.90${SUFFIX}`,
+	]);
+	assert.deepEqual(await world.spawn("c:0", { patterns: ["prov/parent"] }), {
+		model: "@middle:medium",
+		note: `${PREFIX}L1 @middle · medium · p=0.90/0.90${SUFFIX}`,
+	});
+});
 
 test("a closed gate stores nothing for the spawn", async () => {
 	install();
@@ -366,7 +407,7 @@ test("in an outage, items that start later in the batch pass over the failed pro
 	await world.toolCall("c", { tasks });
 	assert.equal(count(ENDPOINT), 4);
 	assert.equal(count(OR_ENDPOINT), 6);
-	const line = `L1 no change · medium · p=0.90/0.90${SUFFIX}`;
+	const line = `L1 middle model unset · medium · p=0.90/0.90${SUFFIX}`;
 	assert.deepEqual(entriesOf(world.notes[0]), [
 		...[1, 2, 3, 4].map((n) => `task ${n}: ${line}${VIA}`),
 		`task 5: ${line}`,
@@ -401,7 +442,7 @@ test("an item that starts while another waits on its fallback already passes ove
 	await world.toolCall("c", { tasks });
 	assert.equal(count(ENDPOINT), 4);
 	assert.equal(count(OR_ENDPOINT), 2);
-	const line = `L1 no change · medium · p=0.90/0.90${SUFFIX}`;
+	const line = `L1 middle model unset · medium · p=0.90/0.90${SUFFIX}`;
 	assert.deepEqual(entriesOf(world.notes[0]), [
 		`task 1: ${line}${VIA}`,
 		...[2, 3, 4, 5].map((n) => `task ${n}: ${line}`),

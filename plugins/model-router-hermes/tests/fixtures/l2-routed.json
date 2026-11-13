@@ -4,21 +4,39 @@
 		"task": "Rename the helper in util.ts and run the tests.",
 		"context": "",
 		"provider": "typesafe",
-		"keys": { "typesafe": "typesafe-key" },
+		"keys": {
+			"typesafe": "typesafe-key"
+		},
 		"budgetMs": 8000,
-		"models": { "small": "openai/small", "large": "openai/large" },
+		"models": {
+			"small": "openai/small",
+			"large": "openai/large"
+		},
 		"keptEffort": null
 	},
 	"jev": [
 		{
 			"host": "api.typesafe.ai",
-			"reply": { "levels": { "tier": 2, "work": 2 } }
+			"reply": {
+				"levels": {
+					"tier": 2,
+					"work": 2
+				}
+			}
 		}
 	],
 	"response": {
 		"outcome": "route",
 		"slot": "large",
 		"effort": "high",
-		"line": "model-router L2 openai/large · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+		"line": "model-router L2 openai/large · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"unresolvedLine": "model-router L2 large model unresolved · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+	},
+	"route": {
+		"api_mode": "chat_completions",
+		"model": "large-model",
+		"provider": "openrouter",
+		"reasoning_effort": "high",
+		"label": "model-router L2 openai/large · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
 	}
 }

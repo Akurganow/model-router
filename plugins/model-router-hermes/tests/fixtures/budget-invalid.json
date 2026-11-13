@@ -4,11 +4,23 @@
 		"task": "Rename the helper in util.ts and run the tests.",
 		"context": "",
 		"provider": "typesafe",
-		"keys": { "typesafe": "typesafe-key" },
+		"keys": {
+			"typesafe": "typesafe-key"
+		},
 		"budgetMs": 0,
-		"models": { "small": "openai/small", "large": "openai/large" },
+		"models": {
+			"small": "openai/small",
+			"large": "openai/large"
+		},
 		"keptEffort": null
 	},
 	"jev": [],
-	"response": { "outcome": "skip", "line": "model-router skipped, failed" }
+	"response": {
+		"outcome": "skip",
+		"line": "model-router skipped, failed"
+	},
+	"route": {
+		"api_mode": "chat_completions",
+		"label": "model-router skipped, failed"
+	}
 }

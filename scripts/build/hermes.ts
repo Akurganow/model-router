@@ -5,19 +5,20 @@ import {
 } from "../../src/adapters/hermes/texts.ts";
 import { ROUTING_LIMIT_MS } from "../../src/core/compose.ts";
 import { EFFORTS } from "../../src/core/ladder.ts";
-import { LINE_PREFIX, skippedLine } from "../../src/core/line.ts";
-import { LEVELS } from "../../src/core/part.ts";
+import { LINE_PREFIX, pinnedLine, skippedLine } from "../../src/core/line.ts";
+import { LEVELS, type Level } from "../../src/core/part.ts";
 import {
 	KEY_VARIABLES,
 	order,
 	PROVIDER_VALUES,
 	resolve as resolveProvider,
 } from "../../src/core/provider.ts";
-import { modelUnresolved, modelUnset } from "../../src/core/reasons.ts";
 import {
-	type EndSlot,
-	SLOTS,
+	pickModel,
+	SLOT_SETTINGS,
+	type Slot,
 	slotForLevel,
+	slotRecord,
 	slotSetting,
 } from "../../src/core/slots.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
@@ -43,14 +44,12 @@ const configSchema = (source: Source): JsonObject => ({
 		label: source.options.provider.title,
 		description: source.options.provider.descriptions.hermes,
 	},
-	small_model: {
-		type: "dict",
-		...describe(source.hermes.settings.small_model),
-	},
-	large_model: {
-		type: "dict",
-		...describe(source.hermes.settings.large_model),
-	},
+	...Object.fromEntries(
+		SLOT_SETTINGS.map((setting) => [
+			setting,
+			{ type: "dict", ...describe(source.hermes.settings[setting]) },
+		]),
+	),
 	typesafe_api_key: {
 		type: "secret",
 		env: KEY_VARIABLES.typesafe,
@@ -72,11 +71,15 @@ const manifest = (source: Source): JsonObject => ({
 const skipLine = (reason: string): string =>
 	`${LINE_PREFIX}${skippedLine(reason)}`;
 
-// The skips keys of the lines a slot gives when its model is unset or does not resolve.
-const unsetKey = (slot: EndSlot): string => `${slot}ModelUnset`;
-const unresolvedKey = (slot: EndSlot): string => `${slot}ModelUnresolved`;
+const levelOf = (slot: Slot): Level =>
+	LEVELS.find((level) => slotForLevel(level) === slot) ?? 0;
 
-// What the Python shim needs and must not retype: the limits, the provider rules, the efforts and the finished skip lines. A slot names the skip line it gives, never holds one.
+// The label of a pinned level whose slot has no model, worded by pickModel. It carries no probabilities, since Jev was not asked.
+const pinnedLabel = (slot: Slot, state: "unset" | "unresolved"): string =>
+	LINE_PREFIX +
+	pinnedLine(levelOf(slot), pickModel(levelOf(slot), { state }).target);
+
+// What the Python shim needs and must not retype: the limits, the provider rules, the efforts, the finished skip lines and the pinned labels.
 const constants = (source: Source): JsonObject => {
 	const { graceMs, reasons } = HERMES_TEXTS;
 	return {
@@ -89,28 +92,18 @@ const constants = (source: Source): JsonObject => {
 			keyVariables: { ...KEY_VARIABLES },
 		},
 		efforts: [...EFFORTS],
-		skips: Object.fromEntries([
-			...Object.entries(reasons).map(([key, reason]) => [
-				key,
-				skipLine(reason),
-			]),
-			...SLOTS.flatMap((slot) => [
-				[unsetKey(slot), skipLine(modelUnset(slot))] as const,
-				[unresolvedKey(slot), skipLine(modelUnresolved(slot))] as const,
-			]),
-		]),
-		slots: Object.fromEntries(
-			SLOTS.map((slot) => [
-				slot,
-				{
-					setting: slotSetting(slot),
-					unset: unsetKey(slot),
-					unresolved: unresolvedKey(slot),
-				},
-			]),
+		skips: Object.fromEntries(
+			Object.entries(reasons).map(([key, reason]) => [key, skipLine(reason)]),
 		),
+		slots: slotRecord((slot) => ({
+			setting: slotSetting(slot),
+			pinned: {
+				unset: pinnedLabel(slot, "unset"),
+				unresolved: pinnedLabel(slot, "unresolved"),
+			},
+		})),
 		levels: [...LEVELS],
-		// Indexed by level; null at the middle level, which names no slot.
+		// Indexed by level: the slot each level takes its model from.
 		levelSlots: LEVELS.map(slotForLevel),
 		...taskParameterTexts(source.hermes.pluginName),
 		backend: source.hermes.backendName,

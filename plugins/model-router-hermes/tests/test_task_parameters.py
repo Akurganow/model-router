@@ -1,4 +1,5 @@
 import json
+import threading
 import re
 import unittest
 
@@ -11,10 +12,10 @@ from support import (
     good_settings,
     make_router,
     route_reply,
+    short_constants,
     skip_reply,
     skipped_label,
     submodule,
-    unresolved_label,
 )
 
 PARAMETERS = CONSTANTS["taskParameters"]
@@ -24,10 +25,6 @@ NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 def item(**params):
     return {"goal": "do the thing", "context": None, "index": 0, **params}
-
-
-def unset_label(slot):
-    return CONSTANTS["skips"][CONSTANTS["slots"][slot]["unset"]]
 
 
 class DeclarationTest(unittest.TestCase):
@@ -99,7 +96,7 @@ class DescriptionTest(RouterCase):
 
 class CallerEffortTest(RouterCase):
     def routed(self, config=None, reply=None, api=None, **params):
-        stub = self.stub(reply=reply if reply is not None else route_reply(None, None, PREFIX + "L"))
+        stub = self.stub(reply=reply if reply is not None else route_reply("middle", None, PREFIX + "L"))
         router = make_router(script=stub.script, api=api)
         return router.route(item(**params), {} if config is None else config), stub
 
@@ -141,7 +138,9 @@ class CallerEffortTest(RouterCase):
             api=fake_api(list_models=lambda provider: []),
             reasoning_effort="low",
         )
-        self.assertEqual(route, {"reasoning_effort": "low", "label": unresolved_label("small")})
+        self.assertEqual(
+            route, {"reasoning_effort": "low", "label": PREFIX + "L1 test unresolved line"}
+        )
 
     def test_the_caller_effort_rides_on_the_failed_skip(self):
         router = make_router()
@@ -172,18 +171,28 @@ class LevelTest(RouterCase):
         route = router.route(item(**params), {} if config is None else config)
         return route, stub
 
-    def test_an_end_level_sets_its_slot_without_node_or_label(self):
-        for level, model in ((0, "small-model"), (2, "large-model")):
+    def test_a_set_level_sets_its_slot_without_node_or_label(self):
+        settings = good_settings(middle_model={"provider": "openrouter", "model": "middle-model"})
+        for level, model in ((0, "small-model"), (1, "middle-model"), (2, "large-model")):
             with self.subTest(level):
-                route, stub = self.pinned({"api_mode": "chat", "service_tier": "fast"}, level=level)
+                route, stub = self.pinned(
+                    {"api_mode": "chat", "service_tier": "fast"}, settings=settings, level=level
+                )
                 self.assertEqual(
                     route, {"api_mode": "chat", "model": model, "provider": "openrouter"}
                 )
                 self.assertNodeNotRun(stub)
 
-    def test_the_middle_level_returns_the_default_route_without_label(self):
+    def test_the_middle_level_with_no_middle_model_passes_through_with_its_label(self):
         route, stub = self.pinned({"api_mode": "chat", "reasoning_effort": "low"}, level=1)
-        self.assertEqual(route, {"api_mode": "chat", "reasoning_effort": "low"})
+        self.assertEqual(
+            route,
+            {
+                "api_mode": "chat",
+                "reasoning_effort": "low",
+                "label": "model-router L1 middle model unset",
+            },
+        )
         self.assertNodeNotRun(stub)
 
     def test_a_pinned_level_needs_no_key_and_no_other_slot(self):
@@ -199,21 +208,71 @@ class LevelTest(RouterCase):
             route, {"model": "small-model", "provider": "openrouter", "reasoning_effort": "xhigh"}
         )
 
-    def test_an_unset_slot_skips_with_its_reason(self):
-        for level, slot in ((0, "small"), (2, "large")):
-            with self.subTest(slot):
-                route, stub = self.pinned(
-                    settings=good_settings(**{f"{slot}_model": {"provider": "openrouter"}}),
-                    level=level,
+    def test_an_unset_slot_passes_through_on_the_hermes_model_with_its_label(self):
+        labels = {
+            "small": "model-router L0 small model unset",
+            "middle": "model-router L1 middle model unset",
+            "large": "model-router L2 large model unset",
+        }
+        for level, slot in ((0, "small"), (1, "middle"), (2, "large")):
+            for value in ({"provider": "openrouter"}, {"model": ""}, {"model": "   "}, None):
+                with self.subTest(slot=slot, value=value):
+                    route, stub = self.pinned(
+                        {"api_mode": "chat"},
+                        settings=good_settings(**{f"{slot}_model": value}),
+                        level=level,
+                        reasoning_effort="high",
+                    )
+                    self.assertEqual(
+                        route,
+                        {"api_mode": "chat", "reasoning_effort": "high", "label": labels[slot]},
+                    )
+                    self.assertNodeNotRun(stub)
+
+    def test_an_unresolved_slot_passes_through_on_the_hermes_model_with_its_label(self):
+        settings = good_settings(middle_model={"provider": "openrouter", "model": "middle-model"})
+        labels = (
+            "model-router L0 small model unresolved",
+            "model-router L1 middle model unresolved",
+            "model-router L2 large model unresolved",
+        )
+        for level, label in enumerate(labels):
+            with self.subTest(level):
+                route, _ = self.pinned(
+                    settings=settings, api=fake_api(list_models=lambda provider: []), level=level
                 )
-                self.assertEqual(route, {"label": unset_label(slot)})
+                self.assertEqual(route, {"label": label})
+
+    def test_a_set_slot_whose_check_outlasts_the_window_is_the_timeout_skip(self):
+        gate = threading.Event()
+        self.addCleanup(gate.set)
+
+        def slow(provider):
+            gate.wait(10)
+            return ["small-model", "middle-model", "large-model"]
+
+        settings = good_settings(middle_model={"provider": "openrouter", "model": "middle-model"})
+        for level in (0, 1, 2):
+            with self.subTest(level):
+                stub = self.stub(reply=skip_reply())
+                router = make_router(
+                    script=stub.script,
+                    settings=settings,
+                    api=fake_api(list_models=slow),
+                    constants=short_constants(200, 1500),
+                )
+                route = router.route(item(level=level), {"api_mode": "chat"})
+                self.assertEqual(
+                    route, {"api_mode": "chat", "label": "model-router skipped, timeout"}
+                )
                 self.assertNodeNotRun(stub)
 
-    def test_an_unresolved_slot_skips_with_its_reason(self):
-        for level, slot in ((0, "small"), (2, "large")):
-            with self.subTest(slot):
-                route, _ = self.pinned(api=fake_api(list_models=lambda provider: []), level=level)
-                self.assertEqual(route, {"label": unresolved_label(slot)})
+    def test_an_unset_slot_runs_no_check(self):
+        calls = []
+        api = fake_api(list_models=lambda provider: calls.append(provider) or [])
+        route, _ = self.pinned(api=api, level=1)
+        self.assertEqual(route, {"label": "model-router L1 middle model unset"})
+        self.assertEqual(calls, [])
 
     def test_a_set_subagent_model_wins(self):
         route, stub = self.pinned({"model": "m"}, level=2, reasoning_effort="high")

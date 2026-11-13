@@ -11,7 +11,12 @@ import {
 	FAILED,
 	TIMEOUT,
 } from "../../core/reasons.ts";
-import { type EndSlot, modelForLevel } from "../../core/slots.ts";
+import {
+	pickModel,
+	type Slot,
+	slotForLevel,
+	slotState,
+} from "../../core/slots.ts";
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
 import { type HermesRequest, type KeptEffort, readRequest } from "./request.ts";
@@ -20,11 +25,13 @@ type HermesDeps = { readonly fetchFn: Fetch; readonly clock: Clock };
 type HermesResponse =
 	| {
 			readonly outcome: "route";
-			// The slot whose model the level names; null at the middle level.
-			readonly slot: EndSlot | null;
+			// The slot the level takes its model from. Python applies it only when that slot is set.
+			readonly slot: Slot;
 			// Null when the request names a kept effort.
 			readonly effort: string | null;
 			readonly line: string;
+			// The line Python prints when its check of the slot's model fails; null for a slot with no model.
+			readonly unresolvedLine: string | null;
 	  }
 	| { readonly outcome: "skip"; readonly line: string };
 
@@ -74,10 +81,10 @@ async function scored(
 }
 
 /**
- * Returns the response for a decided request: a skip when an end tier has no
- * model, else the slot the level names, the effort the ladder gives and the
- * routing line. A kept effort replaces the ladder's, and the line names its
- * source.
+ * Returns the response for a decided request: the slot the level names, the
+ * effort the ladder gives and the routing line, which names the slot's model
+ * or the slot's state when it has none. A kept effort replaces the ladder's,
+ * and the line names its source.
  * Every line starts with the line prefix.
  */
 function answer(
@@ -85,27 +92,29 @@ function answer(
 	decided: DecidedWithWork,
 ): HermesResponse {
 	const level = decided.tier;
-	const picked = modelForLevel(level, request.models);
-	if ("skipped" in picked) return skip(picked.skipped);
-	const { slot, model: target } = picked;
+	const slot = slotForLevel(level);
+	const model = request.models[slot];
 	const effort = effortFor(level, decided.work);
 	const kept =
 		request.keptEffort === undefined
 			? undefined
 			: KEPT_LABELS[request.keptEffort];
+	// Python checks the slot's model after this answer, so both outcomes of that check get a finished line.
+	const lineFor = (resolved: boolean) =>
+		LINE_PREFIX +
+		routedLine({
+			level,
+			target: pickModel(level, slotState(model, resolved)).target,
+			effort: kept ?? effort,
+			probabilities: decided.probabilities,
+			suffix: decided.suffix,
+		});
 	return {
 		outcome: "route",
 		slot,
 		effort: kept === undefined ? effort : null,
-		line:
-			LINE_PREFIX +
-			routedLine({
-				level,
-				target,
-				effort: kept ?? effort,
-				probabilities: decided.probabilities,
-				suffix: decided.suffix,
-			}),
+		line: lineFor(true),
+		unresolvedLine: model === undefined ? null : lineFor(false),
 	};
 }
 

@@ -1,22 +1,40 @@
 {
-	"description": "Level 2 with no large model is skipped.",
+	"description": "Level 2 with no large model keeps the model Hermes gives and still gets the effort.",
 	"request": {
 		"task": "Rename the helper in util.ts and run the tests.",
 		"context": "",
 		"provider": "typesafe",
-		"keys": { "typesafe": "typesafe-key" },
+		"keys": {
+			"typesafe": "typesafe-key"
+		},
 		"budgetMs": 8000,
-		"models": { "small": "openai/small", "large": "" },
+		"models": {
+			"small": "openai/small",
+			"large": ""
+		},
 		"keptEffort": null
 	},
 	"jev": [
 		{
 			"host": "api.typesafe.ai",
-			"reply": { "levels": { "tier": 2, "work": 1 } }
+			"reply": {
+				"levels": {
+					"tier": 2,
+					"work": 1
+				}
+			}
 		}
 	],
 	"response": {
-		"outcome": "skip",
-		"line": "model-router skipped, large model unset"
+		"outcome": "route",
+		"slot": "large",
+		"effort": "medium",
+		"line": "model-router L2 large model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"unresolvedLine": null
+	},
+	"route": {
+		"api_mode": "chat_completions",
+		"reasoning_effort": "medium",
+		"label": "model-router L2 large model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
 	}
 }

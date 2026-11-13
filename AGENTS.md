@@ -88,6 +88,8 @@ CONTRIBUTING.md already states a rule, this file links to it.
 - Keep a pull request at 100 reviewable files or fewer, counted after the
   filters of `.coderabbit.yaml`. Split a larger change into pull requests.
   Never drop a part of the change to fit.
+- A larger change that must release whole follows
+  [Changes larger than one pull request](CONTRIBUTING.md#changes-larger-than-one-pull-request).
 - The pull request text says what changed, why, and the verification
   commands with their results. It holds no session history.
 

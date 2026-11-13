@@ -225,27 +225,20 @@ test("no key for any allowed provider skips with key unset", () => {
 	assert.equal(skipped(gate({ hasKey: false })), KEY_UNSET);
 });
 
-test("neither model slot set skips with no small or large model", () => {
-	const settings = {
-		...SETTINGS,
-		smallModel: undefined,
-		largeModel: undefined,
-	};
-	assert.equal(skipped(gate({ settings })), "no small or large model");
+const NO_MODELS = {
+	...SETTINGS,
+	models: { small: undefined, middle: undefined, large: undefined },
+};
+
+test("no model slot set still routes, so the spawn gets its effort", () => {
+	routed(gate({ settings: NO_MODELS }));
 });
 
-test("one slot set is enough", () => {
-	routed(gate({ settings: { ...SETTINGS, smallModel: undefined } }));
-	routed(gate({ settings: { ...SETTINGS, largeModel: undefined } }));
-});
-
-test("key unset comes before no small or large model", () => {
-	const settings = {
-		...SETTINGS,
-		smallModel: undefined,
-		largeModel: undefined,
-	};
-	assert.equal(skipped(gate({ hasKey: false, settings })), KEY_UNSET);
+test("key unset still skips first when no model is set", () => {
+	assert.equal(
+		skipped(gate({ hasKey: false, settings: NO_MODELS })),
+		KEY_UNSET,
+	);
 });
 
 test("key unset comes before every other skip, as in omp", () => {
@@ -286,7 +279,7 @@ test("a silent pass comes before every skip", () => {
 		gate({
 			params: { task: "t", model: "a/b" },
 			hasKey: false,
-			settings: { ...SETTINGS, smallModel: undefined, largeModel: undefined },
+			settings: NO_MODELS,
 		}),
 		{ outcome: "pass" },
 	);
@@ -423,14 +416,9 @@ test("an unreadable config skips the route with settings unreadable", () => {
 
 test("settings unreadable comes after every other skip of the spawn of the requesting agent itself", () => {
 	assert.equal(skipped(gate({ config: undefined, hasKey: false })), KEY_UNSET);
-	const noModels = {
-		...SETTINGS,
-		smallModel: undefined,
-		largeModel: undefined,
-	};
 	assert.equal(
-		skipped(gate({ config: undefined, settings: noModels })),
-		"no small or large model",
+		skipped(gate({ config: undefined, settings: NO_MODELS })),
+		UNREADABLE,
 	);
 });
 

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Effort } from "../../core/ladder.ts";
+import type { Level } from "../../core/part.ts";
 import { capped, carriesLevel, planEffort, type Routed } from "./effort.ts";
 
 // omp's parser at 18.12.6 and 18.18.9: full names, `auto`, and unambiguous prefixes of two characters or more.
@@ -77,9 +78,8 @@ for (const [ceiling, effort, expected] of CAPS)
 		assert.equal(capped(effort as "low", ceiling), expected);
 	});
 
-const routed = (role: string | undefined): Routed => ({
-	level: role === undefined ? 1 : 0,
-	role,
+const routed = (level: Level): Routed => ({
+	level,
 	ladder: "high",
 	itemEffort: false,
 	probabilities: "0.90/0.90",
@@ -87,7 +87,8 @@ const routed = (role: string | undefined): Routed => ({
 });
 const planFor = (roles: Record<string, unknown>) =>
 	planEffort(
-		routed("@smol"),
+		routed(0),
+		"@smol",
 		{ roles, maxEffort: undefined, effortEnabled: false },
 		["prov/parent"],
 	);
@@ -120,10 +121,18 @@ test("a role that only the prototype holds is no configured role", () => {
 	assert.deepEqual(planFor(roles), SET);
 });
 
-test("level 1 keeps a level on a pattern, an end level does not", () => {
+test("a slot with no model keeps a level on a pattern, a role does not", () => {
 	const facts = { roles: {}, maxEffort: undefined, effortEnabled: false };
-	assert.deepEqual(planEffort(routed(undefined), facts, ["prov/p:low"]), KEPT);
-	assert.deepEqual(planEffort(routed("@smol"), facts, ["prov/p:low"]), SET);
+	for (const level of [0, 1, 2] as const)
+		assert.deepEqual(
+			planEffort(routed(level), undefined, facts, ["prov/p:low"]),
+			KEPT,
+		);
+	assert.deepEqual(planEffort(routed(0), "@smol", facts, ["prov/p:low"]), SET);
+	assert.deepEqual(
+		planEffort(routed(1), "@middle", facts, ["prov/p:low"]),
+		SET,
+	);
 });
 
 const LADDER: readonly Effort[] = ["low", "medium", "high", "xhigh"];

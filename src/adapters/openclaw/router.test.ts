@@ -54,12 +54,12 @@ describe("levels and efforts", () => {
 		[
 			{ tier: 1, work: 0 },
 			{ params: { thinking: "low" } },
-			"model-router L1 no change · low · p=0.90/0.90",
+			"model-router L1 middle model unset · low · p=0.90/0.90",
 		],
 		[
 			{ tier: 1, work: 1 },
 			{ params: { thinking: "medium" } },
-			"model-router L1 no change · medium · p=0.90/0.90",
+			"model-router L1 middle model unset · medium · p=0.90/0.90",
 		],
 		[
 			{ tier: 2, work: 1 },
@@ -123,9 +123,7 @@ describe("levels and efforts", () => {
 });
 
 describe("the slot and model each level takes", () => {
-	const MODELS = { small: "openai/small", large: "openai/large" };
-	type Models = { small?: string; large?: string };
-	// Level 1 changes no model, so it needs neither slot; an end level needs its own slot only.
+	type Models = { small?: string; middle?: string; large?: string };
 	// The effort is the ladder's for the work level 1.
 	type Row = {
 		readonly tier: 0 | 1 | 2;
@@ -139,36 +137,43 @@ describe("the slot and model each level takes", () => {
 	const ROWS: readonly Row[] = [
 		{
 			tier: 0,
-			set: MODELS,
+			set: { small: "openai/small", large: "openai/large" },
 			result: { params: { model: "openai/small", thinking: "high" } },
 			line: routedLog("openai/small", "high", 0),
 		},
 		{
 			tier: 0,
-			set: { small: MODELS.small },
+			set: { small: "openai/small" },
 			result: { params: { model: "openai/small", thinking: "high" } },
 			line: routedLog("openai/small", "high", 0),
 		},
 		{
 			tier: 1,
-			set: { small: MODELS.small },
-			result: { params: { thinking: "medium" } },
-			line: routedLog("no change", "medium", 1),
+			set: { small: "openai/small", middle: "openai/middle" },
+			result: { params: { model: "openai/middle", thinking: "medium" } },
+			line: routedLog("openai/middle", "medium", 1),
+		},
+		{
+			tier: 1,
+			set: { middle: "openai/middle" },
+			result: { params: { model: "openai/middle", thinking: "medium" } },
+			line: routedLog("openai/middle", "medium", 1),
 		},
 		{
 			tier: 2,
-			set: { large: MODELS.large },
+			set: { large: "openai/large" },
 			result: { params: { model: "openai/large", thinking: "medium" } },
 			line: routedLog("openai/large", "medium", 2),
 		},
 	];
 
-	const settings = ({ small = "", large = "" }: Models) => ({
+	const settings = ({ small = "", middle = "", large = "" }: Models) => ({
 		small_model: small,
+		middle_model: middle,
 		large_model: large,
 	});
 	const name = (set: Models) =>
-		[set.small && "small", set.large && "large"]
+		[set.small && "small", set.middle && "middle", set.large && "large"]
 			.filter(Boolean)
 			.join(" and ") || "no";
 
@@ -182,24 +187,66 @@ describe("the slot and model each level takes", () => {
 			assert.deepEqual(lines(s), [line]);
 		});
 
+	const UNSET_ROWS: readonly [0 | 1 | 2, string, string][] = [
+		[0, "high", "small"],
+		[1, "medium", "middle"],
+		[2, "medium", "large"],
+	];
+	for (const [tier, effort, slot] of UNSET_ROWS) {
+		it(`level ${tier} with the ${slot} model unset keeps the spawn's model and sets the effort`, async () => {
+			const s = setup({
+				levels: { tier, work: 1 },
+				settings: {
+					...settings({ small: "x/s", middle: "x/m", large: "x/l" }),
+					[`${slot}_model`]: "",
+				},
+			});
+			assert.deepEqual(await s.call(), { params: { thinking: effort } });
+			assert.deepEqual(lines(s), [
+				`${LINE_PREFIX}L${tier} ${slot} model unset · ${effort} · p=0.90/0.90${JEV}`,
+			]);
+		});
+
+		it(`level ${tier} with the ${slot} model set but unresolved keeps the spawn's model and sets the effort`, async () => {
+			const s = setup({
+				levels: { tier, work: 1 },
+				settings: settings({ small: "x/s", middle: "x/m", large: "x/l" }),
+			});
+			s.runtime.answers.resolved = { error: "not allowed" };
+			assert.deepEqual(await s.call(), { params: { thinking: effort } });
+			assert.deepEqual(lines(s), [
+				`${LINE_PREFIX}L${tier} ${slot} model unresolved · ${effort} · p=0.90/0.90${JEV}`,
+			]);
+		});
+	}
+
+	it("a missing credential makes the slot unresolved too", async () => {
+		const s = setup({
+			levels: { tier: 2, work: 1 },
+			settings: settings({ large: "x/l" }),
+		});
+		s.runtime.answers.credential = false;
+		assert.deepEqual(await s.call(), { params: { thinking: "medium" } });
+		assert.deepEqual(lines(s), [
+			`${LINE_PREFIX}L2 large model unresolved · medium · p=0.90/0.90${JEV}`,
+		]);
+	});
+
 	for (const tier of [0, 1, 2] as const)
-		it(`level ${tier} with both models unset skips before Jev is asked`, async () => {
+		it(`level ${tier} with a key and no model at all is scored and gets the effort`, async () => {
 			const s = setup({
 				levels: { tier, work: 1 },
 				settings: settings({}),
 			});
-			assert.equal(await s.call(), undefined);
-			assert.deepEqual(lines(s), skippedLog("no small or large model"));
-			assert.equal(s.jev.requests.length, 0);
+			const effort = tier === 0 ? "high" : "medium";
+			const slot = ["small", "middle", "large"][tier];
+			assert.deepEqual(await s.call(), { params: { thinking: effort } });
+			assert.equal(s.jev.requests.length, 1);
+			assert.deepEqual(lines(s), [
+				`${LINE_PREFIX}L${tier} ${slot} model unset · ${effort} · p=0.90/0.90${JEV}`,
+			]);
+			assert.equal(s.runtime.calls.allowedRef.length, 0);
 		});
-
-	it("level 1 routes with an unresolved model, and no check runs", async () => {
-		const s = setup({ levels: { tier: 1, work: 1 } });
-		s.runtime.answers.resolved = { error: "not allowed" };
-		s.runtime.answers.credential = false;
-		assert.deepEqual(await s.call(), { params: { thinking: "medium" } });
-		assert.deepEqual(lines(s), [routedLog("no change", "medium", 1)]);
-	});
 });
 
 describe("kept effort", () => {
@@ -226,7 +273,7 @@ describe("kept effort", () => {
 		const s = setup({ levels: { tier: 1, work: 1 } });
 		assert.equal(await s.call({ thinking: "high" }), undefined);
 		assert.deepEqual(lines(s), [
-			`model-router L1 no change · caller effort · p=0.90/0.90${JEV}`,
+			`model-router L1 middle model unset · caller effort · p=0.90/0.90${JEV}`,
 		]);
 	});
 });
@@ -357,12 +404,6 @@ describe("gates and skips", () => {
 		assert.ok(await s.call());
 	});
 
-	it("skips with neither model slot set", async () => {
-		const s = setup({ settings: { small_model: "", large_model: "" } });
-		assert.equal(await s.call(), undefined);
-		assert.deepEqual(lines(s), skippedLog("no small or large model"));
-	});
-
 	it("skips another agent with no key before the scope, so the key is the reason", async () => {
 		const s = setup({ settings: { api_key: "" } });
 		assert.equal(await s.call({ agentId: "writer" }), undefined);
@@ -410,26 +451,6 @@ describe("gates and skips", () => {
 		assert.deepEqual(lines(s), skippedLog("HTTP 401"));
 	});
 
-	it("skips when the picked slot is unset, and only then", async () => {
-		const small = setup({
-			levels: { tier: 0, work: 1 },
-			settings: { small_model: "" },
-		});
-		assert.equal(await small.call(), undefined);
-		assert.deepEqual(lines(small), skippedLog("small model unset"));
-		const large = setup({
-			levels: { tier: 2, work: 1 },
-			settings: { large_model: "" },
-		});
-		assert.equal(await large.call(), undefined);
-		assert.deepEqual(lines(large), skippedLog("large model unset"));
-		const level1 = setup({
-			levels: { tier: 1, work: 1 },
-			settings: { small_model: "", large_model: "x/y" },
-		});
-		assert.deepEqual(await level1.call(), { params: { thinking: "medium" } });
-	});
-
 	it("skips when the live config cannot be read", async () => {
 		const s = setup();
 		s.runtime.throwOn.add("config");
@@ -439,20 +460,6 @@ describe("gates and skips", () => {
 });
 
 describe("model checks", () => {
-	it("leaves the call alone when the model does not resolve", async () => {
-		const s = setup({ levels: { tier: 0, work: 1 } });
-		s.runtime.answers.resolved = { error: "not allowed" };
-		assert.equal(await s.call(), undefined);
-		assert.deepEqual(lines(s), skippedLog("small model unresolved"));
-	});
-
-	it("leaves the call alone when the credential reads false, for the large slot too", async () => {
-		const s = setup({ levels: { tier: 2, work: 1 } });
-		s.runtime.answers.credential = false;
-		assert.equal(await s.call(), undefined);
-		assert.deepEqual(lines(s), skippedLog("large model unresolved"));
-	});
-
 	it("checks for the requester with its agent directory", async () => {
 		const s = setup({ levels: { tier: 0, work: 1 } });
 		await s.call();
@@ -477,8 +484,30 @@ describe("model checks", () => {
 		assert.equal("agentDir" in (s.runtime.calls.credential[0] ?? {}), false);
 	});
 
-	it("skips the checks at level 1", async () => {
-		const s = setup({ levels: { tier: 1, work: 1 } });
+	it("checks only the slot the level picks", async () => {
+		for (const [tier, raw] of [
+			[0, "openai/small"],
+			[1, "openai/middle"],
+			[2, "openai/large"],
+		] as const) {
+			const s = setup({
+				levels: { tier, work: 1 },
+				settings: { middle_model: "openai/middle" },
+			});
+			await s.call();
+			assert.deepEqual(
+				s.runtime.calls.allowedRef.map((call) => call.raw),
+				[raw],
+			);
+			assert.equal(s.runtime.calls.credential.length, 1);
+		}
+	});
+
+	it("checks no slot that holds no model", async () => {
+		const s = setup({
+			levels: { tier: 1, work: 1 },
+			settings: { small_model: "", large_model: "" },
+		});
 		await s.call();
 		assert.equal(s.runtime.calls.allowedRef.length, 0);
 		assert.equal(s.runtime.calls.credential.length, 0);

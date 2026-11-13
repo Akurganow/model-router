@@ -1,0 +1,41 @@
+{
+	"description": "With no model in any slot the task is still scored and gets the effort.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "typesafe",
+		"keys": {
+			"typesafe": "typesafe-key"
+		},
+		"budgetMs": 8000,
+		"models": {
+			"small": null,
+			"middle": null,
+			"large": null
+		},
+		"keptEffort": null
+	},
+	"jev": [
+		{
+			"host": "api.typesafe.ai",
+			"reply": {
+				"levels": {
+					"tier": 2,
+					"work": 2
+				}
+			}
+		}
+	],
+	"response": {
+		"outcome": "route",
+		"slot": "large",
+		"effort": "high",
+		"line": "model-router L2 large model unset · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"unresolvedLine": null
+	},
+	"route": {
+		"api_mode": "chat_completions",
+		"reasoning_effort": "high",
+		"label": "model-router L2 large model unset · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+	}
+}

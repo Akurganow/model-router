@@ -1,0 +1,43 @@
+{
+	"description": "The middle tier routes to the middle model with the ladder effort.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "typesafe",
+		"keys": {
+			"typesafe": "typesafe-key"
+		},
+		"budgetMs": 8000,
+		"models": {
+			"small": "openai/small",
+			"middle": "openai/middle",
+			"large": "openai/large"
+		},
+		"keptEffort": null
+	},
+	"jev": [
+		{
+			"host": "api.typesafe.ai",
+			"reply": {
+				"levels": {
+					"tier": 1,
+					"work": 1
+				}
+			}
+		}
+	],
+	"response": {
+		"outcome": "route",
+		"slot": "middle",
+		"effort": "medium",
+		"line": "model-router L1 openai/middle · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"unresolvedLine": "model-router L1 middle model unresolved · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+	},
+	"route": {
+		"api_mode": "chat_completions",
+		"model": "middle-model",
+		"provider": "openrouter",
+		"reasoning_effort": "medium",
+		"label": "model-router L1 openai/middle · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+	}
+}

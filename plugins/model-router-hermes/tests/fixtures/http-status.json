@@ -4,11 +4,30 @@
 		"task": "Rename the helper in util.ts and run the tests.",
 		"context": "",
 		"provider": "typesafe",
-		"keys": { "typesafe": "typesafe-key" },
+		"keys": {
+			"typesafe": "typesafe-key"
+		},
 		"budgetMs": 8000,
-		"models": { "small": "openai/small", "large": "openai/large" },
+		"models": {
+			"small": "openai/small",
+			"large": "openai/large"
+		},
 		"keptEffort": null
 	},
-	"jev": [{ "host": "api.typesafe.ai", "reply": { "status": 401 } }],
-	"response": { "outcome": "skip", "line": "model-router skipped, HTTP 401" }
+	"jev": [
+		{
+			"host": "api.typesafe.ai",
+			"reply": {
+				"status": 401
+			}
+		}
+	],
+	"response": {
+		"outcome": "skip",
+		"line": "model-router skipped, HTTP 401"
+	},
+	"route": {
+		"api_mode": "chat_completions",
+		"label": "model-router skipped, HTTP 401"
+	}
 }

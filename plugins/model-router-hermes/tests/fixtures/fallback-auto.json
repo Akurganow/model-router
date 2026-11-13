@@ -4,19 +4,44 @@
 		"task": "Rename the helper in util.ts and run the tests.",
 		"context": "",
 		"provider": "auto",
-		"keys": { "typesafe": "typesafe-key", "openrouter": "openrouter-key" },
+		"keys": {
+			"typesafe": "typesafe-key",
+			"openrouter": "openrouter-key"
+		},
 		"budgetMs": 8000,
-		"models": { "small": "openai/small", "large": "openai/large" },
+		"models": {
+			"small": "openai/small",
+			"large": "openai/large"
+		},
 		"keptEffort": null
 	},
 	"jev": [
-		{ "host": "api.typesafe.ai", "reply": { "status": 500 } },
-		{ "host": "openrouter.ai", "reply": { "levels": { "tier": 1, "work": 0 } } }
+		{
+			"host": "api.typesafe.ai",
+			"reply": {
+				"status": 500
+			}
+		},
+		{
+			"host": "openrouter.ai",
+			"reply": {
+				"levels": {
+					"tier": 1,
+					"work": 0
+				}
+			}
+		}
 	],
 	"response": {
 		"outcome": "route",
-		"slot": null,
+		"slot": "middle",
 		"effort": "low",
-		"line": "model-router L1 no change · low · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok · via openrouter (typesafe HTTP 500)"
+		"line": "model-router L1 middle model unset · low · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok · via openrouter (typesafe HTTP 500)",
+		"unresolvedLine": null
+	},
+	"route": {
+		"api_mode": "chat_completions",
+		"reasoning_effort": "low",
+		"label": "model-router L1 middle model unset · low · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok · via openrouter (typesafe HTTP 500)"
 	}
 }
