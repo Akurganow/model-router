@@ -25,11 +25,30 @@ The plugin passes the address and the key with every request, so no environment 
 An environment variable can supply a key, and with it the account that receives the task text.
 Each key identifies your account to its provider.
 With no key for any allowed provider, every task reports `key unset`.
+A key with no model still scores: [A slot with no model](#a-slot-with-no-model) says what the plugin does then.
 
 ## The config tool
 
 The config tool reports `<provider> key: set` or `<provider> key: unset` for each provider the `provider` value allows.
 It never returns a key, its length or any part of it.
+In Oh My Pi, OpenClaw and Hermes Agent the tool can also print each model setting, as its README says: the configured value, or `unset`.
+It runs no check on a model, so a model the harness cannot run shows only in the routing line.
+
+## A slot with no model
+
+This section holds for Oh My Pi, OpenClaw and Hermes Agent.
+Each of them takes the model for a level from a slot: level 0 from `small`, level 1 from `middle` and level 2 from `large`.
+Each README names the harness setting of each slot.
+
+A slot is set when it names a model the harness can run.
+It is unset when it names no model, and unresolved when it names a model the harness cannot run.
+For an unset or unresolved slot, the task keeps the model the harness gives it.
+The plugin still sets the effort, unless the task or the user's settings set one.
+The routing line names the slot and its state in place of a model, as in `L1 middle model unset` or `L2 large model unresolved`.
+
+No gate checks the models, and no task skips because a slot has no model.
+So with a key set and no model set, the plugin still sends each routed task to the provider for scoring and sets the effort.
+A check of the picked slot that does not finish within the routing limit skips the task with `timeout`.
 
 ## The request
 

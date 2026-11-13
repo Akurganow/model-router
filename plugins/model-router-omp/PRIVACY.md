@@ -2,7 +2,7 @@
 
 model-router for Oh My Pi is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-12.
+2026-11-13.
 
 ## Where requests go
 
@@ -98,7 +98,10 @@ that declare no model.
 ## Requests and billing
 
 The plugin scores each routed item on its own. An item a closed gate stops is
-not routed and sends nothing. An item that starts after the batch's scoring
+not routed and sends nothing. No gate checks the model roles: with a key set
+and no role set, the plugin still sends each routed item to the provider for
+scoring and sets the effort, as
+[Models](README.md#models) says. An item that starts after the batch's scoring
 limit has passed sends nothing either, so a batch can send fewer requests than it
 has routed items.
 
@@ -122,7 +125,7 @@ The providers' privacy policies are linked at
 ## What the plugin stores
 
 The plugin keeps no file of its own. In memory it holds up to 64 routing
-decisions, each a level, a model role, an effort and its log line. A decision leaves when its
+decisions, each a level, an effort and its log line. A decision leaves when its
 subagent spawns, when its task call ends before omp reports the subagent's id,
 or when newer decisions push it out.
 
@@ -166,7 +169,7 @@ whether your own agent replaced a bundled one or sets its own model.
 `modelRoles`, `task.maxEffort` and `task.enableEffort` also decide whether it
 keeps your effort or caps its own. As each routed subagent starts, it reads the
 model patterns and the model role omp sends with the spawn, and the item's
-`effort`. It also checks whether the `@smol` and `@slow` roles
+`effort`. It also checks whether the `smol`, `middle` and `slow` roles
 resolve to a model. For each batch it also reads omp's
 `extensionHandlers.toolCallTimeoutMs` setting, to fit its scoring time into
 it. Nothing from these leaves your machine, except the

@@ -9,7 +9,7 @@ description: >
 
 # model-router
 
-model-router scores each eligible batch item through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it gives the agent the `smol` role for level 0, or the `slow` role for level 2, with a thinking level from the work question. Level 1 keeps the agent's model and sets the thinking level alone. An effort the item or the user's settings set is kept, as the [README](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#efforts-the-plugin-keeps) lists.
+model-router scores each eligible batch item through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it gives the agent the `smol` role for level 0, the `middle` role for level 1 or the `slow` role for level 2, with a thinking level from the work question. A level whose role is not set in `modelRoles`, or does not resolve, keeps the agent's model and sets the thinking level alone. The line then names the slot, such as `L1 middle model unset`. An effort the item or the user's settings set is kept, as the [README](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#efforts-the-plugin-keeps) lists.
 
 - The batch line starts with `model-router`. It shows each decision, or the reason an item ran unrouted.
 - The `scope` setting decides which agents the plugin routes. The [README](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#scope) lists them and the skip reasons.
@@ -30,7 +30,7 @@ Use a flagship model only when the user opted in. Do not change a role or a sett
 
 ## Re-dispatch
 
-Under the default `core` scope, a named agent is not routed, so the re-dispatch keeps the agent's model. Under `extended`, the plugin may give the agent `@smol` or `@slow` and a thinking level. Read the batch line after the call. Tell the user when it lowered the stronger agent.
+Under the default `core` scope, a named agent is not routed, so the re-dispatch keeps the agent's model. Under `extended`, the plugin may give the agent `@smol`, `@middle` or `@slow` and a thinking level. Read the batch line after the call. Tell the user when it lowered the stronger agent.
 
 - Set `agent` on the item to the stronger agent.
 - Do not set `agent` to `task`. Routing would score the item again and may pick the same small model.
@@ -57,4 +57,4 @@ Replace `stronger-agent` with an agent that the task tool lists.
 
 Disable the model-router plugin in omp, then restart omp. To turn routing back on, enable the plugin and restart.
 
-To find the settings that turn routing off, or to change the options, run the `model-router-setup` skill. To change one option, run `/model-router:provider` or `/model-router:scope`. The `smol` and `slow` roles are omp settings that the user changes.
+To find the settings that turn routing off, or to change the options, run the `model-router-setup` skill. To change one option, run `/model-router:provider` or `/model-router:scope`. The `smol`, `middle` and `slow` roles are omp settings that the user changes.

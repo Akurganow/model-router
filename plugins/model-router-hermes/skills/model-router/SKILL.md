@@ -7,9 +7,9 @@ description: Use to pick a model or effort for a delegated task by hand, when a 
 
 model-router is the `delegate_task` backend. It scores each task through Jev, on TypeSafe or OpenRouter as the `provider` setting allows.
 
-- Level 0 gives the task the person's `small_model`, and level 2 their `large_model`. Level 1 keeps the model Hermes would give it.
+- Level 0 gives the task the person's `small_model`, level 1 their `middle_model` and level 2 their `large_model`. A level whose slot is unset, or fails the plugin's offline check, keeps the model Hermes would give it.
 - It sets `reasoning_effort` from a fixed ladder: `low`, `medium`, `high` or `xhigh`.
-- Each result's `route.label` reads `model-router L<level> <model or no change> · <effort> · …`, or `model-router skipped, <reason>`.
+- Each result's `route.label` reads `model-router L<level> <model or slot state> · <effort> · …`, or `model-router skipped, <reason>`. The slot state is `<slot> model unset` or `<slot> model unresolved`.
 - The person's `delegation` section wins: its `reasoning_effort` beats any effort, and its `model`, `provider`, `base_url` or `api_key` beats any level.
 
 ## Task parameters
@@ -18,7 +18,7 @@ Each `tasks[]` item takes three parameters of this plugin:
 
 - `description`: one line that says what the task is. Set it on every task. Jev reads it with the goal.
 - `reasoning_effort`: one of `low`, `medium`, `high` or `xhigh`. The child runs at it, and the plugin still picks the model.
-- `level`: `0`, `1` or `2`. The child runs on that level's model, and Jev scores nothing. Such a task carries no `route.label` when its model is set, and a skip label when the pin fails.
+- `level`: `0`, `1` or `2`. The child runs on that level's model, and Jev scores nothing. Such a task carries no `route.label` when its model is set. When the slot has no usable model, it runs on Hermes's model with the label `model-router L<level> <slot> model unset` or `unresolved`.
 
 Leave `reasoning_effort` and `level` unset on a first dispatch. Set them only to escalate.
 

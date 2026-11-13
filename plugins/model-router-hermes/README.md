@@ -6,9 +6,9 @@ A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks
 
 - It is a delegation backend named `model-router`. It scores each `delegate_task` task through Jev, using the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - It routes the tasks of `delegate_task` only. The main turn is never routed.
-- Level 0 gives the task your `small_model`. Level 2 gives it your `large_model`. Level 1 leaves the model alone.
+- Level 0 gives the task your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A level whose slot has no model Hermes can run keeps Hermes's model and gets the effort alone, as [Models](#models) says.
 - It sets the effort from a fixed ladder, as [Routing](#routing) says.
-- It sets only a model you assigned. It proposes none, and it never sets a model that Hermes cannot resolve offline with a credential that needs no network refresh.
+- It sets only a model you assigned, and never a model that Hermes cannot resolve offline with a credential that needs no network refresh.
 - It never overrides a model you chose, nor an effort the `delegation` section sets. [Precedence](#precedence) gives the whole order for the model and the effort.
 - The delegating model can describe each task, and can set a task's effort or level to escalate it. [Parameters of `delegate_task`](#parameters-of-delegate_task) lists them.
 - It starts Hermes's own Node once per task to run the scoring step. [Node](#node) says how.
@@ -37,7 +37,7 @@ Routing needs the plugin enabled, the backend on, a key and a model in a slot. T
 
 1. A backend change applies from the next session. In a running session, type `/delegation model-router --now`.
 2. Add a [key](#keys).
-3. Assign `small_model` and `large_model`, as [Models](#models) says.
+3. Assign `small_model`, `middle_model` and `large_model`, as [Models](#models) says.
 4. Pick the [provider](#provider) if the default does not fit.
 5. Delegate one small task, and read its [label](#the-label-and-the-log).
 
@@ -79,17 +79,18 @@ Switch it with `/model-router-provider <value>`. The plugin reads the setting at
 
 `/model-router-provider [auto|openrouter-first|typesafe|openrouter]` shows or changes the provider. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. The command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, it prints `provider unchanged: only a local session can change it` and the current value.
 
-The read-only `model_router_config` tool returns the `provider` line, the two model lines and the key lines. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
+The read-only `model_router_config` tool returns the `provider` line, the three model lines and the key lines. A model line shows the slot's provider and model as you set them, or `unset`. The tool runs no check on it. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
 
 ```text
 provider: auto (typesafe, then openrouter)
 small_model: openrouter <model>
+middle_model: unset
 large_model: unset
 typesafe key: set
 openrouter key: unset
 ```
 
-Given a setting name, the tool returns how to change that setting. It writes nothing. The names are `provider`, `typesafe_key`, `openrouter_key`, `small_model` and `large_model`.
+Given a setting name, the tool returns how to change that setting. It writes nothing. The names are `provider`, `typesafe_key`, `openrouter_key`, `small_model`, `middle_model` and `large_model`.
 
 [Facts behind this section](../../docs/clients.md#hermes-registration-and-settings)
 
@@ -99,21 +100,24 @@ Each slot is a mapping with two fields. `provider` is a Hermes provider id. `mod
 
 ```bash
 hermes config set plugins.entries.model-router-hermes.settings.small_model '{"provider": "<provider>", "model": "<model>"}'
+hermes config set plugins.entries.model-router-hermes.settings.middle_model '{"provider": "<provider>", "model": "<model>"}'
 hermes config set plugins.entries.model-router-hermes.settings.large_model '{"provider": "<provider>", "model": "<model>"}'
 ```
 
-A slot with no `model` counts as unset. You can fill one slot. A level whose slot is empty skips with `small model unset` or `large model unset`.
+A slot with no `model` counts as unset. You can fill any of the slots.
 
-Before it sets a slot, the plugin checks it offline. The slot must pass all of these:
+Before it sets a slot, the plugin checks the slot the level picks, offline. The slot must pass all of these:
 
 - The slot names a `provider` and a `model`.
 - The provider keeps its credentials offline. That means one of two cases. The provider's credentials do not refresh over the network, and Hermes either lists the provider with the auth type `api_key` or resolves it outside its provider registry, as it does `openrouter`. Or the provider is `anthropic`, `ANTHROPIC_API_KEY` is set, and neither `ANTHROPIC_TOKEN` nor `CLAUDE_CODE_OAUTH_TOKEN` is.
 - Hermes resolves the provider with credentials and installs no plugin to do it.
 - Hermes's offline catalogue lists the model for that provider.
 
-A slot that fails any check skips with `small model unresolved` or `large model unresolved`. A provider that signs in with OAuth reads as unresolved, and so does an `anthropic` slot that would use Claude Code's credentials. Custom and local providers read as unresolved too, because the catalogue lists no models for them. The check makes no network request.
+A slot that fails any check is unresolved. A provider that signs in with OAuth reads as unresolved, and so does an `anthropic` slot that would use Claude Code's credentials. Custom and local providers read as unresolved too, because the catalogue lists no models for them. The check makes no network request.
 
 The plugin does not check a model that the catalogue lists and the provider rejects at run time. The child then fails on the model. [Fails open](PRIVACY.md#fails-open) says so.
+
+An unset or unresolved slot keeps the route Hermes would give the task. The plugin still sets the effort unless you set one, and the line names the slot: `L1 middle model unset` or `L2 large model unresolved`. [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) has the rule all three plugins share. With a key set and no model set, the plugin still sends each routed task to the provider for scoring and sets the effort.
 
 [Facts behind this section](../../docs/clients.md#hermes-model-and-credential-checks)
 
@@ -122,10 +126,10 @@ The plugin does not check a model that the catalogue lists and the provider reje
 | Level | Judgment the task needs | Model the plugin sets |
 | --- | --- | --- |
 | 0 | Lookup or transcription | `small_model` |
-| 1 | Bounded judgment | none, no change |
+| 1 | Bounded judgment | `middle_model` |
 | 2 | Open judgment | `large_model` |
 
-The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors. At level 1 the child runs on the route Hermes would give it.
+The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors. A level whose slot is unset or unresolved runs the child on the route Hermes would give it, as [Models](#models) says.
 
 The work question picks the effort. The ladder is the one in the [Effort section](../model-router/README.md#effort), and the plugin sets `reasoning_effort` to one of `low`, `medium`, `high` or `xhigh`. It never sets `max`, `ultra`, `minimal` or `none`. The small model's row starts at `medium`. [model-choice.md](../model-router/docs/model-choice.md#the-work-question-and-the-arch) gives the reasons. Hermes maps an effort that the child's model does not take to the nearest weaker one it takes.
 
@@ -138,7 +142,7 @@ Your `delegation` section outranks the delegating model, and both outrank Jev. F
 | Rank | Model | Effort |
 | --- | --- | --- |
 | 1 | `model`, `provider`, `base_url` or `api_key` set in the `delegation` section. The plugin changes no model, and the line shows `subagent model set`. | A non-empty `delegation.reasoning_effort`. The plugin sets no effort, and the line shows `config effort`. |
-| 2 | The task's `level`. The task takes that level's model, unscored, and carries no line. | The task's `reasoning_effort`. Every route of the task carries it, a skipped one too, and a routed line shows `caller effort`. |
+| 2 | The task's `level`. The task takes that level's model, unscored, and carries no line while that model is set. | The task's `reasoning_effort`. Every route of the task carries it, a skipped one too, and a routed line shows `caller effort`. |
 | 3 | The level Jev picks. | The ladder's effort for that level. |
 | 4 | | None, for a task with a `level` and no effort above. Hermes gives it the parent's level. |
 
@@ -156,19 +160,19 @@ The plugin adds three parameters to each task of `delegate_task`. Hermes shows t
 | --- | --- | --- |
 | `description` | One line of text | Masks token-shaped strings as in the task text, turns each run of whitespace into one space, cuts it to 500 characters and sends it to Jev as the request's description. A missing, blank or non-text value sends an empty description. |
 | `reasoning_effort` | `low`, `medium`, `high`, `xhigh` | Keeps this effort, as rank 2 of [Precedence](#precedence) says. |
-| `level` | `0`, `1`, `2` | Asks Jev nothing. Level 0 sets your `small_model`, level 2 your `large_model`, and level 1 keeps Hermes's own route. [Precedence](#precedence) says what outranks it. |
+| `level` | `0`, `1`, `2` | Asks Jev nothing. Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. [Precedence](#precedence) says what outranks it. |
 
 Hermes refuses a task whose `reasoning_effort` or `level` is off these lists, before the plugin sees it. The plugin reads a `level` of `true` or `false` as unset.
 
 A task that sets `level`:
 
 - Meets one gate, `subagent model set`. It needs no key and no Node.
-- Gets the slot checks of [Models](#models). An empty or unresolved slot skips with its reason, as a scored task does.
+- Gets the slot check of [Models](#models). An unset or unresolved slot runs the task on Hermes's own route, with the label `model-router L<level> <slot> model unset` or `model-router L<level> <slot> model unresolved`. A check that does not finish in time skips the task with `timeout`.
 - Carries no `route.label` and writes no log line when its model is set. The other plugins print no line for a call that names a model either. The task's result still names the model and provider it ran on.
 
 The delegating model should leave `reasoning_effort` and `level` unset on a first dispatch. The escalation skill, `model-router-hermes:model-router`, says when to set them. [The skill](skills/model-router/SKILL.md) follows the escalation steps of the other plugins.
 
-The parameters are part of the session's tool list. After an install or an update, they apply from the next session, or at once after `/delegation model-router --now`.
+The parameters are part of the session's tool list. After an install or an update, they apply from the next session, or at once after `/delegation model-router --now`. The tool's description and the `level` text sit in Hermes's cached prompt prefix, so an update that changes them makes the prompt cache miss once.
 
 [Facts behind this section](../../docs/clients.md#hermes-task-parameters)
 
@@ -182,21 +186,18 @@ Hermes passes this backend a task's `goal`, `context` and index, and the paramet
 
 ### The gates
 
-Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets only the third.
+Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets only the second.
 
 1. `key unset`: no provider the `provider` setting allows has a key.
-2. `no small or large model`: neither slot is set.
-3. `subagent model set`: the `delegation` section sets `model`, `provider`, `base_url` or `api_key`. Hermes's own choice decides.
-4. `node not found`: Hermes has no Node. [Node](#node) says why.
-5. `timeout`: the routing limit was used up before this task started. [Sequential routing and the shared budget](#sequential-routing-and-the-shared-budget) says when.
+2. `subagent model set`: the `delegation` section sets `model`, `provider`, `base_url` or `api_key`. Hermes's own choice decides.
+3. `node not found`: Hermes has no Node. [Node](#node) says why.
+4. `timeout`: the routing limit was used up before this task started. [Sequential routing and the shared budget](#sequential-routing-and-the-shared-budget) says when.
 
 ### After the gates
 
 A scored task can still skip:
 
-- `small model unset` or `large model unset`: the level picked a slot you left empty.
-- `small model unresolved` or `large model unresolved`: the slot fails the [offline checks](#models).
-- `timeout`: Jev did not answer within the budget, or the offline checks did not finish within the time left.
+- `timeout`: Jev did not answer within the budget, or the offline check of the picked slot did not finish within the time left.
 - `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer at all, or the Node step failed. `failed` also covers any error in the plugin. After two providers, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 [Facts behind this section](../../docs/clients.md#hermes-routing-and-refusals)
@@ -229,11 +230,11 @@ The plugin puts one line per routed or skipped task in the task's `route.label`.
 
 ```text
 model-router L0 <model> · medium · p=0.91/0.84 · jev jev-1.14.0 · 812/9 tok
-model-router L1 no change · config effort · p=0.62/0.70
+model-router L1 middle model unset · config effort · p=0.62/0.70
 model-router skipped, key unset
 ```
 
-A routed line reads `L<level> <model or no change> · <effort or kept label> · p=<tier>/<work>`. The kept label is `config effort` or `caller effort`. The model is the `model` field of the slot. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else it holds.
+A routed line reads `L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`. The kept label is `config effort` or `caller effort`. The model is the `model` field of the slot. The slot state is `<slot> model unset` or `<slot> model unresolved`, as [Models](#models) says. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else it holds.
 
 A skipped line reads `skipped, <reason>`. [Which tasks are routed](#which-tasks-are-routed) lists the reasons.
 

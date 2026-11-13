@@ -429,6 +429,13 @@ The running facts used omp from npm, a probe extension, a throwaway agent folder
   (running: omp 18.12.6 and 18.18.9, 2026-11-13;
   source: [`extensibility/extensions/model-api.ts` L19–L38 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/model-api.ts#L19-L38), [the same lines at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/model-api.ts#L19-L38),
   [`config/model-registry.ts` L3093 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-registry.ts#L3093), [L3475–L3509 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-registry.ts#L3475-L3509))
+- A `smol` or `slow` role that `modelRoles` does not name resolves through an explicitly configured `default` model before omp's built-in priority list.
+  With `smol` unset, `ctx.models.resolve("@smol")` gave the `default` model.
+  (running: omp 18.12.6 and 18.18.9, 2026-11-12;
+  source: [`config/model-resolver.ts` L1102–L1104 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-resolver.ts#L1102-L1104), [L1168–L1170 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-resolver.ts#L1168-L1170))
+- A child's retry fallback chain is `retry.fallbackChains` at the spawn's own model role, kept from before the role's expansion, and otherwise at `default`.
+  A role that a spawn hook returns does not change the spawn's role, so `retry.fallbackChains.middle` does not reach a spawn the plugin gives `@middle`.
+  (source: [`task/executor.ts` L285–L326](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/executor.ts#L285-L326) and [L4414–L4423 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/executor.ts#L4414-L4423), [L319–L353](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/executor.ts#L319-L353) and [L4733–L4741 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/executor.ts#L4733-L4741), not run)
 
 ### omp thinking levels
 
@@ -614,6 +621,9 @@ Every running fact names its OpenClaw version and the date it ran.
   `id` is the key in `plugins.entries.<id>`.
   `uiHints` carries labels and sensitivity hints, and `skills` lists skill folders relative to the plugin root.
   (documentation: [Plugin manifest, Top-level field reference](https://docs.openclaw.ai/plugins/manifest#top-level-field-reference))
+- OpenClaw validates a plugin's config against the manifest's `configSchema` when it reads or writes the config and before the plugin loads.
+  This plugin's schema sets `additionalProperties: false`, so a setting the manifest does not declare fails validation.
+  (documentation: [Plugin manifest, JSON Schema requirements](https://docs.openclaw.ai/plugins/manifest#json-schema-requirements))
 - `activation.onStartup` set to `true` imports the plugin when the Gateway starts.
   (documentation: [Manifest capabilities, activation reference](https://docs.openclaw.ai/plugins/manifest/capabilities#activation-reference))
 - `contracts.tools` lists the tool names a plugin owns, and a runtime `api.registerTool` call must match it.
