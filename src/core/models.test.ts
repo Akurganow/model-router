@@ -122,14 +122,23 @@ test("listing drops a model whose id fails the pattern", () => {
 		"-a",
 		"a b",
 		"a/b(c)",
+		"~a b",
 		long,
-		"Az0._:@/+-",
+		"Az0._:@/+-~",
+		"~deepseek/deepseek-v4-flash-latest",
+		"openrouter/~deepseek/deepseek-v4-flash-latest",
 	];
 	const listed = ids.map((id) => ({ id }));
 	listed.push({ id: 7 } as unknown as { id: string });
 	assert.equal(
 		listing(listed),
-		[`models the person can run: 2`, `- ${long}`, "- Az0._:@/+-"].join("\n"),
+		[
+			"models the person can run: 4",
+			`- ${long}`,
+			"- Az0._:@/+-~",
+			"- ~deepseek/deepseek-v4-flash-latest",
+			"- openrouter/~deepseek/deepseek-v4-flash-latest",
+		].join("\n"),
 	);
 });
 

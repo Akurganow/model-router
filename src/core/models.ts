@@ -56,7 +56,7 @@ const MODELS = "models";
 const MAX_CANDIDATES = 4;
 const SHOW_ALL = "Show the whole list";
 // A listed id is untrusted text that reaches the agent and the dialog.
-const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@/+-]{0,99}$/;
+const ID_PATTERN = /^[A-Za-z0-9~][A-Za-z0-9._:@/+~-]{0,99}$/;
 
 const significant = new Intl.NumberFormat("en-US", {
 	maximumSignificantDigits: 3,
