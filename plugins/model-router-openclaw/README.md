@@ -155,11 +155,11 @@ The setup skill's Models step reads the list and proposes up to four models per 
 
 The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors.
 
-After scoring, the plugin checks the slot the level picks. The slot is unset when it names no model. It is unresolved when OpenClaw cannot resolve its string for the target agent, or holds no credential for its provider. [Choosing models](#choosing-models) names a case. A model from [the list](#list-the-models) can still read unresolved: the list is OpenClaw's verdict, and the slot check is the plugin's. The check makes no network request.
+After scoring, the plugin checks the slot the level picks. The slot is unset when it names no model. It is unresolved when OpenClaw cannot resolve its string for the target agent, or holds no credential for its provider. [Choosing models](#choosing-models) names a case. A model from [the list](#list-the-models) can still read unresolved: the list is OpenClaw's verdict, and the slot check is the plugin's. A model of a local provider with no key is listed with a runtime, and reads unresolved, because the slot check needs a credential for its provider. [OpenClaw model list](../../docs/clients.md#openclaw-model-list) has the run. The check makes no network request.
 
 An unset or unresolved slot keeps the model OpenClaw would give the spawn, and the line names the slot: `L1 middle model unset` or `L2 large model unresolved`. The plugin still sets the effort, except where [Efforts the plugin keeps](#efforts-the-plugin-keeps) says otherwise. [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) has the rule the omp, OpenClaw and Hermes plugins share.
 
-Before you downgrade to a release without `middle_model`, remove the `middle_model` setting. OpenClaw checks the plugin's config against the manifest's closed schema, so it rejects a setting the older manifest lacks. [OpenClaw package files](../../docs/clients.md#openclaw-package-files) has the source.
+Before you downgrade to a release without `middle_model`, remove the `middle_model` setting. OpenClaw checks the plugin's config against the manifest's closed schema, so it rejects a setting the older manifest lacks. After such a downgrade, the Gateway does not start until you remove the setting. `openclaw config validate` names the setting. [OpenClaw package files](../../docs/clients.md#openclaw-package-files) has the runs.
 
 The work question picks the effort. The plugin sets `thinking` to one of these values and to no other:
 

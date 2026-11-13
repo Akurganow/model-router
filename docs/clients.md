@@ -626,6 +626,11 @@ Every running fact names its OpenClaw version and the date it ran.
 - OpenClaw validates a plugin's config against the manifest's `configSchema` when it reads or writes the config and before the plugin loads.
   This plugin's schema sets `additionalProperties: false`, so a setting the manifest does not declare fails validation.
   (documentation: [Plugin manifest, JSON Schema requirements](https://docs.openclaw.ai/plugins/manifest#json-schema-requirements))
+  `openclaw config set plugins.entries.model-router-openclaw.config.unknown_model x/y` exited 1 and saved nothing.
+  It printed `Config change declined. No settings were saved.` and `Config validation failed: plugins.entries.model-router-openclaw.config: invalid config: must not have additional properties: "unknown_model"`.
+  With that key written into the config file by hand, `openclaw gateway run` refused to start.
+  `openclaw config validate` named the same cause and offered `openclaw doctor --fix`.
+  (running: OpenClaw 2026.11.1 and 2026.10.10, 2026-11-13, the built plugin loaded through `plugins.load.paths` on a copy of the configuration; both versions alike)
 - `activation.onStartup` set to `true` imports the plugin when the Gateway starts.
   (documentation: [Manifest capabilities, activation reference](https://docs.openclaw.ai/plugins/manifest/capabilities#activation-reference))
 - `contracts.tools` lists the tool names a plugin owns, and a runtime `api.registerTool` call must match it.
