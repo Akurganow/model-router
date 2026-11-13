@@ -252,6 +252,23 @@ test("the live config is read before the plugin config, and the variable last", 
 	]);
 });
 
+test("openrouter-first looks up the OpenRouter key before the TypeSafe key", () => {
+	const trace: string[] = [];
+	const keys = readKeys(
+		live(traced(trace, {})),
+		undefined,
+		"openrouter-first",
+		tracedEnv(trace, ENV),
+	);
+	assert.deepEqual(keys, { openrouter: "env-or-key", typesafe: "env-ts-key" });
+	assert.deepEqual(trace, [
+		"field openrouter_api_key",
+		`env ${KEY_VARIABLES.openrouter}`,
+		"field api_key",
+		`env ${KEY_VARIABLES.typesafe}`,
+	]);
+});
+
 test("a key in the live config stops the lookup before the plugin config", () => {
 	const trace: string[] = [];
 	const keys = readKeys(
