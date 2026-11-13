@@ -80,18 +80,32 @@ test("listing words one price alone, fractions and a free model", () => {
 			{ id: "p/in", input: 0.0434 },
 			{ id: "p/out", output: 14, context: 1048576 },
 			{ id: "p/free", input: 0, output: 0, context: 131072 },
+			{ id: "p/big", input: 1234567 },
+			{ id: "p/round", input: 999999, context: 999999 },
+			{ id: "p/tiny", input: 1e-7 },
 		]),
 		[
-			"models the person can run: 3",
+			"models the person can run: 6",
 			"- p/in ($0.0434 in per 1M tokens)",
 			"- p/out ($14 out per 1M tokens, 1.05M context)",
 			"- p/free ($0 in, $0 out per 1M tokens, 131K context)",
+			"- p/big ($1230000 in per 1M tokens)",
+			"- p/round ($1000000 in per 1M tokens, 1M context)",
+			"- p/tiny ($0.0000001 in per 1M tokens)",
 		].join("\n"),
 	);
 });
 
 test("listing drops a number that is not finite or is negative and keeps the id", () => {
-	const bad: unknown[] = [Number.NaN, Number.POSITIVE_INFINITY, -1, "1", null];
+	const bad: unknown[] = [
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+		-1,
+		"1",
+		"",
+		"   ",
+		null,
+	];
 	for (const value of bad) {
 		const model = {
 			id: "p/m",
@@ -145,7 +159,8 @@ test("listing drops a model whose id fails the pattern", () => {
 		"openrouter/~deepseek/deepseek-v4-flash-latest",
 	];
 	const listed = ids.map((id) => ({ id }));
-	listed.push({ id: 7 } as unknown as { id: string });
+	for (const id of [7, null, undefined, "   "])
+		listed.push({ id } as unknown as { id: string });
 	assert.equal(
 		listing(listed),
 		[
@@ -171,7 +186,15 @@ test("runModels returns undefined for any other setting and reads nothing", asyn
 
 test("runModels lists the models for the models setting", async () => {
 	const { port } = fakePort();
-	assert.equal(await runModels(port, { setting: "models" }), listing(LISTED));
+	assert.equal(
+		await runModels(port, { setting: "models" }),
+		[
+			"models the person can run: 3",
+			"- a/small ($1 in, $5 out per 1M tokens, 200K context)",
+			"- a/middle (1M context)",
+			"- a/large",
+		].join("\n"),
+	);
 	const { port: empty } = fakePort({ list: async () => [] });
 	assert.equal(
 		await runModels(empty, { setting: "models" }),
@@ -269,13 +292,22 @@ test("the question names an unset slot", async () => {
 });
 
 test("the question names the configured value of a set slot", async () => {
+	const configured: Readonly<Record<Slot, string | undefined>> = {
+		small: "a/small",
+		middle: undefined,
+		large: "a/large",
+	};
 	const { port, calls } = fakePort({
-		writer: { current: async () => "a/large" },
+		writer: { current: async (slot) => configured[slot] },
 	});
+	await runModels(port, { setting: "small_model" });
 	await runModels(port, { setting: "large_model" });
-	assert.equal(
-		calls.asked[0]?.question,
-		"Which model should the large level run? large_model is a/large now.",
+	assert.deepEqual(
+		calls.asked.map((asked) => asked.question),
+		[
+			"Which model should the small level run? small_model is a/small now.",
+			"Which model should the large level run? large_model is a/large now.",
+		],
 	);
 });
 
@@ -310,6 +342,24 @@ test("with no valid candidate the one dialog offers the whole list", async () =>
 		);
 	}
 });
+test("a candidate that is a label, not an id, is not valid", async () => {
+	const { port, calls } = fakePort();
+	await runModels(port, {
+		setting: "small_model",
+		candidates: ["a/small - $1 in, $5 out per 1M tokens, 200K context"],
+	});
+	assert.deepEqual(
+		calls.asked.map((asked) => asked.options),
+		[
+			[
+				"a/small - $1 in, $5 out per 1M tokens, 200K context",
+				"a/middle - 1M context",
+				"a/large",
+			],
+		],
+	);
+});
+
 test("with no valid candidate the whole-list entry is not an offered answer", async () => {
 	const { port, calls } = fakePort({ answers: ["Show the whole list"] });
 	assert.equal(
@@ -434,6 +484,10 @@ test("an answer outside the options writes nothing and is never echoed", async (
 		["secret-text"],
 		["Show the whole list", "x/unlisted"],
 		["Show the whole list", "Show the whole list"],
+		[""],
+		["a/larg"],
+		[" a/large"],
+		["A/LARGE"],
 	]) {
 		const { port, calls } = fakePort({ answers });
 		const text = await runModels(port, {
