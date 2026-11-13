@@ -48,7 +48,7 @@ Routing needs a key. The models in the slots decide what each level runs on. The
    openclaw config set plugins.entries.model-router-openclaw.config.large_model <provider/model>
    ```
 
-   Pick models of a provider that has an API key. [Choosing models](#choosing-models) has more. The plugin has no command for the models.
+   [Choosing models](#choosing-models) has more. The plugin has no command for the models.
 2. Add a [key](#keys).
 3. Pick the [provider](#provider) and the [scope](#scope) if the defaults do not fit.
 4. Watch the Gateway log with `openclaw logs --follow --plain`, and start a subagent. [The log line](#the-log-line) shows the decision.
@@ -252,7 +252,7 @@ A skipped line reads `skipped, <reason>`. [Which spawns are routed](#which-spawn
 
 ## Choosing models
 
-- **Sandboxed children.** OpenClaw does not sandbox a CLI backend. A child that must run sandboxed fails with a CLI-backend model. The slots take API-key models.
+- **Sandboxed children.** OpenClaw does not sandbox a CLI backend. A child that must run sandboxed fails with a CLI-backend model.
 - **Structured results.** A spawn that sets `outputSchema` runs a collector child, which needs tools. Assign tool-capable models to every slot.
 - **Thinking.** The ladder sets `thinking` on the child. A model that keeps thinking off by default thinks when routing sets it.
 - **An effort the model lacks.** OpenClaw rejects a spawn's `thinking` only when it names no known effort. It clamps a known effort the model does not support, such as `xhigh`, to a supported one at run time and shows a notice.
