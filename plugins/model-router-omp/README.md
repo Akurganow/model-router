@@ -140,6 +140,8 @@ The line names the role while it is set, such as `L1 @middle`, and the slot whil
 
 omp ships no `middle` role. `modelRoles` accepts any role name, so a `middle` role you add is used. [omp model roles](../../docs/clients.md#omp-model-roles) has the sources.
 
+You set a role in omp, not in the plugin. The Roles view of `/models` names `smol` Fast and `slow` Thinking, and its `+ New role…` row adds `middle`. The roles also live under `modelRoles` in omp's `config.yml`. A value is a model selector such as `provider/modelId`, and may end in a thinking level such as `:low`. [omp model roles](../../docs/clients.md#omp-model-roles) has the sources.
+
 A role is set when `modelRoles` names it and omp resolves it. A role that `modelRoles` does not name is unset, even when omp falls back to your `default` model or its built-in list. So levels 0 and 2 keep the agent's model until you set the `smol` and `slow` roles.
 
 A role that `modelRoles` names is unresolved when omp's model resolution finds no model for it. omp resolves only against the models it can use, so a model of a built-in provider with no credential does not resolve. A model omp does not list does not resolve either. [omp model roles](../../docs/clients.md#omp-model-roles) has the sources.
