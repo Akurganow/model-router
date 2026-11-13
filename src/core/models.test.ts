@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
 	CANDIDATES_DESCRIPTION,
-	isModelSetting,
 	type Listed,
 	listing,
 	type ModelPort,
@@ -112,6 +111,22 @@ test("listing drops a number that is not finite or is negative and keeps the id"
 	);
 });
 
+test("listing prints a negative zero as zero", () => {
+	assert.equal(
+		listing([{ id: "p/z", input: -0, output: -0, context: -0 }]),
+		"models the person can run: 1\n- p/z ($0 in, $0 out per 1M tokens, 0 context)",
+	);
+});
+
+test("listing drops an entry that is not an object", () => {
+	for (const entry of [null, undefined, "a/b"])
+		assert.equal(
+			listing([entry, { id: "a/b" }] as unknown as Listed[]),
+			"models the person can run: 1\n- a/b",
+			String(entry),
+		);
+});
+
 test("listing drops a model whose id fails the pattern", () => {
 	const long = `a${"b".repeat(99)}`;
 	assert.equal(long.length, 100);
@@ -145,23 +160,6 @@ test("listing drops a model whose id fails the pattern", () => {
 
 test("listing an empty list gives the header alone", () => {
 	assert.equal(listing([]), "models the person can run: 0");
-});
-
-test("isModelSetting knows models and the three slot settings only", () => {
-	for (const name of ["models", "small_model", "middle_model", "large_model"])
-		assert.equal(isModelSetting(name), true, name);
-	for (const other of [
-		"provider",
-		"model",
-		"models ",
-		"middle",
-		"",
-		"   ",
-		null,
-		undefined,
-		1,
-	])
-		assert.equal(isModelSetting(other), false, String(other));
 });
 
 test("runModels returns undefined for any other setting and reads nothing", async () => {
@@ -231,6 +229,23 @@ test("a refusal by authorize ends the flow before the list is read", async () =>
 	);
 	assert.equal(calls.listed, 0);
 	assert.deepEqual(calls.current, []);
+	assert.deepEqual(calls.asked, []);
+	assert.deepEqual(calls.written, []);
+});
+
+test("an authorize that throws ends the flow before the list is read", async () => {
+	const { port, calls } = fakePort({
+		writer: {
+			authorize: () => {
+				throw new Error("owner check failed");
+			},
+		},
+	});
+	assert.equal(
+		await runModels(port, { setting: "small_model", candidates: ["a/small"] }),
+		"small_model unchanged: owner check failed",
+	);
+	assert.equal(calls.listed, 0);
 	assert.deepEqual(calls.asked, []);
 	assert.deepEqual(calls.written, []);
 });
