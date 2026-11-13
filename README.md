@@ -249,7 +249,8 @@ open, set the key as [Desktop app](#desktop-app) describes.
 4. Run `/login typesafe`, `/login openrouter` or both in omp to store your
    keys.
 5. Ask omp to run the `model-router-setup` skill. It asks the provider, the
-   keys and the scope with buttons and writes your choices itself.
+   keys, the three models and the scope in the plugin's dialogs, and writes
+   your choices itself.
 
 Instead of `/login`, you can run `omp login typesafe` or
 `omp login openrouter` outside a session. You can also set `TYPESAFE_API_KEY`

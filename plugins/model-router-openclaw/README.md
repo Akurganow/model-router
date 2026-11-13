@@ -48,7 +48,7 @@ Routing needs a key. The models in the slots decide what each level runs on. The
    openclaw config set plugins.entries.model-router-openclaw.config.large_model <provider/model>
    ```
 
-   Pick models of a provider that has an API key, because the plugin sets no model that OpenClaw holds no credential for. [Choosing models](#choosing-models) has more. The plugin has no command for the models.
+   Pick models of a provider that has an API key, because the plugin sets no model that OpenClaw holds no credential for. [Choosing models](#choosing-models) has more. The setup skill can propose models from OpenClaw's list, as [List the models](#list-the-models) says. You set each one yourself.
 2. Add a [key](#keys).
 3. Pick the [provider](#provider) and the [scope](#scope) if the defaults do not fit.
 4. Watch the Gateway log with `openclaw logs --follow --plain`, and start a subagent. [The log line](#the-log-line) shows the decision.
@@ -131,7 +131,17 @@ typesafe key: set
 openrouter key: unset
 ```
 
-Given `provider` or `scope`, the tool returns the command to type. Given `small_model`, `middle_model` or `large_model`, it answers that the slot is set on the plugin's settings page, or with `openclaw config set plugins.entries.model-router-openclaw.config.<name> <provider/model>`. It writes nothing.
+Given `provider` or `scope`, the tool returns the command to type. Given `small_model`, `middle_model` or `large_model`, it answers that the slot is set on the plugin's settings page, or with `openclaw config set plugins.entries.model-router-openclaw.config.<name> <provider/model>`. Given `models`, it returns the models OpenClaw offers, as [List the models](#list-the-models) says. It writes nothing.
+
+### List the models
+
+The setup skill's Models step reads the list and proposes up to four models per slot in chat. [The setup skill](openclaw-skills/model-router-setup/SKILL.md) holds the steps.
+
+- The tool with `models` returns each model that OpenClaw's model list offers and gives a runtime for, read for OpenClaw's default agent. That is OpenClaw's own verdict. The plugin filters nothing by its own routing check.
+- Each line gives the context size where OpenClaw knows it. OpenClaw's list holds no prices.
+- The tool cannot write a slot. You set each model with the command or the settings page the tool names for that slot.
+
+[OpenClaw model list](../../docs/clients.md#openclaw-model-list) has the runs.
 
 [Facts behind this section](../../docs/clients.md#openclaw-commands-and-owner-check)
 
@@ -145,7 +155,7 @@ Given `provider` or `scope`, the tool returns the command to type. Given `small_
 
 The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors.
 
-After scoring, the plugin checks the slot the level picks. The slot is unset when it names no model. It is unresolved when OpenClaw cannot resolve its string for the target agent, or holds no credential for its provider. [Choosing models](#choosing-models) names a case. The check makes no network request.
+After scoring, the plugin checks the slot the level picks. The slot is unset when it names no model. It is unresolved when OpenClaw cannot resolve its string for the target agent, or holds no credential for its provider. [Choosing models](#choosing-models) names a case. A model from [the list](#list-the-models) can still read unresolved: the list is OpenClaw's verdict, and the slot check is the plugin's. The check makes no network request.
 
 An unset or unresolved slot keeps the model OpenClaw would give the spawn, and the line names the slot: `L1 middle model unset` or `L2 large model unresolved`. The plugin still sets the effort, except where [Efforts the plugin keeps](#efforts-the-plugin-keeps) says otherwise. [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) has the rule the omp, OpenClaw and Hermes plugins share.
 

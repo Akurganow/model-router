@@ -31,7 +31,7 @@ A key with no model still scores: [A slot with no model](#a-slot-with-no-model) 
 
 The config tool reports `<provider> key: set` or `<provider> key: unset` for each provider the `provider` value allows.
 It never returns a key, its length or any part of it.
-In Oh My Pi, OpenClaw and Hermes Agent the tool can also print each model setting, as its README says: the configured value, or `unset`.
+In Oh My Pi, OpenClaw and Hermes Agent the tool also prints each model setting, as its README says: the configured value, or `unset`.
 It runs no check on a model, so a model the harness cannot run shows only in the routing line.
 
 ## A slot with no model

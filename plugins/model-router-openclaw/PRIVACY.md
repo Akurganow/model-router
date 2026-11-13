@@ -139,6 +139,12 @@ The `model_router_config` tool only reads.
 [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool)
 says what it reports.
 
+With the setting `models`, the tool reads OpenClaw's model list for its default
+agent, through OpenClaw's plugin SDK: each model's id and context size. The
+list goes back as the tool's result, so it reaches the model of your session
+like any tool result. No scoring request carries it. The plugin's own code
+opens no connection to read the list.
+
 The commands `/model-router-provider` and `/model-router-scope` write the
 plugin's `provider` or `scope` setting into OpenClaw's configuration. They
 refuse unless the sender is the owner. The plugin writes no other setting and no
