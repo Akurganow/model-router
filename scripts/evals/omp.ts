@@ -11,9 +11,8 @@ const SETTINGS_OVERLAY = "omp-evals.yml";
 // The effort is a level, or the label of the effort omp keeps, such as "caller effort".
 const ROLE_MARK = "@";
 const ENTRY_NUMBER = /^task (\d+): /;
-const DECISION_ENTRY = new RegExp(
-	`^task \\d+: L(?<tier>[012]) (?<target>@\\w+|\\w+ model \\w+) · (?<effort>[^·]+?) · p=\\d+(?:\\.\\d+)?/\\d+(?:\\.\\d+)?`,
-);
+const DECISION_ENTRY =
+	/^task \d+: L(?<tier>[012]) (?<target>@\w+|\w+ model \w+) · (?<effort>[^·]+?) · p=\d+(?:\.\d+)?\/\d+(?:\.\d+)?/;
 
 function spawnCount(stdout: string): number {
 	let count = 0;

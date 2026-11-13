@@ -127,7 +127,8 @@ for (const label of ["caller effort", "config effort", "no model patterns"])
 	});
 
 test("omp: an unresolved slot reads as a decision with no target", () => {
-	const stderr = "model-router task 1: L2 large model unresolved · medium · p=0.88/0.71\n";
+	const stderr =
+		"model-router task 1: L2 large model unresolved · medium · p=0.88/0.71\n";
 	const evidence = omp.parse({ stdout: "", stderr });
 	assert.equal(evidence.routed, true);
 	assert.equal(evidence.tier, 2);
