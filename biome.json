@@ -66,6 +66,32 @@
 			}
 		},
 		{
+			"includes": ["src/core/tier.ts", "src/core/work.ts"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"**/adapters/**",
+											"**/tier.ts",
+											"**/work.ts",
+											"**/client.ts",
+											"**/compose.ts"
+										],
+										"message": "A part imports no adapter, no client file and not the other part."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
 			"includes": ["src/adapters/claude/**"],
 			"linter": {
 				"rules": {
@@ -126,6 +152,34 @@
 			}
 		},
 		{
+			"includes": ["src/adapters/openclaw/index.ts"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"paths": {
+									"openclaw": "The bundle entry imports nothing from OpenClaw."
+								},
+								"patterns": [
+									{
+										"group": [
+											"openclaw/**",
+											"**/claude/**",
+											"**/omp/**",
+											"**/hermes/**"
+										],
+										"message": "The bundle entry imports no other adapter and nothing from OpenClaw."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
 			"includes": ["src/adapters/hermes/**"],
 			"linter": {
 				"rules": {
@@ -139,6 +193,23 @@
 										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
 									}
 								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["scripts/set-version.ts", "scripts/manifests.ts"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"paths": {
+									"esbuild": "The version writer and the check load no esbuild."
+								}
 							}
 						}
 					}
