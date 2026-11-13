@@ -13,3 +13,7 @@ reviews:
     - "!plugins/model-router-hermes/constants.json"
     # The npm tree is generated from the plugin folders, so the review reads their sources.
     - "!packages/model-router/**"
+  # A change too large for one pull request merges in parts into an integration/ branch, and without this list the review skips pull requests whose base is not the default branch.
+  auto_review:
+    base_branches:
+      - "integration/.*"
