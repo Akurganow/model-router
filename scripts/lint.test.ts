@@ -38,8 +38,7 @@ const UTILS = "A utils/ file imports only other utils/ files";
 const CORE = "A core/ file imports no adapter";
 const ADAPTER = "An adapter imports no other adapter";
 const PART = "A part imports no adapter";
-const ENTRY_OPENCLAW = "The bundle entry imports nothing from OpenClaw";
-const ENTRY_ADAPTER = "The bundle entry imports no other adapter";
+const OPENCLAW = "Only models.ts imports from OpenClaw";
 const ESBUILD = "The version writer and the check load no esbuild";
 const DYNAMIC = "import() takes a string literal";
 const REEXPORT = "A utils/ file re-exports nothing";
@@ -162,21 +161,35 @@ const faults: Fault[] = [
 		file: "src/adapters/openclaw/index.ts",
 		code: 'import { a } from "openclaw";',
 		category: RESTRICTED,
-		message: ENTRY_OPENCLAW,
+		message: OPENCLAW,
 	},
 	{
 		form: "the OpenClaw entry imports a path of openclaw",
 		file: "src/adapters/openclaw/index.ts",
 		code: 'import { b } from "openclaw/plugin-sdk";',
 		category: RESTRICTED,
-		message: ENTRY_ADAPTER,
+		message: OPENCLAW,
 	},
 	{
 		form: "the OpenClaw entry imports another adapter",
 		file: "src/adapters/openclaw/index.ts",
 		code: 'import { c } from "../omp/c.ts";',
 		category: RESTRICTED,
-		message: ENTRY_ADAPTER,
+		message: ADAPTER,
+	},
+	{
+		form: "an OpenClaw file other than models.ts imports openclaw with import()",
+		file: "src/adapters/openclaw/config.ts",
+		code: 'export const l = () => import("openclaw/plugin-sdk/models-provider-runtime");',
+		category: RESTRICTED,
+		message: OPENCLAW,
+	},
+	{
+		form: "the OpenClaw models.ts imports another adapter",
+		file: "src/adapters/openclaw/models.ts",
+		code: 'import { d } from "../hermes/d.ts";',
+		category: RESTRICTED,
+		message: ADAPTER,
 	},
 	{
 		form: "the version writer imports esbuild",
@@ -302,8 +315,7 @@ const valid: Record<string, string> = {
 	].join("\n"),
 	"src/adapters/openclaw/valid.ts": [
 		'import { c } from "../../core/c.ts";',
-		'import { sdk } from "openclaw";',
-		"export const v = [c, sdk];",
+		"export const v = c;",
 	].join("\n"),
 	"src/adapters/hermes/valid.ts": [
 		'import { c } from "../../core/c.ts";',
@@ -340,6 +352,11 @@ const clean: Record<string, string[]> = {
 	"scripts/set-version.ts": [
 		'import { readFileSync } from "node:fs";',
 		"export const v = readFileSync;",
+	],
+	"src/adapters/openclaw/models.ts": [
+		'import { c } from "../../core/c.ts";',
+		'export const list = () => import("openclaw/plugin-sdk/models-provider-runtime");',
+		"export const m = c;",
 	],
 };
 

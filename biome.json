@@ -152,7 +152,10 @@
 			}
 		},
 		{
-			"includes": ["src/adapters/openclaw/index.ts"],
+			"includes": [
+				"src/adapters/openclaw/**",
+				"!src/adapters/openclaw/models.ts"
+			],
 			"linter": {
 				"rules": {
 					"style": {
@@ -160,17 +163,16 @@
 							"level": "error",
 							"options": {
 								"paths": {
-									"openclaw": "The bundle entry imports nothing from OpenClaw."
+									"openclaw": "Only models.ts imports from OpenClaw, when the tool lists the models, so the bundle loads without OpenClaw."
 								},
 								"patterns": [
 									{
-										"group": [
-											"openclaw/**",
-											"**/claude/**",
-											"**/omp/**",
-											"**/hermes/**"
-										],
-										"message": "The bundle entry imports no other adapter and nothing from OpenClaw."
+										"group": ["openclaw/**"],
+										"message": "Only models.ts imports from OpenClaw, when the tool lists the models, so the bundle loads without OpenClaw."
+									},
+									{
+										"group": ["**/claude/**", "**/omp/**", "**/hermes/**"],
+										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
 									}
 								]
 							}
