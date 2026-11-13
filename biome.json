@@ -1,6 +1,10 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
-	"vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
 	"files": {
 		"includes": [
 			"**",
@@ -12,8 +16,13 @@
 		]
 	},
 	"linter": {
-		"rules": { "preset": "recommended" },
-		"domains": { "project": "recommended", "types": "recommended" }
+		"rules": {
+			"preset": "recommended"
+		},
+		"domains": {
+			"project": "recommended",
+			"types": "recommended"
+		}
 	},
 	"overrides": [
 		{
@@ -136,5 +145,9 @@
 				}
 			}
 		}
+	],
+	"plugins": [
+		"./scripts/lint/literal-import.grit",
+		"./scripts/lint/utils-reexport.grit"
 	]
 }

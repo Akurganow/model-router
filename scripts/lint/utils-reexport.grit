@@ -1,0 +1,26 @@
+language js
+
+// A file of src/utils/ re-exports either with `export … from`, or by exporting
+// a name it imported.
+or {
+	`export { $names } from $source`,
+	`export type { $names } from $source`,
+	`export * from $source`,
+	`export type * from $source`,
+	`export * as $name from $source`,
+	`export type * as $name from $source`,
+	or {
+		JsExportNamedShorthandSpecifier(name=$imported),
+		JsExportNamedSpecifier(local_name=$imported)
+	} where {
+		$program <: contains or {
+			JsShorthandNamedImportSpecifier(local_name=$imported),
+			JsNamedImportSpecifier(local_name=$imported),
+			JsDefaultImportSpecifier(local_name=$imported),
+			JsNamespaceImportSpecifier(local_name=$imported)
+		}
+	}
+} as $statement where {
+	$filename <: r".*/src/utils/.*",
+	register_diagnostic(span=$statement, message="A utils/ file re-exports nothing: it has one job.", severity="error")
+}
