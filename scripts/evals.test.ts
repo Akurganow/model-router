@@ -128,16 +128,6 @@ for (const label of ["caller effort", "config effort", "no model patterns"])
 		assert.equal(evidence.target, "@smol");
 	});
 
-test("omp: an unresolved slot reads as a decision with no target", () => {
-	const stderr =
-		"model-router task 1: L2 large model unresolved · medium · p=0.88/0.71\n";
-	const evidence = omp.parse({ stdout: "", stderr });
-	assert.equal(evidence.routed, true);
-	assert.equal(evidence.tier, 2);
-	assert.equal(evidence.effort, "medium");
-	assert.equal(evidence.target, null);
-});
-
 test("omp: a set middle role reads as its target", () => {
 	const stderr = "model-router task 1: L1 @middle · medium · p=0.62/0.70\n";
 	const evidence = omp.parse({ stdout: "", stderr });
@@ -424,7 +414,6 @@ test("runCase stores no warning when Jev answers as the fitted model", () => {
 for (const [state, tier, target] of [
 	[{ state: "set", model: "@middle" }, 1, "@middle"],
 	[{ state: "unset" }, 1, null],
-	[{ state: "unresolved" }, 2, null],
 ] as const satisfies readonly [SlotModel, 0 | 1 | 2, string | null][])
 	test(`omp: a core line for a slot that is ${state.state} reads as a decision`, () => {
 		const line = routedLine({

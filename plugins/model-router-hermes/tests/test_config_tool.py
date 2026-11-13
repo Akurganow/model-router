@@ -74,10 +74,9 @@ class ReadAllTest(unittest.TestCase):
         self.assertEqual(lines[1], "small_model: unset m/x")
         self.assertEqual(lines[3], "large_model: unset")
 
-    def test_the_report_shows_a_model_as_configured_and_runs_no_check(self):
-        calls = []
+    def test_the_report_shows_a_model_as_configured(self):
         settings = good_settings(middle_model={"provider": "openrouter", "model": "middle-model"})
-        handler = handler_for(settings, list_models=lambda provider: calls.append(provider) or [])
+        handler = handler_for(settings)
         self.assertEqual(
             call(handler).split(LINES)[1:4],
             [
@@ -86,7 +85,6 @@ class ReadAllTest(unittest.TestCase):
                 "large_model: openrouter large-model",
             ],
         )
-        self.assertEqual(calls, [])
 
     def test_a_blank_spaces_or_missing_model_is_unset_in_every_slot(self):
         for index, slot in enumerate(("small", "middle", "large"), start=1):

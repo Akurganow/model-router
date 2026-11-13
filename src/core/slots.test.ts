@@ -29,7 +29,6 @@ test("slotSetting names the setting of each slot", () => {
 
 const SET = { state: "set", model: "a/model" } as const;
 const UNSET = { state: "unset" } as const;
-const UNRESOLVED = { state: "unresolved" } as const;
 
 test("pickModel gives a set slot its model as the target", () => {
 	assert.deepEqual(pickModel(0, SET), {
@@ -67,29 +66,9 @@ test("pickModel gives an unset slot no model and names it in the target", () => 
 	});
 });
 
-test("pickModel gives an unresolved slot no model and names it in the target", () => {
-	assert.deepEqual(pickModel(0, UNRESOLVED), {
-		slot: "small",
-		model: undefined,
-		target: "small model unresolved",
-	});
-	assert.deepEqual(pickModel(1, UNRESOLVED), {
-		slot: "middle",
-		model: undefined,
-		target: "middle model unresolved",
-	});
-	assert.deepEqual(pickModel(2, UNRESOLVED), {
-		slot: "large",
-		model: undefined,
-		target: "large model unresolved",
-	});
-});
-
-test("slotState gives no model unset, a resolved model set, and any other unresolved", () => {
-	assert.deepEqual(slotState(undefined, true), { state: "unset" });
-	assert.deepEqual(slotState(undefined, false), { state: "unset" });
-	assert.deepEqual(slotState("a/m", true), { state: "set", model: "a/m" });
-	assert.deepEqual(slotState("a/m", false), { state: "unresolved" });
+test("slotState gives no model unset and any model set", () => {
+	assert.deepEqual(slotState(undefined), { state: "unset" });
+	assert.deepEqual(slotState("a/m"), { state: "set", model: "a/m" });
 });
 
 test("slotRecord builds one entry per slot in level order", () => {

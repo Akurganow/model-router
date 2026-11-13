@@ -1,16 +1,10 @@
-import inspect
-import json
 import os
-import socket
-import tempfile
 import types
 import unittest
-from pathlib import Path
 from unittest import mock
 
 from support import CONSTANTS, REAL_HERMES, FakeCtx, fake_api, good_settings, make_router, submodule, task
 
-checks = submodule("checks")
 hermes_api = submodule("hermes_api")
 
 
@@ -52,20 +46,6 @@ class DefaultRouteMatchesHermesTest(unittest.TestCase):
                     if k in ROUTE_KEYS and k != "label"
                 }
                 self.assertEqual(ours, expected)
-
-
-@unittest.skipUnless(REAL_HERMES, "the real Hermes modules do not import here")
-class CredentialRuleOnHermesTest(unittest.TestCase):
-    """The offline credential rule, read through Hermes's own registry and refresh check."""
-
-    def test_api_key_providers_pass_and_login_providers_do_not(self):
-        api = hermes_api.live_api()
-        for provider in ("openrouter", "gemini", "deepseek"):
-            with self.subTest(provider):
-                self.assertTrue(checks.credentials_stay_offline(provider, api))
-        for provider in ("nous", "openai-codex", "qwen-oauth", "minimax-oauth", "bedrock"):
-            with self.subTest(provider):
-                self.assertFalse(checks.credentials_stay_offline(provider, api))
 
 
 @unittest.skipUnless(REAL_HERMES, "the real Hermes modules do not import here")
@@ -153,10 +133,6 @@ class TaskParametersOnHermesTest(unittest.TestCase):
         self.assertEqual(payloads, [])
 
 
-def _no_network(*_args, **_kwargs):
-    raise AssertionError("the call reached the network")
-
-
 @unittest.skipUnless(REAL_HERMES, "the real Hermes modules do not import here")
 class HermesApiOnHermesTest(unittest.TestCase):
     """Each Hermes function the shim calls keeps the name and the shape the shim uses.
@@ -179,37 +155,6 @@ class HermesApiOnHermesTest(unittest.TestCase):
         found = find_node_executable("node")
         self.assertTrue(found is None or os.path.isfile(found), found)
         self.assertEqual(hermes_api.live_api().find_node(), found)
-
-    def test_list_models_reads_the_catalogue_offline(self):
-        # Hermes ships no catalogue; offline it reads only the home's disk cache, so the test writes one.
-        import agent.models_dev as models_dev
-
-        cache = {"deepseek": {"id": "deepseek", "models": {"deepseek-chat": {"id": "deepseek-chat"}}}}
-        home = tempfile.TemporaryDirectory()
-        self.addCleanup(home.cleanup)
-        Path(home.name, "models_dev_cache.json").write_text(json.dumps(cache), encoding="utf-8")
-        with (
-            mock.patch.dict(os.environ, {"HERMES_HOME": home.name}),
-            mock.patch.object(models_dev, "_models_dev_cache", {}),
-            mock.patch.object(socket.socket, "connect", _no_network),
-            mock.patch.object(socket, "create_connection", _no_network),
-        ):
-            models = hermes_api.live_api().list_models("deepseek")
-        self.assertEqual(models, ["deepseek-chat"])
-
-    def test_resolve_runtime_provider_takes_the_keywords_the_shim_passes(self):
-        from hermes_cli.runtime_provider import resolve_runtime_provider
-
-        parameters = inspect.signature(resolve_runtime_provider).parameters
-        for name in ("requested", "target_model"):
-            with self.subTest(name):
-                self.assertEqual(parameters[name].kind, inspect.Parameter.KEYWORD_ONLY)
-
-    def test_installs_held_is_a_context_manager(self):
-        from hermes_cli.left_core_migration import installs_held
-
-        with installs_held():
-            pass
 
 
 if __name__ == "__main__":

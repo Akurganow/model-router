@@ -142,24 +142,15 @@ test("the constants hold the values src/ gives", () => {
 	assert.deepEqual(constants.slots, {
 		small: {
 			setting: "small_model",
-			pinned: {
-				unset: "model-router L0 small model unset",
-				unresolved: "model-router L0 small model unresolved",
-			},
+			pinned: { unset: "model-router L0 small model unset" },
 		},
 		middle: {
 			setting: "middle_model",
-			pinned: {
-				unset: "model-router L1 middle model unset",
-				unresolved: "model-router L1 middle model unresolved",
-			},
+			pinned: { unset: "model-router L1 middle model unset" },
 		},
 		large: {
 			setting: "large_model",
-			pinned: {
-				unset: "model-router L2 large model unset",
-				unresolved: "model-router L2 large model unresolved",
-			},
+			pinned: { unset: "model-router L2 large model unset" },
 		},
 	});
 	assert.deepEqual(constants.levels, [...LEVELS]);

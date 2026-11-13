@@ -206,31 +206,7 @@ describe("the slot and model each level takes", () => {
 				`${LINE_PREFIX}L${tier} ${slot} model unset · ${effort} · p=0.90/0.90${JEV}`,
 			]);
 		});
-
-		it(`level ${tier} with the ${slot} model set but unresolved keeps the spawn's model and sets the effort`, async () => {
-			const s = setup({
-				levels: { tier, work: 1 },
-				settings: settings({ small: "x/s", middle: "x/m", large: "x/l" }),
-			});
-			s.runtime.answers.resolved = { error: "not allowed" };
-			assert.deepEqual(await s.call(), { params: { thinking: effort } });
-			assert.deepEqual(lines(s), [
-				`${LINE_PREFIX}L${tier} ${slot} model unresolved · ${effort} · p=0.90/0.90${JEV}`,
-			]);
-		});
 	}
-
-	it("a missing credential makes the slot unresolved too", async () => {
-		const s = setup({
-			levels: { tier: 2, work: 1 },
-			settings: settings({ large: "x/l" }),
-		});
-		s.runtime.answers.credential = false;
-		assert.deepEqual(await s.call(), { params: { thinking: "medium" } });
-		assert.deepEqual(lines(s), [
-			`${LINE_PREFIX}L2 large model unresolved · medium · p=0.90/0.90${JEV}`,
-		]);
-	});
 
 	for (const tier of [0, 1, 2] as const)
 		it(`level ${tier} with a key and no model at all is scored and gets the effort`, async () => {
@@ -245,7 +221,6 @@ describe("the slot and model each level takes", () => {
 			assert.deepEqual(lines(s), [
 				`${LINE_PREFIX}L${tier} ${slot} model unset · ${effort} · p=0.90/0.90${JEV}`,
 			]);
-			assert.equal(s.runtime.calls.allowedRef.length, 0);
 		});
 });
 
@@ -340,7 +315,7 @@ describe("what Jev is asked", () => {
 		);
 	});
 
-	it("scores another agent under extended with that agent's description and resolves for it", async () => {
+	it("scores another agent under extended with that agent's description", async () => {
 		const s = setup({
 			levels: { tier: 0, work: 1 },
 			settings: { scope: "extended" },
@@ -354,7 +329,6 @@ describe("what Jev is asked", () => {
 			(stateOf(s) as { role: string }).role,
 			roleText("Writes docs"),
 		);
-		assert.equal(s.runtime.calls.defaultModel[0]?.agentId, "writer");
 	});
 
 	it("reads the live config on each spawn, so a command's write takes effect", async () => {
@@ -456,60 +430,5 @@ describe("gates and skips", () => {
 		s.runtime.throwOn.add("config");
 		assert.equal(await s.call(), undefined);
 		assert.deepEqual(lines(s), skippedLog(UNREADABLE));
-	});
-});
-
-describe("model checks", () => {
-	it("checks for the requester with its agent directory", async () => {
-		const s = setup({ levels: { tier: 0, work: 1 } });
-		await s.call();
-		assert.equal(s.runtime.calls.defaultModel[0]?.agentId, REQUESTER);
-		assert.equal(s.runtime.calls.credential[0]?.agentDir, "/agents/main");
-	});
-
-	it("checks every model against the live config it gated on", async () => {
-		const config = { agents: { entries: { [REQUESTER]: {} } } };
-		const s = setup({ levels: { tier: 0, work: 1 }, config });
-		assert.ok(await s.call());
-		const { defaultModel, allowedRef, credential } = s.runtime.calls;
-		assert.equal(defaultModel[0]?.cfg, config);
-		assert.equal(allowedRef[0]?.cfg, config);
-		assert.equal(credential[0]?.cfg, config);
-	});
-
-	it("passes no agent id and no directory when the context has none", async () => {
-		const s = setup({ levels: { tier: 0, work: 1 } });
-		assert.ok(await s.call({}, { toolName: SPAWN_TOOL }));
-		assert.equal("agentId" in (s.runtime.calls.allowedRef[0] ?? {}), false);
-		assert.equal("agentDir" in (s.runtime.calls.credential[0] ?? {}), false);
-	});
-
-	it("checks only the slot the level picks", async () => {
-		for (const [tier, raw] of [
-			[0, "openai/small"],
-			[1, "openai/middle"],
-			[2, "openai/large"],
-		] as const) {
-			const s = setup({
-				levels: { tier, work: 1 },
-				settings: { middle_model: "openai/middle" },
-			});
-			await s.call();
-			assert.deepEqual(
-				s.runtime.calls.allowedRef.map((call) => call.raw),
-				[raw],
-			);
-			assert.equal(s.runtime.calls.credential.length, 1);
-		}
-	});
-
-	it("checks no slot that holds no model", async () => {
-		const s = setup({
-			levels: { tier: 1, work: 1 },
-			settings: { small_model: "", large_model: "" },
-		});
-		await s.call();
-		assert.equal(s.runtime.calls.allowedRef.length, 0);
-		assert.equal(s.runtime.calls.credential.length, 0);
 	});
 });

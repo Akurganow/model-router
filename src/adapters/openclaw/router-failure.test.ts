@@ -2,11 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { LIMIT_REACHED } from "../../core/compose.ts";
 import { MIN_DEADLINE_MS } from "../../core/handler-deadline.ts";
-import type { RuntimeMember } from "./fakes.ts";
 import {
 	CONTEXT,
 	DEADLINE_MS,
-	JEV,
 	lines,
 	settle,
 	setup,
@@ -53,22 +51,6 @@ describe("failure", () => {
 			const s = setup({ levels: { tier: 0, work: 1 } });
 			inject(s);
 			assert.equal(await s.call(), undefined);
-		});
-
-	// A check that throws leaves its slot unresolved, so the spawn keeps its model and still gets the effort.
-	const checks: [string, RuntimeMember][] = [
-		["the default model resolve", "defaultModel"],
-		["the model resolve", "allowedRef"],
-		["the credential check", "credential"],
-	];
-	for (const [name, member] of checks)
-		it(`keeps the spawn's model and sets the effort when ${name} throws`, async () => {
-			const s = setup({ levels: { tier: 0, work: 1 } });
-			s.runtime.throwOn.add(member);
-			assert.deepEqual(await s.call(), { params: { thinking: "high" } });
-			assert.deepEqual(lines(s), [
-				`model-router L0 small model unresolved · high · p=0.90/0.90${JEV}`,
-			]);
 		});
 
 	it("returns nothing when the event params throw", async () => {
@@ -199,23 +181,6 @@ describe("deadline", () => {
 		assert.deepEqual(lines(s), ["model-router skipped, cancelled"]);
 	});
 
-	it("covers the model checks: a result that arrives late is dropped", async () => {
-		const s = setup({ levels: { tier: 0, work: 1 } });
-		let release: (value: boolean) => void = () => undefined;
-		s.runtime.runtime.modelAuth.isProviderApiKeyConfiguredAsync = () =>
-			new Promise((resolve) => {
-				release = resolve;
-			});
-		const pending = s.call();
-		await settle();
-		await settle();
-		s.time.fire();
-		assert.equal(await pending, undefined);
-		release(true);
-		await settle();
-		assert.deepEqual(lines(s), ["model-router skipped, timeout"]);
-	});
-
 	it("writes the timeout line at the deadline, before the handler settles", async () => {
 		const s = setup();
 		s.jev.mode.current = "hang";
@@ -299,24 +264,6 @@ describe("deadline", () => {
 		const s = setup();
 		await s.call();
 		assert.equal(s.time.live(), 0);
-	});
-
-	it("returns nothing when the hook's signal aborts while a model check is held", async () => {
-		const s = setup({ levels: { tier: 0, work: 1 } });
-		let release: () => void = () => undefined;
-		s.runtime.runtime.modelAuth.isProviderApiKeyConfiguredAsync = () =>
-			new Promise((resolve) => {
-				release = () => resolve(true);
-			});
-		const hook = new AbortController();
-		const pending = s.call({}, { ...CONTEXT, abortSignal: hook.signal });
-		await settle();
-		await settle();
-		hook.abort();
-		release();
-		assert.equal(await pending, undefined);
-		await settle();
-		assert.deepEqual(lines(s), ["model-router skipped, cancelled"]);
 	});
 
 	it("leaves no unhandled rejection when cancelling the timer throws", async () => {

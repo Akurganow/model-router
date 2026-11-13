@@ -31,15 +31,9 @@ test("a plain spawn of the requesting agent itself is routed", () => {
 		target: REQUESTER,
 		role: DEFAULT_ROLE,
 		effort: { kind: "set" },
-		config: {},
 		task: "do the work",
 		description: "",
 	});
-});
-
-test("the route carries the live config it was checked against", () => {
-	const config = { agents: { entries: { [REQUESTER]: {} } } };
-	assert.equal(routed(gate({ config })).config, config);
 });
 
 test("the route describes the spawn by its label, else its task name", () => {

@@ -266,13 +266,10 @@ var slotForLevel = (level) => SLOTS[level];
 var slotSetting = (slot) => `${slot}_model`;
 var SLOT_SETTINGS = SLOTS.map(slotSetting);
 var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
-var slotState = (model, resolved) => {
-  if (model === void 0) return { state: "unset" };
-  return resolved ? { state: "set", model } : { state: "unresolved" };
-};
+var slotState = (model) => model === void 0 ? { state: "unset" } : { state: "set", model };
 function pickModel(level, state) {
   const slot = slotForLevel(level);
-  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model ${state.state}` };
+  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
 }
 
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
@@ -1831,25 +1828,17 @@ async function openBatch(omp, pi, ctx, settings) {
   const config = readConfig(omp.lookup, pi.pi.settings);
   if (config === void 0) return { closed: UNREADABLE };
   const agents = await discover(pi, ctx);
-  const models = slotRecord((slot) => slotModel(ctx, config.roles, slot));
+  const models = slotRecord((slot) => slotModel(config.roles, slot));
   return {
     ...routing,
     facts: { ...config, scope: settings.scope, agents, models }
   };
 }
-function slotModel(ctx, roles, slot) {
+function slotModel(roles, slot) {
   const name = ROLE_NAMES[slot];
   const value = Object.hasOwn(roles, name) ? roles[name] : void 0;
   const named = patternsOf(value).length > 0;
-  const role = ROLE_MARK + name;
-  return slotState(named ? role : void 0, named && resolves(ctx, role));
-}
-function resolves(ctx, role) {
-  try {
-    return ctx.models.resolve(role) !== void 0;
-  } catch {
-    return false;
-  }
+  return slotState(named ? ROLE_MARK + name : void 0);
 }
 async function discover(pi, ctx) {
   try {

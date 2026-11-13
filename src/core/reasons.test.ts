@@ -61,9 +61,6 @@ const SLOT_TEXTS = [
 	"small model unset",
 	"middle model unset",
 	"large model unset",
-	"small model unresolved",
-	"middle model unresolved",
-	"large model unresolved",
 ];
 
 test("the shared reasons keep the texts the harnesses print", () => {

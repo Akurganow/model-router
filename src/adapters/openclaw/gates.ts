@@ -34,8 +34,6 @@ export type Gate =
 			readonly target: string | undefined;
 			readonly role: string;
 			readonly effort: EffortRule;
-			// The live config the checks read. A route has one, because the gate skips an unreadable config.
-			readonly config: OpenClawConfig;
 			readonly task: string;
 			// The spawn's label, else its task name, else empty.
 			readonly description: string;
@@ -161,7 +159,7 @@ function roleOf(input: GateInput, target: string | undefined, blank: string) {
 /**
  * Returns the gate outcome of a spawn: pass for a spawn without a task or one
  * that passes silently, skip with a reason, or route with its target, role,
- * effort rule, config, task and description. The first failing check decides.
+ * effort rule, task and description. The first failing check decides.
  * Never throws. Order: plugins/model-router-openclaw/README.md#which-spawns-are-routed.
  * Change both.
  */
@@ -194,7 +192,6 @@ export function gateSpawn(input: GateInput): Gate {
 			isRequesterSpawn ? DEFAULT_ROLE : NO_DESCRIPTION,
 		),
 		effort: effortRule(input),
-		config,
 		task,
 		description: spawn.description,
 	};

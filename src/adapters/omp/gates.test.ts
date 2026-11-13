@@ -249,7 +249,6 @@ test("an empty or blank task role leaves the gate open", async () => {
 
 test("no model in any slot leaves the gate open", async () => {
 	world.config.modelRoles = {};
-	world.resolvable.clear();
 	assert.deepEqual(await gates(), open());
 	world.config.modelRoles = { smol: "a/small", slow: "a/large" };
 	assert.deepEqual(await gates(), open());
@@ -267,32 +266,19 @@ test("a throwing lookup or discovery closes the gate", async () => {
 	});
 });
 
-test("the batch reads each slot from modelRoles and the resolver", async () => {
+test("the batch reads each slot from modelRoles", async () => {
 	world.config.modelRoles = { smol: "a/small", middle: "a/mid", slow: "" };
-	world.resolvable = new Set(["@smol", "@slow"]);
 	const batch = await checkGates(world.imports, world.pi, ctx());
 	assert.ok(!("closed" in batch));
 	assert.deepEqual(batch.facts.models, {
 		small: { state: "set", model: "@smol" },
-		middle: { state: "unresolved" },
+		middle: { state: "set", model: "@middle" },
 		large: { state: "unset" },
 	});
 });
 
-test("a throwing resolver leaves the gate open and each named slot unresolved", async () => {
-	world.config.modelRoles = { smol: "a/small", slow: "a/large" };
-	const broken = { ...ctx(), models: { resolve: throws } };
-	const batch = await checkGates(world.imports, world.pi, broken);
-	assert.ok(!("closed" in batch));
-	assert.deepEqual(batch.facts.models, {
-		small: { state: "unresolved" },
-		middle: { state: "unset" },
-		large: { state: "unresolved" },
-	});
-});
-
 const ROLE_OF = { small: "smol", middle: "middle", large: "slow" } as const;
-// patternsOf reads these values as no pattern, so the role is unset whatever omp resolves.
+// patternsOf reads these values as no pattern, so the role is unset.
 const NO_PATTERN: readonly [string, unknown][] = [
 	["undefined", undefined],
 	["null", null],
@@ -307,45 +293,33 @@ const SOME_PATTERN: readonly [string, unknown][] = [
 for (const slot of ["small", "middle", "large"] as const) {
 	const name = ROLE_OF[slot];
 	for (const [label, value] of NO_PATTERN)
-		for (const resolving of [true, false])
-			test(`${name} as ${label} is unset, ${resolving ? "resolving" : "not resolving"}`, () => {
-				world.resolvable = new Set(resolving ? [`@${name}`] : []);
-				assert.deepEqual(slotModel(ctx(), { [name]: value }, slot), {
-					state: "unset",
-				});
+		test(`${name} as ${label} is unset`, () => {
+			assert.deepEqual(slotModel({ [name]: value }, slot), {
+				state: "unset",
 			});
-	for (const [label, value] of SOME_PATTERN) {
-		test(`${name} as ${label} is set when omp resolves it`, () => {
-			world.resolvable = new Set([`@${name}`]);
-			assert.deepEqual(slotModel(ctx(), { [name]: value }, slot), {
+		});
+	for (const [label, value] of SOME_PATTERN)
+		test(`${name} as ${label} is set`, () => {
+			assert.deepEqual(slotModel({ [name]: value }, slot), {
 				state: "set",
 				model: `@${name}`,
 			});
 		});
-		test(`${name} as ${label} is unresolved when omp does not resolve it`, () => {
-			world.resolvable = new Set();
-			assert.deepEqual(slotModel(ctx(), { [name]: value }, slot), {
-				state: "unresolved",
-			});
-		});
-	}
 }
 
 test("a role that only the prototype holds is unset", () => {
-	world.resolvable = new Set(["@smol", "@middle", "@slow"]);
 	const roles = Object.create({
 		smol: "prov/small",
 		middle: "prov/mid",
 		slow: "prov/large",
 	}) as Record<string, unknown>;
 	for (const slot of ["small", "middle", "large"] as const)
-		assert.deepEqual(slotModel(ctx(), roles, slot), { state: "unset" });
+		assert.deepEqual(slotModel(roles, slot), { state: "unset" });
 });
 
-test("a role that modelRoles does not name is unset, even when omp resolves it", () => {
-	world.resolvable = new Set(["@smol", "@middle", "@slow"]);
+test("a role that modelRoles does not name is unset", () => {
 	for (const slot of ["small", "middle", "large"] as const)
-		assert.deepEqual(slotModel(ctx(), {}, slot), { state: "unset" });
+		assert.deepEqual(slotModel({}, slot), { state: "unset" });
 });
 
 const forAgent = async (agent: string, modelRole?: string) =>

@@ -42,7 +42,6 @@ export type Context = {
 		getApiKeyForProvider(provider: string): Promise<string | undefined>;
 		authStorage: { credentials: Credentials };
 	};
-	models: { resolve(spec: string): unknown };
 };
 
 export type ToolCallEvent = {

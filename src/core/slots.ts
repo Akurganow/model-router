@@ -18,22 +18,17 @@ export const slotRecord = <T>(
 		T
 	>;
 
-// What an adapter knows of one slot: a model it can apply, a model the harness cannot run, or none.
+// What an adapter knows of one slot: a model it can apply, or none.
 export type SlotModel =
 	| { readonly state: "set"; readonly model: string }
-	| { readonly state: "unresolved" | "unset" };
+	| { readonly state: "unset" };
 export type SlotModels = Readonly<Record<Slot, SlotModel>>;
 
-// The one rule for a slot's state: no model is unset, and a model is set only when the harness resolves it.
-export const slotState = (
-	model: string | undefined,
-	resolved: boolean,
-): SlotModel => {
-	if (model === undefined) return { state: "unset" };
-	return resolved ? { state: "set", model } : { state: "unresolved" };
-};
+// The one rule for a slot's state: no model is unset, a named model is set. The plugin does not check that the model runs.
+export const slotState = (model: string | undefined): SlotModel =>
+	model === undefined ? { state: "unset" } : { state: "set", model };
 
-// A slot with no model keeps the harness's model, so the line names the slot and its state in place of a model.
+// A slot with no model keeps the harness's model, so the line names the slot and says it is unset in place of a model.
 type Picked = {
 	readonly slot: Slot;
 	readonly model: string | undefined;
@@ -43,7 +38,7 @@ export function pickModel(level: Level, state: SlotModel): Picked {
 	const slot = slotForLevel(level);
 	return state.state === "set"
 		? { slot, model: state.model, target: state.model }
-		: { slot, model: undefined, target: `${slot} model ${state.state}` };
+		: { slot, model: undefined, target: `${slot} model unset` };
 }
 
 // The report line of one slot: its configured value, or unset.

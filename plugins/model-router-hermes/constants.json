@@ -27,22 +27,19 @@
 		"small": {
 			"setting": "small_model",
 			"pinned": {
-				"unset": "model-router L0 small model unset",
-				"unresolved": "model-router L0 small model unresolved"
+				"unset": "model-router L0 small model unset"
 			}
 		},
 		"middle": {
 			"setting": "middle_model",
 			"pinned": {
-				"unset": "model-router L1 middle model unset",
-				"unresolved": "model-router L1 middle model unresolved"
+				"unset": "model-router L1 middle model unset"
 			}
 		},
 		"large": {
 			"setting": "large_model",
 			"pinned": {
-				"unset": "model-router L2 large model unset",
-				"unresolved": "model-router L2 large model unresolved"
+				"unset": "model-router L2 large model unset"
 			}
 		}
 	},

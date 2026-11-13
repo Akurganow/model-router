@@ -7,12 +7,10 @@ import type {
 	ConfigMutation,
 	HookOptions,
 	Logger,
-	ModelRef,
 	OpenClawApi,
 	OpenClawConfig,
 	PluginRuntime,
 	RegistrationMode,
-	ResolvedModelRef,
 	ToolDefinition,
 } from "./types.ts";
 
@@ -20,44 +18,13 @@ type Params<K extends keyof FakeCalls> = FakeCalls[K][number];
 type FakeCalls = {
 	config: unknown[];
 	mutate: ConfigMutation[];
-	defaultModel: Parameters<
-		PluginRuntime["modelConfig"]["resolveDefaultModelForAgent"]
-	>[0][];
-	allowedRef: Parameters<
-		PluginRuntime["modelConfig"]["resolveAllowedModelRef"]
-	>[0][];
-	credential: Parameters<
-		PluginRuntime["modelAuth"]["isProviderApiKeyConfiguredAsync"]
-	>[0][];
-	agentDir: { cfg: OpenClawConfig; agentId: string }[];
 };
 export type RuntimeMember = keyof FakeCalls;
 
 // What the fake runtime answers. A test changes a field between calls.
 type RuntimeAnswers = {
 	config: OpenClawConfig;
-	defaultModel: ModelRef;
-	// Unset: the raw string splits at its first slash into provider and model.
-	resolved?: ResolvedModelRef;
-	credential: boolean;
-	agentDir: string;
 };
-
-const SLASH = "/";
-
-/**
- * Returns the resolved ref a raw model string names, split at its first slash
- * into provider and model. Without a slash the provider is empty. The key is the
- * raw string. Never throws.
- */
-function echoRef(raw: string): ResolvedModelRef {
-	const cut = raw.indexOf(SLASH);
-	const ref =
-		cut < 0
-			? { provider: "", model: raw }
-			: { provider: raw.slice(0, cut), model: raw.slice(cut + 1) };
-	return { ref, key: raw };
-}
 
 /**
  * A runtime whose members answer from `answers`, record their arguments in `calls`
@@ -66,18 +33,11 @@ function echoRef(raw: string): ResolvedModelRef {
 export function createFakeRuntime(initial: Partial<RuntimeAnswers> = {}) {
 	const answers: RuntimeAnswers = {
 		config: {},
-		defaultModel: { provider: "anthropic", model: "claude-opus-5-5" },
-		credential: true,
-		agentDir: "/agents/main",
 		...initial,
 	};
 	const calls: FakeCalls = {
 		config: [],
 		mutate: [],
-		defaultModel: [],
-		allowedRef: [],
-		credential: [],
-		agentDir: [],
 	};
 	const throwOn = new Set<RuntimeMember>();
 	/** Records a call to a runtime member. Throws when the test added the member to `throwOn`. */
@@ -104,29 +64,6 @@ export function createFakeRuntime(initial: Partial<RuntimeAnswers> = {}) {
 				params.writeOptions?.assertCurrent?.();
 				answers.config = draft;
 				return {};
-			},
-		},
-		modelConfig: {
-			resolveDefaultModelForAgent: (params) => {
-				enter("defaultModel", params);
-				return answers.defaultModel;
-			},
-			/** Returns the `resolved` answer when set, else the ref echoRef gives. Throws when the member is in `throwOn`. */
-			resolveAllowedModelRef: (params) => {
-				enter("allowedRef", params);
-				return answers.resolved ?? echoRef(params.raw);
-			},
-		},
-		modelAuth: {
-			isProviderApiKeyConfiguredAsync: async (params) => {
-				enter("credential", params);
-				return answers.credential;
-			},
-		},
-		agent: {
-			resolveAgentDir: (cfg, agentId) => {
-				enter("agentDir", { cfg, agentId });
-				return answers.agentDir;
 			},
 		},
 	};

@@ -59,7 +59,7 @@ export async function openBatch(
 	const config = readConfig(omp.lookup, pi.pi.settings);
 	if (config === undefined) return { closed: UNREADABLE };
 	const agents = await discover(pi, ctx);
-	const models = slotRecord((slot) => slotModel(ctx, config.roles, slot));
+	const models = slotRecord((slot) => slotModel(config.roles, slot));
 	return {
 		...routing,
 		facts: { ...config, scope: settings.scope, agents, models },
@@ -69,28 +69,18 @@ export async function openBatch(
 /**
  * Returns the state of a slot's role. omp resolves a role that modelRoles does
  * not name through the default model or its own list, so only a role that
- * modelRoles names counts as set, and only while omp resolves it. A role omp
- * cannot resolve would fail the child with `No model selected.` Never throws.
+ * modelRoles names counts as set. The plugin never checks that the model the
+ * role points at can run. Never throws.
  * Source: docs/clients.md#omp-model-roles.
  */
 export function slotModel(
-	ctx: Context,
 	roles: Readonly<Record<string, unknown>>,
 	slot: Slot,
 ): SlotModel {
 	const name = ROLE_NAMES[slot];
 	const value = Object.hasOwn(roles, name) ? roles[name] : undefined;
 	const named = patternsOf(value).length > 0;
-	const role = ROLE_MARK + name;
-	return slotState(named ? role : undefined, named && resolves(ctx, role));
-}
-
-function resolves(ctx: Context, role: string): boolean {
-	try {
-		return ctx.models.resolve(role) !== undefined;
-	} catch {
-		return false;
-	}
+	return slotState(named ? ROLE_MARK + name : undefined);
 }
 
 async function discover(pi: Pi, ctx: Context): Promise<Facts["agents"]> {

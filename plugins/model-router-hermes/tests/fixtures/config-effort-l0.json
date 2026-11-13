@@ -29,8 +29,7 @@
 		"outcome": "route",
 		"slot": "small",
 		"effort": null,
-		"line": "model-router L0 openai/small · config effort · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
-		"unresolvedLine": "model-router L0 small model unresolved · config effort · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+		"line": "model-router L0 openai/small · config effort · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
 	},
 	"route": {
 		"api_mode": "chat_completions",

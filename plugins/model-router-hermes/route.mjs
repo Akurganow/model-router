@@ -1438,13 +1438,10 @@ var slotForLevel = (level) => SLOTS[level];
 var slotSetting = (slot) => `${slot}_model`;
 var SLOT_SETTINGS = SLOTS.map(slotSetting);
 var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
-var slotState = (model, resolved) => {
-  if (model === void 0) return { state: "unset" };
-  return resolved ? { state: "set", model } : { state: "unresolved" };
-};
+var slotState = (model) => model === void 0 ? { state: "unset" } : { state: "set", model };
 function pickModel(level, state) {
   const slot = slotForLevel(level);
-  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model ${state.state}` };
+  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
 }
 
 // src/utils/deadline.ts
@@ -1553,19 +1550,17 @@ function answer(request, decided) {
   const model = request.models[slot];
   const effort = effortFor(level, decided.work);
   const kept = request.keptEffort === void 0 ? void 0 : KEPT_LABELS[request.keptEffort];
-  const lineFor = (resolved) => LINE_PREFIX + routedLine({
-    level,
-    target: pickModel(level, slotState(model, resolved)).target,
-    effort: kept ?? effort,
-    probabilities: decided.probabilities,
-    suffix: decided.suffix
-  });
   return {
     outcome: "route",
     slot,
     effort: kept === void 0 ? effort : null,
-    line: lineFor(true),
-    unresolvedLine: model === void 0 ? null : lineFor(false)
+    line: LINE_PREFIX + routedLine({
+      level,
+      target: pickModel(level, slotState(model)).target,
+      effort: kept ?? effort,
+      probabilities: decided.probabilities,
+      suffix: decided.suffix
+    })
   };
 }
 async function routeRequest(raw, deps) {
