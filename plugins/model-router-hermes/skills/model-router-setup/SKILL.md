@@ -72,10 +72,11 @@ If a key is missing for every allowed provider, say that every task skips with `
 ## Step 5. Models
 
 1. Call the tool with no setting. Show the `small_model`, `middle_model` and `large_model` lines, each with its value or `unset`.
-2. Say that a slot with no model is no fault: its level runs on the model Hermes gives, and the plugin still sets the effort.
+2. Say that a slot with no model is no fault: its level runs on the model Hermes gives, and the plugin still sets the effort for a task it scores.
 3. When the person wants a model in a slot, propose one only from the models Hermes itself lists.
 4. Call the tool with that slot setting and give the person the text it returns.
-5. Change a setting only on the person's word. The plugin has no tool that lists or sets a model.
+5. When the person says a setting is changed, call the tool with no setting and show the three lines again.
+6. Change a setting only on the person's word. The plugin has no tool that lists or sets a model.
 
 Each slot is a mapping with two fields. `provider` is a Hermes provider id, such as `openrouter`. `model` is an id from Hermes's offline model list for that provider. A slot with no `model` counts as unset.
 

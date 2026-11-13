@@ -32,7 +32,7 @@ Escalate when a delegated task reports BLOCKED, fails the check its goal names, 
 4. When a level 2 task fails, re-dispatch it at level 2 with `reasoning_effort` one step above the failed task's effort, up to `xhigh`.
 5. If `xhigh` at level 2 also fails, stop and report to the person.
 
-A label that reads `<slot> model unset` or `<slot> model unresolved` means that level set no model, and the task ran on Hermes's own route.
+A label that reads `<slot> model unset` or `<slot> model unresolved` means that level set no model, and the task ran on Hermes's own route. When the re-dispatched task shows such a label again, stop raising the level and report to the person.
 
 A label that shows `config effort`, or a route whose `reasoning_effort` did not rise after you raised it, means the person's `delegation.reasoning_effort` holds the effort. A higher `reasoning_effort` then changes nothing. Skip the effort steps, and at level 2 stop and report that limit to the person.
 

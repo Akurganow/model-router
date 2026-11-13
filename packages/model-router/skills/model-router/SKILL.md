@@ -24,7 +24,7 @@ Escalate when a subagent reports BLOCKED, fails the check its brief names, or tw
 2. Otherwise, re-dispatch to an agent whose model is stronger.
 3. If the stronger agent also fails, stop and report to the user.
 
-A batch line entry that reads `<slot> model unset` or `<slot> model unresolved` means that level gave no role, and the agent ran on its own model.
+A batch line entry that reads `<slot> model unset` or `<slot> model unresolved` means that level gave no role, and the agent ran on its own model. When the re-dispatched item shows such an entry again, stop and report to the user.
 
 To find a stronger agent, read the agents the task tool lists. Bundled agents and the user's own agents both appear. Check an agent's model in its definition or in `task.agentModelOverrides` before you name it.
 

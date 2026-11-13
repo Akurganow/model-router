@@ -73,7 +73,8 @@ If a key is missing for every allowed provider, say that every call skips with `
 2. Tell the user where to see and set a role: the Roles view of `/models`, whose `+ New role…` row adds `middle`, or `modelRoles` in omp's `config.yml`. [Models](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#models) says what a value looks like.
 3. Say that a role with no model is no fault: its level runs on the agent's model, and the plugin still sets the effort.
 4. When the user wants a model in a role, propose one only from the models omp itself lists in `/models`.
-5. Change a role only on the user's word. The plugin has no tool that lists or sets a model.
+5. When the user says a role is changed, ask them to check it in the Roles view of `/models`.
+6. Change a role only on the user's word. The plugin has no tool that lists or sets a model.
 
 ## Step 5. Scope
 

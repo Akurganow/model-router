@@ -66,7 +66,8 @@ If a key is missing for every allowed provider, say that every call skips with `
 2. Say that a slot with no model is no fault: its level runs on the model OpenClaw gives, and the plugin still sets the effort.
 3. When the person wants a model in a slot, propose one only from the models OpenClaw itself lists.
 4. Call the tool with that slot setting and give the person the text it returns.
-5. Change a setting only on the person's word. The plugin has no tool that lists or sets a model.
+5. When the person says a setting is changed, call the tool with no setting and show the three lines again.
+6. Change a setting only on the person's word. The plugin has no tool that lists or sets a model.
 
 ## Step 5. Scope
 
