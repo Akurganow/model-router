@@ -1,3 +1,4 @@
+// Serves gates.test.ts and gates-params.test.ts: the spawn params, settings and config that stand in for what OpenClaw hands gateSpawn.
 import assert from "node:assert/strict";
 import { type Gate, type GateInput, gateSpawn } from "./gates.ts";
 import { readSpawn } from "./params.ts";
