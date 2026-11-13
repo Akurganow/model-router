@@ -321,7 +321,7 @@ describe("what Jev is asked", () => {
 	});
 });
 
-// The gate tests pin each reason. These tests pin that the router reaches the gate and logs its reason.
+// The gate tests check each reason. These tests check that the router reaches the gate and logs its reason.
 const skippedLog = (reason: string) => [LINE_PREFIX + skippedLine(reason)];
 
 describe("gates and skips", () => {
