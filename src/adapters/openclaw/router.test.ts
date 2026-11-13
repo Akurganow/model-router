@@ -427,7 +427,7 @@ describe("gates and skips", () => {
 			levels: { tier: 1, work: 1 },
 			settings: { small_model: "", large_model: "x/y" },
 		});
-		assert.ok(await level1.call());
+		assert.deepEqual(await level1.call(), { params: { thinking: "medium" } });
 	});
 
 	it("skips when the live config cannot be read", async () => {
