@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
 	CANDIDATES_DESCRIPTION,
-	isModelSetting,
 	type Listed,
 	listing,
 	type ModelPort,
@@ -81,18 +80,32 @@ test("listing words one price alone, fractions and a free model", () => {
 			{ id: "p/in", input: 0.0434 },
 			{ id: "p/out", output: 14, context: 1048576 },
 			{ id: "p/free", input: 0, output: 0, context: 131072 },
+			{ id: "p/big", input: 1234567 },
+			{ id: "p/round", input: 999999, context: 999999 },
+			{ id: "p/tiny", input: 1e-7 },
 		]),
 		[
-			"models the person can run: 3",
+			"models the person can run: 6",
 			"- p/in ($0.0434 in per 1M tokens)",
 			"- p/out ($14 out per 1M tokens, 1.05M context)",
 			"- p/free ($0 in, $0 out per 1M tokens, 131K context)",
+			"- p/big ($1230000 in per 1M tokens)",
+			"- p/round ($1000000 in per 1M tokens, 1M context)",
+			"- p/tiny ($0.0000001 in per 1M tokens)",
 		].join("\n"),
 	);
 });
 
 test("listing drops a number that is not finite or is negative and keeps the id", () => {
-	const bad: unknown[] = [Number.NaN, Number.POSITIVE_INFINITY, -1, "1", null];
+	const bad: unknown[] = [
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+		-1,
+		"1",
+		"",
+		"   ",
+		null,
+	];
 	for (const value of bad) {
 		const model = {
 			id: "p/m",
@@ -112,6 +125,22 @@ test("listing drops a number that is not finite or is negative and keeps the id"
 	);
 });
 
+test("listing prints a negative zero as zero", () => {
+	assert.equal(
+		listing([{ id: "p/z", input: -0, output: -0, context: -0 }]),
+		"models the person can run: 1\n- p/z ($0 in, $0 out per 1M tokens, 0 context)",
+	);
+});
+
+test("listing drops an entry that is not an object", () => {
+	for (const entry of [null, undefined, "a/b"])
+		assert.equal(
+			listing([entry, { id: "a/b" }] as unknown as Listed[]),
+			"models the person can run: 1\n- a/b",
+			String(entry),
+		);
+});
+
 test("listing drops a model whose id fails the pattern", () => {
 	const long = `a${"b".repeat(99)}`;
 	assert.equal(long.length, 100);
@@ -123,36 +152,29 @@ test("listing drops a model whose id fails the pattern", () => {
 		"-a",
 		"a b",
 		"a/b(c)",
+		"~a b",
 		long,
-		"Az0._:@/+-",
+		"Az0._:@/+-~",
+		"~deepseek/deepseek-v4-flash-latest",
+		"openrouter/~deepseek/deepseek-v4-flash-latest",
 	];
 	const listed = ids.map((id) => ({ id }));
-	listed.push({ id: 7 } as unknown as { id: string });
+	for (const id of [7, null, undefined, "   "])
+		listed.push({ id } as unknown as { id: string });
 	assert.equal(
 		listing(listed),
-		[`models the person can run: 2`, `- ${long}`, "- Az0._:@/+-"].join("\n"),
+		[
+			"models the person can run: 4",
+			`- ${long}`,
+			"- Az0._:@/+-~",
+			"- ~deepseek/deepseek-v4-flash-latest",
+			"- openrouter/~deepseek/deepseek-v4-flash-latest",
+		].join("\n"),
 	);
 });
 
 test("listing an empty list gives the header alone", () => {
 	assert.equal(listing([]), "models the person can run: 0");
-});
-
-test("isModelSetting knows models and the three slot settings only", () => {
-	for (const name of ["models", "small_model", "middle_model", "large_model"])
-		assert.equal(isModelSetting(name), true, name);
-	for (const other of [
-		"provider",
-		"model",
-		"models ",
-		"middle",
-		"",
-		"   ",
-		null,
-		undefined,
-		1,
-	])
-		assert.equal(isModelSetting(other), false, String(other));
 });
 
 test("runModels returns undefined for any other setting and reads nothing", async () => {
@@ -164,12 +186,24 @@ test("runModels returns undefined for any other setting and reads nothing", asyn
 
 test("runModels lists the models for the models setting", async () => {
 	const { port } = fakePort();
-	assert.equal(await runModels(port, { setting: "models" }), listing(LISTED));
+	assert.equal(
+		await runModels(port, { setting: "models" }),
+		[
+			"models the person can run: 3",
+			"- a/small ($1 in, $5 out per 1M tokens, 200K context)",
+			"- a/middle (1M context)",
+			"- a/large",
+		].join("\n"),
+	);
 	const { port: empty } = fakePort({ list: async () => [] });
 	assert.equal(
 		await runModels(empty, { setting: "models" }),
 		"models the person can run: 0",
 	);
+});
+
+test("modelsUnavailable words the reason after the prefix", () => {
+	assert.equal(modelsUnavailable("{error}"), "models unavailable: {error}");
 });
 
 test("runModels reports a list that rejects or throws", async () => {
@@ -188,13 +222,6 @@ test("runModels reports a list that rejects or throws", async () => {
 	assert.equal(
 		await runModels(thrower, { setting: "models" }),
 		"models unavailable: no list",
-	);
-});
-
-test("modelsUnavailable words a reason given as text", () => {
-	assert.equal(
-		modelsUnavailable("node not found"),
-		"models unavailable: node not found",
 	);
 });
 
@@ -229,6 +256,23 @@ test("a refusal by authorize ends the flow before the list is read", async () =>
 	assert.deepEqual(calls.written, []);
 });
 
+test("an authorize that throws ends the flow before the list is read", async () => {
+	const { port, calls } = fakePort({
+		writer: {
+			authorize: () => {
+				throw new Error("owner check failed");
+			},
+		},
+	});
+	assert.equal(
+		await runModels(port, { setting: "small_model", candidates: ["a/small"] }),
+		"small_model unchanged: owner check failed",
+	);
+	assert.equal(calls.listed, 0);
+	assert.deepEqual(calls.asked, []);
+	assert.deepEqual(calls.written, []);
+});
+
 test("the question names an unset slot", async () => {
 	const { port, calls } = fakePort();
 	await runModels(port, { setting: "middle_model" });
@@ -238,23 +282,36 @@ test("the question names an unset slot", async () => {
 			slot: "middle",
 			question:
 				"Which model should the middle level run? middle_model is unset now.",
-			options: ["Show the whole list"],
+			options: [
+				"a/small - $1 in, $5 out per 1M tokens, 200K context",
+				"a/middle - 1M context",
+				"a/large",
+			],
 		},
 	]);
 });
 
 test("the question names the configured value of a set slot", async () => {
+	const configured: Readonly<Record<Slot, string | undefined>> = {
+		small: "a/small",
+		middle: undefined,
+		large: "a/large",
+	};
 	const { port, calls } = fakePort({
-		writer: { current: async () => "a/large" },
+		writer: { current: async (slot) => configured[slot] },
 	});
+	await runModels(port, { setting: "small_model" });
 	await runModels(port, { setting: "large_model" });
-	assert.equal(
-		calls.asked[0]?.question,
-		"Which model should the large level run? large_model is a/large now.",
+	assert.deepEqual(
+		calls.asked.map((asked) => asked.question),
+		[
+			"Which model should the small level run? small_model is a/small now.",
+			"Which model should the large level run? large_model is a/large now.",
+		],
 	);
 });
 
-test("candidates that are not a list of ids offer only the whole list", async () => {
+test("with no valid candidate the one dialog offers the whole list", async () => {
 	for (const candidates of [
 		undefined,
 		null,
@@ -264,15 +321,53 @@ test("candidates that are not a list of ids offer only the whole list", async ()
 		{ 0: "a/small" },
 		[],
 		[null, 1, "", "   "],
+		["x/unlisted", " a/small"],
 	]) {
-		const { port, calls } = fakePort();
-		await runModels(port, { setting: "small_model", candidates });
+		const { port, calls } = fakePort({ answers: ["a/large"] });
+		assert.equal(
+			await runModels(port, { setting: "small_model", candidates }),
+			"small_model (small role): a/large",
+			JSON.stringify(candidates),
+		);
 		assert.deepEqual(
-			calls.asked[0]?.options,
-			["Show the whole list"],
+			calls.asked.map((asked) => asked.options),
+			[
+				[
+					"a/small - $1 in, $5 out per 1M tokens, 200K context",
+					"a/middle - 1M context",
+					"a/large",
+				],
+			],
 			JSON.stringify(candidates),
 		);
 	}
+});
+test("a candidate that is a label, not an id, is not valid", async () => {
+	const { port, calls } = fakePort();
+	await runModels(port, {
+		setting: "small_model",
+		candidates: ["a/small - $1 in, $5 out per 1M tokens, 200K context"],
+	});
+	assert.deepEqual(
+		calls.asked.map((asked) => asked.options),
+		[
+			[
+				"a/small - $1 in, $5 out per 1M tokens, 200K context",
+				"a/middle - 1M context",
+				"a/large",
+			],
+		],
+	);
+});
+
+test("with no valid candidate the whole-list entry is not an offered answer", async () => {
+	const { port, calls } = fakePort({ answers: ["Show the whole list"] });
+	assert.equal(
+		await runModels(port, { setting: "small_model" }),
+		"small_model unchanged: the answer was not one of the offered values",
+	);
+	assert.equal(calls.asked.length, 1);
+	assert.deepEqual(calls.written, []);
 });
 
 test("candidates keep listed ids in the agent's order, once, at most four, labelled from the list", async () => {
@@ -356,7 +451,10 @@ test("no answer from either dialog writes nothing", async () => {
 	for (const answers of [[undefined], ["Show the whole list", undefined]]) {
 		const { port, calls } = fakePort({ answers });
 		assert.equal(
-			await runModels(port, { setting: "middle_model" }),
+			await runModels(port, {
+				setting: "middle_model",
+				candidates: ["a/small"],
+			}),
 			"middle_model unchanged: no answer from the dialog",
 		);
 		assert.deepEqual(calls.written, []);
@@ -386,6 +484,10 @@ test("an answer outside the options writes nothing and is never echoed", async (
 		["secret-text"],
 		["Show the whole list", "x/unlisted"],
 		["Show the whole list", "Show the whole list"],
+		[""],
+		["a/larg"],
+		[" a/large"],
+		["A/LARGE"],
 	]) {
 		const { port, calls } = fakePort({ answers });
 		const text = await runModels(port, {

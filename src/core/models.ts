@@ -1,4 +1,5 @@
 import { errorText } from "../utils/error.ts";
+import { isRecord } from "../utils/guards.ts";
 import {
 	LABEL_SEPARATOR,
 	NO_ANSWER,
@@ -6,14 +7,7 @@ import {
 	unchanged,
 	unchangedBy,
 } from "./settings.ts";
-import {
-	SLOT_SETTINGS,
-	SLOTS,
-	type Slot,
-	type SlotSetting,
-	slotLine,
-	slotSetting,
-} from "./slots.ts";
+import { SLOTS, type Slot, slotLine, slotSetting } from "./slots.ts";
 
 /**
  * One model the harness lists. The id is in the harness's own form. Prices are
@@ -56,7 +50,7 @@ const MODELS = "models";
 const MAX_CANDIDATES = 4;
 const SHOW_ALL = "Show the whole list";
 // A listed id is untrusted text that reaches the agent and the dialog.
-const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@/+-]{0,99}$/;
+const ID_PATTERN = /^[A-Za-z0-9~][A-Za-z0-9._:@/+~-]{0,99}$/;
 
 const significant = new Intl.NumberFormat("en-US", {
 	maximumSignificantDigits: 3,
@@ -67,30 +61,35 @@ const compact = new Intl.NumberFormat("en-US", {
 	maximumSignificantDigits: 3,
 });
 
-const known = (value: unknown): value is number =>
-	typeof value === "number" && Number.isFinite(value) && value >= 0;
+// Adding 0 turns -0, which passes the check, into 0, so it never prints as -0.
+const known = (value: unknown): number | undefined =>
+	typeof value === "number" && Number.isFinite(value) && value >= 0
+		? value + 0
+		: undefined;
 
-function detail({ input, output, context }: Listed): string | undefined {
+function detail(model: Listed): string | undefined {
+	const input = known(model.input);
+	const output = known(model.output);
+	const context = known(model.context);
 	const prices = [
-		known(input) ? `$${significant.format(input)} in` : undefined,
-		known(output) ? `$${significant.format(output)} out` : undefined,
+		input === undefined ? undefined : `$${significant.format(input)} in`,
+		output === undefined ? undefined : `$${significant.format(output)} out`,
 	].filter((part) => part !== undefined);
 	const parts = [
 		prices.length > 0 ? `${prices.join(", ")} per 1M tokens` : undefined,
-		known(context) ? `${compact.format(context)} context` : undefined,
+		context === undefined ? undefined : `${compact.format(context)} context`,
 	].filter((part) => part !== undefined);
 	return parts.length > 0 ? parts.join(", ") : undefined;
 }
 
+// The Hermes operation passes entries parsed from JSON, so an entry may not be an object.
 const usable = (listed: readonly Listed[]): Listed[] =>
 	listed.filter(
-		(model) => typeof model.id === "string" && ID_PATTERN.test(model.id),
+		(model: unknown): model is Listed =>
+			isRecord(model) &&
+			typeof model["id"] === "string" &&
+			ID_PATTERN.test(model["id"]),
 	);
-
-export const isModelSetting = (
-	name: unknown,
-): name is SlotSetting | typeof MODELS =>
-	name === MODELS || SLOT_SETTINGS.some((setting) => setting === name);
 
 /** Returns the text the agent reads for the models setting. */
 export function listing(listed: readonly Listed[]): string {
@@ -104,7 +103,6 @@ export function listing(listed: readonly Listed[]): string {
 	].join("\n");
 }
 
-/** The line the models setting gives when the list cannot be read. */
 export const modelsUnavailable = (reason: string): string =>
 	`models unavailable: ${reason}`;
 
@@ -138,7 +136,12 @@ async function choose(
 	candidates: unknown,
 ): Promise<string> {
 	const setting = slotSetting(slot);
-	const refusal = writer.authorize();
+	let refusal: string | undefined;
+	try {
+		refusal = writer.authorize();
+	} catch (err) {
+		return unchangedBy(setting, err);
+	}
 	if (refusal !== undefined) return unchanged(setting, refusal);
 	let models: Listed[];
 	try {
@@ -160,12 +163,15 @@ async function choose(
 		if (model !== undefined && !first.includes(model)) first.push(model);
 		if (first.length === MAX_CANDIDATES) break;
 	}
-	let answer = await ask(writer, slot, question, [
-		...first.map(label),
-		SHOW_ALL,
-	]);
-	let from = first;
-	if (answer === SHOW_ALL) {
+	// With no valid candidate the person goes straight to the whole list.
+	let from = first.length > 0 ? first : models;
+	let answer = await ask(
+		writer,
+		slot,
+		question,
+		first.length > 0 ? [...first.map(label), SHOW_ALL] : models.map(label),
+	);
+	if (first.length > 0 && answer === SHOW_ALL) {
 		answer = await ask(writer, slot, question, models.map(label));
 		from = models;
 	}

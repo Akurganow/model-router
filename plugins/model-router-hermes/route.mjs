@@ -35,6 +35,16 @@ var streamedFetch = async (url, init) => {
   });
 };
 
+// src/utils/text.ts
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+
+// src/utils/guards.ts
+var isRecord = (v) => typeof v === "object" && v !== null;
+var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
+
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
 var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
 var APIPromise = class APIPromise2 extends Promise {
@@ -137,21 +147,21 @@ var TypeSafeError = class extends Error {
     this.name = new.target.name;
   }
 };
-var isRecord = (value) => typeof value === "object" && value !== null;
+var isRecord2 = (value) => typeof value === "object" && value !== null;
 var extractMessage = (body) => {
   if (typeof body === "string") return body || void 0;
-  if (!isRecord(body)) return void 0;
+  if (!isRecord2(body)) return void 0;
   const { error, message, detail: detail2 } = body;
   if (typeof error === "string") return error;
-  if (isRecord(error) && typeof error.message === "string") return error.message;
+  if (isRecord2(error) && typeof error.message === "string") return error.message;
   if (typeof message === "string") return message;
   if (typeof detail2 === "string") return detail2;
-  if (isRecord(detail2) && typeof detail2.message === "string") return detail2.message;
+  if (isRecord2(detail2) && typeof detail2.message === "string") return detail2.message;
   if (Array.isArray(detail2)) return describeValidationErrors(detail2);
 };
 var describeValidationErrors = (errors) => {
   const parts = errors.flatMap((e) => {
-    if (!isRecord(e) || typeof e.msg !== "string") return [];
+    if (!isRecord2(e) || typeof e.msg !== "string") return [];
     const loc = Array.isArray(e.loc) ? e.loc.filter((x) => x !== "body").join(".") : "";
     return [loc ? `${loc}: ${e.msg}` : e.msg];
   });
@@ -1055,7 +1065,7 @@ function pickModel(level, state) {
 }
 
 // src/core/models.ts
-var ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@/+-]{0,99}$/;
+var ID_PATTERN = /^[A-Za-z0-9~][A-Za-z0-9._:@/+~-]{0,99}$/;
 var significant = new Intl.NumberFormat("en-US", {
   maximumSignificantDigits: 3,
   useGrouping: false
@@ -1064,20 +1074,23 @@ var compact = new Intl.NumberFormat("en-US", {
   notation: "compact",
   maximumSignificantDigits: 3
 });
-var known = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0;
-function detail({ input, output, context }) {
+var known = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value + 0 : void 0;
+function detail(model) {
+  const input = known(model.input);
+  const output = known(model.output);
+  const context = known(model.context);
   const prices = [
-    known(input) ? `$${significant.format(input)} in` : void 0,
-    known(output) ? `$${significant.format(output)} out` : void 0
+    input === void 0 ? void 0 : `$${significant.format(input)} in`,
+    output === void 0 ? void 0 : `$${significant.format(output)} out`
   ].filter((part) => part !== void 0);
   const parts = [
     prices.length > 0 ? `${prices.join(", ")} per 1M tokens` : void 0,
-    known(context) ? `${compact.format(context)} context` : void 0
+    context === void 0 ? void 0 : `${compact.format(context)} context`
   ].filter((part) => part !== void 0);
   return parts.length > 0 ? parts.join(", ") : void 0;
 }
 var usable = (listed) => listed.filter(
-  (model) => typeof model.id === "string" && ID_PATTERN.test(model.id)
+  (model) => isRecord(model) && typeof model["id"] === "string" && ID_PATTERN.test(model["id"])
 );
 function listing(listed) {
   const models = usable(listed);
@@ -1090,23 +1103,13 @@ function listing(listed) {
   ].join("\n");
 }
 
-// src/utils/text.ts
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
-};
-
-// src/utils/guards.ts
-var isRecord2 = (v) => typeof v === "object" && v !== null;
-var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
-
 // src/adapters/hermes/models.ts
 var MODELS_OP = "models";
 var numbers = (fields) => Object.fromEntries(
   Object.entries(fields).filter(([, value]) => typeof value === "number")
 );
 function toListed(entry) {
-  if (!isRecord2(entry) || Array.isArray(entry)) return [];
+  if (!isRecord(entry) || Array.isArray(entry)) return [];
   const { provider, model, input, output, context } = entry;
   if (typeof provider !== "string" || typeof model !== "string") return [];
   return [
@@ -1114,7 +1117,7 @@ function toListed(entry) {
   ];
 }
 function answerModels(raw) {
-  if (!isRecord2(raw)) return void 0;
+  if (!isRecord(raw)) return void 0;
   const { op, listed } = raw;
   if (op !== MODELS_OP) return void 0;
   return {
@@ -1363,10 +1366,10 @@ var fromMiddle = (down, up) => (p) => {
 var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 function parseProbabilities(answers, key) {
-  const a = isRecord2(answers) ? answers[key] : void 0;
-  if (!isRecord2(a)) return void 0;
+  const a = isRecord(answers) ? answers[key] : void 0;
+  if (!isRecord(a)) return void 0;
   const { type, probabilities } = a;
-  if (type !== "score" || !isRecord2(probabilities)) return void 0;
+  if (type !== "score" || !isRecord(probabilities)) return void 0;
   if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
   const { 0: p0, 1: p1, 2: p2 } = probabilities;
   if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
@@ -1442,7 +1445,7 @@ function skip(failed) {
   };
 }
 function parseReply(parts, result) {
-  const { answers, model, usage } = isRecord2(result) ? result : {};
+  const { answers, model, usage } = isRecord(result) ? result : {};
   const decided = {};
   for (const part of parts) {
     const probabilities = parseProbabilities(answers, part.key);
@@ -1452,7 +1455,7 @@ function parseReply(parts, result) {
   return {
     parts: decided,
     model: typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "",
-    usage: isRecord2(usage) ? usage : void 0
+    usage: isRecord(usage) ? usage : void 0
   };
 }
 function decisionSuffix({
@@ -1592,14 +1595,14 @@ async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
 var KEPT_EFFORTS = ["config", "caller"];
 var readKeys = (value) => Object.fromEntries(
   PROVIDERS.flatMap((provider) => {
-    const key = isRecord2(value) ? nonEmpty(value[provider]) : void 0;
+    const key = isRecord(value) ? nonEmpty(value[provider]) : void 0;
     return key === void 0 ? [] : [[provider, key]];
   })
 );
-var readModels = (value) => slotRecord((slot) => isRecord2(value) ? nonEmpty(value[slot]) : void 0);
+var readModels = (value) => slotRecord((slot) => isRecord(value) ? nonEmpty(value[slot]) : void 0);
 var readBudget = (value) => isPositiveNumber(value) ? value : void 0;
 function readRequest(raw) {
-  if (!isRecord2(raw) || Array.isArray(raw)) return void 0;
+  if (!isRecord(raw) || Array.isArray(raw)) return void 0;
   const {
     task,
     context,
