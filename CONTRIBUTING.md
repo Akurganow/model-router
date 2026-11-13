@@ -16,6 +16,8 @@ every commit as a [conventional commit](#commits).
     `src/utils/`.
   - `scripts/lint.test.ts` plants one fault for each rule and checks that
     Biome reports it.
+  - [AGENTS.md](AGENTS.md#a-rule-about-the-source-goes-to-biome-first)
+    says when a new rule goes to Biome and when to a test.
   - `scripts/layout.test.ts` checks where the files sit:
     - every file under `src/` except `src/tsconfig.json` sits in `core/`,
       `utils/` or one adapter folder;
