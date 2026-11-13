@@ -37,7 +37,7 @@ Routing needs the plugin enabled, the backend on and a key. The models in the sl
 
 1. A backend change applies from the next session. In a running session, type `/delegation model-router --now`.
 2. Add a [key](#keys).
-3. Assign `small_model`, `middle_model` and `large_model`, as [Models](#models) says.
+3. Assign `small_model`, `middle_model` and `large_model`, as [Models](#models) says. The setup skill can propose models from Hermes's list, as [List the models](#list-the-models) says. You set each one yourself.
 4. Pick the [provider](#provider) if the default does not fit.
 5. Delegate one small task, and read its [label](#the-label-and-the-log).
 
@@ -90,9 +90,22 @@ typesafe key: set
 openrouter key: unset
 ```
 
-Given a setting name, the tool returns how to change that setting. It writes nothing. The names are `provider`, `typesafe_key`, `openrouter_key`, `small_model`, `middle_model` and `large_model`.
+Given a setting name, the tool returns how to change that setting. It writes nothing. The names are `provider`, `typesafe_key`, `openrouter_key`, `small_model`, `middle_model` and `large_model`. Given `models`, it returns the models Hermes lists, as [List the models](#list-the-models) says.
 
 [Facts behind this section](../../docs/clients.md#hermes-registration-and-settings)
+
+### List the models
+
+The setup skill's Models step reads the list and proposes up to four models per slot in chat. [The setup skill](skills/model-router-setup/SKILL.md) holds the steps.
+
+- The tool with `models` returns the models of every provider that Hermes's `list_available_providers()` marks authenticated, from Hermes's offline model catalogue. The plugin filters nothing by its own slot check.
+- An id reads `provider/model`. The text before the first slash is the slot's `provider`, and the rest is its `model`.
+- Each line gives the price where the catalogue holds one, and the context size where it knows it.
+- The plugin's own code opens no connection for the list. Hermes's provider check can try a cloud metadata address for its `bedrock` provider.
+- The tool starts Hermes's Node once to word the list, as [Node](#node) says. Without Node it returns `models unavailable: node not found`.
+- The tool cannot write a slot. You set each model with the command the tool returns for that slot.
+
+[Hermes model and credential checks](../../docs/clients.md#hermes-model-and-credential-checks) has the runs.
 
 ## Models
 
@@ -113,7 +126,7 @@ Before it sets a slot, the plugin checks the slot the level picks, offline. The 
 - Hermes resolves the provider with credentials and installs no plugin to do it.
 - Hermes's offline catalogue lists the model for that provider.
 
-A slot that fails any check is unresolved. A provider that signs in with OAuth reads as unresolved, and so does an `anthropic` slot that would use Claude Code's credentials. Custom and local providers read as unresolved too, because the catalogue lists no models for them. The check makes no network request.
+A slot that fails any check is unresolved. The [list](#list-the-models) is wider than this check, so a listed model can still read unresolved. A provider that signs in with OAuth reads as unresolved, and so does an `anthropic` slot that would use Claude Code's credentials. Custom and local providers read as unresolved too, because the catalogue lists no models for them. The check makes no network request.
 
 The plugin does not check a model that the catalogue lists and the provider rejects at run time. The child then fails on the model. [Fails open](PRIVACY.md#fails-open) says so.
 
@@ -216,7 +229,7 @@ The budget record lives in the process that holds the plugin: the gateway, or th
 
 ## Node
 
-The plugin runs the scoring step in Node. It uses only Hermes's own Node. It never uses a Node on `PATH`, and it reports `node not found` when Hermes has none. It starts the program `route.mjs` once per task. It writes the request to the program's standard input and reads one line of JSON back. Keys travel on standard input only.
+The plugin runs the scoring step in Node. It uses only Hermes's own Node. It never uses a Node on `PATH`, and it reports `node not found` when Hermes has none. It starts the program `route.mjs` once per task, and once per `models` call of the config tool. It writes the request to the program's standard input and reads one line of JSON back. Keys travel on standard input only.
 
 The program sees a short list of environment variables. [The program the plugin starts](PRIVACY.md#the-program-the-plugin-starts) lists them. The list holds the proxy variables. Node's `fetch` reads `HTTPS_PROXY` and `HTTP_PROXY` only when `NODE_USE_ENV_PROXY=1` is set. When `HTTPS_PROXY` or `HTTP_PROXY` is present, in either case, the plugin sets that switch, unless the environment sets it already. `NO_PROXY` alone turns nothing on.
 
