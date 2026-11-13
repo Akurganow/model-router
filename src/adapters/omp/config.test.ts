@@ -221,6 +221,16 @@ test("without a UI nothing is asked and nothing is written", async () => {
 	assert.equal(world.writes.length, 0);
 });
 
+test("without a UI nothing is read", async () => {
+	world.hasUI = false;
+	const log = logged(world, install, labelOf("scope", "extended"));
+	assert.equal(
+		await world.callTool({ setting: "scope" }),
+		unchanged("scope", NO_ANSWER),
+	);
+	assert.deepEqual(log, []);
+});
+
 test("a dismissed or failing dialog writes nothing", async () => {
 	install();
 	const expected = unchanged("provider", NO_ANSWER);
