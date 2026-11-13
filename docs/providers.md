@@ -32,7 +32,6 @@ A key with no model still scores: [A slot with no model](#a-slot-with-no-model) 
 The config tool reports `<provider> key: set` or `<provider> key: unset` for each provider the `provider` value allows.
 It never returns a key, its length or any part of it.
 In OpenClaw and Hermes Agent the tool also prints each model setting, as its README says: the configured value, or `unset`.
-It runs no check on a model, so a model the harness cannot run shows only in the routing line.
 
 ## A slot with no model
 
@@ -40,20 +39,17 @@ This section holds for Oh My Pi, OpenClaw and Hermes Agent.
 Each of them takes the model for a level from a slot: level 0 from `small`, level 1 from `middle` and level 2 from `large`.
 Each README names the harness setting of each slot.
 
-A slot is set when it names a model the harness can run.
-It is unset when it names no model, and unresolved when it names a model the harness cannot run.
-For an unset or unresolved slot, the task keeps the model the harness gives it.
+A slot is set when it names a model.
+It is unset when it names no model.
+For an unset slot, the task keeps the model the harness gives it.
 For a task it scores, the plugin still sets the effort, except where the README's list of kept efforts says otherwise.
-The routing line names the slot and its state in place of a model, as in `L1 middle model unset` or `L2 large model unresolved`.
+The routing line names the slot and its state in place of a model, as in `L1 middle model unset`.
 
 An unset slot is your choice and needs no fix: its level runs on the harness's model.
-An unresolved slot names a model the harness cannot run, so fix that model or clear the slot.
-Each README says what makes a model unresolved in its harness.
+The plugin sets the model a slot names.
 
-No gate checks the models, and no task skips because a slot has no model.
+No task skips because a slot has no model.
 So with a key set and no model set, the plugin still sends each task it scores to the provider and sets its effort.
-In OpenClaw and Hermes Agent, a check of the picked slot that does not finish within the routing limit skips the task with `timeout`.
-Oh My Pi's role check returns at once, so it has no such skip.
 
 ## The request
 
@@ -164,7 +160,7 @@ Remove the key of every provider the `provider` setting allows, and the plugin s
 
 A plugin fails open.
 It never throws into its harness.
-A missing key, a closed gate, an error, a timeout or a failed check leaves the task to run as the harness would run it without the plugin.
+A missing key, a closed gate, an error or a timeout leaves the task to run as the harness would run it without the plugin.
 
 ## The routing line
 

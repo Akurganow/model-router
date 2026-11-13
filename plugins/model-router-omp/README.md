@@ -5,9 +5,9 @@ An [Oh My Pi](https://github.com/can1357/oh-my-pi) (omp) plugin that picks a mod
 ## What it does
 
 - It scores each eligible batch item through Jev, using the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
-- At spawn, it returns `@smol` for level 0, `@middle` for level 1 and `@slow` for level 2. Each role carries the effort as a thinking suffix, such as `@smol:high`. Without a usable role, the spawn keeps the agent's model and gets the effort alone, as [Models](#models) says.
+- At spawn, it returns `@smol` for level 0, `@middle` for level 1 and `@slow` for level 2. Each role carries the effort as a thinking suffix, such as `@smol:high`. Without a set role, the spawn keeps the agent's model and gets the effort alone, as [Models](#models) says.
 - The [`scope` setting](#scope) picks the agents. Under `core`, the default, only omp's bundled `task` agent is routed. Under `extended`, every agent whose model you did not set is routed.
-- It never overrides a model you set. It keeps the item's own `effort` and a thinking level on the role it picks. Without a usable role, it keeps a thinking level on the spawn's model patterns. [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the rules, and [Effort](#effort) names the exception: a level that an agent sets gives way to the ladder. It never changes the tool input.
+- It never overrides a model you set. It keeps the item's own `effort` and a thinking level on the role it picks. Without a set role, it keeps a thinking level on the spawn's model patterns. [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the rules, and [Effort](#effort) names the exception: a level that an agent sets gives way to the ladder. It never changes the tool input.
 - The routed effort replaces the level of a bundled agent: `auto` for `task`, where omp picks the effort for each prompt, and `medium` for `sonic`.
 - The plugin changes a setting only when you pick a value in its dialog or give it a command. [Change the options](#change-the-options) lists both.
 - An item is eligible when its `task` text is not empty. Under `core`, its `agent` must also be absent or `task`.
@@ -142,18 +142,17 @@ omp ships no `middle` role. `modelRoles` accepts any role name, so a `middle` ro
 
 You set a role in omp, not in the plugin. The Roles view of `/models` names `smol` Fast and `slow` Thinking, and its `+ New role…` row adds `middle`. The roles also live under `modelRoles` in omp's `config.yml`. A value is a model selector such as `provider/modelId`, and may end in a thinking level such as `:low`. [omp model roles](../../docs/clients.md#omp-model-roles) has the sources.
 
-A role is set when `modelRoles` names it and omp resolves it. A role that `modelRoles` does not name is unset, even when omp falls back to your `default` model or its built-in list. So levels 0 and 2 keep the agent's model until you set the `smol` and `slow` roles.
+A role is set when `modelRoles` names it. A role that `modelRoles` does not name is unset, even when omp falls back to your `default` model or its built-in list. So levels 0 and 2 keep the agent's model until you set the `smol` and `slow` roles.
 
-A role that `modelRoles` names is unresolved when omp's model resolution finds no model for it. omp resolves only against the models it can use, so a model of a built-in provider with no credential does not resolve. A model omp does not list does not resolve either. [omp model roles](../../docs/clients.md#omp-model-roles) has the sources.
+The plugin sets the model role you named and does not check that it runs.
 
-An unset or unresolved role is not usable. Its level keeps the agent's model, and the line names the slot. The plugin still sets the effort, except where [Efforts the plugin keeps](#efforts-the-plugin-keeps) says otherwise. [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) has the rule the omp, OpenClaw and Hermes plugins share.
+An unset role gives no model. Its level keeps the agent's model, and the line names the slot. The plugin still sets the effort, except where [Efforts the plugin keeps](#efforts-the-plugin-keeps) says otherwise. [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) has the rule the omp, OpenClaw and Hermes plugins share.
 
 With the `task` role set, the plugin skips every `task` item with `task model role set`. Under `core` it then routes nothing.
 
 What the line does not show:
 
 - omp picks a child's retry fallback chain by the spawn's own model role, then `default`. The role the plugin returns does not change it, so `retry.fallbackChains.middle` does not reach the spawn. [omp model roles](../../docs/clients.md#omp-model-roles) has the source.
-- A role whose provider has a key command that prints nothing still resolves. omp then runs the child on the session's model, while the line names the role.
 
 ## Routing
 
@@ -163,7 +162,7 @@ What the line does not show:
 | 1 | Bounded judgment | `@middle:<effort>` |
 | 2 | Open judgment | `@slow:<effort>` |
 
-A level whose role is unset or unresolved gives the agent's own model patterns, each with `:<effort>`.
+A level whose role is unset gives the agent's own model patterns, each with `:<effort>`.
 
 The plugin stays at level 1 unless an end is clearly more likely. Level 0 needs more than 1.19 times the probability of level 1, and level 2 needs more than 1.41 times. When both ends pass, the likelier end wins. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors.
 
@@ -173,7 +172,7 @@ At spawn, the plugin checks the item again and every batch-wide gate except the 
 - The spawn names a model role that differs from the agent's own role. The agent's own role is the first model it declares that starts with `@`, without the `@`.
 - The agent declares no such role and the spawn carries any model role.
 - No decision matches the spawn.
-- The level has no usable role, and the plugin keeps the effort.
+- The level has no set role, and the plugin keeps the effort.
 
 In the first three cases the plugin also prints `model-router task <n>: skipped, <reason>`, a second line for the same item, as [The batch line](#the-batch-line) says. A spawn that matches no decision prints nothing.
 
@@ -181,7 +180,7 @@ In the first three cases the plugin also prints `model-router task <n>: skipped,
 
 The work question picks the effort from the ladder in [Effort](../model-router/README.md#effort) of the Claude Code plugin. Level 0 takes the Haiku column, and levels 1 and 2 take the Sonnet column: `medium`, `high` or `xhigh` at level 0, and `low`, `medium` or `high` at levels 1 and 2. The plugin never sets `max`, `auto`, `off`, `minimal` or `inherit`.
 
-The plugin returns the effort as omp's thinking suffix. With the level's role set, it returns the role with the suffix, such as `@slow:medium`. Without a usable role, it returns the spawn's own model patterns, each with the suffix. The model then stays, and only the thinking level changes. omp clamps the level to the range the model supports. [omp thinking levels](../../docs/clients.md#omp-thinking-levels) has the sources and the runs.
+The plugin returns the effort as omp's thinking suffix. With the level's role set, it returns the role with the suffix, such as `@slow:medium`. Without a set role, it returns the spawn's own model patterns, each with the suffix. The model then stays, and only the thinking level changes. omp clamps the level to the range the model supports. [omp thinking levels](../../docs/clients.md#omp-thinking-levels) has the sources and the runs.
 
 The routed effort replaces a level that omp's bundled agents set, such as `auto` for `task`. Under `extended` it also replaces a `thinking-level` that a user or project agent sets, as it replaces the bundled ones.
 
@@ -191,14 +190,14 @@ The first rule that matches decides. The plugin then sets the model alone, and t
 
 1. The item carries `effort` and `task.enableEffort` is on, so omp applies it. The line shows `caller effort`. While the setting is off or unreadable, omp ignores the item's `effort`, and the plugin sets its own.
 2. The set role for the routed level carries a thinking level, such as `modelRoles.smol: provider/model:low`, directly or through a role it names. The line shows `config effort`.
-3. The routed level has no usable role, and a model pattern of the spawn carries a thinking level. The line shows `config effort`. A set role replaces the patterns, so their thinking levels do not count.
+3. The routed level has no set role, and a model pattern of the spawn carries a thinking level. The line shows `config effort`. A set role replaces the patterns, so their thinking levels do not count.
 4. `task.maxEffort` is below `low`, or holds a value omp does not define. The plugin then sets no level, and the child runs at omp's own level, which omp does not hold under that ceiling. The line shows `config effort`.
-5. The routed level has no usable role, and the spawn has no model patterns, so there is no model to put the thinking level on. The line shows `no model patterns`.
+5. The routed level has no set role, and the spawn has no model patterns, so there is no model to put the thinking level on. The line shows `no model patterns`.
 6. Otherwise the plugin sets the ladder effort, capped at `task.maxEffort`. omp does not apply that ceiling to a level the spawn hook sets, so the plugin applies it itself.
 
 A level counts as carried when the text after the pattern's last colon is one omp reads as a level: a full name, `auto`, or a prefix of two letters or more that names one level only, such as `hi` or `med`. A colon that belongs to a model id, as in `:free` or `:8b`, carries no level.
 
-With no usable role and a kept effort, there is nothing to set. The plugin returns nothing.
+With no set role and a kept effort, there is nothing to set. The plugin returns nothing.
 
 ## The batch line
 
@@ -208,7 +207,7 @@ The plugin prints one line per batch. The line starts with `model-router`. It go
 model-router task 1: L0 @smol · high · p=0.91/0.84 | task 2: L1 @middle · medium · p=0.66/0.72 | task 3: L1 middle model unset · caller effort · p=0.62/0.70 | task 4: skipped, timeout
 ```
 
-A routed entry reads `L<level> <role or slot state> · <effort or kept label> · p=<tier>/<work>`. The slot state is `<slot> model unset` or `<slot> model unresolved`, as [Models](#models) says. The probabilities belong to the chosen level and the chosen work index. [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the labels. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else an entry holds and how it ends after a fallback.
+A routed entry reads `L<level> <role or slot state> · <effort or kept label> · p=<tier>/<work>`. The slot state is `<slot> model unset`, as [Models](#models) says. The probabilities belong to the chosen level and the chosen work index. [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the labels. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else an entry holds and how it ends after a fallback.
 
 omp's task view shows the same decision as the spawn's routing note, without the item number.
 
@@ -218,7 +217,7 @@ A routed item can still skip at spawn time, or get another line there. The batch
 
 ```text
 model-router task 2: skipped, task model override set
-model-router task 3: L2 large model unresolved · config effort · p=0.88/0.71
+model-router task 3: L2 large model unset · config effort · p=0.88/0.71
 ```
 
 ### Gate reasons
@@ -282,7 +281,7 @@ The plugin prints no line when the call has no eligible item. A call with `task.
 - omp's settings: `modelRoles`, `task.agentModelOverrides`, `task.disabledAgents`, `task.maxEffort`, `task.enableEffort` and `extensionHandlers.toolCallTimeoutMs`.
 - The model patterns and the model role omp sends with each spawn, and the `effort` of each item.
 - Its own `provider` and `scope` plugin settings, through omp's plugin settings loader, and the plugins lockfile that holds your global values. The project value may only narrow `provider` and may set `scope` both ways, as [Provider](#provider) and [Scope](#scope) say.
-- Whether the `smol`, `middle` and `slow` roles resolve, through omp's model resolution.
+- Whether `modelRoles` names the `smol`, `middle` and `slow` roles.
 - The agent list, with each agent's source, models and description, through `pi.pi.discoverAgents`.
 - The items and the batch `context` of each `task` call.
 - The key of each provider the `provider` setting allows, from omp's stored credential first and then `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY`. The plugin reads no other environment variable.

@@ -427,15 +427,9 @@ The running facts used omp from npm, a probe extension, a throwaway agent folder
   (source: [`config/model-roles.ts` L58–L59 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-roles.ts#L58-L59), [the same lines at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-roles.ts#L58-L59), [`overlays/model-hub.ts` L82 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/tui/src/overlays/model-hub.ts#L82), [the same line at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/tui/src/overlays/model-hub.ts#L82))
 - `modelRoles` accepts any role name, so a role such as `middle` needs no change in omp.
   (source: [`config/model-settings.ts` L109 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-settings.ts#L109), [the same line at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-settings.ts#L109))
-- A custom role that `modelRoles` names resolves: `ctx.models.resolve("@mid")` gave the configured model, and a spawn hook that returned `@mid:medium` ran it at `medium`.
-  A custom role that `modelRoles` does not name gives `undefined`, and a hook that returned it failed the subagent with `Error: No model selected.` and exit code 1.
+- A custom role that `modelRoles` names runs: a spawn hook that returned `@mid:medium` ran the configured model at `medium`.
+  A custom role that `modelRoles` does not name failed the subagent with `Error: No model selected.` and exit code 1, when a spawn hook returned it.
   (running: omp 18.12.6 and 18.18.9, 2026-11-12)
-- `ctx.models.resolve` resolves against `modelRegistry.getAvailable()`, which checks configured auth without running a key command.
-  A built-in provider with no credential gives `undefined`, for the model id and for a role that names it.
-  A `models.yml` provider whose `apiKey` is a command that prints nothing gives a full model, and `getApiKeyForProvider` gives `undefined` for it. A hook that returned that role ran the child on the parent's model, with exit 0 and no error.
-  (running: omp 18.12.6 and 18.18.9, 2026-11-13;
-  source: [`extensibility/extensions/model-api.ts` L19–L38 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/model-api.ts#L19-L38), [the same lines at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/model-api.ts#L19-L38),
-  [`config/model-registry.ts` L3093 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-registry.ts#L3093), [L3475–L3509 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-registry.ts#L3475-L3509))
 - A `smol` or `slow` role that `modelRoles` does not name resolves through an explicitly configured `default` model before omp's built-in priority list.
   With `smol` unset, `ctx.models.resolve("@smol")` gave the `default` model.
   (running: omp 18.12.6 and 18.18.9, 2026-11-12;
@@ -860,23 +854,6 @@ Every running fact names its OpenClaw version and the date it ran.
   (documentation: [Sub-agent tool reference, `sandbox`](https://docs.openclaw.ai/tools/subagents/tool-reference#tool-parameters);
   [CLI backends](https://docs.openclaw.ai/gateway/cli-backends))
 
-### OpenClaw model and credential checks
-
-- `api.runtime.modelConfig` offers `resolveDefaultModelForAgent`, `resolveAllowedModelRef` and `resolveModelRuntimePolicy`.
-  `api.runtime.modelAuth` offers `isProviderApiKeyConfiguredAsync`, and `api.runtime.agent` offers `resolveAgentDir`.
-  (running: OpenClaw 2026.10.10, the probe plugin listed the members of `api.runtime`)
-- `resolveAllowedModelRef` with an empty catalogue, the agent's id and the agent's default provider accepted `provider/model`, a configured alias and a bare name.
-  It returned a reference with no `error` for a provider that does not exist.
-  A bare name took the default provider.
-  (running: OpenClaw 2026.10.10, `resolveAllowedModelRef({ cfg, catalog: [], raw, defaultProvider, agentId })` on a copy of the config)
-- `isProviderApiKeyConfiguredAsync` with `agentDir` returned true for a provider whose key sat only in a stored profile.
-  Without `agentDir` it returned false for the same provider.
-  A provider with no key returned false, and so did a provider served only by the Claude CLI backend.
-  (running: OpenClaw 2026.10.10, `isProviderApiKeyConfiguredAsync` with and without `agentDir` for four providers)
-- The steps of the plugin's slot check, `slotResolves` in `src/adapters/openclaw/checks.ts`, returned false for `local/local-e`, a model of a provider on a loopback base URL with no key, with and without the agent id `main`.
-  They returned true for a provider with a fake key and false for a remote provider with no key.
-  (running: OpenClaw 2026.10.10 and 2026.11.1, 2026-11-13, a state folder written for the run under `env -i`, custom providers declared in its config, and a probe plugin that ran the steps of `slotResolves` for each model)
-
 ### OpenClaw commands and owner check
 
 - A plugin command declares `requiredScopes`, and a command with a non-empty list can receive `senderIsOwner`.
@@ -950,6 +927,21 @@ Every running fact names its OpenClaw version and the date it ran.
   No live probe has checked a SecretRef.
   (documentation: [Manifest config and secrets, secretInputs paths](https://docs.openclaw.ai/plugins/manifest/config-and-secrets#secretinputs-paths), `docs/plugins/manifest/config-and-secrets.md` L71, read 2026-11-05)
 
+### OpenClaw question tool
+
+These facts are source readings at commit `847611dcaa3b` (tag `v2026.11.3`), not a live run. The two channel pages that say WhatsApp, Signal and iMessage lack the tool are read at `main` commit `8e6768f91235`.
+
+- The tool is `ask_user`, labelled "Ask User".
+  (source: [`ask-user-tool.ts` L468–L473](https://github.com/openclaw/openclaw/blob/847611dcaa3bf0e2783335f961dd1fd0580e4d9f/src/agents/tools/ask-user-tool.ts#L468-L473))
+- A call takes 1 to 3 questions. Each has an `id`, a `header` of 12 characters, a `question`, 2 to 4 `options` with a `label` and an optional `description`, and an optional `multiSelect`. OpenClaw adds a free-text "Other" itself.
+  (documentation: [`ask-user.md` L147–L163](https://github.com/openclaw/openclaw/blob/847611dcaa3bf0e2783335f961dd1fd0580e4d9f/docs/tools/ask-user.md#L147-L163) and [L70–L71](https://github.com/openclaw/openclaw/blob/847611dcaa3bf0e2783335f961dd1fd0580e4d9f/docs/tools/ask-user.md#L70-L71))
+- Only the main session gets the tool. Subagents do not, and `tools.deny` removes it.
+  (documentation: [`ask-user.md` L15–L16](https://github.com/openclaw/openclaw/blob/847611dcaa3bf0e2783335f961dd1fd0580e4d9f/docs/tools/ask-user.md#L15-L16); source: [`openclaw-tools.registration.ts` L136–L149](https://github.com/openclaw/openclaw/blob/847611dcaa3bf0e2783335f961dd1fd0580e4d9f/src/agents/openclaw-tools.registration.ts#L136-L149))
+- The Control UI, the TUI, the iOS, macOS and Android apps, Telegram, Discord, Slack and Mattermost show the prompt. On the messaging channels a prompt with several questions degrades to text.
+  (documentation: [`ask-user.md` L22–L48](https://github.com/openclaw/openclaw/blob/847611dcaa3bf0e2783335f961dd1fd0580e4d9f/docs/tools/ask-user.md#L22-L48))
+- WhatsApp, Signal and iMessage do not expose `ask_user`, so the agent asks in plain text.
+  (documentation at `main` `8e6768f91235`: [`whatsapp.md` L243–L244](https://github.com/openclaw/openclaw/blob/8e6768f91235b7b094f7f8dde96735d727a3f748/docs/channels/whatsapp.md#L243-L244), [`signal.md` L433–L434](https://github.com/openclaw/openclaw/blob/8e6768f91235b7b094f7f8dde96735d727a3f748/docs/channels/signal.md#L433-L434), [`rich-messages.md` L121–L122](https://github.com/openclaw/openclaw/blob/8e6768f91235b7b094f7f8dde96735d727a3f748/docs/channels/imessage/rich-messages.md#L121-L122))
+
 ### OpenClaw gaps
 
 CI installs the packed tarball through `npm-pack:` on OpenClaw 2026.11.1, and the probes loaded the plugin through `plugins.load.paths`.
@@ -989,7 +981,7 @@ It also cannot set the effort, which the plugin sets through `sessions_spawn`'s 
 Documentation is the Markdown under `website/docs/` in `NousResearch/hermes-agent`, published at hermes-agent.nousresearch.com/docs.
 Documentation pages below were read on 2026-11-06, as Markdown at tag `v0.23.0`.
 Every source link is a permalink at commit `2bd378ed1b8d`, the commit of tag `v0.23.0`, the release CI installs.
-Hermes v0.22.7 is commit `b200f5bc60e3`. Between v0.22.7 and v0.23.0, the delegation, plugin, registrar, manifest, host, constants, runtime-provider, `models_dev` and `secret_scope` files are unchanged. The two exceptions are an additive `delegation.prefix_stagger_seconds` setting in `tools/delegate_tool_config.py` and one entry added to the public-import list. (running: `git diff v0.22.7 v0.23.0` over those files, 2026-11-06)
+Hermes v0.22.7 is commit `b200f5bc60e3`. Between v0.22.7 and v0.23.0, the delegation, plugin, registrar, manifest, host, constants and `secret_scope` files are unchanged. The two exceptions are an additive `delegation.prefix_stagger_seconds` setting in `tools/delegate_tool_config.py` and one entry added to the public-import list. (running: `git diff v0.22.7 v0.23.0` over those files, 2026-11-06)
 Every running fact names its Hermes version and the date it ran.
 The probe facts ran on Hermes v0.22.7 on a fresh Hermes home with a scrubbed environment, through a probe plugin named `probe-router`.
 It was a `DelegationProvider` that records what `route_task` sees and returns a route.
@@ -1170,46 +1162,26 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
   (source: [`delegation_provider.py` L25–L28](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/delegation_provider.py#L25-L28);
   [`delegation_provider.py` L81–L86](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/agent/delegation_provider.py#L81-L86), at v0.23.1)
 
-### Hermes model and credential checks
+### Hermes question tool
 
-- With sockets blocked in the process, `agent.models_dev.list_provider_models(p, allow_network=False)` read the Hermes home's models.dev cache with zero network attempts.
-  It listed models for openrouter (378), anthropic (17), openai (51), gemini (34), deepseek (4), xai (12), openai-codex (51), zai (18) and minimax (8). It listed none for nous, copilot, custom, ollama, lmstudio, kimi-coding or an unknown id.
-  `openai/gpt-6-luna` and `openai/gpt-4.1-mini` were listed for openrouter. The same call worked in the plugin host.
-  (running: Hermes v0.22.7, 2026-11-06;
-  source: [`models_dev.py` L1–L8](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/models_dev.py#L1-L8), where the module text says hot paths pass `allow_network=False` and never do I/O,
-  [L936–L942](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/models_dev.py#L936-L942))
-- `resolve_runtime_provider(requested=p)` made zero network attempts with sockets blocked, for openrouter, anthropic, openai, gemini, deepseek, nous, openai-codex, xai, qwen-oauth, copilot, minimax-oauth, custom, ollama and an unknown id.
-  None of the OAuth providers had stored credentials, so they raised `AuthError` at once.
-  It checks the provider and its credentials, not that the model exists.
-  (running: Hermes v0.22.7, 2026-11-06;
-  source: [`runtime_provider.py` L1044](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/runtime_provider.py#L1044))
-- `PROVIDER_REGISTRY[p].auth_type` is `api_key` for 69 providers, `oauth_device_code` for nous, `oauth_external` for openai-codex, qwen-oauth, solstice, solstice-oauth and xai-oauth, `oauth_minimax` for minimax-oauth, `aws_sdk` for bedrock and `vertex` for vertex.
-  (running: Hermes v0.22.7, 2026-11-06;
-  source: [`auth.py` L144–L152](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/auth.py#L144-L152), [L242–L243](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/auth.py#L242-L243))
-- `api_key` as an auth type is not enough. `anthropic` is `api_key`-typed, yet with `ANTHROPIC_API_KEY` unset it resolves Claude Code's OAuth credentials, and with `ANTHROPIC_TOKEN` or `CLAUDE_CODE_OAUTH_TOKEN` set it reads them to prefer a refreshable token. The resolve source read `env` in each case.
-  (running: Hermes v0.22.7, 2026-11-06;
-  source: [`anthropic_credentials.py` L700–L718](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/anthropic_credentials.py#L700-L718))
-- `is_refreshable_oauth_provider(p)` is true for the providers in `REFRESHABLE_OAUTH_PROVIDERS` (anthropic and nous among them) and for plugin profiles with a refresh hook.
-  (running: Hermes v0.22.7, 2026-11-06;
-  source: [`auth_plugin_providers.py` L340–L344](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/auth_plugin_providers.py#L340-L344))
-- `PROVIDER_REGISTRY` has no `openrouter` entry: Hermes resolves OpenRouter through its credential pool and its OpenRouter rung, outside the registry. A live `delegate_task` run with two OpenRouter slots left both unresolved while the check required a registry entry.
-  (running: Hermes v0.22.7, 2026-11-06, `hermes -z` with the plugin installed from this repository;
-  source: [`runtime_provider.py` L1044–L1088](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/runtime_provider.py#L1044-L1088))
-- The rule this repository's `checks.py` applies: a provider is checked offline only when `is_refreshable_oauth_provider` is false and the provider is either absent from `PROVIDER_REGISTRY` or listed with the auth type `api_key`; `anthropic` instead needs `ANTHROPIC_API_KEY` set and `ANTHROPIC_TOKEN` and `CLAUDE_CODE_OAUTH_TOKEN` unset. Every other provider reads as unresolved. A custom or local provider passes this rule and then fails the catalogue check, which lists no model for it. A test under Hermes's interpreter reads the real registry: openrouter, gemini and deepseek pass, nous, openai-codex, qwen-oauth, minimax-oauth and bedrock do not.
-- `resolve_runtime_provider` first calls `recover_for_provider`, which can install a left-core provider plugin. The context manager `installs_held()` turns that off, and the plugin resolves inside it.
-  (running: Hermes v0.22.7, 2026-11-06;
-  source: [`left_core_migration.py` L616](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/left_core_migration.py#L616),
-  [L709–L720](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/left_core_migration.py#L709-L720))
-- `resolve_runtime_provider` refreshes no credential for `openrouter`, `custom` or a named custom provider. They read an environment variable, a config key or a credential-pool entry. A pool refreshes an OAuth entry only for `anthropic`, a provider with a refresh hook, `openai-codex` and `xai-oauth`, and never refreshes any other entry. The OAuth runtime rung covers only `nous`, `openai-codex`, `xai-oauth` and `qwen-oauth`. A named custom provider with `key_cmd` runs that command at request time to mint its token. Such a provider reads as unresolved, because the catalogue lists no model for it.
-  (source: [`credential_pool.py` L1943–L1956](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/credential_pool.py#L1943-L1956),
-  [`runtime_provider.py` L829–L838](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/runtime_provider.py#L829-L838),
-  [`runtime_provider_custom.py` L508–L516](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/runtime_provider_custom.py#L508-L516), read 2026-11-06)
-- `installs_held` first appears in Hermes v0.22.6. At v0.22.5 (commit `bf0203a794a0`), `hermes_cli/left_core_migration.py` has neither `installs_held` nor `recover_for_provider`, so the slot check's import fails there and every slot would read as unresolved. Every other Hermes function, context method, task key and manifest field the plugin uses exists at v0.22.5. The plugin therefore requires v0.22.6.
-  (source: [`left_core_migration.py` L709–L720 at v0.22.6](https://github.com/NousResearch/hermes-agent/blob/f0d94882e89ab8d4098b5bb2f166adfb9ee0a0ab/hermes_cli/left_core_migration.py#L709-L720), read 2026-11-06)
-- Hermes ingests an `OPENROUTER_API_KEY` from the environment into the home's credential pool at start-up and prints one line to standard error. The resolve source then reads `env:OPENROUTER_API_KEY`.
-  (running: Hermes v0.22.7, 2026-11-06)
-- One offline slot check (`checks.slot_resolves`) took 3.5 to 5.3 ms warm and 3.9 to 13.8 ms on its first call, for openrouter, anthropic, openai, gemini, deepseek and xai, with sockets blocked. The first call of a process took 21 ms.
-  (running: Hermes v0.23.1, 2026-11-13, one cold and ten warm calls per provider under `hermes --run-module unittest discover`)
+These facts are source readings at commit `3b421578588243f920886e6fe79a6faa87ea026e` (tag `v0.23.1`), not a live run. `tools/clarify_tool.py` and `toolsets.py` were compared at v0.22.6, v0.22.7 and v0.23.0, and the tool name, schema and toolset entries match.
+
+- The tool is `clarify`, in the toolset `clarify`.
+  (source: [`clarify_tool.py` L217–L224](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/tools/clarify_tool.py#L217-L224))
+- A call takes 1 to 5 `questions`. Each has a `question`, optional `choices` (up to 4) and optional `multi_select`. The UI adds "Other".
+  (source: [`clarify_tool.py` L159–L212](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/tools/clarify_tool.py#L159-L212))
+- `clarify` is in `_HERMES_CORE_TOOLS`, which `hermes-cli` and the messaging bundles use.
+  (source: [`toolsets.py` L11–L36](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/toolsets.py#L11-L36))
+- It works in the CLI, the TUI, Desktop and the messaging platforms.
+  (source: [CLI `cli_modal_mixin.py` L909–L962](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/hermes_cli/cli_modal_mixin.py#L909-L962), [TUI `agent_callbacks.py` L168](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/tui_gateway/agent_callbacks.py#L168), [messaging `run_turn_runner.py` L597–L634](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/gateway/run_turn_runner.py#L597-L634); documentation: [Desktop `tools-reference.md` L38–L42](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/website/docs/reference/tools-reference.md#L38-L42))
+- The editor integration (`hermes-acp`) and the API server (`hermes-api-server`) exclude it.
+  (source: [`toolsets.py` L186–L190](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/toolsets.py#L186-L190), [L191–L195](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/toolsets.py#L191-L195))
+- Cron runs disable it.
+  (source: [`scheduler.py` L418–L430](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/cron/scheduler.py#L418-L430))
+- Children of `delegate_task` cannot call it.
+  (source: [`delegate_tool.py` L694–L700](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/tools/delegate_tool.py#L694-L700))
+- Single-query mode (`hermes chat -q`) returns `outcome: "undelivered"` at once.
+  (source: [`cli_agent_setup_mixin.py` L15–L25](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/hermes_cli/cli_agent_setup_mixin.py#L15-L25))
 
 ### Hermes runtime, logs and environment
 
@@ -1261,10 +1233,10 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
   (running: Hermes v0.22.7, 2026-11-06;
   source: [`threat_patterns.py` L102–L104](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/tools/threat_patterns.py#L102-L104))
 - `hermes plugins validate plugins/model-router-hermes` passed with 15 checks marked passed, including `security scan — safe`, and one warning.
-  The warning names `hermes_api.py` lines 39, 46, 52, 53 and 61: `hermes_cli.auth.PROVIDER_REGISTRY`, `hermes_cli.auth_plugin_providers.is_refreshable_oauth_provider`, `hermes_cli.left_core_migration.installs_held`, `hermes_cli.runtime_provider.resolve_runtime_provider` and `agent.models_dev.list_provider_models`.
-  It says these imports can break on any release. CI runs `validate` on the pinned release and a Renovate rule raises the pin, so a break shows in CI ([Hermes CI](#hermes-ci)). It ends with `Isolation — runs in the plugin host (plugins.isolation: host)` and `Validation passed.`
-  (running: Hermes v0.23.0, 2026-11-06)
-- The admission lint lists a plugin's imports of private Hermes modules with file and line. It is a warning and never a refusal. The public list holds `agent.delegation_provider`, `agent.delegation_backends`, `agent.secret_scope` and `hermes_constants`, and none of the five modules above.
+  The warning listed the plugin's imports of private Hermes modules.
+  It says such imports can break on any release. CI runs `validate` on the pinned release and a Renovate rule raises the pin, so a break shows in CI ([Hermes CI](#hermes-ci)). It ends with `Isolation — runs in the plugin host (plugins.isolation: host)` and `Validation passed.`
+  (running: Hermes v0.23.0, 2026-11-06, before the plugin dropped those imports)
+- The admission lint lists a plugin's imports of private Hermes modules with file and line. It is a warning and never a refusal. The public list holds `agent.delegation_provider`, `agent.delegation_backends`, `agent.secret_scope` and `hermes_constants`, and none of the modules the warning named.
   (source: [`plugin_validate_private_imports.py` L1–L9](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/plugin_validate_private_imports.py#L1-L9),
   [L27–L68](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/hermes_cli/plugin_validate_private_imports.py#L27-L68))
 - A probe plugin's `hermes plugins validate` passed with one warning that listed four private core imports, and a note that the plugin runs in the plugin host under `plugins.isolation: host`. `hermes plugins doctor <name>` passed discovery, manifest, import and registration.
@@ -1281,7 +1253,6 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
   (source: `.github/actions/setup-hermes/action.yml`; [CONTRIBUTING.md, Dependencies](../CONTRIBUTING.md#dependencies))
 - The tests of the plugin call each handler and the router directly with a fake Hermes API. One test file, `plugins/model-router-hermes/tests/test_real_hermes.py`, runs only under Hermes's interpreter. It calls each Hermes function the shim uses, and compares the default route with Hermes's bundled default backend.
   It also registers the provider with Hermes's delegation registry, builds the `delegate_task` schema, and routes tasks through `resolve_task_routes`, so a pin raise that changes the parameter seam fails CI. Those tests use Hermes's private names `_registry` and `_build_dynamic_schema_overrides`.
-  Its catalogue test writes a one-provider `models_dev_cache.json` into a scratch Hermes home, because Hermes ships no catalogue and reads only that disk cache offline.
   (source: `plugins/model-router-hermes/tests/`)
 
 ### Hermes gaps
