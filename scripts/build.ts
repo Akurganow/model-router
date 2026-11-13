@@ -27,11 +27,12 @@ const TIMER_NAMES = ["setTimeout", "clearTimeout"];
 
 type Harness = "claude" | "omp" | "openclaw" | "hermes";
 
-// The OpenClaw and Hermes bundles keep no module external except the node: built-ins, which esbuild leaves alone on the node platform.
+// The Hermes bundle keeps no module external except the node: built-ins, which esbuild leaves alone on the node platform.
+// The OpenClaw bundle also keeps OpenClaw's plugin SDK external: it imports it only when its tool lists the models, and OpenClaw's loader resolves it.
 const HOST_OPTIONS: Readonly<Record<Harness, BuildOptions>> = {
 	claude: { platform: "neutral", inject: [TIMERS] },
 	omp: { platform: "node", external: ["@oh-my-pi/*"] },
-	openclaw: { platform: "node" },
+	openclaw: { platform: "node", external: ["openclaw/plugin-sdk/*"] },
 	hermes: { platform: "node" },
 };
 

@@ -97,6 +97,41 @@ describe("registration", () => {
 		assert.ok(result);
 	});
 
+	it("gives the config tool the model lister it was built with", async () => {
+		const fake = createFakeApi({ pluginConfig: SETTINGS });
+		createPlugin({
+			fetchFn: createJevFetch().fetch,
+			clock: createFakeClock().clock,
+			env: {},
+			listModels: async () => ({
+				byProvider: new Map([["stub", new Set(["small-a"])]]),
+				modelCatalog: [],
+				runtimeChoicesByModel: new Map([
+					["stub/small-a", [{ id: "openclaw" }]],
+				]),
+			}),
+		}).register(fake.api);
+		const result = await fake.tools[0]?.execute("call-1", {
+			setting: "models",
+		});
+		assert.equal(
+			result?.content[0]?.text,
+			"models the person can run: 1\n- stub/small-a",
+		);
+	});
+
+	it("lists through OpenClaw's SDK by default, which loads only inside OpenClaw", async () => {
+		const fake = createFakeApi({ pluginConfig: SETTINGS });
+		plugin.register(fake.api);
+		const result = await fake.tools[0]?.execute("call-1", {
+			setting: "models",
+		});
+		assert.match(
+			result?.content[0]?.text ?? "",
+			/^models unavailable: Cannot find package 'openclaw'/,
+		);
+	});
+
 	it("leaves routing off with one warning when the tool cannot be registered", () => {
 		const fake = createFakeApi();
 		fake.api.registerTool = () => {

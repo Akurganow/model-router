@@ -104,13 +104,13 @@ var isRecord = (value) => typeof value === "object" && value !== null;
 var extractMessage = (body) => {
   if (typeof body === "string") return body || void 0;
   if (!isRecord(body)) return void 0;
-  const { error, message, detail } = body;
+  const { error, message, detail: detail2 } = body;
   if (typeof error === "string") return error;
   if (isRecord(error) && typeof error.message === "string") return error.message;
   if (typeof message === "string") return message;
-  if (typeof detail === "string") return detail;
-  if (isRecord(detail) && typeof detail.message === "string") return detail.message;
-  if (Array.isArray(detail)) return describeValidationErrors(detail);
+  if (typeof detail2 === "string") return detail2;
+  if (isRecord(detail2) && typeof detail2.message === "string") return detail2.message;
+  if (Array.isArray(detail2)) return describeValidationErrors(detail2);
 };
 var describeValidationErrors = (errors) => {
   const parts = errors.flatMap((e) => {
@@ -138,8 +138,8 @@ var APIError = class APIError2 extends TypeSafeError {
     this.requestId = requestIdFrom(headers);
   }
   static describe(status, body) {
-    const detail = extractMessage(body);
-    if (detail) return `${status} ${detail}`;
+    const detail2 = extractMessage(body);
+    if (detail2) return `${status} ${detail2}`;
     if (body === void 0) return `${status} status code (no body)`;
     const raw = typeof body === "string" ? body : JSON.stringify(body);
     return `${status} ${raw.length > MAX_RAW_BODY_IN_MESSAGE ? `${raw.slice(0, MAX_RAW_BODY_IN_MESSAGE)}\u2026` : raw}`;
@@ -301,7 +301,7 @@ var collectAssets = (value, found, visited) => {
 };
 var serializeRequest = (payload, assets = {}) => {
   const names = new Map(Object.entries(assets).map(([name, asset]) => [asset, name]));
-  const known = new Map(Object.values(assets).map((asset) => [String(asset), asset]));
+  const known2 = new Map(Object.values(assets).map((asset) => [String(asset), asset]));
   const json = JSON.stringify(payload, function(key, value) {
     if (typeof value === "number" && !Number.isFinite(value)) return String(value);
     const original = this[key];
@@ -309,12 +309,12 @@ var serializeRequest = (payload, assets = {}) => {
     if (isImage(original)) {
       const name = names.get(original);
       if (name !== void 0) return name;
-      known.set(String(original), original);
+      known2.set(String(original), original);
     } else if (isTextWithAssets(original)) {
       let text = original.text;
       for (const asset of original.assets) {
         const name = names.get(asset);
-        if (name === void 0) known.set(String(asset), asset);
+        if (name === void 0) known2.set(String(asset), asset);
         else text = text.replaceAll(String(asset), name);
       }
       return text;
@@ -327,7 +327,7 @@ var serializeRequest = (payload, assets = {}) => {
   const missing = /* @__PURE__ */ new Set();
   for (const [reference] of json.matchAll(REFERENCE)) {
     if (sent.has(reference)) continue;
-    const asset = known.get(reference);
+    const asset = known2.get(reference);
     if (asset === void 0) missing.add(reference);
     else sent.set(reference, asset);
   }
@@ -1180,7 +1180,7 @@ var errorText = (err) => err instanceof Error ? err.message : String(err);
 // src/core/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
-var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
+var parseScope = (value) => SCOPE_VALUES.find((known2) => known2 === value);
 var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/core/settings.ts
@@ -1194,6 +1194,7 @@ var KEY_PROVIDERS = {
   typesafe_key: "typesafe",
   openrouter_key: "openrouter"
 };
+var LABEL_SEPARATOR = " - ";
 var TEXTS = {
   provider: {
     values: PROVIDER_VALUES,
@@ -1218,10 +1219,10 @@ var TEXTS = {
     }
   }
 };
-var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
-var isKeySetting = (name) => KEY_SETTINGS.some((known) => known === name);
+var isValueSetting = (name) => VALUE_SETTINGS.some((known2) => known2 === name);
+var isKeySetting = (name) => KEY_SETTINGS.some((known2) => known2 === name);
 var keyProvider = (setting) => KEY_PROVIDERS[setting];
-var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
+var isValue = (setting, value) => TEXTS[setting].values.some((known2) => known2 === value);
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var valueSettingHelp = (setting) => [
@@ -1231,6 +1232,8 @@ var valueSettingHelp = (setting) => [
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
+var NO_ANSWER = "no answer from the dialog";
+var NOT_OFFERED = "the answer was not one of the offered values";
 var keyLine = (provider, state) => `${provider} key: ${state}`;
 var settingsReport = (provider, scope, extra, keys) => [
   valueLine("provider", provider),
@@ -1267,6 +1270,118 @@ function pickModel(level, state) {
   return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model ${state.state}` };
 }
 var slotLine = (name, shown) => `${name}: ${shown ?? "unset"}`;
+
+// src/core/models.ts
+var MODELS = "models";
+var MAX_CANDIDATES = 4;
+var SHOW_ALL = "Show the whole list";
+var ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:@/+-]{0,99}$/;
+var significant = new Intl.NumberFormat("en-US", {
+  maximumSignificantDigits: 3,
+  useGrouping: false
+});
+var compact = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumSignificantDigits: 3
+});
+var known = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0;
+function detail({ input, output, context }) {
+  const prices = [
+    known(input) ? `$${significant.format(input)} in` : void 0,
+    known(output) ? `$${significant.format(output)} out` : void 0
+  ].filter((part) => part !== void 0);
+  const parts = [
+    prices.length > 0 ? `${prices.join(", ")} per 1M tokens` : void 0,
+    known(context) ? `${compact.format(context)} context` : void 0
+  ].filter((part) => part !== void 0);
+  return parts.length > 0 ? parts.join(", ") : void 0;
+}
+var usable = (listed) => listed.filter(
+  (model) => typeof model.id === "string" && ID_PATTERN.test(model.id)
+);
+function listing(listed) {
+  const models = usable(listed);
+  return [
+    `models the person can run: ${models.length}`,
+    ...models.map((model) => {
+      const words = detail(model);
+      return words === void 0 ? `- ${model.id}` : `- ${model.id} (${words})`;
+    })
+  ].join("\n");
+}
+var unavailable = (err) => `models unavailable: ${errorText(err)}`;
+var label = (model) => {
+  const words = detail(model);
+  return words === void 0 ? model.id : `${model.id}${LABEL_SEPARATOR}${words}`;
+};
+async function ask2(writer, slot, question, options) {
+  try {
+    return await writer.select(slot, question, options);
+  } catch {
+    return void 0;
+  }
+}
+async function choose(port, writer, slot, candidates) {
+  const setting = slotSetting(slot);
+  const refusal = writer.authorize();
+  if (refusal !== void 0) return unchanged(setting, refusal);
+  let models;
+  try {
+    models = usable(await port.list());
+  } catch (err) {
+    return unchanged(setting, unavailable(err));
+  }
+  if (models.length === 0) return unchanged(setting, listing(models));
+  let current;
+  try {
+    current = await writer.current(slot);
+  } catch (err) {
+    return unchangedBy(setting, err);
+  }
+  const question = `Which model should the ${slot} level run? ${setting} is ${current ?? "unset"} now.`;
+  const first = [];
+  for (const id of Array.isArray(candidates) ? candidates : []) {
+    const model2 = models.find((listed) => listed.id === id);
+    if (model2 !== void 0 && !first.includes(model2)) first.push(model2);
+    if (first.length === MAX_CANDIDATES) break;
+  }
+  let answer = await ask2(writer, slot, question, [
+    ...first.map(label),
+    SHOW_ALL
+  ]);
+  let from = first;
+  if (answer === SHOW_ALL) {
+    answer = await ask2(writer, slot, question, models.map(label));
+    from = models;
+  }
+  if (answer === void 0) return unchanged(setting, NO_ANSWER);
+  const model = from.find((listed) => label(listed) === answer);
+  if (model === void 0) return unchanged(setting, NOT_OFFERED);
+  try {
+    return slotLine(writer.name(slot), await writer.write(slot, model.id));
+  } catch (err) {
+    return unchangedBy(setting, err);
+  }
+}
+async function runModels(port, params) {
+  const { setting, candidates } = params;
+  if (setting === MODELS) {
+    try {
+      return listing(await port.list());
+    } catch (err) {
+      return unavailable(err);
+    }
+  }
+  const slot = SLOTS.find((each) => slotSetting(each) === setting);
+  if (slot === void 0) return void 0;
+  return port.writer === null ? port.help(slot) : choose(port, port.writer, slot, candidates);
+}
+var modelToolSentences = (writable) => [
+  "With models it returns the models the person can run.",
+  ...writable ? [
+    "For a model setting, pass up to four ids from models as candidates: the dialog offers them and an entry that shows the whole list."
+  ] : []
+].join(" ");
 
 // src/adapters/openclaw/settings.ts
 var PLUGIN_ID = "model-router-openclaw";
@@ -1332,17 +1447,51 @@ function readState(api, env) {
   };
 }
 
+// src/adapters/openclaw/models.ts
+var listFromOpenClaw = async (cfg) => {
+  const { buildPreparedModelsProviderData } = await import("openclaw/plugin-sdk/models-provider-runtime");
+  return buildPreparedModelsProviderData(cfg);
+};
+var SYNTHETIC = "synthetic";
+function runnable(data) {
+  const { byProvider, runtimeChoicesByModel, modelCatalog } = isRecord2(data) ? data : {};
+  if (!(byProvider instanceof Map) || !(runtimeChoicesByModel instanceof Map) || !Array.isArray(modelCatalog))
+    throw new Error("OpenClaw returned model data of an unknown shape");
+  const rows = modelCatalog.filter(isRecord2);
+  const listed = [];
+  for (const [provider, models] of byProvider) {
+    if (typeof provider !== "string" || !(models instanceof Set)) continue;
+    for (const model of models) {
+      if (typeof model !== "string") continue;
+      const id = `${provider}/${model}`;
+      const choices = runtimeChoicesByModel.get(id);
+      if (!Array.isArray(choices) || choices.length === 0) continue;
+      const row = rows.find(
+        (entry) => entry.provider === provider && entry.id === model
+      );
+      const context = row?.contextWindowSource === SYNTHETIC ? void 0 : row?.contextWindow;
+      listed.push(typeof context === "number" ? { id, context } : { id });
+    }
+  }
+  return listed;
+}
+var modelPort = (api, listModels) => ({
+  list: async () => runnable(await listModels(api.runtime.config.current())),
+  help: (slot) => `${slotSetting(slot)} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${slotSetting(slot)} <provider/model>`,
+  writer: null
+});
+
 // src/adapters/openclaw/config.ts
 var COMMAND_NAMES = VALUE_SETTINGS.map(commandName);
 var ADMIN_SCOPE = "operator.admin";
 var LINE_BREAK = "\n";
 var NOT_OWNER = "only the owner can change it";
-var MODEL_SETTINGS = SLOT_SETTINGS;
-var TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
-var TOOL_DESCRIPTION = readOnlyToolDescription(
+var CHANGED_SETTINGS = [...SETTING_NAMES, ...SLOT_SETTINGS];
+var TOOL_SETTINGS = [...CHANGED_SETTINGS, "models"];
+var TOOL_DESCRIPTION = `${readOnlyToolDescription(
   ["the provider", "the scope", "the three models"],
-  TOOL_SETTINGS
-);
+  CHANGED_SETTINGS
+)} ${modelToolSentences(false)}`;
 function readAll({ settings, keys }) {
   return settingsReport(
     settings.provider,
@@ -1351,16 +1500,14 @@ function readAll({ settings, keys }) {
     keys
   );
 }
-var isModelSetting = (setting) => MODEL_SETTINGS.some((known) => known === setting);
-var modelSettingHelp = (setting) => `${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`;
 function howToChange(setting) {
-  if (isModelSetting(setting)) return modelSettingHelp(setting);
   if (isValueSetting(setting)) return valueSettingHelp(setting);
   return isKeySetting(setting) ? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.` : badCall(TOOL_SETTINGS);
 }
-function runTool(api, env, params) {
+async function runTool(api, env, listModels, params) {
   const { setting } = isRecord2(params) ? params : {};
-  return setting === void 0 ? readAll(readState(api, env)) : howToChange(setting);
+  if (setting === void 0) return readAll(readState(api, env));
+  return await runModels(modelPort(api, listModels), { setting }) ?? howToChange(setting);
 }
 var isOwner = (ctx) => ctx.senderIsOwner === true;
 async function write(api, ctx, setting, value) {
@@ -1393,7 +1540,7 @@ var textOf = (text) => ({
 function failure(err) {
   return `error: ${errorText(err)}`;
 }
-function registerConfigTool(api, env) {
+function registerConfigTool(api, env, listModels = listFromOpenClaw) {
   api.registerTool({
     name: TOOL_NAME,
     label: TOOL_LABEL,
@@ -1405,7 +1552,7 @@ function registerConfigTool(api, env) {
     },
     execute: async (_id, params) => {
       try {
-        return textOf(runTool(api, env, params));
+        return textOf(await runTool(api, env, listModels, params));
       } catch (err) {
         return textOf(failure(err));
       }
@@ -2029,11 +2176,11 @@ function createBeforeToolCall(api, deadlineMs, deps) {
 // src/adapters/openclaw/index.ts
 var HOOK_TIMEOUT_MAX_MS = 6e5;
 var HOOK_TIMEOUT_MS = ROUTING_LIMIT_MS + HANDLER_MARGIN_MS;
-var usable = (value) => typeof value === "number" && Number.isInteger(value) && value > 0 && value <= HOOK_TIMEOUT_MAX_MS;
+var usable2 = (value) => typeof value === "number" && Number.isInteger(value) && value > 0 && value <= HOOK_TIMEOUT_MAX_MS;
 function effectiveTimeout(config) {
   const hooks = pluginEntry(config)?.hooks;
   const perHook = isRecord2(hooks?.timeouts) ? hooks.timeouts.before_tool_call : void 0;
-  return [perHook, hooks?.timeoutMs].find(usable) ?? HOOK_TIMEOUT_MS;
+  return [perHook, hooks?.timeoutMs].find(usable2) ?? HOOK_TIMEOUT_MS;
 }
 function warn(api, message) {
   try {
@@ -2065,7 +2212,8 @@ function registerRouting(api, deps) {
 function register(api, deps) {
   try {
     const mode = api.registrationMode;
-    if (TOOL_MODES.includes(mode)) registerConfigTool(api, deps.env);
+    if (TOOL_MODES.includes(mode))
+      registerConfigTool(api, deps.env, deps.listModels);
     if (COMMAND_MODES.includes(mode)) registerConfigCommands(api, deps.env);
     if (HOOK_MODES.includes(mode)) registerRouting(api, deps);
   } catch {

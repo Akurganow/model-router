@@ -17,6 +17,7 @@ import {
 	registerConfigTool,
 } from "./config.ts";
 import { createFakeApi } from "./fakes.ts";
+import type { ListModels } from "./models.ts";
 import { type Environment, PLUGIN_ID } from "./settings.ts";
 import type {
 	CommandContext,
@@ -27,10 +28,30 @@ import type {
 } from "./types.ts";
 
 /** Registers the config tool and the commands on `api`, as the full pass does. */
-function registerConfig(api: OpenClawApi, env: Environment) {
-	registerConfigTool(api, env);
+function registerConfig(
+	api: OpenClawApi,
+	env: Environment,
+	listModels: ListModels = async () => MODEL_DATA,
+) {
+	registerConfigTool(api, env, listModels);
 	registerConfigCommands(api, env);
 }
+
+// The shape buildPreparedModelsProviderData returned in the runs that docs/clients.md records.
+const MODEL_DATA = {
+	byProvider: new Map([
+		["stub", new Set(["small-a"])],
+		["local", new Set(["local-e"])],
+	]),
+	modelCatalog: [
+		{ id: "small-a", provider: "stub", contextWindow: 128000 },
+		{ id: "local-e", provider: "local" },
+	],
+	runtimeChoicesByModel: new Map([
+		["stub/small-a", [{ id: "openclaw" }]],
+		["local/local-e", [{ id: "openclaw" }]],
+	]),
+};
 
 const TYPESAFE_KEY = "ts-live-key-8f3a91c2d7e4b605";
 const OPENROUTER_KEY = "or-live-key-1d6e77a0c9b3f248";
@@ -40,6 +61,7 @@ const TOOL_SETTINGS = [
 	"small_model",
 	"middle_model",
 	"large_model",
+	"models",
 ];
 const NO_ENV = { TYPESAFE_API_KEY: "", OPENROUTER_API_KEY: "" };
 
@@ -57,9 +79,10 @@ type Stored = { provider?: unknown; scope?: unknown; small_model?: unknown };
 function setup(
 	config: Record<string, unknown> = {},
 	env: Environment = process.env,
+	listModels: ListModels = async () => MODEL_DATA,
 ) {
 	const fake = createFakeApi({ config: live(config) });
-	registerConfig(fake.api, env);
+	registerConfig(fake.api, env, listModels);
 	const command = (name: string): CommandDefinition => {
 		const found = fake.commands.find((c) => c.name === name);
 		assert.ok(found, `command ${name} registered`);
@@ -150,14 +173,15 @@ describe("registration", () => {
 	it("registers the tool with its description text", () => {
 		assert.equal(
 			setup().tool().description,
-			"Reads the router's settings. With no input it returns the provider, the scope, the three models, and whether each key the provider allows is set. With a setting name (provider, scope, typesafe_key, openrouter_key, small_model, middle_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key.",
+			"Reads the router's settings. With no input it returns the provider, the scope, the three models, and whether each key the provider allows is set. With a setting name (provider, scope, typesafe_key, openrouter_key, small_model, middle_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key. With models it returns the models the person can run.",
 		);
 	});
 
-	it("lets the tool schema take the model settings", () => {
+	it("lets the tool schema take the model settings and models, and no candidates", () => {
 		const { properties } = setup().tool().parameters as {
 			properties: { setting: { enum: readonly string[] } };
 		};
+		assert.deepEqual(Object.keys(properties), ["setting"]);
 		assert.deepEqual(properties.setting.enum, TOOL_SETTINGS);
 	});
 
@@ -365,6 +389,56 @@ describe("the tool answers a setting name with the command to type", () => {
 				await runTool(setup(), { setting }),
 				`${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`,
 			);
+	});
+
+	it("lists the models the person can run, with the context size OpenClaw knows", async () => {
+		assert.equal(
+			await runTool(setup(), { setting: "models" }),
+			lines(
+				"models the person can run: 2",
+				"- stub/small-a (128K context)",
+				"- local/local-e",
+			),
+		);
+	});
+
+	it("lists from the live config", async () => {
+		const seen: OpenClawConfig[] = [];
+		const fake = setup({ small_model: "stub/small-a" }, NO_ENV, async (cfg) => {
+			seen.push(cfg);
+			return MODEL_DATA;
+		});
+		await runTool(fake, { setting: "models" });
+		assert.deepEqual(seen, [live({ small_model: "stub/small-a" })]);
+	});
+
+	it("answers models unavailable with the error when the lister throws", async () => {
+		const fake = setup({}, NO_ENV, async () => {
+			throw new Error("Model catalog owner omitted its auth store");
+		});
+		assert.equal(
+			await runTool(fake, { setting: "models" }),
+			"models unavailable: Model catalog owner omitted its auth store",
+		);
+	});
+
+	it("answers models unavailable when OpenClaw returns data of another shape", async () => {
+		const fake = setup({}, NO_ENV, async () => ({ byProvider: {} }));
+		assert.equal(
+			await runTool(fake, { setting: "models" }),
+			"models unavailable: OpenClaw returned model data of an unknown shape",
+		);
+	});
+
+	it("lists nothing for a model setting", async () => {
+		let calls = 0;
+		const fake = setup({}, NO_ENV, async () => {
+			calls += 1;
+			return MODEL_DATA;
+		});
+		for (const setting of ["small_model", "middle_model", "large_model"])
+			await runTool(fake, { setting });
+		assert.equal(calls, 0);
 	});
 
 	it("rejects an unknown setting name", async () => {

@@ -22,16 +22,23 @@ const property = (name: string) => schema.properties?.[name];
 const bundlePath = join(PLUGIN, "index.js");
 const bundle = readFileSync(bundlePath, "utf8");
 
-test("the bundle imports nothing outside the node: built-ins", () => {
+// The one import outside the node: built-ins is OpenClaw's model list. The
+// bundle imports it only when the tool lists the models, so it loads without
+// OpenClaw.
+const MODEL_LIST = "openclaw/plugin-sdk/models-provider-runtime";
+
+test("the bundle imports only node: built-ins, and OpenClaw's model list when the tool runs", () => {
 	const staticImports = [...bundle.matchAll(/\bfrom\s+"([^"]+)"/g)];
 	const bareImports = [...bundle.matchAll(/^import\s+"([^"]+)"/gm)];
 	const dynamicImports = [...bundle.matchAll(/\bimport\(\s*"([^"]+)"\s*\)/g)];
-	for (const [, specifier = ""] of [
-		...staticImports,
-		...bareImports,
-		...dynamicImports,
-	])
+	for (const [, specifier = ""] of [...staticImports, ...bareImports])
 		assert.match(specifier, /^node:/, specifier);
+	assert.deepEqual(
+		dynamicImports
+			.map(([, specifier = ""]) => specifier)
+			.filter((specifier) => !specifier.startsWith("node:")),
+		[MODEL_LIST],
+	);
 	assert.doesNotMatch(bundle, /\brequire\(\s*"(?!node:)/);
 });
 

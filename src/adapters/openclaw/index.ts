@@ -10,6 +10,7 @@ import { realClock } from "../../utils/clock.ts";
 import { streamedFetch } from "../../utils/fetch.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { registerConfigCommands, registerConfigTool } from "./config.ts";
+import type { ListModels } from "./models.ts";
 import {
 	createBeforeToolCall,
 	HOOK,
@@ -18,6 +19,9 @@ import {
 } from "./router.ts";
 import { PLUGIN_ID, pluginEntry } from "./settings.ts";
 import type { OpenClawApi, OpenClawConfig, RegistrationMode } from "./types.ts";
+
+// The model lister is left out in production, so the config tool uses OpenClaw's.
+type PluginDeps = RouterDeps & { readonly listModels?: ListModels };
 
 const HOOK_TIMEOUT_MAX_MS = 600000;
 // The timeout the plugin registers its hook with: the routing limit plus the margin.
@@ -101,11 +105,12 @@ function registerRouting(api: OpenClawApi, deps: RouterDeps): void {
  * modes register nothing. Never throws: a failure logs a warning and leaves the
  * plugin inert.
  */
-function register(api: OpenClawApi, deps: RouterDeps): void {
+function register(api: OpenClawApi, deps: PluginDeps): void {
 	try {
 		const mode = api.registrationMode;
 		// The config tool and the commands register before the hook, so a throw leaves routing off.
-		if (TOOL_MODES.includes(mode)) registerConfigTool(api, deps.env);
+		if (TOOL_MODES.includes(mode))
+			registerConfigTool(api, deps.env, deps.listModels);
 		if (COMMAND_MODES.includes(mode)) registerConfigCommands(api, deps.env);
 		if (HOOK_MODES.includes(mode)) registerRouting(api, deps);
 	} catch {
@@ -114,7 +119,7 @@ function register(api: OpenClawApi, deps: RouterDeps): void {
 }
 
 export function createPlugin(
-	deps: RouterDeps = {
+	deps: PluginDeps = {
 		fetchFn: streamedFetch,
 		clock: realClock,
 		env: process.env,

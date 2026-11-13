@@ -852,6 +852,38 @@ Every running fact names its OpenClaw version and the date it ran.
   A provider with no key returned false, and so did a provider served only by the Claude CLI backend.
   (running: OpenClaw 2026.10.10, `isProviderApiKeyConfiguredAsync` with and without `agentDir` for four providers)
 
+### OpenClaw model list
+
+The facts of this section ran on 2026-11-13 on OpenClaw 2026.10.10 under Bun and on 2026.11.1, the CI pin, under Node.
+Each run used a state folder written for the run, set with `OPENCLAW_STATE_DIR` and `OPENCLAW_CONFIG_PATH`, under `env -i` so no provider key reached OpenClaw.
+The config declared custom providers: `stub` with a fake key, `local` on a loopback base URL with no key, and `nokey` on a remote base URL with no key.
+No model was called.
+Each run started `openclaw gateway run --port 18999` and called a tool with `POST /tools/invoke`.
+Source links in this section are permalinks at commit `4ffdd2047d19`, tag `v2026.11.1`.
+
+- The SDK subpath `openclaw/plugin-sdk/models-provider-runtime` exports `buildPreparedModelsProviderData(cfg, agentId?, options?)`, the helper behind the `/models` command.
+  (source: [`models-provider-runtime.ts` L9–L30](https://github.com/openclaw/openclaw/blob/4ffdd2047d192dd65554de3c8c46c0e0197c6e2a/src/plugin-sdk/models-provider-runtime.ts#L9-L30), [`commands-models-catalog.ts` L59–L108](https://github.com/openclaw/openclaw/blob/4ffdd2047d192dd65554de3c8c46c0e0197c6e2a/src/auto-reply/reply/commands-models-catalog.ts#L59-L108))
+- A plugin with no static import from OpenClaw reached the subpath with `await import("openclaw/plugin-sdk/models-provider-runtime")` inside its tool's `execute`.
+  The import resolved through `plugins.load.paths` and after `openclaw plugins install npm-pack:<tarball> --force --accept-capabilities`, on both versions.
+  (running: a probe plugin, then this repository's built bundle through `plugins.load.paths`)
+- The result held `byProvider`, `modelCatalog`, `runtimeChoicesByModel`, `modelMenu`, `modelNames`, `providers`, `pendingProviders`, `resolvedDefault`, `refreshWarning`, `runtimeChoicesByProvider` and `isCurrent`.
+  `byProvider` mapped a provider to a `Set` of model ids.
+  A `modelCatalog` row held `id`, `provider`, `name`, `contextWindow`, `contextWindowSource`, `api`, `baseUrl`, `compat`, `input`, `reasoning`, `configuredReasoning` and `status`, and no price.
+  (running: the probe printed the keys)
+- `byProvider` also offered `nokey/orphan-d`, whose provider has no key.
+  OpenClaw's own menu labelled it `Sign-in needed`, and `runtimeChoicesByModel` held no entry for it.
+  Every other offered model had a runtime there, `openclaw`.
+  So the plugin lists a model only when `byProvider` offers it and `runtimeChoicesByModel` names a runtime for it.
+  (running: the probe printed `byProvider`, `runtimeChoicesByModel` and `modelMenu`)
+- A configured model with no `contextWindow` came back with `contextWindow: 128000` and `contextWindowSource: "synthetic"`.
+  The plugin leaves the context size out for such a row.
+  (running: the probe printed both fields for `stub/plain-c` and `local/local-e`)
+- The `anthropic` provider plugin was enabled with no key and added no row.
+  (running: the probe counted the rows per provider)
+- The built bundle's `model_router_config` with setting `models` returned `models the person can run: 4`, then `stub/small-a (128K context)`, `stub/big-b (200K context)`, `stub/plain-c` and `local/local-e`, on both versions.
+  With setting `middle_model` it returned the settings page and the `openclaw config set` command.
+  (running: `POST /tools/invoke` with `model_router_config`)
+
 ### OpenClaw commands and owner check
 
 - A plugin command declares `requiredScopes`, and a command with a non-empty list can receive `senderIsOwner`.
@@ -945,6 +977,8 @@ No run covers a sandboxed child with a CLI-backend model, or an `outputSchema` s
 The sandbox rule for CLI backends and the collector child's need for tools rest on the documentation cited above.
 The source check of the workspace `.env` list left out variables that an installed provider plugin adds.
 OpenClaw may drop `TYPESAFE_API_KEY` when such a plugin declares it.
+The model list is read for OpenClaw's default agent, because a tool registered as an object gets no agent id.
+No run listed models of an installed provider plugin with a key.
 No run has shown the `skipped, cancelled` line. It rests on the `ctx.abortSignal` source above and the unit tests.
 `before_model_resolve` can replace a run's model, provider and fallback chain.
 It receives only the prompt and attachment metadata, and its result holds no thinking level.

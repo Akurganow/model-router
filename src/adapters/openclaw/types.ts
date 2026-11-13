@@ -102,6 +102,25 @@ export type PluginRuntime = {
 	agent: { resolveAgentDir: (cfg: OpenClawConfig, agentId: string) => string };
 };
 
+// src/auto-reply/reply/commands-models-catalog.ts: the fields of the result of
+// `buildPreparedModelsProviderData` that the adapter reads. `byProvider` maps a
+// provider to the model ids /models offers, `runtimeChoicesByModel` maps
+// `provider/model` to the runtimes that can run it, and `modelCatalog` holds rows
+// of `ModelCatalogEntry`.
+export type ModelsData = {
+	byProvider?: unknown;
+	runtimeChoicesByModel?: unknown;
+	modelCatalog?: unknown;
+};
+
+// src/agents/model-catalog.types.ts: the fields of a catalogue row the adapter reads.
+export type CatalogEntry = {
+	id?: unknown;
+	provider?: unknown;
+	contextWindow?: unknown;
+	contextWindowSource?: unknown;
+};
+
 // src/plugins/hook-types.ts: `PluginHookBeforeToolCallEvent`.
 export type BeforeToolCallEvent = {
 	toolName: string;

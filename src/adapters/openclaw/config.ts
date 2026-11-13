@@ -1,3 +1,4 @@
+import { modelToolSentences, runModels } from "../../core/models.ts";
 import {
 	alreadyValue,
 	badCall,
@@ -23,15 +24,14 @@ import {
 import {
 	SLOT_SETTINGS,
 	SLOTS,
-	type SlotSetting,
 	slotLine,
 	slotSetting,
 } from "../../core/slots.ts";
 import { errorText } from "../../utils/error.ts";
 import { isRecord } from "../../utils/guards.ts";
+import { type ListModels, listFromOpenClaw, modelPort } from "./models.ts";
 import {
 	type Environment,
-	PLUGIN_ID,
 	readState,
 	type State,
 	withPluginSetting,
@@ -48,14 +48,14 @@ const ADMIN_SCOPE = "operator.admin";
 const LINE_BREAK = "\n";
 
 export const NOT_OWNER = "only the owner can change it";
-const MODEL_SETTINGS = SLOT_SETTINGS;
 // No chat command sets a model, but the tool still answers where it is set, so
 // the schema has to let the name through: OpenClaw checks arguments before execute.
-const TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
-export const TOOL_DESCRIPTION = readOnlyToolDescription(
+const CHANGED_SETTINGS = [...SETTING_NAMES, ...SLOT_SETTINGS];
+const TOOL_SETTINGS = [...CHANGED_SETTINGS, "models"];
+export const TOOL_DESCRIPTION = `${readOnlyToolDescription(
 	["the provider", "the scope", "the three models"],
-	TOOL_SETTINGS,
-);
+	CHANGED_SETTINGS,
+)} ${modelToolSentences(false)}`;
 
 /**
  * Returns the report: the provider, the scope, the three models as configured,
@@ -71,24 +71,12 @@ function readAll({ settings, keys }: State): string {
 	);
 }
 
-const isModelSetting = (setting: unknown): setting is SlotSetting =>
-	MODEL_SETTINGS.some((known) => known === setting);
-
-/**
- * Returns where the person sets a model setting. No chat command sets it, so
- * the answer names the plugin's settings page and the OpenClaw config command.
- */
-const modelSettingHelp = (setting: SlotSetting): string =>
-	`${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`;
-
 /**
  * Returns how the person changes a setting: the command and its allowed values
- * for a value setting, the plugin's settings for a key setting, the settings
- * page and the config command for a model setting, and the list of setting
- * names for anything else. Never throws.
+ * for a value setting, the plugin's settings for a key setting, and the list of
+ * setting names for anything else. Never throws.
  */
 function howToChange(setting: unknown): string {
-	if (isModelSetting(setting)) return modelSettingHelp(setting);
 	if (isValueSetting(setting)) return valueSettingHelp(setting);
 	return isKeySetting(setting)
 		? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.`
@@ -97,14 +85,22 @@ function howToChange(setting: unknown): string {
 
 /**
  * Returns the text of one tool call: the full settings read when `params` names
- * no setting, otherwise how to change that setting. Params that are not an
- * object count as no input. An error from reading the state propagates.
+ * no setting, the models or where a model is set for a model setting, otherwise
+ * how to change that setting. Params that are not an object count as no input.
+ * An error from reading the state propagates.
  */
-function runTool(api: OpenClawApi, env: Environment, params: unknown): string {
+async function runTool(
+	api: OpenClawApi,
+	env: Environment,
+	listModels: ListModels,
+	params: unknown,
+): Promise<string> {
 	const { setting } = isRecord(params) ? params : {};
-	return setting === undefined
-		? readAll(readState(api, env))
-		: howToChange(setting);
+	if (setting === undefined) return readAll(readState(api, env));
+	return (
+		(await runModels(modelPort(api, listModels), { setting })) ??
+		howToChange(setting)
+	);
 }
 
 // OpenClaw runs the `requiredScopes` check before the handler. A channel message carries no
@@ -178,10 +174,15 @@ function failure(err: unknown): string {
 }
 
 /**
- * Registers the config tool. Its execute never rejects: a failure comes back as
- * an `error:` text. Throws only when the api rejects the registration.
+ * Registers the config tool, which lists the models with `listModels`. Its
+ * execute never rejects: a failure comes back as an `error:` text. Throws only
+ * when the api rejects the registration.
  */
-export function registerConfigTool(api: OpenClawApi, env: Environment): void {
+export function registerConfigTool(
+	api: OpenClawApi,
+	env: Environment,
+	listModels: ListModels = listFromOpenClaw,
+): void {
 	api.registerTool({
 		name: TOOL_NAME,
 		label: TOOL_LABEL,
@@ -193,7 +194,7 @@ export function registerConfigTool(api: OpenClawApi, env: Environment): void {
 		},
 		execute: async (_id, params) => {
 			try {
-				return textOf(runTool(api, env, params));
+				return textOf(await runTool(api, env, listModels, params));
 			} catch (err) {
 				return textOf(failure(err));
 			}
