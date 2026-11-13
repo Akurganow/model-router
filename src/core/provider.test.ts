@@ -119,6 +119,11 @@ test("collectKeys stops at a rejection and passes it through", async () => {
 	assert.deepEqual(asked, ["typesafe"]);
 });
 
+test("collectKeys keeps an empty key", async () => {
+	const keys = await collectKeys("typesafe", async () => "");
+	assert.deepEqual(keys, { typesafe: "" });
+});
+
 test("falls back after a connection error, a timeout and the listed statuses", () => {
 	const fallBack = [
 		new APIConnectionError(),
