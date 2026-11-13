@@ -1,11 +1,11 @@
 """The config tool: the provider, the three models, which keys are set, and the models the person can run.
 
 It changes nothing and returns presence only, never a key or its length. The models
-list reads Hermes's offline data and asks for no provider's key."""
+list reads Hermes's provider list and offline catalogue, and asks for no provider's key."""
 
 import json
 
-from . import checks, node
+from . import node
 from .constants import CONSTANTS, MS_PER_SECOND, PLUGIN_DIR
 from .hermes_api import live_api
 from .settings import found_keys, read_provider, read_slot
@@ -36,19 +36,10 @@ def _read_all(ctx, api, constants):
     return texts["lineBreak"].join(lines)
 
 
-def _keeps(entry, api):
-    """Whether the list holds the models of one entry of Hermes's provider list.
-
-    Hermes counts the provider as authenticated, and the slot check reads its credentials offline."""
-    return bool(entry.get("authenticated")) and checks.credentials_stay_offline(entry["id"], api)
-
-
-def _models_of(entry, api):
-    """The model ids of a provider the list keeps; none when Hermes cannot list them."""
+def _models_of(provider, api):
+    """The provider's model ids from Hermes's offline catalogue; none when Hermes cannot list them."""
     try:
-        if not _keeps(entry, api):
-            return []
-        return [model for model in api.list_models(entry["id"]) or [] if isinstance(model, str)]
+        return [model for model in api.list_models(provider) or [] if isinstance(model, str)]
     except Exception:
         return []
 
@@ -70,12 +61,14 @@ def _numbers(api, provider, model):
 
 
 def listed_models(api):
-    """Each model of each provider of Hermes's provider list that the list keeps."""
+    """Each model of each provider that Hermes's provider list marks authenticated.
+
+    The list shows what Hermes gives: a listed model can still read unresolved in a slot."""
     return [
         {"provider": entry["id"], "model": model, **_numbers(api, entry["id"], model)}
         for entry in api.list_providers()
-        if isinstance(entry, dict) and isinstance(entry.get("id"), str)
-        for model in _models_of(entry, api)
+        if isinstance(entry, dict) and isinstance(entry.get("id"), str) and entry.get("authenticated")
+        for model in _models_of(entry["id"], api)
     ]
 
 

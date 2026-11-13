@@ -1,5 +1,5 @@
 {
-	"description": "Python lists the authenticated providers whose credentials stay offline, with a price only where Hermes has cost data; Node joins provider and model, keeps an id with a tilde, drops a bad id and words the list.",
+	"description": "Python lists every provider Hermes marks authenticated, with a price only where Hermes has cost data; Node joins provider and model, keeps an id with a tilde, drops a bad id and words the list.",
 	"hermes": {
 		"providers": [
 			{
@@ -19,9 +19,6 @@
 				"authenticated": false
 			}
 		],
-		"authTypes": {
-			"nous": "oauth_device_code"
-		},
 		"models": {
 			"openrouter": [
 				"vendor/fast",
@@ -94,10 +91,14 @@
 				"model": "deepseek-pro",
 				"input": 1.5,
 				"output": 6.0
+			},
+			{
+				"provider": "nous",
+				"model": "hermes-4"
 			}
 		]
 	},
 	"response": {
-		"text": "models the person can run: 5\n- openrouter/vendor/fast ($0.25 in, $2 out per 1M tokens, 1.05M context)\n- openrouter/vendor/free (131K context)\n- openrouter/~vendor/latest ($1 in, $1 out per 1M tokens)\n- deepseek/deepseek-flash\n- deepseek/deepseek-pro ($1.5 in, $6 out per 1M tokens)"
+		"text": "models the person can run: 6\n- openrouter/vendor/fast ($0.25 in, $2 out per 1M tokens, 1.05M context)\n- openrouter/vendor/free (131K context)\n- openrouter/~vendor/latest ($1 in, $1 out per 1M tokens)\n- deepseek/deepseek-flash\n- deepseek/deepseek-pro ($1.5 in, $6 out per 1M tokens)\n- nous/hermes-4"
 	}
 }

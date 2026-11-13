@@ -197,16 +197,13 @@ class ModelsSettingTest(unittest.TestCase):
             ],
         )
 
-    def test_only_an_authenticated_provider_with_offline_credentials_is_listed(self):
+    def test_every_provider_hermes_marks_authenticated_is_listed(self):
         providers = [
             {"id": "openrouter", "authenticated": True},
             {"id": "gemini", "authenticated": False},
             {"id": "deepseek"},
             {"id": "nous", "authenticated": True},
-            {"id": "qwen-oauth", "authenticated": True},
-            {"id": "anthropic", "authenticated": True},
             {"id": "broken", "authenticated": True},
-            {"id": "rule-fails", "authenticated": True},
             {"id": "xai", "authenticated": True},
             {"id": 3, "authenticated": True},
             {"authenticated": True},
@@ -214,37 +211,44 @@ class ModelsSettingTest(unittest.TestCase):
             None,
         ]
 
-        def auth_type(provider):
-            if provider == "rule-fails":
-                raise RuntimeError("registry unreadable")
-            return "oauth_device_code" if provider == "nous" else "api_key"
-
         def list_models(provider):
             if provider == "broken":
                 raise RuntimeError("cache unreadable")
             return [f"{provider}-model"]
 
-        api = fake_api(
-            list_providers=lambda: providers,
-            auth_type=auth_type,
-            is_refreshable=lambda provider: provider == "qwen-oauth",
-            list_models=list_models,
-        )
+        api = fake_api(list_providers=lambda: providers, list_models=list_models)
         self.assertEqual(
             self.listed(api),
             [
                 {"provider": "openrouter", "model": "openrouter-model"},
+                {"provider": "nous", "model": "nous-model"},
                 {"provider": "xai", "model": "xai-model"},
             ],
         )
 
-    def test_anthropic_is_listed_only_with_its_api_key_and_no_oauth_token(self):
+    def test_the_list_runs_no_credential_rule_and_reads_no_secret(self):
+        # A listed model may read unresolved in a slot; the list shows what Hermes gives.
+        def refused(*args):
+            raise AssertionError("the list asked for a credential")
+
         api = fake_api(
-            secrets={"ANTHROPIC_API_KEY": "anthropic-secret"},
-            list_providers=lambda: [{"id": "anthropic", "authenticated": True}],
-            list_models=lambda provider: ["claude-x"],
+            list_providers=lambda: [
+                {"id": "anthropic", "authenticated": True},
+                {"id": "qwen-oauth", "authenticated": True},
+            ],
+            get_secret=refused,
+            auth_type=refused,
+            is_refreshable=refused,
+            resolve_runtime=refused,
+            list_models=lambda provider: [f"{provider}-model"],
         )
-        self.assertEqual(self.listed(api), [{"provider": "anthropic", "model": "claude-x"}])
+        self.assertEqual(
+            self.listed(api),
+            [
+                {"provider": "anthropic", "model": "anthropic-model"},
+                {"provider": "qwen-oauth", "model": "qwen-oauth-model"},
+            ],
+        )
 
     def test_a_model_id_that_is_not_text_is_left_out(self):
         api = fake_api(

@@ -218,7 +218,6 @@ class FakeModelInfo:
 def hermes_of(fixture: dict[str, Any], **overrides: Any) -> Any:
     """A HermesApi that lists the providers, models and model data of a models fixture."""
     hermes = fixture["hermes"]
-    auth_types = hermes.get("authTypes", {})
 
     def model_info(provider, model):
         info = hermes["info"].get(provider, {}).get(model)
@@ -226,7 +225,6 @@ def hermes_of(fixture: dict[str, Any], **overrides: Any) -> Any:
 
     return fake_api(
         list_providers=lambda: [dict(entry) for entry in hermes["providers"]],
-        auth_type=lambda provider: auth_types.get(provider, "api_key"),
         list_models=lambda provider: list(hermes["models"].get(provider, [])),
         model_info=model_info,
         **overrides,
