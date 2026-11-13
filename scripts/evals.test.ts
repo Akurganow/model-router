@@ -103,10 +103,13 @@ test("omp: the decision line on stderr is the routing evidence", () => {
 	});
 });
 
-test("omp: a batch line gives the first decision entry, and no change has no target", () => {
-	const stderr = `model-router task 1: skipped, HTTP 401 | task 2: L1 no change · medium · p=0.80/0.55 | task 3: L2 @slow · low · p=0.90/0.70\n`;
+test("omp: a batch line gives the first decision entry, and a slot with no model has no target", () => {
+	const stderr = `model-router task 1: skipped, HTTP 401 | task 2: L1 middle model unset · medium · p=0.80/0.55 | task 3: L2 @slow · low · p=0.90/0.70\n`;
 	const evidence = omp.parse({ stdout: jsonl(ompTask), stderr });
-	assert.equal(evidence.line, "task 2: L1 no change · medium · p=0.80/0.55");
+	assert.equal(
+		evidence.line,
+		"task 2: L1 middle model unset · medium · p=0.80/0.55",
+	);
 	assert.equal(evidence.tier, 1);
 	assert.equal(evidence.effort, "medium");
 	assert.equal(evidence.target, null);
@@ -123,15 +126,30 @@ for (const label of ["caller effort", "config effort", "no model patterns"])
 		assert.equal(evidence.target, "@smol");
 	});
 
+test("omp: an unresolved slot reads as a decision with no target", () => {
+	const stderr = "model-router task 1: L2 large model unresolved · medium · p=0.88/0.71\n";
+	const evidence = omp.parse({ stdout: "", stderr });
+	assert.equal(evidence.routed, true);
+	assert.equal(evidence.tier, 2);
+	assert.equal(evidence.effort, "medium");
+	assert.equal(evidence.target, null);
+});
+
+test("omp: a set middle role reads as its target", () => {
+	const stderr = "model-router task 1: L1 @middle · medium · p=0.62/0.70\n";
+	const evidence = omp.parse({ stdout: "", stderr });
+	assert.equal(evidence.target, "@middle");
+});
+
 test("omp: a later entry for the same item replaces the batch entry", () => {
 	const stderr = [
-		"model-router task 1: L1 no change · medium · p=0.80/0.55 | task 2: L0 @smol · high · p=0.90/0.70",
-		"model-router task 1: L1 no change · no model patterns · p=0.80/0.55",
+		"model-router task 1: L1 middle model unset · medium · p=0.80/0.55 | task 2: L0 @smol · high · p=0.90/0.70",
+		"model-router task 1: L1 middle model unset · no model patterns · p=0.80/0.55",
 	].join("\n");
 	const evidence = omp.parse({ stdout: "", stderr });
 	assert.equal(
 		evidence.line,
-		"task 1: L1 no change · no model patterns · p=0.80/0.55",
+		"task 1: L1 middle model unset · no model patterns · p=0.80/0.55",
 	);
 	assert.equal(evidence.effort, "no model patterns");
 	assert.equal(evidence.tier, 1);

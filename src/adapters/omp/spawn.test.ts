@@ -211,16 +211,18 @@ test("level 1 with no model patterns returns nothing and says why", async () => 
 	await world.toolCall("c", { tasks: [{ task: "level1 a" }] });
 	assert.equal(await world.spawn("c:0"), undefined);
 	assert.deepEqual(world.notes.slice(1), [
-		"model-router task 1: L1 no change · no model patterns · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"model-router task 1: L1 middle model unset · no model patterns · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
 	]);
 });
 
-test("a role that does not resolve is not returned", async () => {
+test("a role that stops resolving before the spawn is not returned, and the line says so", async () => {
 	install();
 	await twoTasks();
 	world.resolvable.delete("@slow");
 	assert.equal(await world.spawn("c:1"), undefined);
-	assert.deepEqual(world.notes.slice(1), [skipAt(2, "no @slow model")]);
+	assert.deepEqual(world.notes.slice(1), [
+		"model-router task 2: L2 large model unresolved · no model patterns · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	]);
 	assert.equal((await world.spawn("c:0"))?.model, "@smol:high");
 });
 

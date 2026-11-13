@@ -9,7 +9,6 @@ var NETWORK_ERROR = "network error";
 var REJECTED_REQUEST = "rejected request";
 var httpStatus = (status) => `HTTP ${status}`;
 var CANCELLED = "cancelled";
-var modelUnset = (slot) => `${slot} model unset`;
 
 // src/utils/clock.ts
 var realClock = {
@@ -1419,7 +1418,7 @@ var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
 // src/core/line.ts
 var LINE_PREFIX = "model-router ";
-var NO_CHANGE = "no change";
+var pinnedLine = (level, target) => `L${level} ${target}`;
 function routedLine({
   level,
   target,
@@ -1428,24 +1427,19 @@ function routedLine({
   suffix
 }) {
   const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+  return `${pinnedLine(level, target)}${effortSegment} \xB7 p=${probabilities}${suffix}`;
 }
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 
 // src/core/slots.ts
-var SLOTS = ["small", "large"];
-var LEVEL_SLOTS = {
-  0: "small",
-  2: "large"
-};
-var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
-var modelForLevel = (level, models) => {
+var SLOTS = ["small", "middle", "large"];
+var slotForLevel = (level) => SLOTS[level];
+function pickModel(level, models) {
   const slot = slotForLevel(level);
-  if (slot === null) return { slot };
-  const model = models[slot];
-  return model === void 0 ? { skipped: modelUnset(slot) } : { slot, model };
-};
+  const picked = models[slot];
+  return picked.state === "set" ? { slot, model: picked.model, target: picked.model } : { slot, model: void 0, target: `${slot} model ${picked.state}` };
+}
 
 // src/utils/deadline.ts
 async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
@@ -1495,6 +1489,7 @@ var readModels = (value) => Object.fromEntries(
     isRecord2(value) ? nonEmpty(value[slot]) : void 0
   ])
 );
+var readUnresolved = (value) => Array.isArray(value) ? SLOTS.filter((slot) => value.some((name) => nonEmpty(name) === slot)) : [];
 var readBudget = (value) => isPositiveNumber(value) ? value : void 0;
 function readRequest(raw) {
   if (!isRecord2(raw) || Array.isArray(raw)) return void 0;
@@ -1505,6 +1500,7 @@ function readRequest(raw) {
     keys,
     budgetMs,
     models,
+    unresolved,
     keptEffort,
     description
   } = raw;
@@ -1515,10 +1511,21 @@ function readRequest(raw) {
     keys: readKeys(keys),
     budgetMs: readBudget(budgetMs),
     models: readModels(models),
+    unresolved: readUnresolved(unresolved),
     keptEffort: KEPT_EFFORTS.find((source) => source === keptEffort),
     description: typeof description === "string" ? description : ""
   };
 }
+var slotModels = ({ models, unresolved }) => Object.fromEntries(
+  SLOTS.map((slot) => {
+    const model = models[slot];
+    if (unresolved.includes(slot)) return [slot, { state: "unresolved" }];
+    return [
+      slot,
+      model === void 0 ? { state: "unset" } : { state: "set", model }
+    ];
+  })
+);
 
 // src/adapters/hermes/route.ts
 var skippedBy = (reason) => ({ skipped: reason });
@@ -1554,9 +1561,7 @@ async function scored(request, deps, signal) {
 }
 function answer(request, decided) {
   const level = decided.tier;
-  const picked = modelForLevel(level, request.models);
-  if ("skipped" in picked) return skip2(picked.skipped);
-  const { slot, model: target } = picked;
+  const { slot, target } = pickModel(level, slotModels(request));
   const effort = effortFor(level, decided.work);
   const kept = request.keptEffort === void 0 ? void 0 : KEPT_LABELS[request.keptEffort];
   return {

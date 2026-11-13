@@ -1,5 +1,5 @@
 {
-	"description": "A blank small model counts as unset.",
+	"description": "A blank small model counts as unset, and level 0 still gets the effort.",
 	"request": {
 		"task": "Rename the helper in util.ts and run the tests.",
 		"context": "",
@@ -16,7 +16,9 @@
 		}
 	],
 	"response": {
-		"outcome": "skip",
-		"line": "model-router skipped, small model unset"
+		"outcome": "route",
+		"slot": "small",
+		"effort": "medium",
+		"line": "model-router L0 small model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
 	}
 }

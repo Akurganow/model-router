@@ -5,10 +5,13 @@ import { scoreWork } from "../../core/decide.ts";
 import { MIN_DEADLINE_MS } from "../../core/handler-deadline.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
-import type { Level } from "../../core/part.ts";
 import { type Keys, plan } from "../../core/provider.ts";
-import { modelUnresolved } from "../../core/reasons.ts";
-import { modelForLevel } from "../../core/slots.ts";
+import {
+	pickModel,
+	type Slot,
+	type SlotModel,
+	type SlotModels,
+} from "../../core/slots.ts";
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
 import { nonEmpty } from "../../utils/text.ts";
@@ -106,30 +109,30 @@ async function score(
 	});
 }
 
-type Slot =
-	| { readonly model: string | undefined }
-	| { readonly skipped: string };
-
 /**
- * Returns the model slot for a tier. The middle tier keeps the spawn's own model
- * and returns no model. An end tier needs its slot set and resolved for the
- * agent, or the result names why it is skipped. Never rejects.
+ * Returns what each slot holds: its model when the setting names one that
+ * OpenClaw resolves for the agent, `unresolved` when it names one that it does
+ * not, and `unset` when it names none. Every slot with a model is checked at
+ * once. Never rejects.
  */
-async function slotFor(
+async function slotModels(
 	runtime: PluginRuntime,
 	settings: OpenClawSettings,
 	{ config, target }: Route,
-	level: Level,
-): Promise<Slot> {
-	const picked = modelForLevel(level, {
-		small: settings.smallModel,
-		large: settings.largeModel,
-	});
-	if ("skipped" in picked) return picked;
-	const { slot, model } = picked;
-	if (slot !== null && !(await slotResolves(runtime, config, target, model)))
-		return { skipped: modelUnresolved(slot) };
-	return { model };
+): Promise<SlotModels> {
+	const check = async (slot: Slot): Promise<SlotModel> => {
+		const model = settings.models[slot];
+		if (model === undefined) return { state: "unset" };
+		return (await slotResolves(runtime, config, target, model))
+			? { state: "set", model }
+			: { state: "unresolved" };
+	};
+	const [small, middle, large] = await Promise.all([
+		check("small"),
+		check("middle"),
+		check("large"),
+	]);
+	return { small, middle, large };
 }
 
 /**
@@ -172,15 +175,17 @@ async function routeGated(
 	if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
 	const decided = await score(spawn, settings, keys, gate);
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
-	const slot = await slotFor(api.runtime, settings, gate, decided.tier);
-	if ("skipped" in slot) return void log(skippedLine(slot.skipped));
-	const { model } = slot;
+	const picked = pickModel(
+		decided.tier,
+		await slotModels(api.runtime, settings, gate),
+	);
+	const { model } = picked;
 	const kept = gate.effort.kind === "keep" ? gate.effort.label : undefined;
 	const effort = effortFor(decided.tier, decided.work);
 	log(
 		routedLine({
 			level: decided.tier,
-			target: model,
+			target: picked.target,
 			effort: kept ?? effort,
 			probabilities: decided.probabilities,
 			suffix: decided.suffix,

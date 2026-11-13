@@ -1021,7 +1021,6 @@ function parseProbabilities(answers, key) {
 var CALLER_EFFORT = "caller effort";
 var CONFIG_EFFORT = "config effort";
 var SUBAGENT_MODEL_SET = "subagent model set";
-var NO_END_MODEL = "no small or large model";
 var UNREADABLE = "settings unreadable";
 var KEY_UNSET = "key unset";
 var BAD_REPLY = "bad reply";
@@ -1035,8 +1034,6 @@ var outsideCoreScope = (id) => `${id} is outside the core scope`;
 var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
 var agentUnknown = (id) => `${id} agent unknown`;
 var setsOwnModel = (id) => `${id} sets its own model`;
-var modelUnset = (slot) => `${slot} model unset`;
-var modelUnresolved = (slot) => `${slot} model unresolved`;
 
 // src/core/compose.ts
 var ROUTING_LIMIT_MS = 8e3;
@@ -1138,7 +1135,7 @@ var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARG
 
 // src/core/line.ts
 var LINE_PREFIX = "model-router ";
-var NO_CHANGE = "no change";
+var pinnedLine = (level, target) => `L${level} ${target}`;
 function routedLine({
   level,
   target,
@@ -1147,7 +1144,7 @@ function routedLine({
   suffix
 }) {
   const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+  return `${pinnedLine(level, target)}${effortSegment} \xB7 p=${probabilities}${suffix}`;
 }
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
@@ -1255,6 +1252,45 @@ var COMMAND_DESCRIPTIONS = {
   scope: describeCommand("scope")
 };
 
+// src/core/slots.ts
+var SLOTS = ["small", "middle", "large"];
+var slotForLevel = (level) => SLOTS[level];
+var slotSetting = (slot) => `${slot}_model`;
+function pickModel(level, models) {
+  const slot = slotForLevel(level);
+  const picked = models[slot];
+  return picked.state === "set" ? { slot, model: picked.model, target: picked.model } : { slot, model: void 0, target: `${slot} model ${picked.state}` };
+}
+var slotLine = (name, state, shown) => {
+  if (state === "unset") return `${name}: unset`;
+  return state === "set" ? `${name}: ${shown}` : `${name}: ${shown} (unresolved)`;
+};
+
+// src/adapters/openclaw/checks.ts
+async function slotResolves(runtime, cfg, agentId, slot) {
+  try {
+    const target = agentId === void 0 ? { cfg } : { cfg, agentId };
+    const { modelConfig, modelAuth, agent } = runtime;
+    const { provider: defaultProvider } = modelConfig.resolveDefaultModelForAgent(target);
+    const resolved = modelConfig.resolveAllowedModelRef({
+      ...target,
+      catalog: [],
+      raw: slot,
+      defaultProvider
+    });
+    if ("error" in resolved) return false;
+    const agentDir = agentId === void 0 ? void 0 : agent.resolveAgentDir(cfg, agentId);
+    const credential = {
+      provider: resolved.ref.provider,
+      cfg,
+      ...agentDir ? { agentDir } : {}
+    };
+    return await modelAuth.isProviderApiKeyConfiguredAsync(credential) === true;
+  } catch {
+    return false;
+  }
+}
+
 // src/adapters/openclaw/settings.ts
 var PLUGIN_ID = "model-router-openclaw";
 var pluginEntry = (config) => config?.plugins?.entries?.[PLUGIN_ID];
@@ -1291,8 +1327,11 @@ function readSettings(live, pluginConfig) {
   return {
     provider: resolve(firstValid(from, "provider", parseProvider)),
     scope: resolveScope(firstValid(from, "scope", parseScope)),
-    smallModel: firstValid(from, "small_model", nonEmpty),
-    largeModel: firstValid(from, "large_model", nonEmpty)
+    models: {
+      small: firstValid(from, slotSetting("small"), nonEmpty),
+      middle: firstValid(from, slotSetting("middle"), nonEmpty),
+      large: firstValid(from, slotSetting("large"), nonEmpty)
+    }
   };
 }
 function collectKeys(value, lookup) {
@@ -1324,25 +1363,24 @@ function readState(api, env) {
 var COMMAND_NAMES = VALUE_SETTINGS.map(commandName);
 var ADMIN_SCOPE = "operator.admin";
 var LINE_BREAK = "\n";
-var UNSET = "unset";
 var NOT_OWNER = "only the owner can change it";
-var MODEL_SETTINGS = ["small_model", "large_model"];
+var MODEL_SETTINGS = SLOTS.map(slotSetting);
 var TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
 var TOOL_DESCRIPTION = readOnlyToolDescription(
-  ["the provider", "the scope", "both models"],
+  ["the provider", "the scope", "the three models"],
   TOOL_SETTINGS
 );
-var modelLine = (name, model) => `${name}: ${model ?? UNSET}`;
-function readAll({ settings, keys }) {
-  return settingsReport(
-    settings.provider,
-    settings.scope,
-    [
-      modelLine("small_model", settings.smallModel),
-      modelLine("large_model", settings.largeModel)
-    ],
-    keys
+async function readAll(api, { config, settings, keys }) {
+  const models = await Promise.all(
+    SLOTS.map(async (slot) => {
+      const model = settings.models[slot];
+      const name = slotSetting(slot);
+      if (model === void 0) return slotLine(name, "unset", "");
+      const resolves = config !== void 0 && await slotResolves(api.runtime, config, void 0, model);
+      return slotLine(name, resolves ? "set" : "unresolved", model);
+    })
   );
+  return settingsReport(settings.provider, settings.scope, models, keys);
 }
 var isModelSetting = (setting) => MODEL_SETTINGS.some((known) => known === setting);
 var modelSettingHelp = (setting) => `${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`;
@@ -1351,9 +1389,9 @@ function howToChange(setting) {
   if (isValueSetting(setting)) return valueSettingHelp(setting);
   return isKeySetting(setting) ? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.` : badCall(TOOL_SETTINGS);
 }
-function runTool(api, env, params) {
+async function runTool(api, env, params) {
   const { setting } = isRecord2(params) ? params : {};
-  return setting === void 0 ? readAll(readState(api, env)) : howToChange(setting);
+  return setting === void 0 ? readAll(api, readState(api, env)) : howToChange(setting);
 }
 var isOwner = (ctx) => ctx.senderIsOwner === true;
 async function write(api, ctx, setting, value) {
@@ -1398,7 +1436,7 @@ function registerConfigTool(api, env) {
     },
     execute: async (_id, params) => {
       try {
-        return textOf(runTool(api, env, params));
+        return textOf(await runTool(api, env, params));
       } catch (err) {
         return textOf(failure(err));
       }
@@ -1704,19 +1742,6 @@ var EFFORT_BY_TIER = {
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
-// src/core/slots.ts
-var LEVEL_SLOTS = {
-  0: "small",
-  2: "large"
-};
-var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
-var modelForLevel = (level, models) => {
-  const slot = slotForLevel(level);
-  if (slot === null) return { slot };
-  const model = models[slot];
-  return model === void 0 ? { skipped: modelUnset(slot) } : { slot, model };
-};
-
 // src/utils/deadline.ts
 async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
   try {
@@ -1748,31 +1773,6 @@ async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
     });
   } catch {
     return void 0;
-  }
-}
-
-// src/adapters/openclaw/checks.ts
-async function slotResolves(runtime, cfg, agentId, slot) {
-  try {
-    const target = agentId === void 0 ? { cfg } : { cfg, agentId };
-    const { modelConfig, modelAuth, agent } = runtime;
-    const { provider: defaultProvider } = modelConfig.resolveDefaultModelForAgent(target);
-    const resolved = modelConfig.resolveAllowedModelRef({
-      ...target,
-      catalog: [],
-      raw: slot,
-      defaultProvider
-    });
-    if ("error" in resolved) return false;
-    const agentDir = agentId === void 0 ? void 0 : agent.resolveAgentDir(cfg, agentId);
-    const credential = {
-      provider: resolved.ref.provider,
-      cfg,
-      ...agentDir ? { agentDir } : {}
-    };
-    return await modelAuth.isProviderApiKeyConfiguredAsync(credential) === true;
-  } catch {
-    return false;
   }
 }
 
@@ -1869,8 +1869,6 @@ function gateSpawn(input) {
     const reason = otherAgentSkip(named, input);
     if (reason !== void 0) return skip2(reason);
   }
-  if (settings.smallModel === void 0 && settings.largeModel === void 0)
-    return skip2(NO_END_MODEL);
   if (config === void 0) return skip2(UNREADABLE);
   return {
     outcome: "route",
@@ -1964,16 +1962,18 @@ async function score({ deps, signal }, settings, keys, gate) {
     signal
   });
 }
-async function slotFor(runtime, settings, { config, target }, level) {
-  const picked = modelForLevel(level, {
-    small: settings.smallModel,
-    large: settings.largeModel
-  });
-  if ("skipped" in picked) return picked;
-  const { slot, model } = picked;
-  if (slot !== null && !await slotResolves(runtime, config, target, model))
-    return { skipped: modelUnresolved(slot) };
-  return { model };
+async function slotModels(runtime, settings, { config, target }) {
+  const check = async (slot) => {
+    const model = settings.models[slot];
+    if (model === void 0) return { state: "unset" };
+    return await slotResolves(runtime, config, target, model) ? { state: "set", model } : { state: "unresolved" };
+  };
+  const [small, middle, large] = await Promise.all([
+    check("small"),
+    check("middle"),
+    check("large")
+  ]);
+  return { small, middle, large };
 }
 async function routeSpawn(spawn) {
   const { api, deps, signal, request, requester } = spawn;
@@ -1998,15 +1998,17 @@ async function routeGated(spawn, settings, keys, gate, log) {
   if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
   const decided = await score(spawn, settings, keys, gate);
   if ("skipped" in decided) return void log(skippedLine(decided.skipped));
-  const slot = await slotFor(api.runtime, settings, gate, decided.tier);
-  if ("skipped" in slot) return void log(skippedLine(slot.skipped));
-  const { model } = slot;
+  const picked = pickModel(
+    decided.tier,
+    await slotModels(api.runtime, settings, gate)
+  );
+  const { model } = picked;
   const kept = gate.effort.kind === "keep" ? gate.effort.label : void 0;
   const effort = effortFor(decided.tier, decided.work);
   log(
     routedLine({
       level: decided.tier,
-      target: model,
+      target: picked.target,
       effort: kept ?? effort,
       probabilities: decided.probabilities,
       suffix: decided.suffix

@@ -1,7 +1,7 @@
 {
 	"id": "model-router-openclaw",
 	"name": "Model Router",
-	"description": "Routes OpenClaw subagent spawns to your small or large model and an effort that fits the task, judged by Jev. For each routed sessions_spawn call it sends the task text, condensed to at most 12,000 characters, the agent's description, cut to 500 characters, and the spawn's one-line label, all with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows, each with its own key. The spawn of the requesting agent itself sends that agent's description when it has one and a fixed text when it has none. The plugin sets a model only from your small_model and large_model settings, and only after OpenClaw resolves it and holds a credential for it. The scope setting picks the spawns: core routes the spawn of the requesting agent itself; extended also routes the spawns of other agents that set no model. A key set as an environment variable is visible to every process OpenClaw starts.",
+	"description": "Routes OpenClaw subagent spawns to your small, middle or large model and an effort that fits the task, judged by Jev. It scores a task and sets the effort even when you set no model. For each routed sessions_spawn call it sends the task text, condensed to at most 12,000 characters, the agent's description, cut to 500 characters, and the spawn's one-line label, all with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider setting allows, each with its own key. The spawn of the requesting agent itself sends that agent's description when it has one and a fixed text when it has none. The plugin sets a model only from your small_model, middle_model and large_model settings, and only after OpenClaw resolves it and holds a credential for it. The scope setting picks the spawns: core routes the spawn of the requesting agent itself; extended also routes the spawns of other agents that set no model. A key set as an environment variable is visible to every process OpenClaw starts.",
 	"version": "0.21.0",
 	"activation": {
 		"onStartup": true
@@ -35,11 +35,15 @@
 		},
 		"small_model": {
 			"label": "Small model",
-			"help": "The model a spawn gets when Jev rates its task small, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it."
+			"help": "The model a spawn gets when Jev rates its task small, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort."
+		},
+		"middle_model": {
+			"label": "Middle model",
+			"help": "The model a spawn gets when Jev rates its task middle, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort."
 		},
 		"large_model": {
 			"label": "Large model",
-			"help": "The model a spawn gets when Jev rates its task large, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it."
+			"help": "The model a spawn gets when Jev rates its task large, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort."
 		},
 		"api_key": {
 			"label": "TypeSafe API key",
@@ -65,6 +69,9 @@
 				"default": "core"
 			},
 			"small_model": {
+				"type": "string"
+			},
+			"middle_model": {
 				"type": "string"
 			},
 			"large_model": {

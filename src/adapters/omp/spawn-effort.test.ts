@@ -5,7 +5,7 @@ import { useWorld } from "./fakes.ts";
 import { createExtension } from "./router.ts";
 
 const world = useWorld();
-const TARGETS = ["@smol", "no change", "@slow"] as const;
+const TARGETS = ["@smol", "middle model unset", "@slow"] as const;
 const SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
 const entry = (level: 0 | 1 | 2, effort: string) =>
 	`task 1: L${level} ${TARGETS[level]} · ${effort} · p=0.90/0.90${SUFFIX}`;
@@ -124,7 +124,7 @@ const ROWS: readonly Row[] = [
 		name: "extended: level 2 sets its effort over a level the scout's smol role puts on its patterns",
 		level: 2,
 		patterns: ["stub/small:low"],
-		roles: { smol: "stub/small:low" },
+		roles: { smol: "stub/small:low", slow: "prov/large" },
 		extended: true,
 		agent: "scout",
 		model: "@slow:medium",
@@ -477,7 +477,7 @@ test("level 1 follows per-task effort turned off after the batch", async () => {
 	world.config["task.enableEffort"] = false;
 	assert.deepEqual(await world.spawn("c:0", { patterns: PLAIN }), {
 		model: ["prov/parent:medium"],
-		note: `model-router L1 no change · medium · p=0.90/0.90${SUFFIX}`,
+		note: `model-router L1 middle model unset · medium · p=0.90/0.90${SUFFIX}`,
 	});
 	assert.deepEqual(world.notes.slice(1), [
 		`model-router ${entry(1, "medium")}`,

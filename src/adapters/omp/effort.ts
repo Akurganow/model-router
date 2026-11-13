@@ -4,7 +4,7 @@ import type { Level } from "../../core/part.ts";
 import { CALLER_EFFORT, CONFIG_EFFORT } from "../../core/reasons.ts";
 import { type Facts, ROLE_MARK } from "./items.ts";
 
-// The middle level keeps the agent's model, so a spawn with no model patterns leaves nothing to put a level on.
+// A slot with no model keeps the agent's model, so a spawn with no model patterns leaves nothing to put a level on.
 const NO_PATTERNS = "no model patterns";
 
 // The selectors omp reads as a thinking level after a pattern's last colon; a prefix must name one of them only.
@@ -44,7 +44,7 @@ export function carriesLevel(pattern: string): boolean {
 }
 
 // omp splits a role value on commas, as normalizeModelPatternList does.
-const patternsOf = (value: unknown): string[] =>
+export const patternsOf = (value: unknown): string[] =>
 	(typeof value === "string" ? [value] : Array.isArray(value) ? value : [])
 		.filter((v): v is string => typeof v === "string")
 		.flatMap((v) => v.split(","))
@@ -86,10 +86,9 @@ export function capped(effort: Effort, ceiling: unknown): Effort | undefined {
 // A level set on the spawn, or the label of the effort the plugin leaves in place.
 type EffortPlan = { readonly set: Effort } | { readonly kept: string };
 
-// What a decision holds until its spawn. The middle level has no role.
+// What a decision holds until its spawn. The spawn reads the slot's model again, so a stale role cannot reach omp.
 export type Routed = {
 	readonly level: Level;
-	readonly role: string | undefined;
 	readonly ladder: Effort;
 	// Whether the item named an effort. omp applies it only while `task.enableEffort` is on, read when the plan is made.
 	readonly itemEffort: boolean;
@@ -101,36 +100,42 @@ type EffortFacts = Pick<Facts, "roles" | "maxEffort" | "effortEnabled">;
 
 /**
  * Returns the effort to set on a spawn, or the label of the one that stays.
- * The item's own effort stays first while omp applies it, then a level on the role, then, at the
- * middle level, a level on a pattern the spawn carries, then a ceiling below
- * `low`. An end level's role replaces the patterns, so their levels do not
- * count there. The middle level with no patterns sets nothing. Patterns are
- * undefined before the spawn. Never throws.
+ * The model is the picked slot's role, or undefined when the slot has none.
+ * The item's own effort stays first while omp applies it, then a level on the
+ * role, then, with no role, a level on a pattern the spawn carries, then a
+ * ceiling below `low`. A role replaces the patterns, so their levels do not
+ * count there. No role and no patterns set nothing. Patterns are undefined
+ * before the spawn. Never throws.
  */
 export function planEffort(
-	{ role, ladder, itemEffort }: Routed,
+	{ ladder, itemEffort }: Routed,
+	model: string | undefined,
 	{ roles, maxEffort, effortEnabled }: EffortFacts,
 	patterns?: readonly string[],
 ): EffortPlan {
 	if (itemEffort && effortEnabled) return { kept: CALLER_EFFORT };
 	if (
-		role !== undefined &&
-		roleCarriesLevel(role.slice(ROLE_MARK.length), roles)
+		model !== undefined &&
+		roleCarriesLevel(model.slice(ROLE_MARK.length), roles)
 	)
 		return { kept: CONFIG_EFFORT };
-	if (role === undefined && patterns?.some(carriesLevel))
+	if (model === undefined && patterns?.some(carriesLevel))
 		return { kept: CONFIG_EFFORT };
 	const effort = capped(ladder, maxEffort);
 	if (effort === undefined) return { kept: CONFIG_EFFORT };
-	if (role === undefined && patterns?.length === 0)
+	if (model === undefined && patterns?.length === 0)
 		return { kept: NO_PATTERNS };
 	return { set: effort };
 }
 
-export const lineFor = (routed: Routed, plan: EffortPlan): string =>
+export const lineFor = (
+	routed: Routed,
+	target: string,
+	plan: EffortPlan,
+): string =>
 	routedLine({
 		level: routed.level,
-		target: routed.role,
+		target,
 		effort: "set" in plan ? plan.set : plan.kept,
 		probabilities: routed.probabilities,
 		suffix: routed.suffix,
@@ -139,14 +144,15 @@ export const lineFor = (routed: Routed, plan: EffortPlan): string =>
 /**
  * Returns the model to return from the spawn hook: the role with the effort as
  * a suffix, the role alone when the effort stays, each pattern with the
- * suffix at the middle level, and undefined when the middle level sets
- * nothing. Never throws.
+ * suffix when the slot has no role, and undefined when that sets nothing.
+ * Never throws.
  */
 export function modelFor(
-	role: string | undefined,
+	model: string | undefined,
 	plan: EffortPlan,
 	patterns: readonly string[],
 ): string | string[] | undefined {
-	if (role !== undefined) return "set" in plan ? `${role}:${plan.set}` : role;
+	if (model !== undefined)
+		return "set" in plan ? `${model}:${plan.set}` : model;
 	return "set" in plan ? patterns.map((p) => `${p}:${plan.set}`) : undefined;
 }

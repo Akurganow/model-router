@@ -20,8 +20,15 @@ import {
 	valueLine,
 	valueSettingHelp,
 } from "../../core/settings.ts";
+import {
+	SLOTS,
+	type SlotSetting,
+	slotLine,
+	slotSetting,
+} from "../../core/slots.ts";
 import { errorText } from "../../utils/error.ts";
 import { isRecord } from "../../utils/guards.ts";
+import { slotResolves } from "./checks.ts";
 import {
 	type Environment,
 	PLUGIN_ID,
@@ -39,48 +46,49 @@ import type {
 export const COMMAND_NAMES: readonly string[] = VALUE_SETTINGS.map(commandName);
 const ADMIN_SCOPE = "operator.admin";
 const LINE_BREAK = "\n";
-const UNSET = "unset";
 
 export const NOT_OWNER = "only the owner can change it";
-const MODEL_SETTINGS = ["small_model", "large_model"] as const;
-type ModelSetting = (typeof MODEL_SETTINGS)[number];
+const MODEL_SETTINGS: readonly SlotSetting[] = SLOTS.map(slotSetting);
 // No chat command sets a model, but the tool still answers where it is set, so
 // the schema has to let the name through: OpenClaw checks arguments before execute.
 const TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
 export const TOOL_DESCRIPTION = readOnlyToolDescription(
-	["the provider", "the scope", "both models"],
+	["the provider", "the scope", "the three models"],
 	TOOL_SETTINGS,
 );
 
-/** Returns `name: model`, or `name: unset` when the model is undefined. */
-const modelLine = (name: string, model: string | undefined): string =>
-	`${name}: ${model ?? UNSET}`;
-
 /**
- * Returns the report: the provider, the scope, both models, and one line per
- * provider that says whether its key is set or unset. A key is only checked
- * for presence. Nothing about it leaves this function.
+ * Returns the report: the provider, the scope, the three models, and one line
+ * per provider that says whether its key is set or unset. A model is unset,
+ * set, or set but unresolved for the live config. A key is only checked for
+ * presence. Nothing about it leaves this function.
  */
-function readAll({ settings, keys }: State): string {
-	return settingsReport(
-		settings.provider,
-		settings.scope,
-		[
-			modelLine("small_model", settings.smallModel),
-			modelLine("large_model", settings.largeModel),
-		],
-		keys,
+async function readAll(
+	api: OpenClawApi,
+	{ config, settings, keys }: State,
+): Promise<string> {
+	const models = await Promise.all(
+		SLOTS.map(async (slot) => {
+			const model = settings.models[slot];
+			const name = slotSetting(slot);
+			if (model === undefined) return slotLine(name, "unset", "");
+			const resolves =
+				config !== undefined &&
+				(await slotResolves(api.runtime, config, undefined, model));
+			return slotLine(name, resolves ? "set" : "unresolved", model);
+		}),
 	);
+	return settingsReport(settings.provider, settings.scope, models, keys);
 }
 
-const isModelSetting = (setting: unknown): setting is ModelSetting =>
+const isModelSetting = (setting: unknown): setting is SlotSetting =>
 	MODEL_SETTINGS.some((known) => known === setting);
 
 /**
  * Returns where the person sets a model setting. No chat command sets it, so
  * the answer names the plugin's settings page and the OpenClaw config command.
  */
-const modelSettingHelp = (setting: ModelSetting): string =>
+const modelSettingHelp = (setting: SlotSetting): string =>
 	`${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`;
 
 /**
@@ -102,10 +110,14 @@ function howToChange(setting: unknown): string {
  * no setting, otherwise how to change that setting. Params that are not an
  * object count as no input. An error from reading the state propagates.
  */
-function runTool(api: OpenClawApi, env: Environment, params: unknown): string {
+async function runTool(
+	api: OpenClawApi,
+	env: Environment,
+	params: unknown,
+): Promise<string> {
 	const { setting } = isRecord(params) ? params : {};
 	return setting === undefined
-		? readAll(readState(api, env))
+		? readAll(api, readState(api, env))
 		: howToChange(setting);
 }
 
@@ -195,7 +207,7 @@ export function registerConfigTool(api: OpenClawApi, env: Environment): void {
 		},
 		execute: async (_id, params) => {
 			try {
-				return textOf(runTool(api, env, params));
+				return textOf(await runTool(api, env, params));
 			} catch (err) {
 				return textOf(failure(err));
 			}

@@ -3,7 +3,6 @@ import { LEVELS } from "../../core/part.ts";
 import {
 	FAILED,
 	KEY_UNSET,
-	NO_END_MODEL,
 	SUBAGENT_MODEL_SET,
 	TIMEOUT,
 } from "../../core/reasons.ts";
@@ -24,7 +23,6 @@ export const HERMES_TEXTS = {
 	// The reasons Python gives for a task before Node runs, or when Node cannot answer.
 	reasons: {
 		keyUnset: KEY_UNSET,
-		noEndModel: NO_END_MODEL,
 		subagentModelSet: SUBAGENT_MODEL_SET,
 		nodeNotFound: NODE_NOT_FOUND,
 		timeout: TIMEOUT,
@@ -58,7 +56,7 @@ export function taskParameterTexts(pluginName: string) {
 			level: {
 				type: "integer",
 				enum: [...LEVELS],
-				description: `${ONLY_TO_ESCALATE} 0 runs the child on the user's small model, 1 on the model Hermes gives it, 2 on the large model, and model-router asks Jev nothing. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins.`,
+				description: `${ONLY_TO_ESCALATE} 0 runs the child on the user's small model, 1 on the user's middle model, 2 on the large model, and model-router asks Jev nothing. A level whose model is not set runs on the model Hermes gives it. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins.`,
 			},
 		},
 		delegationAddendum: `model-router picks each task's model and effort. Give every task a description. Leave reasoning_effort and level unset unless you re-dispatch a failed task; the ${pluginName}:${ESCALATION_SKILL} skill says how.`,

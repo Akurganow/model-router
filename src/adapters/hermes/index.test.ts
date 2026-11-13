@@ -7,6 +7,7 @@ import { buildPrompt, DEFAULT_ROLE, ROLE_CAP } from "../../core/brief.ts";
 import { ROUTING_LIMIT_MS } from "../../core/compose.ts";
 import { createFakeClock } from "../../utils/fake-clock.ts";
 import { createScriptedJev, type Step } from "./fakes.ts";
+import { readRequest, slotModels } from "./request.ts";
 import { routeRequest } from "./route.ts";
 
 const FIXTURES = join(
@@ -86,6 +87,7 @@ const REQUEST = {
 	keys: { typesafe: "typesafe-key" },
 	budgetMs: ROUTING_LIMIT_MS,
 	models: { small: "openai/small", large: "openai/large" },
+	unresolved: [],
 	keptEffort: null,
 	description: "Rename one helper",
 };
@@ -173,12 +175,15 @@ describe("the kept effort", () => {
 
 describe("the slot and model each level takes", () => {
 	const SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
-	const MODELS = { small: "openai/small", large: "openai/large" };
-	type Models = { small?: string; large?: string };
+	const MODELS = {
+		small: "openai/small",
+		middle: "openai/middle",
+		large: "openai/large",
+	};
 
 	const route = (
 		tier: number,
-		slot: string | null,
+		slot: string,
 		target: string,
 		effort: string,
 	) => ({
@@ -187,53 +192,124 @@ describe("the slot and model each level takes", () => {
 		effort,
 		line: `model-router L${tier} ${target} · ${effort} · p=0.90/0.90${SUFFIX}`,
 	});
-	const skip = (reason: string) => ({
-		outcome: "skip",
-		line: `model-router skipped, ${reason}`,
-	});
 
-	// Level 1 changes no model, so it needs neither slot; an end level needs its own slot only.
+	// Each level reads its own slot only, and a slot with no model still gets the ladder's effort.
 	// The ladder's effort at work level 1 is high at level 0 and medium at the other levels.
-	// The rows left out sit in plugins/model-router-hermes/tests/fixtures/: both models set at each level in l0-routed, l1-routed and l2-routed,
-	// level 0 with the large model only in small-model-unset, and level 2 with the small model only in large-model-unset.
-	const ROWS: readonly [0 | 1 | 2, string, Models, object][] = [
+	const ROWS: readonly [0 | 1 | 2, string, object, object][] = [
 		[
 			0,
-			"the small model only",
+			"the small model",
 			{ small: MODELS.small },
-			route(0, "small", MODELS.small, "high"),
+			route(0, "small", "openai/small", "high"),
 		],
-		[0, "no model", {}, skip("small model unset")],
+		[0, "no model", {}, route(0, "small", "small model unset", "high")],
+		[
+			0,
+			"the small model unresolved",
+			{ models: MODELS, unresolved: ["small"] },
+			route(0, "small", "small model unresolved", "high"),
+		],
 		[
 			1,
-			"the small model only",
-			{ small: MODELS.small },
-			route(1, null, "no change", "medium"),
+			"the middle model",
+			{ middle: MODELS.middle },
+			route(1, "middle", "openai/middle", "medium"),
 		],
 		[
 			1,
-			"the large model only",
-			{ large: MODELS.large },
-			route(1, null, "no change", "medium"),
+			"the small and large models",
+			{ small: MODELS.small, large: MODELS.large },
+			route(1, "middle", "middle model unset", "medium"),
 		],
-		[1, "no model", {}, route(1, null, "no change", "medium")],
+		[
+			1,
+			"the middle model unresolved",
+			{ models: MODELS, unresolved: ["middle"] },
+			route(1, "middle", "middle model unresolved", "medium"),
+		],
 		[
 			2,
-			"the large model only",
+			"the large model",
 			{ large: MODELS.large },
-			route(2, "large", MODELS.large, "medium"),
+			route(2, "large", "openai/large", "medium"),
 		],
-		[2, "no model", {}, skip("large model unset")],
+		[2, "no model", {}, route(2, "large", "large model unset", "medium")],
+		[
+			2,
+			"the large model unresolved",
+			{ models: MODELS, unresolved: ["large"] },
+			route(2, "large", "large model unresolved", "medium"),
+		],
 	];
 
-	for (const [tier, name, models, expected] of ROWS)
-		it(`level ${tier} with ${name} set gives ${JSON.stringify(expected)}`, async () => {
+	for (const [tier, name, given, expected] of ROWS)
+		it(`level ${tier} with ${name} gives ${JSON.stringify(expected)}`, async () => {
 			const steps = [
 				{ host: "api.typesafe.ai", reply: { levels: { tier, work: 1 } } },
 			] satisfies Step[];
-			const { response } = run({ ...REQUEST, models }, steps);
+			const fields = "models" in given ? given : { models: given };
+			const { response, jev } = run({ ...REQUEST, ...fields }, steps);
 			assert.deepEqual(await response, expected);
+			assert.deepEqual(jev.hosts, ["api.typesafe.ai"]);
 		});
+});
+
+describe("the slots of a request", () => {
+	const UNSET = { state: "unset" };
+	const models = (raw: unknown) =>
+		slotModels(readRequest(raw) ?? assert.fail());
+
+	for (const [name, value] of [
+		["blank", ""],
+		["spaces", "   "],
+		["null", null],
+	] as const)
+		it(`a middle model that is ${name} is unset`, () => {
+			assert.deepEqual(models({ models: { middle: value } }).middle, UNSET);
+			assert.deepEqual(models({ models: { small: value } }).small, UNSET);
+			assert.deepEqual(models({ models: { large: value } }).large, UNSET);
+		});
+
+	it("a missing middle model is unset, and the others keep theirs", () => {
+		assert.deepEqual(models({ models: { small: " a/s ", large: "a/l" } }), {
+			small: { state: "set", model: "a/s" },
+			middle: UNSET,
+			large: { state: "set", model: "a/l" },
+		});
+	});
+
+	for (const [name, unresolved] of [
+		["missing", undefined],
+		["null", null],
+		["a string", "middle"],
+		["an object", { middle: true }],
+	] as const)
+		it(`an unresolved list that is ${name} names no slot`, () => {
+			assert.deepEqual(
+				models({ models: { middle: "a/m" }, unresolved }).middle,
+				{ state: "set", model: "a/m" },
+			);
+		});
+
+	it("an unresolved list keeps the slot names it knows, once each", () => {
+		const read = readRequest({
+			models: {},
+			unresolved: ["large", "medium", "", "   ", null, 2, "large", "small"],
+		});
+		assert.deepEqual(read?.unresolved, ["small", "large"]);
+		assert.deepEqual(slotModels(read ?? assert.fail()), {
+			small: { state: "unresolved" },
+			middle: UNSET,
+			large: { state: "unresolved" },
+		});
+	});
+
+	it("an unresolved slot stays unresolved when a model comes with it", () => {
+		assert.deepEqual(
+			models({ models: { large: "a/l" }, unresolved: ["large"] }).large,
+			{ state: "unresolved" },
+		);
+	});
 });
 
 describe("failures", () => {

@@ -1,16 +1,11 @@
 import { contextText } from "../../core/brief.ts";
 import { ENTRY_SEPARATOR, LINE_PREFIX, skippedLine } from "../../core/line.ts";
+import { pickModel } from "../../core/slots.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { registerConfig, say } from "./config.ts";
 import { budgetFor } from "./deadline.ts";
 import { lineFor, modelFor, planEffort } from "./effort.ts";
-import {
-	type Batch,
-	checkGates,
-	noModel,
-	openBatch,
-	resolves,
-} from "./gates.ts";
+import { checkGates, openBatch } from "./gates.ts";
 import { inScope, TASK } from "./items.ts";
 import { type Pending, scoreItems, type TaskItem } from "./score.ts";
 import { readSettings, readTimeoutSetting } from "./settings.ts";
@@ -109,26 +104,15 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		);
 	}
 
-	// A gate that closed since the batch, or a role that stopped resolving, drops the decision.
-	async function spawnGates(
-		event: SpawnEvent,
-		ctx: Context,
-		role: string | undefined,
-	): Promise<Batch | { closed: string }> {
-		const gates = await checkGates(omp, pi, ctx, event);
-		if ("closed" in gates || role === undefined || resolves(ctx, role))
-			return gates;
-		return { closed: noModel(role) };
-	}
-
 	/**
-	 * Returns the model and the line for a task spawn: the stored role, or the
-	 * spawn's own patterns at the middle level, with the effort as a suffix
-	 * where the plugin sets one. Returns nothing when the spawn is not a task
-	 * spawn, no routed decision matches, or the middle level sets no effort.
-	 * When a gate closes or the role stopped resolving since the batch, it
-	 * reports a skip line for the item and returns nothing. When the effort
-	 * differs from the batch line's, it reports the new line for the item.
+	 * Returns the model and the line for a task spawn: the picked slot's role,
+	 * or the spawn's own patterns when the slot has no model, with the effort
+	 * as a suffix where the plugin sets one. The slots are read again, so a
+	 * role returned here resolved in this call. Returns nothing when the spawn
+	 * is not a task spawn, no routed decision matches, or a slot with no model
+	 * sets no effort. When a gate closes since the batch, it reports a skip line
+	 * for the item and returns nothing. When the line differs from the batch
+	 * line, it reports the new line for the item.
 	 */
 	async function onSpawn(
 		event: SpawnEvent,
@@ -138,15 +122,16 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		const taken = store.take(event.spawnKey, event.agent);
 		const routed = taken?.stored.routed;
 		if (!taken || !routed) return;
-		const gates = await spawnGates(event, ctx, routed.role);
+		const gates = await checkGates(omp, pi, ctx, event);
 		// omp drops a note that comes without a model, so a spawn-time line goes out like the batch line.
 		if ("closed" in gates)
 			return void report(ctx, [entry(taken.index, skippedLine(gates.closed))]);
 		const patterns = event.patterns ?? [];
-		const plan = planEffort(routed, gates.facts, patterns);
-		const line = lineFor(routed, plan);
+		const picked = pickModel(routed.level, gates.facts.models);
+		const plan = planEffort(routed, picked.model, gates.facts, patterns);
+		const line = lineFor(routed, picked.target, plan);
 		if (line !== taken.stored.line) report(ctx, [entry(taken.index, line)]);
-		const model = modelFor(routed.role, plan, patterns);
+		const model = modelFor(picked.model, plan, patterns);
 		return model === undefined
 			? undefined
 			: { model, note: LINE_PREFIX + line };

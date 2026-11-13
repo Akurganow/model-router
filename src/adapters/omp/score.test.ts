@@ -11,7 +11,7 @@ import { type Pending, scoreItems } from "./score.ts";
 const world = useWorld();
 const install = () => createExtension(world.imports)(world.pi);
 const LEVELS: readonly Level[] = [0, 1, 2];
-const TARGETS = ["@smol", "no change", "@slow"];
+const TARGETS = ["@smol", "middle model unset", "@slow"];
 const SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
 
 for (const tier of LEVELS)
@@ -29,28 +29,51 @@ for (const tier of LEVELS)
 
 type Unresolved = {
 	readonly level: Level;
-	readonly role: "@smol" | "@slow";
+	readonly role: "@smol" | "@middle" | "@slow";
 	// What the spawn hook returns as the model, and the notes after the batch line.
 	readonly model: string | readonly string[] | undefined;
 	readonly after: readonly string[];
 };
 
-// Level 1 changes no model, so it needs neither role; an end level needs its own role only.
+// Each level needs its own role only. A role that stops resolving before the spawn keeps the spawn's patterns and its effort.
 const UNRESOLVED: readonly Unresolved[] = [
 	{
 		level: 0,
 		role: "@smol",
-		model: undefined,
-		after: ["model-router task 1: skipped, no @smol model"],
+		model: ["prov/parent:high"],
+		after: [
+			`model-router task 1: L0 small model unresolved · high · p=0.90/0.90${SUFFIX}`,
+		],
 	},
-	{ level: 1, role: "@smol", model: ["prov/parent:medium"], after: [] },
-	{ level: 1, role: "@slow", model: ["prov/parent:medium"], after: [] },
+	{
+		level: 1,
+		role: "@middle",
+		model: ["prov/parent:medium"],
+		after: [
+			`model-router task 1: L1 middle model unresolved · medium · p=0.90/0.90${SUFFIX}`,
+		],
+	},
+	{
+		level: 2,
+		role: "@slow",
+		model: ["prov/parent:medium"],
+		after: [
+			`model-router task 1: L2 large model unresolved · medium · p=0.90/0.90${SUFFIX}`,
+		],
+	},
+	{ level: 1, role: "@smol", model: "@middle:medium", after: [] },
+	{ level: 1, role: "@slow", model: "@middle:medium", after: [] },
 	{ level: 2, role: "@smol", model: "@slow:medium", after: [] },
 ];
 
 for (const { level, role, model, after } of UNRESOLVED)
-	test(`level ${level} with ${role} unresolved gives ${JSON.stringify(model)}`, async () => {
+	test(`level ${level} with ${role} unresolved at the spawn gives ${JSON.stringify(model)}`, async () => {
 		install();
+		world.config.modelRoles = {
+			smol: "prov/small",
+			middle: "prov/mid",
+			slow: "prov/large",
+		};
 		await world.toolCall("c", { tasks: [{ task: `level${level} work1` }] });
 		world.resolvable.delete(role);
 		const result = await world.spawn("c:0", { patterns: ["prov/parent"] });
@@ -93,24 +116,45 @@ describe("omp per-item line", () => {
 		}));
 		return (
 			await scoreItems(items, "", batch(world.agents), ROUTING_LIMIT_MS)
-		).map(({ stored }) => ({ role: stored.routed?.role, line: stored.line }));
+		).map(({ stored }) => ({ level: stored.routed?.level, line: stored.line }));
 	};
 
-	test("level 0 names @smol, level 1 changes nothing and level 2 names @slow", async () => {
+	test("level 0 names @smol, level 1 names its unset slot and level 2 names @slow", async () => {
 		assert.deepEqual(await lines([["level0 a"], ["level1 b"], ["level2 c"]]), [
-			{ role: "@smol", line: `L0 @smol · high · p=0.90/0.90${SUFFIX}` },
+			{ level: 0, line: `L0 @smol · high · p=0.90/0.90${SUFFIX}` },
 			{
-				role: undefined,
-				line: `L1 no change · medium · p=0.90/0.90${SUFFIX}`,
+				level: 1,
+				line: `L1 middle model unset · medium · p=0.90/0.90${SUFFIX}`,
 			},
-			{ role: "@slow", line: `L2 @slow · medium · p=0.90/0.90${SUFFIX}` },
+			{ level: 2, line: `L2 @slow · medium · p=0.90/0.90${SUFFIX}` },
 		]);
+	});
+
+	test("a set middle slot gives level 1 its role", async () => {
+		const middle = batch(world.agents);
+		const facts = {
+			...middle.facts,
+			models: {
+				...middle.facts.models,
+				middle: { state: "set", model: "@middle" },
+			},
+		} as const;
+		const [scored] = await scoreItems(
+			[{ index: 0, item: { task: "level1 b" }, agent: "task" }],
+			"",
+			{ ...middle, facts },
+			ROUTING_LIMIT_MS,
+		);
+		assert.equal(
+			scored?.stored.line,
+			`L1 @middle · medium · p=0.90/0.90${SUFFIX}`,
+		);
 	});
 
 	test("an item the check skips sends nothing and carries its reason", async () => {
 		assert.deepEqual(await lines([["level2 a", "reviewer"]]), [
 			{
-				role: undefined,
+				level: undefined,
 				line: "skipped, reviewer is outside the core scope",
 			},
 		]);

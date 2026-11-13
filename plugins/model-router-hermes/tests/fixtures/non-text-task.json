@@ -17,8 +17,8 @@
 	],
 	"response": {
 		"outcome": "route",
-		"slot": null,
+		"slot": "middle",
 		"effort": "high",
-		"line": "model-router L1 no change · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+		"line": "model-router L1 middle model unset · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
 	}
 }

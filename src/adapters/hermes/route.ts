@@ -11,17 +11,22 @@ import {
 	FAILED,
 	TIMEOUT,
 } from "../../core/reasons.ts";
-import { type EndSlot, modelForLevel } from "../../core/slots.ts";
+import { pickModel, type Slot } from "../../core/slots.ts";
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
-import { type HermesRequest, type KeptEffort, readRequest } from "./request.ts";
+import {
+	type HermesRequest,
+	type KeptEffort,
+	readRequest,
+	slotModels,
+} from "./request.ts";
 
 type HermesDeps = { readonly fetchFn: Fetch; readonly clock: Clock };
 type HermesResponse =
 	| {
 			readonly outcome: "route";
-			// The slot whose model the level names; null at the middle level.
-			readonly slot: EndSlot | null;
+			// The slot the level takes its model from. Python applies it only when that slot is set.
+			readonly slot: Slot;
 			// Null when the request names a kept effort.
 			readonly effort: string | null;
 			readonly line: string;
@@ -74,10 +79,10 @@ async function scored(
 }
 
 /**
- * Returns the response for a decided request: a skip when an end tier has no
- * model, else the slot the level names, the effort the ladder gives and the
- * routing line. A kept effort replaces the ladder's, and the line names its
- * source.
+ * Returns the response for a decided request: the slot the level names, the
+ * effort the ladder gives and the routing line, which names the slot's model
+ * or the slot's state when it has none. A kept effort replaces the ladder's,
+ * and the line names its source.
  * Every line starts with the line prefix.
  */
 function answer(
@@ -85,9 +90,7 @@ function answer(
 	decided: DecidedWithWork,
 ): HermesResponse {
 	const level = decided.tier;
-	const picked = modelForLevel(level, request.models);
-	if ("skipped" in picked) return skip(picked.skipped);
-	const { slot, model: target } = picked;
+	const { slot, target } = pickModel(level, slotModels(request));
 	const effort = effortFor(level, decided.work);
 	const kept =
 		request.keptEffort === undefined

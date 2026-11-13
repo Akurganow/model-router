@@ -24,8 +24,7 @@ test("without any config the defaults hold and no model is set", () => {
 	assert.deepEqual(readSettings(undefined, undefined), {
 		provider: "typesafe",
 		scope: "core",
-		smallModel: undefined,
-		largeModel: undefined,
+		models: { small: undefined, middle: undefined, large: undefined },
 	});
 });
 
@@ -34,13 +33,17 @@ test("the live config supplies every setting", () => {
 		provider: "auto",
 		scope: "extended",
 		small_model: "openai/gpt-5-mini",
+		middle_model: "openai/gpt-5",
 		large_model: "anthropic/claude-opus-5-5",
 	});
 	assert.deepEqual(readSettings(config, undefined), {
 		provider: "auto",
 		scope: "extended",
-		smallModel: "openai/gpt-5-mini",
-		largeModel: "anthropic/claude-opus-5-5",
+		models: {
+			small: "openai/gpt-5-mini",
+			middle: "openai/gpt-5",
+			large: "anthropic/claude-opus-5-5",
+		},
 	});
 });
 
@@ -62,7 +65,7 @@ test("a setting the live config lacks comes from the plugin config", () => {
 		small_model: "a/b",
 	});
 	assert.deepEqual(
-		[settings.provider, settings.scope, settings.smallModel],
+		[settings.provider, settings.scope, settings.models.small],
 		["auto", "extended", "a/b"],
 	);
 });
@@ -86,20 +89,21 @@ test("an invalid live value falls through to the valid plugin config value", () 
 			provider: "both",
 			scope: "all",
 			small_model: "  ",
+			middle_model: "",
 			large_model: 5,
 		}),
 		{
 			provider: "openrouter",
 			scope: "extended",
 			small_model: "a/b",
+			middle_model: "e/f",
 			large_model: "c/d",
 		},
 	);
 	assert.deepEqual(settings, {
 		provider: "openrouter",
 		scope: "extended",
-		smallModel: "a/b",
-		largeModel: "c/d",
+		models: { small: "a/b", middle: "e/f", large: "c/d" },
 	});
 });
 
@@ -109,23 +113,34 @@ test("when no source holds a valid value the default or unset applies", () => {
 		small_model: null,
 	});
 	assert.deepEqual(
-		[settings.provider, settings.smallModel],
+		[settings.provider, settings.models.small],
 		["typesafe", undefined],
 	);
 });
 
-test("a model slot is trimmed, and a blank or non-string slot is unset", () => {
-	const set = readSettings(live({ small_model: "  a/b  " }), undefined);
-	assert.equal(set.smallModel, "a/b");
+test("a model slot is trimmed, for every slot", () => {
+	const set = readSettings(
+		live({
+			small_model: "  a/b  ",
+			middle_model: "  c/d  ",
+			large_model: "  e/f  ",
+		}),
+		undefined,
+	);
+	assert.deepEqual(set.models, { small: "a/b", middle: "c/d", large: "e/f" });
+});
+
+test("a blank or non-string slot is unset, for every slot", () => {
 	for (const bad of ["", "   ", 5, null, {}, []]) {
 		const settings = readSettings(
-			live({ small_model: bad, large_model: bad }),
+			live({ small_model: bad, middle_model: bad, large_model: bad }),
 			undefined,
 		);
-		assert.deepEqual(
-			[settings.smallModel, settings.largeModel],
-			[undefined, undefined],
-		);
+		assert.deepEqual(settings.models, {
+			small: undefined,
+			middle: undefined,
+			large: undefined,
+		});
 	}
 });
 

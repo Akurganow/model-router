@@ -9,6 +9,7 @@ import {
 	resolve,
 } from "../../core/provider.ts";
 import { parseScope, resolveScope, type Scope } from "../../core/scope.ts";
+import { type Slot, slotSetting } from "../../core/slots.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import type { OpenClawApi, OpenClawConfig } from "./types.ts";
@@ -18,8 +19,7 @@ export const PLUGIN_ID = "model-router-openclaw";
 export type OpenClawSettings = {
 	readonly provider: ProviderValue;
 	readonly scope: Scope;
-	readonly smallModel: string | undefined;
-	readonly largeModel: string | undefined;
+	readonly models: Readonly<Record<Slot, string | undefined>>;
 };
 export type Environment = Readonly<Record<string, string | undefined>>;
 type Settings = Record<string, unknown>;
@@ -96,8 +96,11 @@ export function readSettings(
 	return {
 		provider: resolve(firstValid(from, "provider", parseProvider)),
 		scope: resolveScope(firstValid(from, "scope", parseScope)),
-		smallModel: firstValid(from, "small_model", nonEmpty),
-		largeModel: firstValid(from, "large_model", nonEmpty),
+		models: {
+			small: firstValid(from, slotSetting("small"), nonEmpty),
+			middle: firstValid(from, slotSetting("middle"), nonEmpty),
+			large: firstValid(from, slotSetting("large"), nonEmpty),
+		},
 	};
 }
 

@@ -18,7 +18,6 @@ import {
 	PROVIDER_VALUES,
 	resolve as resolveProvider,
 } from "../src/core/provider.ts";
-import { slotForLevel } from "../src/core/slots.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { formatJson } from "./build/json.ts";
 import { HERMES_OUTPUTS } from "./build/outputs.ts";
@@ -69,10 +68,11 @@ test("the manifest names the plugin, its version and its backend kind", () => {
 	assert.deepEqual(manifest.provides_tools, [TOOL_NAME]);
 });
 
-test("the manifest holds four settings and no scope", () => {
+test("the manifest holds five settings and no scope", () => {
 	assert.deepEqual(Object.keys(schema), [
 		"provider",
 		"small_model",
+		"middle_model",
 		"large_model",
 		"typesafe_api_key",
 	]);
@@ -91,7 +91,7 @@ test("the provider setting offers the values the code accepts, with its default"
 });
 
 test("the models are dict settings and the key is a secret read from its variable", () => {
-	for (const name of ["small_model", "large_model"]) {
+	for (const name of ["small_model", "middle_model", "large_model"]) {
 		assert.equal(schema[name].type, "dict", name);
 		assert.equal(
 			schema[name].label,
@@ -134,31 +134,36 @@ test("the constants hold the values src/ gives", () => {
 	});
 	assert.deepEqual(constants.skips, {
 		keyUnset: "model-router skipped, key unset",
-		noEndModel: "model-router skipped, no small or large model",
 		subagentModelSet: "model-router skipped, subagent model set",
 		nodeNotFound: "model-router skipped, node not found",
 		timeout: "model-router skipped, timeout",
 		failed: "model-router skipped, failed",
-		smallModelUnset: "model-router skipped, small model unset",
-		smallModelUnresolved: "model-router skipped, small model unresolved",
-		largeModelUnset: "model-router skipped, large model unset",
-		largeModelUnresolved: "model-router skipped, large model unresolved",
 	});
 	assert.deepEqual(constants.slots, {
 		small: {
 			setting: "small_model",
-			unset: "smallModelUnset",
-			unresolved: "smallModelUnresolved",
+			pinned: {
+				unset: "model-router L0 small model unset",
+				unresolved: "model-router L0 small model unresolved",
+			},
+		},
+		middle: {
+			setting: "middle_model",
+			pinned: {
+				unset: "model-router L1 middle model unset",
+				unresolved: "model-router L1 middle model unresolved",
+			},
 		},
 		large: {
 			setting: "large_model",
-			unset: "largeModelUnset",
-			unresolved: "largeModelUnresolved",
+			pinned: {
+				unset: "model-router L2 large model unset",
+				unresolved: "model-router L2 large model unresolved",
+			},
 		},
 	});
 	assert.deepEqual(constants.levels, [...LEVELS]);
-	assert.deepEqual(constants.levelSlots, ["small", null, "large"]);
-	assert.deepEqual(constants.levelSlots, LEVELS.map(slotForLevel));
+	assert.deepEqual(constants.levelSlots, ["small", "middle", "large"]);
 });
 
 test("the task parameters are the texts src/ gives, with the ladder and the levels as enums", () => {

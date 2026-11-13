@@ -35,7 +35,12 @@ function registerConfig(api: OpenClawApi, env: Environment) {
 const TYPESAFE_KEY = "ts-live-key-8f3a91c2d7e4b605";
 const OPENROUTER_KEY = "or-live-key-1d6e77a0c9b3f248";
 const ADMIN = "operator.admin";
-const TOOL_SETTINGS = [...SETTING_NAMES, "small_model", "large_model"];
+const TOOL_SETTINGS = [
+	...SETTING_NAMES,
+	"small_model",
+	"middle_model",
+	"large_model",
+];
 const NO_ENV = { TYPESAFE_API_KEY: "", OPENROUTER_API_KEY: "" };
 
 const live = (config: Record<string, unknown>): OpenClawConfig => ({
@@ -145,7 +150,7 @@ describe("registration", () => {
 	it("registers the tool with its description text", () => {
 		assert.equal(
 			setup().tool().description,
-			"Reads the router's settings. With no input it returns the provider, the scope, both models, and whether each key the provider allows is set. With a setting name (provider, scope, typesafe_key, openrouter_key, small_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key.",
+			"Reads the router's settings. With no input it returns the provider, the scope, the three models, and whether each key the provider allows is set. With a setting name (provider, scope, typesafe_key, openrouter_key, small_model, middle_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key.",
 		);
 	});
 
@@ -176,6 +181,7 @@ describe("the tool reads", () => {
 					valueLine("provider", "typesafe"),
 					valueLine("scope", "core"),
 					"small_model: unset",
+					"middle_model: unset",
 					"large_model: unset",
 					keyLine("typesafe", "unset"),
 				),
@@ -206,6 +212,7 @@ describe("the tool reads", () => {
 			provider: "auto",
 			scope: "extended",
 			small_model: "openai/gpt-5-mini",
+			middle_model: "openai/gpt-5",
 			large_model: "anthropic/claude-opus-5-5",
 			api_key: TYPESAFE_KEY,
 			openrouter_api_key: OPENROUTER_KEY,
@@ -217,6 +224,7 @@ describe("the tool reads", () => {
 				valueLine("provider", "auto"),
 				valueLine("scope", "extended"),
 				"small_model: openai/gpt-5-mini",
+				"middle_model: openai/gpt-5",
 				"large_model: anthropic/claude-opus-5-5",
 				keyLine("typesafe", "set"),
 				keyLine("openrouter", "set"),
@@ -228,7 +236,7 @@ describe("the tool reads", () => {
 		}
 	});
 
-	it("shows a model on its own line, unset when only the other is set", async () => {
+	it("shows a model on its own line, unset when only another is set", async () => {
 		const env = { ...NO_ENV, TYPESAFE_API_KEY: TYPESAFE_KEY };
 		const report = (config: Record<string, unknown>) =>
 			runTool(setup({ provider: "openrouter-first", ...config }, env));
@@ -242,6 +250,17 @@ describe("the tool reads", () => {
 			lines(
 				...head,
 				"small_model: openai/gpt-5-mini",
+				"middle_model: unset",
+				"large_model: unset",
+				...keys,
+			),
+		);
+		assert.equal(
+			await report({ middle_model: "openai/gpt-5" }),
+			lines(
+				...head,
+				"small_model: unset",
+				"middle_model: openai/gpt-5",
 				"large_model: unset",
 				...keys,
 			),
@@ -251,10 +270,68 @@ describe("the tool reads", () => {
 			lines(
 				...head,
 				"small_model: unset",
+				"middle_model: unset",
 				"large_model: anthropic/claude-opus-5-5",
 				...keys,
 			),
 		);
+	});
+
+	it("marks a model the runtime cannot resolve as unresolved", async () => {
+		const fake = setup({
+			small_model: "openai/gpt-5-mini",
+			middle_model: "openai/gpt-5",
+			api_key: TYPESAFE_KEY,
+		});
+		fake.runtime.answers.resolved = { error: "not allowed" };
+		assert.equal(
+			await runTool(fake),
+			lines(
+				valueLine("provider", "typesafe"),
+				valueLine("scope", "core"),
+				"small_model: openai/gpt-5-mini (unresolved)",
+				"middle_model: openai/gpt-5 (unresolved)",
+				"large_model: unset",
+				keyLine("typesafe", "set"),
+			),
+		);
+	});
+
+	it("marks a model whose provider has no credential as unresolved", async () => {
+		const fake = setup({
+			large_model: "anthropic/claude-opus-5-5",
+			api_key: TYPESAFE_KEY,
+		});
+		fake.runtime.answers.credential = false;
+		assert.match(
+			await runTool(fake),
+			/\nlarge_model: anthropic\/claude-opus-5-5 \(unresolved\)\n/,
+		);
+	});
+
+	it("marks a set model as unresolved when the live config cannot be read", async () => {
+		const fake = createFakeApi({
+			pluginConfig: { small_model: "openai/gpt-5-mini" },
+		});
+		registerConfig(fake.api, NO_ENV);
+		fake.runtime.throwOn.add("config");
+		const result = await fake.tools[0]?.execute("call-1", {});
+		assert.match(
+			result?.content[0]?.text ?? "",
+			/\nsmall_model: openai\/gpt-5-mini \(unresolved\)\n/,
+		);
+		assert.equal(fake.runtime.calls.allowedRef.length, 0);
+	});
+
+	it("checks each model against the live config, with no agent", async () => {
+		const fake = setup({ small_model: "openai/a", large_model: "openai/b" });
+		await runTool(fake);
+		assert.deepEqual(
+			fake.runtime.calls.allowedRef.map(({ raw }) => raw).sort(),
+			["openai/a", "openai/b"],
+		);
+		for (const call of fake.runtime.calls.allowedRef)
+			assert.equal("agentId" in call, false);
 	});
 
 	it("counts a key from the environment as set", async () => {
@@ -317,7 +394,7 @@ describe("the tool answers a setting name with the command to type", () => {
 	});
 
 	it("points the model settings to the settings page and the config command", async () => {
-		for (const setting of ["small_model", "large_model"])
+		for (const setting of ["small_model", "middle_model", "large_model"])
 			assert.equal(
 				await runTool(setup(), { setting }),
 				`${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`,

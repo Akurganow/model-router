@@ -1,6 +1,6 @@
 import { contextText } from "../../core/brief.ts";
 import { type Keys, PROVIDERS } from "../../core/provider.ts";
-import { type EndSlot, SLOTS } from "../../core/slots.ts";
+import { SLOTS, type Slot, type SlotModels } from "../../core/slots.ts";
 import { isPositiveNumber, isRecord } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 
@@ -17,7 +17,9 @@ export type HermesRequest = {
 	// Undefined unless the budget is a positive finite number.
 	readonly budgetMs: number | undefined;
 	// A blank or missing model is undefined.
-	readonly models: Readonly<Record<EndSlot, string | undefined>>;
+	readonly models: Readonly<Record<Slot, string | undefined>>;
+	// The slots whose model Python found Hermes cannot reach offline, each named once.
+	readonly unresolved: readonly Slot[];
 	// Undefined when the ladder's effort applies.
 	readonly keptEffort: KeptEffort | undefined;
 	// The task's description parameter, or empty text.
@@ -40,6 +42,11 @@ const readModels = (value: unknown): HermesRequest["models"] =>
 		]),
 	) as HermesRequest["models"];
 
+const readUnresolved = (value: unknown): readonly Slot[] =>
+	Array.isArray(value)
+		? SLOTS.filter((slot) => value.some((name) => nonEmpty(name) === slot))
+		: [];
+
 const readBudget = (value: unknown): number | undefined =>
 	isPositiveNumber(value) ? value : undefined;
 
@@ -57,6 +64,7 @@ export function readRequest(raw: unknown): HermesRequest | undefined {
 		keys,
 		budgetMs,
 		models,
+		unresolved,
 		keptEffort,
 		description,
 	} = raw;
@@ -67,7 +75,24 @@ export function readRequest(raw: unknown): HermesRequest | undefined {
 		keys: readKeys(keys),
 		budgetMs: readBudget(budgetMs),
 		models: readModels(models),
+		unresolved: readUnresolved(unresolved),
 		keptEffort: KEPT_EFFORTS.find((source) => source === keptEffort),
 		description: typeof description === "string" ? description : "",
 	};
 }
+
+/**
+ * Returns the state of each slot: unresolved when Python named it so, set when
+ * it has a model, and unset otherwise. Never throws.
+ */
+export const slotModels = ({ models, unresolved }: HermesRequest): SlotModels =>
+	Object.fromEntries(
+		SLOTS.map((slot) => {
+			const model = models[slot];
+			if (unresolved.includes(slot)) return [slot, { state: "unresolved" }];
+			return [
+				slot,
+				model === undefined ? { state: "unset" } : { state: "set", model },
+			];
+		}),
+	) as SlotModels;

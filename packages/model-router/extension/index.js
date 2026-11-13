@@ -245,8 +245,8 @@ function routingState(raw) {
 
 // src/core/line.ts
 var LINE_PREFIX = "model-router ";
-var NO_CHANGE = "no change";
 var ENTRY_SEPARATOR = " | ";
+var pinnedLine = (level, target) => `L${level} ${target}`;
 function routedLine({
   level,
   target,
@@ -255,10 +255,19 @@ function routedLine({
   suffix
 }) {
   const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `L${level} ${target ?? NO_CHANGE}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+  return `${pinnedLine(level, target)}${effortSegment} \xB7 p=${probabilities}${suffix}`;
 }
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
+
+// src/core/slots.ts
+var SLOTS = ["small", "middle", "large"];
+var slotForLevel = (level) => SLOTS[level];
+function pickModel(level, models) {
+  const slot = slotForLevel(level);
+  const picked = models[slot];
+  return picked.state === "set" ? { slot, model: picked.model, target: picked.model } : { slot, model: void 0, target: `${slot} model ${picked.state}` };
+}
 
 // node_modules/@typesafe-ai/sdk/dist/index.mjs
 var requestIdFrom = (headers) => headers.get("x-typesafe-request-id") ?? void 0;
@@ -1726,7 +1735,7 @@ var seanceGate = (name) => name === SEANCE ? `${name} spawns without the hook om
 var modelGate = (model) => model === void 0 ? void 0 : setsOwnModel("the item");
 function itemCheck(name, facts, model) {
   if (!inScope(name, facts.scope)) return outsideCoreScope(name);
-  return userChoice(name, facts) ?? seanceGate(name) ?? modelGate(model) ?? agentGate(name, facts) ?? facts.noModels;
+  return userChoice(name, facts) ?? seanceGate(name) ?? modelGate(model) ?? agentGate(name, facts);
 }
 function spawnCheck({ agent, modelRole }, facts) {
   const reason = itemCheck(agent, facts);
@@ -1776,32 +1785,33 @@ function capped(effort, ceiling) {
   if (top < LOWEST) return void 0;
   return CEILINGS.indexOf(effort) <= top ? effort : CEILINGS[top];
 }
-function planEffort({ role, ladder, itemEffort }, { roles, maxEffort, effortEnabled }, patterns) {
+function planEffort({ ladder, itemEffort }, model, { roles, maxEffort, effortEnabled }, patterns) {
   if (itemEffort && effortEnabled) return { kept: CALLER_EFFORT };
-  if (role !== void 0 && roleCarriesLevel(role.slice(ROLE_MARK.length), roles))
+  if (model !== void 0 && roleCarriesLevel(model.slice(ROLE_MARK.length), roles))
     return { kept: CONFIG_EFFORT };
-  if (role === void 0 && patterns?.some(carriesLevel))
+  if (model === void 0 && patterns?.some(carriesLevel))
     return { kept: CONFIG_EFFORT };
   const effort = capped(ladder, maxEffort);
   if (effort === void 0) return { kept: CONFIG_EFFORT };
-  if (role === void 0 && patterns?.length === 0)
+  if (model === void 0 && patterns?.length === 0)
     return { kept: NO_PATTERNS };
   return { set: effort };
 }
-var lineFor = (routed, plan2) => routedLine({
+var lineFor = (routed, target, plan2) => routedLine({
   level: routed.level,
-  target: routed.role,
+  target,
   effort: "set" in plan2 ? plan2.set : plan2.kept,
   probabilities: routed.probabilities,
   suffix: routed.suffix
 });
-function modelFor(role, plan2, patterns) {
-  if (role !== void 0) return "set" in plan2 ? `${role}:${plan2.set}` : role;
+function modelFor(model, plan2, patterns) {
+  if (model !== void 0)
+    return "set" in plan2 ? `${model}:${plan2.set}` : model;
   return "set" in plan2 ? patterns.map((p) => `${p}:${plan2.set}`) : void 0;
 }
 
 // src/adapters/omp/gates.ts
-var ROLES = { small: "@smol", large: "@slow" };
+var ROLE_NAMES = { small: "smol", middle: "middle", large: "slow" };
 async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
   const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
   if ("closed" in batch) return batch;
@@ -1815,11 +1825,19 @@ async function openBatch(omp, pi, ctx, settings) {
   const config = readConfig(omp.lookup, pi.pi.settings);
   if (config === void 0) return { closed: UNREADABLE };
   const agents = await discover(pi, ctx);
-  const noModels = modelsGate(ctx);
+  const models = Object.fromEntries(
+    SLOTS.map((slot) => [slot, slotModel(ctx, config.roles, slot)])
+  );
   return {
     ...routing,
-    facts: { ...config, scope: settings.scope, agents, noModels }
+    facts: { ...config, scope: settings.scope, agents, models }
   };
+}
+function slotModel(ctx, roles, slot) {
+  const name = ROLE_NAMES[slot];
+  if (patternsOf(roles[name]).length === 0) return { state: "unset" };
+  const role = ROLE_MARK + name;
+  return resolves(ctx, role) ? { state: "set", model: role } : { state: "unresolved" };
 }
 function resolves(ctx, role) {
   try {
@@ -1834,10 +1852,6 @@ async function discover(pi, ctx) {
   } catch {
     return void 0;
   }
-}
-var noModel = (role) => `no ${role} model`;
-function modelsGate(ctx) {
-  return Object.values(ROLES).some((role) => resolves(ctx, role)) ? void 0 : noModel(`${ROLES.small} or ${ROLES.large}`);
 }
 
 // src/core/tier.ts
@@ -1913,13 +1927,6 @@ var EFFORT_BY_TIER = {
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
-// src/core/slots.ts
-var LEVEL_SLOTS = {
-  0: "small",
-  2: "large"
-};
-var slotForLevel = (level) => level === 1 ? null : LEVEL_SLOTS[level];
-
 // src/utils/fetch.ts
 var oneChunk = (bytes) => new ReadableStream({
   start(controller) {
@@ -1983,16 +1990,16 @@ function scoreItem(item, context, role, routing, signal) {
 var skipped = (reason) => ({ line: skippedLine(reason) });
 function toStored(decided, item, facts) {
   if ("skipped" in decided) return skipped(decided.skipped);
-  const slot = slotForLevel(decided.tier);
   const routed = {
     level: decided.tier,
-    role: slot === null ? void 0 : ROLES[slot],
     ladder: effortFor(decided.tier, decided.work),
     itemEffort: item.effort !== void 0,
     probabilities: decided.probabilities,
     suffix: decided.suffix
   };
-  return { line: lineFor(routed, planEffort(routed, facts)), routed };
+  const picked = pickModel(decided.tier, facts.models);
+  const plan2 = planEffort(routed, picked.model, facts);
+  return { line: lineFor(routed, picked.target, plan2), routed };
 }
 async function mapLimit(items, limit, fn) {
   const results = [];
@@ -2134,25 +2141,20 @@ function createRouter(omp, pi) {
       scored.map(({ index, stored }) => entry(index, stored.line))
     );
   }
-  async function spawnGates(event, ctx, role) {
-    const gates = await checkGates(omp, pi, ctx, event);
-    if ("closed" in gates || role === void 0 || resolves(ctx, role))
-      return gates;
-    return { closed: noModel(role) };
-  }
   async function onSpawn(event, ctx) {
     if (event.invocationKind !== TASK) return;
     const taken = store.take(event.spawnKey, event.agent);
     const routed = taken?.stored.routed;
     if (!taken || !routed) return;
-    const gates = await spawnGates(event, ctx, routed.role);
+    const gates = await checkGates(omp, pi, ctx, event);
     if ("closed" in gates)
       return void report(ctx, [entry(taken.index, skippedLine(gates.closed))]);
     const patterns = event.patterns ?? [];
-    const plan2 = planEffort(routed, gates.facts, patterns);
-    const line = lineFor(routed, plan2);
+    const picked = pickModel(routed.level, gates.facts.models);
+    const plan2 = planEffort(routed, picked.model, gates.facts, patterns);
+    const line = lineFor(routed, picked.target, plan2);
     if (line !== taken.stored.line) report(ctx, [entry(taken.index, line)]);
-    const model = modelFor(routed.role, plan2, patterns);
+    const model = modelFor(picked.model, plan2, patterns);
     return model === void 0 ? void 0 : { model, note: LINE_PREFIX + line };
   }
   function learn({ toolName, toolCallId }, result) {

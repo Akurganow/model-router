@@ -8,10 +8,10 @@ import { type DecidedWithWork, scoreWork } from "../../core/decide.ts";
 import { effortFor } from "../../core/ladder.ts";
 import { skippedLine } from "../../core/line.ts";
 import type { Provider } from "../../core/provider.ts";
-import { slotForLevel } from "../../core/slots.ts";
+import { pickModel } from "../../core/slots.ts";
 import { streamedFetch } from "../../utils/fetch.ts";
 import { lineFor, planEffort, type Routed } from "./effort.ts";
-import { type Batch, ROLES } from "./gates.ts";
+import type { Batch } from "./gates.ts";
 import { type Facts, itemCheck, roleOf } from "./items.ts";
 import type { Stored } from "./store.ts";
 
@@ -93,8 +93,9 @@ function scoreItem(
 const skipped = (reason: string): Stored => ({ line: skippedLine(reason) });
 
 /**
- * Returns the stored entry for the levels Jev decided: the role of
- * the picked level, the ladder's effort and the routing line. The line shows
+ * Returns the stored entry for the levels Jev decided: the level, the
+ * ladder's effort and the routing line, which names the picked slot's role or
+ * the slot's state when it has none. The line shows
  * the effort the batch's facts allow, before the spawn's patterns are known.
  * Returns a skip line alone when the decision is a skip. Never throws.
  */
@@ -104,16 +105,16 @@ function toStored(
 	facts: Facts,
 ): Stored {
 	if ("skipped" in decided) return skipped(decided.skipped);
-	const slot = slotForLevel(decided.tier);
 	const routed: Routed = {
 		level: decided.tier,
-		role: slot === null ? undefined : ROLES[slot],
 		ladder: effortFor(decided.tier, decided.work),
 		itemEffort: item.effort !== undefined,
 		probabilities: decided.probabilities,
 		suffix: decided.suffix,
 	};
-	return { line: lineFor(routed, planEffort(routed, facts)), routed };
+	const picked = pickModel(decided.tier, facts.models);
+	const plan = planEffort(routed, picked.model, facts);
+	return { line: lineFor(routed, picked.target, plan), routed };
 }
 
 // Workers share one iterator, so each takes the next item as it frees up.

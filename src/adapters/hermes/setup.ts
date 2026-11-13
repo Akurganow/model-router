@@ -19,7 +19,12 @@ import {
 	valueLine,
 	valueSettingHelp,
 } from "../../core/settings.ts";
-import { SLOTS, type SlotSetting, slotSetting } from "../../core/slots.ts";
+import {
+	SLOTS,
+	type SlotSetting,
+	slotLine,
+	slotSetting,
+} from "../../core/slots.ts";
 
 const SLOT_SETTINGS = SLOTS.map(slotSetting);
 const SETTINGS = ["provider", ...KEY_SETTINGS, ...SLOT_SETTINGS] as const;
@@ -32,10 +37,12 @@ const NOT_LOCAL = "only a local session can change it";
 const LOCAL_PLATFORMS = ["local", "cli", "tui", "desktop"] as const;
 
 const LINE_BREAK = "\n";
+// Python fills the slot's provider and model into the report line.
+const MODEL_SHOWN = "{provider} {model}";
 const NEVER_IN_CHAT = "Never type a key into the chat.";
 
 const toolDescription = (): string =>
-	readOnlyToolDescription(["the provider", "both models"], SETTINGS);
+	readOnlyToolDescription(["the provider", "the three models"], SETTINGS);
 
 // Only the TypeSafe key is a plugin setting; Hermes reads the OpenRouter key from the environment alone.
 const ENV_FILE = "in the .env file of the Hermes home";
@@ -83,8 +90,9 @@ export function setupTexts(pluginName: string) {
 		badCall: badCall(SETTINGS),
 		keyLines: Object.fromEntries(PROVIDERS.map((name) => [name, states(name)])),
 		unset: UNSET,
-		modelLine: "{name}: {provider} {model}",
-		modelUnset: `{name}: ${UNSET}`,
+		modelLine: slotLine("{name}", "set", MODEL_SHOWN),
+		modelUnresolved: slotLine("{name}", "unresolved", MODEL_SHOWN),
+		modelUnset: slotLine("{name}", "unset", MODEL_SHOWN),
 		lineBreak: LINE_BREAK,
 		errorPrefix: "error: ",
 		help: {
