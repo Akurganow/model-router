@@ -1,113 +1,123 @@
 ---
 name: model-router-setup
-description: Use to set up model-router in Hermes Agent: turn the delegation backend on, choose its provider, add a TypeSafe or OpenRouter key, assign the small, middle and large models, find why routing is off, or check routing.
+description: Use to set up model-router in Hermes Agent, to find why routing is off, to change the provider or a model, or to check routing. It states what must be true and the facts to reach it.
 ---
 
 # model-router setup for Hermes Agent
 
-model-router scores each `delegate_task` task with Jev, on TypeSafe or OpenRouter. It gives the task the person's `small_model` for lookup work, their `middle_model` for bounded judgment, or their `large_model` for open judgment. This setup turns the backend on, picks the provider, checks the keys, assigns the three models, lists the reasons routing is off, and ends with a routing check.
+model-router is the `delegate_task` backend of Hermes Agent. It scores each delegated task with Jev, on TypeSafe or OpenRouter. It sets the task's effort from a fixed ladder. It gives the task the person's `small_model` for lookup work, `middle_model` for bounded judgment or `large_model` for open judgment. It never routes the main turn.
 
-## Rules
+## What set up means
 
-- When a step names a linked README section, open it before you act.
-- Ask one question per message. Wait for the answer.
-- Read every setting through the `model_router_config` tool. The tool only reads.
-- Never write a config value or a key yourself. Ask the person to type each command.
-- Only `/model-router-provider <value>` changes the provider, and only a local session can run it. Hermes CLI, TUI and Desktop sessions are local. A messaging platform is not.
-- Run the setup the same way on the first run and on every re-run.
-- Never take a key through chat. If a key arrives, do not repeat or store it. Tell the person to rotate it.
-- Never display a key or any other credential.
-- Skip a step the person declines. Name the skipped steps in the closing summary.
-- Keep each message short. Show raw output only when the person needs it.
+Routing works when both of these hold:
 
-## Step 1. Enable the plugin and the backend
+- The delegation backend is `model-router`: `delegation.backend` holds that value.
+- A scoring key exists for a provider the `provider` setting allows.
 
-If the install block ran, confirm both settings and go to Step 2.
+The person's optional choices:
 
-The person opts in twice. Ask them to run both commands, then confirm:
+- `provider`: which providers score tasks, and in which order.
+- `small_model`, `middle_model` and `large_model`: the model for each of the three levels. A level with no model keeps the model Hermes gives it. It still gets the effort for a task the plugin scores.
 
-```sh
-hermes plugins enable model-router-hermes
-hermes config set delegation.backend model-router
-```
+## Your job
 
-[Hermes Agent](https://github.com/Akurganow/model-router/blob/main/README.md#hermes-agent) shows the install and the two commands.
+Find out which of these already hold, with the `model_router_config` tool and Hermes's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with Hermes's `clarify` tool, never as plain text in your reply. An editor (ACP) or API-server session has no `clarify`, so there ask one text question per message.
 
-Setting `delegation.backend` to `model-router` replaces `model_map` or any other backend. Say so before the person runs the second command.
+## Facts
 
-A backend change applies from the next session. In a running session the person types `/delegation model-router --now`.
+### The tool
 
-## Step 2. Read the settings and the key status
+- `model_router_config` only reads. It sits in the `model_router` toolset, which is on once the plugin is enabled.
+- With no input it returns the `provider` line, one line for each of the three models, and one key line for each provider the `provider` value allows.
+- A model line reads `<name>: <provider> <model>` or `<name>: unset`. The names are `small_model`, `middle_model` and `large_model`.
+- A key line reads `<provider> key: set` or `<provider> key: unset`. It never shows a key, its length or any part of it.
+- With a setting name it returns how the person changes that setting, and changes nothing. The names are `provider`, `typesafe_key`, `openrouter_key`, `small_model`, `middle_model` and `large_model`.
+- Any other name returns `Unknown setting.` with the list of names. A failure returns `error: <message>`.
 
-1. Call the tool with no setting.
-2. Show the lines it returns.
+### The backend
 
-The tool returns the `provider` line, the `small_model`, `middle_model` and `large_model` lines, and `<provider> key: set` or `<provider> key: unset` for each provider the `provider` value allows. A model line reads `<name>: <provider> <model>` or `<name>: unset`.
+- The command is `hermes config set delegation.backend model-router`. The plugin never writes this setting.
+- The new backend replaces `model_map` or any other backend that was set.
+- A backend change applies from the next Hermes session. In a running session the person types `/delegation model-router --now`.
+- The same holds after the plugin is enabled or a key changes: routing starts in a new session, or after that command.
 
-## Step 3. Provider
+### The provider
 
-1. Call the tool with setting `provider`.
-2. Show the command and the allowed values it returns.
-3. Ask the person which value they want, and to type the command.
-4. When they say it is done, call the tool with no setting.
-5. Report the `provider` line.
+- `typesafe` is the default and scores with TypeSafe only. `openrouter` scores with OpenRouter only.
+- `auto` tries TypeSafe, then OpenRouter. `openrouter-first` tries OpenRouter, then TypeSafe.
+- With `auto` or `openrouter-first` and one key, the provider with that key scores alone.
+- The setting changes only with `/model-router-provider <value>`. The plugin reads it at each task.
+- With no value the command prints the current line, such as `provider: auto (typesafe, then openrouter)`.
+- With a value it writes the value and prints the new line. An invalid value prints `provider: use one of auto, openrouter-first, typesafe, openrouter`.
+- The same value prints `provider unchanged: already <value>`.
+- A session on a messaging platform prints `provider unchanged: only a local session can change it`, then the current line. Hermes CLI, TUI and Desktop sessions are local.
+- A failed write prints `provider unchanged: <reason>`.
+- With the setting name `provider`, the tool returns the command and the allowed values.
 
-The command replies with the new `provider` line. If it replies `provider unchanged: already <value>`, the person kept the current value. If it replies `provider unchanged: only a local session can change it`, tell the person to type it in a Hermes CLI, TUI or Desktop session.
+### The keys
 
-## Step 4. Keys
+- A key counts as set when its variable holds non-blank text. The plugin reads a key only for a provider the `provider` setting allows.
+- The TypeSafe key is `TYPESAFE_API_KEY`. The person sets it in the `.env` file of the Hermes home, or in the plugin's settings form in Hermes Desktop.
+- The OpenRouter key is `OPENROUTER_API_KEY`. The person sets it in the `.env` file of the Hermes home only.
+- The tool with `typesafe_key` or `openrouter_key` returns these locations and never a key.
+- Hermes's own provider credentials never serve as a Jev key.
+- A key in the environment is visible to every process Hermes starts.
+- A key the person just set shows as `set` once Hermes reads it again, which can need a new session.
+- With no key for any allowed provider, every task skips with `key unset`.
 
-[The keys table](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#keys) lists each key, its variable and where to set it.
+### The models
 
-1. Call the tool with no setting.
-2. Note each provider that reports `key: unset`.
-3. For each such provider, call the tool with `typesafe_key` or `openrouter_key`.
-4. Show the answer. Ask the person to set the key there and tell you when it is done.
-5. Call the tool with no setting again.
-6. Report the key line. If it still reads `key: unset`, ask the person to start a new session, then say so in one line and go on.
+- Each model setting is a mapping with two fields. `provider` is a Hermes provider id, such as `openrouter`. `model` is a model id as Hermes lists it for that provider.
+- A mapping with no `model` counts as unset.
+- The person sets a slot in the plugin's settings form in Hermes Desktop, or in `config.yaml` under `plugins.entries.model-router-hermes.settings.<slot>`.
+- The other way is `hermes config set plugins.entries.model-router-hermes.settings.<slot> '{"provider": "<provider>", "model": "<model>"}'`, with `small_model`, `middle_model` or `large_model` as the slot.
+- The plugin has no tool that lists or sets a model. Propose a model only from the models Hermes lists.
+- For a scored task, level 0 sets the `small_model`, level 1 the `middle_model` and level 2 the `large_model`. The task gets that slot's `model` and `provider`.
+- A delegating model can pin `level` on a task. The task then gets that level's model with no scoring, and carries no `route.label` while the model is set.
+- A pinned task whose slot has no model runs on Hermes's model, with the label `model-router L<level> <slot> model unset`.
+- A level with no model keeps Hermes's model and still gets the effort for a scored task. It is the person's choice and needs no fix.
+- Level 1 is the default unless Jev sees clearly more or less need for judgment.
 
-Skip this step when every allowed provider reports `key: set`.
+### What outranks the plugin
 
-If a key is missing for every allowed provider, say that every task skips with `key unset` until one exists. With `auto` or `openrouter-first` and one key, say that its provider scores alone. A key in the environment is visible to every process Hermes starts.
+- The `delegation` section outranks the plugin. A `model`, `provider`, `base_url` or `api_key` there makes every task skip with `subagent model set`. The person decides whether to clear it.
+- A non-empty `delegation.reasoning_effort` keeps that effort. The plugin still routes the model, and the line shows `config effort`. That is no skip.
+- A delegating model's own `reasoning_effort` on a task is kept in the same way, and the line shows `caller effort`.
+- The plugin sets only `low`, `medium`, `high` or `xhigh`.
 
-## Step 5. Models
+### The routing line
 
-1. Call the tool with no setting. Show the `small_model`, `middle_model` and `large_model` lines, each with its value or `unset`.
-2. Say that a slot with no model is no fault: its level runs on the model Hermes gives, and the plugin still sets the effort for a task it scores.
-3. When the person wants a model in a slot, propose one only from the models Hermes itself lists.
-4. Call the tool with that slot setting and give the person the text it returns.
-5. When the person says a setting is changed, call the tool with no setting and show the three lines again.
-6. Change a setting only on the person's word. The plugin has no tool that lists or sets a model.
+- The line is in the `route.label` field of each `delegate_task` result, in every plugin isolation mode.
+- Hermes also logs the line at INFO in `agent.log`, once for each distinct line. Under `plugins.isolation: host` that log drops INFO lines, so only `route.label` shows it.
+- A routed line reads `model-router L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`. A Jev model and token counts can follow.
+- The slot state is `<slot> model unset`. The kept label is `config effort` or `caller effort`.
+- After a fallback the line ends with the provider that answered and why the first failed, as in ` · via openrouter (typesafe HTTP 503)`.
+- A skipped line reads `model-router skipped, <reason>`. The task then runs on Hermes's own route.
 
-Each slot is a mapping with two fields. `provider` is a Hermes provider id, such as `openrouter`. `model` is an id from Hermes's offline model list for that provider. A slot with no `model` counts as unset.
+### The skip reasons
 
-The plugin checks the slot a task picks before it uses it. When the provider needs a network call to refresh its credentials, or the model is not in the offline list, the label reads `<slot> model unresolved`, and the task runs on the model Hermes gives. [Models](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#models) says what the plugin needs.
+- `key unset`: no allowed provider has a key. The person sets one, as the keys facts say.
+- `subagent model set`: the `delegation` section sets a model. The person decides whether to clear it.
+- `node not found`: Hermes has no Node of its own. The plugin runs scoring in that Node and never uses a Node on `PATH`. The person adds a Node for Hermes.
+- `timeout`: the routing limit of 8 s for a whole `delegate_task` call ran out. No setting fixes it.
+- `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: the provider gave no answer, or the plugin failed. No setting fixes it. After two providers the reason names each.
+- Check every reason that holds, not only the first.
 
-## Step 6. List the reasons routing is off
+### The routing check
 
-Check each reason below and report every one that holds, not only the first. The label of a skipped task reads `model-router skipped, <reason>`. [Which tasks are routed](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#which-tasks-are-routed) explains each reason.
+- A routing check is one `delegate_task` call with one task, such as "Reply with the single word ok." It passes no `model`, `provider` or `reasoning_effort`.
+- The `route.label` of the result shows the outcome. A good line names a level, a model or a slot with no model, and an effort.
+- A label with no `model-router` line means the backend is not on. A label that names a skip reason shows what keeps routing off.
 
-- `key unset`: Step 4.
-- `subagent model set`: the person's `delegation` section. The person decides whether to clear it.
-- `node not found`: the person installs a Node for Hermes.
-- `timeout`, `failed`, or an HTTP status: no setting fixes it.
+For the person: the plugin's README in the model-router repository holds the full reference.
 
-For each reason that holds, tell the person which setting to change, and where. The person runs the change. This skill changes none of them.
+## Limits
 
-A routed line that reads `config effort` in place of an effort is not a skip: `delegation.reasoning_effort` is set, so the plugin keeps that effort and routes the model only.
+- Never take, show or repeat a key. If a key arrives in chat, do not store it, and tell the person to rotate it.
+- Change a setting only when the person asked for it or agreed.
+- A routing check spawns one small task and spends a little usage, so ask before it.
+- Only a local Hermes session can run `/model-router-provider` to change the provider.
 
-## Step 7. Routing check
+## When you finish
 
-1. If the plugin or the backend was just set, or a key changed, ask the person to start a new session or to type `/delegation model-router --now`. Then return to this step.
-2. Ask the routing-check question with the answers "Check" and "Skip".
-3. On Skip, record "routing check: skipped" and go to the closing summary.
-4. On Check, call `delegate_task` with one task: "Reply with the single word ok." Pass no `model`, `provider` or `reasoning_effort`.
-5. Read the `route.label` field of the result. It shows the plugin's line in every plugin isolation mode. The plugin's own log drops INFO lines by default.
-6. If the label holds no `model-router` line, report it and check Step 1 and Step 6.
-7. If the label names a skip reason, stop and report it with its step.
-8. Otherwise check that the label names a level, a model or a slot whose model is unset or unresolved, and an effort. Report the result in one line.
-
-The routing-check question reads: "To check routing I will delegate one small task. It spends a little model usage."
-
-## Closing summary
-
-List what the setup changed. List the reasons that still turn routing off, and the skipped steps. Include no key and no home-directory path.
+Say what is set, what you changed and what still keeps routing off. Include no key and no home-directory path.

@@ -18,10 +18,18 @@ routed call appears in the transcript. To turn routing off, disable the
 plugin in `/plugin`.
 
 The `scope` option decides which Agent calls the mod routes. A call that sets
-a `model`, is a fork or has a `name` always passes through. The
-[README](README.md#which-calls-are-routed) lists the cases for `core` and
-`extended`, and says what `extended` does to the model and effort an agent
-definition sets.
+a `model`, is a fork or has a `name` always passes through.
+
+Under `core`, the default, the mod routes `general-purpose`, `claude`,
+`Explore` and `Plan`, as Claude Code ships them. A call with no
+`subagent_type` counts as `general-purpose`. A user, project or plugin agent
+keeps its own choices, even under a built-in name. Under `extended`, the mod
+routes every call with no `model`, no `name` and no fork. That adds plugin,
+user and project agents, `statusline-setup` and `claude-code-guide`. Claude
+Code does not expose the model or effort an agent definition sets. So under
+`extended`, the routed model and effort replace them. Both scopes pass
+through teammates, resumed agents, workflow agents and spawns from another
+plugin.
 
 ## Escalation
 

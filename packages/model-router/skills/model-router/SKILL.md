@@ -9,10 +9,12 @@ description: >
 
 # model-router
 
-model-router scores each eligible batch item through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it gives the agent the `smol` role for level 0, the `middle` role for level 1 or the `slow` role for level 2. The thinking level comes from the work question. A level whose role is not set in `modelRoles`, or does not resolve, keeps the agent's model and sets the thinking level alone. The line then names the slot, such as `L1 middle model unset`. An effort the item or the user's settings set is kept, as the [README](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#efforts-the-plugin-keeps) lists.
+model-router scores each eligible batch item through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it gives the agent the `smol` role for level 0, the `middle` role for level 1 or the `slow` role for level 2. The thinking level comes from the work question. A role that `modelRoles` names is set. A level whose role `modelRoles` does not name keeps the agent's model and sets the thinking level alone. The line then names the slot, such as `L1 middle model unset`.
 
 - The batch line starts with `model-router`. It shows each decision, or the reason an item ran unrouted.
-- The `scope` setting decides which agents the plugin routes. The [README](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#scope) lists them and the skip reasons.
+- The plugin keeps an effort the user set: an item's `effort` while `task.enableEffort` is on, or a thinking level on the role or on the spawn's model patterns. It caps its own effort at `task.maxEffort`. The line shows `caller effort` or `config effort`.
+- The `scope` setting decides which agents the plugin routes. Under `core`, the default, it routes the bundled `task` agent only. Under `extended`, it routes every agent whose model the user did not set.
+- The plugin skips an item that sets its own `model`, an agent named in `task.agentModelOverrides` or `task.disabledAgents`, and an agent that omp does not list. Under `extended`, it also skips an unbundled agent that declares a model. The batch line gives the reason.
 - A model the user set is never overridden.
 - A generic `task` item cannot set a model. The model comes from the agent's definition, from `task.agentModelOverrides`, or from the role the plugin gives.
 
@@ -24,7 +26,7 @@ Escalate when a subagent reports BLOCKED, fails the check its brief names, or tw
 2. Otherwise, re-dispatch to an agent whose model is stronger.
 3. If the stronger agent also fails, stop and report to the user.
 
-A batch line entry that reads `<slot> model unset` or `<slot> model unresolved` means that level gave no role, and the agent ran on its own model. When the re-dispatched item shows such an entry again, stop and report to the user.
+A batch line entry that reads `<slot> model unset` means that level gave no role, and the agent ran on its own model. When the re-dispatched item shows such an entry again, stop and report to the user.
 
 To find a stronger agent, read the agents the task tool lists. Bundled agents and the user's own agents both appear. Check an agent's model in its definition or in `task.agentModelOverrides` before you name it.
 

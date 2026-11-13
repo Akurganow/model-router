@@ -3,104 +3,127 @@ name: model-router-setup
 description: >
   Use when the user wants to set up or configure model-router in Claude Code,
   to choose its provider or scope, to add a TypeSafe or OpenRouter key, to find
-  out why routing is off, or to check that routing works.
+  out why routing is off, or to check that routing works. It finds what already
+  holds and does only what is missing.
 ---
 
 # model-router setup for Claude Code
 
-model-router scores each routed Agent call with Jev, on TypeSafe or OpenRouter. It sets the subagent's model and effort. This setup picks the provider and the scope, checks the keys, lists the reasons routing is off, and ends with a routing check.
+model-router scores each routed Agent call with Jev, on TypeSafe or OpenRouter. It sets the subagent's model, one of haiku, sonnet or opus, and its effort.
 
-## Rules
+## What set up means
 
-- Ask one question per screen with `AskUserQuestion`. If it is missing, ask numbered text questions.
-- Make every provider and scope choice through the `mcp__model-router__config` tool. Call it with the setting name only.
-- The plugin asks the person in its own dialog and writes the choice. Never ask your own question for these choices. Never pass a value to the tool.
-- Run the setup the same way on the first run and on every re-run.
-- Never take a key through a button or a free-text answer to your own question. If a key arrives, do not repeat or store it. Tell the user to rotate it.
-- Never display a key or any other credential.
-- Ask before you create a missing file. Create a JSON file holding an empty object.
-- Propose no models.
-- If the tool returns `<setting> unchanged: no answer from the dialog`, say that no dialog answered. Name the command the user can type: `/model-router:provider <value>` or `/model-router:scope <value>`.
-- Skip a step the user declines. Name the skipped steps in the closing summary.
-- Keep each message short. Show raw output only when the user needs it.
+Routing works when all of these hold:
 
-## Step 1. Read the settings and the key status
+- The plugin is enabled in `/plugin`.
+- A scoring key exists for a provider the `provider` setting allows.
 
-1. Call the tool with no setting.
-2. Show the lines it returns.
+The person may also choose:
 
-The tool returns the `provider` line, the `scope` line, and `<provider> key: set` or `<provider> key: unset` for each provider the `provider` value allows. An unknown `provider` value counts as `typesafe`. An unknown `scope` value counts as `core`.
+- `provider`: which providers score a call, and in which order.
+- `scope`: which Agent calls the plugin routes.
 
-## Step 2. Provider
+## Your job
 
-1. Call the tool with setting `provider`.
-2. Report the line it returns.
+Find out which of these already hold, with the `mcp__model-router__config` tool and Claude Code's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with Claude Code's `AskUserQuestion` tool, never as plain text in your reply.
 
-The [Options](../../README.md#options) section of the README lists the values. If the line reads `provider unchanged: already <value>`, the user kept the current value.
+## Facts
 
-## Step 3. Keys
+### The config tool
 
-1. Call the tool with no setting.
-2. Note each provider that reports `key: unset`.
-3. For each such provider, ask the key question below, once.
-4. After button 1, 2 or 3, wait until the user says the key is in place.
-5. Call the tool with no setting and report the key line.
-6. If the key is still unset, say so in one line.
+- The tool is `mcp__model-router__config`. It takes one optional input, `setting`.
+- With no input it prints a `provider` line, a `scope` line, and one `<provider> key: set` or `<provider> key: unset` line for each provider the `provider` value allows.
+- A provider line looks like `provider: auto (typesafe, then openrouter)`. A scope line looks like `scope: core`.
+- A key counts as set when its plugin option or its environment variable holds a non-blank value.
+- The tool never returns a key, its length or any part of it.
+- With `setting` set to `provider` or `scope`, the plugin opens its own dialog. The person picks a value, and the plugin writes it. The reply is the new setting line.
+- Pass no value to the tool. The person chooses in the dialog.
+- The dialog writes nothing for the current value, a dismissed dialog or free text. It also writes nothing where no dialog can open, such as `claude -p`.
+- Reply `<setting> unchanged: already <value>` means the person kept the current value.
+- Reply `<setting> unchanged: no answer from the dialog` means no dialog answered. The person can type `/model-router:provider <value>` or `/model-router:scope <value>` at their own prompt. A command writes only when typed there.
+- Reply `<setting> unchanged: the answer was not one of the offered values` means the dialog returned something else. Nothing was written.
+- Reply `Permission rules deny this tool, so nothing was read or changed.` means the person's permission rules deny the tool.
+- If the tool is missing, the person opens `/config`, finds the model-router plugin and sets its options there.
+- Both commands print the current value when run with no value. A value outside the list prints the allowed ones.
 
-Skip this step when every allowed provider reports `key: set`. The tool takes no key in Claude Code, so the person adds it.
+### Settings
 
-The key question has four buttons:
+- `provider` takes `typesafe` (the default), `openrouter`, `auto` or `openrouter-first`.
+  - `typesafe` scores on TypeSafe only. `openrouter` scores on OpenRouter only.
+  - `auto` tries TypeSafe, then OpenRouter when TypeSafe fails.
+  - `openrouter-first` tries OpenRouter, then TypeSafe when OpenRouter fails.
+  - A stored value outside these four counts as `typesafe`.
+  - With `auto` or `openrouter-first` and only one key set, that key's provider scores alone.
+- `scope` takes `core` (the default) or `extended`. A stored value outside these two counts as `core`.
+  - Under `core`, the plugin routes a call to the built-in agents `general-purpose`, `claude`, `Explore` and `Plan`. A call with no `subagent_type` counts as `general-purpose`.
+  - Under `extended`, it routes every Agent call that passes no `model` and no `name`, a fork excepted. That includes user, project and plugin agents.
+  - Under `extended`, the routed model and effort replace the ones an agent's definition sets, and the agent's description and task text go to the provider.
+- Claude Code has no per-level model setting. The plugin picks haiku for level 0, sonnet for level 1 and opus for level 2.
+- Claude Code ignores plugin options in project and local settings. Only the user's own settings and commands change `provider` and `scope`.
 
-1. "I will add it in the plugin settings". Mark it recommended. The mark applies to this question only. Tell the user where that dialog is: `/plugin` in the terminal, or the plugin's gear icon in VS Code.
-2. "Write it to the settings files myself". Name the variable and the file, and wait. The variable is `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY`. The file is the user settings file, and the variable goes in its `env` block. Name the file by its full path.
-3. "Same, open the files for me". Do what button 2 does. Also open the file with the system opener: `open` on macOS, `xdg-open` on Linux, `start` on Windows.
-4. "Do nothing". Skip the key.
+### Keys
 
-A variable in the settings file reaches the environment of every process Claude Code starts. Say so after button 2 or 3.
+- The TypeSafe key is the plugin option `api_key` or the variable `TYPESAFE_API_KEY`. The OpenRouter key is the option `openrouter_api_key` or the variable `OPENROUTER_API_KEY`. The option wins when both exist.
+- The plugin reads a key only for a provider the `provider` value allows. Each key goes only to its own provider.
+- In the terminal, the person sets a key in the plugin's settings dialog: `/plugin configure model-router@model-router`, or `/plugin`.
+- In VS Code, the person sets a key with the gear icon on the plugin's row in the plugin manager (`/plugins`).
+- The desktop app cannot set a plugin's key yet, and a saved key can read back as empty after a restart. The workaround is the variable in the `env` block of the user settings file, `~/.claude/settings.json`.
+- A variable in that file reaches the environment of every process Claude Code starts, and the key sits there in plain text. Say so when the person chooses it.
+- After a key changes or the plugin is enabled, the person runs `/reload-plugins` or starts a new session, because the plugin reads the key when it loads.
+- The tool takes no key. The person adds it themselves.
+- With only an OpenRouter key and `provider` still `typesafe`, every call skips with `key unset`. The person sets `provider` to `openrouter`, `auto` or `openrouter-first`.
+- With no key for any allowed provider, every call skips with `key unset`.
 
-If a key is missing for every allowed provider, say that every call skips with `key unset` until one exists. With `auto` or `openrouter-first` and one key, say that its provider scores alone.
+### Reasons routing is off
 
-## Step 4. Scope
-
-1. Call the tool with setting `scope`.
-2. Report the line it returns.
-
-The [Which calls are routed](../../README.md#which-calls-are-routed) section of the README says what each value routes.
-
-## Step 5. List the reasons routing is off
-
-Check each reason below. Report every reason that holds, not only the first.
+More than one can hold. Report every one that holds.
 
 - The plugin is disabled in `/plugin`. No line appears.
-- Permission rules deny the Agent call. No line appears.
-- `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is set. Claude Code ignores the model the plugin picks.
-- `CLAUDE_CODE_EFFORT_LEVEL` is set. It outranks the effort the plugin picks.
-- The call passes through under the chosen scope, as [Which calls are routed](../../README.md#which-calls-are-routed) lists.
+- The person's permission rules deny the Agent call. No line appears.
+- The call passes through under the chosen scope: it names a `model` or a `name`, it is a fork, or it is an agent the scope does not route. A user, project or plugin agent passes through under `core`, even when it takes a built-in's name. A workflow script's agents, teammates, resumed agents and agents another plugin spawns also pass through. No line appears.
+- The environment variable `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is set. Claude Code ignores the model the plugin picks. Only the person unsets it.
+- The environment variable `CLAUDE_CODE_EFFORT_LEVEL` is set. It outranks the plugin's effort, and the line shows `env effort`.
+- The person's organization `availableModels` list can replace the pick with another model.
+- The call passes `effort`. The plugin keeps it, and the line shows `caller effort`.
+- A routed call skips and logs `skipped, <reason>`. The reasons are below.
 
-For each reason that holds, tell the user which setting to change, and where. This skill changes none of them.
+### The routed line
 
-## Step 6. Routing check
+- Each routed call logs one dim line that starts with `model-router`, for example `model-router L0 haiku · medium · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok`.
+- It holds the level (`L0`, `L1` or `L2`), the model, the effort, the probability of each chosen level, the Jev model and the token counts. The Jev model and token counts are left out when the reply lacks them.
+- `caller effort` or `env effort` takes the place of the effort when a kept effort applies.
+- A call that Claude Code then refuses adds a second line, `denied`.
+- After a fallback to the second provider, the line ends with ` · via <provider> (<first provider> <reason>)`, for example ` · via openrouter (typesafe HTTP 503)`.
+- After both providers fail, the line names each, for example `skipped, typesafe HTTP 503, openrouter timeout`.
+- A skipped call runs unchanged.
 
-1. If the plugin was just enabled or installed, or a key changed, ask the user to run `/reload-plugins`. Then return to this step.
-2. Ask the routing-check question with the buttons "Check" and "Skip".
-3. On Skip, record "routing check: skipped" and go to the closing summary.
-4. On Check, spawn one Agent call with no `subagent_type`, no `model` and no `name`, and the prompt "Reply with the single word ok."
-5. Read the dim log line, which starts with `model-router`. If no line appears, check the reasons in step 5.
-6. Check that the line names a level, a model and an effort.
-7. If the line names a skip reason, stop and report it.
-8. If Claude Code shows the model the subagent ran on, check it against the line.
-9. Report the result in one line.
+### Skip reasons
 
-The routing-check question reads: "To check routing I will spawn one small subagent. It spends a little model usage."
+- `key unset`: no provider the `provider` value allows has a key. Add one as the Keys facts say.
+- `bad reply`: the provider answered without a valid score for one of the two questions.
+- `timeout`: a first attempt got no answer in 2 s, or the call got no decision in the 8 s limit. The network or provider is slow.
+- `cancelled`: Claude Code abandoned the call before the answer came, for example after an interrupt.
+- `network error`: every attempt failed before an answer came. An organization fetch policy that refuses openrouter.ai shows as this too.
+- `HTTP <status>`: the provider answered with that status. `HTTP 401` means the provider rejected the key. `HTTP 429` and `HTTP 503` mean the provider refused or failed on every attempt.
+- `rejected request`: the SDK refused the request itself.
+- `failed`: any other error.
 
-Read the line as follows:
+### The routing check
 
-- The model matches the model the line names.
-- After a fallback, it ends with ` · via <provider> (<first provider> <reason>)`.
-- `key unset` points to step 3.
-- `timeout`, `network error` or an HTTP status points to the provider or the network.
-- After both providers fail, the line names each provider with its reason, for example `skipped, typesafe HTTP 503, openrouter timeout`.
+- A routing check is one Agent call with no `subagent_type`, no `model` and no `name`, and the prompt "Reply with the single word ok."
+- Run it after the plugin loads with its key, so run `/reload-plugins` first when the plugin was just enabled or a key changed.
+- A good result is a line that names a level, a model and an effort. If Claude Code shows the model the subagent ran on, it matches the line.
+- No line means a reason above holds. A `skipped` line names the reason.
 
-## Closing summary
+For the person: the plugin README at plugins/model-router/README.md has the same options, routing rules and troubleshooting.
 
-List what the setup changed. List the reasons that still turn routing off, and the skipped steps. Include no key and no home-directory path.
+## Limits
+
+- Never take, show or repeat a key. If a key arrives in the chat, do not store it, and tell the person to rotate it.
+- Change a setting only when the person asked for it or agreed.
+- A routing check spawns one small task and spends a little usage, so ask before it.
+- Never pass a value to the config tool. The person's choice comes from its dialog or their own command.
+
+## When you finish
+
+Say what is set, what you changed and what still keeps routing off. Include no key and no home-directory path.

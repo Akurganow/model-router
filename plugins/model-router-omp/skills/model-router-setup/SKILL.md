@@ -1,123 +1,140 @@
 ---
 name: model-router-setup
 description: >
-  Use when the user wants to set up or configure model-router in Oh My Pi (omp),
-  to choose its provider or scope, to add a TypeSafe or OpenRouter key, to find
-  out why routing is off, or to check that routing works.
+  Use when the user wants to set up or check model-router in Oh My Pi (omp): to
+  choose its provider, scope or level models, to add a TypeSafe or OpenRouter
+  key, to find out why routing is off, or to check that routing works.
 ---
 
 # model-router setup for Oh My Pi
 
-model-router scores each routed `task` spawn with Jev, on TypeSafe or OpenRouter. It gives the agent the `smol` role for lookup work, the `middle` role for bounded judgment, or the `slow` role for open judgment. This setup picks the provider and the scope, checks the keys, lists the reasons routing is off, and ends with a routing check.
+model-router scores each routed `task` spawn with Jev, on TypeSafe or OpenRouter. It gives the spawn the `smol` role for lookup work, the `middle` role for bounded judgment, or the `slow` role for open judgment. It also sets the effort.
 
-## Rules
+## What set up means
 
-- Ask one question per screen with `ask`. If it is missing, ask numbered text questions.
-- Make every provider and scope choice through the `model_router_config` tool. Call it with the setting name only.
-- The plugin asks the person in its own dialog and writes the choice. Never ask your own question for these choices. Never pass a value to the tool.
-- Run the setup the same way on the first run and on every re-run.
-- Never take a key through a button or a free-text answer to your own question. If a key arrives, do not repeat or store it. Tell the user to rotate it.
-- Never display a key or any other credential.
-- Ask before you create a missing file. Create a JSON file holding an empty object.
-- If the tool returns `<setting> unchanged: no answer from the dialog`, say that no dialog answered. Name the command the user can type: `/model-router:provider <value>` or `/model-router:scope <value>`.
-- Skip a step the user declines. Name the skipped steps in the closing summary.
-- Keep each message short. Show raw output only when the user needs it.
+Routing works when all of these hold:
 
-## Step 1. Read the settings and the key status
+- The plugin is enabled in omp.
+- The omp setting `task.batch` is on, so each `task` call carries a `tasks` list.
+- A scoring key exists for a provider that the `provider` setting allows.
 
-1. Call the tool with no setting.
-2. Show the lines it returns.
+The person may also choose:
 
-The tool returns the `provider` line, the `scope` line, and `<provider> key: set` or `<provider> key: unset` for each provider the `provider` value allows. An unknown `provider` value counts as `typesafe`. An unknown `scope` value counts as `core`.
+- The `provider` setting, which picks the scoring providers.
+- The `scope` setting, which picks the routed agents.
+- A model for each of the three levels, as an omp model role. A level with no model keeps the agent's model. It still gets the effort for a task the plugin scores.
 
-## Step 2. Provider
+## Your job
 
-1. Call the tool with setting `provider`.
-2. Report the line it returns.
+Find out which of these already hold, with the `model_router_config` tool and omp's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with omp's `ask` tool, never as plain text in your reply.
 
-The [Provider](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#provider) section of the README lists the values. If the line reads `provider unchanged: already <value>`, the user kept the current value. If the output adds `A project value for provider overrides it.`, tell the user.
+## Facts
 
-## Step 3. Keys
+### The tool
 
-1. Call the tool with no setting.
-2. Note each provider that reports `key: unset`.
-3. For each such provider, ask the key question below, once.
-4. On button 1, call the tool with `typesafe_key` or `openrouter_key`.
-5. If the tool returns `<provider> key: saved, checking`, call the tool again with no setting.
-6. Continue only when that call reports `<provider> key: set`.
-7. If the tool returns `<provider> key not saved`, or the key is still unset, say so in one line.
-8. Ask the key question again, with button 1 replaced by the fallback button.
+- Called with no input, `model_router_config` prints the `provider` line, the `scope` line, and one key line for each provider the `provider` value allows.
+- A key line reads `<provider> key: set` or `<provider> key: unset`.
+- An unknown `provider` value counts as `typesafe`. An unknown `scope` value counts as `core`.
+- The tool takes one optional input, `setting`: `provider`, `scope`, `typesafe_key` or `openrouter_key`.
+- With `provider` or `scope`, the plugin asks the person in its own dialog and writes the value the person picks. The tool takes no value from the agent.
+- With `typesafe_key` or `openrouter_key`, the plugin asks for the key in a text dialog and stores it in omp's credential store, as `/login` does. The typed key shows in clear in that dialog.
+- A saved key returns `<provider> key: saved, checking`. The save counts only when a call with no input then reports `<provider> key: set`.
+- A failed key save returns `<provider> key not saved`.
+- A call that picks the current value returns `<setting> unchanged: already <value>`.
+- A call with no dialog answer returns `<setting> unchanged: no answer from the dialog`. It appears when omp has no UI too. The person can type `/model-router:provider <value>` or `/model-router:scope <value>` instead.
+- The tool writes the global plugin settings only. When a project value wins, the output adds `A project value for <setting> overrides it.`
+- A project's settings may only narrow `provider`, from `auto` or `openrouter-first` to `typesafe` or `openrouter`. A project may set `scope` to either value, and it overrides the global one.
+- The plugin reads both settings on every batch, so a change reaches the next batch with no reload.
 
-Skip this step when every allowed provider reports `key: set`. Button 1 stores the key in omp's credential store.
+### Provider
 
-The key question has four buttons:
+- `typesafe` is the default and uses TypeSafe only.
+- `openrouter` uses OpenRouter only.
+- `auto` uses TypeSafe, then OpenRouter if TypeSafe fails.
+- `openrouter-first` uses OpenRouter, then TypeSafe if OpenRouter fails.
+- With `auto` or `openrouter-first` and one key, the provider with the key scores alone.
 
-1. "Enter the key now". Mark it recommended. The mark applies to this question only.
-2. "Write it to the settings files myself". Name the variable and the file, and wait. The variable is `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY`. The file is the `.env` file in omp's agent directory. Name the file by its full path.
-3. "Same, open the files for me". Do what button 2 does. Also open the file with the system opener: `open` on macOS, `xdg-open` on Linux, `start` on Windows.
-4. "Do nothing". Skip the key.
+### Scope
 
-A variable in the `.env` file reaches the environment of every process omp starts. Say so after button 2 or 3.
+- `core` is the default and routes the bundled `task` agent only.
+- `extended` routes every agent whose model the person did not set, bundled agents included.
 
-The fallback button reads "Log in to the provider". Tell the user to run `/login typesafe` or `/login openrouter`.
+### Keys
 
-After button 2 or 3, wait until the user says the key is in place. Then call the tool with no setting and report the key line.
+- TypeSafe: omp's stored `typesafe` credential, which `/login typesafe` stores, then the `TYPESAFE_API_KEY` environment variable.
+- OpenRouter: omp's stored `openrouter` credential, which `/login openrouter` stores, then the `OPENROUTER_API_KEY` environment variable.
+- A key counts as set when either place holds a non-empty value.
+- The person may put a variable in the `.env` file in omp's agent directory. That variable reaches the environment of every process omp starts.
+- After a key variable changes, omp must restart to read it.
+- With no key for any allowed provider, every call skips with `key unset`.
 
-Without a UI, offer buttons 2 to 4 as numbered text.
+### Models
 
-If a key is missing for every allowed provider, say that every call skips with `key unset` until one exists. With `auto` or `openrouter-first` and one key, say that its provider scores alone.
+- Level 0 takes the `smol` role, level 1 the `middle` role and level 2 the `slow` role. omp ships no `middle` role, and any role name works in `modelRoles`.
+- A role that the omp setting `modelRoles` names is set. A role it does not name stays unset, even when omp falls back to its `default` model.
+- The person sets a role in the Roles view of `/models`, whose `+ New role…` row adds `middle`, or under `modelRoles` in omp's `config.yml`.
+- A value is a model selector such as `provider/modelId`. It may end in a thinking level such as `:low`.
+- When the person wants a model in a role, propose one only from the models omp itself lists in `/models`.
+- The plugin has no tool that lists or sets a model. Change a role only on the person's word.
+- A level with an unset role keeps the agent's model. The plugin still sets the effort, except where a kept label below says otherwise.
+- At spawn the plugin passes the named role with the effort, such as `@middle:medium`.
+- With the omp `task` model role set, every `task` item skips with `task model role set`, so `core` routes nothing.
 
-## Step 4. Models
+### The routed line
 
-1. Tell the user that the three slots are omp's `smol`, `middle` and `slow` roles, for levels 0, 1 and 2.
-2. Tell the user where to see and set a role: the Roles view of `/models`, whose `+ New role…` row adds `middle`, or `modelRoles` in omp's `config.yml`. [Models](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#models) says what a value looks like.
-3. Say that a role with no model is no fault: its level runs on the agent's model, and the plugin still sets the effort.
-4. When the user wants a model in a role, propose one only from the models omp itself lists in `/models`.
-5. When the user says a role is changed, ask them to check it in the Roles view of `/models`.
-6. Change a role only on the user's word. The plugin has no tool that lists or sets a model.
+- Each batch prints one line that starts with `model-router`. Entries are numbered by position in the call and joined with ` | `.
+- A routed entry reads `L<level> <role or slot state> · <effort or kept label> · p=<tier>/<work>`, such as `L1 @middle · medium · p=0.66/0.72`.
+- A level with an unset role shows the slot, as `L0 small model unset`, `L1 middle model unset` or `L2 large model unset`.
+- A kept label replaces the effort: `caller effort` when the item's own `effort` applies, `config effort` when a thinking level comes from omp's settings or the role, and `no model patterns` when the spawn has none.
+- After a fallback, the entry ends with ` · via <provider> (<first provider> <reason>)`.
+- A skipped entry reads `task <n>: skipped, <reason>`. After both providers fail, the reason names each provider, as in `skipped, typesafe HTTP 503, openrouter timeout`.
+- A spawn can print a second line for the same item. That later line holds.
+- With `task.batch` off, or with the plugin disabled, no line appears.
+- If omp records the model a subagent ran on, it matches the role the entry names.
 
-## Step 5. Scope
+### Reasons routing is off
 
-1. Call the tool with setting `scope`.
-2. Report the line it returns.
+A closed gate skips every item with the same reason:
 
-The [Scope](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#scope) section of the README says what each value routes. If the output adds `A project value for scope overrides it.`, tell the user.
+- `tool call timeout <n> ms leaves <m> ms to route`: omp's tool call timeout leaves under 1 s to score. Set `extensionHandlers.toolCallTimeoutMs` to 3000 or more.
+- `settings unreadable`: the plugin cannot read its settings, omp's model roles, task model overrides or disabled agents.
+- `key unset`: no allowed provider has a key.
 
-## Step 6. List the reasons routing is off
+An item check skips one item:
 
-Check each reason below. Report every reason that holds, not only the first.
+- `task model role set`: the `task` model role is set, and omp's own routing decides.
+- `<agent> model override set`: `task.agentModelOverrides` has an entry for the agent.
+- `<agent> agent disabled`: `task.disabledAgents` lists the agent.
+- `the item sets its own model`: the item carries `model`.
+- `custom task agent`: under `core`, the `task` agent is not omp's bundled one, or agent discovery failed.
+- `<agent> is outside the core scope`: the scope changed to `core` after the batch.
+- `<agent> agent discovery failed`, `<agent> agent unknown` and `<agent> sets its own model`: under `extended`, omp's agent list fails, lacks the agent, or the agent declares its own model.
+- `seance spawns without the hook omp gives plugins, so its model cannot change`: omp gives the `seance` agent no spawn hook.
+- `<agent> spawns with another model role`: the spawn names a role other than the agent's own.
 
-- The plugin is disabled. No line appears.
-- `task.batch` is off. The call has no `tasks` list, so the plugin prints no line.
-- A batch gate is closed, as [Gate reasons](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#gate-reasons) lists. Every item skips with the gate's reason.
-- An item check fails, as [Item reasons](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#item-reasons) lists. That item skips with its own reason.
+A scored item can skip for these reasons:
 
-For each reason that holds, tell the user which setting to change, and where. This skill changes none of them.
+- `timeout`: the provider gave no answer in time. Scoring has 8 s per batch.
+- `HTTP <status>`: the provider returned an error. `HTTP 401` means it refused the key.
+- `network error`: the request could not connect.
+- `rejected request`: the TypeSafe SDK refused the request.
+- `bad reply`: the reply held no valid score.
+- `failed`: any other error.
 
-## Step 7. Routing check
+These last reasons point to the provider or the network, not to a setting.
 
-1. If the plugin was just enabled or installed, or a key variable changed, ask the user to restart omp. Then return to this step.
-2. Ask the routing-check question with the buttons "Check" and "Skip".
-3. On Skip, record "routing check: skipped" and go to the closing summary.
-4. On Check, spawn one `task` item with no `agent` and the text "Reply with the single word ok."
-5. Read the batch line, which starts with `model-router`. If no line appears, check `task.batch` and that the plugin is enabled.
-6. Check that the entry names a level, either a role such as `L1 @middle` or a slot such as `L1 middle model unset` or `L2 large model unresolved`, and an effort or a kept label such as `caller effort`.
-7. If the entry names a skip reason, stop and report it.
-8. If omp records the model the subagent ran on, check it against the entry.
-9. Report the result in one line.
+### Routing check
 
-The routing-check question reads: "To check routing I will spawn one small subagent. It spends a little model usage."
+- A check spawns one `task` item with no `agent` and the text "Reply with the single word ok."
+- Restart omp first when a plugin or a key variable changed.
+- A good result is a routed entry with a level, a role or slot state, and an effort or kept label. The entry names no skip reason.
 
-Read the entry as follows:
+## Limits
 
-- The model matches the role the entry names. For an unset or unresolved slot, it is the model omp uses without routing.
-- The thinking level matches the effort the entry names, within the range the model supports. A kept label means omp's own level.
-- After a fallback, it ends with ` · via <provider> (<first provider> <reason>)`.
-- `key unset` points to step 3.
-- A gate or item reason points to step 6.
-- `timeout`, `network error` or an HTTP status points to the provider or the network.
-- After both providers fail, the entry names each provider with its reason, for example `skipped, typesafe HTTP 503, openrouter timeout`.
+- Never take, show or repeat a key. If a key reaches the chat, do not store it, and tell the person to rotate it.
+- Change a setting only when the person asked for it or agreed.
+- A routing check spawns one small task and spends a little usage, so ask before it.
 
-## Closing summary
+## When you finish
 
-List what the setup changed. List the reasons that still turn routing off, and the skipped steps. Include no key and no home-directory path.
+Say what is set, what you changed and what still keeps routing off. Include no key and no home-directory path.
