@@ -281,3 +281,15 @@ test("the committed bundle answers a request on stdin with one JSON line", () =>
 		`${JSON.stringify({ outcome: "skip", line: "model-router skipped, key unset" })}\n`,
 	);
 });
+
+test("the manifest and the middle setting say the effort is set unless the user sets one", () => {
+	assert.ok(
+		manifest.description.includes(
+			"It scores a task even when you set no model, and sets the effort unless you set one.",
+		),
+	);
+	assert.equal(
+		schema.middle_model.description,
+		"The model a delegated task gets when Jev rates its task middle, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one.",
+	);
+});

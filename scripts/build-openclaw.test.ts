@@ -169,3 +169,15 @@ test("the bundle holds no absolute path", () => {
 		/(^|[\s"'`(])\/(Users|home|private|tmp)\//,
 	);
 });
+
+test("the manifest and the middle hint say the effort is set unless the user sets one", () => {
+	assert.ok(
+		manifest.description.includes(
+			"It scores a task even when you set no model, and sets the effort unless you set one.",
+		),
+	);
+	assert.equal(
+		manifest.uiHints.middle_model.help,
+		"The model a spawn gets when Jev rates its task middle, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one.",
+	);
+});
