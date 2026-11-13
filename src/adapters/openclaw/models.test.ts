@@ -112,39 +112,18 @@ describe("modelPort", () => {
 		assert.equal(port.writer, null);
 	});
 
-	it("lists only the models the routing's slot check accepts, for no agent", async () => {
-		const fake = createFakeRuntime();
-		fake.runtime.modelAuth.isProviderApiKeyConfiguredAsync = async (params) => {
-			fake.calls.credential.push(params);
-			return params.provider === "stub";
-		};
+	it("lists every offered model with a runtime and runs no slot check", async () => {
+		const fake = createFakeRuntime({ credential: false });
 		const port = modelPort(createFakeApi({ runtime: fake }).api, async () =>
 			data(),
 		);
 		assert.deepEqual(await port.list(), [
 			{ id: "stub/small-a", context: 128000 },
 			{ id: "stub/plain-c" },
+			{ id: "local/local-e" },
 		]);
-		assert.deepEqual(
-			fake.calls.credential.map(({ provider, agentDir }) => [
-				provider,
-				agentDir,
-			]),
-			[
-				["stub", undefined],
-				["stub", undefined],
-				["local", undefined],
-			],
-		);
-		assert.deepEqual(fake.calls.agentDir, []);
-	});
-
-	it("leaves out a model whose string OpenClaw does not resolve", async () => {
-		const fake = createFakeRuntime({ resolved: { error: "unknown model" } });
-		const port = modelPort(createFakeApi({ runtime: fake }).api, async () =>
-			data(),
-		);
-		assert.deepEqual(await port.list(), []);
+		assert.deepEqual(fake.calls.allowedRef, []);
+		assert.deepEqual(fake.calls.credential, []);
 	});
 
 	it("rejects when the lister rejects", async () => {

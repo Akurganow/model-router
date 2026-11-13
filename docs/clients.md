@@ -876,21 +876,21 @@ Source links in this section are permalinks at commit `4ffdd2047d19`, tag `v2026
   OpenClaw's own menu labelled it `Sign-in needed`, and `runtimeChoicesByModel` held no entry for it.
   Every other offered model had a runtime there, `openclaw`.
   (running: the probe printed `byProvider`, `runtimeChoicesByModel` and `modelMenu`)
-- A runtime choice does not mean that routing accepts the model.
-  `local/local-e` had the runtime `openclaw`, and the plugin's slot check, `slotResolves` in `src/adapters/openclaw/checks.ts`, returned false for it, so a slot holding it would read `unresolved`.
+- The plugin lists a model when `byProvider` offers it and `runtimeChoicesByModel` names a runtime for it.
+  It runs no slot check on the list.
+- A listed model can still read `unresolved` once it sits in a slot.
+  `local/local-e` had the runtime `openclaw`, and the plugin's slot check, `slotResolves` in `src/adapters/openclaw/checks.ts`, returned false for it.
   The check returned true for `stub` and `prof` and false for `nokey` and `local`, with and without the agent id `main`.
   So on 2026.11.1 the check found a key stored in the default agent's profile without an agent directory.
   (running: the probe ran the steps of `slotResolves` for every offered model)
-- The plugin lists a model when `byProvider` offers it, `runtimeChoicesByModel` names a runtime for it and `slotResolves` accepts it for no agent, as routing checks a spawn with no agent.
 - A configured model with no `contextWindow` came back with `contextWindow: 128000` and `contextWindowSource: "synthetic"`.
   The plugin leaves the context size out for such a row.
   (running: the probe printed both fields for `stub/plain-c` and `local/local-e`)
 - The `anthropic` provider plugin was enabled with no key and added no row.
   (running: the probe counted the rows per provider)
-- The built bundle's `model_router_config` with setting `models` returned `models the person can run: 3`, then `stub/small-a (128K context)`, `stub/big-b (200K context)` and `stub/plain-c`, on both versions.
-  A call took 10 to 80 ms.
-  With 500 more models under `stub` and 500 under `nokey`, a call took 4.1 to 4.3 s on 2026.11.1 and 2.5 s on 2026.10.10, and listed 503 models.
-  On 2026.11.1 `buildPreparedModelsProviderData` alone took 2.0 to 2.1 s of that, and the slot checks of the 504 models with a runtime took the rest.
+- The built bundle's `model_router_config` with setting `models` returned `models the person can run: 4`, then `stub/small-a (128K context)`, `stub/big-b (200K context)`, `stub/plain-c` and `local/local-e`, on both versions.
+  A call took 7 to 71 ms.
+  With 500 more models under `stub` and 500 under `nokey`, it listed 504 models, and a call took 2.1 s on 2026.11.1 and 0.8 s on 2026.10.10.
   With setting `middle_model` it returned the settings page and the `openclaw config set` command.
   (running: `POST /tools/invoke` with `model_router_config`)
 
@@ -990,7 +990,6 @@ OpenClaw may drop `TYPESAFE_API_KEY` when such a plugin declares it.
 The model list is read for OpenClaw's default agent, because a tool registered as an object gets no agent id.
 No run listed models of an installed provider plugin with a key.
 No run listed a model with runtime-owned auth, such as a CLI backend, because such a run reads the CLI's own sign-in.
-On 2026.10.10 the key check without an agent directory missed a key stored only in a profile, as [OpenClaw model and credential checks](#openclaw-model-and-credential-checks) records, so the list there leaves out such a model.
 No run has shown the `skipped, cancelled` line. It rests on the `ctx.abortSignal` source above and the unit tests.
 `before_model_resolve` can replace a run's model, provider and fallback chain.
 It receives only the prompt and attachment metadata, and its result holds no thinking level.

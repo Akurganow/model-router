@@ -1394,31 +1394,6 @@ var modelToolSentences = (writable) => [
   ] : []
 ].join(" ");
 
-// src/adapters/openclaw/checks.ts
-async function slotResolves(runtime, cfg, agentId, model) {
-  try {
-    const target = agentId === void 0 ? { cfg } : { cfg, agentId };
-    const { modelConfig, modelAuth, agent } = runtime;
-    const { provider: defaultProvider } = modelConfig.resolveDefaultModelForAgent(target);
-    const resolved = modelConfig.resolveAllowedModelRef({
-      ...target,
-      catalog: [],
-      raw: model,
-      defaultProvider
-    });
-    if ("error" in resolved) return false;
-    const agentDir = agentId === void 0 ? void 0 : agent.resolveAgentDir(cfg, agentId);
-    const credential = {
-      provider: resolved.ref.provider,
-      cfg,
-      ...agentDir ? { agentDir } : {}
-    };
-    return await modelAuth.isProviderApiKeyConfiguredAsync(credential) === true;
-  } catch {
-    return false;
-  }
-}
-
 // src/adapters/openclaw/settings.ts
 var PLUGIN_ID = "model-router-openclaw";
 var pluginEntry = (config) => config?.plugins?.entries?.[PLUGIN_ID];
@@ -1512,14 +1487,7 @@ function runnable(data) {
   return listed;
 }
 var modelPort = (api, listModels) => ({
-  list: async () => {
-    const cfg = api.runtime.config.current();
-    const models = runnable(await listModels(cfg));
-    const resolves = await Promise.all(
-      models.map(({ id }) => slotResolves(api.runtime, cfg, void 0, id))
-    );
-    return models.filter((_, index) => resolves[index]);
-  },
+  list: async () => runnable(await listModels(api.runtime.config.current())),
   help: (slot) => `${slotSetting(slot)} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${slotSetting(slot)} <provider/model>`,
   writer: null
 });
@@ -1932,6 +1900,31 @@ async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
     });
   } catch {
     return void 0;
+  }
+}
+
+// src/adapters/openclaw/checks.ts
+async function slotResolves(runtime, cfg, agentId, model) {
+  try {
+    const target = agentId === void 0 ? { cfg } : { cfg, agentId };
+    const { modelConfig, modelAuth, agent } = runtime;
+    const { provider: defaultProvider } = modelConfig.resolveDefaultModelForAgent(target);
+    const resolved = modelConfig.resolveAllowedModelRef({
+      ...target,
+      catalog: [],
+      raw: model,
+      defaultProvider
+    });
+    if ("error" in resolved) return false;
+    const agentDir = agentId === void 0 ? void 0 : agent.resolveAgentDir(cfg, agentId);
+    const credential = {
+      provider: resolved.ref.provider,
+      cfg,
+      ...agentDir ? { agentDir } : {}
+    };
+    return await modelAuth.isProviderApiKeyConfiguredAsync(credential) === true;
+  } catch {
+    return false;
   }
 }
 

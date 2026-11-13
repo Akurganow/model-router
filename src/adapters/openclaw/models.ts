@@ -2,7 +2,6 @@
 import type { Listed, ModelPort } from "../../core/models.ts";
 import { slotSetting } from "../../core/slots.ts";
 import { isRecord } from "../../utils/guards.ts";
-import { slotResolves } from "./checks.ts";
 import { PLUGIN_ID } from "./settings.ts";
 import type {
 	CatalogEntry,
@@ -64,24 +63,17 @@ export function runnable(data: unknown): Listed[] {
 }
 
 /**
- * The model port of the config tool. The list keeps only the models that the
- * routing's slot check accepts, so a listed model put in a slot never reads as
- * unresolved. The tool has no agent id, so the check runs for none, as routing
- * does for a spawn with no agent. OpenClaw gives a tool no dialog, so the port
- * has no writer: the person sets each slot with the text `help` returns.
+ * The model port of the config tool. The list holds what OpenClaw offers with
+ * a runtime and runs no slot check, so a listed model can still read as
+ * unresolved in a slot, for example one whose auth a CLI backend owns.
+ * OpenClaw gives a tool no dialog, so the port has no writer: the person sets
+ * each slot with the text `help` returns.
  */
 export const modelPort = (
 	api: OpenClawApi,
 	listModels: ListModels,
 ): ModelPort => ({
-	list: async () => {
-		const cfg = api.runtime.config.current();
-		const models = runnable(await listModels(cfg));
-		const resolves = await Promise.all(
-			models.map(({ id }) => slotResolves(api.runtime, cfg, undefined, id)),
-		);
-		return models.filter((_, index) => resolves[index]);
-	},
+	list: async () => runnable(await listModels(api.runtime.config.current())),
 	help: (slot) =>
 		`${slotSetting(slot)} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${slotSetting(slot)} <provider/model>`,
 	writer: null,
