@@ -102,6 +102,13 @@ test("the help texts say where each setting changes and never ask for a key in c
 	}
 });
 
+test("the provider help is the chat command and the allowed values, one per line", () => {
+	assert.equal(
+		texts.help.provider,
+		"Type /model-router-provider <value> in the chat.\nprovider: use one of auto, openrouter-first, typesafe, openrouter",
+	);
+});
+
 test("the slot templates and separators are the ones Python fills", () => {
 	assert.equal(texts.modelLine, "{name}: {provider} {model}");
 	assert.equal(texts.modelUnset, "{name}: unset");
