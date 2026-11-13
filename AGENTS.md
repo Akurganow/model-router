@@ -21,6 +21,7 @@ CONTRIBUTING.md already states a rule, this file links to it.
 - They route subagents only. They never change the model of the main session.
 - They never override a model or an effort the user set.
 - They track no spend and no cost budget.
+- They hold no code for a job that a text instruction to an agent can do. A step in a skill replaces a tool that lists or sets what the harness owns.
 - The routing code is TypeScript in `src/`. The Python of the Hermes plugin
   is a shim, as [Repository layout](CONTRIBUTING.md#repository-layout) says.
   Put no routing logic into it.
