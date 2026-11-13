@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createFakeApi } from "./fakes.ts";
+import { createFakeApi, createFakeRuntime } from "./fakes.ts";
 import { modelPort, runnable } from "./models.ts";
 import { PLUGIN_ID } from "./settings.ts";
 import type { OpenClawConfig } from "./types.ts";
@@ -110,6 +110,41 @@ describe("modelPort", () => {
 		assert.deepEqual((await port.list()).length, 3);
 		assert.deepEqual(seen, [config]);
 		assert.equal(port.writer, null);
+	});
+
+	it("lists only the models the routing's slot check accepts, for no agent", async () => {
+		const fake = createFakeRuntime();
+		fake.runtime.modelAuth.isProviderApiKeyConfiguredAsync = async (params) => {
+			fake.calls.credential.push(params);
+			return params.provider === "stub";
+		};
+		const port = modelPort(createFakeApi({ runtime: fake }).api, async () =>
+			data(),
+		);
+		assert.deepEqual(await port.list(), [
+			{ id: "stub/small-a", context: 128000 },
+			{ id: "stub/plain-c" },
+		]);
+		assert.deepEqual(
+			fake.calls.credential.map(({ provider, agentDir }) => [
+				provider,
+				agentDir,
+			]),
+			[
+				["stub", undefined],
+				["stub", undefined],
+				["local", undefined],
+			],
+		);
+		assert.deepEqual(fake.calls.agentDir, []);
+	});
+
+	it("leaves out a model whose string OpenClaw does not resolve", async () => {
+		const fake = createFakeRuntime({ resolved: { error: "unknown model" } });
+		const port = modelPort(createFakeApi({ runtime: fake }).api, async () =>
+			data(),
+		);
+		assert.deepEqual(await port.list(), []);
 	});
 
 	it("rejects when the lister rejects", async () => {

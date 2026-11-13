@@ -2,6 +2,7 @@
 import type { Listed, ModelPort } from "../../core/models.ts";
 import { slotSetting } from "../../core/slots.ts";
 import { isRecord } from "../../utils/guards.ts";
+import { slotResolves } from "./checks.ts";
 import { PLUGIN_ID } from "./settings.ts";
 import type {
 	CatalogEntry,
@@ -27,7 +28,7 @@ export const listFromOpenClaw: ListModels = async (cfg) => {
 const SYNTHETIC = "synthetic";
 
 /**
- * Returns the models the person can run from OpenClaw's /models data: each
+ * Returns the models of OpenClaw's /models data that some runtime can run: each
  * model the list offers (`byProvider`) that OpenClaw names a runtime for
  * (`runtimeChoicesByModel`). The list also offers a configured model that needs
  * a sign-in, and that one has no runtime. The context size comes from the
@@ -63,14 +64,24 @@ export function runnable(data: unknown): Listed[] {
 }
 
 /**
- * The model port of the config tool. OpenClaw gives a tool no dialog, so it
+ * The model port of the config tool. The list keeps only the models that the
+ * routing's slot check accepts, so a listed model put in a slot never reads as
+ * unresolved. The tool has no agent id, so the check runs for none, as routing
+ * does for a spawn with no agent. OpenClaw gives a tool no dialog, so the port
  * has no writer: the person sets each slot with the text `help` returns.
  */
 export const modelPort = (
 	api: OpenClawApi,
 	listModels: ListModels,
 ): ModelPort => ({
-	list: async () => runnable(await listModels(api.runtime.config.current())),
+	list: async () => {
+		const cfg = api.runtime.config.current();
+		const models = runnable(await listModels(cfg));
+		const resolves = await Promise.all(
+			models.map(({ id }) => slotResolves(api.runtime, cfg, undefined, id)),
+		);
+		return models.filter((_, index) => resolves[index]);
+	},
 	help: (slot) =>
 		`${slotSetting(slot)} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${slotSetting(slot)} <provider/model>`,
 	writer: null,
