@@ -3,6 +3,22 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.22.1 - 2026-11-14
+#### Bug Fixes
+- drop promises about the model that ran from the setup skills (9c8052a)
+- keep the setup skills to the plugin's own facts (4cbfe77)
+- give an omp role when omp has a model for it, and name the middle role midl (c62195c)
+- state the goal and every fact in the setup skills (0f78cb3)
+- set the model the user named without checking that it runs (5440a38)
+#### Documentation
+- remove the model check from the OpenClaw and Hermes privacy policies (3a4d112)
+- describe the omp role rule and the midl role (19284ee)
+- drop the API-key advice from the OpenClaw README (b4f5638)
+- drop the slot check from the documents (2a31e4d)
+
+- - -
+
+
 ## v0.22.0 - 2026-11-13
 #### Features
 - add a Models step to the setup skills (63f0ee2)
