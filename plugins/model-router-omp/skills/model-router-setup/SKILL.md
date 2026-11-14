@@ -8,7 +8,7 @@ description: >
 
 # model-router setup for Oh My Pi
 
-model-router scores each routed `task` spawn with Jev, on TypeSafe or OpenRouter. It gives the spawn the `smol` role for lookup work, the `middle` role for bounded judgment, or the `slow` role for open judgment. It also sets the effort.
+model-router scores each routed `task` spawn with Jev, on TypeSafe or OpenRouter. It gives the spawn the `smol` role for lookup work, the `midl` role for bounded judgment, or the `slow` role for open judgment. It also sets the effort.
 
 ## What set up means
 
@@ -26,7 +26,7 @@ The person may also choose:
 
 ## Your job
 
-Find out which of these already hold, with the `model_router_config` tool and omp's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with omp's `ask` tool, never as plain text in your reply.
+Find out which of these already hold, with the `model_router_config` tool and omp's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool omp gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
 
 ## Facts
 
@@ -64,27 +64,22 @@ Find out which of these already hold, with the `model_router_config` tool and om
 - TypeSafe: omp's stored `typesafe` credential, which `/login typesafe` stores, then the `TYPESAFE_API_KEY` environment variable.
 - OpenRouter: omp's stored `openrouter` credential, which `/login openrouter` stores, then the `OPENROUTER_API_KEY` environment variable.
 - A key counts as set when either place holds a non-empty value.
-- The person may put a variable in the `.env` file in omp's agent directory. That variable reaches the environment of every process omp starts.
-- After a key variable changes, omp must restart to read it.
+- A key variable reaches the environment of every process omp starts.
 - With no key for any allowed provider, every call skips with `key unset`.
 
 ### Models
 
-- Level 0 takes the `smol` role, level 1 the `middle` role and level 2 the `slow` role. omp ships no `middle` role, and any role name works in `modelRoles`.
-- A role that the omp setting `modelRoles` names is set. A role it does not name stays unset, even when omp falls back to its `default` model.
-- The person sets a role in the Roles view of `/models`, whose `+ New role…` row adds `middle`, or under `modelRoles` in omp's `config.yml`.
-- A value is a model selector such as `provider/modelId`. It may end in a thinking level such as `:low`.
-- When the person wants a model in a role, propose one only from the models omp itself lists in `/models`.
-- The plugin has no tool that lists or sets a model. Change a role only on the person's word.
-- A level with an unset role keeps the agent's model. The plugin still sets the effort, except where a kept label below says otherwise.
-- At spawn the plugin passes the named role with the effort, such as `@middle:medium`.
+- Level 0 takes the `smol` role, level 1 the `midl` role and level 2 the `slow` role.
+- omp ships `smol` and `slow`. `midl` is the plugin's name, and omp has no such role until the person adds it.
+- The plugin asks omp whether it has a model for the role. If omp has one, the spawn gets that role with the effort, such as `@midl:medium`.
+- If omp has none, the level keeps the agent's model. The plugin still sets the effort, except where a kept label below says otherwise.
 - With the omp `task` model role set, every `task` item skips with `task model role set`, so `core` routes nothing.
 
 ### The routed line
 
 - Each batch prints one line that starts with `model-router`. Entries are numbered by position in the call and joined with ` | `.
-- A routed entry reads `L<level> <role or slot state> · <effort or kept label> · p=<tier>/<work>`, such as `L1 @middle · medium · p=0.66/0.72`.
-- A level with an unset role shows the slot, as `L0 small model unset`, `L1 middle model unset` or `L2 large model unset`.
+- A routed entry reads `L<level> <role or slot state> · <effort or kept label> · p=<tier>/<work>`, such as `L1 @midl · medium · p=0.66/0.72`.
+- A level with no model shows the slot, as `L0 small model unset`, `L1 middle model unset` or `L2 large model unset`.
 - A kept label replaces the effort: `caller effort` when the item's own `effort` applies, `config effort` when a thinking level comes from omp's settings or the role, and `no model patterns` when the spawn has none.
 - After a fallback, the entry ends with ` · via <provider> (<first provider> <reason>)`.
 - A skipped entry reads `task <n>: skipped, <reason>`. After both providers fail, the reason names each provider, as in `skipped, typesafe HTTP 503, openrouter timeout`.
@@ -126,7 +121,6 @@ These last reasons point to the provider or the network, not to a setting.
 ### Routing check
 
 - A check spawns one `task` item with no `agent` and the text "Reply with the single word ok."
-- Restart omp first when a plugin or a key variable changed.
 - A good result is a routed entry with a level, a role or slot state, and an effort or kept label. The entry names no skip reason.
 
 ## Limits

@@ -21,7 +21,7 @@ The person's optional choices:
 
 ## Your job
 
-Find out which of these already hold, with the `model_router_config` tool and Hermes's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with Hermes's `clarify` tool, never as plain text in your reply. An editor (ACP) or API-server session has no `clarify`, so there ask one text question per message.
+Find out which of these already hold, with the `model_router_config` tool and Hermes's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool Hermes gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
 
 ## Facts
 
@@ -36,10 +36,8 @@ Find out which of these already hold, with the `model_router_config` tool and He
 
 ### The backend
 
-- The command is `hermes config set delegation.backend model-router`. The plugin never writes this setting.
+- The plugin never writes `delegation.backend`.
 - The new backend replaces `model_map` or any other backend that was set.
-- A backend change applies from the next Hermes session. In a running session the person types `/delegation model-router --now`.
-- The same holds after the plugin is enabled or a key changes: routing starts in a new session, or after that command.
 
 ### The provider
 
@@ -57,21 +55,18 @@ Find out which of these already hold, with the `model_router_config` tool and He
 ### The keys
 
 - A key counts as set when its variable holds non-blank text. The plugin reads a key only for a provider the `provider` setting allows.
-- The TypeSafe key is `TYPESAFE_API_KEY`. The person sets it in the `.env` file of the Hermes home, or in the plugin's settings form in Hermes Desktop.
-- The OpenRouter key is `OPENROUTER_API_KEY`. The person sets it in the `.env` file of the Hermes home only.
-- The tool with `typesafe_key` or `openrouter_key` returns these locations and never a key.
+- The TypeSafe key is the variable `TYPESAFE_API_KEY`. The plugin's settings form in Hermes Desktop also sets it.
+- The OpenRouter key is the variable `OPENROUTER_API_KEY`. No settings form sets it.
+- The tool with `typesafe_key` or `openrouter_key` returns where the person sets that key, and never a key.
 - Hermes's own provider credentials never serve as a Jev key.
 - A key in the environment is visible to every process Hermes starts.
-- A key the person just set shows as `set` once Hermes reads it again, which can need a new session.
 - With no key for any allowed provider, every task skips with `key unset`.
 
 ### The models
 
 - Each model setting is a mapping with two fields. `provider` is a Hermes provider id, such as `openrouter`. `model` is a model id as Hermes lists it for that provider.
 - A mapping with no `model` counts as unset.
-- The person sets a slot in the plugin's settings form in Hermes Desktop, or in `config.yaml` under `plugins.entries.model-router-hermes.settings.<slot>`.
-- The other way is `hermes config set plugins.entries.model-router-hermes.settings.<slot> '{"provider": "<provider>", "model": "<model>"}'`, with `small_model`, `middle_model` or `large_model` as the slot.
-- The plugin has no tool that lists or sets a model. Propose a model only from the models Hermes lists.
+- The three settings are the plugin's own settings in Hermes's config, under the plugin id `model-router-hermes`.
 - For a scored task, level 0 sets the `small_model`, level 1 the `middle_model` and level 2 the `large_model`. The task gets that slot's `model` and `provider`.
 - A delegating model can pin `level` on a task. The task then gets that level's model with no scoring, and carries no `route.label` while the model is set.
 - A pinned task whose slot has no model runs on Hermes's model, with the label `model-router L<level> <slot> model unset`.
