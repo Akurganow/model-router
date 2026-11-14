@@ -2,7 +2,7 @@
 
 model-router for Hermes Agent is a plugin published by Akurganow. This policy
 says what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-13.
+2026-11-14.
 
 ## Where requests go
 
@@ -147,13 +147,9 @@ as Hermes's own default backend does, with a model, a provider and an effort
 changed when it routes. When the section sets no effort, every route carries
 the task's `reasoning_effort` parameter.
 
-For the model of the slot the level picks, the plugin asks Hermes to resolve the model's
-provider and to list the provider's models from Hermes's cached catalogue. For a slot that names
-`anthropic`, it reads whether `ANTHROPIC_API_KEY`, `ANTHROPIC_TOKEN` and
-`CLAUDE_CODE_OAUTH_TOKEN` are set, to decide whether the credential stays
-offline. It never sends them. These calls make no network request and refresh
-no credential. Of these reads, only the role text leaves your machine, in the
-request, as described above.
+The plugin reads no credential of a model's provider. It sets the model and
+provider you named in a slot on the task. Of its reads, only the role text
+leaves your machine, in the request, as described above.
 
 The `model_router_config` tool only reads.
 [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool)
@@ -180,9 +176,7 @@ Hermes's default backend would give the task.
 
 The plugin cannot promise more than that:
 
-- The plugin checks a model offline before it sets one. The check cannot see a
-  model that Hermes's catalogue lists and the provider rejects at run time. The
-  child can still fail on the model.
+- The child can still fail on the model.
 - A model set on a task loses Hermes's configured fallbacks, unless
   `delegation.fallback_providers` declares them.
 - Hermes fails delegation closed when `delegation.backend` names a backend that

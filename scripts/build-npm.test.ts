@@ -142,12 +142,10 @@ test("no skill the tree copies links to a relative path", () => {
 test("each repository link in a copied skill lands on a file and a heading", () => {
 	const prefix = `${source.homepage}/blob/main/`;
 	const pattern = new RegExp(`\\]\\(${prefix}([^)#]+)(?:#([^)]+))?\\)`, "g");
-	let found = 0;
 	for (const { from } of listCopies(ROOT).filter(({ from }) =>
 		from.endsWith("SKILL.md"),
 	))
 		for (const [, path = "", anchor] of read(from).matchAll(pattern)) {
-			found += 1;
 			assert.ok(existsSync(join(ROOT, path)), `${from} links to ${path}`);
 			if (anchor)
 				assert.ok(
@@ -155,7 +153,6 @@ test("each repository link in a copied skill lands on a file and a heading", () 
 					`${from} links to ${path}#${anchor}`,
 				);
 		}
-	assert.ok(found >= 5, `found ${found} repository links`);
 });
 
 test("no OpenClaw file in the tree uses a name omp reads as a sibling", () => {

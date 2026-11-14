@@ -2,7 +2,7 @@
 
 model-router for Oh My Pi is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-13.
+2026-11-14.
 
 ## Where requests go
 
@@ -97,7 +97,7 @@ that declare no model.
 - A project can set `scope` in its plugin settings, and its value overrides
   yours. A project that sets `extended` sends the descriptions and task text of
   your agents to your provider without your choice, and it can raise spend,
-  because routed agents may run on the `smol`, `middle` and `slow` model roles
+  because routed agents may run on the `smol`, `midl` and `slow` model roles
   you set.
 
 ## Requests and billing
@@ -171,7 +171,7 @@ whether your own agent replaced a bundled one or sets its own model.
 `modelRoles`, `task.maxEffort` and `task.enableEffort` also decide whether it
 keeps your effort or caps its own. As each routed subagent starts, it reads the
 model patterns and the model role omp sends with the spawn, and the item's
-`effort`. It also checks whether the `smol`, `middle` and `slow` roles
+`effort`. It also checks whether the `smol`, `midl` and `slow` roles
 resolve to a model. For each batch it also reads omp's
 `extensionHandlers.toolCallTimeoutMs` setting, to fit its scoring time into
 it. Nothing from these leaves your machine, except the

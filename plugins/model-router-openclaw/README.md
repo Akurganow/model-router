@@ -5,9 +5,9 @@ An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model an
 ## What it does
 
 - It scores each routed `sessions_spawn` call through Jev, using the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
-- Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A slot can be unset, or name a model OpenClaw cannot run. Its level then keeps OpenClaw's model and gets the effort alone, as [Routing](#routing) says.
+- Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A slot you leave unset keeps OpenClaw's model for its level, which then gets the effort alone, as [Routing](#routing) says.
 - It sets `thinking` from a fixed ladder of efforts, as [Routing](#routing) says.
-- It sets only a model you assigned, and never a model that OpenClaw cannot resolve with a credential.
+- It sets only a model you assigned.
 - It never overrides a model you chose, nor an effort the spawn or the global config sets. [Which spawns are routed](#which-spawns-are-routed) lists the model rules, and [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the effort rules.
   Under `extended`, [rule 4](#efforts-the-plugin-keeps) replaces the requester's `subagents.thinking`, which OpenClaw applies to a cross-agent spawn.
 - Under the default `core` scope, it routes only [the spawn of the requesting agent itself](#the-spawn-of-the-requesting-agent-itself). [Scope](#scope) defines the term.
@@ -48,7 +48,7 @@ Routing needs a key. The models in the slots decide what each level runs on. The
    openclaw config set plugins.entries.model-router-openclaw.config.large_model <provider/model>
    ```
 
-   Pick models of a provider that has an API key, because the plugin sets no model that OpenClaw holds no credential for. [Choosing models](#choosing-models) has more. The plugin has no command for the models.
+   [Choosing models](#choosing-models) has more. The plugin has no command for the models.
 2. Add a [key](#keys).
 3. Pick the [provider](#provider) and the [scope](#scope) if the defaults do not fit.
 4. Watch the Gateway log with `openclaw logs --follow --plain`, and start a subagent. [The log line](#the-log-line) shows the decision.
@@ -119,7 +119,7 @@ A Gateway client without `operator.admin` gets OpenClaw's own `This command requ
 
 Only the owner can write. For anyone else the command prints `<setting> unchanged: only the owner can change it` and the current value.
 
-The read-only `model_router_config` tool returns the `provider` line, the `scope` line, the three model lines and the key lines. A model line shows the slot string as you wrote it, or `unset`. The tool runs no check on it. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show.
+The read-only `model_router_config` tool returns the `provider` line, the `scope` line, the three model lines and the key lines. A model line shows the slot string as you wrote it, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show.
 
 ```text
 provider: auto (typesafe, then openrouter)
@@ -145,9 +145,9 @@ Given `provider` or `scope`, the tool returns the command to type. Given `small_
 
 The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](../model-router/docs/model-choice.md#the-default-level) explains the factors.
 
-After scoring, the plugin checks the slot the level picks. The slot is unset when it names no model. It is unresolved when OpenClaw cannot resolve its string for the target agent, or holds no credential for its provider. [Choosing models](#choosing-models) names a case. A model of a local provider with no key reads unresolved too, because the check needs a credential for its provider. [OpenClaw model and credential checks](../../docs/clients.md#openclaw-model-and-credential-checks) has the run. The check makes no network request.
+After scoring, the plugin reads the slot the level picks. The slot is unset when it names no model. The plugin sets the model you named and does not check that it runs.
 
-An unset or unresolved slot keeps the model OpenClaw would give the spawn, and the line names the slot: `L1 middle model unset` or `L2 large model unresolved`. The plugin still sets the effort, except where [Efforts the plugin keeps](#efforts-the-plugin-keeps) says otherwise. [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) has the rule the omp, OpenClaw and Hermes plugins share.
+An unset slot keeps the model OpenClaw would give the spawn, and the line names the slot: `L1 middle model unset`. The plugin still sets the effort, except where [Efforts the plugin keeps](#efforts-the-plugin-keeps) says otherwise. [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) has the rule the omp, OpenClaw and Hermes plugins share.
 
 Before you downgrade to a release without `middle_model`, remove the `middle_model` setting. OpenClaw checks the plugin's config against the manifest's closed schema, so it rejects a setting the older manifest lacks. After such a downgrade, the Gateway does not start until you remove the setting. `openclaw config validate` names the setting. [OpenClaw package files](../../docs/clients.md#openclaw-package-files) has the runs.
 
@@ -175,7 +175,7 @@ The first rule that matches decides. The later rules are not checked.
 
 Under `extended` with both a global value and a per-agent value, rule 2 decides. The plugin sets no `thinking`, and OpenClaw's own precedence applies the per-agent value.
 
-With an unset or unresolved slot and a kept effort, there is nothing to set. The plugin returns nothing and still logs the line.
+With an unset slot and a kept effort, there is nothing to set. The plugin returns nothing and still logs the line.
 
 ## Which spawns are routed
 
@@ -246,14 +246,13 @@ model-router L1 middle model unset · caller effort · p=0.62/0.70
 model-router skipped, key unset
 ```
 
-A routed line reads `L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`. The model is the slot string as you wrote it. The slot state is `<slot> model unset` or `<slot> model unresolved`, as [Routing](#routing) says. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else it holds.
+A routed line reads `L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`. The model is the slot string as you wrote it. The slot state is `<slot> model unset`, as [Routing](#routing) says. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else it holds.
 
 A skipped line reads `skipped, <reason>`. [Which spawns are routed](#which-spawns-are-routed) lists the reasons. The plugin logs one warning when a hook timeout makes it inert, as [Hook timeout](#hook-timeout) says.
 
 ## Choosing models
 
-- **Runtime-owned auth.** A model whose provider authenticates through the runtime, such as the Claude CLI backend, reads as unresolved. The spawn keeps OpenClaw's model, and the line reads `<slot> model unresolved`.
-- **Sandboxed children.** OpenClaw does not sandbox a CLI backend. A child that must run sandboxed fails with a CLI-backend model. The slots take API-key models.
+- **Sandboxed children.** OpenClaw does not sandbox a CLI backend. A child that must run sandboxed fails with a CLI-backend model.
 - **Structured results.** A spawn that sets `outputSchema` runs a collector child, which needs tools. Assign tool-capable models to every slot.
 - **Thinking.** The ladder sets `thinking` on the child. A model that keeps thinking off by default thinks when routing sets it.
 - **An effort the model lacks.** OpenClaw rejects a spawn's `thinking` only when it names no known effort. It clamps a known effort the model does not support, such as `xhigh`, to a supported one at run time and shows a notice.

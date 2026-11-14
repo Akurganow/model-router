@@ -90,7 +90,6 @@ class SkillTest(unittest.TestCase):
         text = (SKILLS_DIR / "model-router-setup" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn(f"`{TEXTS['toolName']}`", text)
         self.assertIn(f"/{TEXTS['commandName']} <value>", text)
-        self.assertIn("/delegation model-router --now", text)
         self.assertIn("delegation.backend", text)
 
     def test_the_skill_holds_no_key_shaped_text(self):

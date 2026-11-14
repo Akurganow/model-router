@@ -2,7 +2,7 @@
 
 model-router for OpenClaw is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-13.
+2026-11-14.
 
 ## Where requests go
 
@@ -149,10 +149,8 @@ At each spawn the plugin reads OpenClaw's live configuration: its own settings,
 `agents.defaults.subagents.model` and `.thinking`, and for the requesting agent
 and, under `extended`, the target agent, `description`, `model`,
 `subagents.model` and `subagents.thinking`. It finds an agent as
-[The agent roster](README.md#the-agent-roster) says. For the model of the slot
-the level picks, it asks OpenClaw to resolve the model string and to report whether a
-credential exists for that model's provider. These calls make no network
-request and refresh no credential. Nothing from these reads leaves your
+[The agent roster](README.md#the-agent-roster) says. It reads no credential of a model's provider and sets the model
+you named in the slot. Nothing from these reads leaves your
 machine, except the role text the request carries as described above.
 
 The plugin writes one line per routed or skipped spawn to the Gateway log and
@@ -168,8 +166,8 @@ open, it returns nothing to OpenClaw.
 
 The plugin cannot promise more than that:
 
-- The plugin checks a model before it sets one. OpenClaw can still reject the
-  rewritten spawn, and the child can still fail on the model.
+- OpenClaw can still reject the rewritten spawn, and the child can still fail
+  on the model.
 - A model set on a spawn loses OpenClaw's configured fallbacks.
 
 ## Your choices

@@ -54,14 +54,6 @@ export type OpenClawConfig = {
 	};
 };
 
-// src/agents/model-ref-shared.ts.
-export type ModelRef = { provider: string; model: string };
-
-// src/agents/model-selection-resolve.ts: a rejected model string comes back as `error`.
-export type ResolvedModelRef =
-	| { ref: ModelRef; key: string }
-	| { error: string };
-
 // src/plugins/runtime/types-core.ts: `RuntimeMutateConfigFileParams`, reduced; `afterWrite` is required there.
 export type ConfigMutation = {
 	afterWrite:
@@ -78,28 +70,6 @@ export type PluginRuntime = {
 		current: () => OpenClawConfig;
 		mutateConfigFile: (params: ConfigMutation) => Promise<unknown>;
 	};
-	modelConfig: {
-		resolveDefaultModelForAgent: (params: {
-			cfg: OpenClawConfig;
-			agentId?: string;
-		}) => ModelRef;
-		resolveAllowedModelRef: (params: {
-			cfg: OpenClawConfig;
-			catalog: readonly unknown[];
-			raw: string;
-			defaultProvider: string;
-			defaultModel?: string;
-			agentId?: string;
-		}) => ResolvedModelRef;
-	};
-	modelAuth: {
-		isProviderApiKeyConfiguredAsync: (params: {
-			provider: string;
-			cfg?: OpenClawConfig;
-			agentDir?: string;
-		}) => Promise<boolean>;
-	};
-	agent: { resolveAgentDir: (cfg: OpenClawConfig, agentId: string) => string };
 };
 
 // src/plugins/hook-types.ts: `PluginHookBeforeToolCallEvent`.

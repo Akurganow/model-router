@@ -252,6 +252,7 @@ for (const [reason, name, close] of closed)
 test("no model in any slot still scores each item and sets the effort", async () => {
 	install();
 	world.config.modelRoles = {};
+	world.resolvable.clear();
 	await world.toolCall("c", {
 		tasks: [{ task: "level0 a" }, { task: "level1 b" }, { task: "level2 c" }],
 	});
@@ -265,29 +266,30 @@ test("no model in any slot still scores each item and sets the effort", async ()
 	});
 });
 
-test("a role that modelRoles names and omp does not resolve reads as unresolved in the batch", async () => {
+test("a role omp does not resolve reads as unset in the batch", async () => {
 	install();
 	world.resolvable.delete("@smol");
 	await world.toolCall("c", { tasks: [{ task: "level0 a" }] });
 	assert.deepEqual(world.notes, [
-		"model-router task 1: L0 small model unresolved · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"model-router task 1: L0 small model unset · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
 	]);
 });
 
 test("a set middle role gives level 1 its role and the effort", async () => {
 	install();
+	world.resolvable.add("@midl");
 	world.config.modelRoles = {
 		smol: "prov/small",
-		middle: "prov/mid",
+		midl: "prov/mid",
 		slow: "prov/large",
 	};
 	await world.toolCall("c", { tasks: [{ task: "level1 a" }] });
 	assert.deepEqual(world.notes, [
-		`${PREFIX}task 1: L1 @middle · medium · p=0.90/0.90${SUFFIX}`,
+		`${PREFIX}task 1: L1 @midl · medium · p=0.90/0.90${SUFFIX}`,
 	]);
 	assert.deepEqual(await world.spawn("c:0", { patterns: ["prov/parent"] }), {
-		model: "@middle:medium",
-		note: `${PREFIX}L1 @middle · medium · p=0.90/0.90${SUFFIX}`,
+		model: "@midl:medium",
+		note: `${PREFIX}L1 @midl · medium · p=0.90/0.90${SUFFIX}`,
 	});
 });
 

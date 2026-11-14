@@ -90,11 +90,6 @@ class NodeRequestTest(RouterCase):
                     request = self.request(settings=good_settings(**{f"{slot}_model": value}))
                     self.assertIsNone(request["models"][slot])
 
-    def test_no_slot_is_checked_before_node(self):
-        calls = []
-        self.request(api=fake_api(list_models=lambda provider: calls.append(provider) or []))
-        self.assertEqual(calls, [])
-
     def test_a_config_effort_is_kept_by_config(self):
         for value, kept in (
             (None, None),

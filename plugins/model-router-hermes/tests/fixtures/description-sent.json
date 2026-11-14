@@ -30,8 +30,7 @@
 		"outcome": "route",
 		"slot": "middle",
 		"effort": "medium",
-		"line": "model-router L1 middle model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
-		"unresolvedLine": null
+		"line": "model-router L1 middle model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
 	},
 	"route": {
 		"api_mode": "chat_completions",

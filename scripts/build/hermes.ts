@@ -75,9 +75,12 @@ const levelOf = (slot: Slot): Level =>
 	LEVELS.find((level) => slotForLevel(level) === slot) ?? 0;
 
 // The label of a pinned level whose slot has no model, worded by pickModel. It carries no probabilities, since Jev was not asked.
-const pinnedLabel = (slot: Slot, state: "unset" | "unresolved"): string =>
+const pinnedLabel = (slot: Slot): string =>
 	LINE_PREFIX +
-	pinnedLine(levelOf(slot), pickModel(levelOf(slot), { state }).target);
+	pinnedLine(
+		levelOf(slot),
+		pickModel(levelOf(slot), { state: "unset" }).target,
+	);
 
 // What the Python shim needs and must not retype: the limits, the provider rules, the efforts, the finished skip lines and the pinned labels.
 const constants = (source: Source): JsonObject => {
@@ -97,10 +100,7 @@ const constants = (source: Source): JsonObject => {
 		),
 		slots: slotRecord((slot) => ({
 			setting: slotSetting(slot),
-			pinned: {
-				unset: pinnedLabel(slot, "unset"),
-				unresolved: pinnedLabel(slot, "unresolved"),
-			},
+			pinned: { unset: pinnedLabel(slot) },
 		})),
 		levels: [...LEVELS],
 		// Indexed by level: the slot each level takes its model from.

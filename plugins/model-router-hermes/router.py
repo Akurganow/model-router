@@ -7,7 +7,7 @@ import logging
 import math
 import time
 
-from . import checks, node, params
+from . import node, params
 from .budget import Budget
 from .constants import CONSTANTS, MS_PER_SECOND, PLUGIN_DIR
 from .hermes_api import live_api
@@ -93,7 +93,7 @@ class Router:
         }
         level = params.level(task, self._constants)
         if level is not None:
-            return self._pinned(level, config, base, slot_settings, window)
+            return self._pinned(level, config, base, slot_settings)
         provider = read_provider(self._ctx, self._constants)
         keys = found_keys(self._api, self._constants, provider)
         # These gates read Hermes state, and a skipped task starts no Node.
@@ -117,9 +117,9 @@ class Router:
             "keptEffort": _kept_effort(config, params.caller_effort(task, self._constants)),
             "description": params.description(task),
         }
-        return self._ask_node(node_path, request, base, slot_settings, window)
+        return self._ask_node(node_path, request, base, slot_settings)
 
-    def _pinned(self, level, config, base, slot_settings, window):
+    def _pinned(self, level, config, base, slot_settings):
         """The pass-through of a pinned level: no Jev call, and a label only when its slot has no model."""
         if _subagent_model_set(config):
             return self._skip(base, "subagentModelSet")
@@ -128,19 +128,9 @@ class Router:
         labels = self._constants["slots"][name]["pinned"]
         if not slot.has_model:
             return {**base, "label": labels["unset"]}
-        resolved = self._resolved(slot, window)
-        if resolved is None:
-            return self._skip(base, "timeout")
-        if not resolved:
-            return {**base, "label": labels["unresolved"]}
         return {**base, "model": slot.model, "provider": slot.provider}
 
-    def _resolved(self, slot, window):
-        """True or False when the slot's offline check finishes within the window, else None."""
-        wait_s = max(window.remaining_ms(), 0) / MS_PER_SECOND
-        return checks.slot_resolved_within(slot, self._api, wait_s)
-
-    def _ask_node(self, node_path, request, base, slot_settings, window):
+    def _ask_node(self, node_path, request, base, slot_settings):
         timeout_s = (request["budgetMs"] + self._constants["graceMs"]) / MS_PER_SECOND
         try:
             answer = node.run_node([node_path, self._script], request, timeout_s)
@@ -148,7 +138,7 @@ class Router:
             return self._skip(base, "timeout")
         except node.NodeFailed:
             return self._skip(base, "failed")
-        return self._apply(answer, base, slot_settings, window)
+        return self._apply(answer, base, slot_settings)
 
     def _in_protocol(self, answer):
         """Whether a route names a slot and an effort the settings and the ladder hold."""
@@ -156,25 +146,16 @@ class Router:
             answer.effort is None or answer.effort in self._constants["efforts"]
         )
 
-    def _apply(self, answer, base, slot_settings, window):
+    def _apply(self, answer, base, slot_settings):
         # Node's lines are finished, prefix included.
         route = {**base, "label": answer.line}
         if isinstance(answer, node.Skip):
             return route
         if not self._in_protocol(answer):
             return self._skip(base, "failed")
-        # Only the slot Node picked is checked, and a slot with no usable model keeps Hermes's model.
         slot = slot_settings[answer.slot]
         if slot.has_model:
-            resolved = self._resolved(slot, window)
-            if resolved is None:
-                return self._skip(base, "timeout")
-            if resolved:
-                route.update(model=slot.model, provider=slot.provider)
-            elif answer.unresolved_line is None:
-                return self._skip(base, "failed")
-            else:
-                route["label"] = answer.unresolved_line
+            route.update(model=slot.model, provider=slot.provider)
         if answer.effort is not None:
             route["reasoning_effort"] = answer.effort
         return route

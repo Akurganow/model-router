@@ -267,86 +267,45 @@ test("a throwing lookup or discovery closes the gate", async () => {
 	});
 });
 
-test("the batch reads each slot from modelRoles and the resolver", async () => {
-	world.config.modelRoles = { smol: "a/small", middle: "a/mid", slow: "" };
-	world.resolvable = new Set(["@smol", "@slow"]);
+test("the batch reads each slot from omp's resolver", async () => {
+	world.config.modelRoles = {};
+	world.resolvable = new Set(["@smol", "@midl"]);
 	const batch = await checkGates(world.imports, world.pi, ctx());
 	assert.ok(!("closed" in batch));
 	assert.deepEqual(batch.facts.models, {
 		small: { state: "set", model: "@smol" },
-		middle: { state: "unresolved" },
+		middle: { state: "set", model: "@midl" },
 		large: { state: "unset" },
 	});
 });
 
-test("a throwing resolver leaves the gate open and each named slot unresolved", async () => {
-	world.config.modelRoles = { smol: "a/small", slow: "a/large" };
+test("a throwing resolver leaves the gate open and each slot unset", async () => {
 	const broken = { ...ctx(), models: { resolve: throws } };
 	const batch = await checkGates(world.imports, world.pi, broken);
 	assert.ok(!("closed" in batch));
 	assert.deepEqual(batch.facts.models, {
-		small: { state: "unresolved" },
+		small: { state: "unset" },
 		middle: { state: "unset" },
-		large: { state: "unresolved" },
+		large: { state: "unset" },
 	});
 });
 
-const ROLE_OF = { small: "smol", middle: "middle", large: "slow" } as const;
-// patternsOf reads these values as no pattern, so the role is unset whatever omp resolves.
-const NO_PATTERN: readonly [string, unknown][] = [
-	["undefined", undefined],
-	["null", null],
-	["an empty string", ""],
-	["a string of spaces", "   "],
-	["an empty list", []],
-];
-const SOME_PATTERN: readonly [string, unknown][] = [
-	["a list with a blank entry", ["x", ""]],
-	["a comma list", "a, b"],
-];
+const ROLE_OF = { small: "smol", middle: "midl", large: "slow" } as const;
+
 for (const slot of ["small", "middle", "large"] as const) {
 	const name = ROLE_OF[slot];
-	for (const [label, value] of NO_PATTERN)
-		for (const resolving of [true, false])
-			test(`${name} as ${label} is unset, ${resolving ? "resolving" : "not resolving"}`, () => {
-				world.resolvable = new Set(resolving ? [`@${name}`] : []);
-				assert.deepEqual(slotModel(ctx(), { [name]: value }, slot), {
-					state: "unset",
-				});
-			});
-	for (const [label, value] of SOME_PATTERN) {
-		test(`${name} as ${label} is set when omp resolves it`, () => {
-			world.resolvable = new Set([`@${name}`]);
-			assert.deepEqual(slotModel(ctx(), { [name]: value }, slot), {
-				state: "set",
-				model: `@${name}`,
-			});
+	test(`${name} is set when omp resolves it`, () => {
+		world.resolvable = new Set([`@${name}`]);
+		assert.deepEqual(slotModel(ctx(), slot), {
+			state: "set",
+			model: `@${name}`,
 		});
-		test(`${name} as ${label} is unresolved when omp does not resolve it`, () => {
-			world.resolvable = new Set();
-			assert.deepEqual(slotModel(ctx(), { [name]: value }, slot), {
-				state: "unresolved",
-			});
-		});
-	}
+	});
+	test(`${name} is unset when omp does not resolve it`, () => {
+		world.resolvable = new Set();
+		assert.deepEqual(slotModel(ctx(), slot), { state: "unset" });
+	});
 }
-
-test("a role that only the prototype holds is unset", () => {
-	world.resolvable = new Set(["@smol", "@middle", "@slow"]);
-	const roles = Object.create({
-		smol: "prov/small",
-		middle: "prov/mid",
-		slow: "prov/large",
-	}) as Record<string, unknown>;
-	for (const slot of ["small", "middle", "large"] as const)
-		assert.deepEqual(slotModel(ctx(), roles, slot), { state: "unset" });
-});
-
-test("a role that modelRoles does not name is unset, even when omp resolves it", () => {
-	world.resolvable = new Set(["@smol", "@middle", "@slow"]);
-	for (const slot of ["small", "middle", "large"] as const)
-		assert.deepEqual(slotModel(ctx(), {}, slot), { state: "unset" });
-});
 
 const forAgent = async (agent: string, modelRole?: string) =>
 	routing(

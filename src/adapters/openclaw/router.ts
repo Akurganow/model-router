@@ -16,7 +16,6 @@ import {
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
 import { nonEmpty } from "../../utils/text.ts";
-import { slotResolves } from "./checks.ts";
 import { type Gate, gateSpawn } from "./gates.ts";
 import { readSpawn, type SpawnRequest } from "./params.ts";
 import {
@@ -29,7 +28,6 @@ import type {
 	BeforeToolCallHandler,
 	BeforeToolCallResult,
 	OpenClawApi,
-	PluginRuntime,
 	ToolContext,
 } from "./types.ts";
 
@@ -111,20 +109,11 @@ async function score(
 }
 
 /**
- * Returns the state of the slot the level picks: its model when OpenClaw
- * resolves it for the agent, `unresolved` when it does not, and `unset` when
- * the setting names none. Only that slot is checked. Never rejects.
+ * Returns the state of the slot the level picks: `set` with its model when the
+ * setting names one, `unset` when it names none. The model is not checked.
  */
-async function slotOf(
-	runtime: PluginRuntime,
-	settings: OpenClawSettings,
-	{ config, target }: Route,
-	level: Level,
-): Promise<SlotModel> {
-	const model = settings.models[slotForLevel(level)];
-	const resolved =
-		model !== undefined && (await slotResolves(runtime, config, target, model));
-	return slotState(model, resolved);
+function slotOf(settings: OpenClawSettings, level: Level): SlotModel {
+	return slotState(settings.models[slotForLevel(level)]);
 }
 
 /**
@@ -163,14 +152,10 @@ async function routeGated(
 	gate: Exclude<Gate, { outcome: "pass" }>,
 	log: (message: string) => void,
 ): Promise<BeforeToolCallResult | undefined> {
-	const { api } = spawn;
 	if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
 	const decided = await score(spawn, settings, keys, gate);
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
-	const picked = pickModel(
-		decided.tier,
-		await slotOf(api.runtime, settings, gate, decided.tier),
-	);
+	const picked = pickModel(decided.tier, slotOf(settings, decided.tier));
 	const { model } = picked;
 	const kept = gate.effort.kind === "keep" ? gate.effort.label : undefined;
 	const effort = effortFor(decided.tier, decided.work);

@@ -190,10 +190,6 @@ def fake_api(**overrides: Any) -> Any:
     api = api_type(
         get_secret=lambda name: secrets.get(name),
         find_node=lambda: sys.executable,
-        auth_type=lambda provider: "api_key",
-        is_refreshable=lambda provider: False,
-        resolve_runtime=lambda provider, model: None,
-        list_models=lambda provider: ["small-model", "middle-model", "large-model"],
     )
     return dataclasses.replace(api, **overrides)
 
@@ -228,21 +224,14 @@ def default_route(config: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in config.items() if k != "service_tier"}
 
 
-UNRESOLVED_LINE = PREFIX + "L1 test unresolved line"
-
-
 def route_reply(
-    slot: str | None,
-    effort: str | None,
-    line: str = PREFIX + "L1 test line",
-    unresolved_line: str | None = UNRESOLVED_LINE,
+    slot: str | None, effort: str | None, line: str = PREFIX + "L1 test line"
 ) -> dict[str, Any]:
     return {
         "outcome": "route",
         "slot": slot,
         "effort": effort,
         "line": line,
-        "unresolvedLine": unresolved_line,
     }
 
 

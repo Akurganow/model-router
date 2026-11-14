@@ -11,7 +11,7 @@ Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For th
 | Harness | The plugin sets | Questions to Jev | Starts a program | Minimum version | Reference |
 | --- | --- | --- | --- | --- | --- |
 | Claude Code | `model` and `effort` | 2 | no | v2.1.308 | [plugin README](plugins/model-router/README.md) |
-| Oh My Pi | the `smol`, `middle` or `slow` role and the thinking level | 2 | no | v18.12.6 | [plugin README](plugins/model-router-omp/README.md) |
+| Oh My Pi | the `smol`, `midl` or `slow` role and the thinking level | 2 | no | v18.12.6 | [plugin README](plugins/model-router-omp/README.md) |
 | OpenClaw | `model` and `thinking` | 2 | no | 2026.10.10 | [plugin README](plugins/model-router-openclaw/README.md) |
 | Hermes Agent | `model`, `provider` and `reasoning_effort` | 2 | yes, Node once per task | 0.22.6 | [plugin README](plugins/model-router-hermes/README.md) |
 
@@ -37,10 +37,10 @@ holds the rules.
 **Oh My Pi.** The plugin scores each batch item with Jev, which answers two
 questions: how much judgment the task needs and how much work it takes. Jev
 reads the task and the agent text. For lookup work the plugin gives the spawn
-the `smol` role. For bounded judgment it gives the `middle` role, and for open
+the `smol` role. For bounded judgment it gives the `midl` role, and for open
 judgment the `slow` role. Each spawn also gets a thinking level from a fixed
 ladder. The plugin never changes the tool input. The roles run on the models
-you point `smol`, `middle` and `slow` at.
+you point `smol`, `midl` and `slow` at.
 [Effort](plugins/model-router-omp/README.md#effort) has the ladder and the
 efforts the plugin keeps.
 
@@ -65,7 +65,8 @@ has the rules.
 In Oh My Pi, OpenClaw and Hermes Agent, a level whose model you did not set
 keeps the model the harness gives it, and the plugin still sets the effort
 unless you set one. [A slot with no model](docs/providers.md#a-slot-with-no-model)
-has the rule.
+has the rule. The plugin sets the model you named and does not check that it
+runs.
 
 The npm package `@akurganow/model-router` carries the OpenClaw plugin. Oh My Pi
 can install the same package as a second route, as [its README](plugins/model-router-omp/README.md)
@@ -251,7 +252,7 @@ open, set the key as [Desktop app](#desktop-app) describes.
    keys.
 5. Ask omp to run the `model-router-setup` skill. It asks the provider, the
    keys and the scope with buttons and writes your choices itself. It also
-   shows where you set the `smol`, `middle` and `slow` roles.
+   helps you set the `smol`, `midl` and `slow` roles.
 
 Instead of `/login`, you can run `omp login typesafe` or
 `omp login openrouter` outside a session. You can also set `TYPESAFE_API_KEY`

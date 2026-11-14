@@ -137,7 +137,7 @@ function reset(state: State): void {
 		agents: [
 			{ name: "task", source: "bundled", description: TASK_DESCRIPTION },
 		],
-		resolvable: new Set(["@smol", "@middle", "@slow"]),
+		resolvable: new Set(["@smol", "@slow"]),
 	});
 }
 

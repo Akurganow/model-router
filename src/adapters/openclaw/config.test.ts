@@ -277,14 +277,12 @@ describe("the tool reads", () => {
 		);
 	});
 
-	it("shows a configured model as it is and runs no check", async () => {
+	it("shows a configured model as it is", async () => {
 		const fake = setup({
 			small_model: "openai/gpt-5-mini",
 			middle_model: "openai/gpt-5",
 			api_key: TYPESAFE_KEY,
 		});
-		fake.runtime.answers.resolved = { error: "not allowed" };
-		fake.runtime.answers.credential = false;
 		assert.equal(
 			await runTool(fake),
 			lines(
@@ -296,8 +294,6 @@ describe("the tool reads", () => {
 				keyLine("typesafe", "set"),
 			),
 		);
-		assert.equal(fake.runtime.calls.allowedRef.length, 0);
-		assert.equal(fake.runtime.calls.credential.length, 0);
 	});
 
 	it("counts a key from the environment as set", async () => {

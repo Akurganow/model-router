@@ -5,12 +5,12 @@ description: Use to pick a model or effort for a subagent by hand, when one repo
 
 # model-router
 
-model-router scores each routed `sessions_spawn` call through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it sets `model` to the person's `small_model` for level 0, their `middle_model` for level 1 or their `large_model` for level 2. A level whose slot is unset, or names a model OpenClaw cannot resolve, keeps OpenClaw's own model. The line then names the slot, such as `L1 middle model unset`. It also sets `thinking` to an effort of the ladder: `low`, `medium`, `high` or `xhigh`.
+model-router scores each routed `sessions_spawn` call through Jev, on TypeSafe or OpenRouter as the `provider` setting allows. At spawn, it sets `model` to the person's `small_model` for level 0, their `middle_model` for level 1 or their `large_model` for level 2. A slot that holds a model sets `model` to it. A level whose slot is unset keeps OpenClaw's own model. The line then names the slot, such as `L1 middle model unset`. It also sets `thinking` to an effort of the ladder: `low`, `medium`, `high` or `xhigh`.
 
 - The plugin writes a `model-router` line to the Gateway log. It shows each decision, or the reason a spawn ran unrouted.
-- The `scope` setting decides which spawns the plugin routes. [Scope](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#scope) defines [the spawn of the requesting agent itself](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#the-spawn-of-the-requesting-agent-itself).
+- The `scope` setting decides which spawns the plugin routes. Under `core`, the default, it routes the spawn of the requesting agent itself: a spawn with no `agentId`, or the requester's own id, and a `runtime` that is absent or `subagent`. Under `extended`, it also routes the spawn of any other configured agent that sets no model.
 - A spawn that sets `model` is never overridden. A spawn that sets `thinking` keeps it.
-- A model set in `agents.defaults.subagents.model` or in an agent's `subagents.model` wins over the plugin. [Which spawns are routed](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/README.md#which-spawns-are-routed) lists every rule.
+- A model set in `agents.defaults.subagents.model` or in an agent's `subagents.model` wins over the plugin. The plugin also passes a spawn with a `runtime` other than `subagent`, with `visible: true`, `context: "fork"`, `mode: "session"` or `thread: true`, or with no `task` text.
 
 ## Escalation
 
@@ -21,7 +21,7 @@ Escalate when a subagent reports BLOCKED, fails the check its brief names, or tw
 3. If the stronger model also fails, raise `thinking` one step at a time up to `xhigh`.
 4. If `xhigh` also fails, stop and report to the person.
 
-A line that reads `<slot> model unset` or `<slot> model unresolved` means that level set no model, and the spawn ran on OpenClaw's own model. When the re-dispatched spawn shows such a line again, stop and report to the person.
+A line that reads `<slot> model unset` means that level set no model, and the spawn ran on OpenClaw's own model. When the re-dispatched spawn shows such a line again, stop and report to the person.
 
 Use a flagship model only when the person opted in. Do not change a setting to reach one without their word.
 
@@ -29,7 +29,7 @@ Use a flagship model only when the person opted in. Do not change a setting to r
 
 A spawn that sets `model` passes through unrouted, so the stronger model you name is the one that runs.
 
-- Set `model` on `sessions_spawn` to a model the person's config allows. Its provider needs an API-key credential.
+- Set `model` on `sessions_spawn` to a model the person's config allows.
 - Set `thinking` to one of `low`, `medium`, `high` or `xhigh`. Never set `max`, `ultra`, `adaptive`, `minimal` or `off`.
 - Put the new brief in `task`. State what failed and which steps were skipped.
 - Name no `agentId` unless the brief needs another agent.

@@ -3,7 +3,6 @@ import shutil
 import unittest
 
 from support import (
-    fake_api,
     good_settings,
     FIXTURES,
     PLUGIN_DIR,
@@ -19,7 +18,7 @@ class FixtureReplayTest(RouterCase):
 
     @staticmethod
     def settings_for(fixture):
-        """A model in each slot the fixture's request names one for; Hermes lists it unless the fixture says not."""
+        """A model in each slot the fixture's request names one for."""
         request = fixture["request"]
         models = request.get("models") if isinstance(request, dict) else None
         models = models if isinstance(models, dict) else {}
@@ -39,14 +38,11 @@ class FixtureReplayTest(RouterCase):
         config = {"api_mode": "chat_completions", "service_tier": "fast"}
         for path in FIXTURES:
             fixture = json.loads(path.read_text(encoding="utf-8"))
-            unlisted = {f"{name}-model" for name in fixture.get("unlisted", [])}
-            listed = [m for m in ("small-model", "middle-model", "large-model") if m not in unlisted]
             with self.subTest(path.name):
                 route, _ = self.route(
                     config,
                     reply=fixture["response"],
                     settings=self.settings_for(fixture),
-                    api=fake_api(list_models=lambda provider, listed=listed: listed),
                 )
                 self.assertEqual(route, fixture["route"])
 

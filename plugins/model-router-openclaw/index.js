@@ -1258,13 +1258,10 @@ var slotForLevel = (level) => SLOTS[level];
 var slotSetting = (slot) => `${slot}_model`;
 var SLOT_SETTINGS = SLOTS.map(slotSetting);
 var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
-var slotState = (model, resolved) => {
-  if (model === void 0) return { state: "unset" };
-  return resolved ? { state: "set", model } : { state: "unresolved" };
-};
+var slotState = (model) => model === void 0 ? { state: "unset" } : { state: "set", model };
 function pickModel(level, state) {
   const slot = slotForLevel(level);
-  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model ${state.state}` };
+  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
 }
 var slotLine = (name, shown) => `${name}: ${shown ?? "unset"}`;
 
@@ -1745,31 +1742,6 @@ async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
   }
 }
 
-// src/adapters/openclaw/checks.ts
-async function slotResolves(runtime, cfg, agentId, model) {
-  try {
-    const target = agentId === void 0 ? { cfg } : { cfg, agentId };
-    const { modelConfig, modelAuth, agent } = runtime;
-    const { provider: defaultProvider } = modelConfig.resolveDefaultModelForAgent(target);
-    const resolved = modelConfig.resolveAllowedModelRef({
-      ...target,
-      catalog: [],
-      raw: model,
-      defaultProvider
-    });
-    if ("error" in resolved) return false;
-    const agentDir = agentId === void 0 ? void 0 : agent.resolveAgentDir(cfg, agentId);
-    const credential = {
-      provider: resolved.ref.provider,
-      cfg,
-      ...agentDir ? { agentDir } : {}
-    };
-    return await modelAuth.isProviderApiKeyConfiguredAsync(credential) === true;
-  } catch {
-    return false;
-  }
-}
-
 // src/adapters/openclaw/agents.ts
 var DEFAULT_AGENT_ID = "main";
 var MAX_ID_LENGTH = 64;
@@ -1873,7 +1845,6 @@ function gateSpawn(input) {
       isRequesterSpawn ? DEFAULT_ROLE : NO_DESCRIPTION
     ),
     effort: effortRule(input),
-    config,
     task,
     description: spawn.description
   };
@@ -1956,10 +1927,8 @@ async function score({ deps, signal }, settings, keys, gate) {
     signal
   });
 }
-async function slotOf(runtime, settings, { config, target }, level) {
-  const model = settings.models[slotForLevel(level)];
-  const resolved = model !== void 0 && await slotResolves(runtime, config, target, model);
-  return slotState(model, resolved);
+function slotOf(settings, level) {
+  return slotState(settings.models[slotForLevel(level)]);
 }
 async function routeSpawn(spawn) {
   const { api, deps, signal, request, requester } = spawn;
@@ -1980,14 +1949,10 @@ async function routeSpawn(spawn) {
   }
 }
 async function routeGated(spawn, settings, keys, gate, log) {
-  const { api } = spawn;
   if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
   const decided = await score(spawn, settings, keys, gate);
   if ("skipped" in decided) return void log(skippedLine(decided.skipped));
-  const picked = pickModel(
-    decided.tier,
-    await slotOf(api.runtime, settings, gate, decided.tier)
-  );
+  const picked = pickModel(decided.tier, slotOf(settings, decided.tier));
   const { model } = picked;
   const kept = gate.effort.kind === "keep" ? gate.effort.label : void 0;
   const effort = effortFor(decided.tier, decided.work);

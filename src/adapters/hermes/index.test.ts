@@ -168,8 +168,6 @@ describe("the kept effort", () => {
 				slot: "large",
 				effort: "high",
 				line: "model-router L2 openai/large · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
-				unresolvedLine:
-					"model-router L2 large model unresolved · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
 			});
 		});
 });
@@ -180,7 +178,6 @@ describe("the slot and model each level takes", () => {
 		`model-router L${tier} ${target} · ${effort} · p=0.90/0.90${SUFFIX}`;
 
 	// Each level reads its own slot only, and a slot with no model still gets the ladder's effort.
-	// A slot with a model also gets the line Python prints when its check fails.
 	// The ladder's effort at work level 1 is high at level 0 and medium at the other levels.
 	const ROWS: readonly [0 | 1 | 2, string, object, object][] = [
 		[
@@ -192,7 +189,6 @@ describe("the slot and model each level takes", () => {
 				slot: "small",
 				effort: "high",
 				line: line(0, "openai/small", "high"),
-				unresolvedLine: line(0, "small model unresolved", "high"),
 			},
 		],
 		[
@@ -204,7 +200,6 @@ describe("the slot and model each level takes", () => {
 				slot: "small",
 				effort: "high",
 				line: line(0, "small model unset", "high"),
-				unresolvedLine: null,
 			},
 		],
 		[
@@ -216,7 +211,6 @@ describe("the slot and model each level takes", () => {
 				slot: "middle",
 				effort: "medium",
 				line: line(1, "openai/middle", "medium"),
-				unresolvedLine: line(1, "middle model unresolved", "medium"),
 			},
 		],
 		[
@@ -228,7 +222,6 @@ describe("the slot and model each level takes", () => {
 				slot: "middle",
 				effort: "medium",
 				line: line(1, "middle model unset", "medium"),
-				unresolvedLine: null,
 			},
 		],
 		[
@@ -240,7 +233,6 @@ describe("the slot and model each level takes", () => {
 				slot: "large",
 				effort: "medium",
 				line: line(2, "openai/large", "medium"),
-				unresolvedLine: line(2, "large model unresolved", "medium"),
 			},
 		],
 		[
@@ -252,7 +244,6 @@ describe("the slot and model each level takes", () => {
 				slot: "large",
 				effort: "medium",
 				line: line(2, "large model unset", "medium"),
-				unresolvedLine: null,
 			},
 		],
 	];

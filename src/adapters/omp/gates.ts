@@ -5,7 +5,6 @@ import {
 	slotRecord,
 	slotState,
 } from "../../core/slots.ts";
-import { patternsOf } from "./effort.ts";
 import {
 	type Facts,
 	ROLE_MARK,
@@ -22,8 +21,8 @@ import {
 } from "./settings.ts";
 import type { Context, OmpImports, Pi } from "./types.ts";
 
-// The modelRoles key that holds each slot's model.
-const ROLE_NAMES = { small: "smol", middle: "middle", large: "slow" } as const;
+// The omp model role that holds each slot's model.
+const ROLE_NAMES = { small: "smol", middle: "midl", large: "slow" } as const;
 
 export type Batch = Routing & { readonly facts: Facts };
 type Closed = { readonly closed: string };
@@ -59,7 +58,7 @@ export async function openBatch(
 	const config = readConfig(omp.lookup, pi.pi.settings);
 	if (config === undefined) return { closed: UNREADABLE };
 	const agents = await discover(pi, ctx);
-	const models = slotRecord((slot) => slotModel(ctx, config.roles, slot));
+	const models = slotRecord((slot) => slotModel(ctx, slot));
 	return {
 		...routing,
 		facts: { ...config, scope: settings.scope, agents, models },
@@ -67,22 +66,15 @@ export async function openBatch(
 }
 
 /**
- * Returns the state of a slot's role. omp resolves a role that modelRoles does
- * not name through the default model or its own list, so only a role that
- * modelRoles names counts as set, and only while omp resolves it. A role omp
- * cannot resolve would fail the child with `No model selected.` Never throws.
+ * Returns the state of a slot's role: set when omp has a model for the role,
+ * unset when it has none. omp finds a model for `smol` and `slow` by itself,
+ * and for `midl` only when modelRoles names it. A role omp has no model for
+ * would fail the child with `No model selected.` Never throws.
  * Source: docs/clients.md#omp-model-roles.
  */
-export function slotModel(
-	ctx: Context,
-	roles: Readonly<Record<string, unknown>>,
-	slot: Slot,
-): SlotModel {
-	const name = ROLE_NAMES[slot];
-	const value = Object.hasOwn(roles, name) ? roles[name] : undefined;
-	const named = patternsOf(value).length > 0;
-	const role = ROLE_MARK + name;
-	return slotState(named ? role : undefined, named && resolves(ctx, role));
+export function slotModel(ctx: Context, slot: Slot): SlotModel {
+	const role = ROLE_MARK + ROLE_NAMES[slot];
+	return slotState(resolves(ctx, role) ? role : undefined);
 }
 
 function resolves(ctx: Context, role: string): boolean {
