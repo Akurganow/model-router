@@ -85,7 +85,6 @@ Find out which of these already hold, with the `model_router_config` tool and om
 - A skipped entry reads `task <n>: skipped, <reason>`. After both providers fail, the reason names each provider, as in `skipped, typesafe HTTP 503, openrouter timeout`.
 - A spawn can print a second line for the same item. That later line holds.
 - With `task.batch` off, or with the plugin disabled, no line appears.
-- If omp records the model a subagent ran on, it matches the role the entry names.
 
 ### Reasons routing is off
 

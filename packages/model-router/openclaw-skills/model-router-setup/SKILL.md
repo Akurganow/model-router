@@ -1,6 +1,6 @@
 ---
 name: model-router-setup
-description: Use to check or change the model-router setup in OpenClaw: its scoring key, provider, scope, small, middle and large models, or why routing is off.
+description: Use to check or change the model-router setup in OpenClaw, such as its scoring key, provider, scope, the small, middle and large models, or why routing is off.
 ---
 
 # model-router setup for OpenClaw
@@ -119,8 +119,7 @@ Skip reasons, checked in this order, with the fix:
 ### Checking routing
 
 - A routing check spawns one small subagent with `sessions_spawn`, with the task "Reply with the single word ok." and no `agentId`, `model` or `thinking`.
-- Note the time before the spawn. The first `model-router` line logged after that time belongs to the check. An older line belongs to another spawn.
-- A line that names a slot string has `resolvedModel` in the spawn result matching it. A line that reads `<slot> model unset` keeps OpenClaw's own model. A skip reason ends the check.
+- A line that reads `<slot> model unset` keeps OpenClaw's own model. A skip reason ends the check.
 
 For the person: the plugin's README, `plugins/model-router-openclaw/README.md` in the repository, has the full routing rules.
 

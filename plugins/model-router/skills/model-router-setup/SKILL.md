@@ -109,7 +109,7 @@ More than one can hold. Report every one that holds.
 
 - A routing check is one Agent call with no `subagent_type`, no `model` and no `name`, and the prompt "Reply with the single word ok."
 - Run it after the plugin has loaded with its key.
-- A good result is a line that names a level, a model and an effort. If Claude Code shows the model the subagent ran on, it matches the line.
+- A good result is a line that names a level, a model and an effort.
 - No line means a reason above holds. A `skipped` line names the reason.
 
 For the person: the plugin README at plugins/model-router/README.md has the same options, routing rules and troubleshooting.
