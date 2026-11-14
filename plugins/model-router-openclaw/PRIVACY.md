@@ -166,8 +166,8 @@ open, it returns nothing to OpenClaw.
 
 The plugin cannot promise more than that:
 
-- The plugin checks a model before it sets one. OpenClaw can still reject the
-  rewritten spawn, and the child can still fail on the model.
+- OpenClaw can still reject the rewritten spawn, and the child can still fail
+  on the model.
 - A model set on a spawn loses OpenClaw's configured fallbacks.
 
 ## Your choices

@@ -176,9 +176,7 @@ Hermes's default backend would give the task.
 
 The plugin cannot promise more than that:
 
-- The plugin checks a model offline before it sets one. The check cannot see a
-  model that Hermes's catalogue lists and the provider rejects at run time. The
-  child can still fail on the model.
+- The child can still fail on the model.
 - A model set on a task loses Hermes's configured fallbacks, unless
   `delegation.fallback_providers` declares them.
 - Hermes fails delegation closed when `delegation.backend` names a backend that
