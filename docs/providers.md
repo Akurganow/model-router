@@ -39,8 +39,8 @@ This section holds for Oh My Pi, OpenClaw and Hermes Agent.
 Each of them takes the model for a level from a slot: level 0 from `small`, level 1 from `middle` and level 2 from `large`.
 Each README names the harness setting of each slot.
 
-A slot is set when it names a model.
-It is unset when it names no model.
+In OpenClaw and Hermes Agent a slot is set when its setting names a model, and unset when it names none.
+In Oh My Pi a slot is set when omp has a model for the slot's role, and unset when it has none.
 For an unset slot, the task keeps the model the harness gives it.
 For a task it scores, the plugin still sets the effort, except where the README's list of kept efforts says otherwise.
 The routing line names the slot and its state in place of a model, as in `L1 middle model unset`.

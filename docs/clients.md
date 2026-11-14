@@ -418,24 +418,30 @@ The running facts used omp from npm with a local stand-in model provider and cal
 These facts hold at omp 18.12.6 and 18.18.9.
 The running facts used omp from npm, a probe extension, a throwaway agent folder and a local stand-in model provider, and called no paid model.
 
-- omp knows 16 roles, and `middle` is not one of them. Only `smol`, `slow` and the kind roles have catalogue priority lists.
+- omp knows 16 roles, and `midl` is not one of them. Only `smol`, `slow` and the kind roles have catalogue priority lists.
   (source: [`config/model-roles.ts` L56–L91 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-roles.ts#L56-L91), [the same lines at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-roles.ts#L56-L91); [`tui/src/overlays/model-browser.ts` L55–L103 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/tui/src/overlays/model-browser.ts#L55-L103), [L61–L109 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/tui/src/overlays/model-browser.ts#L61-L109))
 - Model roles live under `modelRoles` in `config.yml`, not in `models.yml`.
   A role's value is a model selector such as `provider/modelId`, and a chat role's value can end in a thinking selector such as `:low`.
   (documentation: [`docs/models.md` L686, L699 and L749 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/docs/models.md#L686), [L807, L820 and L871 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/docs/models.md#L807))
 - The Roles view of `/models` names `smol` Fast and `slow` Thinking, and ends with a `+ New role…` row that adds a custom role.
   (source: [`config/model-roles.ts` L58–L59 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-roles.ts#L58-L59), [the same lines at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-roles.ts#L58-L59), [`overlays/model-hub.ts` L82 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/tui/src/overlays/model-hub.ts#L82), [the same line at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/tui/src/overlays/model-hub.ts#L82))
-- `modelRoles` accepts any role name, so a role such as `middle` needs no change in omp.
+- `modelRoles` accepts any role name, so a role such as `midl` needs no change in omp.
   (source: [`config/model-settings.ts` L109 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-settings.ts#L109), [the same line at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-settings.ts#L109))
-- A custom role that `modelRoles` names runs: a spawn hook that returned `@mid:medium` ran the configured model at `medium`.
-  A custom role that `modelRoles` does not name failed the subagent with `Error: No model selected.` and exit code 1, when a spawn hook returned it.
+- A custom role that `modelRoles` names resolves: `ctx.models.resolve("@mid")` gave the configured model, and a spawn hook that returned `@mid:medium` ran it at `medium`.
+  A custom role that `modelRoles` does not name gives `undefined`, and a hook that returned it failed the subagent with `Error: No model selected.` and exit code 1.
   (running: omp 18.12.6 and 18.18.9, 2026-11-12)
+- `ctx.models.resolve` resolves against `modelRegistry.getAvailable()`, which checks configured auth without running a key command.
+  A built-in provider with no credential gives `undefined`, for the model id and for a role that names it.
+  A `models.yml` provider whose `apiKey` is a command that prints nothing gives a full model, and `getApiKeyForProvider` gives `undefined` for it. A hook that returned that role ran the child on the parent's model, with exit 0 and no error.
+  (running: omp 18.12.6 and 18.18.9, 2026-11-13;
+  source: [`extensibility/extensions/model-api.ts` L19–L38 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/extensibility/extensions/model-api.ts#L19-L38), [the same lines at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/extensibility/extensions/model-api.ts#L19-L38),
+  [`config/model-registry.ts` L3093 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-registry.ts#L3093), [L3475–L3509 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-registry.ts#L3475-L3509))
 - A `smol` or `slow` role that `modelRoles` does not name resolves through an explicitly configured `default` model before omp's built-in priority list.
   With `smol` unset, `ctx.models.resolve("@smol")` gave the `default` model.
   (running: omp 18.12.6 and 18.18.9, 2026-11-12;
   source: [`config/model-resolver.ts` L1102–L1104 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/config/model-resolver.ts#L1102-L1104), [L1168–L1170 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/config/model-resolver.ts#L1168-L1170))
 - A child's retry fallback chain is `retry.fallbackChains` at the spawn's own model role, kept from before the role's expansion, and otherwise at `default`.
-  A role that a spawn hook returns does not change the spawn's role, so `retry.fallbackChains.middle` does not reach a spawn the plugin gives `@middle`.
+  A role that a spawn hook returns does not change the spawn's role, so `retry.fallbackChains.midl` does not reach a spawn the plugin gives `@midl`.
   (source: [`task/executor.ts` L285–L326](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/executor.ts#L285-L326) and [L4414–L4423 at 18.12.6](https://github.com/can1357/oh-my-pi/blob/45c35e40c46166dc726ccc52f5d27f40f2449f99/packages/coding-agent/src/task/executor.ts#L4414-L4423), [L319–L353](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/executor.ts#L319-L353) and [L4733–L4741 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/src/task/executor.ts#L4733-L4741), not run)
 
 ### omp thinking levels
