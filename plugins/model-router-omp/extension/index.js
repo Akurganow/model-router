@@ -1814,7 +1814,7 @@ function modelFor(model, plan2, patterns) {
 }
 
 // src/adapters/omp/gates.ts
-var ROLE_NAMES = { small: "smol", middle: "middle", large: "slow" };
+var ROLE_NAMES = { small: "smol", middle: "midl", large: "slow" };
 async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
   const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
   if ("closed" in batch) return batch;
@@ -1828,17 +1828,22 @@ async function openBatch(omp, pi, ctx, settings) {
   const config = readConfig(omp.lookup, pi.pi.settings);
   if (config === void 0) return { closed: UNREADABLE };
   const agents = await discover(pi, ctx);
-  const models = slotRecord((slot) => slotModel(config.roles, slot));
+  const models = slotRecord((slot) => slotModel(ctx, slot));
   return {
     ...routing,
     facts: { ...config, scope: settings.scope, agents, models }
   };
 }
-function slotModel(roles, slot) {
-  const name = ROLE_NAMES[slot];
-  const value = Object.hasOwn(roles, name) ? roles[name] : void 0;
-  const named = patternsOf(value).length > 0;
-  return slotState(named ? ROLE_MARK + name : void 0);
+function slotModel(ctx, slot) {
+  const role = ROLE_MARK + ROLE_NAMES[slot];
+  return slotState(resolves(ctx, role) ? role : void 0);
+}
+function resolves(ctx, role) {
+  try {
+    return ctx.models.resolve(role) !== void 0;
+  } catch {
+    return false;
+  }
 }
 async function discover(pi, ctx) {
   try {

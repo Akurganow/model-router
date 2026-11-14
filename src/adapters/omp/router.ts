@@ -108,7 +108,7 @@ function createRouter(omp: OmpImports, pi: Pi) {
 	 * Returns the model and the line for a task spawn: the picked slot's role,
 	 * or the spawn's own patterns when the slot has no model, with the effort
 	 * as a suffix where the plugin sets one. The slots are read again, so a
-	 * role returned here is named in modelRoles in this call. Returns nothing when the spawn
+	 * role returned here resolved in this call. Returns nothing when the spawn
 	 * is not a task spawn, no routed decision matches, or a slot with no model
 	 * sets no effort. When a gate closes since the batch, it reports a skip line
 	 * for the item and returns nothing. When the line differs from the batch

@@ -129,10 +129,7 @@ test("a slot with no model keeps a level on a pattern, a role does not", () => {
 			KEPT,
 		);
 	assert.deepEqual(planEffort(routed(0), "@smol", facts, ["prov/p:low"]), SET);
-	assert.deepEqual(
-		planEffort(routed(1), "@middle", facts, ["prov/p:low"]),
-		SET,
-	);
+	assert.deepEqual(planEffort(routed(1), "@midl", facts, ["prov/p:low"]), SET);
 });
 
 const LADDER: readonly Effort[] = ["low", "medium", "high", "xhigh"];

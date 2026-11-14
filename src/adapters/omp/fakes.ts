@@ -97,6 +97,7 @@ const newState = () => ({
 	sent: [] as Sent[],
 	config: {} as Config,
 	agents: [] as DiscoveredAgent[],
+	resolvable: new Set<string>(),
 	credential: (async (provider) => STORED[provider]) as (
 		provider: string,
 	) => Promise<string | undefined>,
@@ -136,6 +137,7 @@ function reset(state: State): void {
 		agents: [
 			{ name: "task", source: "bundled", description: TASK_DESCRIPTION },
 		],
+		resolvable: new Set(["@smol", "@slow"]),
 	});
 }
 
@@ -254,6 +256,9 @@ const buildCtx = (state: State) => (): Context => ({
 			state.asked.push(provider);
 			return state.credential(provider);
 		},
+	},
+	models: {
+		resolve: (spec) => (state.resolvable.has(spec) ? {} : undefined),
 	},
 });
 

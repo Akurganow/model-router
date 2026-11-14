@@ -27,6 +27,61 @@ for (const tier of LEVELS)
 			);
 		});
 
+type Unset = {
+	readonly level: Level;
+	readonly role: "@smol" | "@midl" | "@slow";
+	// What the spawn hook returns as the model, and the notes after the batch line.
+	readonly model: string | readonly string[] | undefined;
+	readonly after: readonly string[];
+};
+
+// Each level needs its own role only. A role that stops resolving before the spawn keeps the spawn's patterns and its effort.
+const UNSET: readonly Unset[] = [
+	{
+		level: 0,
+		role: "@smol",
+		model: ["prov/parent:high"],
+		after: [
+			`model-router task 1: L0 small model unset · high · p=0.90/0.90${SUFFIX}`,
+		],
+	},
+	{
+		level: 1,
+		role: "@midl",
+		model: ["prov/parent:medium"],
+		after: [
+			`model-router task 1: L1 middle model unset · medium · p=0.90/0.90${SUFFIX}`,
+		],
+	},
+	{
+		level: 2,
+		role: "@slow",
+		model: ["prov/parent:medium"],
+		after: [
+			`model-router task 1: L2 large model unset · medium · p=0.90/0.90${SUFFIX}`,
+		],
+	},
+	{ level: 1, role: "@smol", model: "@midl:medium", after: [] },
+	{ level: 1, role: "@slow", model: "@midl:medium", after: [] },
+	{ level: 2, role: "@smol", model: "@slow:medium", after: [] },
+];
+
+for (const { level, role, model, after } of UNSET)
+	test(`level ${level} with ${role} not resolved at the spawn gives ${JSON.stringify(model)}`, async () => {
+		install();
+		world.config.modelRoles = {
+			smol: "prov/small",
+			midl: "prov/mid",
+			slow: "prov/large",
+		};
+		world.resolvable.add("@midl");
+		await world.toolCall("c", { tasks: [{ task: `level${level} work1` }] });
+		world.resolvable.delete(role);
+		const result = await world.spawn("c:0", { patterns: ["prov/parent"] });
+		assert.deepEqual(result?.model, model);
+		assert.deepEqual(world.notes.slice(1), after);
+	});
+
 test("a skipped item names no effort", async () => {
 	install();
 	world.credential = async () => undefined;
@@ -82,7 +137,7 @@ describe("omp per-item line", () => {
 			...middle.facts,
 			models: {
 				...middle.facts.models,
-				middle: { state: "set", model: "@middle" },
+				middle: { state: "set", model: "@midl" },
 			},
 		} as const;
 		const [scored] = await scoreItems(
@@ -93,7 +148,7 @@ describe("omp per-item line", () => {
 		);
 		assert.equal(
 			scored?.stored.line,
-			`L1 @middle · medium · p=0.90/0.90${SUFFIX}`,
+			`L1 @midl · medium · p=0.90/0.90${SUFFIX}`,
 		);
 	});
 

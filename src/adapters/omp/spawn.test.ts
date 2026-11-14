@@ -215,6 +215,17 @@ test("level 1 with no model patterns returns nothing and says why", async () => 
 	]);
 });
 
+test("a role that stops resolving before the spawn is not returned, and the line says so", async () => {
+	install();
+	await twoTasks();
+	world.resolvable.delete("@slow");
+	assert.equal(await world.spawn("c:1"), undefined);
+	assert.deepEqual(world.notes.slice(1), [
+		"model-router task 2: L2 large model unset · no model patterns · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+	]);
+	assert.equal((await world.spawn("c:0"))?.model, "@smol:high");
+});
+
 for (const [name, close, reason] of [
 	[
 		"a task model role",
@@ -241,10 +252,10 @@ for (const [name, close, reason] of [
 		assert.deepEqual(world.notes.slice(1), [skipAt(1, reason)]);
 	});
 
-test("a role removed from modelRoles before the spawn reads as unset there", async () => {
+test("a role that stops resolving before the spawn gives the spawn's patterns the effort", async () => {
 	install();
 	await twoTasks();
-	world.config.modelRoles = { smol: "prov/small" };
+	world.resolvable.delete("@slow");
 	assert.deepEqual(await world.spawn("c:1", { patterns: ["prov/parent"] }), {
 		model: ["prov/parent:medium"],
 		note: "model-router L2 large model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
@@ -259,16 +270,17 @@ test("a slot set after the batch gives the spawn its role, and both lines are pr
 	await world.toolCall("c", { tasks: [{ task: "level1 a" }] });
 	world.config.modelRoles = {
 		smol: "prov/small",
-		middle: "prov/mid",
+		midl: "prov/mid",
 		slow: "prov/large",
 	};
+	world.resolvable.add("@midl");
 	assert.deepEqual(await world.spawn("c:0", { patterns: ["prov/parent"] }), {
-		model: "@middle:medium",
-		note: "model-router L1 @middle · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		model: "@midl:medium",
+		note: "model-router L1 @midl · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
 	});
 	assert.deepEqual(world.notes, [
 		"model-router task 1: L1 middle model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
-		"model-router task 1: L1 @middle · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"model-router task 1: L1 @midl · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
 	]);
 });
 
