@@ -3,6 +3,21 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.23.0 - 2026-11-18
+#### Features
+- BREAKING: drop the config tool's setting help and the omp key dialog (8fff2d8)
+#### Bug Fixes
+- stop the config tool description from saying a dialog takes a key (b2bbc93)
+#### Documentation
+- say what OpenClaw's argument check stops now that the tool has no enum (20dee2c)
+#### Tests
+- read the Hermes leak check from the no-input call alone (74fd35f)
+#### Refactoring
+- read the value settings inside toolDescription and badCall (597b4ec)
+
+- - -
+
+
 ## v0.22.3 - 2026-11-18
 #### Bug Fixes
 - mask the last value when secret names or flags follow each other (d3181d8)
