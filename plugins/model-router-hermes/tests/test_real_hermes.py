@@ -86,7 +86,7 @@ class TaskParametersOnHermesTest(unittest.TestCase):
         self.assertFalse(set(params) & RESERVED_TASK_PARAMETERS)
 
     def test_the_tool_schema_carries_the_parameters_and_the_addendum(self):
-        from tools import delegate_tool  # noqa: F401  registers delegate_task
+        from tools import delegate_tool  # The import registers delegate_task.
         from tools.registry import registry
 
         home = tempfile.TemporaryDirectory()
