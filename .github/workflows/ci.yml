@@ -49,7 +49,8 @@ jobs:
         run: npm audit signatures
 
       # Each plugin runs a bundle, so validation and tests check a fresh build of
-      # src/. The step builds the manifests, the catalogues and both bundles.
+      # src/. The step builds the manifests, the catalogues and the four
+      # bundles.
       - name: Build the generated files
         run: node scripts/build.ts
 

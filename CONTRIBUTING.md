@@ -359,8 +359,8 @@ CI runs these checks:
 - Anthropic's plugin policy scan, with the prompt in `.github/policy/`. It skips
   drafts, so keep a pull request as a draft while it changes.
 - the generated-file check, on Ubuntu and macOS
-- the install of both plugins from the checkout, once per omp pin, and a
-  check that omp loads the plugin
+- the install of the Claude Code and omp plugins from the checkout, once per
+  omp pin, and a check that omp loads the plugin
 - the `package` job: it packs `packages/model-router` and compares the packed
   files with its `files` list, runs `npm publish --dry-run`, and installs the
   tarball into the pinned OpenClaw and into each pinned omp, which must load it

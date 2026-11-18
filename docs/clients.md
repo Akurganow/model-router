@@ -1266,7 +1266,7 @@ These facts are source readings at commit `3b421578588243f920886e6fe79a6faa87ea0
 Most probes ran a probe plugin, `probe-router`, and not this repository's plugin.
 The probe plugin ran Node on a small script and shipped the OpenClaw bundle for the scanner.
 This repository's plugin passed `validate`, the scan and the `file://` install on Hermes v0.23.0, as the facts above record. It routed one real call of two tasks on Hermes v0.22.7, in process and in the plugin host, and one call with task parameters on Hermes v0.23.0, in process. No run used a fallback between providers, and no run with task parameters used the plugin host.
-The `hermes` job has not run on a pushed commit yet, so this page cites no run of it.
+The `hermes` job passed on `main` at commit `a72c257bb785fa9817a6c494ea99dcc37bb605da` (running: the `hermes` job of [run 43535854931](https://github.com/Akurganow/model-router/actions/runs/43535854931), 2026-11-14).
 No run used the repository form `Akurganow/model-router/plugins/model-router-hermes` from the README, a `--ref` pin or `hermes plugins update`.
 No run used native Windows, so the `SYSTEMROOT` rule rests on the Python documentation.
 No run used a proxy, so the proxy behaviour rests on the Node documentation and on the commit that added the switch.
