@@ -50,12 +50,29 @@ test("three work probabilities are required", () => {
 	assert.equal(parseProbabilities(short, "work"), undefined);
 });
 
-test("a non-numeric probability has no probabilities", () => {
-	const text = answers(
-		{ "0": 1, "1": 0, "2": 0 },
-		{ "0": "a", "1": 0, "2": 0 },
+test("a value that is no number from 0 to 1 has no probabilities", () => {
+	for (const bad of [
+		"a",
+		Number.NaN,
+		Number.POSITIVE_INFINITY,
+		Number.NEGATIVE_INFINITY,
+		-0.1,
+		1.1,
+	])
+		assert.equal(
+			parseProbabilities(
+				answers({ "0": 1, "1": 0, "2": 0 }, { "0": bad, "1": 0, "2": 0 }),
+				"work",
+			),
+			undefined,
+			String(bad),
+		);
+	assert.equal(
+		parseProbabilities(answers({ "0": Number.NaN, "1": -5, "2": 99 }), "tier"),
+		undefined,
 	);
-	assert.equal(parseProbabilities(text, "work"), undefined);
+	const edges = { "0": 0, "1": 1, "2": 0 };
+	assert.deepEqual(parseProbabilities(answers(edges), "tier"), edges);
 });
 
 test("a probability prints with two decimals", () => {
