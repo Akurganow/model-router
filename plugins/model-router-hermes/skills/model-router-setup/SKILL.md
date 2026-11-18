@@ -31,8 +31,7 @@ Find out which of these already hold, with the `model_router_config` tool and He
 - With no input it returns the `provider` line, one line for each of the three models, and one key line for each provider the `provider` value allows.
 - A model line reads `<name>: <provider> <model>` or `<name>: unset`. The names are `small_model`, `middle_model` and `large_model`.
 - A key line reads `<provider> key: set` or `<provider> key: unset`. It never shows a key, its length or any part of it.
-- With a setting name it returns how the person changes that setting, and changes nothing. The names are `provider`, `typesafe_key`, `openrouter_key`, `small_model`, `middle_model` and `large_model`.
-- Any other name returns `Unknown setting.` with the list of names. A failure returns `error: <message>`.
+- A failure returns `error: <message>`.
 
 ### The backend
 
@@ -50,14 +49,12 @@ Find out which of these already hold, with the `model_router_config` tool and He
 - The same value prints `provider unchanged: already <value>`.
 - A session on a messaging platform prints `provider unchanged: only a local session can change it`, then the current line. Hermes CLI, TUI and Desktop sessions are local.
 - A failed write prints `provider unchanged: <reason>`.
-- With the setting name `provider`, the tool returns the command and the allowed values.
 
 ### The keys
 
 - A key counts as set when its variable holds non-blank text. The plugin reads a key only for a provider the `provider` setting allows.
-- The TypeSafe key is the variable `TYPESAFE_API_KEY`. The plugin's settings form in Hermes Desktop also sets it.
-- The OpenRouter key is the variable `OPENROUTER_API_KEY`. No settings form sets it.
-- The tool with `typesafe_key` or `openrouter_key` returns where the person sets that key, and never a key.
+- The TypeSafe key is the variable `TYPESAFE_API_KEY` in the `.env` file of the Hermes home. The plugin's settings form in Hermes Desktop also sets it.
+- The OpenRouter key is the variable `OPENROUTER_API_KEY` in that `.env` file. No settings form sets it.
 - Hermes's own provider credentials never serve as a Jev key.
 - A key in the environment is visible to every process Hermes starts.
 - With no key for any allowed provider, every task skips with `key unset`.
@@ -66,7 +63,7 @@ Find out which of these already hold, with the `model_router_config` tool and He
 
 - Each model setting is a mapping with two fields. `provider` is a Hermes provider id, such as `openrouter`. `model` is a model id as Hermes lists it for that provider.
 - A mapping with no `model` counts as unset.
-- The three settings are the plugin's own settings in Hermes's config, under the plugin id `model-router-hermes`.
+- The three settings are the plugin's own settings in Hermes's config, under `plugins.entries.model-router-hermes.settings`. The person sets one in the settings form in Hermes Desktop, or with `hermes config set plugins.entries.model-router-hermes.settings.<slot> '{"provider": "<provider>", "model": "<model>"}'`.
 - For a scored task, level 0 sets the `small_model`, level 1 the `middle_model` and level 2 the `large_model`. The task gets that slot's `model` and `provider`.
 - A delegating model can pin `level` on a task. The task then gets that level's model with no scoring, and carries no `route.label` while the model is set.
 - A pinned task whose slot has no model runs on Hermes's model, with the label `model-router L<level> <slot> model unset`.

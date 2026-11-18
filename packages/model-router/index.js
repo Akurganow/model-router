@@ -1185,15 +1185,9 @@ var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/core/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
-var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
-var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
 var TOOL_NAME = "model_router_config";
 var COMMAND_PREFIX = "model-router-";
 var commandName = (setting) => `${COMMAND_PREFIX}${setting}`;
-var KEY_PROVIDERS = {
-  typesafe_key: "typesafe",
-  openrouter_key: "openrouter"
-};
 var TEXTS = {
   provider: {
     values: PROVIDER_VALUES,
@@ -1218,16 +1212,9 @@ var TEXTS = {
     }
   }
 };
-var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
-var isKeySetting = (name) => KEY_SETTINGS.some((known) => known === name);
-var keyProvider = (setting) => KEY_PROVIDERS[setting];
 var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
-var valueSettingHelp = (setting) => [
-  `Type /${commandName(setting)} <value> in the chat.`,
-  useOneOf(setting)
-].join("\n");
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
@@ -1240,9 +1227,8 @@ var settingsReport = (provider, scope, extra, keys) => [
     (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
   )
 ].join("\n");
-var readOnlyToolDescription = (returned, names) => `Reads the router's settings. With no input it returns ${returned.join(", ")}, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
+var readOnlyToolDescription = (returned) => `Reads the router's settings. It returns ${returned.join(", ")}, and whether each key the provider allows is set. It changes nothing and never returns a key.`;
 var TOOL_LABEL = "Model Router settings";
-var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
 function describeCommand(setting) {
   const { about, values } = TEXTS[setting];
   return `Shows or changes ${about}: ${values.join(", ")}.`;
@@ -1334,12 +1320,11 @@ var COMMAND_NAMES = VALUE_SETTINGS.map(commandName);
 var ADMIN_SCOPE = "operator.admin";
 var LINE_BREAK = "\n";
 var NOT_OWNER = "only the owner can change it";
-var MODEL_SETTINGS = SLOT_SETTINGS;
-var TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
-var TOOL_DESCRIPTION = readOnlyToolDescription(
-  ["the provider", "the scope", "the three models"],
-  TOOL_SETTINGS
-);
+var TOOL_DESCRIPTION = readOnlyToolDescription([
+  "the provider",
+  "the scope",
+  "the three models"
+]);
 function readAll({ settings, keys }) {
   return settingsReport(
     settings.provider,
@@ -1347,17 +1332,6 @@ function readAll({ settings, keys }) {
     SLOTS.map((slot) => slotLine(slotSetting(slot), settings.models[slot])),
     keys
   );
-}
-var isModelSetting = (setting) => MODEL_SETTINGS.some((known) => known === setting);
-var modelSettingHelp = (setting) => `${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`;
-function howToChange(setting) {
-  if (isModelSetting(setting)) return modelSettingHelp(setting);
-  if (isValueSetting(setting)) return valueSettingHelp(setting);
-  return isKeySetting(setting) ? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.` : badCall(TOOL_SETTINGS);
-}
-function runTool(api, env, params) {
-  const { setting } = isRecord2(params) ? params : {};
-  return setting === void 0 ? readAll(readState(api, env)) : howToChange(setting);
 }
 var isOwner = (ctx) => ctx.senderIsOwner === true;
 async function write(api, ctx, setting, value) {
@@ -1397,12 +1371,12 @@ function registerConfigTool(api, env) {
     description: TOOL_DESCRIPTION,
     parameters: {
       type: "object",
-      properties: { setting: { type: "string", enum: TOOL_SETTINGS } },
+      properties: {},
       additionalProperties: false
     },
-    execute: async (_id, params) => {
+    execute: async () => {
       try {
-        return textOf(runTool(api, env, params));
+        return textOf(readAll(readState(api, env)));
       } catch (err) {
         return textOf(failure(err));
       }

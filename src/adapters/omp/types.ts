@@ -22,25 +22,15 @@ export type OmpImports = {
 	) => Promise<void>;
 };
 
-// omp's credential rows at 18.12.6: a key saved with source "login" is the kind omp's own login stores.
-type Credentials = {
-	set(
-		provider: string,
-		credential: { type: "api_key"; key: string; source: "login" },
-	): Promise<void>;
-};
-
 export type Context = {
 	cwd: string;
 	hasUI: boolean;
 	ui: {
 		notify(message: string): void;
 		select(title: string, options: string[]): Promise<string | undefined>;
-		input(title: string, placeholder?: string): Promise<string | undefined>;
 	};
 	modelRegistry: {
 		getApiKeyForProvider(provider: string): Promise<string | undefined>;
-		authStorage: { credentials: Credentials };
 	};
 	models: { resolve(spec: string): unknown };
 };

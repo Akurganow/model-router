@@ -1002,8 +1002,6 @@ var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/core/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
-var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
-var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
 var LABEL_SEPARATOR = " - ";
 var TEXTS = {
   provider: {

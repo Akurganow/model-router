@@ -105,11 +105,6 @@ const newState = () => ({
 	// Each dialog the plugin opens, and what the fake person answers.
 	dialogs: [] as { title: string; options: string[] }[],
 	select: (async () => undefined) as () => Promise<string | undefined>,
-	// Each key prompt, what the fake person types, and what omp's credential store receives.
-	prompts: [] as string[],
-	input: (async () => undefined) as () => Promise<string | undefined>,
-	stored: [] as { provider: string; credential: unknown }[],
-	store: (async () => undefined) as () => Promise<void>,
 	writes: [] as { plugin: string; key: string; value: string }[],
 	commands: {} as Record<string, CommandSpec>,
 	tools: {} as Record<string, ToolSpec>,
@@ -238,20 +233,8 @@ const buildCtx = (state: State) => (): Context => ({
 			state.dialogs.push({ title, options });
 			return state.select();
 		},
-		input: (title) => {
-			state.prompts.push(title);
-			return state.input();
-		},
 	},
 	modelRegistry: {
-		authStorage: {
-			credentials: {
-				set: (provider, credential) => {
-					state.stored.push({ provider, credential });
-					return state.store();
-				},
-			},
-		},
 		getApiKeyForProvider: (provider) => {
 			state.asked.push(provider);
 			return state.credential(provider);

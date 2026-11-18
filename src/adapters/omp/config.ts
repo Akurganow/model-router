@@ -5,11 +5,9 @@ import {
 	badCall,
 	COMMAND_DESCRIPTIONS,
 	chooseValue,
-	isKeySetting,
 	isValue,
 	isValueSetting,
 	NO_ANSWER,
-	SETTING_NAMES,
 	settingsReport,
 	TOOL_LABEL,
 	TOOL_NAME,
@@ -23,7 +21,6 @@ import {
 } from "../../core/settings.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { serializer } from "../../utils/serializer.ts";
-import { changeKey } from "./key.ts";
 import { findKey, readSettings, type Settings } from "./settings.ts";
 import type { Context, OmpImports, Pi, ToolReply } from "./types.ts";
 
@@ -119,10 +116,9 @@ async function runTool(
 ): Promise<string> {
 	const { setting } = isRecord(params) ? params : {};
 	if (setting === undefined) return readAll(omp, ctx);
-	if (isValueSetting(setting)) return dialog(omp, ctx, setting);
-	return isKeySetting(setting)
-		? changeKey(ctx, setting)
-		: badCall(SETTING_NAMES);
+	return isValueSetting(setting)
+		? dialog(omp, ctx, setting)
+		: badCall(VALUE_SETTINGS);
 }
 
 async function runCommand(
@@ -154,9 +150,9 @@ export function registerConfig(omp: OmpImports, pi: Pi): void {
 	pi.registerTool({
 		name: TOOL_NAME,
 		label: TOOL_LABEL,
-		description: toolDescription(SETTING_NAMES),
+		description: toolDescription(VALUE_SETTINGS),
 		parameters: pi.zod.object({
-			setting: pi.zod.enum(SETTING_NAMES).optional(),
+			setting: pi.zod.enum(VALUE_SETTINGS).optional(),
 		}),
 		loadMode: "essential",
 		approval: "write",

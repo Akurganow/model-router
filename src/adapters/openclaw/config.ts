@@ -1,14 +1,9 @@
 import {
 	alreadyValue,
-	badCall,
 	COMMAND_DESCRIPTIONS,
 	commandName,
-	isKeySetting,
 	isValue,
-	isValueSetting,
-	keyProvider,
 	readOnlyToolDescription,
-	SETTING_NAMES,
 	settingsReport,
 	TOOL_LABEL,
 	TOOL_NAME,
@@ -18,20 +13,11 @@ import {
 	VALUE_SETTINGS,
 	type ValueSetting,
 	valueLine,
-	valueSettingHelp,
 } from "../../core/settings.ts";
-import {
-	SLOT_SETTINGS,
-	SLOTS,
-	type SlotSetting,
-	slotLine,
-	slotSetting,
-} from "../../core/slots.ts";
+import { SLOTS, slotLine, slotSetting } from "../../core/slots.ts";
 import { errorText } from "../../utils/error.ts";
-import { isRecord } from "../../utils/guards.ts";
 import {
 	type Environment,
-	PLUGIN_ID,
 	readState,
 	type State,
 	withPluginSetting,
@@ -48,14 +34,11 @@ const ADMIN_SCOPE = "operator.admin";
 const LINE_BREAK = "\n";
 
 export const NOT_OWNER = "only the owner can change it";
-const MODEL_SETTINGS = SLOT_SETTINGS;
-// No chat command sets a model, but the tool still answers where it is set, so
-// the schema has to let the name through: OpenClaw checks arguments before execute.
-const TOOL_SETTINGS = [...SETTING_NAMES, ...MODEL_SETTINGS];
-export const TOOL_DESCRIPTION = readOnlyToolDescription(
-	["the provider", "the scope", "the three models"],
-	TOOL_SETTINGS,
-);
+export const TOOL_DESCRIPTION = readOnlyToolDescription([
+	"the provider",
+	"the scope",
+	"the three models",
+]);
 
 /**
  * Returns the report: the provider, the scope, the three models as configured,
@@ -69,42 +52,6 @@ function readAll({ settings, keys }: State): string {
 		SLOTS.map((slot) => slotLine(slotSetting(slot), settings.models[slot])),
 		keys,
 	);
-}
-
-const isModelSetting = (setting: unknown): setting is SlotSetting =>
-	MODEL_SETTINGS.some((known) => known === setting);
-
-/**
- * Returns where the person sets a model setting. No chat command sets it, so
- * the answer names the plugin's settings page and the OpenClaw config command.
- */
-const modelSettingHelp = (setting: SlotSetting): string =>
-	`${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`;
-
-/**
- * Returns how the person changes a setting: the command and its allowed values
- * for a value setting, the plugin's settings for a key setting, the settings
- * page and the config command for a model setting, and the list of setting
- * names for anything else. Never throws.
- */
-function howToChange(setting: unknown): string {
-	if (isModelSetting(setting)) return modelSettingHelp(setting);
-	if (isValueSetting(setting)) return valueSettingHelp(setting);
-	return isKeySetting(setting)
-		? `Enter the ${keyProvider(setting)} key in the plugin's settings. Never type a key into the chat.`
-		: badCall(TOOL_SETTINGS);
-}
-
-/**
- * Returns the text of one tool call: the full settings read when `params` names
- * no setting, otherwise how to change that setting. Params that are not an
- * object count as no input. An error from reading the state propagates.
- */
-function runTool(api: OpenClawApi, env: Environment, params: unknown): string {
-	const { setting } = isRecord(params) ? params : {};
-	return setting === undefined
-		? readAll(readState(api, env))
-		: howToChange(setting);
 }
 
 // OpenClaw runs the `requiredScopes` check before the handler. A channel message carries no
@@ -188,12 +135,12 @@ export function registerConfigTool(api: OpenClawApi, env: Environment): void {
 		description: TOOL_DESCRIPTION,
 		parameters: {
 			type: "object",
-			properties: { setting: { type: "string", enum: TOOL_SETTINGS } },
+			properties: {},
 			additionalProperties: false,
 		},
-		execute: async (_id, params) => {
+		execute: async () => {
 			try {
-				return textOf(runTool(api, env, params));
+				return textOf(readAll(readState(api, env)));
 			} catch (err) {
 				return textOf(failure(err));
 			}

@@ -31,21 +31,10 @@ def _read_all(ctx, api, constants):
     return texts["lineBreak"].join(lines)
 
 
-def _answer(ctx, api, constants, args):
-    """The full read when the input names no setting, else how to change that setting."""
-    texts = constants["texts"]
-    if not isinstance(args, dict) or "setting" not in args:
-        return _read_all(ctx, api, constants)
-    setting = args["setting"]
-    if not isinstance(setting, str):
-        return texts["badCall"]
-    return texts["help"].get(setting, texts["badCall"])
-
-
 def _handler(ctx, api, constants):
-    def handle(args, **_context):
+    def handle(_args, **_context):
         try:
-            text = _answer(ctx, api, constants, args)
+            text = _read_all(ctx, api, constants)
         except Exception as error:
             text = constants["texts"]["errorPrefix"] + str(error)
         return json.dumps({"text": text})
@@ -62,11 +51,7 @@ def register_tool(ctx, api=None, constants=None):
         schema={
             "name": texts["toolName"],
             "description": texts["toolDescription"],
-            "parameters": {
-                "type": "object",
-                "properties": {"setting": {"type": "string", "enum": texts["settings"]}},
-                "additionalProperties": False,
-            },
+            "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
         },
         handler=_handler(ctx, api if api is not None else live_api(), constants),
         description=texts["toolLabel"],

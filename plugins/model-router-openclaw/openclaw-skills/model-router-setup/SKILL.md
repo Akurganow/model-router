@@ -28,7 +28,7 @@ Find out which of these already hold, with the `model_router_config` tool and Op
 
 ### The tool
 
-- `model_router_config` with no setting prints the `provider`, `scope`, `small_model`, `middle_model` and `large_model` lines, then one key line for each provider the `provider` setting allows.
+- `model_router_config` with no input prints the `provider`, `scope`, `small_model`, `middle_model` and `large_model` lines, then one key line for each provider the `provider` setting allows.
 - A model line shows the slot string as written, or `unset`. A key line reads `typesafe key: set` or `openrouter key: unset`.
 - Example output:
 
@@ -42,13 +42,12 @@ typesafe key: set
 openrouter key: unset
 ```
 
-- The tool only reads and writes nothing. With a setting name it returns how the person changes that setting.
-- The tool accepts `provider`, `scope`, `small_model`, `middle_model`, `large_model`, `typesafe_key` and `openrouter_key`.
+- The tool only reads and writes nothing.
 
 ### Provider
 
 - `typesafe` is TypeSafe only. `openrouter` is OpenRouter only. `auto` is TypeSafe, then OpenRouter. `openrouter-first` is OpenRouter, then TypeSafe.
-- The person changes it with the chat command `/model-router-provider <value>`. The tool with setting `provider` returns that command and the allowed values.
+- The person changes it with the chat command `/model-router-provider <value>`.
 - The command replies with the new `provider` line. A value already set gives `provider unchanged: already <value>`. A sender who is not the owner gets `provider unchanged: only the owner can change it`.
 - A change applies once OpenClaw replaces the plugin, after running work drains, up to 60 s. The tool can show the old value until then. A spawn in that window uses the old value.
 
@@ -56,19 +55,20 @@ openrouter key: unset
 
 - `core` routes the spawn of the requesting agent itself: a spawn with no `agentId`, or with the requester's own id, and a `runtime` that is absent or `subagent`.
 - `extended` also routes the spawn of any other configured agent that does not set its own model.
-- The person changes it with `/model-router-scope <value>`. The tool with setting `scope` returns the command and the allowed values. The replies and the timing match `provider`.
+- The person changes it with `/model-router-scope <value>`. The replies and the timing match `provider`.
 
 ### Keys
 
 - TypeSafe key: the plugin setting `api_key`, else the environment variable `TYPESAFE_API_KEY`.
 - OpenRouter key: the plugin setting `openrouter_api_key`, else the environment variable `OPENROUTER_API_KEY`.
+- The person adds a key in the secret field of the plugin's page in the Control UI, or sets the variable in the Gateway's environment and restarts the Gateway.
 - A key counts as set when either place holds a non-empty value. The plugin never uses OpenClaw's own provider credentials as a key.
 - A key variable reaches every process the Gateway starts.
 - With `auto` or `openrouter-first` and one key, that key's provider scores alone.
 
 ### Models
 
-- The tool with setting `small_model`, `middle_model` or `large_model` returns where the person sets it. No chat command sets a model.
+- The person sets a model on the plugin's page in the Control UI, or with `openclaw config set plugins.entries.model-router-openclaw.config.<slot> <provider/model>`. No chat command sets a model.
 - Each slot takes the full `provider/model` id. OpenClaw expands a bare model name to a ref it may not know, and the child then fails.
 - A slot is set when its setting names a model. The plugin sets that model on the spawn of its level.
 - A level with an unset slot keeps the model OpenClaw would give the spawn. The plugin still sets the effort.

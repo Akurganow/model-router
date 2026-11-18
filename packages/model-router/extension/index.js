@@ -1273,17 +1273,7 @@ var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/core/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
-var KEY_SETTINGS = ["typesafe_key", "openrouter_key"];
-var SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS];
 var TOOL_NAME = "model_router_config";
-var KEY_PROVIDERS = {
-  typesafe_key: "typesafe",
-  openrouter_key: "openrouter"
-};
-var PROVIDER_NAMES = {
-  typesafe: "TypeSafe",
-  openrouter: "OpenRouter"
-};
 var LABEL_SEPARATOR = " - ";
 var TEXTS = {
   provider: {
@@ -1310,8 +1300,6 @@ var TEXTS = {
   }
 };
 var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
-var isKeySetting = (name) => KEY_SETTINGS.some((known) => known === name);
-var keyProvider = (setting) => KEY_PROVIDERS[setting];
 var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
 var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
@@ -1321,7 +1309,6 @@ var alreadyValue = (value) => `already ${value}`;
 var NO_ANSWER = "no answer from the dialog";
 var NOT_OFFERED = "the answer was not one of the offered values";
 var keyLine = (provider, state) => `${provider} key: ${state}`;
-var keyNotSaved = (provider) => `${provider} key not saved`;
 var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
 function ask(setting, current) {
   const { values, resolve: resolve2, question } = TEXTS[setting];
@@ -1444,37 +1431,9 @@ function readConfig(lookup2, settings) {
   return isRecord(roles) && isRecord(overrides) && Array.isArray(disabled) ? { roles, overrides, disabled, maxEffort, effortEnabled } : void 0;
 }
 
-// src/adapters/omp/key.ts
-var KEY_MAX_LENGTH = 512;
-var PADDED_LABELS = ["Yes", "No"];
-var LINE_BREAK = /[\r\n\u2028\u2029]/;
-function keyFrom(answer) {
-  if (typeof answer !== "string" || LINE_BREAK.test(answer)) return void 0;
-  const key = answer.trim();
-  return key === "" || key.length > KEY_MAX_LENGTH || PADDED_LABELS.includes(key) ? void 0 : key;
-}
-var keyQuestion = (provider, replaces) => `Enter your ${PROVIDER_NAMES[provider]} API key. It goes to the harness's credential store.${replaces ? " It replaces the key that is set now." : ""}`;
-async function changeKey(ctx, setting) {
-  const provider = keyProvider(setting);
-  if (!ctx.hasUI) return keyNotSaved(provider);
-  try {
-    const replaces = await findKey(ctx, provider) !== void 0;
-    const key = keyFrom(await ctx.ui.input(keyQuestion(provider, replaces)));
-    if (key === void 0) return keyNotSaved(provider);
-    await ctx.modelRegistry.authStorage.credentials.set(provider, {
-      type: "api_key",
-      key,
-      source: "login"
-    });
-    return keyLine(provider, "saved, checking");
-  } catch {
-    return keyNotSaved(provider);
-  }
-}
-
 // src/adapters/omp/config.ts
 var COMMAND_PREFIX = "model-router:";
-var LINE_BREAK2 = "\n";
+var LINE_BREAK = "\n";
 var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
 function say(ctx, text) {
   try {
@@ -1512,7 +1471,7 @@ async function apply(omp, ctx, setting, value) {
   }
   const now = (await readSettings(omp, ctx.cwd))?.[setting] ?? value;
   const line = valueLine(setting, now);
-  return now === value ? line : [line, projectOverrides(setting)].join(LINE_BREAK2);
+  return now === value ? line : [line, projectOverrides(setting)].join(LINE_BREAK);
 }
 async function dialog(omp, ctx, setting) {
   if (!ctx.hasUI) return unchanged(setting, NO_ANSWER);
@@ -1527,8 +1486,7 @@ async function dialog(omp, ctx, setting) {
 async function runTool(omp, ctx, params) {
   const { setting } = isRecord(params) ? params : {};
   if (setting === void 0) return readAll(omp, ctx);
-  if (isValueSetting(setting)) return dialog(omp, ctx, setting);
-  return isKeySetting(setting) ? changeKey(ctx, setting) : badCall(SETTING_NAMES);
+  return isValueSetting(setting) ? dialog(omp, ctx, setting) : badCall(VALUE_SETTINGS);
 }
 async function runCommand(omp, ctx, setting, args) {
   const value = args.trim();
@@ -1551,9 +1509,9 @@ function registerConfig(omp, pi) {
   pi.registerTool({
     name: TOOL_NAME,
     label: TOOL_LABEL,
-    description: toolDescription(SETTING_NAMES),
+    description: toolDescription(VALUE_SETTINGS),
     parameters: pi.zod.object({
-      setting: pi.zod.enum(SETTING_NAMES).optional()
+      setting: pi.zod.enum(VALUE_SETTINGS).optional()
     }),
     loadMode: "essential",
     approval: "write",

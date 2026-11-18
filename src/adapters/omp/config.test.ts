@@ -8,9 +8,7 @@ import {
 	COMMAND_DESCRIPTIONS,
 	NO_ANSWER,
 	NOT_OFFERED,
-	SETTING_NAMES,
 	TOOL_NAME,
-	toolDescription,
 	unchanged,
 	useOneOf,
 	type ValueSetting,
@@ -85,12 +83,15 @@ test("the commands and the tool register under their names", () => {
 test("the tool is essential, needs the write tier and takes an optional setting enum", () => {
 	install();
 	const tool = world.tools[TOOL_NAME];
-	assert.equal(tool?.description, toolDescription(SETTING_NAMES));
+	assert.equal(
+		tool?.description,
+		"Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (provider, scope) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.",
+	);
 	assert.equal(tool?.loadMode, "essential");
 	assert.equal(tool?.approval, "write");
 	assert.equal(typeof tool?.label, "string");
 	assert.deepEqual(tool?.parameters, {
-		shape: { setting: { values: SETTING_NAMES, optional: true } },
+		shape: { setting: { values: ["provider", "scope"], optional: true } },
 	});
 });
 
@@ -290,7 +291,7 @@ test("an unknown setting is a bad call and writes nothing", async () => {
 	install();
 	assert.equal(
 		await world.callTool({ setting: "tier" }),
-		badCall(SETTING_NAMES),
+		badCall(["provider", "scope"]),
 	);
 	assert.equal(world.writes.length, 0);
 });
