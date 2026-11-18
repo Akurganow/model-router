@@ -669,6 +669,24 @@ const SHAPES: [string, string, string, string][] = [
 		'run "-p hunter2xyz" now',
 		'run "-p ***" now',
 	],
+	[
+		"secret name",
+		"the value of a name that follows a short name",
+		"first pass: API_KEY = hunter2xyz",
+		"first pass: API_KEY = ***",
+	],
+	[
+		"secret flag",
+		"the value of a flag that follows another secret flag",
+		"sudo --askpass --password hunter2xyz",
+		"sudo --askpass --password ***",
+	],
+	[
+		"password -p",
+		"the value of -p that follows a secret flag",
+		"tool --token -p hunter2xyz",
+		"tool --token -p ***",
+	],
 ];
 
 test("each secret shape is masked and its context kept", async (t) => {
@@ -1081,6 +1099,8 @@ const ADVERSARIAL: [string, string, () => string][] = [
 	["secret flag", "hyphen segments with no name", () => fill("--a-")],
 	["secret flag", "flags with no value", () => fill("--pass\n")],
 	["secret flag", "quoted flag starts", () => fill('"--key')],
+	["secret flag", "secret flags in a row", () => fill("--key --a ")],
+	["secret name", "secret names in a row", () => fill("KEY:KEY:")],
 	["password -p", "repeated -p", () => fill("-p ")],
 	["secret name", "underscore runs before pass", () => fill("a_pass_")],
 ];

@@ -104,6 +104,7 @@ The name rule also masks the word after such a name, as in `primary key: id`, `f
 The flag rule also masks `--sort-key name` and `--bypass on`.
 The `-p` rule also masks `mkdir -p dir` and `ssh -p 22`.
 The `-u` and `password` rules also mask `-u 1000:1000` and `password was reset`.
+Where one such name or flag follows another, as in `--askpass --password s3cret`, the mask goes to the last value.
 The agent's description and the call's one-line description pass through the same masking.
 A text over 12,000 characters keeps its start and its end.
 

@@ -76,6 +76,10 @@ var AUTH_SCHEMES = [
 var AUTH_HEAD = `\\bAuthorization["']?\\s*[:=]\\s*`;
 var AUTH_SCHEME = `(?:${AUTH_SCHEMES})[ \\t]+`;
 var quotedRun = (quote) => `[^${quote}\\\\\\n]*(?:\\\\.[^${quote}\\\\\\n]*)*`;
+var SECRET_NAME = "(?:[A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASS(?:WORD|PHRASE))|(?:[A-Za-z0-9_]*_)?(?:PASS(?:WD)?|PWD))";
+var SECRET_FLAG = "--?[A-Za-z0-9_-]*(?:key|token|secret|pass(?:word|phrase|wd)?|pwd)";
+var FLAG_START = "(?<![A-Za-z0-9_-])";
+var SECRET_VALUE = `(?!${SECRET_NAME}["']?\\s*[=:]|(?:${SECRET_FLAG}|-p)[ \\t])(?:"[^"\\n]*"?|'[^'\\n]*'?|[^\\s"']+)`;
 var TOKEN_PREFIXES = {
   "GitHub token": "gh[pousr]_[A-Za-z0-9]{36,}",
   "GitHub fine-grained token": "github_pat_[A-Za-z0-9_]{22,}",
@@ -157,17 +161,23 @@ var REDACTIONS = [
   },
   {
     name: "secret name",
-    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASS(?:WORD|PHRASE))|(?:[A-Za-z0-9_]*_)?(?:PASS(?:WD)?|PWD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    pattern: new RegExp(
+      `\\b(${SECRET_NAME})(["']?\\s*[=:]\\s*)${SECRET_VALUE}`,
+      "gi"
+    ),
     replacement: "$1$2***"
   },
   {
     name: "secret flag",
-    pattern: /((?<![A-Za-z0-9_-])--?[A-Za-z0-9_-]*(?:key|token|secret|pass(?:word|phrase|wd)?|pwd)[ \t]+)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    pattern: new RegExp(
+      `(${FLAG_START}${SECRET_FLAG}[ \\t]+)${SECRET_VALUE}`,
+      "gi"
+    ),
     replacement: "$1***"
   },
   {
     name: "password -p",
-    pattern: /((?<![A-Za-z0-9_-])-p[ \t]+)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/g,
+    pattern: new RegExp(`(${FLAG_START}-p[ \\t]+)${SECRET_VALUE}`, "g"),
     replacement: "$1***"
   }
 ];

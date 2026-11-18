@@ -49,6 +49,13 @@ const AUTH_SCHEME = `(?:${AUTH_SCHEMES})[ \\t]+`;
 const quotedRun = (quote: string) =>
 	`[^${quote}\\\\\\n]*(?:\\\\.[^${quote}\\\\\\n]*)*`;
 
+const SECRET_NAME =
+	"(?:[A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASS(?:WORD|PHRASE))|(?:[A-Za-z0-9_]*_)?(?:PASS(?:WD)?|PWD))";
+const SECRET_FLAG =
+	"--?[A-Za-z0-9_-]*(?:key|token|secret|pass(?:word|phrase|wd)?|pwd)";
+const FLAG_START = "(?<![A-Za-z0-9_-])";
+const SECRET_VALUE = `(?!${SECRET_NAME}["']?\\s*[=:]|(?:${SECRET_FLAG}|-p)[ \\t])(?:"[^"\\n]*"?|'[^'\\n]*'?|[^\\s"']+)`;
+
 // Each prefix ends in the whole run of its token's alphabet, so a longer token is masked whole.
 export const TOKEN_PREFIXES: Readonly<Record<string, string>> = {
 	"GitHub token": "gh[pousr]_[A-Za-z0-9]{36,}",
@@ -72,6 +79,7 @@ export const TOKEN_PREFIXES: Readonly<Record<string, string>> = {
 // These orders keep a secret from leaking, and a test pins each. The AWS secret rule runs before the token prefixes, which would mask the id it needs.
 // The PEM rule runs before the name and flag rules, which would eat the header after "key:" or "--key" and leave the body. The Bearer rule runs before the password, name, flag and -p rules, which would mask the word Bearer and leave the token.
 // The name rule runs before the flag rule, which would mask the "=" of "--pass = x" and leave the value.
+// A value never starts another secret's name or flag, so the last value of a run is the one masked.
 export const REDACTIONS: readonly Redaction[] = [
 	{
 		name: "PEM private key",
@@ -143,19 +151,23 @@ export const REDACTIONS: readonly Redaction[] = [
 	},
 	{
 		name: "secret name",
-		pattern:
-			/\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASS(?:WORD|PHRASE))|(?:[A-Za-z0-9_]*_)?(?:PASS(?:WD)?|PWD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+		pattern: new RegExp(
+			`\\b(${SECRET_NAME})(["']?\\s*[=:]\\s*)${SECRET_VALUE}`,
+			"gi",
+		),
 		replacement: "$1$2***",
 	},
 	{
 		name: "secret flag",
-		pattern:
-			/((?<![A-Za-z0-9_-])--?[A-Za-z0-9_-]*(?:key|token|secret|pass(?:word|phrase|wd)?|pwd)[ \t]+)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+		pattern: new RegExp(
+			`(${FLAG_START}${SECRET_FLAG}[ \\t]+)${SECRET_VALUE}`,
+			"gi",
+		),
 		replacement: "$1***",
 	},
 	{
 		name: "password -p",
-		pattern: /((?<![A-Za-z0-9_-])-p[ \t]+)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/g,
+		pattern: new RegExp(`(${FLAG_START}-p[ \\t]+)${SECRET_VALUE}`, "g"),
 		replacement: "$1***",
 	},
 ];
