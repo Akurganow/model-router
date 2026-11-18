@@ -297,8 +297,9 @@ them at any time with no age delay
 ([`vulnerabilityAlerts`](https://github.com/renovatebot/renovate/blob/026bc94a7c9e1ba4dbb748afb7b0a19e7779729d/docs/usage/configuration-options.md#L5484-L5496)).
 For a dependency of the root `package.json`, a fix younger than 14 days gets
 a pull request whose lockfile update fails, because the age rule in `.npmrc`
-refuses the version. A retry passes once the fix is 14 days old. A bump of a pin under `.github/actions/` is a `ci` commit and releases no
-version, because only CI and the evals install those pins.
+refuses the version. A retry passes once the fix is 14 days old. A bump of a
+pin under `.github/actions/` is a `ci` commit and releases no version, because
+only CI and the evals install those pins.
 
 Renovate writes the npm lockfiles with npm 11, set by `constraints` in
 `.github/renovate.json`. npm 12 refuses `npm install --package-lock-only` for
