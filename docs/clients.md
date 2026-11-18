@@ -986,15 +986,15 @@ It also cannot set the effort, which the plugin sets through `sessions_spawn`'s 
 
 Documentation is the Markdown under `website/docs/` in `NousResearch/hermes-agent`, published at hermes-agent.nousresearch.com/docs.
 Documentation pages below were read on 2026-11-06, as Markdown at tag `v0.23.0`.
-Every source link is a permalink at commit `2bd378ed1b8d`, the commit of tag `v0.23.0`, the release CI installs.
+Every source link is a permalink at commit `2bd378ed1b8d`, the commit of tag `v0.23.0`.
 Hermes v0.22.7 is commit `b200f5bc60e3`. Between v0.22.7 and v0.23.0, the delegation, plugin, registrar, manifest, host, constants and `secret_scope` files are unchanged. The two exceptions are an additive `delegation.prefix_stagger_seconds` setting in `tools/delegate_tool_config.py` and one entry added to the public-import list. (running: `git diff v0.22.7 v0.23.0` over those files, 2026-11-06)
 Every running fact names its Hermes version and the date it ran.
 The probe facts ran on Hermes v0.22.7 on a fresh Hermes home with a scrubbed environment, through a probe plugin named `probe-router`.
 It was a `DelegationProvider` that records what `route_task` sees and returns a route.
 Its live turns used `hermes -z "<call delegate_task once …>" -m google/gemini-2.5-flash --provider openrouter -t delegation --ignore-rules --usage-file <file>`.
 The other probe calls ran in a Python process of that Hermes with its network functions blocked, or inside such a turn.
-The facts marked Hermes v0.23.0 ran on a fresh Hermes home too, with the `hermes` command of the release CI installs.
-This repository's plugin requires Hermes 0.22.6 or later, set by `requires_hermes` in `plugin.yaml`, and CI pins v0.23.0 in `.github/actions/setup-hermes/action.yml`.
+The facts marked Hermes v0.23.0 ran on a fresh Hermes home too, with the `hermes` command of that release.
+This repository's plugin requires Hermes 0.22.6 or later, set by `requires_hermes` in `plugin.yaml`, and CI installs the release that `.github/actions/setup-hermes/action.yml` pins.
 
 ### Hermes install and update
 
@@ -1255,11 +1255,11 @@ These facts are source readings at commit `3b421578588243f920886e6fe79a6faa87ea0
   Hermes keeps its home under the runner's temp folder, and no key is set.
   (source: `.github/workflows/ci.yml`, job `hermes`)
 - The `setup-hermes` action clones the release tag, checks that `HEAD` equals the pinned commit, and runs `uv sync --frozen --no-dev --no-build --python 3.14`, so only the wheels that Hermes's own `uv.lock` locks install. It then checks that `hermes --version` names the tag.
-  It pins `v0.23.0` at commit `2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19`. A Renovate rule raises the tag and the commit together with no age delay.
+  It pins a release tag and the commit of that tag. A Renovate rule raises the tag and the commit together with no age delay.
   (source: `.github/actions/setup-hermes/action.yml`; [CONTRIBUTING.md, Dependencies](../CONTRIBUTING.md#dependencies))
 - The tests of the plugin call each handler and the router directly with a fake Hermes API. One test file, `plugins/model-router-hermes/tests/test_real_hermes.py`, runs only under Hermes's interpreter. It calls each Hermes function the shim uses, and compares the default route with Hermes's bundled default backend.
-  It also registers the provider with Hermes's delegation registry, builds the `delegate_task` schema, and routes tasks through `resolve_task_routes`, so a pin raise that changes the parameter seam fails CI. Those tests use Hermes's private names `_registry` and `_build_dynamic_schema_overrides`.
-  (source: `plugins/model-router-hermes/tests/`)
+  It also registers the provider with Hermes's delegation registry, reads the `delegate_task` schema, and routes tasks through `resolve_task_routes`, so a pin raise that changes the parameter seam fails CI. Those tests use Hermes's private name `_registry`. They read the schema through `tools.registry.registry.get_definitions` with a temporary `HERMES_HOME`, as Hermes documents.
+  (source: `plugins/model-router-hermes/tests/`; documentation: [`delegation-provider-plugin.md` L203–L209](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/website/docs/developer-guide/delegation-provider-plugin.md#L203-L209))
 
 ### Hermes gaps
 
