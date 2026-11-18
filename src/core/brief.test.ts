@@ -615,6 +615,78 @@ const SHAPES: [string, string, string, string][] = [
 		'the password is "hunter 2\nnext step',
 		"the password is ***\nnext step",
 	],
+	[
+		"secret flag",
+		"the value after a password flag",
+		"mysql --password hunter2xyz -h db",
+		"mysql --password *** -h db",
+	],
+	[
+		"secret flag",
+		"the value after a token or key flag",
+		"tool --token abc123def456 --api-key abc123def456 run",
+		"tool --token *** --api-key *** run",
+	],
+	[
+		"secret flag",
+		"the value after a single-dash flag that ends in pass",
+		"keytool -storepass hunter2xyz -keypass hunter2xyz",
+		"keytool -storepass *** -keypass ***",
+	],
+	[
+		"secret flag",
+		"a quoted value after a flag",
+		'gpg --passphrase "correct horse" --batch',
+		"gpg --passphrase *** --batch",
+	],
+	[
+		"password -p",
+		"the value after -p",
+		"docker login -u bob -p hunter2xyz and sshpass -p hunter2xyz ssh h",
+		"docker login -u bob -p *** and sshpass -p *** ssh h",
+	],
+	[
+		"secret name",
+		"the value assigned to pass, passwd or pwd",
+		"the passwd: hunter2xyz then pwd=hunter2xyz then pass: hunter2xyz",
+		"the passwd: *** then pwd=*** then pass: ***",
+	],
+	[
+		"secret name",
+		"the value assigned to a name that ends in _pass or _pwd, or in passphrase",
+		"export DB_PASS=hunter2xyz MYSQL_PWD=hunter2xyz GPG_PASSPHRASE=hunter2xyz",
+		"export DB_PASS=*** MYSQL_PWD=*** GPG_PASSPHRASE=***",
+	],
+	[
+		"secret flag",
+		"the value after a flag that follows a quote",
+		'OPTS="--password hunter2xyz" run',
+		'OPTS="--password ***" run',
+	],
+	[
+		"password -p",
+		"the value after -p that follows a quote",
+		'run "-p hunter2xyz" now',
+		'run "-p ***" now',
+	],
+	[
+		"secret name",
+		"the value of a name that follows a short name",
+		"first pass: API_KEY = hunter2xyz",
+		"first pass: API_KEY = ***",
+	],
+	[
+		"secret flag",
+		"the value of a flag that follows another secret flag",
+		"sudo --askpass --password hunter2xyz",
+		"sudo --askpass --password ***",
+	],
+	[
+		"password -p",
+		"the value of -p that follows a secret flag",
+		"tool --token -p hunter2xyz",
+		"tool --token -p ***",
+	],
 ];
 
 test("each secret shape is masked and its context kept", async (t) => {
@@ -658,6 +730,10 @@ test("prose and look-alikes stay as they are", () => {
 		"git push -u origin main",
 		"See ```inline``` and ~~~ here",
 		"```\nunclosed fence\nrest of the brief",
+		"tool --password-file /run/pw and tool --token\nnext",
+		"the bypass: none and the compass: north",
+		"xargs -P 4 cmd",
+		"fix the cache-key bug and the 3-pass compiler",
 	])
 		assert.equal(prepareBrief(text), text);
 });
@@ -684,6 +760,10 @@ const ORDERS: [string, string, string, RegExp][] = [
 	["PEM private key", "secret name", `key:\n${PEM_BLOCK}`, /MIIE/],
 	["Bearer token", "password is", `the password is Bearer ${TOKEN}`, /def456/],
 	["Bearer token", "secret name", `TOKEN: Bearer ${TOKEN}`, /def456/],
+	["Bearer token", "secret flag", `--token Bearer ${TOKEN}`, /def456/],
+	["PEM private key", "secret flag", `--key ${PEM_BLOCK}`, /MIIE/],
+	["secret name", "secret flag", "--pass = hunter2xyz", /hunter2xyz/],
+	["Bearer token", "password -p", `-p Bearer ${TOKEN}`, /def456/],
 ];
 
 test("the entries that guard each other run in their order", async (t) => {
@@ -1016,6 +1096,13 @@ const ADVERSARIAL: [string, string, () => string][] = [
 		() => fill('KEY="a\n'),
 	],
 	["secret name", "underscore run", () => fill("_")],
+	["secret flag", "hyphen segments with no name", () => fill("--a-")],
+	["secret flag", "flags with no value", () => fill("--pass\n")],
+	["secret flag", "quoted flag starts", () => fill('"--key')],
+	["secret flag", "secret flags in a row", () => fill("--key --a ")],
+	["secret name", "secret names in a row", () => fill("KEY:KEY:")],
+	["password -p", "repeated -p", () => fill("-p ")],
+	["secret name", "underscore runs before pass", () => fill("a_pass_")],
 ];
 
 test("prepareBrief takes linear time on adversarial inputs of a million characters", async (t) => {

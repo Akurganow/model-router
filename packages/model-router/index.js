@@ -1005,6 +1005,7 @@ var fromMiddle = (down, up) => (p) => {
 };
 var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
 function parseProbabilities(answers, key) {
   const a = isRecord2(answers) ? answers[key] : void 0;
   if (!isRecord2(a)) return void 0;
@@ -1012,7 +1013,7 @@ function parseProbabilities(answers, key) {
   if (type !== "score" || !isRecord2(probabilities)) return void 0;
   if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
   const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
+  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
     return void 0;
   return { 0: p0, 1: p1, 2: p2 };
 }
@@ -1461,6 +1462,10 @@ var AUTH_SCHEMES = [
 var AUTH_HEAD = `\\bAuthorization["']?\\s*[:=]\\s*`;
 var AUTH_SCHEME = `(?:${AUTH_SCHEMES})[ \\t]+`;
 var quotedRun = (quote) => `[^${quote}\\\\\\n]*(?:\\\\.[^${quote}\\\\\\n]*)*`;
+var SECRET_NAME = "(?:[A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASS(?:WORD|PHRASE))|(?:[A-Za-z0-9_]*_)?(?:PASS(?:WD)?|PWD))";
+var SECRET_FLAG = "--?[A-Za-z0-9_-]*(?:key|token|secret|pass(?:word|phrase|wd)?|pwd)";
+var FLAG_START = "(?<![A-Za-z0-9_-])";
+var SECRET_VALUE = `(?!${SECRET_NAME}["']?\\s*[=:]|(?:${SECRET_FLAG}|-p)[ \\t])(?:"[^"\\n]*"?|'[^'\\n]*'?|[^\\s"']+)`;
 var TOKEN_PREFIXES = {
   "GitHub token": "gh[pousr]_[A-Za-z0-9]{36,}",
   "GitHub fine-grained token": "github_pat_[A-Za-z0-9_]{22,}",
@@ -1542,8 +1547,24 @@ var REDACTIONS = [
   },
   {
     name: "secret name",
-    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    pattern: new RegExp(
+      `\\b(${SECRET_NAME})(["']?\\s*[=:]\\s*)${SECRET_VALUE}`,
+      "gi"
+    ),
     replacement: "$1$2***"
+  },
+  {
+    name: "secret flag",
+    pattern: new RegExp(
+      `(${FLAG_START}${SECRET_FLAG}[ \\t]+)${SECRET_VALUE}`,
+      "gi"
+    ),
+    replacement: "$1***"
+  },
+  {
+    name: "password -p",
+    pattern: new RegExp(`(${FLAG_START}-p[ \\t]+)${SECRET_VALUE}`, "g"),
+    replacement: "$1***"
   }
 ];
 var FENCE_OPENER = /(?<![`~])(?:(`{3,})[^\n`]*|(~{3,})[^\n~]*)\n/g;
