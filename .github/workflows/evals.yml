@@ -57,13 +57,19 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/setup-node
+        with:
+          cache-dependency-path: |
+            package-lock.json
+            .github/actions/setup-claude-code/package-lock.json
 
       - uses: ./.github/actions/setup-claude-code
 
       # The plugin runs the bundle, so the cases use a fresh build of src/ at this ref.
+      # A launcher that fails sends npm ci once more, as in ci.yml's check job.
       - name: Build the plugin bundles
         run: |
           npm ci
+          node_modules/.bin/biome --version && node_modules/.bin/esbuild --version && node_modules/.bin/tsc --version || npm ci
           node scripts/build.ts
 
       - name: Install the plugin from the checkout
@@ -96,6 +102,8 @@ jobs:
       - *checkout
 
       - uses: ./.github/actions/setup-node
+        with:
+          cache-dependency-path: package-lock.json
 
       # A ref from before the two omp pins has a setup-omp that ignores the
       # pin input and installs its one pin, so the paid run would test another
@@ -117,6 +125,7 @@ jobs:
       - name: Build the plugin bundles
         run: |
           npm ci
+          node_modules/.bin/biome --version && node_modules/.bin/esbuild --version && node_modules/.bin/tsc --version || npm ci
           node scripts/build.ts
 
       - name: Install the plugin from the checkout

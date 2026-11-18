@@ -1,11 +1,28 @@
 name: Set up Node
 description: >
   Installs the Node version every workflow runs: the scripts, the build and
-  the tests are TypeScript files that Node runs directly.
+  the tests are TypeScript files that Node runs directly. With
+  cache-dependency-path set, it restores and saves npm's download cache under
+  a key made from those lockfiles.
+inputs:
+  cache-dependency-path:
+    description: >
+      The lockfiles the job installs, one per line. Jobs that install the same
+      set list it in the same order, so they share one entry. Empty leaves the
+      cache off.
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
     # Pinned to a commit sha; the comment records the release.
+    # npm checks every cached tarball against the lockfile's digest when it
+    # reads it, and fetches it again on a mismatch. package-manager-cache is
+    # off, so an empty input leaves the cache off even when package.json
+    # names a package manager.
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: "24"
+        cache: ${{ inputs.cache-dependency-path && 'npm' || '' }}
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+        package-manager-cache: false

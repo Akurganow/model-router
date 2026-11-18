@@ -18,18 +18,30 @@ runs:
       with:
         bun-version: "1.4.4"
 
+    # Bun checks a tarball's digest only when it downloads it, not when it
+    # takes the package from its cache. So the cache is saved right after
+    # the install, before a later step of the job can change it. A pull
+    # request's run saves only to its own scope, which main never reads.
+    - name: Restore the Bun download cache
+      id: bun-cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/bun-install-cache
+        key: bun-install-${{ runner.os }}-${{ runner.arch }}-${{ inputs.pin }}-${{ hashFiles('.github/actions/setup-omp/action.yml', format('.github/actions/setup-omp/{0}/bun.lock', inputs.pin)) }}
+
     # The omp package is signed and carries a provenance attestation on npm.
     # No release asset with a checksum is published for it, so each bun.lock
     # pins omp and every package it pulls in by digest. Bun refuses a lockfile
-    # that no longer matches the manifest, and a tarball whose digest differs.
-    # No package runs code at install time. The install runs in a copy under
-    # the runner's temp folder, so no node_modules lands in the checkout that
-    # the plugin installs read.
+    # that no longer matches the manifest, and a downloaded tarball whose
+    # digest differs. No package runs code at install time. The install runs in
+    # a copy under the runner's temp folder, so no node_modules lands in the
+    # checkout that the plugin installs read.
     - name: Install omp
       shell: bash
       env:
         ACTION_PATH: ${{ github.action_path }}
         PIN: ${{ inputs.pin }}
+        BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
       run: |
         case "$PIN" in
           minimum|latest) ;;
@@ -46,3 +58,10 @@ runs:
         echo "$dir/node_modules/.bin" >> "$GITHUB_PATH"
         version=$(node -p 'require("./package.json").dependencies["@oh-my-pi/pi-coding-agent"]')
         node_modules/.bin/omp --version | grep -F "$version"
+
+    - name: Save the Bun download cache
+      if: steps.bun-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/bun-install-cache
+        key: ${{ steps.bun-cache.outputs.cache-primary-key }}

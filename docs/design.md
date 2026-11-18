@@ -139,6 +139,20 @@ The release workflow's `publish` job runs after a release, with npm trusted publ
 It publishes only while the `NPM_PUBLISH` variable is `true` and the registry lacks the version, so a rerun does nothing.
 [Publishing to npm](../CONTRIBUTING.md#publishing-to-npm) has the conditions and the first publication by hand.
 
+**Download cache.**
+Each job restores the downloads of npm, Bun and uv from a GitHub Actions cache, so with unchanged lockfiles those installs fetch no package from a registry.
+A registry download can fail, and npm treats a failed download of an optional dependency as success.
+Biome, esbuild and TypeScript ship their binaries as optional platform packages, so such a failure shows only when a later step runs them.
+So after the root `npm ci`, the `check` job, the release job and the evals run each of the three once, and a missing binary sends `npm ci` once more.
+npm keys its cache on the lockfiles the job installs, and checks every cached tarball against the lockfile's digest when it reads it.
+Bun and uv check a digest only when they download, so a cache must hold only what an installer wrote.
+`setup-omp` saves Bun's cache right after the install, because the evals job that uses it later runs a model session.
+`setup-uv` saves its cache folder and the Pythons at the end of the `hermes` job, which runs no model session.
+The steps there after the install are the plugin's tests, whose `uv run` downloads the Python 3.11 that the cache keeps, and the pinned Hermes, which keeps its own uv cache under the Hermes home.
+uv's cache key hashes `.github/actions/setup-hermes/action.yml`, so a new Hermes or uv pin saves a new entry.
+A pull request's run saves only to its own scope, which `main` never reads, so the release reads only entries saved by runs on `main`.
+The Hermes clone, `hermes plugins install`, which builds Hermes's own runtime with its own uv cache, the tool downloads of the setup actions, `npm audit` and `npm audit signatures` still need the network.
+
 **Owner-setup scan.**
 The repository is public.
 The `scan` job checks the added lines of a pull request and every generated file for two markers.

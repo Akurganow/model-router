@@ -55,13 +55,19 @@ jobs:
           persist-credentials: false
 
       # The pre-bump hooks run scripts/set-version.ts and scripts/build.ts,
-      # TypeScript files that Node runs directly.
+      # TypeScript files that Node runs directly. The npm cache it reads holds
+      # only what runs on main saved, because a pull request's run saves to its
+      # own scope, and npm checks each cached tarball against the lockfile.
       - uses: ./.github/actions/setup-node
+        with:
+          cache-dependency-path: package-lock.json
 
       # The build needs esbuild, Biome and the TypeSafe SDK from the lockfile.
+      # A launcher that fails sends npm ci once more, as in ci.yml's check job.
       - name: Install the dev tools
         run: |
           npm ci
+          node_modules/.bin/biome --version && node_modules/.bin/esbuild --version && node_modules/.bin/tsc --version || npm ci
           npm audit signatures
 
       # Installs the pinned, checksum-verified cog on PATH for the later steps.

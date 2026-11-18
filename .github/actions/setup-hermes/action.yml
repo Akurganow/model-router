@@ -9,9 +9,19 @@ runs:
   using: composite
   steps:
     # Pinned to a commit sha; the comment records the release.
+    # setup-uv caches on a hosted runner by default and saves the cache folder
+    # at the end of the job. The hermes job runs no model session. Its later
+    # steps are the plugin's tests, whose uv run downloads a Python that
+    # cache-python keeps, and the pinned Hermes, which keeps its own uv cache
+    # under the Hermes home. The cache key hashes this file, which pins Hermes
+    # and uv, so a new pin saves a new entry. The default glob matches no file
+    # in this repository, so with it the key would never change. prune-cache
+    # stays off, because uv cache prune --ci drops every downloaded wheel.
     - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
       with:
         version: "0.13.5"
+        cache-dependency-glob: .github/actions/setup-hermes/action.yml
+        cache-python: true
 
     # The checkout goes under the runner's temp folder, outside the
     # repository. A tag can be moved, so the commit is checked after the clone.
