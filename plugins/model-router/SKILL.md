@@ -48,20 +48,3 @@ An escalated re-dispatch passes `model` and `effort` explicitly in the Agent
 call. A call that names a model is not routed. A call that names only an effort
 gets a model and keeps its effort. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` and
 `CLAUDE_CODE_EFFORT_LEVEL` outrank the plugin.
-
-## Commands
-
-From the repository root:
-
-- `node scripts/build.ts` builds `hooks/register.js` from `src/`.
-- `claude plugin test plugins/model-router` runs the tests, no network.
-- `claude plugin validate plugins/model-router` lists the hooks and calls.
-- `npx tsc -p src` type-checks the sources. `npx tsc -p .` type-checks the
-  plugin tests, which need the declarations Claude Code writes beside a
-  loaded mod.
-- `node scripts/calibrate.ts <typesafe|openrouter> [model]` takes that
-  provider's API key from a masked prompt or stdin, runs the labelled seed
-  against Jev and prints misses and agreement. The model defaults to
-  `jev-latest`. `--record <file>` also writes each case's probabilities.
-- `node scripts/compare-rules.ts <record.jsonl> <rule.ts>...` compares rule
-  modules named on the command line on that file, with 5-fold cross-validation.

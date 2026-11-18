@@ -3,6 +3,24 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.22.2 - 2026-11-18
+#### Bug Fixes
+- remove the developer commands from the Claude Code skill (9f95da6)
+- drop the dated note from the core scope label (ac2893f)
+#### Documentation
+- drop the run citation of the hermes job from clients.md (01fd9c2)
+- name the pinned level in the Hermes Python rule (00935ef)
+- rewrap the dependency-review comment and fix a reference (3b118af)
+- correct the override rule, the version files and two notes (198a853)
+- name the harnesses that texts from two clients meant (f859a5f)
+- state three agent rules as the repository holds them (cdfcdee)
+#### Build system
+- emit no files from the plugin type-check (d25dee1)
+- run the plugin type-check as its own script (6c95fd9)
+
+- - -
+
+
 ## v0.22.1 - 2026-11-14
 #### Bug Fixes
 - drop promises about the model that ran from the setup skills (9c8052a)

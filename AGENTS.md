@@ -19,20 +19,26 @@ CONTRIBUTING.md already states a rule, this file links to it.
 ## What the plugins do and never do
 
 - They route subagents only. They never change the model of the main session.
-- They never override a model or an effort the user set.
+- They never override a model or an effort the user set for a call or for
+  all subagents, with two exceptions that each plugin README lists. Under the
+  `extended` scope the routed effort replaces one that an agent's definition
+  or config entry sets, and in Claude Code the routed model replaces the
+  definition's model too. In Claude Code the routed model outranks
+  `CLAUDE_CODE_SUBAGENT_MODEL`.
 - They track no spend and no cost budget.
 - They hold no code for a job that a text instruction to an agent can do. A step in a skill replaces a tool that lists or sets what the harness owns.
-- The routing code is TypeScript in `src/`. The Python of the Hermes plugin
-  is a shim, as [Repository layout](CONTRIBUTING.md#repository-layout) says.
-  Put no routing logic into it.
+- The routing code is TypeScript in `src/`: the questions, the pick rule,
+  the ladder, the slot choice and the line. The Python of the Hermes plugin
+  reads Hermes's state, runs the gates that need it, and applies the answer,
+  or the model of a level the task sets. Add nothing else to it.
 - The effort ladder is one table in the core.
   [model-choice.md](plugins/model-router/docs/model-choice.md) explains it.
   Add no effort rule for one harness alone.
 
 ## Four harnesses, one behaviour
 
-- The Claude Code, omp, OpenClaw and Hermes plugins behave the same: options,
-  defaults, wording and setup steps.
+- The Claude Code, omp, OpenClaw and Hermes plugins behave the same wherever
+  the harness allows: options, defaults, wording and setup steps.
 - When you change one adapter, check the other three. Change them in the same
   pull request, or say in its text why one differs.
 - Shared logic lives once.

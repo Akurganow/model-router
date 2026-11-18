@@ -4,6 +4,6 @@
 		"@tsconfig/strictest/tsconfig.json",
 		"@tsconfig/node-ts/tsconfig.json"
 	],
-	"compilerOptions": { "allowImportingTsExtensions": true },
+	"compilerOptions": { "allowImportingTsExtensions": true, "noEmit": true },
 	"include": ["plugins/model-router/tests"]
 }
