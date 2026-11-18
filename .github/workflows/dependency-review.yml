@@ -37,8 +37,12 @@ jobs:
           allow-licenses: >-
             MIT, MIT-0, ISC, 0BSD, BSD-2-Clause, BSD-3-Clause, Apache-2.0,
             Unlicense, CC0-1.0, BlueOak-1.0.0, Zlib, Python-2.0
-          # Three advisories are allowed, all in the CI-only OpenClaw install of
-          # .github/actions/setup-openclaw, which no plugin ships.
+          # Three advisories are allowed. Each is in the CI-only OpenClaw
+          # install of .github/actions/setup-openclaw, which no plugin ships.
+          # The input has no path scope, so it passes the same advisories in
+          # every other lockfile too. The root lockfile, the only one whose
+          # packages a plugin carries, is still held by npm audit in the check
+          # job of ci.yml.
           # GHSA-3g3m-2fjr-6pw4: glob 13.0.6, bundled inside the npm that the
           # install overrides. A bundled package cannot be overridden, and no
           # npm release bundles the fixed glob yet. Remove it once an npm
