@@ -123,7 +123,7 @@ npm run check
 - `claude plugin test plugins/model-router` runs the tests in
   `plugins/model-router/tests/`, with no network.
 - `npm run check` runs these checks:
-  - `tsc` type-checks the plugin tests, `src/` and `scripts/`.
+  - `tsc` type-checks `src/` and `scripts/`.
   - `node scripts/set-version.ts --check` checks that the plugin versions
     agree.
   - `npm test` runs the tests of `src/`, `scripts/` and every
@@ -134,8 +134,8 @@ npm run check
   `node scripts/check-surface.ts`. It runs no `claude plugin test` either.
 - `npm run fix` formats the code and applies the safe lint fixes.
 
-The type-check of the plugin tests needs the steps under
-[Type declarations](#type-declarations).
+`npm run check:plugin-types` type-checks the plugin tests; it needs the steps
+under [Type declarations](#type-declarations).
 
 `npm run check` does not run the Hermes plugin's Python tests. Run them with
 any Python from 3.11 to 3.14:
@@ -163,10 +163,10 @@ link and reload commands.
 `npx tsc -p src` type-checks the sources. They declare the few mod types they
 use, so they need nothing else.
 
-`npx tsc -p .` type-checks the plugin tests. The hooks and tests check against
-the declarations that Claude Code writes into
-`plugins/model-router/.claude-plugin/types/` when it loads the mod. The root
-`tsconfig.json` extends the tsconfig written there.
+`npm run check:plugin-types` runs `tsc -p .`, which type-checks the plugin
+tests. The hooks and tests check against the declarations that Claude Code
+writes into `plugins/model-router/.claude-plugin/types/` when it loads the
+mod. The root `tsconfig.json` extends the tsconfig written there.
 
 1. Run `claude --plugin-dir plugins/model-router` once in an interactive session.
 2. Quit the session.
