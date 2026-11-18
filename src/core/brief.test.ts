@@ -657,6 +657,18 @@ const SHAPES: [string, string, string, string][] = [
 		"export DB_PASS=hunter2xyz MYSQL_PWD=hunter2xyz GPG_PASSPHRASE=hunter2xyz",
 		"export DB_PASS=*** MYSQL_PWD=*** GPG_PASSPHRASE=***",
 	],
+	[
+		"secret flag",
+		"the value after a flag that follows a quote",
+		'OPTS="--password hunter2xyz" run',
+		'OPTS="--password ***" run',
+	],
+	[
+		"password -p",
+		"the value after -p that follows a quote",
+		'run "-p hunter2xyz" now',
+		'run "-p ***" now',
+	],
 ];
 
 test("each secret shape is masked and its context kept", async (t) => {
@@ -703,6 +715,7 @@ test("prose and look-alikes stay as they are", () => {
 		"tool --password-file /run/pw and tool --token\nnext",
 		"the bypass: none and the compass: north",
 		"xargs -P 4 cmd",
+		"fix the cache-key bug and the 3-pass compiler",
 	])
 		assert.equal(prepareBrief(text), text);
 });
@@ -1067,6 +1080,7 @@ const ADVERSARIAL: [string, string, () => string][] = [
 	["secret name", "underscore run", () => fill("_")],
 	["secret flag", "hyphen segments with no name", () => fill("--a-")],
 	["secret flag", "flags with no value", () => fill("--pass\n")],
+	["secret flag", "quoted flag starts", () => fill('"--key')],
 	["password -p", "repeated -p", () => fill("-p ")],
 	["secret name", "underscore runs before pass", () => fill("a_pass_")],
 ];

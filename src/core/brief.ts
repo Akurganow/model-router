@@ -150,12 +150,12 @@ export const REDACTIONS: readonly Redaction[] = [
 	{
 		name: "secret flag",
 		pattern:
-			/((?<!\S)--?[A-Za-z0-9_-]*(?:key|token|secret|pass(?:word|phrase|wd)?|pwd)[ \t]+)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+			/((?<![A-Za-z0-9_-])--?[A-Za-z0-9_-]*(?:key|token|secret|pass(?:word|phrase|wd)?|pwd)[ \t]+)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
 		replacement: "$1***",
 	},
 	{
 		name: "password -p",
-		pattern: /((?<!\S)-p[ \t]+)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/g,
+		pattern: /((?<![A-Za-z0-9_-])-p[ \t]+)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/g,
 		replacement: "$1***",
 	},
 ];
