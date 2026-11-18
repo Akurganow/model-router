@@ -710,7 +710,7 @@ Every running fact names its OpenClaw version and the date it ran.
 - `registerTool` needs the tool name in the manifest's `contracts.tools`, or the registration is refused.
   (source: [`registry-registrars-tools-hooks.ts` L228–L275](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/registry-registrars-tools-hooks.ts#L228-L275))
 - Before a tool's `execute`, the agent loop checks the call's arguments against the tool's parameter schema and answers a failed check with a validation error.
-  So in an agent run, a setting name outside the schema's `enum` never reaches `execute`.
+  So in an agent run, an argument the schema does not allow never reaches `execute`.
   (source: [`agent-loop.ts` L1037–L1045](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/packages/agent-core/src/agent-loop.ts#L1037-L1045), [`validation.ts` L381–L420](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/packages/llm-core/src/validation.ts#L381-L420))
 - With the tool and the commands registered in `full` and `discovery` mode (before the hook joined `discovery`), `/commands` listed `/model-router-provider` and `/model-router-scope`, and `/model-router-scope extended` wrote `extended` to the config.
   That held after a fresh Gateway start and after an install into the running Gateway.
