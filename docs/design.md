@@ -14,7 +14,7 @@ OpenClaw reads `openclaw.plugin.json` at the plugin root and the `openclaw` bloc
 Hermes Agent reads `plugin.yaml` at the plugin root ([Hermes package files](clients.md#hermes-package-files)).
 So the plugins have six generated manifests and catalogues, and each repeats the name, the licence, the links and a description.
 Anthropic's directory reads the privacy policy URL from `plugin.json` only, and omp's catalogue entry carries its own copy ([Claude Code](clients.md#manifest)).
-Seven generated files carry the version, as `scripts/manifests.ts` lists, and the Claude Code catalogue carries none.
+Each of them but the Claude Code catalogue carries the version, and `scripts/manifests.ts` lists every file that does.
 The omp catalogue carries one because omp upgrades only entries that declare one ([omp install and update](clients.md#omp-install-and-update)).
 
 A copy kept by hand drifts from its source, and nothing notices until a user does.

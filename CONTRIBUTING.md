@@ -134,8 +134,8 @@ npm run check
   `node scripts/check-surface.ts`. It runs no `claude plugin test` either.
 - `npm run fix` formats the code and applies the safe lint fixes.
 
-`npm run check:plugin-types` type-checks the plugin tests; it needs the steps
-under [Type declarations](#type-declarations).
+`npm run check:plugin-types` is described under
+[Type declarations](#type-declarations).
 
 `npm run check` does not run the Hermes plugin's Python tests. Run them with
 any Python from 3.11 to 3.14:

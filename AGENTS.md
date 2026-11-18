@@ -20,12 +20,11 @@ CONTRIBUTING.md already states a rule, this file links to it.
 
 - They route subagents only. They never change the model of the main session.
 - They never override a model or an effort the user set for a call or for
-  all subagents, with two exceptions. Under the `extended` scope the routed
-  effort replaces one that an agent's definition or config entry sets, and
-  in Claude Code the routed model replaces the definition's model too. In
-  Claude Code the routed model outranks `CLAUDE_CODE_SUBAGENT_MODEL`; only
-  `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` outranks the router. Each plugin README
-  lists its cases.
+  all subagents, with two exceptions that each plugin README lists. Under the
+  `extended` scope the routed effort replaces one that an agent's definition
+  or config entry sets, and in Claude Code the routed model replaces the
+  definition's model too. In Claude Code the routed model outranks
+  `CLAUDE_CODE_SUBAGENT_MODEL`.
 - They track no spend and no cost budget.
 - They hold no code for a job that a text instruction to an agent can do. A step in a skill replaces a tool that lists or sets what the harness owns.
 - The routing code is TypeScript in `src/`: the questions, the pick rule,
