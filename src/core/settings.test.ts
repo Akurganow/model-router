@@ -164,7 +164,7 @@ test("labels carry the consequences of each value", () => {
 		"openrouter - OpenRouter only",
 	]);
 	assert.deepEqual(ask("scope", "core").options, [
-		"core - today's routing: built-in general agents only",
+		"core - built-in general agents only",
 		"extended - also routes other agents that pass no model",
 	]);
 });
