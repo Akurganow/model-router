@@ -23,7 +23,7 @@ const typed = (args: string): CommandRun => ({
 });
 
 const CALL = { tool: "mcp__model-router__config" };
-const CORE = "core - today's routing: built-in general agents only";
+const CORE = "core - built-in general agents only";
 const EXTENDED = "extended - also routes other agents that pass no model";
 const AUTO = "auto - TypeSafe, then OpenRouter if TypeSafe fails";
 const OPENROUTER_FIRST =
