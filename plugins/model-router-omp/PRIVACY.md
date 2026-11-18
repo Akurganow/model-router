@@ -143,13 +143,6 @@ When you choose a value in the plugin's dialog or give a command, the plugin
 writes your global `provider` or `scope` plugin setting through omp. It
 writes no project setting.
 
-When you call the `model_router_config` tool for a key, the plugin asks for
-the key in its own text dialog and stores it in omp's credential store, as
-`/login` does. The dialog shows the typed key in clear. The plugin passes the
-key to the credential store and nowhere else. It never logs or returns a key,
-and a failed save reports only `<provider> key not saved`. Other extensions'
-hooks in omp may see a dialog answer, the key included.
-
 A key you set as an environment variable is visible to every process omp
 starts.
 
@@ -179,8 +172,7 @@ agent text of each routed agent, which the request carries as described above.
 
 The lines the plugin prints per batch go to your omp notifications, or to
 standard error when omp has no UI. The setup skill changes only what you
-choose in the plugin's dialogs: the global `provider` and `scope` settings and
-a key.
+choose in the plugin's dialogs: the global `provider` and `scope` settings.
 
 ## Your choices
 

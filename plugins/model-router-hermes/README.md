@@ -49,10 +49,10 @@ The plugin reads a key only for a provider the [`provider` setting](#provider) a
 
 | Key | Environment variable | Settings secret | Where to set it |
 | --- | --- | --- | --- |
-| `typesafe_key` | `TYPESAFE_API_KEY` | `typesafe_api_key` | The `.env` file of the Hermes home, or the settings form in Hermes Desktop |
-| `openrouter_key` | `OPENROUTER_API_KEY` | none | The `.env` file only |
+| TypeSafe | `TYPESAFE_API_KEY` | `typesafe_api_key` | The `.env` file of the Hermes home, or the settings form in Hermes Desktop |
+| OpenRouter | `OPENROUTER_API_KEY` | none | The `.env` file only |
 
-The config tool's `setting=typesafe_key` only returns how to set the key, and carries no key. Hermes stores a key from the settings form as `TYPESAFE_API_KEY` in that `.env` file.
+Hermes stores a key from the settings form as `TYPESAFE_API_KEY` in that `.env` file.
 
 [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key, where it goes and when a task reports `key unset`. The plugin never uses Hermes's own provider credentials as a Jev key.
 
@@ -89,8 +89,6 @@ large_model: unset
 typesafe key: set
 openrouter key: unset
 ```
-
-Given a setting name, the tool returns how to change that setting. It writes nothing. The names are `provider`, `typesafe_key`, `openrouter_key`, `small_model`, `middle_model` and `large_model`.
 
 [Facts behind this section](../../docs/clients.md#hermes-registration-and-settings)
 

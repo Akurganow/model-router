@@ -10,18 +10,13 @@ import {
 	badCall,
 	COMMAND_DESCRIPTIONS,
 	chooseValue,
-	isKeySetting,
 	isValue,
 	isValueSetting,
-	KEY_SETTINGS,
 	keyLine,
-	keyNotSaved,
-	keyProvider,
 	NO_ANSWER,
 	NOT_OFFERED,
 	pick,
 	readOnlyToolDescription,
-	SETTING_NAMES,
 	settingsReport,
 	TOOL_LABEL,
 	toolDescription,
@@ -29,38 +24,26 @@ import {
 	useOneOf,
 	VALUE_SETTINGS,
 	valueLine,
-	valueSettingHelp,
 } from "./settings.ts";
 
-test("lists the four setting names, value settings first", () => {
-	assert.deepEqual(SETTING_NAMES, [
-		"provider",
-		"scope",
+test("lists the value settings", () => {
+	assert.deepEqual(VALUE_SETTINGS, ["provider", "scope"]);
+});
+
+test("isValueSetting accepts the value settings and refuses other input", () => {
+	for (const name of VALUE_SETTINGS)
+		assert.equal(isValueSetting(name), true, name);
+	for (const other of [
+		"",
+		"key",
 		"typesafe_key",
 		"openrouter_key",
-	]);
-	assert.deepEqual(VALUE_SETTINGS, ["provider", "scope"]);
-	assert.deepEqual(KEY_SETTINGS, ["typesafe_key", "openrouter_key"]);
-});
-
-test("predicates tell value settings, key settings and other input apart", () => {
-	for (const name of VALUE_SETTINGS) {
-		assert.equal(isValueSetting(name), true, name);
-		assert.equal(isKeySetting(name), false, name);
-	}
-	for (const name of KEY_SETTINGS) {
-		assert.equal(isValueSetting(name), false, name);
-		assert.equal(isKeySetting(name), true, name);
-	}
-	for (const other of ["", "key", "toString", 1, null, undefined]) {
+		"toString",
+		1,
+		null,
+		undefined,
+	])
 		assert.equal(isValueSetting(other), false, String(other));
-		assert.equal(isKeySetting(other), false, String(other));
-	}
-});
-
-test("each key setting belongs to one provider", () => {
-	assert.equal(keyProvider("typesafe_key"), "typesafe");
-	assert.equal(keyProvider("openrouter_key"), "openrouter");
 });
 
 test("isValue accepts the listed values of its own setting only", () => {
@@ -116,11 +99,6 @@ test("key status lines name the provider", () => {
 	for (const provider of ["typesafe", "openrouter"] as const) {
 		assert.equal(keyLine(provider, "set"), `${provider} key: set`);
 		assert.equal(keyLine(provider, "unset"), `${provider} key: unset`);
-		assert.equal(
-			keyLine(provider, "saved, checking"),
-			`${provider} key: saved, checking`,
-		);
-		assert.equal(keyNotSaved(provider), `${provider} key not saved`);
 	}
 });
 
@@ -327,42 +305,25 @@ test("settingsReport prints the stored provider as it is and resolves the scope"
 	);
 });
 
-test("the tool description lists the names it is given", () => {
-	for (const names of [SETTING_NAMES, VALUE_SETTINGS]) {
-		const text = toolDescription(names);
-		assert.ok(text.includes(`(${names.join(", ")})`));
-		assert.match(text, /no input/);
-		assert.match(text, /asks the person/);
-		assert.match(text, /Never pass a value/);
-	}
-	assert.doesNotMatch(toolDescription(VALUE_SETTINGS), /_key/);
-});
-
-test("the read-only tool description joins what it returns and the names", () => {
+test("the tool description names the value settings and the dialog", () => {
 	assert.equal(
-		readOnlyToolDescription(["the provider", "both models"], ["a", "b"]),
-		"Reads the router's settings. With no input it returns the provider, both models, and whether each key the provider allows is set. With a setting name (a, b) it returns how the person changes that setting. It changes nothing and never returns a key.",
-	);
-	assert.match(
-		readOnlyToolDescription(["x"], SETTING_NAMES),
-		/returns x, and whether/,
+		toolDescription(),
+		"Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (provider, scope) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.",
 	);
 });
 
-test("the value setting help gives the command line, then the allowed values", () => {
+test("the read-only tool description joins what it returns", () => {
 	assert.equal(
-		valueSettingHelp("provider"),
-		"Type /model-router-provider <value> in the chat.\nprovider: use one of auto, openrouter-first, typesafe, openrouter",
-	);
-	assert.equal(
-		valueSettingHelp("scope"),
-		"Type /model-router-scope <value> in the chat.\nscope: use one of core, extended",
+		readOnlyToolDescription(["the provider", "both models"]),
+		"Reads the router's settings. It returns the provider, both models, and whether each key the provider allows is set. It changes nothing and never returns a key.",
 	);
 });
 
-test("the bad-call text lists the names it is given", () => {
-	assert.ok(badCall(SETTING_NAMES).endsWith(SETTING_NAMES.join(", ")));
-	assert.ok(badCall(VALUE_SETTINGS).endsWith("provider, scope"));
+test("the bad-call text lists the value settings", () => {
+	assert.equal(
+		badCall(),
+		"Unknown setting. Pass no setting, or one of: provider, scope",
+	);
 });
 
 test("each value setting has a command description listing its values", () => {
@@ -375,8 +336,8 @@ test("each value setting has a command description listing its values", () => {
 
 test("no text names a harness", () => {
 	const texts = [
-		toolDescription(SETTING_NAMES),
-		badCall(SETTING_NAMES),
+		toolDescription(),
+		badCall(),
 		...VALUE_SETTINGS.flatMap((s) => ask(s, undefined).options),
 	];
 	for (const text of texts) assert.doesNotMatch(text, /claude|\bomp\b/i, text);

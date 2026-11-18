@@ -250,8 +250,8 @@ open, set the key as [Desktop app](#desktop-app) describes.
 3. Restart omp, because omp loads extension modules at startup.
 4. Run `/login typesafe`, `/login openrouter` or both in omp to store your
    keys.
-5. Ask omp to run the `model-router-setup` skill. It asks the provider, the
-   keys and the scope with buttons and writes your choices itself. It also
+5. Ask omp to run the `model-router-setup` skill. It asks the provider and
+   the scope with buttons and writes your choices itself. It also
    helps you set the `smol`, `midl` and `slow` roles.
 
 Instead of `/login`, you can run `omp login typesafe` or

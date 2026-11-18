@@ -131,8 +131,6 @@ typesafe key: set
 openrouter key: unset
 ```
 
-Given `provider` or `scope`, the tool returns the command to type. Given `small_model`, `middle_model` or `large_model`, it answers that the slot is set on the plugin's settings page, or with `openclaw config set plugins.entries.model-router-openclaw.config.<name> <provider/model>`. It writes nothing.
-
 [Facts behind this section](../../docs/clients.md#openclaw-commands-and-owner-check)
 
 ## Routing

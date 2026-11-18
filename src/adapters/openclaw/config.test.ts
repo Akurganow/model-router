@@ -2,10 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
 	alreadyValue,
-	badCall,
 	COMMAND_DESCRIPTIONS,
 	keyLine,
-	SETTING_NAMES,
 	TOOL_LABEL,
 	unchanged,
 	useOneOf,
@@ -35,12 +33,6 @@ function registerConfig(api: OpenClawApi, env: Environment) {
 const TYPESAFE_KEY = "ts-live-key-8f3a91c2d7e4b605";
 const OPENROUTER_KEY = "or-live-key-1d6e77a0c9b3f248";
 const ADMIN = "operator.admin";
-const TOOL_SETTINGS = [
-	...SETTING_NAMES,
-	"small_model",
-	"middle_model",
-	"large_model",
-];
 const NO_ENV = { TYPESAFE_API_KEY: "", OPENROUTER_API_KEY: "" };
 
 const live = (config: Record<string, unknown>): OpenClawConfig => ({
@@ -93,8 +85,8 @@ const runCommand = async (
 	fake: ReturnType<typeof setup>,
 ) => (await fake.command(name).handler(context)).text;
 
-const runTool = async (fake: ReturnType<typeof setup>, params?: unknown) =>
-	(await fake.tool().execute("call-1", params)).content
+const runTool = async (fake: ReturnType<typeof setup>) =>
+	(await fake.tool().execute("call-1", {})).content
 		.map((part) => part.text)
 		.join("\n");
 
@@ -150,15 +142,16 @@ describe("registration", () => {
 	it("registers the tool with its description text", () => {
 		assert.equal(
 			setup().tool().description,
-			"Reads the router's settings. With no input it returns the provider, the scope, the three models, and whether each key the provider allows is set. With a setting name (provider, scope, typesafe_key, openrouter_key, small_model, middle_model, large_model) it returns how the person changes that setting. It changes nothing and never returns a key.",
+			"Reads the router's settings. It returns the provider, the scope, the three models, and whether each key the provider allows is set. It changes nothing and never returns a key.",
 		);
 	});
 
-	it("lets the tool schema take the model settings", () => {
-		const { properties } = setup().tool().parameters as {
-			properties: { setting: { enum: readonly string[] } };
-		};
-		assert.deepEqual(properties.setting.enum, TOOL_SETTINGS);
+	it("takes no input: the schema is an empty strict object", () => {
+		assert.deepEqual(setup().tool().parameters, {
+			type: "object",
+			properties: {},
+			additionalProperties: false,
+		});
 	});
 
 	it("registers no command for the models", () => {
@@ -321,63 +314,16 @@ describe("the tool reads", () => {
 		assert.match(await runTool(fake), /scope: extended/);
 	});
 
-	it("never changes a setting", async () => {
-		const fake = setup();
-		await runTool(fake);
-		await runTool(fake, { setting: "provider" });
-		assert.deepEqual(fake.runtime.calls.mutate, []);
-	});
-});
-
-describe("the tool answers a setting name with the command to type", () => {
-	it("names the provider command and the allowed values", async () => {
-		assert.equal(
-			await runTool(setup(), { setting: "provider" }),
-			lines(
-				"Type /model-router-provider <value> in the chat.",
-				useOneOf("provider"),
-			),
-		);
-	});
-
-	it("names the scope command and the allowed values", async () => {
-		assert.equal(
-			await runTool(setup(), { setting: "scope" }),
-			lines("Type /model-router-scope <value> in the chat.", useOneOf("scope")),
-		);
-	});
-
-	it("points a key setting to the plugin settings and asks for no key", async () => {
-		for (const setting of ["typesafe_key", "openrouter_key"]) {
-			const text = await runTool(setup(), { setting });
-			assert.match(text, /plugin's settings/);
-			assert.match(text, /never .*chat/i);
-		}
-	});
-
-	it("points the model settings to the settings page and the config command", async () => {
-		for (const setting of ["small_model", "middle_model", "large_model"])
-			assert.equal(
-				await runTool(setup(), { setting }),
-				`${setting} is set on the plugin's settings page in the Control UI, or with: openclaw config set plugins.entries.${PLUGIN_ID}.config.${setting} <provider/model>`,
-			);
-	});
-
-	it("rejects an unknown setting name", async () => {
-		assert.equal(
-			await runTool(setup(), { setting: "bogus" }),
-			badCall(TOOL_SETTINGS),
-		);
-		assert.equal(
-			await runTool(setup(), { setting: 3 }),
-			badCall(TOOL_SETTINGS),
-		);
-	});
-
 	it("answers with text when the config cannot be read", async () => {
 		const fake = setup();
 		fake.runtime.throwOn.add("config");
 		assert.equal(typeof (await runTool(fake)), "string");
+	});
+
+	it("never changes a setting", async () => {
+		const fake = setup();
+		await runTool(fake);
+		assert.deepEqual(fake.runtime.calls.mutate, []);
 	});
 });
 

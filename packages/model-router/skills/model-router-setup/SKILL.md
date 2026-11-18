@@ -35,11 +35,8 @@ Find out which of these already hold, with the `model_router_config` tool and om
 - Called with no input, `model_router_config` prints the `provider` line, the `scope` line, and one key line for each provider the `provider` value allows.
 - A key line reads `<provider> key: set` or `<provider> key: unset`.
 - An unknown `provider` value counts as `typesafe`. An unknown `scope` value counts as `core`.
-- The tool takes one optional input, `setting`: `provider`, `scope`, `typesafe_key` or `openrouter_key`.
+- The tool takes one optional input, `setting`: `provider` or `scope`.
 - With `provider` or `scope`, the plugin asks the person in its own dialog and writes the value the person picks. The tool takes no value from the agent.
-- With `typesafe_key` or `openrouter_key`, the plugin asks for the key in a text dialog and stores it in omp's credential store, as `/login` does. The typed key shows in clear in that dialog.
-- A saved key returns `<provider> key: saved, checking`. The save counts only when a call with no input then reports `<provider> key: set`.
-- A failed key save returns `<provider> key not saved`.
 - A call that picks the current value returns `<setting> unchanged: already <value>`.
 - A call with no dialog answer returns `<setting> unchanged: no answer from the dialog`. It appears when omp has no UI too. The person can type `/model-router:provider <value>` or `/model-router:scope <value>` instead.
 - The tool writes the global plugin settings only. When a project value wins, the output adds `A project value for <setting> overrides it.`
@@ -65,6 +62,7 @@ Find out which of these already hold, with the `model_router_config` tool and om
 - OpenRouter: omp's stored `openrouter` credential, which `/login openrouter` stores, then the `OPENROUTER_API_KEY` environment variable.
 - A key counts as set when either place holds a non-empty value.
 - A key variable reaches the environment of every process omp starts.
+- The person adds a key with `/login typesafe` or `/login openrouter`, or with `omp login <provider>` outside a session. The plugin never asks for a key.
 - With no key for any allowed provider, every call skips with `key unset`.
 
 ### Models
@@ -73,6 +71,7 @@ Find out which of these already hold, with the `model_router_config` tool and om
 - omp ships `smol` and `slow`. `midl` is the plugin's name, and omp has no such role until the person adds it.
 - The plugin asks omp whether it has a model for the role. If omp has one, the spawn gets that role with the effort, such as `@midl:medium`.
 - If omp has none, the level keeps the agent's model. The plugin still sets the effort, except where a kept label below says otherwise.
+- The person reads and sets a role in the Roles view of `/models`, or under `modelRoles` in omp's `config.yml`.
 - With the omp `task` model role set, every `task` item skips with `task model role set`, so `core` routes nothing.
 
 ### The routed line

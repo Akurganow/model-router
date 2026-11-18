@@ -9,21 +9,14 @@ import {
 import { resolveScope, SCOPE_VALUES } from "./scope.ts";
 
 export const VALUE_SETTINGS = ["provider", "scope"] as const;
-export const KEY_SETTINGS = ["typesafe_key", "openrouter_key"] as const;
-export const SETTING_NAMES = [...VALUE_SETTINGS, ...KEY_SETTINGS] as const;
 export type ValueSetting = (typeof VALUE_SETTINGS)[number];
-export type KeySetting = (typeof KEY_SETTINGS)[number];
-type KeyState = "set" | "unset" | "saved, checking";
+type KeyState = "set" | "unset";
 
 export const TOOL_NAME = "model_router_config";
 const COMMAND_PREFIX = "model-router-";
 export const commandName = (setting: ValueSetting): string =>
 	`${COMMAND_PREFIX}${setting}`;
 
-const KEY_PROVIDERS: Readonly<Record<KeySetting, Provider>> = {
-	typesafe_key: "typesafe",
-	openrouter_key: "openrouter",
-};
 export const PROVIDER_NAMES: Readonly<Record<Provider, string>> = {
 	typesafe: "TypeSafe",
 	openrouter: "OpenRouter",
@@ -67,12 +60,6 @@ const TEXTS: Readonly<Record<ValueSetting, ValueText>> = {
 export const isValueSetting = (name: unknown): name is ValueSetting =>
 	VALUE_SETTINGS.some((known) => known === name);
 
-export const isKeySetting = (name: unknown): name is KeySetting =>
-	KEY_SETTINGS.some((known) => known === name);
-
-export const keyProvider = (setting: KeySetting): Provider =>
-	KEY_PROVIDERS[setting];
-
 export const isValue = (setting: ValueSetting, value: unknown): boolean =>
 	TEXTS[setting].values.some((known) => known === value);
 
@@ -84,13 +71,6 @@ export const valueLine = (setting: ValueSetting, value: unknown): string =>
 
 export const useOneOf = (setting: ValueSetting): string =>
 	`${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
-
-/** Returns the chat command line and the allowed values of a value setting, one per line. */
-export const valueSettingHelp = (setting: ValueSetting): string =>
-	[
-		`Type /${commandName(setting)} <value> in the chat.`,
-		useOneOf(setting),
-	].join("\n");
 
 export const unchanged = (setting: ValueSetting, reason: string): string =>
 	`${setting} unchanged: ${reason}`;
@@ -106,9 +86,6 @@ export const NOT_OFFERED = "the answer was not one of the offered values";
 
 export const keyLine = (provider: Provider, state: KeyState): string =>
 	`${provider} key: ${state}`;
-
-export const keyNotSaved = (provider: Provider): string =>
-	`${provider} key not saved`;
 
 const label = (setting: ValueSetting, value: string): string =>
 	`${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
@@ -178,23 +155,17 @@ export const settingsReport = (
 		),
 	].join("\n");
 
-export const toolDescription = (names: readonly string[]): string =>
-	`Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
+export const toolDescription = (): string =>
+	`Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
 
-/**
- * Returns the description of the read-only settings tool. `returned` lists what
- * a call with no input returns, and `names` the settings it answers for.
- */
-export const readOnlyToolDescription = (
-	returned: readonly string[],
-	names: readonly string[],
-): string =>
-	`Reads the router's settings. With no input it returns ${returned.join(", ")}, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) it returns how the person changes that setting. It changes nothing and never returns a key.`;
+/** Returns the description of the read-only settings tool. `returned` lists what a call returns. */
+export const readOnlyToolDescription = (returned: readonly string[]): string =>
+	`Reads the router's settings. It returns ${returned.join(", ")}, and whether each key the provider allows is set. It changes nothing and never returns a key.`;
 
 export const TOOL_LABEL = "Model Router settings";
 
-export const badCall = (names: readonly string[]): string =>
-	`Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
+export const badCall = (): string =>
+	`Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
 
 function describeCommand(setting: ValueSetting): string {
 	const { about, values } = TEXTS[setting];

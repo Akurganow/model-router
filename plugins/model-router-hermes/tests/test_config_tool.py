@@ -61,10 +61,10 @@ class ReadAllTest(unittest.TestCase):
         text = call(handler_for(secrets={"TYPESAFE_API_KEY": "   "}))
         self.assertIn(TEXTS["keyLines"]["typesafe"]["unset"], text)
 
-    def test_input_that_names_no_setting_reads_all(self):
+    def test_any_input_gives_the_full_read(self):
         handler = handler_for()
         expected = call(handler)
-        for args in ({}, None, [], "provider", 3):
+        for args in ({}, None, [], "provider", 3, {"setting": "provider"}, {"setting": "bogus"}):
             with self.subTest(args):
                 self.assertEqual(text_of(handler(args)), expected)
 
@@ -98,25 +98,11 @@ class ReadAllTest(unittest.TestCase):
         self.assertIn("provider", call(handler_for(), task_id="t", parent_agent=None))
 
 
-class SettingHelpTest(unittest.TestCase):
-    def test_each_setting_gives_its_help_text(self):
-        handler = handler_for()
-        for setting in TEXTS["settings"]:
-            with self.subTest(setting):
-                self.assertEqual(call(handler, {"setting": setting}), TEXTS["help"][setting])
-
-    def test_an_unknown_setting_gives_the_bad_call_text(self):
-        handler = handler_for()
-        for setting in ("scope", "bogus", "", None, 3, ["provider"], "Provider"):
-            with self.subTest(setting):
-                self.assertEqual(call(handler, {"setting": setting}), TEXTS["badCall"])
-
-
 class NoKeyLeakTest(unittest.TestCase):
     @staticmethod
     def outputs(secrets):
         handler = handler_for(good_settings(provider="auto"), secrets)
-        return [handler({})] + [handler({"setting": s}) for s in (*TEXTS["settings"], "x")]
+        return [handler({})]
 
     def test_no_output_holds_a_key(self):
         for raw in self.outputs(SECRETS):
@@ -145,12 +131,6 @@ class FailureTest(unittest.TestCase):
             call(ctx.tools[0]["handler"]), TEXTS["errorPrefix"] + "config unreadable"
         )
 
-    def test_help_still_answers_when_the_settings_cannot_be_read(self):
-        ctx = UnreadableCtx()
-        submodule("config_tool").register_tool(ctx, api=fake_api())
-        handler = ctx.tools[0]["handler"]
-        self.assertEqual(call(handler, {"setting": "provider"}), TEXTS["help"]["provider"])
-
 
 class RegistrationTest(unittest.TestCase):
     def registered(self):
@@ -166,17 +146,13 @@ class RegistrationTest(unittest.TestCase):
         self.assertEqual(tool["description"], TEXTS["toolLabel"])
         self.assertFalse(tool.get("is_async", False))
 
-    def test_the_schema_describes_one_optional_setting(self):
+    def test_the_schema_takes_no_input(self):
         schema = self.registered()["schema"]
         self.assertEqual(schema["name"], TEXTS["toolName"])
         self.assertEqual(schema["description"], TEXTS["toolDescription"])
         self.assertEqual(
             schema["parameters"],
-            {
-                "type": "object",
-                "properties": {"setting": {"type": "string", "enum": TEXTS["settings"]}},
-                "additionalProperties": False,
-            },
+            {"type": "object", "properties": {}, "additionalProperties": False},
         )
 
     def test_the_tool_is_the_one_the_manifest_provides(self):

@@ -107,7 +107,7 @@ const constants = (source: Source): JsonObject => {
 		levelSlots: LEVELS.map(slotForLevel),
 		...taskParameterTexts(source.hermes.pluginName),
 		backend: source.hermes.backendName,
-		texts: setupTexts(source.hermes.pluginName),
+		texts: setupTexts(),
 	};
 };
 

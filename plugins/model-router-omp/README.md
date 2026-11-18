@@ -38,11 +38,10 @@ For each provider the [`provider` setting](#provider) allows, the plugin checks 
 
 A key counts as set when either place holds a non-empty value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key.
 
-Add a key in one of three ways:
+Add a key in one of two ways:
 
 - Run `/login typesafe` or `/login openrouter`.
 - Set the environment variable where omp reads it. The variable is visible to every process omp starts. [PRIVACY.md](PRIVACY.md#what-the-plugin-stores) says more.
-- Let the `model_router_config` tool ask for the key in a text dialog, as [Change the options](#change-the-options) says.
 
 ## Provider
 
@@ -98,7 +97,7 @@ Two commands show or change an option:
 
 [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a command prints. A command with a valid value writes it to your global plugin settings. When a project value wins over the new global one, the output says `A project value for <setting> overrides it.` Without a UI, a command prints to standard error.
 
-The `model_router_config` tool takes one optional input, `setting`: `provider`, `scope`, `typesafe_key` or `openrouter_key`. The tool loads as essential and omp treats it as a write tool.
+The `model_router_config` tool takes one optional input, `setting`: `provider` or `scope`. The tool loads as essential and omp treats it as a write tool.
 
 - **No setting:** the tool returns the `provider` line, the `scope` line and the key lines. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show.
 
@@ -110,15 +109,12 @@ The `model_router_config` tool takes one optional input, `setting`: `provider`, 
   ```
 
 - **`provider` or `scope`:** the plugin asks you in its own dialog. The current value comes first, and each choice carries a one-line consequence. The plugin writes only the value you pick.
-- **`typesafe_key` or `openrouter_key`:** the plugin asks for the key in a text dialog. It names the provider and says when the new key replaces a set one. It stores the key in omp's credential store, as `/login` does, and returns `<provider> key: saved, checking`. Run the tool with no setting afterwards: the save counts only when it reports `key: set`.
 
-The tool asks the person. It never takes a value or a key from the model. Nothing is written when:
+The tool asks the person. It never takes a value from the model. Nothing is written when:
 
 - the dialog is dismissed or you answer with free text;
 - the value is unchanged;
 - omp has no UI.
-
-A key dialog also saves nothing for an empty, blank or multi-line answer, an answer over 512 characters, or a Yes or No label. A failed key save returns `<provider> key not saved` and nothing else. The typed key shows in clear in the dialog.
 
 The tool writes the global plugin settings only. It checks the value first, because omp does not. Its result text equals the commands' text for the same outcome.
 
@@ -287,7 +283,6 @@ The plugin prints no line when the call has no eligible item. A call with `task.
 ## What the plugin writes
 
 - The global `provider` or `scope` plugin setting, when you pick a value in its dialog or give a command.
-- A key, in omp's credential store, when you type it in the plugin's key dialog.
 
 The plugin writes nothing else and starts no program.
 
