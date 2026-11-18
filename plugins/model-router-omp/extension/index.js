@@ -1599,6 +1599,7 @@ var fromMiddle = (down, up) => (p) => {
 };
 var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
 function parseProbabilities(answers, key) {
   const a = isRecord(answers) ? answers[key] : void 0;
   if (!isRecord(a)) return void 0;
@@ -1606,7 +1607,7 @@ function parseProbabilities(answers, key) {
   if (type !== "score" || !isRecord(probabilities)) return void 0;
   if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
   const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (typeof p0 !== "number" || typeof p1 !== "number" || typeof p2 !== "number")
+  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
     return void 0;
   return { 0: p0, 1: p1, 2: p2 };
 }
