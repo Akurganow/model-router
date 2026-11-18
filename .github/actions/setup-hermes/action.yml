@@ -30,8 +30,8 @@ runs:
     - name: Install Hermes Agent
       shell: bash
       env:
-        HERMES_TAG: v0.23.0
-        HERMES_COMMIT: 2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19
+        HERMES_TAG: v0.23.2
+        HERMES_COMMIT: ae2a81ccc00e9b7c06301523e5bb09608397149c
       run: |
         dir="$RUNNER_TEMP/setup-hermes"
         git clone --quiet --depth 1 --branch "$HERMES_TAG" https://github.com/NousResearch/hermes-agent.git "$dir"
