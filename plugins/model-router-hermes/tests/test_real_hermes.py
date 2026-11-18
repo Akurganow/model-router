@@ -1,4 +1,5 @@
 import os
+import tempfile
 import types
 import unittest
 from unittest import mock
@@ -85,14 +86,19 @@ class TaskParametersOnHermesTest(unittest.TestCase):
         self.assertFalse(set(params) & RESERVED_TASK_PARAMETERS)
 
     def test_the_tool_schema_carries_the_parameters_and_the_addendum(self):
-        from tools import delegate_tool
+        from tools import delegate_tool  # noqa: F401  registers delegate_task
+        from tools.registry import registry
 
-        with mock.patch.object(delegate_tool, "_load_config", return_value=self.CONFIG):
-            schema = delegate_tool._build_dynamic_schema_overrides()
-        properties = schema["parameters"]["properties"]["tasks"]["items"]["properties"]
+        home = tempfile.TemporaryDirectory()
+        self.addCleanup(home.cleanup)
+        with open(os.path.join(home.name, "config.yaml"), "w", encoding="utf-8") as config:
+            config.write("delegation:\n  backend: " + CONSTANTS["backend"] + "\n")
+        with mock.patch.dict(os.environ, {"HERMES_HOME": home.name}):
+            definition = registry.get_definitions({"delegate_task"})[0]["function"]
+        properties = definition["parameters"]["properties"]["tasks"]["items"]["properties"]
         for name, declared in CONSTANTS["taskParameters"].items():
             self.assertEqual(properties[name], declared)
-        self.assertTrue(schema["description"].endswith("\n" + CONSTANTS["delegationAddendum"]))
+        self.assertTrue(definition["description"].endswith("\n" + CONSTANTS["delegationAddendum"]))
 
     def test_the_values_reach_route_task(self):
         _, payloads = self.routes(
