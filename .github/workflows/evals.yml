@@ -1,8 +1,8 @@
 name: evals
 
 # Runs a real headless client against the plugin installed from this
-# repository, once per shipped client, and asserts that the first subagent
-# spawn was routed. The cases are in evals/cases.json.
+# repository, once for Claude Code and once for omp, and asserts that the
+# first subagent spawn was routed. The cases are in evals/cases.json.
 #
 # It runs on manual dispatch only, because every run costs model usage. It
 # never runs on a pull request or after a release.

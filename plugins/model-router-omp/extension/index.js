@@ -1294,7 +1294,7 @@ var TEXTS = {
     about: "which agent calls the router routes",
     question: "Which agent calls should the router route?",
     consequences: {
-      core: "today's routing: built-in general agents only",
+      core: "built-in general agents only",
       extended: "also routes other agents that pass no model"
     }
   }

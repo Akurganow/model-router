@@ -14,7 +14,8 @@ OpenClaw reads `openclaw.plugin.json` at the plugin root and the `openclaw` bloc
 Hermes Agent reads `plugin.yaml` at the plugin root ([Hermes package files](clients.md#hermes-package-files)).
 So the plugins have six generated manifests and catalogues, and each repeats the name, the licence, the links and a description.
 Anthropic's directory reads the privacy policy URL from `plugin.json` only, and omp's catalogue entry carries its own copy ([Claude Code](clients.md#manifest)).
-The version sits in three of the four files, because omp upgrades only entries that declare one ([omp install and update](clients.md#omp-install-and-update)).
+Every manifest carries the version, and of the two catalogues only omp's does, because omp upgrades only entries that declare one ([omp install and update](clients.md#omp-install-and-update)).
+`scripts/manifests.ts` lists the files that carry it.
 
 A copy kept by hand drifts from its source, and nothing notices until a user does.
 So `metadata/source.json` is the only hand-written source of the facts those files repeat.
@@ -34,7 +35,7 @@ It fills the install region of the root README between `<!-- install:start -->` 
 It builds the four bundles from `src/`: the Claude Code hooks module, the omp extension, the OpenClaw entry `plugins/model-router-openclaw/index.js` and the Node program `plugins/model-router-hermes/route.mjs` that the Hermes shim starts.
 Nobody edits a generated file by hand, and [CI](#ci-checks-the-copies-and-the-installation) fails when one differs from the builder's output.
 
-The two clients need their own files, so one file could not serve both.
+Claude Code and omp need their own files, so one file could not serve both.
 Claude Code stops loading a plugin whose `userConfig` option holds an unknown key ([Claude Code](clients.md#manifest)).
 omp reads settings from a different block with a different schema, and it limits names to letters, digits, hyphens and dots ([omp manifest](clients.md#omp-manifest-and-settings), [omp catalogue](clients.md#omp-catalogue)).
 The source keeps the shared facts once, and each renderer shapes them for one client.
@@ -88,7 +89,7 @@ The failure message names `node scripts/build.ts`, the command that repairs it.
 Running on both systems means a copy that differs by system fails on one of them.
 
 **Installation.**
-The `install` job installs both plugins from the checkout, with the commands that `evals.yml` runs.
+The `install` job installs the Claude Code and omp plugins from the checkout, with the commands that `evals.yml` runs.
 The job runs no build, because a user installs the committed files.
 Claude Code runs `claude plugin marketplace add "$PWD"` and `claude plugin install model-router@model-router`.
 omp runs `omp plugin marketplace add "$PWD"` and `omp plugin install model-router@model-router`.
