@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.22.3 - 2026-11-18
+#### Bug Fixes
+- mask the last value when secret names or flags follow each other (d3181d8)
+- mask a secret flag that follows a quote or a backtick (4be2521)
+- treat a score outside 0 to 1 as a bad reply (626beb5)
+- mask secrets given as a command-line flag or a short name (1849401)
+#### Continuous Integration
+- (**deps**) update dependency @oh-my-pi/pi-coding-agent to v18.22.2 (c1f5ff6)
+
+- - -
+
+
 ## v0.22.2 - 2026-11-18
 #### Bug Fixes
 - remove the developer commands from the Claude Code skill (9f95da6)
