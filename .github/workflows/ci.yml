@@ -32,11 +32,20 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/setup-node
+        with:
+          cache-dependency-path: |
+            package-lock.json
+            .github/actions/setup-claude-code/package-lock.json
 
       - uses: ./.github/actions/setup-claude-code
 
+      # npm exits 0 when the download of an optional dependency fails.
+      # Biome, esbuild and TypeScript ship their binaries as optional
+      # platform packages, so a launcher that fails sends npm ci once more.
       - name: Install the dev tools
-        run: npm ci
+        run: |
+          npm ci
+          node_modules/.bin/biome --version && node_modules/.bin/esbuild --version && node_modules/.bin/tsc --version || npm ci
 
       # npm's default audit level: any open advisory against an installed
       # package fails the job. Renovate opens the pull request with the fix.
@@ -112,6 +121,8 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/setup-node
+        with:
+          cache-dependency-path: .github/actions/setup-claude-code/package-lock.json
 
       - uses: ./.github/actions/setup-claude-code
 
@@ -171,6 +182,10 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/setup-node
+        with:
+          cache-dependency-path: |
+            package-lock.json
+            .github/actions/setup-openclaw/package-lock.json
 
       # The install check takes the plugin's names from src/, which loads the
       # TypeSafe SDK.

@@ -139,6 +139,18 @@ The release workflow's `publish` job runs after a release, with npm trusted publ
 It publishes only while the `NPM_PUBLISH` variable is `true` and the registry lacks the version, so a rerun does nothing.
 [Publishing to npm](../CONTRIBUTING.md#publishing-to-npm) has the conditions and the first publication by hand.
 
+**Download cache.**
+Each job that installs packages restores the downloads from a GitHub Actions cache, so a run with unchanged lockfiles fetches no package from a registry.
+A registry download can fail, and npm treats a failed download of an optional dependency as success.
+Biome, esbuild and TypeScript ship their binaries as optional platform packages, so such a failure shows only when a later step runs them.
+So after the root `npm ci`, the `check` job, the release job and the evals run each of the three once, and a missing binary sends `npm ci` once more.
+npm keys its cache on the lockfiles the job installs, and checks every cached tarball against the lockfile's digest when it reads it.
+Bun and uv check a digest only when they download.
+So `setup-omp` saves Bun's cache right after the install, before a later step can change it.
+uv's cache key hashes `.github/actions/setup-hermes/action.yml`, so a new Hermes or uv pin saves a new entry.
+A pull request's run saves only to its own scope, which `main` never reads, so the release reads only entries saved by runs on `main`.
+The Hermes clone, the tool downloads of the setup actions, `npm audit` and `npm audit signatures` still need the network.
+
 **Owner-setup scan.**
 The repository is public.
 The `scan` job checks the added lines of a pull request and every generated file for two markers.
