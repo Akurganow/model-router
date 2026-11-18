@@ -303,8 +303,9 @@ version, because only CI and the evals install those pins.
 Renovate writes the npm lockfiles with npm 11, set by `constraints` in
 `.github/renovate.json`. npm 12 refuses `npm install --package-lock-only` for
 a package with bundled dependencies
-([npm/cli#9800](https://github.com/npm/cli/issues/9800)). Remove the
-constraint once an npm release fixes that issue.
+([npm/cli#9800](https://github.com/npm/cli/issues/9800)). A rule there stops
+Renovate from raising the constraint. Remove the constraint and that rule
+together once an npm release fixes that issue.
 
 Two pins are exceptions to the 14-day rule, both in the `setup-openclaw`
 action that installs OpenClaw for CI only:

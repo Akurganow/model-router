@@ -12,6 +12,12 @@
 	"packageRules": [
 		{ "matchManagers": ["npm"], "groupName": "npm tools" },
 		{
+			"description": "Renovate proposes no update for the npm constraint above. CONTRIBUTING.md, Dependencies, says why it holds npm below 12 and when to remove it with this rule.",
+			"matchDepTypes": ["tool-constraint"],
+			"matchPackageNames": ["npm"],
+			"enabled": false
+		},
+		{
 			"matchPackageNames": ["@typesafe-ai/sdk"],
 			"groupName": "typesafe sdk",
 			"semanticCommitType": "fix"
