@@ -289,10 +289,24 @@ Renovate (`.github/renovate.json`) keeps every pinned version current:
 - Bun
 - the actions, and the `uv` that `setup-hermes` installs
 
-Renovate proposes updates after the same 14 days, one pull request a week per
-group. It proposes security fixes at once. A bump of a pin under
-`.github/actions/` is a `ci` commit and releases no version, because only CI
-and the evals install those pins.
+Renovate proposes updates after the same 14 days, once a week: one pull
+request per group, and a separate one for a group's major updates
+([`separateMajorMinor`](https://github.com/renovatebot/renovate/blob/026bc94a7c9e1ba4dbb748afb7b0a19e7779729d/docs/usage/configuration-options.md#L5165-L5166)).
+It reads security fixes from the repository's Dependabot alerts and proposes
+them at any time with no age delay
+([`vulnerabilityAlerts`](https://github.com/renovatebot/renovate/blob/026bc94a7c9e1ba4dbb748afb7b0a19e7779729d/docs/usage/configuration-options.md#L5484-L5496)).
+For a dependency of the root `package.json`, a fix younger than 14 days gets
+a pull request whose lockfile update fails, because the age rule in `.npmrc`
+refuses the version. A retry passes once the fix is 14 days old. A bump of a
+pin under `.github/actions/` is a `ci` commit and releases no version, because
+only CI and the evals install those pins.
+
+Renovate writes the npm lockfiles with npm 11, set by `constraints` in
+`.github/renovate.json`. npm 12 refuses `npm install --package-lock-only` for
+a package with bundled dependencies
+([npm/cli#9800](https://github.com/npm/cli/issues/9800)). A rule there stops
+Renovate from raising the constraint. Remove the constraint and that rule
+together once an npm release fixes that issue.
 
 Two pins are exceptions to the 14-day rule, both in the `setup-openclaw`
 action that installs OpenClaw for CI only:
@@ -301,12 +315,11 @@ action that installs OpenClaw for CI only:
   raises the pin at any time with no age delay.
 - The npm that OpenClaw bundles there. OpenClaw pins an exact npm, and the
   action overrides it with a newer npm release when the pinned one carries
-  advisories. A Renovate rule raises that override with no age delay too. No
-  other package and no other npm in the repository has this exception.
+  advisories. A Renovate rule raises that override with no age delay too.
 
-The action installs from a copy under the runner's temp folder, because the age
-rule in `.npmrc` would refuse a new version. The lockfile still locks every
-package by digest, and no install script runs.
+The action installs from a copy under the runner's temp folder, so no
+`node_modules` folder lands in the checkout. The lockfile locks every package
+by digest, and no install script runs.
 
 Hermes Agent is the third exception. The `setup-hermes` action installs it for
 CI only. CI installs the latest Hermes release at its tag and checks the

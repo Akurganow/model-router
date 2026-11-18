@@ -7,9 +7,8 @@ description: >
 runs:
   using: composite
   steps:
-    # The install runs in a copy under the runner's temp folder. The
-    # repository's .npmrc holds a 14-day age rule that would refuse a version
-    # this new, and npm reads it only from the folder it installs in.
+    # The install runs in a copy under the runner's temp folder, so no
+    # node_modules folder lands in the checkout.
     # package.json overrides two packages OpenClaw pins exactly. npm 12.2.2
     # bundles a brace-expansion and an undici without the advisories of
     # 12.2.0's; it is newer than 14 days, an exception CONTRIBUTING.md
