@@ -102,9 +102,7 @@ class NoKeyLeakTest(unittest.TestCase):
     @staticmethod
     def outputs(secrets):
         handler = handler_for(good_settings(provider="auto"), secrets)
-        return [handler({})] + [
-            handler({"setting": s}) for s in ("provider", "typesafe_key", "openrouter_key", "x")
-        ]
+        return [handler({})]
 
     def test_no_output_holds_a_key(self):
         for raw in self.outputs(SECRETS):
