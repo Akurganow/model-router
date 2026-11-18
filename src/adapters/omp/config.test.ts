@@ -85,7 +85,7 @@ test("the tool is essential, needs the write tier and takes an optional setting 
 	const tool = world.tools[TOOL_NAME];
 	assert.equal(
 		tool?.description,
-		"Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (provider, scope) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.",
+		"Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (provider, scope) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.",
 	);
 	assert.equal(tool?.loadMode, "essential");
 	assert.equal(tool?.approval, "write");

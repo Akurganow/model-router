@@ -156,7 +156,7 @@ export const settingsReport = (
 	].join("\n");
 
 export const toolDescription = (names: readonly string[]): string =>
-	`Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key: the person supplies them in the dialog.`;
+	`Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
 
 /** Returns the description of the read-only settings tool. `returned` lists what a call returns. */
 export const readOnlyToolDescription = (returned: readonly string[]): string =>
