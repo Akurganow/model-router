@@ -29,8 +29,8 @@ CONTRIBUTING.md already states a rule, this file links to it.
 - They hold no code for a job that a text instruction to an agent can do. A step in a skill replaces a tool that lists or sets what the harness owns.
 - The routing code is TypeScript in `src/`: the questions, the pick rule,
   the ladder, the slot choice and the line. The Python of the Hermes plugin
-  reads Hermes's state, runs the gates that need it and applies the answer.
-  Add nothing else to it.
+  reads Hermes's state, runs the gates that need it, and applies the answer,
+  or the model of a level the task sets. Add nothing else to it.
 - The effort ladder is one table in the core.
   [model-choice.md](plugins/model-router/docs/model-choice.md) explains it.
   Add no effort rule for one harness alone.
