@@ -69,8 +69,9 @@ export const TOKEN_PREFIXES: Readonly<Record<string, string>> = {
 // The task text goes to a third party, and nothing marks which strings are secrets, so redaction matches shapes.
 // docs/providers.md#the-task-text lists these shapes: change it with this table.
 // A rule that can fail after a long scan starts where the token's own alphabet does not precede it. Every gap is bounded or ends at a delimiter its own class excludes, so each rule runs in linear time.
-// Three orders keep a secret from leaking, and a test pins each. The AWS secret rule runs before the token prefixes, which would mask the id it needs.
-// The PEM rule runs before the name rule, which would eat the header after "key:" and leave the body. The Bearer rule runs before the password and name rules, which would mask the word Bearer and leave the token.
+// These orders keep a secret from leaking, and a test pins each. The AWS secret rule runs before the token prefixes, which would mask the id it needs.
+// The PEM rule runs before the name and flag rules, which would eat the header after "key:" or "--key" and leave the body. The Bearer rule runs before the password, name, flag and -p rules, which would mask the word Bearer and leave the token.
+// The name rule runs before the flag rule, which would mask the "=" of "--pass = x" and leave the value.
 export const REDACTIONS: readonly Redaction[] = [
 	{
 		name: "PEM private key",
@@ -143,8 +144,19 @@ export const REDACTIONS: readonly Redaction[] = [
 	{
 		name: "secret name",
 		pattern:
-			/\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+			/\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASS(?:WORD|PHRASE))|(?:[A-Za-z0-9_]*_)?(?:PASS(?:WD)?|PWD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
 		replacement: "$1$2***",
+	},
+	{
+		name: "secret flag",
+		pattern:
+			/((?<!\S)--?[A-Za-z0-9_-]*(?:key|token|secret|pass(?:word|phrase|wd)?|pwd)[ \t]+)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+		replacement: "$1***",
+	},
+	{
+		name: "password -p",
+		pattern: /((?<!\S)-p[ \t]+)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/g,
+		replacement: "$1***",
 	},
 ];
 

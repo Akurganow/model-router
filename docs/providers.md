@@ -95,10 +95,14 @@ Masking replaces these shapes with `***`:
 - an `sk-` key, such as an OpenAI, Anthropic or OpenRouter key;
 - the `user:password` after `-u`, also attached as in `-uuser:pass` or after a group of short flags that ends in `u` as in `-fsSu`, and after `--user` or `--proxy-user`;
 - the word after `password`, `passphrase` or `passwd` followed by `is` or `was`, with or without a colon;
-- the value assigned with `=` or `:` to a name that ends in `key`, `token`, `secret` or `password`, in any case.
+- the value assigned with `=` or `:` to a name that ends in `key`, `token`, `secret`, `password` or `passphrase`, in any case, or to `pass`, `passwd` or `pwd` alone or after `_`, as in `DB_PASS`;
+- the value after a flag whose name ends in `key`, `token`, `secret`, `password`, `passphrase`, `passwd`, `pass` or `pwd`, split from it by spaces or tabs, as in `--password s3cret` or `-storepass s3cret`;
+- the value after `-p`, split from it by spaces or tabs, as in `docker login -u bob -p s3cret`.
 
-A quoted value after `password is` or after such a name is masked up to its closing quote on the same line, or to the end of that line.
-The last rule also masks the word after such a name in prose, as in `primary key: id`.
+A quoted value after `password is`, such a name, such a flag or `-p` is masked up to its closing quote on the same line, or to the end of that line.
+The name rule also masks the word after such a name, as in `primary key: id`, `first pass: read` and `-v $PWD:/app`.
+The flag rule also masks `--sort-key name` and `--bypass on`.
+The `-p` rule also masks `mkdir -p dir` and `ssh -p 22`.
 The `-u` and `password` rules also mask `-u 1000:1000` and `password was reset`.
 The agent's description and the call's one-line description pass through the same masking.
 A text over 12,000 characters keeps its start and its end.

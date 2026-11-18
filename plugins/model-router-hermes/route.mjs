@@ -157,8 +157,18 @@ var REDACTIONS = [
   },
   {
     name: "secret name",
-    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    pattern: /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASS(?:WORD|PHRASE))|(?:[A-Za-z0-9_]*_)?(?:PASS(?:WD)?|PWD))(["']?\s*[=:]\s*)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
     replacement: "$1$2***"
+  },
+  {
+    name: "secret flag",
+    pattern: /((?<!\S)--?[A-Za-z0-9_-]*(?:key|token|secret|pass(?:word|phrase|wd)?|pwd)[ \t]+)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/gi,
+    replacement: "$1***"
+  },
+  {
+    name: "password -p",
+    pattern: /((?<!\S)-p[ \t]+)(?:"[^"\n]*"?|'[^'\n]*'?|[^\s"']+)/g,
+    replacement: "$1***"
   }
 ];
 var FENCE_OPENER = /(?<![`~])(?:(`{3,})[^\n`]*|(~{3,})[^\n~]*)\n/g;
