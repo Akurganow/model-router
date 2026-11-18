@@ -116,9 +116,7 @@ async function runTool(
 ): Promise<string> {
 	const { setting } = isRecord(params) ? params : {};
 	if (setting === undefined) return readAll(omp, ctx);
-	return isValueSetting(setting)
-		? dialog(omp, ctx, setting)
-		: badCall(VALUE_SETTINGS);
+	return isValueSetting(setting) ? dialog(omp, ctx, setting) : badCall();
 }
 
 async function runCommand(
@@ -150,7 +148,7 @@ export function registerConfig(omp: OmpImports, pi: Pi): void {
 	pi.registerTool({
 		name: TOOL_NAME,
 		label: TOOL_LABEL,
-		description: toolDescription(VALUE_SETTINGS),
+		description: toolDescription(),
 		parameters: pi.zod.object({
 			setting: pi.zod.enum(VALUE_SETTINGS).optional(),
 		}),

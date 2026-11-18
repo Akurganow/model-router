@@ -155,8 +155,8 @@ export const settingsReport = (
 		),
 	].join("\n");
 
-export const toolDescription = (names: readonly string[]): string =>
-	`Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
+export const toolDescription = (): string =>
+	`Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
 
 /** Returns the description of the read-only settings tool. `returned` lists what a call returns. */
 export const readOnlyToolDescription = (returned: readonly string[]): string =>
@@ -164,8 +164,8 @@ export const readOnlyToolDescription = (returned: readonly string[]): string =>
 
 export const TOOL_LABEL = "Model Router settings";
 
-export const badCall = (names: readonly string[]): string =>
-	`Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
+export const badCall = (): string =>
+	`Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
 
 function describeCommand(setting: ValueSetting): string {
 	const { about, values } = TEXTS[setting];

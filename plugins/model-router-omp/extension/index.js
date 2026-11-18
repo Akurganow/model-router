@@ -1341,9 +1341,9 @@ var settingsReport = (provider, scope, extra, keys) => [
     (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
   )
 ].join("\n");
-var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
+var toolDescription = () => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
 var TOOL_LABEL = "Model Router settings";
-var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
+var badCall = () => `Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
 function describeCommand(setting) {
   const { about, values } = TEXTS[setting];
   return `Shows or changes ${about}: ${values.join(", ")}.`;
@@ -1486,7 +1486,7 @@ async function dialog(omp, ctx, setting) {
 async function runTool(omp, ctx, params) {
   const { setting } = isRecord(params) ? params : {};
   if (setting === void 0) return readAll(omp, ctx);
-  return isValueSetting(setting) ? dialog(omp, ctx, setting) : badCall(VALUE_SETTINGS);
+  return isValueSetting(setting) ? dialog(omp, ctx, setting) : badCall();
 }
 async function runCommand(omp, ctx, setting, args) {
   const value = args.trim();
@@ -1509,7 +1509,7 @@ function registerConfig(omp, pi) {
   pi.registerTool({
     name: TOOL_NAME,
     label: TOOL_LABEL,
-    description: toolDescription(VALUE_SETTINGS),
+    description: toolDescription(),
     parameters: pi.zod.object({
       setting: pi.zod.enum(VALUE_SETTINGS).optional()
     }),

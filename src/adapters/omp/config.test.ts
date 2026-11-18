@@ -4,7 +4,6 @@ import { UNREADABLE } from "../../core/reasons.ts";
 import {
 	alreadyValue,
 	ask,
-	badCall,
 	COMMAND_DESCRIPTIONS,
 	NO_ANSWER,
 	NOT_OFFERED,
@@ -291,7 +290,7 @@ test("an unknown setting is a bad call and writes nothing", async () => {
 	install();
 	assert.equal(
 		await world.callTool({ setting: "tier" }),
-		badCall(["provider", "scope"]),
+		"Unknown setting. Pass no setting, or one of: provider, scope",
 	);
 	assert.equal(world.writes.length, 0);
 });

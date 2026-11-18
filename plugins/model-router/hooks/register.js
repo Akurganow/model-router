@@ -1069,8 +1069,8 @@ var settingsReport = (provider, scope, extra, keys) => [
     (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
   )
 ].join("\n");
-var toolDescription = (names) => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${names.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
-var badCall = (names) => `Unknown setting. Pass no setting, or one of: ${names.join(", ")}`;
+var toolDescription = () => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
+var badCall = () => `Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
 function describeCommand(setting) {
   const { about, values } = TEXTS[setting];
   return `Shows or changes ${about}: ${values.join(", ")}.`;
@@ -1132,7 +1132,7 @@ var REFUSED = "Permission rules deny this tool, so nothing was read or changed."
 var PERSON = "composer";
 var TOOL_SPEC = {
   name: "config",
-  description: toolDescription(VALUE_SETTINGS),
+  description: toolDescription(),
   inputSchema: {
     type: "object",
     properties: { setting: { type: "string", enum: VALUE_SETTINGS } }
@@ -1181,7 +1181,7 @@ async function answer($, call, options) {
   if (setting === void 0) return { result: await read($, options) };
   if (isValueSetting(setting))
     return { result: await choose($, setting, options) };
-  return { result: badCall(VALUE_SETTINGS) };
+  return { result: badCall() };
 }
 function configCall($, call, options) {
   return serial(() => answer($, call, options));

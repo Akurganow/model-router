@@ -36,7 +36,7 @@ const PERSON = "composer";
 
 const TOOL_SPEC = {
 	name: "config",
-	description: toolDescription(VALUE_SETTINGS),
+	description: toolDescription(),
 	inputSchema: {
 		type: "object",
 		properties: { setting: { type: "string", enum: VALUE_SETTINGS } },
@@ -116,7 +116,7 @@ async function answer(
 	if (setting === undefined) return { result: await read($, options) };
 	if (isValueSetting(setting))
 		return { result: await choose($, setting, options) };
-	return { result: badCall(VALUE_SETTINGS) };
+	return { result: badCall() };
 }
 
 // One dialog at a time. A call reads the value after the one before it closed.

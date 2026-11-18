@@ -305,15 +305,11 @@ test("settingsReport prints the stored provider as it is and resolves the scope"
 	);
 });
 
-test("the tool description lists the names it is given", () => {
-	for (const names of [["alpha", "beta", "gamma"], VALUE_SETTINGS]) {
-		const text = toolDescription(names);
-		assert.ok(text.includes(`(${names.join(", ")})`));
-		assert.match(text, /no input/);
-		assert.match(text, /asks the person/);
-		assert.match(text, /Never pass a value/);
-	}
-	assert.doesNotMatch(toolDescription(VALUE_SETTINGS), /_key/);
+test("the tool description names the value settings and the dialog", () => {
+	assert.equal(
+		toolDescription(),
+		"Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (provider, scope) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.",
+	);
 });
 
 test("the read-only tool description joins what it returns", () => {
@@ -323,9 +319,11 @@ test("the read-only tool description joins what it returns", () => {
 	);
 });
 
-test("the bad-call text lists the names it is given", () => {
-	assert.ok(badCall(["alpha", "beta", "gamma"]).endsWith("alpha, beta, gamma"));
-	assert.ok(badCall(VALUE_SETTINGS).endsWith("provider, scope"));
+test("the bad-call text lists the value settings", () => {
+	assert.equal(
+		badCall(),
+		"Unknown setting. Pass no setting, or one of: provider, scope",
+	);
 });
 
 test("each value setting has a command description listing its values", () => {
@@ -338,8 +336,8 @@ test("each value setting has a command description listing its values", () => {
 
 test("no text names a harness", () => {
 	const texts = [
-		toolDescription(VALUE_SETTINGS),
-		badCall(VALUE_SETTINGS),
+		toolDescription(),
+		badCall(),
 		...VALUE_SETTINGS.flatMap((s) => ask(s, undefined).options),
 	];
 	for (const text of texts) assert.doesNotMatch(text, /claude|\bomp\b/i, text);
