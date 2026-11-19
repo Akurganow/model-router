@@ -37,16 +37,28 @@ jobs:
           allow-licenses: >-
             MIT, MIT-0, ISC, 0BSD, BSD-2-Clause, BSD-3-Clause, Apache-2.0,
             Unlicense, CC0-1.0, BlueOak-1.0.0, Zlib, Python-2.0
-          # Two advisories are allowed, both in the CI-only OpenClaw install of
-          # .github/actions/setup-openclaw, which no plugin ships.
-          # GHSA-3g3m-2fjr-6pw4: glob 13.0.6, bundled inside npm 12.2.2. A
-          # bundled package cannot be overridden, and no npm release bundles
-          # the fixed glob yet. Remove it once an npm release bundles glob
-          # 14.0.2 or later.
+          # Three advisories are allowed. Each is in the CI-only OpenClaw
+          # install of .github/actions/setup-openclaw, which no plugin ships.
+          # The input has no path scope, so it passes the same advisories in
+          # every other lockfile too. The root lockfile, the only one whose
+          # packages a plugin carries, is still held by npm audit in the check
+          # job of ci.yml.
+          # GHSA-3g3m-2fjr-6pw4: glob 13.0.6, bundled inside the npm that the
+          # install overrides. A bundled package cannot be overridden, and no
+          # npm release bundles the fixed glob yet. Remove it once an npm
+          # release bundles glob 14.0.2 or later.
           # GHSA-g3hv-75wg-m249: minimatch in two copies, 10.2.6 from
-          # OpenClaw's exact pin and 10.2.5 bundled inside npm 12.2.2. Remove
+          # OpenClaw's exact pin and 10.2.5 bundled inside that npm. Remove
           # it once OpenClaw and npm both move to minimatch 11.0.1 or later.
-          allow-ghsas: GHSA-3g3m-2fjr-6pw4, GHSA-g3hv-75wg-m249
+          # GHSA-rmxm-3fg6-px4f: a 1.x copy of @hono/node-server, which
+          # OpenClaw 2026.11.5 installs under @modelcontextprotocol/node.
+          # That package requires ^1.19.9 and only 2.1.3 fixes the advisory,
+          # so an override would give it a major version it does not declare.
+          # The advisory is about serving static files, and CI only installs
+          # OpenClaw and runs its plugins install and plugins inspect commands.
+          # Remove it once the lockfile holds no @hono/node-server below 2.1.3.
+          allow-ghsas: >-
+            GHSA-3g3m-2fjr-6pw4, GHSA-g3hv-75wg-m249, GHSA-rmxm-3fg6-px4f
           allow-dependencies-licenses: >-
             pkg:npm/@anthropic-ai/claude-code,
             pkg:npm/@anthropic-ai/claude-code-darwin-arm64,
