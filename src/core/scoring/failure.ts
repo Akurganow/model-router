@@ -7,19 +7,19 @@ import {
 } from "../reasons.ts";
 
 // A failure holds a tag and, for a status, the number. Never a cause, a body, a task or a key.
-// The two tags that spell a reason text take its constant, because scripts/lint/shared-reason.grit
-// bans that text as a literal outside reasons.ts.
 export type Failure =
 	| { readonly failure: "aborted" }
 	| { readonly failure: "timed out" }
 	| { readonly failure: "network" }
 	| { readonly failure: "status"; readonly status: number }
-	| { readonly failure: typeof BAD_REPLY }
-	| { readonly failure: typeof FAILED };
+	| { readonly failure: "malformed" }
+	| { readonly failure: "unknown" };
 
 export const ABORTED: Failure = { failure: "aborted" };
 export const TIMED_OUT: Failure = { failure: "timed out" };
 export const NETWORK: Failure = { failure: "network" };
+export const MALFORMED: Failure = { failure: "malformed" };
+export const UNKNOWN: Failure = { failure: "unknown" };
 
 const FALLBACK_STATUSES: ReadonlySet<number> = new Set([
 	401, 402, 403, 404, 408, 429,
@@ -39,9 +39,9 @@ export function skipText(failure: Failure, aborted: string): string {
 			return NETWORK_ERROR;
 		case "status":
 			return httpStatus(failure.status);
-		case BAD_REPLY:
+		case "malformed":
 			return BAD_REPLY;
-		case FAILED:
+		case "unknown":
 			return FAILED;
 	}
 }
@@ -58,8 +58,8 @@ export function fallsBack(failure: Failure): boolean {
 					failure.status <= SERVER_ERRORS.max)
 			);
 		case "aborted":
-		case BAD_REPLY:
-		case FAILED:
+		case "malformed":
+		case "unknown":
 			return false;
 	}
 }

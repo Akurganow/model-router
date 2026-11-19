@@ -1,4 +1,7 @@
-// The last attempt's defaults: two retries after the first request, and 10 s for each request.
+import { type Failure, isFailure } from "../failure.ts";
+
+// The defaults when the caller names none: two retries after the first request, and 10 s for each
+// request. The routing limit ends a longer wait first.
 export const RETRIES = 2;
 export const TIMEOUT_MS = 10000;
 
@@ -11,26 +14,35 @@ const SERVER_ERRORS = { min: 500, max: 599 };
 
 export type HeaderReader = { get(name: string): string | null };
 
-// Retried: 408, 429 and every 5xx status.
-export const isRetriedStatus = (status: number): boolean =>
-	status === 408 ||
-	status === 429 ||
-	(status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max);
-
-// Number("") is 0, so a blank header counts as absent.
-const headerText = (
-	headers: HeaderReader,
-	name: string,
-): string | undefined => {
-	const raw = headers.get(name);
-	return raw === null || raw.trim() === "" ? undefined : raw;
-};
+// Retried: a received 408, 429 or 5xx status, a timeout and a connection failure.
+export function isRetried(
+	outcome: { readonly status: number } | Failure,
+): boolean {
+	if (!isFailure(outcome))
+		return (
+			outcome.status === 408 ||
+			outcome.status === 429 ||
+			(outcome.status >= SERVER_ERRORS.min &&
+				outcome.status <= SERVER_ERRORS.max)
+		);
+	switch (outcome.failure) {
+		case "timed out":
+		case "network":
+			return true;
+		case "aborted":
+		case "status":
+		case "malformed":
+		case "unknown":
+			return false;
+	}
+}
 
 function serverDelayMs(headers: HeaderReader): number | undefined {
-	const ms = Number(headerText(headers, "retry-after-ms"));
+	const rawMs = headers.get("retry-after-ms");
+	const ms = rawMs === null ? Number.NaN : Number(rawMs);
 	if (Number.isFinite(ms) && ms >= 0) return ms;
-	const raw = headerText(headers, "retry-after");
-	if (raw === undefined) return undefined;
+	const raw = headers.get("retry-after");
+	if (raw === null) return undefined;
 	const seconds = Number(raw);
 	if (Number.isFinite(seconds)) {
 		return seconds >= 0 ? seconds * 1000 : undefined;

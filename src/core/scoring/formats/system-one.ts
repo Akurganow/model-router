@@ -1,7 +1,7 @@
 import { isRecord } from "../../../utils/guards.ts";
 import { LEVELS, type Part, type Probabilities } from "../../part.ts";
-import { BAD_REPLY } from "../../reasons.ts";
-import type { Failure } from "../failure.ts";
+import { type Failure, MALFORMED } from "../failure.ts";
+import type { Usage } from "../reply.ts";
 import type { Answers, Format } from "./format.ts";
 
 const OK = { min: 200, max: 299 };
@@ -34,6 +34,17 @@ function parse(text: string): unknown {
 	}
 }
 
+const count = (v: unknown): number | null => (typeof v === "number" ? v : null);
+
+function usageOf(usage: unknown): Usage | undefined {
+	if (!isRecord(usage)) return undefined;
+	const { input_tokens, output_tokens } = usage;
+	return {
+		input_tokens: count(input_tokens),
+		output_tokens: count(output_tokens),
+	};
+}
+
 function read(
 	parts: readonly Part[],
 	status: number,
@@ -47,10 +58,10 @@ function read(
 	const pairs: (readonly [Part, Probabilities])[] = [];
 	for (const part of parts) {
 		const probabilities = parseProbabilities(answers, part.key);
-		if (!probabilities) return { failure: BAD_REPLY };
+		if (!probabilities) return MALFORMED;
 		pairs.push([part, probabilities]);
 	}
-	return { answers: pairs, model, usage };
+	return { answers: pairs, model, usage: usageOf(usage) };
 }
 
 // The body of POST /v1/systemone: the state, the model and one score question for each part.

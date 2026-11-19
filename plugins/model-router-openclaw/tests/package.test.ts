@@ -55,10 +55,7 @@ test("a routed spawn sends the version of metadata/source.json in its User-Agent
 		headers.push(init?.headers);
 		return Response.json(systemOneAnswer(1, 1));
 	};
-	// The plugin takes the global fetch when the module loads, so a query makes a fresh load under the fake.
-	const { default: plugin } = await import(
-		`${pathToFileURL(bundlePath).href}?user-agent`
-	);
+	const { default: plugin } = await import(pathToFileURL(bundlePath).href);
 	const fake = createFakeApi({
 		pluginConfig: { provider: "typesafe", api_key: "test-key" },
 	});

@@ -297,16 +297,16 @@ async function scored(
 // $.http.fetch takes no signal, so the call races the abort. The request itself runs to its end.
 function engineFetch($: Engine): Fetch {
 	return (url, init) => {
-		const body = String(init?.body ?? "");
+		const { body } = init;
 		return abortable(async () => {
 			await logRequest($, body);
 			const reply = await $.http.fetch(url, {
-				method: init?.method,
-				headers: init?.headers as Record<string, string>,
+				method: init.method,
+				headers: init.headers,
 				body,
 			});
-			return toResponse(reply);
-		}, init?.signal);
+			return toReply(reply);
+		}, init.signal);
 	};
 }
 
@@ -335,20 +335,15 @@ async function logRequest($: Engine, body: string): Promise<void> {
 		);
 }
 
-// The mod runtime has no Response, so the transport gets the parts of one it reads.
-function toResponse({ status, ok, headers, text }: HttpReply): Response {
-	const header = (name: string) => headers[name.toLowerCase()];
+// The mod runtime has no Response, so the transport gets the three members it reads.
+function toReply({
+	status,
+	headers,
+	text,
+}: HttpReply): Awaited<ReturnType<Fetch>> {
 	return {
 		status,
-		ok,
-		body: null,
-		headers: {
-			get: (name: string) => header(name) ?? null,
-			has: (name: string) => header(name) !== undefined,
-		},
+		headers: { get: (name) => headers[name.toLowerCase()] ?? null },
 		text: async () => text,
-		clone() {
-			return this;
-		},
-	} as unknown as Response;
+	};
 }

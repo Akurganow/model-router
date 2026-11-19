@@ -114,7 +114,8 @@ function register(api: OpenClawApi, deps: RouterDeps): void {
 
 export function createPlugin(
 	deps: RouterDeps = {
-		fetchFn: fetch,
+		// A lookup at each call, so a host that replaces the global fetch later is not bypassed.
+		fetchFn: (url, init) => fetch(url, init),
 		clock: realClock,
 		env: process.env,
 	},

@@ -63,6 +63,8 @@ function plan(value, keys) {
 var ABORTED = { failure: "aborted" };
 var TIMED_OUT = { failure: "timed out" };
 var NETWORK = { failure: "network" };
+var MALFORMED = { failure: "malformed" };
+var UNKNOWN = { failure: "unknown" };
 var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
   401,
   402,
@@ -83,9 +85,9 @@ function skipText(failure2, aborted) {
       return NETWORK_ERROR;
     case "status":
       return httpStatus(failure2.status);
-    case BAD_REPLY:
+    case "malformed":
       return BAD_REPLY;
-    case FAILED:
+    case "unknown":
       return FAILED;
   }
 }
@@ -97,8 +99,8 @@ function fallsBack(failure2) {
     case "status":
       return FALLBACK_STATUSES.has(failure2.status) || failure2.status >= SERVER_ERRORS.min && failure2.status <= SERVER_ERRORS.max;
     case "aborted":
-    case BAD_REPLY:
-    case FAILED:
+    case "malformed":
+    case "unknown":
       return false;
   }
 }
@@ -145,6 +147,15 @@ function parse(text) {
     return void 0;
   }
 }
+var count = (v) => typeof v === "number" ? v : null;
+function usageOf(usage) {
+  if (!isRecord(usage)) return void 0;
+  const { input_tokens, output_tokens } = usage;
+  return {
+    input_tokens: count(input_tokens),
+    output_tokens: count(output_tokens)
+  };
+}
 function read(parts, status, text) {
   if (status < OK.min || status > OK.max) return { failure: "status", status };
   const reply = parse(text);
@@ -152,10 +163,10 @@ function read(parts, status, text) {
   const pairs = [];
   for (const part of parts) {
     const probabilities = parseProbabilities(answers, part.key);
-    if (!probabilities) return { failure: BAD_REPLY };
+    if (!probabilities) return MALFORMED;
     pairs.push([part, probabilities]);
   }
-  return { answers: pairs, model, usage };
+  return { answers: pairs, model, usage: usageOf(usage) };
 }
 var SYSTEM_ONE = {
   body: (parts, state, model) => JSON.stringify({
@@ -170,7 +181,6 @@ var SYSTEM_ONE = {
 var MODEL_CHARS_MAX = 40;
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 var cleanModel = (model) => typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "";
-var readUsage = (usage) => isRecord(usage) ? usage : void 0;
 
 // src/core/scoring/transport/retry.ts
 var RETRIES = 2;
@@ -180,16 +190,26 @@ var BACKOFF_MAX_MS = 5e3;
 var BACKOFF_JITTER = 0.25;
 var SERVER_DELAY_MAX_MS = 6e4;
 var SERVER_ERRORS2 = { min: 500, max: 599 };
-var isRetriedStatus = (status) => status === 408 || status === 429 || status >= SERVER_ERRORS2.min && status <= SERVER_ERRORS2.max;
-var headerText = (headers, name) => {
-  const raw = headers.get(name);
-  return raw === null || raw.trim() === "" ? void 0 : raw;
-};
+function isRetried(outcome) {
+  if (!isFailure(outcome))
+    return outcome.status === 408 || outcome.status === 429 || outcome.status >= SERVER_ERRORS2.min && outcome.status <= SERVER_ERRORS2.max;
+  switch (outcome.failure) {
+    case "timed out":
+    case "network":
+      return true;
+    case "aborted":
+    case "status":
+    case "malformed":
+    case "unknown":
+      return false;
+  }
+}
 function serverDelayMs(headers) {
-  const ms = Number(headerText(headers, "retry-after-ms"));
+  const rawMs = headers.get("retry-after-ms");
+  const ms = rawMs === null ? Number.NaN : Number(rawMs);
   if (Number.isFinite(ms) && ms >= 0) return ms;
-  const raw = headerText(headers, "retry-after");
-  if (raw === void 0) return void 0;
+  const raw = headers.get("retry-after");
+  if (raw === null) return void 0;
   const seconds = Number(raw);
   if (Number.isFinite(seconds)) {
     return seconds >= 0 ? seconds * 1e3 : void 0;
@@ -206,64 +226,52 @@ function retryDelayMs(retry, headers) {
 
 // src/core/scoring/transport/send.ts
 async function exchange(fetchFn, url, request, caller, timeout) {
+  if (caller.aborted) return { outcome: ABORTED };
   const controller = new AbortController();
   const stopped = new Promise((_, reject) => {
     controller.signal.addEventListener("abort", () => reject(), { once: true });
   });
-  stopped.catch(() => void 0);
-  let timedOut = false;
-  const timer = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, timeout);
+  const timer = setTimeout(() => controller.abort(), timeout);
   const cancel = () => controller.abort(caller.reason);
   caller.addEventListener("abort", cancel, { once: true });
   try {
     const reply = await Promise.race([
-      new Promise(
-        (resolve2) => resolve2(
-          fetchFn(url, {
-            method: "POST",
-            headers: request.headers,
-            body: request.body,
-            signal: controller.signal
-          })
-        )
-      ),
+      fetchFn(url, {
+        method: "POST",
+        headers: request.headers,
+        body: request.body,
+        signal: controller.signal
+      }),
       stopped
     ]);
     const text = await Promise.race([reply.text(), stopped]);
     return { outcome: { status: reply.status, text }, headers: reply.headers };
   } catch {
     if (caller.aborted) return { outcome: ABORTED };
-    return { outcome: timedOut ? TIMED_OUT : NETWORK };
+    return { outcome: controller.signal.aborted ? TIMED_OUT : NETWORK };
   } finally {
     clearTimeout(timer);
     caller.removeEventListener("abort", cancel);
   }
 }
-async function pause(ms, caller) {
-  const { promise, resolve: resolve2 } = Promise.withResolvers();
-  const onAbort = () => resolve2(false);
-  const timer = setTimeout(() => resolve2(true), ms);
-  caller.addEventListener("abort", onAbort, { once: true });
-  try {
-    return await promise;
-  } finally {
-    clearTimeout(timer);
-    caller.removeEventListener("abort", onAbort);
-  }
-}
-function retried(outcome) {
-  if (!isFailure(outcome)) return isRetriedStatus(outcome.status);
-  return outcome.failure === "timed out" || outcome.failure === "network";
+function pause(ms, caller) {
+  if (caller.aborted) return Promise.resolve(false);
+  return new Promise((resolve2) => {
+    const done = (waited) => {
+      clearTimeout(timer);
+      caller.removeEventListener("abort", onAbort);
+      resolve2(waited);
+    };
+    const onAbort = () => done(false);
+    const timer = setTimeout(() => done(true), ms);
+    caller.addEventListener("abort", onAbort, { once: true });
+  });
 }
 async function send(fetchFn, url, request, options) {
   const { signal } = options;
   const timeout = options.timeout ?? TIMEOUT_MS;
   const retries = options.retries ?? RETRIES;
   for (let retry = 0; ; retry++) {
-    if (signal.aborted) return ABORTED;
     const { outcome, headers } = await exchange(
       fetchFn,
       url,
@@ -271,8 +279,7 @@ async function send(fetchFn, url, request, options) {
       signal,
       timeout
     );
-    if (signal.aborted) return ABORTED;
-    if (retry >= retries || !retried(outcome)) return outcome;
+    if (retry >= retries || !isRetried(outcome)) return outcome;
     if (!await pause(retryDelayMs(retry, headers), signal)) return ABORTED;
   }
 }
@@ -280,12 +287,12 @@ async function send(fetchFn, url, request, options) {
 // src/core/scoring/ask.ts
 var VERSION = true ? "0.23.0" : "dev";
 var USER_AGENT = `model-router/${VERSION} (+https://github.com/Akurganow/model-router)`;
-async function attempted(input, attempt) {
+async function askOnce(input, attempt) {
   const { parts, state, keys, fetchFn, signal } = input;
   const key = keys[attempt.provider];
-  if (!key) return { failure: FAILED };
+  if (!key) return UNKNOWN;
   const body = SYSTEM_ONE.body(parts, state, attempt.model);
-  const sent = await send(
+  const received = await send(
     fetchFn,
     `${HOSTS[attempt.provider]}/v1/systemone`,
     {
@@ -303,20 +310,20 @@ async function attempted(input, attempt) {
       ...attempt.retry && { retries: attempt.retry.maxRetries }
     }
   );
-  if (isFailure(sent)) return sent;
-  const read2 = SYSTEM_ONE.read(parts, sent.status, sent.text);
+  if (isFailure(received)) return received;
+  const read2 = SYSTEM_ONE.read(parts, received.status, received.text);
   if (isFailure(read2)) return read2;
   return {
     answers: read2.answers,
     model: cleanModel(read2.model),
-    usage: readUsage(read2.usage)
+    usage: read2.usage
   };
 }
 async function ask(input, attempt) {
   try {
-    return await attempted(input, attempt);
+    return await askOnce(input, attempt);
   } catch {
-    return { failure: FAILED };
+    return UNKNOWN;
   }
 }
 
@@ -810,8 +817,8 @@ function condenseFences(text) {
     if ((longest[char][line] ?? 0) < run.length) continue;
     let close = line;
     while (!closes(runs[close] ?? "", run)) close++;
-    const count = close - line;
-    out += `${text.slice(kept, open.index)}[an exact block of ${count} ${count === 1 ? "line" : "lines"} is given verbatim]`;
+    const count2 = close - line;
+    out += `${text.slice(kept, open.index)}[an exact block of ${count2} ${count2 === 1 ? "line" : "lines"} is given verbatim]`;
     kept = (starts[close] ?? 0) + (lines[close]?.length ?? 0);
     opener.lastIndex = kept;
   }
@@ -1264,7 +1271,8 @@ function register(api, deps) {
   }
 }
 function createPlugin(deps = {
-  fetchFn: fetch,
+  // A lookup at each call, so a host that replaces the global fetch later is not bypassed.
+  fetchFn: (url, init) => fetch(url, init),
   clock: realClock,
   env: process.env
 }) {

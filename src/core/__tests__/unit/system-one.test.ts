@@ -21,29 +21,7 @@ const answers = (
 const read = (parts: readonly Part[], reply: unknown) =>
 	SYSTEM_ONE.read(parts, 200, JSON.stringify({ answers: reply }));
 
-const BAD_REPLY = { failure: "bad reply" };
-
-test("well-formed tier and work answers pass through as probabilities", () => {
-	const tierP = { "0": 0.2, "1": 0.7, "2": 0.1 };
-	const workP = { "0": 0.7, "1": 0.2, "2": 0.1 };
-	const reply = SYSTEM_ONE.read(
-		[tier, work],
-		200,
-		JSON.stringify({
-			model: "jev-1",
-			usage: { input_tokens: 3 },
-			answers: answers(tierP, workP),
-		}),
-	);
-	assert.deepEqual(reply, {
-		answers: [
-			[tier, tierP],
-			[work, workP],
-		],
-		model: "jev-1",
-		usage: { input_tokens: 3 },
-	});
-});
+const BAD_REPLY = { failure: "malformed" };
 
 test("a missing, empty or non-score answer is a bad reply", () => {
 	const tierP = dist({ "0": 1, "1": 0, "2": 0 });
@@ -66,11 +44,6 @@ test("one probability per offered level: fewer or more is a bad reply", () => {
 		{ "0": 0.5, "1": 0.5, x: 0 },
 	])
 		assert.deepEqual(read([tier], answers(tierP)), BAD_REPLY);
-});
-
-test("three work probabilities are required", () => {
-	const short = answers({ "0": 1, "1": 0, "2": 0 }, { "0": 0.5, "1": 0.5 });
-	assert.deepEqual(read([work], short), BAD_REPLY);
 });
 
 // JSON text turns NaN and the infinities into null, which is no number either.

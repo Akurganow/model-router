@@ -1,10 +1,9 @@
 import type { RoutingState } from "../brief.ts";
 import type { Part, Probabilities } from "../part.ts";
 import { type Attempt, HOSTS, type Keys } from "../provider.ts";
-import { FAILED } from "../reasons.ts";
-import { type Failure, isFailure } from "./failure.ts";
+import { type Failure, isFailure, UNKNOWN } from "./failure.ts";
 import { SYSTEM_ONE } from "./formats/system-one.ts";
-import { cleanModel, readUsage, type Usage } from "./reply.ts";
+import { cleanModel, type Usage } from "./reply.ts";
 import { type Fetch, send } from "./transport/send.ts";
 
 // The builder defines MODEL_ROUTER_VERSION in each bundle from metadata/source.json; code run from source has none.
@@ -26,15 +25,15 @@ export type Reply = {
 	readonly usage: Usage | undefined;
 };
 
-async function attempted(
+async function askOnce(
 	input: AskInput,
 	attempt: Attempt,
 ): Promise<Reply | Failure> {
 	const { parts, state, keys, fetchFn, signal } = input;
 	const key = keys[attempt.provider];
-	if (!key) return { failure: FAILED };
+	if (!key) return UNKNOWN;
 	const body = SYSTEM_ONE.body(parts, state, attempt.model);
-	const sent = await send(
+	const received = await send(
 		fetchFn,
 		`${HOSTS[attempt.provider]}/v1/systemone`,
 		{
@@ -52,13 +51,13 @@ async function attempted(
 			...(attempt.retry && { retries: attempt.retry.maxRetries }),
 		},
 	);
-	if (isFailure(sent)) return sent;
-	const read = SYSTEM_ONE.read(parts, sent.status, sent.text);
+	if (isFailure(received)) return received;
+	const read = SYSTEM_ONE.read(parts, received.status, received.text);
 	if (isFailure(read)) return read;
 	return {
 		answers: read.answers,
 		model: cleanModel(read.model),
-		usage: readUsage(read.usage),
+		usage: read.usage,
 	};
 }
 
@@ -72,8 +71,8 @@ export async function ask(
 	attempt: Attempt,
 ): Promise<Reply | Failure> {
 	try {
-		return await attempted(input, attempt);
+		return await askOnce(input, attempt);
 	} catch {
-		return { failure: FAILED };
+		return UNKNOWN;
 	}
 }

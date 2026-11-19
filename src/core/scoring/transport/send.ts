@@ -1,34 +1,28 @@
-import {
-	ABORTED,
-	type Failure,
-	isFailure,
-	NETWORK,
-	TIMED_OUT,
-} from "../failure.ts";
+import { ABORTED, type Failure, NETWORK, TIMED_OUT } from "../failure.ts";
 import {
 	type HeaderReader,
-	isRetriedStatus,
+	isRetried,
 	RETRIES,
 	retryDelayMs,
 	TIMEOUT_MS,
 } from "./retry.ts";
 
-export type Reply = {
+type FetchReply = {
 	readonly status: number;
 	readonly headers: HeaderReader;
 	text(): Promise<string>;
 };
-export type Request = {
+type FetchInit = {
 	readonly method: "POST";
 	readonly headers: Readonly<Record<string, string>>;
 	readonly body: string;
 	readonly signal: AbortSignal;
 };
-export type Fetch = (url: string, init: Request) => Promise<Reply>;
-export type Sent = { readonly status: number; readonly text: string };
+export type Fetch = (url: string, init: FetchInit) => Promise<FetchReply>;
+type Received = { readonly status: number; readonly text: string };
 
 type Exchange = {
-	readonly outcome: Sent | Failure;
+	readonly outcome: Received | Failure;
 	readonly headers?: HeaderReader;
 };
 
@@ -37,37 +31,28 @@ type Exchange = {
 async function exchange(
 	fetchFn: Fetch,
 	url: string,
-	request: Pick<Request, "headers" | "body">,
+	request: Pick<FetchInit, "headers" | "body">,
 	caller: AbortSignal,
 	timeout: number,
 ): Promise<Exchange> {
+	if (caller.aborted) return { outcome: ABORTED };
 	const controller = new AbortController();
 	// Each await races against this, so a fetch or a body that ignores its signal still ends.
 	const stopped = new Promise<never>((_, reject) => {
 		controller.signal.addEventListener("abort", () => reject(), { once: true });
 	});
-	// Nothing awaits it after the reply, so an abort then must not go unhandled.
-	stopped.catch(() => undefined);
-	let timedOut = false;
-	const timer = setTimeout(() => {
-		timedOut = true;
-		controller.abort();
-	}, timeout);
+	const timer = setTimeout(() => controller.abort(), timeout);
 	// The fetch sees the caller's reason, so a routing limit differs from a cancel there too.
 	const cancel = () => controller.abort(caller.reason);
 	caller.addEventListener("abort", cancel, { once: true });
 	try {
 		const reply = await Promise.race([
-			new Promise<Reply>((resolve) =>
-				resolve(
-					fetchFn(url, {
-						method: "POST",
-						headers: request.headers,
-						body: request.body,
-						signal: controller.signal,
-					}),
-				),
-			),
+			fetchFn(url, {
+				method: "POST",
+				headers: request.headers,
+				body: request.body,
+				signal: controller.signal,
+			}),
 			stopped,
 		]);
 		const text = await Promise.race([reply.text(), stopped]);
@@ -75,7 +60,7 @@ async function exchange(
 	} catch {
 		// The error is dropped on purpose: a failure carries no cause, body or key.
 		if (caller.aborted) return { outcome: ABORTED };
-		return { outcome: timedOut ? TIMED_OUT : NETWORK };
+		return { outcome: controller.signal.aborted ? TIMED_OUT : NETWORK };
 	} finally {
 		clearTimeout(timer);
 		caller.removeEventListener("abort", cancel);
@@ -83,23 +68,18 @@ async function exchange(
 }
 
 // Waits `ms`: gives true when the time runs out, and false at once when the caller aborts first.
-async function pause(ms: number, caller: AbortSignal): Promise<boolean> {
-	const { promise, resolve } = Promise.withResolvers<boolean>();
-	const onAbort = () => resolve(false);
-	const timer = setTimeout(() => resolve(true), ms);
-	caller.addEventListener("abort", onAbort, { once: true });
-	try {
-		return await promise;
-	} finally {
-		clearTimeout(timer);
-		caller.removeEventListener("abort", onAbort);
-	}
-}
-
-// Retried: a timeout, a connection failure, and the statuses that retry.ts names.
-function retried(outcome: Sent | Failure): boolean {
-	if (!isFailure(outcome)) return isRetriedStatus(outcome.status);
-	return outcome.failure === "timed out" || outcome.failure === "network";
+function pause(ms: number, caller: AbortSignal): Promise<boolean> {
+	if (caller.aborted) return Promise.resolve(false);
+	return new Promise((resolve) => {
+		const done = (waited: boolean) => {
+			clearTimeout(timer);
+			caller.removeEventListener("abort", onAbort);
+			resolve(waited);
+		};
+		const onAbort = () => done(false);
+		const timer = setTimeout(() => done(true), ms);
+		caller.addEventListener("abort", onAbort, { once: true });
+	});
 }
 
 // One provider's attempt: the first request, then up to `retries` more. Returns the last
@@ -116,12 +96,11 @@ export async function send(
 		readonly timeout?: number;
 		readonly retries?: number;
 	},
-): Promise<Sent | Failure> {
+): Promise<Received | Failure> {
 	const { signal } = options;
 	const timeout = options.timeout ?? TIMEOUT_MS;
 	const retries = options.retries ?? RETRIES;
 	for (let retry = 0; ; retry++) {
-		if (signal.aborted) return ABORTED;
 		const { outcome, headers } = await exchange(
 			fetchFn,
 			url,
@@ -129,8 +108,7 @@ export async function send(
 			signal,
 			timeout,
 		);
-		if (signal.aborted) return ABORTED;
-		if (retry >= retries || !retried(outcome)) return outcome;
+		if (retry >= retries || !isRetried(outcome)) return outcome;
 		if (!(await pause(retryDelayMs(retry, headers), signal))) return ABORTED;
 	}
 }
