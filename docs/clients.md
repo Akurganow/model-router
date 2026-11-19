@@ -12,7 +12,7 @@ Four clients are covered: Claude Code, Oh My Pi (omp), OpenClaw and Hermes Agent
 ## Claude Code
 
 Documentation pages below were read on 2026-11-05.
-The CI action pins Claude Code 2.1.308 in `.github/actions/setup-claude-code/package.json`, and the README asks for that version or later.
+`.github/actions/setup-claude-code/package.json` pins the Claude Code release CI installs, and the README names the minimum version.
 
 ### Manifest
 
@@ -950,7 +950,7 @@ These facts are source readings at commit `847611dcaa3b` (tag `v2026.11.3`), not
 
 ### OpenClaw gaps
 
-CI installs the packed tarball through `npm-pack:` on OpenClaw 2026.11.1, and the probes loaded the plugin through `plugins.load.paths`.
+CI installs the packed tarball through `npm-pack:` on the OpenClaw release that `.github/actions/setup-openclaw/package.json` pins, and the probes loaded the plugin through `plugins.load.paths`.
 The registry install of the npm package has not run, because the package is not published yet.
 The `npm:` install command above rests on documentation.
 No run kept the `inspect --runtime` report.
