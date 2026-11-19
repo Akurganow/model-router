@@ -14,7 +14,7 @@ With `auto` or `openrouter-first` and one key set, the plugin uses that key's pr
 With both keys set, one task may reach both companies.
 The second provider gets the task only when the first fails.
 The failures that count are a `network error`, a timeout of the request (it prints `timeout`), and HTTP status 401, 402, 403, 404, 408, 429 or 5xx.
-It never gets the task after 400, 422, `cancelled`, the routing limit (which also prints `timeout`), a bad reply, a `rejected request` or `failed`.
+It never gets the task after 400, 422, `cancelled`, the routing limit (which also prints `timeout`), a bad reply or `failed`.
 
 ## Keys
 
@@ -53,7 +53,8 @@ So with a key set and no model set, the plugin still sends each task it scores t
 
 ## The request
 
-Each plugin bundles the official TypeSafe SDK, `@typesafe-ai/sdk`, which builds the request for both providers.
+Each plugin builds and sends the request with its own code, which it ports from the MIT-licensed TypeSafe SDK package.
+The SDK is no dependency of a plugin or of this repository.
 The request is an HTTPS POST.
 Its JSON body names the Jev alias `jev-latest` and the scoring questions, with three descriptions each.
 These texts ship with the plugin.
@@ -61,16 +62,19 @@ The question `tier` asks how much judgment the task needs.
 The question `work` asks how much work the task takes.
 Each plugin's README lists the questions it asks.
 
-The request headers hold:
+The plugin sets exactly four request headers:
 
-- `authorization`, with the key of the provider that receives the request
-- `accept` and `content-type`, both `application/json`
-- `user-agent` and `x-typesafe-sdk`, both naming the SDK and its version, `typesafe-sdk/<version>`
-- `x-typesafe-runtime`, which names the runtime, the operating system and the architecture, in the form `<runtime>/<version> (<os>; <arch>)`
-- `x-typesafe-retry-count`, `1` or `2`, on a retry only.
+- `Authorization: Bearer <key>`, with the key of the provider that receives the request
+- `Accept: application/json`
+- `Content-Type: application/json`
+- `User-Agent: model-router/<version> (+https://github.com/Akurganow/model-router)`, where `<version>` is the plugin version.
 
-OpenRouter receives the same headers, the `x-typesafe-*` ones included.
-The SDK writes `unknown` for `x-typesafe-runtime` when it cannot name the runtime.
+OpenRouter receives the same headers.
+No header names the runtime, the operating system or the architecture.
+The fetch of the harness may add its own transport headers, such as `host` and `content-length`.
+
+A task whose text quotes an image reference, `<image:` and 32 lowercase hexadecimal digits and `>`, goes out as text like any other text.
+Both providers accept such a request.
 
 ## No telemetry
 
@@ -111,12 +115,12 @@ A text over 12,000 characters keeps its start and its end.
 ## Retries and the second provider
 
 With one provider, a routed task sends one request and up to two retries, three attempts in all.
-The SDK retries a connection error, a timeout and an HTTP status 408, 429 or 5xx.
+The plugin retries a connection error, a timeout and an HTTP status 408, 429 or 5xx.
 It retries no other status.
 The retries send the same body as the first request.
-The SDK times an attempt out after 10 s, but the routing limit is shorter, so the limit ends a call first.
+The plugin times an attempt out after 10 s, but the routing limit is shorter, so the limit ends a call first.
 The only timeout a plugin meets is the 2 s one below, which has no retry.
-Before a retry the SDK waits as a `Retry-After` or `retry-after-ms` header says, up to 60 s.
+Before a retry the plugin waits as a `Retry-After` or `retry-after-ms` header says, up to 60 s.
 Without one it backs off for 0.5 s, doubling up to 5 s, with some jitter.
 The routing limit ends any wait, so a 429 with a long `Retry-After` can hold a task until the limit.
 

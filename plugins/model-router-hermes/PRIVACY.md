@@ -68,11 +68,8 @@ JSON body holds:
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them
 
-The `x-typesafe-runtime` header reads `node/<version> (<os>; <arch>)`, and it
-tells the provider which Node, system and architecture Hermes runs the plugin
-on.
 [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
-lists the other headers, which the bundled SDK builds. The goal and the context
+lists the four headers the plugin sets. The goal and the context
 hold whatever the model put in them, which can include code. Hermes routes all
 tasks of a call, one after another, before any child starts, and the plugin
 sends each request during that routing. A task that Hermes later refuses was

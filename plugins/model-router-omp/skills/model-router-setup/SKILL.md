@@ -110,7 +110,6 @@ A scored item can skip for these reasons:
 - `timeout`: the provider gave no answer in time. Scoring has 8 s per batch.
 - `HTTP <status>`: the provider returned an error. `HTTP 401` means it refused the key.
 - `network error`: the request could not connect.
-- `rejected request`: the TypeSafe SDK refused the request.
 - `bad reply`: the reply held no valid score.
 - `failed`: any other error.
 

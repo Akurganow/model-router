@@ -41,7 +41,7 @@ omp reads settings from a different block with a different schema, and it limits
 The source keeps the shared facts once, and each renderer shapes them for one client.
 
 Each plugin needs a bundle, because Claude Code loads a hooks module that imports nothing outside the plugin folder except `claude-code` ([Claude Code](clients.md#hooks-module)).
-The builder inlines the TypeSafe SDK into every bundle, so each plugin runs on its own.
+The builder bundles all the code a plugin needs into its one file, so each plugin runs on its own.
 
 **The npm tree.**
 OpenClaw and omp both install the npm package `@akurganow/model-router`, so one folder serves both: `packages/model-router/`.

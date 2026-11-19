@@ -65,9 +65,8 @@ call the plugin routes. The JSON body holds:
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them
 
-The `x-typesafe-runtime` header reads `unknown` under Claude Code.
 [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
-lists the other headers, which the bundled SDK builds. Claude Code adds the
+lists the four headers the plugin sets. Claude Code adds the
 transport headers, such as `host` and `content-length`.
 
 The task text holds whatever the caller put in it, which can include code. The

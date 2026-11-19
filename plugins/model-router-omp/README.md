@@ -246,7 +246,6 @@ After the item check, a scored item can still skip:
 - `timeout`: a first attempt got no answer in 2 s, or the scoring limit ran out: 8 s, or less under a short tool call timeout. When the limit runs out, items still waiting skip too.
 - `HTTP <status>`: the provider returned an error status, after any retries. For example, `HTTP 401` means the provider refused the key.
 - `network error`: the request could not connect, after any retries.
-- `rejected request`: the SDK raised a TypeSafe error that is neither an HTTP error nor a network error.
 - `bad reply`: the reply holds no valid score for the question.
 - `failed`: any other error.
 

@@ -218,7 +218,7 @@ A scored spawn can still skip:
 
 - `timeout`: the routing limit expired before the plugin finished routing. The line reads `timeout` alone, even after a first provider failed. [Hook timeout](#hook-timeout) gives the limit.
 - `cancelled`: OpenClaw cancelled the `sessions_spawn` call before the plugin finished routing.
-- `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer. After two providers, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: Jev did not answer. After two providers, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 ### How the plugin reads a spawn
 
@@ -281,7 +281,7 @@ Four limits bound the time a spawn waits for routing:
 | --- | --- | --- |
 | Hook timeout | 10 s | The whole hook. The plugin registers it with this value. |
 | Routing limit | 8 s | The plugin's work in the hook: both providers and all retries. |
-| Jev timeout | 10 s | One request to one provider. It is the SDK default. |
+| Jev timeout | 10 s | One request to the last provider the plugin tries. |
 | Per-provider wait | 2 s | The first of two providers. It gets no retry. |
 
 The routing limit is shorter than the Jev timeout, so it ends a slow request first.

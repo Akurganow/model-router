@@ -74,10 +74,8 @@ names. The JSON body holds:
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them
 
-The `x-typesafe-runtime` header reads `bun/<version> (<os>; <arch>)`. It tells
-the provider the runtime, system and architecture omp runs on.
 [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
-lists the other headers, which the bundled SDK builds. The task text and the
+lists the four headers the plugin sets. The task text and the
 context hold whatever the caller put in them, which can include code. The
 request is sent before omp asks for approval of the `task` call. A call you
 later refuse was already sent. That list is the whole request, and
