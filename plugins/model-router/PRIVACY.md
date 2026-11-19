@@ -66,8 +66,7 @@ call the plugin routes. The JSON body holds:
   lists them
 
 [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
-lists the four headers the plugin sets. Claude Code adds the
-transport headers, such as `host` and `content-length`.
+lists the headers the plugin sets.
 
 The task text holds whatever the caller put in it, which can include code. The
 request is sent when the subagent spawns, after Claude Code decides that the

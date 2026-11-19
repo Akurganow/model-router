@@ -53,8 +53,6 @@ So with a key set and no model set, the plugin still sends each task it scores t
 
 ## The request
 
-Each plugin builds and sends the request with its own code, which it ports from the MIT-licensed TypeSafe SDK package.
-The SDK is no dependency of a plugin or of this repository.
 The request is an HTTPS POST.
 Its JSON body names the Jev alias `jev-latest` and the scoring questions, with three descriptions each.
 These texts ship with the plugin.
@@ -71,7 +69,6 @@ The plugin sets exactly four request headers:
 
 OpenRouter receives the same headers.
 No header names the runtime, the operating system or the architecture.
-The fetch of the harness may add its own transport headers, such as `host` and `content-length`.
 
 A task whose text quotes an image reference, `<image:` and 32 lowercase hexadecimal digits and `>`, goes out as text like any other text.
 Both providers accept such a request.
@@ -114,11 +111,11 @@ A text over 12,000 characters keeps its start and its end.
 
 ## Retries and the second provider
 
-With one provider, a routed task sends one request and up to two retries, three attempts in all.
+With one provider, a routed task sends one request and up to two retries, three requests in all.
 The plugin retries a connection error, a timeout and an HTTP status 408, 429 or 5xx.
 It retries no other status.
 The retries send the same body as the first request.
-The plugin times an attempt out after 10 s, but the routing limit is shorter, so the limit ends a call first.
+The plugin times a request out after 10 s, but the routing limit is shorter, so the limit ends a call first.
 The only timeout a plugin meets is the 2 s one below, which has no retry.
 Before a retry the plugin waits as a `Retry-After` or `retry-after-ms` header says, up to 60 s.
 Without one it backs off for 0.5 s, doubling up to 5 s, with some jitter.
@@ -126,7 +123,7 @@ The routing limit ends any wait, so a 429 with a long `Retry-After` can hold a t
 
 With two providers, the first provider gets one request and no retry.
 The plugin gives up on it after 2 s.
-The second provider then gets up to three attempts as above, within the rest of the routing limit.
+The second provider then gets up to three requests as above, within the rest of the routing limit.
 One task therefore sends at most four requests.
 
 ## The routing limit and billing

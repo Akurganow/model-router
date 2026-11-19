@@ -69,7 +69,7 @@ JSON body holds:
   lists them
 
 [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
-lists the four headers the plugin sets. The goal and the context
+lists the headers the plugin sets. The goal and the context
 hold whatever the model put in them, which can include code. Hermes routes all
 tasks of a call, one after another, before any child starts, and the plugin
 sends each request during that routing. A task that Hermes later refuses was
