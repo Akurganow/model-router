@@ -9,10 +9,10 @@ runs:
   steps:
     # The install runs in a copy under the runner's temp folder, so no
     # node_modules folder lands in the checkout.
-    # package.json overrides two packages OpenClaw pins exactly. The npm
-    # override replaces an npm whose bundled brace-expansion and undici carry
-    # advisories. It skips the 14-day age rule, an exception CONTRIBUTING.md
-    # records. The zod override replaced a zod with an advisory.
+    # package.json overrides the npm that OpenClaw pins exactly. The bundled
+    # brace-expansion and undici of that npm carry advisories, and the
+    # override installs a newer npm. It skips the 14-day age rule, an
+    # exception CONTRIBUTING.md records.
     # npm refuses a tarball whose digest differs from the lockfile. No
     # lifecycle script runs: the install script of OpenClaw only prepares its
     # bundled plugins, and the plugin install and inspect commands the package
