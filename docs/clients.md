@@ -533,6 +533,9 @@ These facts were read at omp 19.0.0, commit `57771ae`. `agents.ts` and `claude.t
 - `PI_CONFIG_DIR` names the configuration folder relative to the home folder, `.omp` by default.
   `PI_CODING_AGENT_DIR` names the agent folder, which is otherwise `agent` inside the configuration folder.
   (source: [`dirs.ts` L116–L118](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/utils/src/dirs.ts#L116-L118), [L331–L334](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/utils/src/dirs.ts#L331-L334), [L363–L367](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/utils/src/dirs.ts#L363-L367), [L496–L501](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/utils/src/dirs.ts#L496-L501))
+- omp picks the first model from an explicit CLI model, then the first scoped model, then the saved default.
+  `--model` is the preferred form, and an exact `provider/modelId` is unambiguous.
+  (documentation: [`models.md` L788–L789](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/docs/models.md#L788-L789), [L809–L817](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/docs/models.md#L809-L817))
 
 ### omp gaps
 
@@ -992,6 +995,8 @@ These facts were read at OpenClaw 2026.11.5, commit `e13cf15`.
 - `POST /tools/invoke` takes `tool` and `args`, and with `gateway.auth.mode` `token` it needs `Authorization: Bearer <token>`.
   `sessions_spawn` is on its default deny list, `gateway.tools.allow` lifts that, and a denied tool returns 404.
   (documentation: [`tools-invoke-http-api.md` L21–L28](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/gateway/tools-invoke-http-api.md#L21-L28), [L53–L71](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/gateway/tools-invoke-http-api.md#L53-L71), [L85](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/gateway/tools-invoke-http-api.md#L85), [L104](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/gateway/tools-invoke-http-api.md#L104), [L112–L125](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/gateway/tools-invoke-http-api.md#L112-L125))
+- `SIGINT` or `SIGTERM` stops the Gateway process. A shell or wrapper that does not forward signals leaves the Gateway serving after the wrapper is killed.
+  (documentation: [`running.md` L39–L40](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/cli/gateway/running.md#L39-L40))
 
 ### OpenClaw gaps
 
