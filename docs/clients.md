@@ -5,6 +5,7 @@ Every fact names its kind: documentation, source read at a commit, or running th
 A documentation page with no revision is dated by the day it was read.
 A running fact names the client version it was seen on, and the date or the command.
 The records of this project's own runs are on the [wiki](https://github.com/Akurganow/model-router/wiki).
+A new fact is a plain statement, and its evidence, the release, the date and the links, is on the [wiki's evidence pages](https://github.com/Akurganow/model-router/wiki#evidence-pages).
 This page quotes no output of this project's plugin or scripts and links no CI run of this repository.
 Install commands and install-time notes are in the [README](../README.md#install).
 The reasons built on these facts are in [About this repository's design](design.md).
@@ -196,14 +197,11 @@ The documentation pages were read on 2026-11-11.
 
 ### Claude Code project skills and configuration
 
-The documentation pages were read on 2026-11-19.
+Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-Code#claude-code-project-skills-and-configuration)
 
 - Claude Code loads project skills from `.claude/skills/` in the folder it starts in and in each parent up to the repository root.
-  (documentation: [Extend Claude with skills](https://code.claude.com/docs/en/skills))
 - `CLAUDE_CONFIG_DIR` replaces the configuration folder `~/.claude`, which holds the settings, the session history and the plugins.
-  (documentation: [Environment variables](https://code.claude.com/docs/en/env-vars))
 - `--debug-file <path>` writes the debug log to that path and turns debug mode on. Without it the debug log is `~/.claude/debug/<session-id>.txt`.
-  (documentation: [CLI reference, CLI flags](https://code.claude.com/docs/en/cli-reference), [Environment variables](https://code.claude.com/docs/en/env-vars))
 
 ### Claude Code gaps
 
@@ -518,24 +516,18 @@ The running facts used omp from npm, a probe extension and a local stand-in mode
 
 ### omp project skills and folders
 
-These facts were read at omp 19.0.0.
+Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp-project-skills-and-folders)
 
 - omp reads project skills from `.agent/skills` and `.agents/skills` in each folder from the working directory up to the repository root, and it skips the home folder.
   With no repository root, the walk stops at the home folder, or at the filesystem root when the working directory is not under home.
-  (source: [`agents.ts` L130–L161](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/coding-agent/src/discovery/agents.ts#L130-L161))
 - On the same walk it reads `.claude/skills` too.
-  (source: [`claude.ts` L197–L220](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/coding-agent/src/discovery/claude.ts#L197-L220))
 - On a skill name that two providers give, the provider admitted first keeps the bare name, and providers are admitted by priority: `.claude` 80, `.agents` 70.
   An identical copy is dropped, and a different copy is renamed `<namespace>/<name>` with a `name collision` warning.
-  (source: [`skills.ts` L135–L214](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/coding-agent/src/extensibility/skills.ts#L135-L214), [`claude.ts` L44](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/coding-agent/src/discovery/claude.ts#L44), [`agents.ts` L29](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/coding-agent/src/discovery/agents.ts#L29))
 - A skill file reached twice, as through a symbolic link, loads once: omp skips a real path it has already loaded.
-  (source: [`skills.ts` L451–L471](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/coding-agent/src/extensibility/skills.ts#L451-L471))
 - `PI_CONFIG_DIR` names the configuration folder relative to the home folder, `.omp` by default.
   `PI_CODING_AGENT_DIR` names the agent folder, which is otherwise `agent` inside the configuration folder.
-  (source: [`dirs.ts` L116–L118](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/utils/src/dirs.ts#L116-L118), [L331–L334](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/utils/src/dirs.ts#L331-L334), [L363–L367](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/utils/src/dirs.ts#L363-L367), [L496–L501](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/packages/utils/src/dirs.ts#L496-L501))
 - omp picks the first model from an explicit CLI model, then the first scoped model, then the saved default.
   `--model` is the preferred form, and an exact `provider/modelId` is unambiguous.
-  (documentation: [`models.md` L788–L789](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/docs/models.md#L788-L789), [L809–L817](https://github.com/can1357/oh-my-pi/blob/57771ae562b9345e0579bceb2d68d585e3e6927e/docs/models.md#L809-L817))
 
 ### omp gaps
 
@@ -982,21 +974,15 @@ These facts are source readings at commit `847611dcaa3b` (tag `v2026.11.3`), not
 
 ### OpenClaw project skills and the Gateway
 
-These facts were read at OpenClaw 2026.11.5.
+Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenClaw#openclaw-project-skills-and-the-gateway)
 
 - OpenClaw reads skills from `<workspace>/skills` and `<workspace>/.agents/skills` of the agent's workspace, and `skills/` wins a name clash.
   It never walks up into parent folders, and it does not read `.claude/skills`.
-  (source: [`workspace-skill-roots.ts` L38–L49](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/src/skills/loading/workspace-skill-roots.ts#L38-L49);
-  documentation: [`skills.md` L41–L42](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/tools/skills.md#L41-L42))
 - `OPENCLAW_HOME`, `OPENCLAW_STATE_DIR` and `OPENCLAW_CONFIG_PATH` replace the home folder, the state folder and the config file.
-  (documentation: [`environment.md` L39–L41](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/help/environment.md#L39-L41))
 - `openclaw gateway run` starts the Gateway. It refuses to start unless `gateway.mode` is `local`, and `--allow-unconfigured` skips that check.
-  (documentation: [`running.md` L16–L17](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/cli/gateway/running.md#L16-L17), [L82–L84](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/cli/gateway/running.md#L82-L84))
 - `POST /tools/invoke` takes `tool` and `args`, and with `gateway.auth.mode` `token` it needs `Authorization: Bearer <token>`.
   `sessions_spawn` is on its default deny list, `gateway.tools.allow` lifts that, and a denied tool returns 404.
-  (documentation: [`tools-invoke-http-api.md` L21–L28](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/gateway/tools-invoke-http-api.md#L21-L28), [L53–L71](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/gateway/tools-invoke-http-api.md#L53-L71), [L85](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/gateway/tools-invoke-http-api.md#L85), [L104](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/gateway/tools-invoke-http-api.md#L104), [L112–L125](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/gateway/tools-invoke-http-api.md#L112-L125))
 - `SIGINT` or `SIGTERM` stops the Gateway process. A shell or wrapper that does not forward signals leaves the Gateway serving after the wrapper is killed.
-  (documentation: [`running.md` L39–L40](https://github.com/openclaw/openclaw/blob/e13cf15ece9bbd969b7362927c315362c90c97ff/docs/cli/gateway/running.md#L39-L40))
 
 ### OpenClaw gaps
 
@@ -1312,17 +1298,13 @@ These facts are source readings at commit `3b421578588243f920886e6fe79a6faa87ea0
 
 ### Hermes project skills and home
 
-These facts were read at Hermes Agent 0.23.2.
+Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#hermes-project-skills-and-home)
 
 - Hermes reads project skills from `.hermes/skills` and `.agents/skills` under the project root, the nearest folder at or above the working directory that holds `.git`.
   It loads them only when `skills.trusted_project_dirs` lists that root, and the list is empty by default.
   It does not read `.claude/skills`.
-  (source: [`skill_utils.py` L511–L517](https://github.com/NousResearch/hermes-agent/blob/ae2a81ccc00e9b7c06301523e5bb09608397149c/agent/skill_utils.py#L511-L517),
-  [L575–L601](https://github.com/NousResearch/hermes-agent/blob/ae2a81ccc00e9b7c06301523e5bb09608397149c/agent/skill_utils.py#L575-L601), [`config_defaults.py` L1409](https://github.com/NousResearch/hermes-agent/blob/ae2a81ccc00e9b7c06301523e5bb09608397149c/hermes_cli/config_defaults.py#L1409))
 - `HERMES_HOME` names the Hermes home.
-  (source: [`hermes_constants.py` L263–L264](https://github.com/NousResearch/hermes-agent/blob/ae2a81ccc00e9b7c06301523e5bb09608397149c/hermes_constants.py#L263-L264); documentation: [`environment-variables.md` L121](https://github.com/NousResearch/hermes-agent/blob/ae2a81ccc00e9b7c06301523e5bb09608397149c/website/docs/reference/environment-variables.md#L121))
 - `hermes plugins install "file://<repository>#<folder>"` clones the repository with `git clone --depth 1` and installs `<folder>` from the clone, so it takes the committed `HEAD`, not the working tree.
-  (source: [`plugins_cmd_git.py` L219–L258](https://github.com/NousResearch/hermes-agent/blob/ae2a81ccc00e9b7c06301523e5bb09608397149c/hermes_cli/plugins_cmd_git.py#L219-L258), [`plugins_cmd.py` L300–L323](https://github.com/NousResearch/hermes-agent/blob/ae2a81ccc00e9b7c06301523e5bb09608397149c/hermes_cli/plugins_cmd.py#L300-L323))
 
 ### Hermes gaps
 

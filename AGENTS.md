@@ -52,8 +52,9 @@ This file adds what an agent gets wrong without being told.
 - Shared logic lives once.
   [Repository layout](CONTRIBUTING.md#repository-layout) says where.
 - A claim about a harness needs a source: a permalink at a pinned commit, or
-  a fact in [docs/clients.md](docs/clients.md) that names the client version
-  it was seen on.
+  the client version and date of a run. The fact goes into
+  [docs/clients.md](docs/clients.md) as a plain statement, and its source onto
+  the [wiki's evidence page](https://github.com/Akurganow/model-router/wiki#evidence-pages).
 
 ## A rule about the source goes to Biome first
 

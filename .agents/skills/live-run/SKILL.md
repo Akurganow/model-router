@@ -103,13 +103,14 @@ Never print or log a key, and never put one into a brief, a commit or a wiki ent
 29. Give a run of the evals workflow the kind `evals`, and link no run.
 30. Put the entry at the top of the client's page.
 31. Check the entry against "What an entry never holds" in `Home.md`.
-32. Set the clone's author to the one its history holds, because the wiki is public and the commit must not carry the machine's identity:
+32. Add a harness fact the run shows to `docs/clients.md` as one plain sentence: no version, date, plugin output or run link.
+33. Put its evidence on the client's evidence page in the wiki clone, as "Adding evidence" in its `Home.md` says.
+34. Set the clone's author to the one its history holds, because the wiki is public and the commit must not carry the machine's identity:
 
     ```sh
     git -C "$wiki" config user.name "$(git -C "$wiki" log -1 --format=%an)"
     git -C "$wiki" config user.email "$(git -C "$wiki" log -1 --format=%ae)"
     ```
 
-33. Make one commit with the entry, and push once.
-34. Without push rights, put the entry's text into your report.
-35. Add a harness fact the run shows to `docs/clients.md`: one sentence with the client version and the date, no plugin output, no run link.
+35. Make one commit with the entry and the evidence, and push once.
+36. Without push rights, put the text of the entry and the evidence into your report.
