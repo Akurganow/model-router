@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { type Schema, validate } from "../../../scripts/build/schema.ts";
-import { createFakeApi } from "../../../src/adapters/openclaw/fakes.ts";
+import { createFakeApi } from "../../../src/adapters/openclaw/__tests__/support/fakes.ts";
 import {
 	PLUGIN_ID,
 	readKeys,

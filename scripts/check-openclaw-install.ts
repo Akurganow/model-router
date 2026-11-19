@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { createFakeApi } from "../src/adapters/openclaw/__tests__/support/fakes.ts";
 import { COMMAND_NAMES } from "../src/adapters/openclaw/config.ts";
-import { createFakeApi } from "../src/adapters/openclaw/fakes.ts";
 import { HOOK, SPAWN_TOOL } from "../src/adapters/openclaw/router.ts";
 import { PLUGIN_ID } from "../src/adapters/openclaw/settings.ts";
 import type {

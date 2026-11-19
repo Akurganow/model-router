@@ -7,7 +7,8 @@ every commit as a [conventional commit](#commits).
 ## Repository layout
 
 - `src/` holds the sources in three layers: `src/core/`, `src/utils/` and
-  `src/adapters/<harness>/`. Each test sits beside the source it tests.
+  `src/adapters/<harness>/`. Tests and fakes sit in their layer's
+  `__tests__/`, under `unit/`, `integration/` or `support/`.
   - `utils/` imports only `utils/`. `core/` imports only `core/` and
     `utils/`. An adapter imports only itself, `core/` and `utils/`.
   - Biome enforces these directions. The `noRestrictedImports` overrides in
@@ -18,11 +19,6 @@ every commit as a [conventional commit](#commits).
     Biome reports it.
   - [AGENTS.md](AGENTS.md#a-rule-about-the-source-goes-to-biome-first)
     says when a new rule goes to Biome and when to a test.
-  - `scripts/layout.test.ts` checks where the files sit:
-    - every file under `src/` except `src/tsconfig.json` sits in `core/`,
-      `utils/` or one adapter folder;
-    - only a test sits directly in `src/adapters/`;
-    - each adapter folder holds an `index.ts`, the adapter's entry.
 
   No tool checks the table below. Use it to place new code.
 
