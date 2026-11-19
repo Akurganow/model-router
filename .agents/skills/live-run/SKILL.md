@@ -66,23 +66,23 @@ Never print or log a key, and never put one into a brief, a commit or a wiki ent
 
 ### Claude Code
 
-- Load: `--plugin-dir plugins/model-router`, as [Subagent events](../../../docs/clients.md#subagent-events) ran it.
+- Load: `--plugin-dir plugins/model-router`, as the [Subagent events](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-Code#subagent-events) run loaded it.
 - Isolate: `CLAUDE_CONFIG_DIR=<copy>`, as [Claude Code project skills and configuration](../../../docs/clients.md#claude-code-project-skills-and-configuration) says.
-- Run: `claude -p "<prompt>" --model haiku --max-turns <n> --output-format stream-json --verbose --debug-file <log>`, as [Subagent events](../../../docs/clients.md#subagent-events) ran it without the cap and the log.
-- Read the line: the debug log at `<log>` holds the routing line, as [Subagent events](../../../docs/clients.md#subagent-events) and [`--debug-file`](../../../docs/clients.md#claude-code-project-skills-and-configuration) show.
+- Run: `claude -p "<prompt>" --model haiku --max-turns <n> --output-format stream-json --verbose --debug-file <log>`, as the [Subagent events](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-Code#subagent-events) run ran it without the cap and the log.
+- Read the line: the debug log at `<log>` holds the routing line, as the [Subagent events](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-Code#subagent-events) run and [`--debug-file`](../../../docs/clients.md#claude-code-project-skills-and-configuration) show.
 
 ### omp
 
-- Load: `omp plugin marketplace add <checkout>`, then `omp plugin install model-router@model-router`, as [omp install and update](../../../docs/clients.md#omp-install-and-update) ran it.
+- Load: `omp plugin marketplace add <checkout>`, then `omp plugin install model-router@model-router`, as the [omp install and update](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp-install-and-update) run did.
 - Isolate: `PI_CONFIG_DIR=<folder relative to home>` and `PI_CODING_AGENT_DIR=<copy>/agent`, as [omp project skills and folders](../../../docs/clients.md#omp-project-skills-and-folders) says.
-- Run: `omp -p --model <provider/model-id> "<prompt>"`, as [omp tool_call cost and timeout](../../../docs/clients.md#omp-tool_call-cost-and-timeout) ran it, with the planned model, because [omp project skills and folders](../../../docs/clients.md#omp-project-skills-and-folders) puts an explicit model before the saved default.
+- Run: `omp -p --model <provider/model-id> "<prompt>"`, as the [omp tool_call cost and timeout](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp-tool_call-cost-and-timeout) run ran it, with the planned model, because [omp project skills and folders](../../../docs/clients.md#omp-project-skills-and-folders) puts an explicit model before the saved default.
 - Read the line: with no UI, omp prints it to standard error, as [The batch line](../../../plugins/model-router-omp/README.md#the-batch-line) says.
 
 ### OpenClaw
 
 - Load: link the plugin as [Try the OpenClaw plugin from a checkout](../../../CONTRIBUTING.md#try-the-openclaw-plugin-from-a-checkout) says, then set it up as [Set up](../../../plugins/model-router-openclaw/README.md#set-up) says.
 - Isolate: `OPENCLAW_HOME`, `OPENCLAW_STATE_DIR` and `OPENCLAW_CONFIG_PATH` on the copy, as [OpenClaw project skills and the Gateway](../../../docs/clients.md#openclaw-project-skills-and-the-gateway) says.
-- Run: start the Gateway with `openclaw gateway run`, with `gateway.tools.allow` naming `sessions_spawn`, then send `POST /tools/invoke` with `tool` `sessions_spawn` and its `args`, as [OpenClaw project skills and the Gateway](../../../docs/clients.md#openclaw-project-skills-and-the-gateway) says and [OpenClaw hook and spawn](../../../docs/clients.md#openclaw-hook-and-spawn) ran it.
+- Run: start the Gateway with `openclaw gateway run`, with `gateway.tools.allow` naming `sessions_spawn`, then send `POST /tools/invoke` with `tool` `sessions_spawn` and its `args`, as [OpenClaw project skills and the Gateway](../../../docs/clients.md#openclaw-project-skills-and-the-gateway) says and the [OpenClaw hook and spawn](https://github.com/Akurganow/model-router/wiki/Evidence-OpenClaw#openclaw-hook-and-spawn) runs ran it.
 - Read the line: `openclaw logs --follow --plain`, as [The log line](../../../plugins/model-router-openclaw/README.md#the-log-line) says.
 - After the run: send `SIGINT` or `SIGTERM` to the Gateway process this run started, and wait for it to exit before you delete the copy, as [OpenClaw project skills and the Gateway](../../../docs/clients.md#openclaw-project-skills-and-the-gateway) says.
   Stop no Gateway the run did not start.
@@ -92,7 +92,7 @@ Never print or log a key, and never put one into a brief, a commit or a wiki ent
 - Load: commit the change, then run `hermes plugins install "file://<checkout>#plugins/model-router-hermes" --enable`, because the install takes the committed `HEAD`, as [Hermes project skills and home](../../../docs/clients.md#hermes-project-skills-and-home) says.
 - Then set `hermes config set delegation.backend model-router`, as [Install](../../../README.md#hermes-agent) says, and the slot models, as [Set up](../../../plugins/model-router-hermes/README.md#set-up) says.
 - Isolate: `HERMES_HOME=<fresh home>` for every command, as [Hermes project skills and home](../../../docs/clients.md#hermes-project-skills-and-home) says.
-- Run: `hermes -z "<prompt>" -m <model> --provider <provider> -t delegation --ignore-rules --usage-file <file>`, as [Hermes task parameters](../../../docs/clients.md#hermes-task-parameters) ran it.
+- Run: `hermes -z "<prompt>" -m <model> --provider <provider> -t delegation --ignore-rules --usage-file <file>`, as the [Hermes task parameters](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#hermes-task-parameters) run ran it.
 - Read the line: `agent.log` in the `logs` folder of the home, unless the plugin host drops INFO lines, as [Hermes runtime, logs and environment](../../../docs/clients.md#hermes-runtime-logs-and-environment) says.
   The task's `route.label` carries it too, as [Hermes routing and refusals](../../../docs/clients.md#hermes-routing-and-refusals) shows; where a `hermes -z` run shows it is not documented.
 - After the run: `hermes gateway stop` with the same `HERMES_HOME`, because a `hermes -z` turn starts a gateway, as [Hermes runtime, logs and environment](../../../docs/clients.md#hermes-runtime-logs-and-environment) says.
@@ -103,7 +103,7 @@ Never print or log a key, and never put one into a brief, a commit or a wiki ent
 29. Give a run of the evals workflow the kind `evals`, and link no run.
 30. Put the entry at the top of the client's page.
 31. Check the entry against "What an entry never holds" in `Home.md`.
-32. Add a harness fact the run shows to `docs/clients.md` as one plain sentence: no version, date, plugin output or run link.
+32. Add a harness fact the run shows to `docs/clients.md` as one plain sentence, by the rules of [Adding evidence](https://github.com/Akurganow/model-router/wiki#adding-evidence).
 33. Put its evidence on the client's evidence page in the wiki clone, as "Adding evidence" in its `Home.md` says.
 34. Set the clone's author to the one its history holds, because the wiki is public and the commit must not carry the machine's identity:
 

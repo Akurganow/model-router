@@ -1,7 +1,7 @@
 # About this repository's design
 
 This page explains why the repository is built the way it is.
-The client facts behind each reason are in [How each client loads a package](clients.md), with their sources.
+The client facts behind each reason are in [How each client loads a package](clients.md), and their evidence is on the [wiki's evidence pages](https://github.com/Akurganow/model-router/wiki#evidence-pages).
 Every other fact here names its kind: a file or a run of this repository's CI, or documentation read on 2026-11-05.
 The build follows the one-source principle of the public repository [Akurganow/pegboard](https://github.com/Akurganow/pegboard).
 
