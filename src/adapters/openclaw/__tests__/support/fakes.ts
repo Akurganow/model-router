@@ -1,6 +1,6 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import {
-	reply,
+	scoringReply,
 	systemOneAnswer,
 } from "../../../../core/__tests__/support/replies.ts";
 import { KEY_FIELDS, type Provider } from "../../../../core/provider.ts";
@@ -180,7 +180,7 @@ function hold(signal: AbortSignal | null | undefined): Promise<never> {
 }
 
 /**
- * A fetch that answers every Jev request with the tier and work levels in `levels`.
+ * A fetch that answers every scoring request with the tier and work levels in `levels`.
  * A test changes `levels` or `mode.current` between calls.
  */
 export function createScoringFetch(initial: Levels = { tier: 1, work: 1 }) {
@@ -203,8 +203,9 @@ export function createScoringFetch(initial: Levels = { tier: 1, work: 1 }) {
 		if (init?.signal) request.signal = init.signal;
 		requests.push(request);
 		if (mode.current === "hang") return hold(init?.signal);
-		if (typeof mode.current === "object") return reply(mode.current.status, {});
-		return reply(200, systemOneAnswer(levels.tier, levels.work));
+		if (typeof mode.current === "object")
+			return scoringReply(mode.current.status, {});
+		return scoringReply(200, systemOneAnswer(levels.tier, levels.work));
 	};
 	return { fetch, levels, mode, requests };
 }

@@ -1,6 +1,6 @@
 import type { Fetch } from "@typesafe-ai/sdk";
 import {
-	reply,
+	scoringReply,
 	systemOneAnswer,
 } from "../../../../core/__tests__/support/replies.ts";
 
@@ -21,14 +21,14 @@ const hold = (signal: AbortSignal | null | undefined): Promise<never> =>
 		});
 	});
 
-function answer(outcome: Exclude<Reply, "hang">): Response {
-	if ("levels" in outcome)
-		return reply(
+function answer(reply: Exclude<Reply, "hang">): Response {
+	if ("levels" in reply)
+		return scoringReply(
 			200,
-			systemOneAnswer(outcome.levels.tier, outcome.levels.work),
+			systemOneAnswer(reply.levels.tier, reply.levels.work),
 		);
-	if ("status" in outcome) return reply(outcome.status, {});
-	return reply(200, outcome.body);
+	if ("status" in reply) return scoringReply(reply.status, {});
+	return scoringReply(200, reply.body);
 }
 
 /**

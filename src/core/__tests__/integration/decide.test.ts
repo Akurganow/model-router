@@ -6,7 +6,7 @@ import { decide, scoreWork } from "../../decide.ts";
 import { plan } from "../../provider.ts";
 import { tier } from "../../tier.ts";
 import { work } from "../../work.ts";
-import { reply, systemOneAnswer } from "../support/replies.ts";
+import { scoringReply, systemOneAnswer } from "../support/replies.ts";
 
 const part = (level: 0 | 1 | 2, p: number) => ({
 	level,
@@ -67,7 +67,7 @@ async function scoreAgainst(body: unknown) {
 		keys: { typesafe: "test-key" },
 		fetchFn: async (_url, init) => {
 			bodies.push(JSON.parse(String(init?.body)));
-			return reply(200, body);
+			return scoringReply(200, body);
 		},
 		signal: new AbortController().signal,
 	});
@@ -99,7 +99,7 @@ test("scoreWork returns the skip of a call with no usable provider", async () =>
 		state: STATE,
 		attempts: plan("typesafe", { typesafe: true, openrouter: false }),
 		keys: {},
-		fetchFn: async () => reply(200, systemOneAnswer(1, 1)),
+		fetchFn: async () => scoringReply(200, systemOneAnswer(1, 1)),
 		signal: new AbortController().signal,
 	});
 	assert.ok("skipped" in result);

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, mock } from "node:test";
 import {
-	reply,
+	scoringReply,
 	systemOneAnswer,
 } from "../../../../core/__tests__/support/replies.ts";
 import { KEY_VARIABLES, plan } from "../../../../core/provider.ts";
@@ -24,7 +24,7 @@ import type {
 	ToolSpec,
 } from "../../types.ts";
 
-export { reply, systemOneAnswer };
+export { scoringReply, systemOneAnswer };
 export const KEY = "omp-key-0001";
 export const OR_KEY = "omp-or-key-0003";
 export const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
@@ -91,7 +91,7 @@ const answerByTask: Answer = async ({ body }) => {
 	const { task } = (body as { state: { task: string } }).state;
 	const level = (name: string) =>
 		Number(new RegExp(`${name}([012])`).exec(task)?.[1] ?? 1);
-	return reply(200, systemOneAnswer(level("level"), level("work")));
+	return scoringReply(200, systemOneAnswer(level("level"), level("work")));
 };
 
 const newState = () => ({

@@ -1,4 +1,4 @@
-// Serves router.test.ts, router-failure.test.ts and ../jev-request.test.ts: the api, Jev fetch and clock that stand in for OpenClaw and Jev.
+// The api, scoring fetch and clock that stand in for OpenClaw and the scoring provider.
 import { createFakeClock } from "../../../../utils/__tests__/support/fake-clock.ts";
 import { createBeforeToolCall, SPAWN_TOOL } from "../../router.ts";
 import type { OpenClawConfig, ToolContext } from "../../types.ts";
@@ -9,7 +9,7 @@ import {
 	type Levels,
 } from "./fakes.ts";
 
-// The shared set-up of the handler tests: an api, a Jev fetch and a clock, with one handler.
+// The shared set-up of the handler tests: an api, a scoring fetch and a clock, with one handler.
 export const SETTINGS = {
 	provider: "typesafe",
 	small_model: "openai/small",
@@ -23,7 +23,7 @@ export const CONTEXT: ToolContext = {
 	agentId: REQUESTER,
 };
 export const TASK = "do the work";
-export const SCORING = " · jev jev-1.14.0 · 812/9 tok";
+export const SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
 type Setup = {
 	levels?: Levels;
 	settings?: Record<string, unknown>;
@@ -34,7 +34,7 @@ type Setup = {
 };
 
 /**
- * Builds a fake api with the config tool, a Jev fetch, a fake clock and the
+ * Builds a fake api with the config tool, a scoring fetch, a fake clock and the
  * before_tool_call handler wired to them, plus a `call` that sends a
  * `sessions_spawn` event with the task and the given params. Every option has a
  * default. Never throws.
@@ -45,19 +45,19 @@ export function setup(options: Setup = {}) {
 		pluginConfig: { ...SETTINGS, ...options.settings },
 		...options.api,
 	});
-	const jev = createScoringFetch(options.levels);
+	const scoring = createScoringFetch(options.levels);
 	const time = createFakeClock();
 	const handler = createBeforeToolCall(
 		fake.api,
 		options.deadlineMs ?? DEADLINE_MS,
-		{ fetchFn: jev.fetch, clock: time.clock, env: options.env ?? {} },
+		{ fetchFn: scoring.fetch, clock: time.clock, env: options.env ?? {} },
 	);
 	const call = (
 		params: Record<string, unknown> = {},
 		ctx: ToolContext = CONTEXT,
 	) =>
 		handler({ toolName: SPAWN_TOOL, params: { task: TASK, ...params } }, ctx);
-	return { ...fake, jev, time, handler, call };
+	return { ...fake, scoring, time, handler, call };
 }
 export const lines = (s: ReturnType<typeof setup>) =>
 	s.logs.map((l) => l.message);

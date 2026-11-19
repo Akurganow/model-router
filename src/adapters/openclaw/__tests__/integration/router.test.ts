@@ -21,7 +21,7 @@ import {
 	field,
 	lines,
 	REQUESTER,
-	SCORING,
+	SUFFIX,
 	setup,
 	TASK,
 } from "../support/handler-fakes.ts";
@@ -37,7 +37,7 @@ describe("provider", () => {
 		});
 		await s.call();
 		assert.deepEqual(
-			s.jev.requests.map(({ url }) => new URL(url).host),
+			s.scoring.requests.map(({ url }) => new URL(url).host),
 			["openrouter.ai"],
 		);
 	});
@@ -80,7 +80,7 @@ describe("levels and efforts", () => {
 		it(`tier ${levels.tier} work ${levels.work} returns ${JSON.stringify(expected)}`, async () => {
 			const s = setup({ levels });
 			assert.deepEqual(await s.call(), expected);
-			assert.deepEqual(lines(s), [line + SCORING]);
+			assert.deepEqual(lines(s), [line + SUFFIX]);
 		});
 
 	it("sets only efforts of the documented ladder", async () => {
@@ -136,7 +136,7 @@ describe("the slot and model each level takes", () => {
 		readonly line: string;
 	};
 	const routedLog = (target: string, effort: string, tier: number) =>
-		`${LINE_PREFIX}L${tier} ${target} · ${effort} · p=0.90/0.90${SCORING}`;
+		`${LINE_PREFIX}L${tier} ${target} · ${effort} · p=0.90/0.90${SUFFIX}`;
 
 	const ROWS: readonly Row[] = [
 		{
@@ -207,7 +207,7 @@ describe("the slot and model each level takes", () => {
 			});
 			assert.deepEqual(await s.call(), { params: { thinking: effort } });
 			assert.deepEqual(lines(s), [
-				`${LINE_PREFIX}L${tier} ${slot} model unset · ${effort} · p=0.90/0.90${SCORING}`,
+				`${LINE_PREFIX}L${tier} ${slot} model unset · ${effort} · p=0.90/0.90${SUFFIX}`,
 			]);
 		});
 	}
@@ -221,9 +221,9 @@ describe("the slot and model each level takes", () => {
 			const effort = tier === 0 ? "high" : "medium";
 			const slot = ["small", "middle", "large"][tier];
 			assert.deepEqual(await s.call(), { params: { thinking: effort } });
-			assert.equal(s.jev.requests.length, 1);
+			assert.equal(s.scoring.requests.length, 1);
 			assert.deepEqual(lines(s), [
-				`${LINE_PREFIX}L${tier} ${slot} model unset · ${effort} · p=0.90/0.90${SCORING}`,
+				`${LINE_PREFIX}L${tier} ${slot} model unset · ${effort} · p=0.90/0.90${SUFFIX}`,
 			]);
 		});
 });
@@ -235,7 +235,7 @@ describe("kept effort", () => {
 			params: { model: "openai/small" },
 		});
 		assert.deepEqual(lines(s), [
-			`model-router L0 openai/small · caller effort · p=0.90/0.90${SCORING}`,
+			`model-router L0 openai/small · caller effort · p=0.90/0.90${SUFFIX}`,
 		]);
 	});
 
@@ -252,20 +252,20 @@ describe("kept effort", () => {
 		const s = setup({ levels: { tier: 1, work: 1 } });
 		assert.equal(await s.call({ thinking: "high" }), undefined);
 		assert.deepEqual(lines(s), [
-			`model-router L1 middle model unset · caller effort · p=0.90/0.90${SCORING}`,
+			`model-router L1 middle model unset · caller effort · p=0.90/0.90${SUFFIX}`,
 		]);
 	});
 });
 
 describe("what Jev is asked", () => {
 	const bodyOf = (s: ReturnType<typeof setup>) =>
-		s.jev.requests[0]?.body as { state: unknown; questions: object };
+		s.scoring.requests[0]?.body as { state: unknown; questions: object };
 	const stateOf = (s: ReturnType<typeof setup>) => bodyOf(s).state;
 
 	it("sends one request holding the role, an empty description and the prepared task", async () => {
 		const s = setup();
 		await s.call();
-		assert.equal(s.jev.requests.length, 1);
+		assert.equal(s.scoring.requests.length, 1);
 		assert.deepEqual(stateOf(s), {
 			role: DEFAULT_ROLE,
 			description: "",
@@ -353,7 +353,7 @@ describe("gates and skips", () => {
 	it("passes a spawn silently: no request, no line", async () => {
 		const s = setup();
 		assert.equal(await s.call({ model: "openai/own" }), undefined);
-		assert.equal(s.jev.requests.length, 0);
+		assert.equal(s.scoring.requests.length, 0);
 		assert.deepEqual(lines(s), []);
 	});
 
@@ -364,14 +364,14 @@ describe("gates and skips", () => {
 			CONTEXT,
 		);
 		assert.equal(result, undefined);
-		assert.equal(s.jev.requests.length, 0);
+		assert.equal(s.scoring.requests.length, 0);
 	});
 
 	it("skips with no key", async () => {
 		const s = setup({ settings: { api_key: "" } });
 		assert.equal(await s.call(), undefined);
 		assert.deepEqual(lines(s), [`model-router skipped, ${KEY_UNSET}`]);
-		assert.equal(s.jev.requests.length, 0);
+		assert.equal(s.scoring.requests.length, 0);
 	});
 
 	it("reads a key from the environment", async () => {
@@ -386,7 +386,7 @@ describe("gates and skips", () => {
 		const s = setup({ settings: { api_key: "" } });
 		assert.equal(await s.call({ agentId: "writer" }), undefined);
 		assert.deepEqual(lines(s), skippedLog(KEY_UNSET));
-		assert.equal(s.jev.requests.length, 0);
+		assert.equal(s.scoring.requests.length, 0);
 	});
 
 	it("skips another agent under core", async () => {
@@ -402,7 +402,7 @@ describe("gates and skips", () => {
 		});
 		assert.equal(await s.call({ agent_id: "worker" }), undefined);
 		assert.deepEqual(lines(s), skippedLog(setsOwnModel("worker")));
-		assert.equal(s.jev.requests.length, 0);
+		assert.equal(s.scoring.requests.length, 0);
 	});
 
 	it("skips a spawn naming an agent when the context has no requester", async () => {
@@ -424,7 +424,7 @@ describe("gates and skips", () => {
 
 	it("skips and logs the category when Jev fails", async () => {
 		const s = setup();
-		s.jev.mode.current = { status: 401 };
+		s.scoring.mode.current = { status: 401 };
 		assert.equal(await s.call(), undefined);
 		assert.deepEqual(lines(s), skippedLog("HTTP 401"));
 	});

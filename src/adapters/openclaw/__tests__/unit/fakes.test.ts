@@ -83,7 +83,7 @@ describe("createFakeApi registration modes", () => {
 		});
 });
 
-describe("createJevFetch", () => {
+describe("createScoringFetch", () => {
 	/** Sends one request with a JSON body to the fake fetch, with the signal only when given. */
 	const send = (
 		fetch: ReturnType<typeof createScoringFetch>["fetch"],
@@ -95,18 +95,18 @@ describe("createJevFetch", () => {
 		});
 
 	it("fails like the real fetch when the signal is already aborted", async () => {
-		const jev = createScoringFetch();
-		await assert.rejects(send(jev.fetch, AbortSignal.abort()));
-		assert.equal(jev.requests.length, 0);
+		const scoring = createScoringFetch();
+		await assert.rejects(send(scoring.fetch, AbortSignal.abort()));
+		assert.equal(scoring.requests.length, 0);
 	});
 
 	it("holds a request until its signal aborts, then rejects with the reason", async () => {
-		const jev = createScoringFetch();
-		jev.mode.current = "hang";
+		const scoring = createScoringFetch();
+		scoring.mode.current = "hang";
 		const stop = new AbortController();
-		const pending = send(jev.fetch, stop.signal);
+		const pending = send(scoring.fetch, stop.signal);
 		stop.abort("limit");
 		await assert.rejects(pending, (reason) => reason === "limit");
-		assert.equal(jev.requests.length, 1);
+		assert.equal(scoring.requests.length, 1);
 	});
 });

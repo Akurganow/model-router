@@ -309,9 +309,9 @@ const valid: Record<string, string> = {
 		'import { c } from "../../core/c.ts";',
 		"export const v = c;",
 	].join("\n"),
-	"src/adapters/drives-several.test.ts": [
-		'import { a } from "./omp/a.ts";',
-		'import { b } from "./claude/b.ts";',
+	"src/adapters/__tests__/integration/drives-several.test.ts": [
+		'import { a } from "../../omp/a.ts";',
+		'import { b } from "../../claude/b.ts";',
 		"export const v = [a, b];",
 	].join("\n"),
 	"scripts/valid.ts": [

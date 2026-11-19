@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { createExtension } from "../../router.ts";
 import { STORE_MAX } from "../../store.ts";
 import { AGENTS } from "../support/fake-agents.ts";
-import { reply, useWorld } from "../support/fakes.ts";
+import { scoringReply, useWorld } from "../support/fakes.ts";
 
 const world = useWorld();
 const install = () => createExtension(world.imports)(world.pi);
@@ -114,8 +114,8 @@ test("an item the router could not score keeps a same-name sibling from taking i
 	install();
 	world.answer = async (sent) =>
 		JSON.stringify(sent.body).includes("bad")
-			? reply(401, {})
-			: reply(200, {
+			? scoringReply(401, {})
+			: scoringReply(200, {
 					model: "jev",
 					answers: {
 						tier: { type: "score", probabilities: { 0: 0, 1: 0, 2: 1 } },

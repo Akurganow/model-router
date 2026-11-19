@@ -68,7 +68,7 @@ export type Call = {
 	description?: string;
 	/** The task text of the spawn. Defaults to the one of SPAWN. */
 	prompt?: string;
-	/** The reply to each Jev request, by URL. Defaults to ANSWER with status 200. */
+	/** The reply to each scoring request, by URL. Defaults to ANSWER with status 200. */
 	reply?: (url: string) => HttpReply;
 	/** Sends a caller effort with the Agent call. */
 	callerEffort?: boolean;
@@ -176,7 +176,7 @@ export type Answers = {
 };
 
 /**
- * Returns the fake Jev reply with status 200. Its body holds a tier answer when
+ * Returns the fake System One reply with status 200. Its body holds a tier answer when
  * tier is given, a work answer when work is given, and the model and usage as
  * passed.
  */

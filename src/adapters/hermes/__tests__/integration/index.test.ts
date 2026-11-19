@@ -38,12 +38,12 @@ const fixtures = readdirSync(FIXTURES)
 
 function run(request: unknown, steps: readonly Step[]) {
 	const time = createFakeClock();
-	const jev = createScriptedScoring(steps, time.fire);
+	const scoring = createScriptedScoring(steps, time.fire);
 	const response = routeRequest(request, {
-		fetchFn: jev.fetch,
+		fetchFn: scoring.fetch,
 		clock: time.clock,
 	});
-	return { response, jev, time };
+	return { response, scoring, time };
 }
 
 describe("protocol fixtures", () => {
@@ -69,10 +69,10 @@ describe("protocol fixtures", () => {
 
 	for (const { name, fixture } of fixtures)
 		it(`${name}: ${fixture.description}`, async () => {
-			const { response, jev, time } = run(fixture.request, fixture.jev);
+			const { response, scoring, time } = run(fixture.request, fixture.jev);
 			assert.deepEqual(await response, fixture.response);
 			assert.deepEqual(
-				jev.hosts,
+				scoring.hosts,
 				fixture.jev.map((step) => step.host),
 			);
 			const { budgetMs } = fixture.request as { budgetMs?: number };
@@ -99,10 +99,10 @@ const ONE = [
 
 describe("the request to Jev", () => {
 	it("asks once for both parts, with the default role and the task and context", async () => {
-		const { response, jev } = run(REQUEST, ONE);
+		const { response, scoring } = run(REQUEST, ONE);
 		await response;
-		assert.equal(jev.bodies.length, 1);
-		const [body] = jev.bodies as {
+		assert.equal(scoring.bodies.length, 1);
+		const [body] = scoring.bodies as {
 			state: unknown;
 			questions: Record<string, unknown>;
 		}[];
@@ -123,37 +123,37 @@ describe("the request to Jev", () => {
 			["x".repeat(100_000), "x".repeat(ROLE_CAP)],
 			["  two\n\n  lines  ", "two lines"],
 		]) {
-			const { response, jev } = run({ ...REQUEST, description }, ONE);
+			const { response, scoring } = run({ ...REQUEST, description }, ONE);
 			await response;
-			const [body] = jev.bodies as { state: { description: unknown } }[];
+			const [body] = scoring.bodies as { state: { description: unknown } }[];
 			assert.equal(body?.state.description, sent);
 		}
 	});
 
 	for (const description of [undefined, null, 7, ["a"], { a: 1 }, "  "])
 		it(`sends an empty description for a description of ${JSON.stringify(description)}`, async () => {
-			const { response, jev } = run({ ...REQUEST, description }, ONE);
+			const { response, scoring } = run({ ...REQUEST, description }, ONE);
 			await response;
-			const [body] = jev.bodies as { state: { description: unknown } }[];
+			const [body] = scoring.bodies as { state: { description: unknown } }[];
 			assert.equal(body?.state.description, "");
 		});
 
 	it("masks a key shaped string in the task", async () => {
-		const { response, jev } = run(
+		const { response, scoring } = run(
 			{ ...REQUEST, task: "use API_KEY=Zq9fK2mTvvQ8 here", context: "" },
 			ONE,
 		);
 		await response;
-		assert.doesNotMatch(JSON.stringify(jev.bodies), /Zq9fK2mTvvQ8/);
+		assert.doesNotMatch(JSON.stringify(scoring.bodies), /Zq9fK2mTvvQ8/);
 	});
 
 	it("does not send a key for a provider the value forbids", async () => {
-		const { response, jev } = run(
+		const { response, scoring } = run(
 			{ ...REQUEST, keys: { typesafe: "typesafe-key", openrouter: "o-key" } },
 			ONE,
 		);
 		await response;
-		assert.deepEqual(jev.hosts, ["api.typesafe.ai"]);
+		assert.deepEqual(scoring.hosts, ["api.typesafe.ai"]);
 	});
 });
 
@@ -255,9 +255,9 @@ describe("the slot and model each level takes", () => {
 			const steps = [
 				{ host: "api.typesafe.ai", reply: { levels: { tier, work: 1 } } },
 			] satisfies Step[];
-			const { response, jev } = run({ ...REQUEST, models }, steps);
+			const { response, scoring } = run({ ...REQUEST, models }, steps);
 			assert.deepEqual(await response, expected);
-			assert.deepEqual(jev.hosts, ["api.typesafe.ai"]);
+			assert.deepEqual(scoring.hosts, ["api.typesafe.ai"]);
 		});
 });
 
@@ -287,12 +287,12 @@ describe("the models of a request", () => {
 describe("failures", () => {
 	for (const raw of [undefined, null, 7, "text", []])
 		it(`a request of ${JSON.stringify(raw)} gives the failed skip`, async () => {
-			const { response, jev } = run(raw, []);
+			const { response, scoring } = run(raw, []);
 			assert.deepEqual(await response, {
 				outcome: "skip",
 				line: "model-router skipped, failed",
 			});
-			assert.deepEqual(jev.hosts, []);
+			assert.deepEqual(scoring.hosts, []);
 		});
 
 	it("gives the failed skip when reading the request throws", async () => {
@@ -302,26 +302,26 @@ describe("failures", () => {
 				throw new Error("hostile getter");
 			},
 		};
-		const { response, jev } = run(hostile, ONE);
+		const { response, scoring } = run(hostile, ONE);
 		assert.deepEqual(await response, {
 			outcome: "skip",
 			line: "model-router skipped, failed",
 		});
-		assert.deepEqual(jev.hosts, []);
+		assert.deepEqual(scoring.hosts, []);
 	});
 
 	for (const budgetMs of [0, -5, Number.NaN, Number.POSITIVE_INFINITY, "8000"])
 		it(`a budget of ${String(budgetMs)} is a protocol fault with no request`, async () => {
-			const { response, jev } = run({ ...REQUEST, budgetMs }, ONE);
+			const { response, scoring } = run({ ...REQUEST, budgetMs }, ONE);
 			assert.deepEqual(await response, FAILED_SKIP);
-			assert.deepEqual(jev.hosts, []);
+			assert.deepEqual(scoring.hosts, []);
 		});
 
 	it("a missing budget is a protocol fault with no request", async () => {
 		const { budgetMs: _omitted, ...withoutBudget } = REQUEST;
-		const { response, jev } = run(withoutBudget, ONE);
+		const { response, scoring } = run(withoutBudget, ONE);
 		assert.deepEqual(await response, FAILED_SKIP);
-		assert.deepEqual(jev.hosts, []);
+		assert.deepEqual(scoring.hosts, []);
 	});
 
 	it("gives the failed skip, not a timeout, when scoring rejects", async () => {

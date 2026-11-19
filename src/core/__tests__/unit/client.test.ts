@@ -4,7 +4,7 @@ import { afterEach, beforeEach, test } from "node:test";
 import { noul } from "@typesafe-ai/sdk";
 import { createClient } from "../../client.ts";
 import { PROVIDERS } from "../../provider.ts";
-import { reply } from "../support/replies.ts";
+import { scoringReply } from "../support/replies.ts";
 
 const KEY = "test-key";
 const MODEL = "jev-test";
@@ -25,7 +25,7 @@ function stubFetch() {
 			headers: new Headers(init?.headers),
 			body: String(init?.body),
 		});
-		return reply(200, { answers: { q: { noul: 0.5 } } });
+		return scoringReply(200, { answers: { q: { noul: 0.5 } } });
 	};
 	return { seen, fetchFn };
 }

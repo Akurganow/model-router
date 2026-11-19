@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
-	reply,
+	scoringReply,
 	systemOneAnswer,
 } from "../../../core/__tests__/support/replies.ts";
 import { DEFAULT_ROLE } from "../../../core/brief.ts";
@@ -48,7 +48,7 @@ describe("a reply without the work part skips with a bad reply", () => {
 	test("in OpenClaw, and changes nothing", async () => {
 		const s = setup({ settings: {} });
 		const handler = createBeforeToolCall(s.api, DEADLINE_MS, {
-			fetchFn: async () => reply(200, NO_WORK),
+			fetchFn: async () => scoringReply(200, NO_WORK),
 			clock: s.time.clock,
 			env: {},
 		});
@@ -67,7 +67,7 @@ describe("a reply without the work part skips with a bad reply", () => {
 
 	test("in Hermes", async () => {
 		const time = createFakeClock();
-		const jev = createScriptedScoring(
+		const scoring = createScriptedScoring(
 			[{ host: "api.typesafe.ai", reply: { body: NO_WORK } }],
 			time.fire,
 		);
@@ -82,7 +82,7 @@ describe("a reply without the work part skips with a bad reply", () => {
 				keptEffort: null,
 				description: DESCRIPTION,
 			},
-			{ fetchFn: jev.fetch, clock: time.clock },
+			{ fetchFn: scoring.fetch, clock: time.clock },
 		);
 		assert.deepEqual(response, {
 			outcome: "skip",

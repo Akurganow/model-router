@@ -15,7 +15,7 @@ const score = (level: number) => ({
 });
 
 /**
- * Returns the reply body of the Jev API: a tier answer, plus a work answer when
+ * Returns the reply body of the System One API: a tier answer, plus a work answer when
  * work is given.
  */
 export const systemOneAnswer = (tier: number, work?: number) => ({
@@ -32,7 +32,7 @@ export const systemOneAnswer = (tier: number, work?: number) => ({
  * goes out as is and any other body as JSON. The headers extend the JSON
  * content type and replace it when they set one.
  */
-export function reply(
+export function scoringReply(
 	status: number,
 	body: unknown,
 	headers: Record<string, string> = {},

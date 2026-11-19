@@ -25,12 +25,12 @@ function install(
 	pluginConfig: Record<string, unknown> = SETTINGS,
 ) {
 	const fake = createFakeApi({ config, pluginConfig });
-	const jev = createScoringFetch({ tier: 0, work: 1 });
+	const scoring = createScoringFetch({ tier: 0, work: 1 });
 	const time = createFakeClock();
-	createPlugin({ fetchFn: jev.fetch, clock: time.clock, env }).register(
+	createPlugin({ fetchFn: scoring.fetch, clock: time.clock, env }).register(
 		fake.api,
 	);
-	return { ...fake, jev, time };
+	return { ...fake, scoring, time };
 }
 
 // The deadline a registered handler arms, read from the delay of its timer.
@@ -203,7 +203,7 @@ describe("the deadline from the operator's hook timeouts", () => {
 				{ toolName: SPAWN_TOOL, agentId: "main" },
 			);
 			assert.equal(result, undefined);
-			assert.equal(s.jev.requests.length, 0);
+			assert.equal(s.scoring.requests.length, 0);
 			assert.deepEqual(
 				s.logs.map((l) => l.level),
 				["warn"],

@@ -100,13 +100,13 @@ describe("a malformed hook call", () => {
 		const s = setup({ levels });
 		const ctx = { ...CONTEXT, abortSignal: {} as AbortSignal };
 		assert.equal(await s.handler(spawn, ctx), undefined);
-		assert.equal(s.jev.requests.length, 0);
+		assert.equal(s.scoring.requests.length, 0);
 	});
 
 	it("returns nothing when the clock throws", async () => {
 		const s = setup({ levels });
 		const handler = createBeforeToolCall(s.api, DEADLINE_MS, {
-			fetchFn: s.jev.fetch,
+			fetchFn: s.scoring.fetch,
 			clock: {
 				after: () => {
 					throw new Error("clock");
@@ -115,7 +115,7 @@ describe("a malformed hook call", () => {
 			env: {},
 		});
 		assert.equal(await handler(spawn, CONTEXT), undefined);
-		assert.equal(s.jev.requests.length, 0);
+		assert.equal(s.scoring.requests.length, 0);
 	});
 
 	it("returns nothing when the event is missing", async () => {
@@ -131,7 +131,7 @@ describe("deadline", () => {
 	it("is inert below the minimum: nothing asked, nothing timed, nothing logged", async () => {
 		const s = setup({ deadlineMs: MIN_DEADLINE_MS - 1 });
 		assert.equal(await s.call(), undefined);
-		assert.equal(s.jev.requests.length, 0);
+		assert.equal(s.scoring.requests.length, 0);
 		assert.deepEqual(s.time.delays(), []);
 		assert.deepEqual(lines(s), []);
 	});
@@ -144,14 +144,14 @@ describe("deadline", () => {
 
 	it("aborts a late scorer at the deadline, settles with nothing and logs one timeout line", async () => {
 		const s = setup();
-		s.jev.mode.current = "hang";
+		s.scoring.mode.current = "hang";
 		const pending = s.call();
 		await settle();
 		assert.deepEqual(s.time.delays(), [DEADLINE_MS]);
-		assert.equal(s.jev.requests[0]?.signal?.aborted, false);
+		assert.equal(s.scoring.requests[0]?.signal?.aborted, false);
 		s.time.fire();
 		assert.equal(await pending, undefined);
-		assert.equal(s.jev.requests[0]?.signal?.aborted, true);
+		assert.equal(s.scoring.requests[0]?.signal?.aborted, true);
 		assert.deepEqual(lines(s), ["model-router skipped, timeout"]);
 		await settle();
 		assert.deepEqual(lines(s), ["model-router skipped, timeout"]);
@@ -159,23 +159,23 @@ describe("deadline", () => {
 
 	it("aborts the request with the limit reason", async () => {
 		const s = setup();
-		s.jev.mode.current = "hang";
+		s.scoring.mode.current = "hang";
 		const pending = s.call();
 		await settle();
 		s.time.fire();
 		await pending;
-		assert.equal(s.jev.requests[0]?.signal?.reason, LIMIT_REACHED);
+		assert.equal(s.scoring.requests[0]?.signal?.reason, LIMIT_REACHED);
 	});
 
 	it("stops a request when the hook's own signal aborts, and logs one cancelled line", async () => {
 		const s = setup();
-		s.jev.mode.current = "hang";
+		s.scoring.mode.current = "hang";
 		const hook = new AbortController();
 		const pending = s.call({}, { ...CONTEXT, abortSignal: hook.signal });
 		await settle();
 		hook.abort();
 		assert.equal(await pending, undefined);
-		assert.equal(s.jev.requests[0]?.signal?.aborted, true);
+		assert.equal(s.scoring.requests[0]?.signal?.aborted, true);
 		assert.deepEqual(lines(s), ["model-router skipped, cancelled"]);
 		await settle();
 		assert.deepEqual(lines(s), ["model-router skipped, cancelled"]);
@@ -183,7 +183,7 @@ describe("deadline", () => {
 
 	it("writes the timeout line at the deadline, before the handler settles", async () => {
 		const s = setup();
-		s.jev.mode.current = "hang";
+		s.scoring.mode.current = "hang";
 		const pending = s.call();
 		await settle();
 		s.time.fire();
@@ -241,7 +241,7 @@ describe("deadline", () => {
 
 	it("writes no line and throws nothing when the logger throws at the deadline", async () => {
 		const s = setup();
-		s.jev.mode.current = "hang";
+		s.scoring.mode.current = "hang";
 		const errors: unknown[] = [];
 		const record = (err: unknown) => errors.push(err);
 		process.on("uncaughtException", record);
@@ -273,7 +273,7 @@ describe("deadline", () => {
 		process.on("unhandledRejection", record);
 		try {
 			const handler = createBeforeToolCall(s.api, DEADLINE_MS, {
-				fetchFn: s.jev.fetch,
+				fetchFn: s.scoring.fetch,
 				clock: {
 					after: () => ({
 						cancel: () => {
