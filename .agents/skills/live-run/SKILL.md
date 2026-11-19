@@ -43,26 +43,26 @@ The word covers the run and its entry on the wiki.
 ## Isolate the harness
 
 Install or update no harness.
+Never restore a settings file whole; when a run changed one by mistake, revert only the entries it set, after checking each.
 
 18. Use the installed harness, and note its version for the entry.
 19. Ask the maintainer when the harness is absent or the question needs another version.
 20. Point the harness at a copy of its configuration folder or a fresh home, as its recipe below says; give Claude Code a copy, because an empty home starts a login.
 21. Stop at a login prompt, and hand the run to the maintainer.
 22. When isolation cannot serve the run, stop and ask the maintainer.
-23. When the maintainer then lets the run touch a real settings file, revert only the entries it set, after checking each, and never restore the file whole.
 
 ## Keep keys secret
 
 Never print or log a key, and never put one into a brief, a commit or a wiki entry.
 
-24. Take each key from the environment by the variable name its plugin README gives: [Claude Code](../../../plugins/model-router/README.md#what-this-mod-can-reach), [omp](../../../plugins/model-router-omp/README.md#key), [OpenClaw](../../../plugins/model-router-openclaw/README.md#keys), [Hermes](../../../plugins/model-router-hermes/README.md#keys).
-25. Take the harness's own provider key from the environment the same way.
-26. Write a key only where the harness reads it, inside the isolated copy.
-27. Delete the copy after the run.
+23. Take each key from the environment by the variable name its plugin README gives: [Claude Code](../../../plugins/model-router/README.md#what-this-mod-can-reach), [omp](../../../plugins/model-router-omp/README.md#key), [OpenClaw](../../../plugins/model-router-openclaw/README.md#keys), [Hermes](../../../plugins/model-router-hermes/README.md#keys).
+24. Take the harness's own provider key from the environment the same way.
+25. Write a key only where the harness reads it, inside the isolated copy.
+26. Delete the copy after the run.
 
 ## Run the harness
 
-28. Fill the four slots of the harness in order: load, isolate, run, read the line.
+27. Fill the four slots of the harness in order: load, isolate, run, read the line.
 
 ### Claude Code
 
@@ -99,17 +99,17 @@ Never print or log a key, and never put one into a brief, a commit or a wiki ent
 
 ## Record the run
 
-29. Write the entry in the wiki clone from the template under "Adding an entry" in its `Home.md`.
-30. Give a run of the evals workflow the kind `evals`, and link no run.
-31. Put the entry at the top of the client's page.
-32. Check the entry against "What an entry never holds" in `Home.md`.
-33. Set the clone's author to the one its history holds, because the wiki is public and the commit must not carry the machine's identity:
+28. Write the entry in the wiki clone from the template under "Adding an entry" in its `Home.md`.
+29. Give a run of the evals workflow the kind `evals`, and link no run.
+30. Put the entry at the top of the client's page.
+31. Check the entry against "What an entry never holds" in `Home.md`.
+32. Set the clone's author to the one its history holds, because the wiki is public and the commit must not carry the machine's identity:
 
     ```sh
     git -C "$wiki" config user.name "$(git -C "$wiki" log -1 --format=%an)"
     git -C "$wiki" config user.email "$(git -C "$wiki" log -1 --format=%ae)"
     ```
 
-34. Make one commit with the entry, and push once.
-35. Without push rights, put the entry's text into your report.
-36. Add a harness fact the run shows to `docs/clients.md`: one sentence with the client version and the date, no plugin output, no run link.
+33. Make one commit with the entry, and push once.
+34. Without push rights, put the entry's text into your report.
+35. Add a harness fact the run shows to `docs/clients.md`: one sentence with the client version and the date, no plugin output, no run link.
