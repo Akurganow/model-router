@@ -59,7 +59,11 @@ function stub(respond: Respond) {
 
 const hang: Respond = (init) =>
 	new Promise((_, reject) => {
-		init.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+		const { signal } = init;
+		if (signal?.aborted) return reject(signal.reason);
+		signal?.addEventListener("abort", () => reject(signal.reason), {
+			once: true,
+		});
 	});
 
 const answering = (body: unknown) => stub(async () => scoringReply(200, body));
@@ -170,7 +174,7 @@ test("a limit abort is a timeout", async (t) => {
 	const routed = run(fetchFn, { signal: controller.signal });
 	await time.pass(0);
 	controller.abort(LIMIT_REACHED);
-	assert.deepEqual(await routed, { skipped: "timeout" });
+	assert.deepEqual(await time.settled(routed), { skipped: "timeout" });
 	assert.equal(bodies.length, 1);
 });
 
@@ -190,7 +194,7 @@ test("a fetch rejection is a network error after two retries", async (t) => {
 	});
 	const routed = run(fetchFn);
 	await time.pass(1500);
-	assert.deepEqual(await routed, { skipped: "network error" });
+	assert.deepEqual(await time.settled(routed), { skipped: "network error" });
 	assert.equal(bodies.length, 3);
 });
 
@@ -386,7 +390,7 @@ test("a per-attempt timeout falls back and reports timeout", async (t) => {
 	await time.pass(19);
 	assert.equal(bodies.length, 1);
 	await time.pass(1);
-	const decision = asDecision(await routed);
+	const decision = asDecision(await time.settled(routed));
 	assert.equal(bodies.length, 2);
 	assert.equal(decision.via?.reason, "timeout");
 });
@@ -411,7 +415,7 @@ test("a cancel during the first attempt does not fall back", async (t) => {
 	const routed = run(fetchFn, { attempts: BOTH, signal: controller.signal });
 	await time.pass(0);
 	controller.abort();
-	assert.deepEqual(await routed, { skipped: "cancelled" });
+	assert.deepEqual(await time.settled(routed), { skipped: "cancelled" });
 	assert.equal(bodies.length, 1);
 });
 
@@ -422,7 +426,7 @@ test("the routing limit during the first attempt does not fall back", async (t) 
 	const routed = run(fetchFn, { attempts: BOTH, signal: controller.signal });
 	await time.pass(0);
 	controller.abort(LIMIT_REACHED);
-	assert.deepEqual(await routed, { skipped: "timeout" });
+	assert.deepEqual(await time.settled(routed), { skipped: "timeout" });
 	assert.equal(bodies.length, 1);
 });
 
@@ -441,7 +445,7 @@ test("one routing limit covers both attempts", async (t) => {
 	await time.pass(0);
 	assert.equal(bodies.length, 2);
 	controller.abort(LIMIT_REACHED);
-	assert.deepEqual(await routed, {
+	assert.deepEqual(await time.settled(routed), {
 		skipped: "typesafe HTTP 503, openrouter timeout",
 	});
 });
@@ -535,7 +539,7 @@ test("a status gives HTTP n after one request, or after three when it is retried
 		const { bodies, fetchFn } = stub(async () => scoringReply(status, "x"));
 		const routed = run(fetchFn);
 		await time.pass(1500);
-		assert.deepEqual(await routed, { skipped });
+		assert.deepEqual(await time.settled(routed), { skipped });
 		assert.equal(bodies.length, requests);
 	}
 });
@@ -552,7 +556,7 @@ test("the first of two attempts times out at 2000 ms and falls back", async (t) 
 	await time.pass(1);
 	assert.equal(bodies.length, 2);
 	assert.equal(inits[0]?.signal?.aborted, true);
-	assert.equal(asDecision(await routed).via?.reason, "timeout");
+	assert.equal(asDecision(await time.settled(routed)).via?.reason, "timeout");
 });
 
 test("each request of the last attempt times out at 10000 ms", async (t) => {
@@ -567,20 +571,20 @@ test("each request of the last attempt times out at 10000 ms", async (t) => {
 	assert.equal(bodies.length, 1);
 	await time.pass(21500);
 	assert.equal(bodies.length, 3);
-	assert.deepEqual(await routed, { skipped: "timeout" });
+	assert.deepEqual(await time.settled(routed), { skipped: "timeout" });
 });
 
 test("a reply whose text never arrives ends at the attempt timeout", async (t) => {
 	const time = fakeTime(t);
 	const { bodies, fetchFn } = stub(async (_init, count) =>
-		count === 1 ? stalledReply(200) : scoringReply(200, VALID),
+		count === 1 ? stalledReply() : scoringReply(200, VALID),
 	);
 	const routed = run(fetchFn, { attempts: BOTH });
 	await time.pass(1999);
 	assert.equal(bodies.length, 1);
 	await time.pass(1);
 	assert.equal(bodies.length, 2);
-	assert.equal(asDecision(await routed).via?.reason, "timeout");
+	assert.equal(asDecision(await time.settled(routed)).via?.reason, "timeout");
 });
 
 test("a network error is retried after 375–500 ms and then 750–1000 ms", async (t) => {
@@ -597,7 +601,7 @@ test("a network error is retried after 375–500 ms and then 750–1000 ms", asy
 	assert.equal(bodies.length, 2);
 	await time.pass(376);
 	assert.equal(bodies.length, 3);
-	assert.deepEqual(await routed, { skipped: "network error" });
+	assert.deepEqual(await time.settled(routed), { skipped: "network error" });
 });
 
 test("retry-after-ms sets the wait to the millisecond", async (t) => {
@@ -612,7 +616,7 @@ test("retry-after-ms sets the wait to the millisecond", async (t) => {
 	assert.equal(bodies.length, 1);
 	await time.pass(1);
 	assert.equal(bodies.length, 2);
-	asDecision(await routed);
+	asDecision(await time.settled(routed));
 });
 
 test("a Retry-After date sets the wait until that date", async (t) => {
@@ -629,7 +633,7 @@ test("a Retry-After date sets the wait until that date", async (t) => {
 	assert.equal(bodies.length, 1);
 	await time.pass(1);
 	assert.equal(bodies.length, 2);
-	asDecision(await routed);
+	asDecision(await time.settled(routed));
 });
 
 test("a wait of 60 s is honoured", async (t) => {
@@ -644,7 +648,7 @@ test("a wait of 60 s is honoured", async (t) => {
 	assert.equal(bodies.length, 1);
 	await time.pass(1);
 	assert.equal(bodies.length, 2);
-	asDecision(await routed);
+	asDecision(await time.settled(routed));
 });
 
 test("a wait over 60 s falls back to backoff", async (t) => {
@@ -659,7 +663,7 @@ test("a wait over 60 s falls back to backoff", async (t) => {
 	assert.equal(bodies.length, 1);
 	await time.pass(126);
 	assert.equal(bodies.length, 2);
-	asDecision(await routed);
+	asDecision(await time.settled(routed));
 });
 
 test("an unusable Retry-After falls back to backoff", async (t) => {
@@ -674,7 +678,7 @@ test("an unusable Retry-After falls back to backoff", async (t) => {
 	assert.equal(bodies.length, 1);
 	await time.pass(126);
 	assert.equal(bodies.length, 2);
-	asDecision(await routed);
+	asDecision(await time.settled(routed));
 });
 
 test("the routing limit at 8000 ms ends the attempt as a timeout", async (t) => {
@@ -689,7 +693,7 @@ test("the routing limit at 8000 ms ends the attempt as a timeout", async (t) => 
 	controller.abort(LIMIT_REACHED);
 	await time.pass(30000);
 	assert.equal(bodies.length, 1);
-	assert.deepEqual(await routed, { skipped: "timeout" });
+	assert.deepEqual(await time.settled(routed), { skipped: "timeout" });
 });
 
 test("an abort during a backoff is cancelled and sends no second request", async (t) => {
@@ -701,18 +705,18 @@ test("an abort during a backoff is cancelled and sends no second request", async
 	controller.abort();
 	await time.pass(1000);
 	assert.equal(bodies.length, 1);
-	assert.deepEqual(await routed, { skipped: "cancelled" });
+	assert.deepEqual(await time.settled(routed), { skipped: "cancelled" });
 });
 
 test("an abort while the reply text is read is cancelled", async (t) => {
 	const time = fakeTime(t);
-	const { bodies, fetchFn } = stub(async () => stalledReply(200));
+	const { bodies, fetchFn } = stub(async () => stalledReply());
 	const controller = new AbortController();
 	const routed = run(fetchFn, { signal: controller.signal });
 	await time.pass(100);
 	controller.abort();
 	assert.equal(bodies.length, 1);
-	assert.deepEqual(await routed, { skipped: "cancelled" });
+	assert.deepEqual(await time.settled(routed), { skipped: "cancelled" });
 });
 
 type Exit = {
@@ -806,7 +810,7 @@ for (const exit of EXITS) {
 		await time.pass(exit.passMs);
 		if (exit.abort === "cancel") controller.abort();
 		if (exit.abort === "limit") controller.abort(LIMIT_REACHED);
-		assert.deepEqual(await routed, exit.expected);
+		assert.deepEqual(await time.settled(routed), exit.expected);
 		assert.equal(getEventListeners(controller.signal, "abort").length, 0);
 		assert.equal(time.live(), 0);
 	});

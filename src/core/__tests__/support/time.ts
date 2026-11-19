@@ -1,50 +1,32 @@
 import type { TestContext } from "node:test";
 
-const FLUSH_ROUNDS = 5;
+const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
 
-type Timer = { due: number; done: boolean };
-
-const flush = async () => {
-	for (let round = 0; round < FLUSH_ROUNDS; round++) {
-		await new Promise<void>((resolve) => setImmediate(resolve));
-	}
-};
+type Outcome<T> = { value: T } | { error: unknown };
 
 /**
- * Fakes `setTimeout` and `Date` for one test, with the clock at epoch 0, and gives back
- * `pass(ms)`, which moves the clock forward and lets pending promise work settle, and
- * `live()`, which counts the timers set and neither fired nor cleared. Both globals are
- * restored when the test ends.
+ * Fakes `setTimeout` and `Date` for one test, with the clock at epoch 0. `setInterval`,
+ * `AbortSignal.timeout` and `performance.now` stay real, and `setImmediate` stays real.
+ * Gives back `pass(ms)`, which moves the clock forward and lets pending promise work settle,
+ * `live()`, which counts the `setTimeout` timers neither fired nor cleared, and `settled`.
+ * Both faked globals are restored when the test ends.
  */
 export function fakeTime(t: TestContext) {
 	t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
 	const mockedSet = globalThis.setTimeout;
 	const mockedClear = globalThis.clearTimeout;
-	const timers = new Map<unknown, Timer>();
+	const due = new Map<unknown, number>();
 
-	globalThis.setTimeout = ((
-		callback: (...args: unknown[]) => void,
-		delay?: number,
-		...args: unknown[]
-	) => {
-		const timer: Timer = {
-			due: Date.now() + Math.max(0, delay ?? 0),
-			done: false,
-		};
-		const handle = mockedSet(
-			(...rest: unknown[]) => {
-				timer.done = true;
-				callback(...rest);
-			},
-			delay,
-			...args,
-		);
-		timers.set(handle, timer);
+	globalThis.setTimeout = ((callback: () => void, delay?: number) => {
+		const handle = mockedSet(() => {
+			due.delete(handle);
+			callback();
+		}, delay);
+		due.set(handle, Date.now() + (delay ?? 0));
 		return handle;
 	}) as typeof setTimeout;
 	globalThis.clearTimeout = ((handle?: Parameters<typeof clearTimeout>[0]) => {
-		const timer = timers.get(handle);
-		if (timer) timer.done = true;
+		due.delete(handle);
 		mockedClear(handle);
 	}) as typeof clearTimeout;
 
@@ -54,7 +36,7 @@ export function fakeTime(t: TestContext) {
 		t.mock.timers.reset();
 	});
 
-	const live = () => [...timers.values()].filter((timer) => !timer.done).length;
+	const live = () => due.size;
 
 	/**
 	 * Moves the clock forward by exactly `ms`, one due timer at a time so a timer that
@@ -64,18 +46,34 @@ export function fakeTime(t: TestContext) {
 		const end = Date.now() + ms;
 		await flush();
 		for (;;) {
-			const due = Math.min(
-				...[...timers.values()]
-					.filter((timer) => !timer.done && timer.due <= end)
-					.map((timer) => timer.due),
-			);
-			if (!Number.isFinite(due)) break;
-			t.mock.timers.tick(Math.max(0, due - Date.now()));
+			const next = Math.min(...[...due.values()].filter((at) => at <= end));
+			if (!Number.isFinite(next)) break;
+			t.mock.timers.tick(Math.max(0, next - Date.now()));
 			await flush();
 		}
 		if (Date.now() < end) t.mock.timers.tick(end - Date.now());
 		await flush();
 	};
 
-	return { pass, live };
+	/** Gives back the promise's outcome once pending work is flushed, or rejects at once if it is still pending. */
+	const settled = async <T>(promise: Promise<T>): Promise<T> => {
+		const box: { outcome?: Outcome<T> } = {};
+		promise.then(
+			(value) => {
+				box.outcome = { value };
+			},
+			(error: unknown) => {
+				box.outcome = { error };
+			},
+		);
+		await flush();
+		const { outcome } = box;
+		if (!outcome) {
+			throw new Error(`still pending after ${Date.now()} ms of fake time`);
+		}
+		if ("error" in outcome) throw outcome.error;
+		return outcome.value;
+	};
+
+	return { pass, live, settled };
 }

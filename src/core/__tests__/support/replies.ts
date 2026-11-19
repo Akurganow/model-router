@@ -46,13 +46,10 @@ export function scoringReply(
 	});
 }
 
-/** Returns a reply whose headers arrive and whose body never does. */
-export function stalledReply(
-	status: number,
-	headers: Record<string, string> = {},
-): Response {
+/** Returns a 200 JSON reply whose headers arrive and whose body never does. */
+export function stalledReply(): Response {
 	return new Response(new ReadableStream<Uint8Array>(), {
-		status,
-		headers: { "content-type": "application/json", ...headers },
+		status: 200,
+		headers: { "content-type": "application/json" },
 	});
 }
