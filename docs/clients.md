@@ -518,7 +518,7 @@ The running facts used omp from npm, a probe extension and a local stand-in mode
 
 ### omp project skills and folders
 
-These facts were read at omp 19.0.0, commit `57771ae`. `agents.ts` and `claude.ts` are the same at omp 18.12.6.
+These facts were read at omp 19.0.0.
 
 - omp reads project skills from `.agent/skills` and `.agents/skills` in each folder from the working directory up to the repository root, and it skips the home folder.
   With no repository root, the walk stops at the home folder, or at the filesystem root when the working directory is not under home.
@@ -614,7 +614,7 @@ Every running fact names its OpenClaw version and the date it ran.
   So the report held the plugin id, the package name and the package version, status `loaded`, and `imported` and `enabled` true.
   It also held `model_router_config` in `contracts.tools` and no diagnostics.
   The script then called the installed bundle's `register()` on a recording API in `full` mode, instead of reading the registration from the report.
-  The install printed `Installed plugin: model-router-openclaw` and `Saved for the next Gateway start.`, and the script passed on plugin version 0.16.1, with the bundle registering the hook, the config tool and the two option commands.
+  The install printed `Installed plugin: model-router-openclaw` and `Saved for the next Gateway start.`, and the script passed, with the bundle registering the hook, the config tool and the two option commands.
   (running: OpenClaw 2026.11.1, 2026-11-05)
 - The Gateway log shows a command registration as `Registered plugin command: /<name> (plugin: <id>)`.
   OpenClaw writes the line through `logVerbose`, which logs under `--verbose` or at file log level `debug`.
@@ -982,7 +982,7 @@ These facts are source readings at commit `847611dcaa3b` (tag `v2026.11.3`), not
 
 ### OpenClaw project skills and the Gateway
 
-These facts were read at OpenClaw 2026.11.5, commit `e13cf15`.
+These facts were read at OpenClaw 2026.11.5.
 
 - OpenClaw reads skills from `<workspace>/skills` and `<workspace>/.agents/skills` of the agent's workspace, and `skills/` wins a name clash.
   It never walks up into parent folders, and it does not read `.claude/skills`.
@@ -1312,7 +1312,7 @@ These facts are source readings at commit `3b421578588243f920886e6fe79a6faa87ea0
 
 ### Hermes project skills and home
 
-These facts were read at Hermes Agent 0.23.2, commit `ae2a81c`.
+These facts were read at Hermes Agent 0.23.2.
 
 - Hermes reads project skills from `.hermes/skills` and `.agents/skills` under the project root, the nearest folder at or above the working directory that holds `.git`.
   It loads them only when `skills.trusted_project_dirs` lists that root, and the list is empty by default.
