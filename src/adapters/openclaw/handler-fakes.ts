@@ -1,5 +1,5 @@
 // Serves router.test.ts, router-failure.test.ts and ../jev-request.test.ts: the api, Jev fetch and clock that stand in for OpenClaw and Jev.
-import { createFakeClock } from "../../utils/fake-clock.ts";
+import { createFakeClock } from "../../utils/__tests__/support/fake-clock.ts";
 import {
 	createFakeApi,
 	createJevFetch,

@@ -1,4 +1,4 @@
-import { oneChunk } from "../utils/fetch.ts";
+import { oneChunk } from "../../../utils/fetch.ts";
 
 /**
  * Returns probabilities that give the level 0.9 and each other level 0.05.
@@ -18,7 +18,7 @@ const score = (level: number) => ({
  * Returns the reply body of the Jev API: a tier answer, plus a work answer when
  * work is given.
  */
-export const jevAnswer = (tier: number, work?: number) => ({
+export const systemOneAnswer = (tier: number, work?: number) => ({
 	model: "jev-1.14.0",
 	usage: { input_tokens: 812, output_tokens: 9 },
 	answers: {
@@ -32,7 +32,7 @@ export const jevAnswer = (tier: number, work?: number) => ({
  * goes out as is and any other body as JSON. The headers extend the JSON
  * content type and replace it when they set one.
  */
-export function streamed(
+export function reply(
 	status: number,
 	body: unknown,
 	headers: Record<string, string> = {},

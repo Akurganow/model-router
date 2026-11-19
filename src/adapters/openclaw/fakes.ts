@@ -1,5 +1,5 @@
 import type { Fetch } from "@typesafe-ai/sdk";
-import { jevAnswer, streamed } from "../../core/jev-fakes.ts";
+import { systemOneAnswer, reply } from "../../core/__tests__/support/replies.ts";
 import { KEY_FIELDS, type Provider } from "../../core/provider.ts";
 import type {
 	BeforeToolCallHandler,
@@ -198,8 +198,8 @@ export function createJevFetch(initial: Levels = { tier: 1, work: 1 }) {
 		requests.push(request);
 		if (mode.current === "hang") return hold(init?.signal);
 		if (typeof mode.current === "object")
-			return streamed(mode.current.status, {});
-		return streamed(200, jevAnswer(levels.tier, levels.work));
+			return reply(mode.current.status, {});
+		return reply(200, systemOneAnswer(levels.tier, levels.work));
 	};
 	return { fetch, levels, mode, requests };
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AGENTS } from "./fake-agents.ts";
-import { streamed, useWorld } from "./fakes.ts";
+import { reply, useWorld } from "./fakes.ts";
 import { createExtension } from "./router.ts";
 import { STORE_MAX } from "./store.ts";
 
@@ -114,8 +114,8 @@ test("an item the router could not score keeps a same-name sibling from taking i
 	install();
 	world.answer = async (sent) =>
 		JSON.stringify(sent.body).includes("bad")
-			? streamed(401, {})
-			: streamed(200, {
+			? reply(401, {})
+			: reply(200, {
 					model: "jev",
 					answers: {
 						tier: { type: "score", probabilities: { 0: 0, 1: 0, 2: 1 } },

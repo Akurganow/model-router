@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it, mock } from "node:test";
 import type { Clock } from "./clock.ts";
 import { raceDeadline } from "./deadline.ts";
-import { createFakeClock } from "./fake-clock.ts";
+import { createFakeClock } from "./__tests__/support/fake-clock.ts";
 
 const REASON = Symbol("deadline passed");
 

@@ -2,10 +2,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { DEFAULT_ROLE } from "../core/brief.ts";
-import { jevAnswer, streamed } from "../core/jev-fakes.ts";
+import { systemOneAnswer, reply } from "../core/__tests__/support/replies.ts";
 import { tier } from "../core/tier.ts";
 import { work } from "../core/work.ts";
-import { createFakeClock } from "../utils/fake-clock.ts";
+import { createFakeClock } from "../utils/__tests__/support/fake-clock.ts";
 import { answer, FULL, routedCall } from "./claude/fakes.ts";
 import { createScriptedJev } from "./hermes/fakes.ts";
 import { routeRequest } from "./hermes/route.ts";
@@ -15,7 +15,7 @@ import { createBeforeToolCall, SPAWN_TOOL } from "./openclaw/router.ts";
 const TASK = "Rename the helper in util.ts and run the tests.";
 const DESCRIPTION = "Rename one helper";
 // A reply that answers the tier question and leaves the work question out.
-const NO_WORK = jevAnswer(2);
+const NO_WORK = systemOneAnswer(2);
 
 test("Claude Code sends one request with the role, the description, the task and the two questions", async () => {
 	const { bodies } = await routedCall({
@@ -37,7 +37,7 @@ describe("a reply without the work part skips with a bad reply", () => {
 	test("in OpenClaw, and changes nothing", async () => {
 		const s = setup({ settings: {} });
 		const handler = createBeforeToolCall(s.api, DEADLINE_MS, {
-			fetchFn: async () => streamed(200, NO_WORK),
+			fetchFn: async () => reply(200, NO_WORK),
 			clock: s.time.clock,
 			env: {},
 		});

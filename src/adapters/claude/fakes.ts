@@ -1,4 +1,4 @@
-import { jevAnswer } from "../../core/jev-fakes.ts";
+import { systemOneAnswer } from "../../core/__tests__/support/replies.ts";
 import type { Engine, HttpReply } from "./host.ts";
 import { register } from "./index.ts";
 
@@ -181,7 +181,7 @@ export type Answers = {
  * passed.
  */
 export const answer = ({ tier, work, model, usage }: Answers): HttpReply => {
-	const { answers } = jevAnswer(tier ?? 0, work);
+	const { answers } = systemOneAnswer(tier ?? 0, work);
 	return {
 		status: 200,
 		ok: true,

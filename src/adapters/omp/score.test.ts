@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { ROUTING_LIMIT_MS } from "../../core/compose.ts";
-import { jevAnswer } from "../../core/jev-fakes.ts";
+import { systemOneAnswer } from "../../core/__tests__/support/replies.ts";
 import { effortFor } from "../../core/ladder.ts";
 import type { Level } from "../../core/part.ts";
 import { batch, useWorld } from "./fakes.ts";
@@ -96,7 +96,7 @@ test("a reply whose own body is unusable still scores the item", async () => {
 			status: 200,
 			statusText: "OK",
 			headers: new Headers({ "content-type": "application/json" }),
-			text: async () => JSON.stringify(jevAnswer(2, 0)),
+			text: async () => JSON.stringify(systemOneAnswer(2, 0)),
 			get body(): never {
 				throw new Error("Body already used");
 			},

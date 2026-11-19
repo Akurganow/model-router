@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import { noul } from "@typesafe-ai/sdk";
 import { createClient } from "./client.ts";
-import { streamed } from "./jev-fakes.ts";
+import { reply } from "./__tests__/support/replies.ts";
 import { PROVIDERS } from "./provider.ts";
 
 const KEY = "test-key";
@@ -25,7 +25,7 @@ function stubFetch() {
 			headers: new Headers(init?.headers),
 			body: String(init?.body),
 		});
-		return streamed(200, { answers: { q: { noul: 0.5 } } });
+		return reply(200, { answers: { q: { noul: 0.5 } } });
 	};
 	return { seen, fetchFn };
 }

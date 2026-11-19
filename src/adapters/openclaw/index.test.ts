@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { ROUTING_LIMIT_MS } from "../../core/compose.ts";
 import { deadlineFor } from "../../core/handler-deadline.ts";
 import { keyLine } from "../../core/settings.ts";
-import { createFakeClock } from "../../utils/fake-clock.ts";
+import { createFakeClock } from "../../utils/__tests__/support/fake-clock.ts";
 import { createFakeApi, createJevFetch } from "./fakes.ts";
 import plugin, { createPlugin } from "./index.ts";
 import { SPAWN_TOOL } from "./router.ts";

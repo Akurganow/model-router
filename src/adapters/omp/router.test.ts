@@ -11,13 +11,13 @@ import { tier } from "../../core/tier.ts";
 import { work } from "../../core/work.ts";
 import {
 	ENDPOINT,
-	jevAnswer,
+	systemOneAnswer,
 	KEY,
 	lockfileWith,
 	OR_ENDPOINT,
 	OR_KEY,
 	setEnv,
-	streamed,
+	reply,
 	useWorld,
 } from "./fakes.ts";
 import { createExtension } from "./router.ts";
@@ -305,8 +305,8 @@ test("an item the request cannot score is skipped with its category", async () =
 	install();
 	world.answer = async (sent) =>
 		JSON.stringify(sent.body).includes("bad")
-			? streamed(401, { error: "no" })
-			: streamed(200, jevAnswer(2, 1));
+			? reply(401, { error: "no" })
+			: reply(200, systemOneAnswer(2, 1));
 	await world.toolCall("c", { tasks: [{ task: "bad" }, { task: "good" }] });
 	assert.equal(
 		world.notes[0],
@@ -317,14 +317,14 @@ test("an item the request cannot score is skipped with its category", async () =
 
 test("a reply without the work answer is a bad reply", async () => {
 	install();
-	world.answer = async () => streamed(200, jevAnswer(0));
+	world.answer = async () => reply(200, systemOneAnswer(0));
 	await world.toolCall("c", { tasks: [{ task: "a" }] });
 	assert.equal(world.notes[0], `${PREFIX}task 1: skipped, bad reply`);
 });
 
 test("a reply without the tier answer is a bad reply", async () => {
 	install();
-	world.answer = async () => streamed(200, { model: "jev", answers: {} });
+	world.answer = async () => reply(200, { model: "jev", answers: {} });
 	await world.toolCall("c", { tasks: [{ task: "a" }] });
 	assert.equal(world.notes[0], `${PREFIX}task 1: skipped, bad reply`);
 });
@@ -384,7 +384,7 @@ test("at most four items are scored at once", async () => {
 		peak = Math.max(peak, inFlight);
 		await wait(15);
 		inFlight -= 1;
-		return streamed(200, jevAnswer(1, 1));
+		return reply(200, systemOneAnswer(1, 1));
 	};
 	const tasks = Array.from({ length: 10 }, (_, i) => ({ task: `task ${i}` }));
 	await world.toolCall("c", { tasks });
@@ -403,8 +403,8 @@ test("in an outage, items that start later in the batch pass over the failed pro
 	world.lockfile = lockfileWith("auto");
 	world.answer = async ({ url }) =>
 		url === ENDPOINT
-			? streamed(503, { error: "down" })
-			: streamed(200, jevAnswer(1, 1));
+			? reply(503, { error: "down" })
+			: reply(200, systemOneAnswer(1, 1));
 	const tasks = Array.from({ length: 6 }, (_, i) => ({ task: `task ${i}` }));
 	await world.toolCall("c", { tasks });
 	assert.equal(count(ENDPOINT), 4);
@@ -434,11 +434,11 @@ test("an item that starts while another waits on its fallback already passes ove
 		const { task } = (body as { state: { task: string } }).state;
 		if (task.startsWith("task 4")) lastStarted();
 		if (task.startsWith("task 0")) {
-			if (url === ENDPOINT) return streamed(503, { error: "down" });
+			if (url === ENDPOINT) return reply(503, { error: "down" });
 			fellBack();
 			await lastSent;
 		} else if (url === ENDPOINT) await fallbackSent;
-		return streamed(200, jevAnswer(1, 1));
+		return reply(200, systemOneAnswer(1, 1));
 	};
 	const tasks = Array.from({ length: 5 }, (_, i) => ({ task: `task ${i}` }));
 	await world.toolCall("c", { tasks });
@@ -455,7 +455,7 @@ test("a skip after two attempts names both providers, a later one-attempt skip d
 	install();
 	world.lockfile = lockfileWith("auto");
 	world.answer = async ({ url }) =>
-		streamed(url === ENDPOINT ? 503 : 401, { error: "no" });
+		reply(url === ENDPOINT ? 503 : 401, { error: "no" });
 	const tasks = Array.from({ length: 5 }, (_, i) => ({ task: `task ${i}` }));
 	await world.toolCall("c", { tasks });
 	assert.deepEqual(entriesOf(world.notes[0]), [

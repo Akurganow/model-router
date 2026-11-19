@@ -11,7 +11,7 @@ import {
 	type RouteInput,
 	route,
 } from "./compose.ts";
-import { streamed } from "./jev-fakes.ts";
+import { reply } from "./__tests__/support/replies.ts";
 import { type Attempt, plan } from "./provider.ts";
 import { KEY_UNSET } from "./reasons.ts";
 import { tier } from "./tier.ts";
@@ -58,7 +58,7 @@ const hang: Respond = (init) =>
 		init.signal?.addEventListener("abort", () => reject(init.signal?.reason));
 	});
 
-const answering = (body: unknown) => stub(async () => streamed(200, body));
+const answering = (body: unknown) => stub(async () => reply(200, body));
 
 type Overrides = Partial<Parameters<typeof route>[0]>;
 
@@ -187,14 +187,14 @@ test("a fetch rejection is a network error after the SDK retries", async () => {
 });
 
 test("a 401 is HTTP 401 after one request", async () => {
-	const { bodies, fetchFn } = stub(async () => streamed(401, { error: "no" }));
+	const { bodies, fetchFn } = stub(async () => reply(401, { error: "no" }));
 	assert.deepEqual(await run(fetchFn), { skipped: "HTTP 401" });
 	assert.equal(bodies.length, 1);
 });
 
 test("a 500 then a 200 gives a decision after one retry", async () => {
 	const { bodies, fetchFn } = stub(async (_init, count) =>
-		count === 1 ? streamed(500, "oops", NO_WAIT) : streamed(200, VALID),
+		count === 1 ? reply(500, "oops", NO_WAIT) : reply(200, VALID),
 	);
 	asDecision(await run(fetchFn));
 	assert.equal(bodies.length, 2);
@@ -254,7 +254,7 @@ test("an error outside the SDK's classes is failed", async () => {
 test("a skip holds neither the response body, the task nor the key", async () => {
 	const task = `Deploy with ${SECRET} now`;
 	const { fetchFn } = stub(async () =>
-		streamed(401, { error: `bad key ${KEY} ${SECRET}`, echo: task }),
+		reply(401, { error: `bad key ${KEY} ${SECRET}`, echo: task }),
 	);
 	// The raw task skips the masking on purpose: the skip text itself must drop it.
 	const state = { ...STATE, task } as RouteInput["state"];
@@ -302,7 +302,7 @@ test("the suffix names the answering provider after a fallback", () => {
 
 test("a 503 falls back once to the next provider with its own host and key", async () => {
 	const { sent, fetchFn } = stub(async (_init, count) =>
-		count === 1 ? streamed(503, "down", NO_WAIT) : streamed(200, VALID),
+		count === 1 ? reply(503, "down", NO_WAIT) : reply(200, VALID),
 	);
 	const decision = asDecision(await run(fetchFn, { attempts: BOTH }));
 	assert.deepEqual(sent, [
@@ -320,7 +320,7 @@ test("a fallback reports the failed provider before the next attempt's request",
 	const log: string[] = [];
 	const { fetchFn } = stub(async (_init, count) => {
 		log.push(`request ${count}`);
-		return count === 1 ? streamed(503, "down", NO_WAIT) : streamed(200, VALID);
+		return count === 1 ? reply(503, "down", NO_WAIT) : reply(200, VALID);
 	});
 	const onFallback = (provider: string) => void log.push(provider);
 	asDecision(await run(fetchFn, { attempts: BOTH, onFallback }));
@@ -330,9 +330,9 @@ test("a fallback reports the failed provider before the next attempt's request",
 test("no fallback, no report: a 400, or a 503 with no attempt left", async () => {
 	const fallbacks: string[] = [];
 	const onFallback = (provider: string) => void fallbacks.push(provider);
-	const bad = stub(async () => streamed(400, "bad"));
+	const bad = stub(async () => reply(400, "bad"));
 	await run(bad.fetchFn, { attempts: BOTH, onFallback });
-	const down = stub(async () => streamed(503, "down", NO_WAIT));
+	const down = stub(async () => reply(503, "down", NO_WAIT));
 	await run(down.fetchFn, { onFallback });
 	assert.deepEqual(fallbacks, []);
 });
@@ -340,7 +340,7 @@ test("no fallback, no report: a 400, or a 503 with no attempt left", async () =>
 test("openrouter-first asks OpenRouter first and falls back after a network error", async () => {
 	const { sent, fetchFn } = stub(async (_init, count) => {
 		if (count === 1) throw new TypeError("fetch failed");
-		return streamed(200, VALID);
+		return reply(200, VALID);
 	});
 	const attempts = plan("openrouter-first", {
 		typesafe: true,
@@ -367,7 +367,7 @@ test("a per-attempt timeout falls back and reports timeout", async () => {
 		{ provider: "openrouter", model: MODEL },
 	];
 	const { bodies, fetchFn } = stub((init, count) =>
-		count === 1 ? hang(init, count) : Promise.resolve(streamed(200, VALID)),
+		count === 1 ? hang(init, count) : Promise.resolve(reply(200, VALID)),
 	);
 	const decision = asDecision(await run(fetchFn, { attempts }));
 	assert.equal(bodies.length, 2);
@@ -376,9 +376,9 @@ test("a per-attempt timeout falls back and reports timeout", async () => {
 
 test("a 400, a 422 or a bad reply ends the call with today's one-attempt reason", async () => {
 	const cases: [Respond, string][] = [
-		[async () => streamed(400, "bad"), "HTTP 400"],
-		[async () => streamed(422, "bad"), "HTTP 422"],
-		[async () => streamed(200, "not json"), "bad reply"],
+		[async () => reply(400, "bad"), "HTTP 400"],
+		[async () => reply(422, "bad"), "HTTP 422"],
+		[async () => reply(200, "not json"), "bad reply"],
 	];
 	for (const [respond, skipped] of cases) {
 		const { bodies, fetchFn } = stub(respond);
@@ -408,7 +408,7 @@ test("the routing limit during the first attempt does not fall back", async () =
 test("one routing limit covers both attempts", async () => {
 	const controller = new AbortController();
 	const { bodies, fetchFn } = stub((init, count) => {
-		if (count === 1) return Promise.resolve(streamed(503, "down", NO_WAIT));
+		if (count === 1) return Promise.resolve(reply(503, "down", NO_WAIT));
 		setImmediate(() => controller.abort(LIMIT_REACHED));
 		return hang(init, count);
 	});
@@ -423,7 +423,7 @@ test("one routing limit covers both attempts", async () => {
 });
 
 test("two failed attempts send at most four requests and name both providers", async () => {
-	const { bodies, fetchFn } = stub(async () => streamed(503, "down", NO_WAIT));
+	const { bodies, fetchFn } = stub(async () => reply(503, "down", NO_WAIT));
 	assert.deepEqual(await run(fetchFn, { attempts: BOTH }), {
 		skipped: "typesafe HTTP 503, openrouter HTTP 503",
 	});
@@ -432,7 +432,7 @@ test("two failed attempts send at most four requests and name both providers", a
 
 test("a bad reply after a fallback names both providers", async () => {
 	const { fetchFn } = stub(async (_init, count) =>
-		count === 1 ? streamed(429, "slow", NO_WAIT) : streamed(200, "not json"),
+		count === 1 ? reply(429, "slow", NO_WAIT) : reply(200, "not json"),
 	);
 	assert.deepEqual(await run(fetchFn, { attempts: BOTH }), {
 		skipped: "typesafe HTTP 429, openrouter bad reply",
@@ -440,7 +440,7 @@ test("a bad reply after a fallback names both providers", async () => {
 });
 
 test("a single-provider failure that allows fallback keeps today's text", async () => {
-	const { bodies, fetchFn } = stub(async () => streamed(503, "down", NO_WAIT));
+	const { bodies, fetchFn } = stub(async () => reply(503, "down", NO_WAIT));
 	assert.deepEqual(await run(fetchFn), { skipped: "HTTP 503" });
 	assert.equal(bodies.length, 3);
 });

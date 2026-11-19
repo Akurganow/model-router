@@ -1,5 +1,5 @@
 import type { Fetch } from "@typesafe-ai/sdk";
-import { jevAnswer, streamed } from "../../core/jev-fakes.ts";
+import { systemOneAnswer, reply } from "../../core/__tests__/support/replies.ts";
 
 // What one scripted Jev call answers. "hang" holds the request until its signal aborts.
 type Reply =
@@ -18,11 +18,11 @@ const hold = (signal: AbortSignal | null | undefined): Promise<never> =>
 		});
 	});
 
-function answer(reply: Exclude<Reply, "hang">): Response {
-	if ("levels" in reply)
-		return streamed(200, jevAnswer(reply.levels.tier, reply.levels.work));
-	if ("status" in reply) return streamed(reply.status, {});
-	return streamed(200, reply.body);
+function answer(outcome: Exclude<Reply, "hang">): Response {
+	if ("levels" in outcome)
+		return reply(200, systemOneAnswer(outcome.levels.tier, outcome.levels.work));
+	if ("status" in outcome) return reply(outcome.status, {});
+	return reply(200, outcome.body);
 }
 
 /**

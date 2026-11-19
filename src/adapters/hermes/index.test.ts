@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { buildPrompt, DEFAULT_ROLE, ROLE_CAP } from "../../core/brief.ts";
 import { ROUTING_LIMIT_MS } from "../../core/compose.ts";
-import { createFakeClock } from "../../utils/fake-clock.ts";
+import { createFakeClock } from "../../utils/__tests__/support/fake-clock.ts";
 import { createScriptedJev, type Step } from "./fakes.ts";
 import { readRequest } from "./request.ts";
 import { routeRequest } from "./route.ts";
