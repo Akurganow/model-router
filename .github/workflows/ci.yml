@@ -184,12 +184,7 @@ jobs:
       - uses: ./.github/actions/setup-node
         with:
           cache-dependency-path: |
-            package-lock.json
             .github/actions/setup-openclaw/package-lock.json
-
-      # The install check takes the plugin's names from src/.
-      - name: Install the dev tools
-        run: npm ci
 
       - uses: ./.github/actions/setup-openclaw
 
