@@ -7,7 +7,17 @@ every commit as a [conventional commit](#commits).
 ## Repository layout
 
 - `src/` holds the sources in three layers: `src/core/`, `src/utils/` and
-  `src/adapters/<harness>/`. Each test sits beside the source it tests.
+  `src/adapters/<harness>/`. Tests and fakes sit in their layer's
+  `__tests__/`, under `unit/`, `integration/` or `support/`.
+  - `unit/` holds a test that calls one module's exports directly, also when
+    it hands that module a fake. The file is named after the module. A test
+    of a support module goes here too.
+  - `integration/` holds a test that starts at an entry a harness or an
+    adapter calls, such as `route` or an adapter's handler, and runs to a
+    fake at the far edge. A file that holds both kinds goes here whole, and
+    so does a test that reads a file the build writes.
+  - `support/` holds fakes and helpers. A script in `scripts/` may import
+    them; application code never does.
   - `utils/` imports only `utils/`. `core/` imports only `core/` and
     `utils/`. An adapter imports only itself, `core/` and `utils/`.
   - Biome enforces these directions. The `noRestrictedImports` overrides in
@@ -18,11 +28,6 @@ every commit as a [conventional commit](#commits).
     Biome reports it.
   - [AGENTS.md](AGENTS.md#a-rule-about-the-source-goes-to-biome-first)
     says when a new rule goes to Biome and when to a test.
-  - `scripts/layout.test.ts` checks where the files sit:
-    - every file under `src/` except `src/tsconfig.json` sits in `core/`,
-      `utils/` or one adapter folder;
-    - only a test sits directly in `src/adapters/`;
-    - each adapter folder holds an `index.ts`, the adapter's entry.
 
   No tool checks the table below. Use it to place new code.
 
@@ -31,8 +36,8 @@ every commit as a [conventional commit](#commits).
   | A routing concept that two or more adapters use | `src/core/` |
   | A general helper with two or more users | `src/utils/` |
   | Anything one adapter uses | that adapter's folder |
-  | A test double | The layer of the code it replaces, in a `*fake*` file |
-  | A test directly in `src/adapters/` | It imports two or more adapters |
+  | A test double or helper | `__tests__/support/` of the layer of the code it replaces |
+  | A test that imports two or more adapters | `src/adapters/__tests__/integration/` |
   | A non-test file of `utils/` | Two or more users outside `utils/` |
 
   In the last row, tests and scripts count as users.
