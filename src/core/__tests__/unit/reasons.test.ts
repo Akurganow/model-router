@@ -12,7 +12,6 @@ import {
 	KEY_UNSET,
 	NETWORK_ERROR,
 	outsideCoreScope,
-	REJECTED_REQUEST,
 	SUBAGENT_MODEL_SET,
 	setsOwnModel,
 	TIMEOUT,
@@ -31,7 +30,6 @@ const CONSTANTS: [string, string][] = [
 	[FAILED, "failed"],
 	[CANCELLED, "cancelled"],
 	[NETWORK_ERROR, "network error"],
-	[REJECTED_REQUEST, "rejected request"],
 ];
 type Builder = {
 	build: (arg: never) => string;

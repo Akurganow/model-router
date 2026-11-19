@@ -91,6 +91,19 @@ describe("decision line suffix", () => {
 	});
 });
 
+test("the engine's fetch receives exactly four headers", async () => {
+	const { headers } = await routed({ tier: 1, work: 1, ...FULL });
+	assert.deepEqual(headers, [
+		{
+			Authorization: "Bearer ts-key",
+			Accept: "application/json",
+			"Content-Type": "application/json",
+			"User-Agent":
+				"model-router/dev (+https://github.com/Akurganow/model-router)",
+		},
+	]);
+});
+
 test("a host cancel while Jev is being asked skips the routing and starts the spawn", async () => {
 	const hooks = registered({ api_key: "ts-key" });
 	const logs: string[] = [];

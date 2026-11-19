@@ -75,7 +75,11 @@ type Request = {
 	url?: string;
 	init?: {
 		method?: string;
-		headers?: { Authorization?: string; "Content-Type"?: string };
+		headers?: {
+			Authorization?: string;
+			"Content-Type"?: string;
+			"User-Agent"?: string;
+		};
 		body?: string;
 	};
 };
@@ -412,7 +416,7 @@ export const callOnce = async (
 	return { h, outcome };
 };
 
-// Runs a call to the end of the SDK's retries: three fetches inside 1500 ms.
+// Runs a call to the end of the transport's retries: three fetches inside 1500 ms.
 export const retried = async ($: Engine, on: On, setup: Setup) => {
 	const h = harness(on, setup);
 	await offerAll($);

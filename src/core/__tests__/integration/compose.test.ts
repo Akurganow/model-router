@@ -195,13 +195,13 @@ test("a malformed or incomplete answer is a bad reply", async () => {
 	}
 });
 
-test("a request the SDK rejects locally is a rejected request with no fetch", async () => {
+test("a task that quotes an image reference is sent as text and gives a decision", async () => {
 	const task = "see <image:00112233445566778899aabbccddeeff>";
 	const { bodies, fetchFn } = answering(VALID);
 	const state = routingState({ ...STATE, task });
-	const routed = await run(fetchFn, { state });
-	assert.deepEqual(routed, { skipped: "rejected request" });
-	assert.equal(bodies.length, 0);
+	asDecision(await run(fetchFn, { state }));
+	assert.equal(bodies.length, 1);
+	assert.equal(JSON.parse(bodies[0] ?? "").state.task, task);
 });
 
 test("no attempt is key unset and makes no request", async () => {
@@ -483,6 +483,18 @@ test("a request carries the bearer key and JSON Accept and Content-Type", async 
 	assert.equal(headers.get("content-type"), "application/json");
 });
 
+test("a request hands the fetch exactly four headers", async () => {
+	const { inits, fetchFn } = answering(VALID);
+	await run(fetchFn);
+	assert.deepEqual(inits[0]?.headers, {
+		Authorization: "Bearer test-key",
+		Accept: "application/json",
+		"Content-Type": "application/json",
+		"User-Agent":
+			"model-router/dev (+https://github.com/Akurganow/model-router)",
+	});
+});
+
 test("a status gives HTTP n after one request, or after three when it is retried", async (t) => {
 	const time = fakeTime(t);
 	const cases: [number, string, number][] = [
@@ -586,6 +598,35 @@ test("the last attempt of a plan times out at 10000 ms", async (t) => {
 	assert.deepEqual(await time.settled(routed), {
 		skipped: "typesafe HTTP 503, openrouter cancelled",
 	});
+});
+
+test("a fetch that ignores its signal ends at the attempt timeout and falls back", {
+	timeout: 2000,
+}, async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub((_init, count) =>
+		count === 1
+			? new Promise<Response>(() => undefined)
+			: Promise.resolve(scoringReply(200, VALID)),
+	);
+	const routed = run(fetchFn, { attempts: BOTH });
+	await time.pass(2000);
+	assert.equal(bodies.length, 2);
+	assert.equal(asDecision(await time.settled(routed)).via?.reason, "timeout");
+});
+
+test("a signal aborted before the call is cancelled and sends no request", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = answering(VALID);
+	const controller = new AbortController();
+	controller.abort();
+	assert.deepEqual(
+		await time.settled(run(fetchFn, { signal: controller.signal })),
+		{
+			skipped: "cancelled",
+		},
+	);
+	assert.equal(bodies.length, 0);
 });
 
 test("a reply whose text never arrives ends at the attempt timeout", async (t) => {

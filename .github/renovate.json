@@ -18,11 +18,6 @@
 			"enabled": false
 		},
 		{
-			"matchPackageNames": ["@typesafe-ai/sdk"],
-			"groupName": "typesafe sdk",
-			"semanticCommitType": "fix"
-		},
-		{
 			"description": "CI installs the latest omp release. The pin skips the 14-day age rule.",
 			"matchManagers": ["bun"],
 			"matchFileNames": [".github/actions/setup-omp/latest/package.json"],

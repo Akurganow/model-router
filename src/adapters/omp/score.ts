@@ -9,7 +9,6 @@ import { effortFor } from "../../core/ladder.ts";
 import { skippedLine } from "../../core/line.ts";
 import type { Provider } from "../../core/provider.ts";
 import { pickModel, slotForLevel } from "../../core/slots.ts";
-import { streamedFetch } from "../../utils/fetch.ts";
 import { lineFor, planEffort, type Routed } from "./effort.ts";
 import type { Batch } from "./gates.ts";
 import { type Facts, itemCheck, roleOf } from "./items.ts";
@@ -32,7 +31,7 @@ type Scored = Pending & { readonly stored: Stored };
 
 const MAX_PARALLEL = 4;
 
-// One deadline covers the batch. Aborting also ends the SDK's retry wait, so no request follows a skip.
+// One deadline covers the batch. Aborting also ends the retry wait, so no request follows a skip.
 // A provider passed over once is dropped for items that start later, and only within this batch.
 // An item the check skips sends nothing, and its reason is its line.
 export async function scoreItems(
@@ -85,7 +84,7 @@ function scoreItem(
 			context,
 		}),
 		...routing,
-		fetchFn: streamedFetch,
+		fetchFn: fetch,
 		signal,
 	});
 }

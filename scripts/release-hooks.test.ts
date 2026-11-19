@@ -15,6 +15,13 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
+import {
+	CLAUDE_OUTPUTS,
+	HERMES_OUTPUTS,
+	NPM_ROOT,
+	OMP_OUTPUTS,
+	OPENCLAW_OUTPUTS,
+} from "./build/outputs.ts";
 import { MANIFESTS, SOURCE } from "./manifests.ts";
 
 const REPO = fileURLToPath(new URL("../", import.meta.url));
@@ -173,11 +180,21 @@ test("the version check passes after the hooks", () => {
 	run(copy, process.execPath, ["scripts/set-version.ts", "--check"]);
 });
 
-test("the hooks change the source and the three manifests, each only on its version line", () => {
+// Each bundle carries the release version on one `VERSION` line, and the npm tree holds copies of two.
+const BUNDLES = [
+	CLAUDE_OUTPUTS.bundle,
+	OMP_OUTPUTS.bundle,
+	OPENCLAW_OUTPUTS.bundle,
+	HERMES_OUTPUTS.bundle,
+	`${NPM_ROOT}/index.js`,
+	`${NPM_ROOT}/extension/index.js`,
+];
+
+test("the hooks change the source, the three manifests and every bundle, each only on one line", () => {
 	const changed = git(copy, "diff", "--name-only").split("\n").filter(Boolean);
 	assert.deepEqual(
 		changed.sort(),
-		[SOURCE.path, ...MANIFESTS.map(({ path }) => path)].sort(),
+		[SOURCE.path, ...MANIFESTS.map(({ path }) => path), ...BUNDLES].sort(),
 	);
 	for (const path of changed) {
 		const lines = changedLines(
@@ -185,7 +202,13 @@ test("the hooks change the source and the three manifests, each only on its vers
 			readFileSync(join(copy, path), "utf8"),
 		);
 		assert.equal(lines.length, 1, path);
-		assert.match(lines[0] ?? "", /"version"/, path);
+		if (BUNDLES.includes(path))
+			assert.match(
+				lines[0] ?? "",
+				new RegExp(`^var VERSION = true \\? "${NEW_VERSION}" : "dev";$`),
+				path,
+			);
+		else assert.match(lines[0] ?? "", /"version"/, path);
 	}
 });
 

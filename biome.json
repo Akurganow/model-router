@@ -66,6 +66,16 @@
 			}
 		},
 		{
+			"includes": ["src/core/**", "!**/__tests__/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noProcessEnv": "error"
+					}
+				}
+			}
+		},
+		{
 			"includes": ["src/core/tier.ts", "src/core/work.ts"],
 			"linter": {
 				"rules": {

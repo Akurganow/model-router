@@ -57,6 +57,9 @@ export async function buildBundle(
 		// Keeps the bundle comments free of the real path behind a symlinked node_modules.
 		preserveSymlinks: true,
 		logLevel: "warning",
+		define: {
+			MODEL_ROUTER_VERSION: JSON.stringify(loadSource(ROOT).version),
+		},
 		...HOST_OPTIONS[harness],
 	});
 	const code = readFileSync(out, "utf8");

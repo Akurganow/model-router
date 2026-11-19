@@ -1,5 +1,4 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import type { Fetch } from "@typesafe-ai/sdk";
 import { prepareBrief, routingState } from "../src/core/brief.ts";
 import {
 	type Decision,
@@ -16,6 +15,7 @@ import {
 	type Provider,
 	plan,
 } from "../src/core/provider.ts";
+import type { Fetch } from "../src/core/scoring/transport/send.ts";
 import { PROVIDER_NAMES } from "../src/core/settings.ts";
 import { tier } from "../src/core/tier.ts";
 import { work } from "../src/core/work.ts";

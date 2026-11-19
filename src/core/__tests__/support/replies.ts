@@ -1,5 +1,3 @@
-import { oneChunk } from "../../../utils/fetch.ts";
-
 /**
  * Returns probabilities that give the level 0.9 and each other level 0.05.
  */
@@ -28,19 +26,17 @@ export const systemOneAnswer = (tier: number, work?: number) => ({
 });
 
 /**
- * Returns a stream-bodied reply, as the SDK reads it under Bun. A string body
- * goes out as is and any other body as JSON. The headers extend the JSON
- * content type and replace it when they set one.
+ * Returns a reply with the status. A string body goes out as is and any other
+ * body as JSON. The headers extend the JSON content type and replace it when
+ * they set one.
  */
 export function scoringReply(
 	status: number,
 	body: unknown,
 	headers: Record<string, string> = {},
 ): Response {
-	const bytes = new TextEncoder().encode(
-		typeof body === "string" ? body : JSON.stringify(body),
-	);
-	return new Response(oneChunk(bytes), {
+	const text = typeof body === "string" ? body : JSON.stringify(body);
+	return new Response(text, {
 		status,
 		headers: { "content-type": "application/json", ...headers },
 	});

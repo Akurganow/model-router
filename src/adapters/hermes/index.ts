@@ -1,6 +1,5 @@
 import { FAILED } from "../../core/reasons.ts";
 import { realClock } from "../../utils/clock.ts";
-import { streamedFetch } from "../../utils/fetch.ts";
 import { routeRequest, skip } from "./route.ts";
 
 async function readStdin(): Promise<string> {
@@ -17,7 +16,7 @@ async function main(): Promise<string> {
 	try {
 		const raw: unknown = JSON.parse(await readStdin());
 		const response = await routeRequest(raw, {
-			fetchFn: streamedFetch,
+			fetchFn: fetch,
 			clock: realClock,
 		});
 		return JSON.stringify(response);

@@ -5,11 +5,13 @@ import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { type Schema, validate } from "../../../scripts/build/schema.ts";
 import { createFakeApi } from "../../../src/adapters/openclaw/__tests__/support/fakes.ts";
+import { SPAWN_TOOL } from "../../../src/adapters/openclaw/router.ts";
 import {
 	PLUGIN_ID,
 	readKeys,
 	readSettings,
 } from "../../../src/adapters/openclaw/settings.ts";
+import { systemOneAnswer } from "../../../src/core/__tests__/support/replies.ts";
 
 const PLUGIN = join(import.meta.dirname, "..");
 const TREE = join(PLUGIN, "..", "..", "packages", "model-router");
@@ -40,6 +42,36 @@ test("the default export carries the plugin id and a register function", async (
 	assert.equal(plugin.id, PLUGIN_ID);
 	assert.equal(manifest.id, PLUGIN_ID);
 	assert.equal(typeof plugin.register, "function");
+});
+
+test("a routed spawn sends the version of metadata/source.json in its User-Agent", async (t) => {
+	const { version } = json(join(PLUGIN, "..", "..", "metadata", "source.json"));
+	const headers: unknown[] = [];
+	const realFetch = globalThis.fetch;
+	t.after(() => {
+		globalThis.fetch = realFetch;
+	});
+	globalThis.fetch = async (_url, init) => {
+		headers.push(init?.headers);
+		return Response.json(systemOneAnswer(1, 1));
+	};
+	// The plugin takes the global fetch when the module loads, so a query makes a fresh load under the fake.
+	const { default: plugin } = await import(
+		`${pathToFileURL(bundlePath).href}?user-agent`
+	);
+	const fake = createFakeApi({
+		pluginConfig: { provider: "typesafe", api_key: "test-key" },
+	});
+	plugin.register(fake.api);
+	await fake.beforeToolCall()(
+		{ toolName: SPAWN_TOOL, params: { task: "do the work" } },
+		{ toolName: SPAWN_TOOL, agentId: "main" },
+	);
+	assert.equal(headers.length, 1);
+	assert.equal(
+		(headers[0] as Record<string, string>)["User-Agent"],
+		`model-router/${version} (+https://github.com/Akurganow/model-router)`,
+	);
 });
 
 test("the manifest lists every tool the plugin registers", async () => {

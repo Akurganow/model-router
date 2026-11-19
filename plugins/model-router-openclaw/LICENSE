@@ -24,9 +24,9 @@ SOFTWARE.
 
 Third-party notice
 
-`index.js` bundles the package `@typesafe-ai/sdk`, the TypeSafe SDK. In the npm
-package `@akurganow/model-router`, the omp bundle `extension/index.js` bundles it
-too. It is distributed under this licence:
+`index.js` contains code ported from the package `@typesafe-ai/sdk`, the
+TypeSafe SDK. In the npm package `@akurganow/model-router`, the omp bundle
+`extension/index.js` contains it too. The SDK is distributed under this licence:
 
 MIT License
 

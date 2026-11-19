@@ -77,7 +77,7 @@ export type Call = {
 /**
  * Registers the mod, makes the offers, then spawns `subagentType` as the engine does.
  * Returns the env names read, the requests Jev received with the role and description each carried,
- * their parsed bodies, the lines logged to the default log, the spawn the engine received
+ * their parsed bodies, the headers each carried, the lines logged to the default log, the spawn the engine received
  * and the effort the subagent's first model request carries.
  */
 export async function routedCall({
@@ -93,6 +93,7 @@ export async function routedCall({
 	const reads: string[] = [];
 	const requests: { url: string; model: unknown }[] = [];
 	const bodies: unknown[] = [];
+	const headers: unknown[] = [];
 	const roles: unknown[] = [];
 	const descriptions: unknown[] = [];
 	const logs: string[] = [];
@@ -105,10 +106,11 @@ export async function routedCall({
 			},
 		},
 		http: {
-			fetch: async (url: string, init: { body: string }) => {
+			fetch: async (url: string, init: { body: string; headers: unknown }) => {
 				const body = JSON.parse(init.body);
 				requests.push({ url, model: body.model });
 				bodies.push(body);
+				headers.push(init.headers);
 				roles.push(body.state.role);
 				descriptions.push(body.state.description);
 				return (
@@ -160,6 +162,7 @@ export async function routedCall({
 		reads,
 		requests,
 		bodies,
+		headers,
 		roles,
 		descriptions,
 		logs,

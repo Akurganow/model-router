@@ -1,9 +1,3 @@
-import {
-	APIConnectionError,
-	APIError,
-	APIUserAbortError,
-} from "@typesafe-ai/sdk";
-
 export const PROVIDER_VALUES = [
 	"auto",
 	"openrouter-first",
@@ -15,7 +9,7 @@ export type ProviderValue = (typeof PROVIDER_VALUES)[number];
 export const PROVIDERS = ["typesafe", "openrouter"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
-// The SDK appends /v1/systemone to the host.
+// ask appends /v1/systemone to the host.
 export const HOSTS: Readonly<Record<Provider, string>> = {
 	typesafe: "https://api.typesafe.ai",
 	openrouter: "https://openrouter.ai/api",
@@ -40,10 +34,6 @@ export const FIRST_ATTEMPT_TIMEOUT_MS = 2000;
 // Both providers resolve this alias to their newest Jev release.
 const MODEL = "jev-latest";
 const DEFAULT_VALUE: ProviderValue = "typesafe";
-const FALLBACK_STATUSES: ReadonlySet<number> = new Set([
-	401, 402, 403, 404, 408, 429,
-]);
-const SERVER_ERRORS = { min: 500, max: 599 };
 
 const ORDER: Readonly<Record<ProviderValue, readonly Provider[]>> = {
 	auto: PROVIDERS,
@@ -117,17 +107,5 @@ export function plan(
 					retry: { maxRetries: 0 },
 				}
 			: { provider, model: MODEL },
-	);
-}
-
-// A cancel or the routing limit surfaces as APIUserAbortError, so neither falls back.
-export function fallsBack(err: unknown): boolean {
-	if (err instanceof APIUserAbortError) return false;
-	if (err instanceof APIConnectionError) return true;
-	if (!(err instanceof APIError)) return false;
-	const { status } = err;
-	return (
-		FALLBACK_STATUSES.has(status) ||
-		(status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max)
 	);
 }

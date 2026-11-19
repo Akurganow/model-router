@@ -22,6 +22,7 @@ const BIOME = join(ROOT, "node_modules", ".bin", "biome");
 const COMMAND_TIMEOUT_MS = 30_000;
 
 const RESTRICTED = "lint/style/noRestrictedImports";
+const PROCESS_ENV = "lint/style/noProcessEnv";
 const PLUGIN = "plugin";
 
 type Fault = {
@@ -30,7 +31,7 @@ type Fault = {
 	// Planted on its own line. `before` is one more line that the fault needs.
 	code: string;
 	before?: string;
-	category: typeof RESTRICTED | typeof PLUGIN;
+	category: typeof RESTRICTED | typeof PROCESS_ENV | typeof PLUGIN;
 	message: string;
 };
 
@@ -44,6 +45,7 @@ const ESBUILD = "The version writer and the check load no esbuild";
 const DYNAMIC = "import() takes a string literal";
 const REEXPORT = "A utils/ file re-exports nothing";
 const SHARED_REASON = "This text is a shared skip reason";
+const PROCESS_ENV_MESSAGE = "Don't use process.env";
 
 const faults: Fault[] = [
 	{
@@ -266,6 +268,13 @@ const faults: Fault[] = [
 		message: REEXPORT,
 	},
 	{
+		form: "core reads process.env",
+		file: "src/core/reads-env.ts",
+		code: "export const e = process.env;",
+		category: PROCESS_ENV,
+		message: PROCESS_ENV_MESSAGE,
+	},
+	{
 		form: "a multi-word shared reason in a string literal",
 		file: "src/core/reasons-spelled.ts",
 		code: 'export const a = "skipped: caller effort";',
@@ -338,6 +347,10 @@ const valid: Record<string, string> = {
 		'import { c } from "../../core/c.ts";',
 		"export const v = c;",
 	].join("\n"),
+	"src/core/__tests__/unit/reads-env.test.ts": [
+		"export const v = process.env;",
+	].join("\n"),
+	"src/adapters/omp/reads-env.ts": ["export const v = process.env;"].join("\n"),
 	"src/adapters/__tests__/integration/drives-several.test.ts": [
 		'import { a } from "../../omp/a.ts";',
 		'import { b } from "../../claude/b.ts";',
@@ -432,7 +445,10 @@ describe("the Biome layer rules", () => {
 			assert.fail(`biome printed no report: ${run.stderr}`);
 		}
 		reported = reported.filter(
-			({ category }) => category === RESTRICTED || category === PLUGIN,
+			({ category }) =>
+				category === RESTRICTED ||
+				category === PROCESS_ENV ||
+				category === PLUGIN,
 		);
 	});
 

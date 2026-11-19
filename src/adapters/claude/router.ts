@@ -1,4 +1,3 @@
-import type { Fetch } from "@typesafe-ai/sdk";
 import { DEFAULT_ROLE, roleText, routingState } from "../../core/brief.ts";
 import {
 	LIMIT_REACHED,
@@ -13,6 +12,7 @@ import type { Level } from "../../core/part.ts";
 import { plan } from "../../core/provider.ts";
 import { CALLER_EFFORT } from "../../core/reasons.ts";
 import { resolveScope, type Scope } from "../../core/scope.ts";
+import type { Fetch } from "../../core/scoring/transport/send.ts";
 import {
 	type AgentCall,
 	type AgentSpawn,
@@ -335,7 +335,7 @@ async function logRequest($: Engine, body: string): Promise<void> {
 		);
 }
 
-// The mod runtime has no Response, so the SDK gets the parts of one it reads.
+// The mod runtime has no Response, so the transport gets the parts of one it reads.
 function toResponse({ status, ok, headers, text }: HttpReply): Response {
 	const header = (name: string) => headers[name.toLowerCase()];
 	return {

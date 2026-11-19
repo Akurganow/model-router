@@ -187,8 +187,7 @@ jobs:
             package-lock.json
             .github/actions/setup-openclaw/package-lock.json
 
-      # The install check takes the plugin's names from src/, which loads the
-      # TypeSafe SDK.
+      # The install check takes the plugin's names from src/.
       - name: Install the dev tools
         run: npm ci
 
