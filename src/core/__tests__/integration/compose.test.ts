@@ -1,6 +1,7 @@
 /// <reference types="node" />
 
 import assert from "node:assert/strict";
+import { getEventListeners } from "node:events";
 import { test } from "node:test";
 import { routingState } from "../../brief.ts";
 import {
@@ -15,7 +16,8 @@ import { type Attempt, plan } from "../../provider.ts";
 import { KEY_UNSET } from "../../reasons.ts";
 import { tier } from "../../tier.ts";
 import { work } from "../../work.ts";
-import { scoringReply } from "../support/replies.ts";
+import { scoringReply, stalledReply } from "../support/replies.ts";
+import { fakeTime } from "../support/time.ts";
 
 const KEY = "test-key";
 const OR_KEY = "test-openrouter-key";
@@ -29,6 +31,8 @@ const STATE = routingState({
 });
 const SECRET = "sk-live-0123456789abcdef";
 const NO_WAIT = { "retry-after-ms": "0" };
+// The longest the two backoffs of one attempt can take together: 500 + 1000.
+const BACKOFFS_MS = 1500;
 
 const PROBS = (a: number, b: number, c: number) => ({
 	type: "score",
@@ -45,17 +49,25 @@ type Respond = (init: RequestInit, count: number) => Promise<Response>;
 function stub(respond: Respond) {
 	const bodies: string[] = [];
 	const sent: string[] = [];
+	const inits: RequestInit[] = [];
+	const at: number[] = [];
 	const fetchFn = (url: string, init: RequestInit = {}) => {
+		at.push(Date.now());
 		bodies.push(String(init.body));
+		inits.push(init);
 		sent.push(`${url} ${new Headers(init.headers).get("authorization")}`);
 		return respond(init, bodies.length);
 	};
-	return { bodies, sent, fetchFn };
+	return { bodies, sent, inits, at, fetchFn };
 }
 
 const hang: Respond = (init) =>
 	new Promise((_, reject) => {
-		init.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+		const { signal } = init;
+		if (signal?.aborted) return reject(signal.reason);
+		signal?.addEventListener("abort", () => reject(signal.reason), {
+			once: true,
+		});
 	});
 
 const answering = (body: unknown) => stub(async () => scoringReply(200, body));
@@ -93,45 +105,6 @@ test("the routing limit is 8000 ms", () => {
 	assert.equal(ROUTING_LIMIT_MS, 8000);
 });
 
-// Captured once from the request body the previous implementation sent for STATE and MODEL.
-const TIER_AND_WORK_BODY = {
-	model: "jev-test",
-	state: {
-		role: "coder",
-		description: "Fix it",
-		task: "Fix the bug.",
-	},
-	questions: {
-		tier: {
-			type: "score",
-			instructions:
-				"How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.",
-			criteria: [
-				"Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
-				"Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
-				"Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause.",
-			],
-		},
-		work: {
-			type: "score",
-			instructions:
-				"How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.",
-			criteria: [
-				"A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
-				"An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
-				"A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right.",
-			],
-		},
-	},
-};
-
-test("tier and work send today's request body", async () => {
-	const { bodies, fetchFn } = answering(VALID);
-	await run(fetchFn);
-	assert.equal(bodies.length, 1);
-	assert.deepEqual(JSON.parse(bodies[0] ?? ""), TIER_AND_WORK_BODY);
-});
-
 test("tier alone sends no work question", async () => {
 	const { bodies, fetchFn } = answering({
 		...VALID,
@@ -159,12 +132,14 @@ test("a valid reply gives each part its level, probabilities, model and usage", 
 	assert.deepEqual(decision.usage, { input_tokens: 120, output_tokens: 8 });
 });
 
-test("a limit abort is a timeout", async () => {
+test("a limit abort is a timeout", async (t) => {
+	const time = fakeTime(t);
 	const { bodies, fetchFn } = stub(hang);
 	const controller = new AbortController();
 	const routed = run(fetchFn, { signal: controller.signal });
-	setImmediate(() => controller.abort(LIMIT_REACHED));
-	assert.deepEqual(await routed, { skipped: "timeout" });
+	await time.pass(0);
+	controller.abort(LIMIT_REACHED);
+	assert.deepEqual(await time.settled(routed), { skipped: "timeout" });
 	assert.equal(bodies.length, 1);
 });
 
@@ -177,12 +152,14 @@ test("a plain abort is cancelled", async () => {
 	});
 });
 
-test("a fetch rejection is a network error after the SDK retries", async () => {
+test("a fetch rejection is a network error after two retries", async (t) => {
+	const time = fakeTime(t);
 	const { bodies, fetchFn } = stub(async () => {
 		throw new TypeError(`fetch failed for ${SECRET}`);
 	});
-	const routed = await run(fetchFn);
-	assert.deepEqual(routed, { skipped: "network error" });
+	const routed = run(fetchFn);
+	await time.pass(BACKOFFS_MS);
+	assert.deepEqual(await time.settled(routed), { skipped: "network error" });
 	assert.equal(bodies.length, 3);
 });
 
@@ -235,7 +212,7 @@ test("no attempt is key unset and makes no request", async () => {
 	assert.equal(bodies.length, 0);
 });
 
-test("an error outside the SDK's classes is failed", async () => {
+test("a part whose question cannot be serialised is failed and sends no request", async () => {
 	const unserializable = {
 		...tier,
 		question: {
@@ -360,7 +337,8 @@ test("openrouter-first asks OpenRouter first and falls back after a network erro
 	});
 });
 
-test("a per-attempt timeout falls back and reports timeout", async () => {
+test("a per-attempt timeout falls back and reports timeout", async (t) => {
+	const time = fakeTime(t);
 	const attempts: Attempt[] = [
 		{
 			provider: "typesafe",
@@ -373,12 +351,16 @@ test("a per-attempt timeout falls back and reports timeout", async () => {
 	const { bodies, fetchFn } = stub((init, count) =>
 		count === 1 ? hang(init, count) : Promise.resolve(scoringReply(200, VALID)),
 	);
-	const decision = asDecision(await run(fetchFn, { attempts }));
+	const routed = run(fetchFn, { attempts });
+	await time.pass(19);
+	assert.equal(bodies.length, 1);
+	await time.pass(1);
+	const decision = asDecision(await time.settled(routed));
 	assert.equal(bodies.length, 2);
 	assert.equal(decision.via?.reason, "timeout");
 });
 
-test("a 400, a 422 or a bad reply ends the call with today's one-attempt reason", async () => {
+test("a 400, a 422 or a bad reply ends the call with its one-attempt reason", async () => {
 	const cases: [Respond, string][] = [
 		[async () => scoringReply(400, "bad"), "HTTP 400"],
 		[async () => scoringReply(422, "bad"), "HTTP 422"],
@@ -391,39 +373,46 @@ test("a 400, a 422 or a bad reply ends the call with today's one-attempt reason"
 	}
 });
 
-test("a cancel during the first attempt does not fall back", async () => {
+test("a cancel during the first attempt does not fall back", async (t) => {
+	const time = fakeTime(t);
 	const { bodies, fetchFn } = stub(hang);
 	const controller = new AbortController();
 	const routed = run(fetchFn, { attempts: BOTH, signal: controller.signal });
-	setImmediate(() => controller.abort());
-	assert.deepEqual(await routed, { skipped: "cancelled" });
+	await time.pass(0);
+	controller.abort();
+	assert.deepEqual(await time.settled(routed), { skipped: "cancelled" });
 	assert.equal(bodies.length, 1);
 });
 
-test("the routing limit during the first attempt does not fall back", async () => {
+test("the routing limit during the first attempt does not fall back", async (t) => {
+	const time = fakeTime(t);
 	const { bodies, fetchFn } = stub(hang);
 	const controller = new AbortController();
 	const routed = run(fetchFn, { attempts: BOTH, signal: controller.signal });
-	setImmediate(() => controller.abort(LIMIT_REACHED));
-	assert.deepEqual(await routed, { skipped: "timeout" });
+	await time.pass(0);
+	controller.abort(LIMIT_REACHED);
+	assert.deepEqual(await time.settled(routed), { skipped: "timeout" });
 	assert.equal(bodies.length, 1);
 });
 
-test("one routing limit covers both attempts", async () => {
+test("one routing limit covers both attempts", async (t) => {
+	const time = fakeTime(t);
 	const controller = new AbortController();
-	const { bodies, fetchFn } = stub((init, count) => {
-		if (count === 1) return Promise.resolve(scoringReply(503, "down", NO_WAIT));
-		setImmediate(() => controller.abort(LIMIT_REACHED));
-		return hang(init, count);
-	});
-	const routed = await run(fetchFn, {
+	const { bodies, fetchFn } = stub((init, count) =>
+		count === 1
+			? Promise.resolve(scoringReply(503, "down", NO_WAIT))
+			: hang(init, count),
+	);
+	const routed = run(fetchFn, {
 		attempts: BOTH,
 		signal: controller.signal,
 	});
-	assert.deepEqual(routed, {
+	await time.pass(0);
+	assert.equal(bodies.length, 2);
+	controller.abort(LIMIT_REACHED);
+	assert.deepEqual(await time.settled(routed), {
 		skipped: "typesafe HTTP 503, openrouter timeout",
 	});
-	assert.equal(bodies.length, 2);
 });
 
 test("two failed attempts send at most four requests and name both providers", async () => {
@@ -447,10 +436,366 @@ test("a bad reply after a fallback names both providers", async () => {
 	});
 });
 
-test("a single-provider failure that allows fallback keeps today's text", async () => {
+test("a single-provider failure that allows fallback keeps its bare reason", async () => {
 	const { bodies, fetchFn } = stub(async () =>
 		scoringReply(503, "down", NO_WAIT),
 	);
 	assert.deepEqual(await run(fetchFn), { skipped: "HTTP 503" });
 	assert.equal(bodies.length, 3);
 });
+
+const DECISION = {
+	parts: {
+		tier: { level: 2, probabilities: { 0: 0.1, 1: 0.2, 2: 0.7 } },
+		work: { level: 1, probabilities: { 0: 0.1, 1: 0.8, 2: 0.1 } },
+	},
+	model: "jev-1.14.0",
+	usage: { input_tokens: 120, output_tokens: 8 },
+};
+
+test("tier and work send the System One body as one string", async () => {
+	const { bodies, fetchFn } = answering(VALID);
+	await run(fetchFn);
+	assert.equal(
+		bodies[0],
+		'{"state":{"role":"coder","description":"Fix it","task":"Fix the bug."},"model":"jev-test",' +
+			'"questions":{"tier":{"type":"score",' +
+			'"instructions":"How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller\'s one-line summary of the task.",' +
+			'"criteria":[' +
+			'"Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",' +
+			'"Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",' +
+			'"Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."]},' +
+			'"work":{"type":"score",' +
+			'"instructions":"How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.",' +
+			'"criteria":[' +
+			'"A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",' +
+			'"An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",' +
+			'"A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."]}}}',
+	);
+});
+
+test("a request carries the bearer key and JSON Accept and Content-Type", async () => {
+	const { inits, fetchFn } = answering(VALID);
+	await run(fetchFn);
+	const headers = new Headers(inits[0]?.headers);
+	assert.equal(headers.get("authorization"), "Bearer test-key");
+	assert.equal(headers.get("accept"), "application/json");
+	assert.equal(headers.get("content-type"), "application/json");
+});
+
+test("a status gives HTTP n after one request, or after three when it is retried", async (t) => {
+	const time = fakeTime(t);
+	const cases: [number, string, number][] = [
+		[400, "HTTP 400", 1],
+		[402, "HTTP 402", 1],
+		[403, "HTTP 403", 1],
+		[404, "HTTP 404", 1],
+		[422, "HTTP 422", 1],
+		[499, "HTTP 499", 1],
+		[408, "HTTP 408", 3],
+		[429, "HTTP 429", 3],
+		[500, "HTTP 500", 3],
+		[599, "HTTP 599", 3],
+	];
+	for (const [status, skipped, requests] of cases) {
+		const { bodies, fetchFn } = stub(async () => scoringReply(status, "x"));
+		const routed = run(fetchFn);
+		await time.pass(BACKOFFS_MS);
+		assert.deepEqual(await time.settled(routed), { skipped });
+		assert.equal(bodies.length, requests);
+	}
+});
+
+test("a status that falls back gives the next provider's decision, any other ends the call", async (t) => {
+	const time = fakeTime(t);
+	const fellBack = (reason: string) => ({
+		...DECISION,
+		via: { provider: "openrouter", first: "typesafe", reason },
+	});
+	const cases: [number, unknown, number][] = [
+		[401, fellBack("HTTP 401"), 2],
+		[402, fellBack("HTTP 402"), 2],
+		[403, fellBack("HTTP 403"), 2],
+		[404, fellBack("HTTP 404"), 2],
+		[408, fellBack("HTTP 408"), 2],
+		[500, fellBack("HTTP 500"), 2],
+		[599, fellBack("HTTP 599"), 2],
+		[499, { skipped: "HTTP 499" }, 1],
+	];
+	for (const [status, expected, requests] of cases) {
+		const { bodies, fetchFn } = stub(async (_init, count) =>
+			count === 1 ? scoringReply(status, "x") : scoringReply(200, VALID),
+		);
+		const routed = run(fetchFn, { attempts: BOTH });
+		await time.pass(BACKOFFS_MS);
+		assert.deepEqual(await time.settled(routed), expected, String(status));
+		assert.equal(bodies.length, requests, String(status));
+	}
+});
+
+test("the first of two attempts times out at 2000 ms and falls back", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, inits, fetchFn } = stub((init, count) =>
+		count === 1 ? hang(init, count) : Promise.resolve(scoringReply(200, VALID)),
+	);
+	const routed = run(fetchFn, { attempts: BOTH });
+	await time.pass(1999);
+	assert.equal(bodies.length, 1);
+	assert.equal(inits[0]?.signal?.aborted, false);
+	await time.pass(1);
+	assert.equal(bodies.length, 2);
+	assert.equal(inits[0]?.signal?.aborted, true);
+	assert.equal(asDecision(await time.settled(routed)).via?.reason, "timeout");
+});
+
+test("each request of the last attempt times out at 10000 ms", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, inits, at, fetchFn } = stub(hang);
+	const routed = run(fetchFn);
+	await time.pass(9999);
+	assert.equal(bodies.length, 1);
+	assert.equal(inits[0]?.signal?.aborted, false);
+	await time.pass(1);
+	assert.equal(inits[0]?.signal?.aborted, true);
+	assert.equal(bodies.length, 1);
+	await time.pass(3 * 10000 + BACKOFFS_MS - 10000);
+	assert.equal(bodies.length, 3);
+	const [first = 0, second = 0, third = 0] = at;
+	const [gap1, gap2] = [second - first, third - second];
+	assert.ok(gap1 >= 10375 && gap1 <= 10500, `second request after ${gap1} ms`);
+	assert.ok(gap2 >= 10750 && gap2 <= 11000, `third request after ${gap2} ms`);
+	assert.deepEqual(await time.settled(routed), { skipped: "timeout" });
+});
+
+test("the last attempt of a plan times out at 10000 ms", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, inits, fetchFn } = stub((init, count) =>
+		count === 1
+			? Promise.resolve(scoringReply(503, "down", NO_WAIT))
+			: hang(init, count),
+	);
+	const controller = new AbortController();
+	const routed = run(fetchFn, { attempts: BOTH, signal: controller.signal });
+	await time.pass(0);
+	assert.equal(bodies.length, 2);
+	await time.pass(9999);
+	assert.equal(inits[1]?.signal?.aborted, false);
+	await time.pass(1);
+	assert.equal(inits[1]?.signal?.aborted, true);
+	controller.abort();
+	assert.deepEqual(await time.settled(routed), {
+		skipped: "typesafe HTTP 503, openrouter cancelled",
+	});
+});
+
+test("a reply whose text never arrives ends at the attempt timeout", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub(async (_init, count) =>
+		count === 1 ? stalledReply() : scoringReply(200, VALID),
+	);
+	const routed = run(fetchFn, { attempts: BOTH });
+	await time.pass(1999);
+	assert.equal(bodies.length, 1);
+	await time.pass(1);
+	assert.equal(bodies.length, 2);
+	assert.equal(asDecision(await time.settled(routed)).via?.reason, "timeout");
+});
+
+test("a network error is retried after 375–500 ms and then 750–1000 ms", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, at, fetchFn } = stub(async () => {
+		throw new TypeError("fetch failed");
+	});
+	const routed = run(fetchFn);
+	await time.pass(BACKOFFS_MS);
+	assert.equal(bodies.length, 3);
+	const [first = 0, second = 0, third = 0] = at;
+	const [gap1, gap2] = [second - first, third - second];
+	assert.ok(gap1 >= 375 && gap1 <= 500, `first wait ${gap1} ms`);
+	assert.ok(gap2 >= 750 && gap2 <= 1000, `second wait ${gap2} ms`);
+	assert.deepEqual(await time.settled(routed), { skipped: "network error" });
+});
+
+test("retry-after: 2 sets the wait to 2000 ms", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub(async (_init, count) =>
+		count === 1
+			? scoringReply(503, "x", { "retry-after": "2" })
+			: scoringReply(200, VALID),
+	);
+	const routed = run(fetchFn);
+	await time.pass(1999);
+	assert.equal(bodies.length, 1);
+	await time.pass(1);
+	assert.equal(bodies.length, 2);
+	asDecision(await time.settled(routed));
+});
+
+test("a Retry-After date sets the wait until that date", async (t) => {
+	const time = fakeTime(t);
+	// The clock stands at 2000 ms when the reply arrives, so the wait is the date minus now.
+	await time.pass(2000);
+	const { bodies, fetchFn } = stub(async (_init, count) =>
+		count === 1
+			? scoringReply(503, "x", {
+					"retry-after": "Thu, 01 Jan 1970 00:00:07 GMT",
+				})
+			: scoringReply(200, VALID),
+	);
+	const routed = run(fetchFn);
+	await time.pass(4999);
+	assert.equal(bodies.length, 1);
+	await time.pass(1);
+	assert.equal(bodies.length, 2);
+	asDecision(await time.settled(routed));
+});
+
+test("retry-after-ms: 60000 is waited out", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub(async (_init, count) =>
+		count === 1
+			? scoringReply(503, "x", { "retry-after-ms": "60000" })
+			: scoringReply(200, VALID),
+	);
+	const routed = run(fetchFn);
+	await time.pass(59999);
+	assert.equal(bodies.length, 1);
+	await time.pass(1);
+	assert.equal(bodies.length, 2);
+	asDecision(await time.settled(routed));
+});
+
+test("retry-after-ms: 60001 falls back to backoff", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub(async (_init, count) =>
+		count === 1
+			? scoringReply(503, "x", { "retry-after-ms": "60001" })
+			: scoringReply(200, VALID),
+	);
+	const routed = run(fetchFn);
+	await time.pass(374);
+	assert.equal(bodies.length, 1);
+	await time.pass(126);
+	assert.equal(bodies.length, 2);
+	asDecision(await time.settled(routed));
+});
+
+test("an unusable Retry-After falls back to backoff", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub(async (_init, count) =>
+		count === 1
+			? scoringReply(503, "x", { "retry-after": "soon" })
+			: scoringReply(200, VALID),
+	);
+	const routed = run(fetchFn);
+	await time.pass(374);
+	assert.equal(bodies.length, 1);
+	await time.pass(126);
+	assert.equal(bodies.length, 2);
+	asDecision(await time.settled(routed));
+});
+
+test("an abort during a backoff is cancelled and sends no second request", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub(async () => scoringReply(500, "x"));
+	const controller = new AbortController();
+	const routed = run(fetchFn, { signal: controller.signal });
+	await time.pass(100);
+	controller.abort();
+	await time.pass(1000);
+	assert.equal(bodies.length, 1);
+	assert.deepEqual(await time.settled(routed), { skipped: "cancelled" });
+});
+
+test("an abort while the reply text is read is cancelled", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub(async () => stalledReply());
+	const controller = new AbortController();
+	const routed = run(fetchFn, { signal: controller.signal });
+	await time.pass(100);
+	controller.abort();
+	assert.equal(bodies.length, 1);
+	assert.deepEqual(await time.settled(routed), { skipped: "cancelled" });
+});
+
+type Exit = {
+	readonly exit: string;
+	readonly attempts?: Attempt[];
+	readonly respond: Respond;
+	readonly passMs: number;
+	readonly abort?: "cancel";
+	readonly expected: unknown;
+};
+
+const EXITS: readonly Exit[] = [
+	{
+		exit: "a decision",
+		respond: async () => scoringReply(200, VALID),
+		passMs: 0,
+		expected: DECISION,
+	},
+	{
+		exit: "a failure with no retry",
+		respond: async () => scoringReply(401, { error: "no" }),
+		passMs: 0,
+		expected: { skipped: "HTTP 401" },
+	},
+	{
+		exit: "a failure after retries",
+		respond: async () => {
+			throw new TypeError("fetch failed");
+		},
+		passMs: BACKOFFS_MS,
+		expected: { skipped: "network error" },
+	},
+	{
+		exit: "a cancel while a request hangs",
+		respond: hang,
+		passMs: 0,
+		abort: "cancel",
+		expected: { skipped: "cancelled" },
+	},
+	{
+		exit: "an attempt timeout that falls back",
+		attempts: BOTH,
+		respond: (init, count) =>
+			count === 1
+				? hang(init, count)
+				: Promise.resolve(scoringReply(200, VALID)),
+		passMs: 2000,
+		expected: {
+			...DECISION,
+			via: { provider: "openrouter", first: "typesafe", reason: "timeout" },
+		},
+	},
+	{
+		exit: "attempt timeouts to the end",
+		respond: hang,
+		passMs: 3 * 10000 + BACKOFFS_MS,
+		expected: { skipped: "timeout" },
+	},
+	{
+		exit: "an abort during a backoff",
+		respond: async () => scoringReply(500, "x"),
+		passMs: 100,
+		abort: "cancel",
+		expected: { skipped: "cancelled" },
+	},
+];
+
+for (const exit of EXITS) {
+	test(`${exit.exit} leaves no listener on the caller's signal and no live timer`, async (t) => {
+		const time = fakeTime(t);
+		const controller = new AbortController();
+		const { fetchFn } = stub(exit.respond);
+		const routed = run(fetchFn, {
+			...(exit.attempts && { attempts: exit.attempts }),
+			signal: controller.signal,
+		});
+		await time.pass(exit.passMs);
+		if (exit.abort === "cancel") controller.abort();
+		assert.deepEqual(await time.settled(routed), exit.expected);
+		assert.equal(getEventListeners(controller.signal, "abort").length, 0);
+		assert.equal(time.live(), 0);
+	});
+}
