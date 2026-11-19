@@ -78,7 +78,6 @@ type Request = {
 		headers?: {
 			Authorization?: string;
 			"Content-Type"?: string;
-			"User-Agent"?: string;
 		};
 		body?: string;
 	};

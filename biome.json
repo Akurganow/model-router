@@ -89,10 +89,10 @@
 											"**/adapters/**",
 											"**/tier.ts",
 											"**/work.ts",
-											"**/client.ts",
+											"**/scoring/**",
 											"**/compose.ts"
 										],
-										"message": "A part imports no adapter, no client file and not the other part."
+										"message": "A part imports no adapter, no scoring code and not the other part."
 									}
 								]
 							}

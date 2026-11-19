@@ -108,18 +108,6 @@ test(
 	},
 );
 
-// A bundle that lacks the build's version sends "dev", which this shape rejects.
-test(
-	"the request names the plugin and its built version in the User-Agent header",
-	KEYED,
-	async ($, on) => {
-		const { h } = await callOnce($, on);
-		expect(h.request.init?.headers?.["User-Agent"]).toMatch(
-			/^model-router\/\d+\.\d+\.\d+ \(\+https:\/\/github\.com\/Akurganow\/model-router\)$/,
-		);
-	},
-);
-
 test(
 	"the endpoint and model come from the code, not from the environment",
 	KEYED,

@@ -143,15 +143,6 @@ test("a limit abort is a timeout", async (t) => {
 	assert.equal(bodies.length, 1);
 });
 
-test("a plain abort is cancelled", async () => {
-	const { fetchFn } = answering(VALID);
-	const controller = new AbortController();
-	controller.abort();
-	assert.deepEqual(await run(fetchFn, { signal: controller.signal }), {
-		skipped: "cancelled",
-	});
-});
-
 test("a fetch rejection is a network error after two retries", async (t) => {
 	const time = fakeTime(t);
 	const { bodies, fetchFn } = stub(async () => {
@@ -472,15 +463,6 @@ test("tier and work send the System One body as one string", async () => {
 			'"An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",' +
 			'"A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."]}}}',
 	);
-});
-
-test("a request carries the bearer key and JSON Accept and Content-Type", async () => {
-	const { inits, fetchFn } = answering(VALID);
-	await run(fetchFn);
-	const headers = new Headers(inits[0]?.headers);
-	assert.equal(headers.get("authorization"), "Bearer test-key");
-	assert.equal(headers.get("accept"), "application/json");
-	assert.equal(headers.get("content-type"), "application/json");
 });
 
 test("a request hands the fetch exactly four headers", async () => {

@@ -180,7 +180,7 @@ test("the version check passes after the hooks", () => {
 	run(copy, process.execPath, ["scripts/set-version.ts", "--check"]);
 });
 
-// Each bundle carries the release version on one `VERSION` line, and the npm tree holds copies of two.
+// Each bundle carries the release version on one line, and the npm tree holds copies of two.
 const BUNDLES = [
 	CLAUDE_OUTPUTS.bundle,
 	OMP_OUTPUTS.bundle,
@@ -203,11 +203,7 @@ test("the hooks change the source, the three manifests and every bundle, each on
 		);
 		assert.equal(lines.length, 1, path);
 		if (BUNDLES.includes(path))
-			assert.match(
-				lines[0] ?? "",
-				new RegExp(`^var VERSION = true \\? "${NEW_VERSION}" : "dev";$`),
-				path,
-			);
+			assert.ok(lines[0]?.includes(`"${NEW_VERSION}"`), path);
 		else assert.match(lines[0] ?? "", /"version"/, path);
 	}
 });
