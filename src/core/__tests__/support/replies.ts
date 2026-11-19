@@ -45,3 +45,14 @@ export function scoringReply(
 		headers: { "content-type": "application/json", ...headers },
 	});
 }
+
+/** Returns a reply whose headers arrive and whose body never does. */
+export function stalledReply(
+	status: number,
+	headers: Record<string, string> = {},
+): Response {
+	return new Response(new ReadableStream<Uint8Array>(), {
+		status,
+		headers: { "content-type": "application/json", ...headers },
+	});
+}
