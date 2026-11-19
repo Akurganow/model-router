@@ -35,6 +35,7 @@ The bans of [Live runs](../../../AGENTS.md#live-runs) in `AGENTS.md` hold at eve
 
 No live run starts without the maintainer's word, paid or free, the evals workflow included.
 A request that already names the harness and its version, the model, the cap and the question is that word.
+The word covers the run and its entry on the wiki.
 [Paid runs](../../../CONTRIBUTING.md#paid-runs) says what needs no clearance.
 
 17. Ask the maintainer, and state the harness and its version, the model, the cap and the question the run answers.
@@ -54,12 +55,13 @@ Install or update no harness.
 Never print or log a key, and never put one into a brief, a commit or a wiki entry.
 
 23. Take each key from the environment by the variable name its plugin README gives: [Claude Code](../../../plugins/model-router/README.md#what-this-mod-can-reach), [omp](../../../plugins/model-router-omp/README.md#key), [OpenClaw](../../../plugins/model-router-openclaw/README.md#keys), [Hermes](../../../plugins/model-router-hermes/README.md#keys).
-24. Write a key only where the harness reads it, inside the isolated copy.
-25. Delete the copy after the run.
+24. Take the harness's own provider key from the environment the same way.
+25. Write a key only where the harness reads it, inside the isolated copy.
+26. Delete the copy after the run.
 
 ## Run the harness
 
-26. Fill the four slots of the harness in order: load, isolate, run, read the line.
+27. Fill the four slots of the harness in order: load, isolate, run, read the line.
 
 ### Claude Code
 
@@ -89,22 +91,23 @@ Never print or log a key, and never put one into a brief, a commit or a wiki ent
 - Then set `hermes config set delegation.backend model-router`, as [Install](../../../README.md#hermes-agent) says, and the slot models, as [Set up](../../../plugins/model-router-hermes/README.md#set-up) says.
 - Isolate: `HERMES_HOME=<fresh home>` for every command, as [Hermes project skills and home](../../../docs/clients.md#hermes-project-skills-and-home) says.
 - Run: `hermes -z "<prompt>" -m <model> --provider <provider> -t delegation --ignore-rules --usage-file <file>`, as [Hermes task parameters](../../../docs/clients.md#hermes-task-parameters) ran it.
-- Read the line: the task's `route.label`, as [Hermes routing and refusals](../../../docs/clients.md#hermes-routing-and-refusals) shows, and `agent.log` in the `logs` folder of the home unless the plugin host drops INFO lines, as [Hermes runtime, logs and environment](../../../docs/clients.md#hermes-runtime-logs-and-environment) says.
+- Read the line: `agent.log` in the `logs` folder of the home, unless the plugin host drops INFO lines, as [Hermes runtime, logs and environment](../../../docs/clients.md#hermes-runtime-logs-and-environment) says.
+  The task's `route.label` carries it too, as [Hermes routing and refusals](../../../docs/clients.md#hermes-routing-and-refusals) shows; where a `hermes -z` run shows it is not documented.
 - After the run: `hermes gateway stop` with the same `HERMES_HOME`, because a `hermes -z` turn starts a gateway, as [Hermes runtime, logs and environment](../../../docs/clients.md#hermes-runtime-logs-and-environment) says.
 
 ## Record the run
 
-27. Write the entry in the wiki clone from the template under "Adding an entry" in its `Home.md`.
-28. Give a run of the evals workflow the kind `evals`, and link no run.
-29. Put the entry at the top of the client's page.
-30. Check the entry against "What an entry never holds" in `Home.md`.
-31. Set the clone's author to the one its history holds, because the wiki is public and the commit must not carry the machine's identity:
+28. Write the entry in the wiki clone from the template under "Adding an entry" in its `Home.md`.
+29. Give a run of the evals workflow the kind `evals`, and link no run.
+30. Put the entry at the top of the client's page.
+31. Check the entry against "What an entry never holds" in `Home.md`.
+32. Set the clone's author to the one its history holds, because the wiki is public and the commit must not carry the machine's identity:
 
     ```sh
     git -C "$wiki" config user.name "$(git -C "$wiki" log -1 --format=%an)"
     git -C "$wiki" config user.email "$(git -C "$wiki" log -1 --format=%ae)"
     ```
 
-32. Make one commit with the entry, and push once.
-33. Without push rights, put the entry's text into your report.
-34. Add a harness fact the run shows to `docs/clients.md`: one sentence with the client version and the date, no plugin output, no run link.
+33. Make one commit with the entry, and push once.
+34. Without push rights, put the entry's text into your report.
+35. Add a harness fact the run shows to `docs/clients.md`: one sentence with the client version and the date, no plugin output, no run link.
