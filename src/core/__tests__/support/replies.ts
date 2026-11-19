@@ -42,10 +42,22 @@ export function scoringReply(
 	});
 }
 
-/** Returns a 200 JSON reply whose headers arrive and whose body never does. */
-export function stalledReply(): Response {
+/** Returns a JSON reply with the status (200 by default) whose headers arrive and whose body never does. */
+export function stalledReply(status = 200): Response {
 	return new Response(new ReadableStream<Uint8Array>(), {
-		status: 200,
+		status,
 		headers: { "content-type": "application/json" },
 	});
+}
+
+/** Returns a reply with the status whose headers arrive and whose body read rejects. */
+export function brokenReply(status: number): Response {
+	return new Response(
+		new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.error(new TypeError("body lost"));
+			},
+		}),
+		{ status, headers: { "content-type": "application/json" } },
+	);
 }

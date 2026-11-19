@@ -1,4 +1,10 @@
-import { ABORTED, type Failure, NETWORK, TIMED_OUT } from "../failure.ts";
+import {
+	ABORTED,
+	type Failure,
+	isSuccess,
+	NETWORK,
+	TIMED_OUT,
+} from "../failure.ts";
 import {
 	type HeaderReader,
 	isRetried,
@@ -26,8 +32,9 @@ type Exchange = {
 	readonly headers?: HeaderReader;
 };
 
-// The timer and the caller's signal both abort this request. The reply text is read under the
-// same timer, so a body that never ends still times out.
+// The timer and the caller's signal both abort this request. The text of a 2xx reply is read
+// under the same timer, so a body that never ends still times out. An error status stands even
+// when its body is lost or stalls: the body is never used, and the status decides the fallback.
 async function exchange(
 	fetchFn: Fetch,
 	url: string,
@@ -55,7 +62,16 @@ async function exchange(
 			}),
 			stopped,
 		]);
-		const text = await Promise.race([reply.text(), stopped]);
+		let text: string;
+		try {
+			text = await Promise.race([reply.text(), stopped]);
+		} catch (error) {
+			if (isSuccess(reply.status) || caller.aborted) throw error;
+			return {
+				outcome: { status: reply.status, text: "" },
+				headers: reply.headers,
+			};
+		}
 		return { outcome: { status: reply.status, text }, headers: reply.headers };
 	} catch {
 		// The error is dropped on purpose: a failure carries no cause, body or key.

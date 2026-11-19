@@ -16,7 +16,7 @@ import { type Attempt, plan } from "../../provider.ts";
 import { KEY_UNSET } from "../../reasons.ts";
 import { tier } from "../../tier.ts";
 import { work } from "../../work.ts";
-import { scoringReply, stalledReply } from "../support/replies.ts";
+import { brokenReply, scoringReply, stalledReply } from "../support/replies.ts";
 import { fakeTime } from "../support/time.ts";
 
 const KEY = "test-key";
@@ -733,6 +733,47 @@ test("an abort during a backoff is cancelled and sends no second request", async
 test("an abort while the reply text is read is cancelled", async (t) => {
 	const time = fakeTime(t);
 	const { bodies, fetchFn } = stub(async () => stalledReply());
+	const controller = new AbortController();
+	const routed = run(fetchFn, { signal: controller.signal });
+	await time.pass(100);
+	controller.abort();
+	assert.equal(bodies.length, 1);
+	assert.deepEqual(await time.settled(routed), { skipped: "cancelled" });
+});
+
+test("a 400 whose body read rejects ends the call and does not fall back", async () => {
+	const { sent, fetchFn } = stub(async () => brokenReply(400));
+	assert.deepEqual(await run(fetchFn, { attempts: BOTH }), {
+		skipped: "HTTP 400",
+	});
+	assert.deepEqual(sent, [
+		`https://api.typesafe.ai/v1/systemone Bearer ${KEY}`,
+	]);
+});
+
+test("a 400 whose body never ends ends the call at the attempt timeout and does not fall back", async (t) => {
+	const time = fakeTime(t);
+	const { sent, fetchFn } = stub(async () => stalledReply(400));
+	const routed = run(fetchFn, { attempts: BOTH });
+	await time.pass(2000);
+	assert.deepEqual(await time.settled(routed), { skipped: "HTTP 400" });
+	assert.deepEqual(sent, [
+		`https://api.typesafe.ai/v1/systemone Bearer ${KEY}`,
+	]);
+});
+
+test("a 200 whose body read rejects is a network error after three requests", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub(async () => brokenReply(200));
+	const routed = run(fetchFn);
+	await time.pass(BACKOFFS_MS);
+	assert.deepEqual(await time.settled(routed), { skipped: "network error" });
+	assert.equal(bodies.length, 3);
+});
+
+test("an abort while the text of a 400 is read is cancelled", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub(async () => stalledReply(400));
 	const controller = new AbortController();
 	const routed = run(fetchFn, { signal: controller.signal });
 	await time.pass(100);

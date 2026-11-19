@@ -628,6 +628,8 @@ var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
   429
 ]);
 var SERVER_ERRORS = { min: 500, max: 599 };
+var OK = { min: 200, max: 299 };
+var isSuccess = (status) => status >= OK.min && status <= OK.max;
 var isFailure = (value) => Object.hasOwn(value, "failure");
 function skipText(failure, aborted) {
   switch (failure.failure) {
@@ -671,7 +673,6 @@ var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 
 // src/core/scoring/formats/system-one.ts
-var OK = { min: 200, max: 299 };
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
 function parseProbabilities(answers, key) {
   const a = isRecord(answers) ? answers[key] : void 0;
@@ -701,7 +702,7 @@ function usageOf(usage) {
   };
 }
 function read2(parts, status, text) {
-  if (status < OK.min || status > OK.max) return { failure: "status", status };
+  if (!isSuccess(status)) return { failure: "status", status };
   const reply2 = parse(text);
   const { answers, model, usage } = isRecord(reply2) ? reply2 : {};
   const pairs = [];
@@ -788,7 +789,16 @@ async function exchange(fetchFn, url, request, caller, timeout) {
       }),
       stopped
     ]);
-    const text = await Promise.race([reply2.text(), stopped]);
+    let text;
+    try {
+      text = await Promise.race([reply2.text(), stopped]);
+    } catch (error) {
+      if (isSuccess(reply2.status) || caller.aborted) throw error;
+      return {
+        outcome: { status: reply2.status, text: "" },
+        headers: reply2.headers
+      };
+    }
     return { outcome: { status: reply2.status, text }, headers: reply2.headers };
   } catch {
     if (caller.aborted) return { outcome: ABORTED };

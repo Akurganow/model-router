@@ -25,6 +25,10 @@ const FALLBACK_STATUSES: ReadonlySet<number> = new Set([
 	401, 402, 403, 404, 408, 429,
 ]);
 const SERVER_ERRORS = { min: 500, max: 599 };
+const OK = { min: 200, max: 299 };
+
+export const isSuccess = (status: number): boolean =>
+	status >= OK.min && status <= OK.max;
 
 export const isFailure = (value: object): value is Failure =>
 	Object.hasOwn(value, "failure");

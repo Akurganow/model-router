@@ -1,10 +1,8 @@
 import { isRecord } from "../../../utils/guards.ts";
 import { LEVELS, type Part, type Probabilities } from "../../part.ts";
-import { type Failure, MALFORMED } from "../failure.ts";
+import { type Failure, isSuccess, MALFORMED } from "../failure.ts";
 import type { Usage } from "../reply.ts";
 import type { Answers, Format } from "./format.ts";
-
-const OK = { min: 200, max: 299 };
 
 // NaN fails both comparisons, so the range alone also rejects it.
 const isProbability = (p: unknown): p is number =>
@@ -50,7 +48,7 @@ function read(
 	status: number,
 	text: string,
 ): Answers | Failure {
-	if (status < OK.min || status > OK.max) return { failure: "status", status };
+	if (!isSuccess(status)) return { failure: "status", status };
 	const reply = parse(text);
 	const { answers, model, usage }: Record<string, unknown> = isRecord(reply)
 		? reply
