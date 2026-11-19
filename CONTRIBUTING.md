@@ -75,7 +75,7 @@ every commit as a [conventional commit](#commits).
   a manifest differ.
 - `scripts/scan-owner-setup.ts` scans for owner-setup facts. See
   [Continuous integration](#continuous-integration).
-- `docs/clients.md` cites how each client loads a package.
+- `docs/clients.md` states how each client loads a package, and the wiki's evidence pages hold the evidence.
   `docs/design.md` gives the reasons for the generated copies, the single
   version and the CI checks.
   `docs/providers.md` holds what the four plugins do the same way when they ask Jev.
@@ -96,7 +96,7 @@ generated files. In the README only the region between
 
 The `plugins/model-router` folder holds no `package.json`. Claude Code
 installs dependencies for a plugin whose root holds a `package.json` and a
-lockfile. [docs/clients.md](docs/clients.md#package-files) cites the
+lockfile. [docs/clients.md](docs/clients.md#package-files) states the
 condition. The development tools therefore live at the repository root.
 
 ## Build and check
@@ -162,7 +162,7 @@ openclaw plugins install --link ./plugins/model-router-openclaw --force --accept
 The link adds the folder to `plugins.load.paths`. The folder holds the generated
 manifest and bundle, so run `node scripts/build.ts` before you link and after
 each edit of `src/`. Then run `openclaw plugins reload model-router-openclaw`.
-[docs/clients.md](docs/clients.md#openclaw-install-and-update) cites the
+[docs/clients.md](docs/clients.md#openclaw-install-and-update) states the
 link and reload commands.
 
 ## Type declarations

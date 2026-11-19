@@ -149,7 +149,7 @@ CI installs it on Ubuntu.
 
 The Hermes command `hermes config set delegation.backend model-router` replaces `model_map` or any other delegation backend, because Hermes runs one backend at a time.
 
-[docs/clients.md](docs/clients.md) lists what each client reads, each fact with its source.
+[docs/clients.md](docs/clients.md) states what each client reads, and the [wiki's evidence pages](https://github.com/Akurganow/model-router/wiki#evidence-pages) hold the evidence of each fact.
 
 ### Set up Claude Code
 
