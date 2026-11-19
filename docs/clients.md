@@ -683,12 +683,11 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 
 - `DelegationProvider` is an abstract class. A backend implements `name` and the synchronous `route_task(task, config)`. `is_available()` returns true by default, and false fails delegation closed.
   `config` is the `delegation` section of the active profile's `config.yaml`, and `dict(config)` is the default route.
+  Its `backend` key names the backend that routes the call.
 - `route_task` gets `{goal, context, index}` plus the parameters the backend declared. This plugin declares three, as [Hermes task parameters](#hermes-task-parameters) says, and `context` can be `None`.
   Nothing else crosses: no role, no agent description, no toolsets, no images and no output schema.
-- The `config` argument holds `api_key, api_mode, backend, backends, base_url, child_timeout_seconds, compression_threshold_tokens, fallback_providers, gateway_mode, independent_completions, inherit_mcp_toolsets, max_concurrent_children, max_iterations, max_spawn_depth, max_summary_chars, model, oneshot_max_children, orchestrator_enabled, provider, reasoning_effort, request_overrides, subagent_auto_approve, surface_child_process_notifications`. `backend` is the name of the backend that routes the call.
 - A route may carry `model`, `provider`, `base_url`, `api_key`, `api_mode`, `request_overrides`, `reasoning_effort`, `service_tier`, `fallback_providers`, `profile` and `label`. Hermes drops every other key silently.
   Hermes's own default backend returns the `delegation` section without `service_tier`.
-  This repository's `router.py` returns the same dict with a `label`, a `model`, a `provider` and a `reasoning_effort` changed on top, so `api_mode` and `request_overrides` stay in every route, also when the provider changes.
 - A route that `route_task` returns resolves through the credential resolver of the `delegation` section. A `provider` runs `resolve_runtime_provider`; an empty route inherits the parent's route.
   `request_overrides` apply on every branch.
 - A child's effort is the route's effort, else `delegation.reasoning_effort`, else the parent's level.
