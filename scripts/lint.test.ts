@@ -43,6 +43,7 @@ const ENTRY_ADAPTER = "The bundle entry imports no other adapter";
 const ESBUILD = "The version writer and the check load no esbuild";
 const DYNAMIC = "import() takes a string literal";
 const REEXPORT = "A utils/ file re-exports nothing";
+const SHARED_REASON = "A shared skip reason lives in src/core/reasons.ts";
 
 const faults: Fault[] = [
 	{
@@ -263,6 +264,27 @@ const faults: Fault[] = [
 		code: "export { g };",
 		category: PLUGIN,
 		message: REEXPORT,
+	},
+	{
+		form: "a multi-word shared reason in a string literal",
+		file: "src/core/reasons-spelled.ts",
+		code: 'export const a = "skipped: caller effort";',
+		category: PLUGIN,
+		message: SHARED_REASON,
+	},
+	{
+		form: "a one-word shared reason as a whole string literal",
+		file: "src/adapters/omp/reasons-spelled.ts",
+		code: 'export const b = "timeout";',
+		category: PLUGIN,
+		message: SHARED_REASON,
+	},
+	{
+		form: "a fixed text of a reason builder in a template literal",
+		file: "src/utils/reasons-spelled.ts",
+		code: `export const c = (id: string) => \`\${id} is outside the core scope\`;`,
+		category: PLUGIN,
+		message: SHARED_REASON,
 	},
 ];
 

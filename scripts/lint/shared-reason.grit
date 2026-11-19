@@ -1,0 +1,23 @@
+language js
+
+// This plugin spells the texts of src/core/reasons.ts a second time, so a changed text there must change here too.
+// A Grit regex must match the whole node text, hence the [\s\S]* around the texts.
+or {
+	JsStringLiteralExpression() as $node where {
+		or {
+			$node <: r"[\s\S]*(?:caller effort|config effort|subagent model set|settings unreadable|key unset|bad reply|network error|rejected request|HTTP | is outside the core scope| agent discovery failed| agent unknown| sets its own model|small model unset|middle model unset|large model unset)[\s\S]*",
+			$node <: r"^(?:\"(?:timeout|failed|cancelled)\"|'(?:timeout|failed|cancelled)')$"
+		}
+	},
+	JsTemplateChunkElement() as $node where {
+		$node <: r"[\s\S]*(?:caller effort|config effort|subagent model set|settings unreadable|key unset|bad reply|network error|rejected request|HTTP | is outside the core scope| agent discovery failed| agent unknown| sets its own model|small model unset|middle model unset|large model unset)[\s\S]*"
+	},
+	JsTemplateExpression() as $node where {
+		$node <: r"^`(?:timeout|failed|cancelled)`$"
+	}
+} where {
+	$filename <: r".*/src/.*",
+	$filename <: not r".*/src/core/reasons\.ts",
+	$filename <: not r".*/__tests__/.*",
+	register_diagnostic(span=$node, message="A shared skip reason lives in src/core/reasons.ts: import it from there.", severity="error")
+}
