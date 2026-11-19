@@ -1,5 +1,6 @@
 // A skip reason that more than one file spells, or that the core prints for every adapter, lives here.
 // A reason that one adapter prints lives in that adapter.
+// A new or changed text here also goes into scripts/lint/shared-reason.grit, which bans it elsewhere.
 export const CALLER_EFFORT = "caller effort";
 export const CONFIG_EFFORT = "config effort";
 export const SUBAGENT_MODEL_SET = "subagent model set";

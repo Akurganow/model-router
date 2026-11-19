@@ -219,6 +219,7 @@
 	],
 	"plugins": [
 		"./scripts/lint/literal-import.grit",
-		"./scripts/lint/utils-reexport.grit"
+		"./scripts/lint/utils-reexport.grit",
+		"./scripts/lint/shared-reason.grit"
 	]
 }

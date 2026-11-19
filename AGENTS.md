@@ -67,8 +67,7 @@ This file adds what an agent gets wrong without being told.
   `scripts/lint/`, and a planted fault in `scripts/lint.test.ts`. A pattern
   that matches nothing would otherwise switch the rule off unseen.
 - Write a test for such a rule only when Biome cannot hold it cheaply:
-  - the rule needs a value the code computes, as the reason scan in
-    `src/core/__tests__/unit/reasons.test.ts` does;
+  - the rule needs a value the code computes;
   - the rule counts across files;
   - Biome does not read the file: a generated bundle, a manifest, a workflow.
 - Behaviour stays with tests: what the code returns, prints or sends.
