@@ -4,17 +4,25 @@ These rules bind every coding agent that works in this repository.
 `CLAUDE.md` is a symbolic link to this file, so both names give one text.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) holds the rules for every contributor.
-This file adds what an agent gets wrong without being told. Where
-CONTRIBUTING.md already states a rule, this file links to it.
+This file adds what an agent gets wrong without being told.
 
 ## Read first
 
-- [CONTRIBUTING.md](CONTRIBUTING.md): the layout, the build, the checks and
-  the commits.
-- [docs/design.md](docs/design.md): why the build and CI are shaped as they
-  are.
-- [docs/clients.md](docs/clients.md): the cited facts about each harness.
-- The README of each plugin you change.
+- Before a change:
+  - [Repository layout](CONTRIBUTING.md#repository-layout) and
+    [Build and check](CONTRIBUTING.md#build-and-check);
+  - the README of each plugin it touches.
+- Look up when the case comes:
+  - [docs/clients.md](docs/clients.md) for a harness fact, by its headings,
+    never whole.
+  - [docs/design.md](docs/design.md) when the build or CI changes.
+  - In CONTRIBUTING.md: [Calibration](CONTRIBUTING.md#calibration) for a tier
+    or work text, [Dependencies](CONTRIBUTING.md#dependencies) for a pin,
+    [Type declarations](CONTRIBUTING.md#type-declarations) for the plugin
+    tests,
+    [Try the OpenClaw plugin from a checkout](CONTRIBUTING.md#try-the-openclaw-plugin-from-a-checkout)
+    to run OpenClaw on your edit, and
+    [Publishing to npm](CONTRIBUTING.md#publishing-to-npm) for a release.
 
 ## What the plugins do and never do
 
@@ -44,7 +52,9 @@ CONTRIBUTING.md already states a rule, this file links to it.
 - Shared logic lives once.
   [Repository layout](CONTRIBUTING.md#repository-layout) says where.
 - A claim about a harness needs a source: a permalink at a pinned commit, or
-  a run recorded in [docs/clients.md](docs/clients.md).
+  the client version and date of a run. The fact goes into
+  [docs/clients.md](docs/clients.md) as a plain statement, and its source onto
+  the [wiki's evidence page](https://github.com/Akurganow/model-router/wiki#evidence-pages).
 
 ## A rule about the source goes to Biome first
 
@@ -113,12 +123,11 @@ CONTRIBUTING.md already states a rule, this file links to it.
 
 ## Live runs
 
-- [Paid runs](CONTRIBUTING.md#paid-runs) says when a run that calls a paid
-  model is worth it. Ask the maintainer before one.
-- Run a harness against a copy of its configuration folder. Never change a
-  user's settings, auto-update choice or installed plugin versions, and never
-  restore a settings file whole.
+- Start no live run without the maintainer's word.
 - Never start an interactive harness session from an agent session.
+- Never change a user's settings, auto-update choice or installed plugin
+  versions.
+- `.agents/skills/live-run/SKILL.md` holds the procedure.
 
 ## Writing
 

@@ -75,6 +75,8 @@ every commit as a [conventional commit](#commits).
   version and the CI checks.
   `docs/providers.md` holds what the four plugins do the same way when they ask Jev.
 - `evals/` and `scripts/evals.ts` run real clients against the plugins.
+- `.agents/skills/` holds the project skills of the agents that work in this
+  repository, and `.claude/skills` is a symbolic link to it.
 
 ### Generated files
 
@@ -225,17 +227,8 @@ the key only from a source that keeps it out of the command line.
 
 A run that calls a paid model needs a question that no free check answers.
 Jev calls, such as calibration, are cheap and exempt.
-
-- Look in [docs/clients.md](docs/clients.md) first. Skip the run when it
-  records the fact with a cited run on the same client version.
-- Run one case on the cheapest model that shows the behaviour: `haiku` in
-  Claude Code, the omp case's model from `evals/cases.json` in omp. Cap the
-  turns, for example with `--max-turns` in Claude Code.
-- Record the result in `docs/clients.md` with the client version, the date and
-  the command, so the fact needs no second run.
-- Run the evals workflow by hand only after a change to `src/`, a plugin
-  folder or a pinned client version. Run it only for the clients that change
-  touches, with its `clients` input.
+[The live-run skill](.agents/skills/live-run/SKILL.md) holds the procedure of
+such a run, for an agent and for a person.
 
 ## Commits
 

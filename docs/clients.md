@@ -1,9 +1,12 @@
 # How each client loads a package
 
-This page says what each client reads from a package in this repository.
+This page says what each client reads from a package in this repository and from a project folder.
 Every fact names its kind: documentation, source read at a commit, or running the client.
 A documentation page with no revision is dated by the day it was read.
-A running fact names the client version and the command, or cites a GitHub Actions run of this repository on hosted runners.
+A running fact names the client version it was seen on, and the date or the command.
+The records of this project's own runs are on the [wiki](https://github.com/Akurganow/model-router/wiki).
+A new fact is a plain statement, and its evidence, the release, the date and the links, is on the [wiki's evidence pages](https://github.com/Akurganow/model-router/wiki#evidence-pages).
+This page quotes no output of this project's plugin or scripts and links no CI run of this repository.
 Install commands and install-time notes are in the [README](../README.md#install).
 The reasons built on these facts are in [About this repository's design](design.md).
 
@@ -104,7 +107,7 @@ Documentation pages below were read on 2026-11-05.
   [Host and maintain a marketplace, Turn on auto-update](https://code.claude.com/docs/en/plugins/host-marketplace#turn-on-auto-update))
 - `claude plugin marketplace add` of a checkout's path printed `Successfully added marketplace: model-router (declared in user settings)`.
   Then `claude plugin install model-router@model-router` printed `Successfully installed plugin: model-router@model-router (scope: user)`.
-  (running: Claude Code 2.1.308, [run 40100906706](https://github.com/Akurganow/model-router/actions/runs/40100906706) of the evals workflow, 2026-10-24)
+  (running: Claude Code 2.1.308, 2026-10-24)
 
 ### Hooks module
 
@@ -142,7 +145,7 @@ The documentation pages were read on 2026-11-11.
   (documentation: [Create custom subagents, Resume subagents](https://code.claude.com/docs/en/sub-agents#resume-subagents),
   [Choose an effort level](https://code.claude.com/docs/en/sub-agents#choose-an-effort-level))
 - A model that a hook sets at `agent.spawn` stays on the run that `SendMessage` resumes.
-  The debug log held one router line, `L0 haiku · medium · p=0.60/0.99 · jev jev-1.14.0`, so the resume was not scored again.
+  The debug log held one routing line for the two runs, so the resume was not scored again.
   The subagent's messages carried `message.model` `claude-haiku-5-5` on its first run and on the resumed run.
   The session's own messages carried `claude-sonnet-5-5`.
   The stream carries no request's effort, so the run does not show the effort of the resumed request.
@@ -175,12 +178,12 @@ The documentation pages were read on 2026-11-11.
   (documentation: [Create a mod, Check what Claude Code reads from your mod](https://code.claude.com/docs/en/plugins/mods/create#check-what-claude-code-reads-from-your-mod))
 - `claude plugin validate --strict plugins/model-router` printed those lines and `✔ Validation passed` on Ubuntu and macOS.
   It also noted that its checks apply none of the plugin directory's own rules for hooks modules.
-  (running: Claude Code 2.1.308, [run 41879870533](https://github.com/Akurganow/model-router/actions/runs/41879870533), 2026-11-04)
+  (running: Claude Code 2.1.308, 2026-11-04)
 - `claude plugin test [directory]` runs every file under the directory whose name ends in `.test.ts` or `.test.tsx`.
   It needs no session, sign-in or network, and exits `1` when a test fails.
   (documentation: [Plugin commands reference, plugin test](https://code.claude.com/docs/en/plugins/cli-reference#plugin-test))
-- `claude plugin test plugins/model-router` printed `130 pass`, `0 fail` and `Ran 130 tests across 9 files` on Ubuntu.
-  (running: Claude Code 2.1.308, [run 41879870533](https://github.com/Akurganow/model-router/actions/runs/41879870533), 2026-11-04)
+- `claude plugin test plugins/model-router` ran the plugin's test files with no session and passed on Ubuntu.
+  (running: Claude Code 2.1.308, 2026-11-04)
 
 ### Package files
 
@@ -191,6 +194,14 @@ The documentation pages were read on 2026-11-11.
   (documentation: [Plugin loading reference, Limits on the dependency install](https://code.claude.com/docs/en/plugins/loading#limits-on-the-dependency-install))
 - A relative `source` such as `./plugins/formatter` resolves to `<marketplace root>/plugins/formatter`, even though the catalogue sits in `.claude-plugin/`.
   (documentation: [Marketplace reference, Relative path plugin source](https://code.claude.com/docs/en/plugins/marketplace-reference#relative-path-plugin-source))
+
+### Claude Code project skills and configuration
+
+Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-Code#claude-code-project-skills-and-configuration)
+
+- Claude Code loads project skills from `.claude/skills/` in the folder it starts in and in each parent up to the repository root.
+- `CLAUDE_CONFIG_DIR` replaces the configuration folder `~/.claude`, which holds the settings, the session history and the plugins.
+- `--debug-file <path>` writes the debug log to that path and turns debug mode on. Without it the debug log is `~/.claude/debug/<session-id>.txt`.
 
 ### Claude Code gaps
 
@@ -288,7 +299,7 @@ The running fact names its omp version.
   (documentation: [`marketplace.md` L225](https://github.com/can1357/oh-my-pi/blob/96e4d8eb5ba1212d2d6018f242de266284cffab9/docs/marketplace.md#L225))
 - `omp plugin marketplace add` of a checkout's path printed `✔ Added marketplace`.
   Then `omp plugin install model-router@model-router` printed `✔ Installed model-router from model-router (0.14.0)`, the catalogue version at that commit.
-  (running: omp 18.12.6, [run 40100906706](https://github.com/Akurganow/model-router/actions/runs/40100906706) of the evals workflow, 2026-10-24)
+  (running: omp 18.12.6, 2026-10-24)
 
 ### omp install names
 
@@ -357,7 +368,7 @@ Links point at commit `650f3a1`, tag `v18.16.0`, whose `packages/coding-agent` i
   (source: [`structured-subagent.ts` L658–L674](https://github.com/can1357/oh-my-pi/blob/650f3a108229ee11bf68ba3377f4e8c3391cd424/packages/coding-agent/src/task/structured-subagent.ts#L658-L674))
 - Plugin 0.17.0 returned a role for an item that set its own model, and the spawn ran on that role, not on the item's model.
   A level 0 item that named a large model got `@smol`, and a level 2 item that named a small one got `@slow`.
-  (running: omp 18.16.0, 2026-11-06, with `task.perCallModel` set to `on` and one `task` call of those two items, each `model` a `provider/model-id`; the batch line showed `L0 @smol` for task 1 and `L2 @slow` for task 2)
+  (running: omp 18.16.0, 2026-11-06, with `task.perCallModel` set to `on` and one `task` call of those two items, each `model` a `provider/model-id`)
 - omp 18.12.6 has no `task.perCallModel` setting: it arrived in 18.14.2.
   (documentation: [`CHANGELOG.md` L566 at 18.18.9](https://github.com/can1357/oh-my-pi/blob/50da2d357039404a81d7c64622740ce13e4c54b4/packages/coding-agent/CHANGELOG.md#L566), the 18.14.2 entry)
 - At omp 18.12.6 the docs mark the item `model` as seance only.
@@ -491,10 +502,10 @@ The running facts used omp from npm, a probe extension and a local stand-in mode
 - The built plugin, with its Jev requests answered inside the omp process and the stand-in model, set the child's model and level as [Effort](../plugins/model-router-omp/README.md#effort) says.
   Level 0 ran the small model at `high` or `xhigh`, level 1 the parent's model at `low` or `medium`, and level 2 the large model at `medium` or `high`, as the work level picked.
   `task.maxEffort: low` capped level 0 at `low`, and `task.maxEffort: medium` capped level 2 at `medium`.
-  With `task.maxEffort: minimal`, an item `effort: "lo"` or `modelRoles.smol: stub/small:low`, the plugin returned `@smol` alone, and the line named `config effort` or `caller effort`.
+  With `task.maxEffort: minimal`, an item `effort: "lo"` or `modelRoles.smol: stub/small:low`, the plugin returned `@smol` alone, and its line named the source of the effort.
   (running: omp 18.12.6 and 18.18.9, 2026-11-12, 36 cases, every one alike at both versions)
 - A level on the `smol` role reached the spawn's patterns of the bundled `scout` agent as `stub/small:low`.
-  At level 1 the plugin then returned nothing and printed `config effort`, and the child ran at `low`, as it did without the plugin.
+  At level 1 the plugin then returned nothing, and the child ran at `low`, as it did without the plugin.
   A level on the `default` role did not reach the patterns of a `task` spawn, which read `stub/parent`.
   Without the plugin that child ran at `high`, not at the role's `low`.
   A project agent with `thinking-level: low` and no model ran at `low` without the plugin and at the ladder's `medium` on the large model at level 2.
@@ -502,6 +513,21 @@ The running facts used omp from npm, a probe extension and a local stand-in mode
 - At level 2 for `scout` with `modelRoles.smol: stub/small:low`, the spawn's patterns read `stub/small:low`, the plugin returned `@slow:medium`, and the child ran the large model at `medium`.
   With `task.enableEffort` off, an item `effort: "hi"` changed nothing without the plugin: the child ran the parent's model at `high`. With the plugin at level 0 and work 2, it returned `@smol:xhigh`, and the child ran the small model at `xhigh`.
   (running: omp 18.12.6 and 18.18.9, 2026-11-12)
+
+### omp project skills and folders
+
+Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp-project-skills-and-folders)
+
+- omp reads project skills from `.agent/skills` and `.agents/skills` in each folder from the working directory up to the repository root, and it skips the home folder.
+  With no repository root, the walk stops at the home folder, or at the filesystem root when the working directory is not under home.
+- On the same walk it reads `.claude/skills` too.
+- On a skill name that two providers give, the provider admitted first keeps the bare name, and providers are admitted by priority: `.claude` 80, `.agents` 70.
+  An identical copy is dropped, and a different copy is renamed `<namespace>/<name>` with a `name collision` warning.
+- A skill file reached twice, as through a symbolic link, loads once: omp skips a real path it has already loaded.
+- `PI_CONFIG_DIR` names the configuration folder relative to the home folder, `.omp` by default.
+  `PI_CODING_AGENT_DIR` names the agent folder, which is otherwise `agent` inside the configuration folder.
+- omp picks the first model from an explicit CLI model, then the first scoped model, then the saved default.
+  `--model` is the preferred form, and an exact `provider/modelId` is unambiguous.
 
 ### omp gaps
 
@@ -580,8 +606,8 @@ Every running fact names its OpenClaw version and the date it ran.
   So the report held the plugin id, the package name and the package version, status `loaded`, and `imported` and `enabled` true.
   It also held `model_router_config` in `contracts.tools` and no diagnostics.
   The script then called the installed bundle's `register()` on a recording API in `full` mode, instead of reading the registration from the report.
-  The install printed `Installed plugin: model-router-openclaw` and `Saved for the next Gateway start.`, and the script printed `model-router-openclaw 0.16.1 is installed and loaded; it registers before_tool_call, model_router_config and model-router-provider, model-router-scope.`
-  (running: OpenClaw 2026.11.1, the `package` job of [run 42119970365](https://github.com/Akurganow/model-router/actions/runs/42119970365), 2026-11-05)
+  The install printed `Installed plugin: model-router-openclaw` and `Saved for the next Gateway start.`, and the script passed, with the bundle registering the hook, the config tool and the two option commands.
+  (running: OpenClaw 2026.11.1, 2026-11-05)
 - The Gateway log shows a command registration as `Registered plugin command: /<name> (plugin: <id>)`.
   OpenClaw writes the line through `logVerbose`, which logs under `--verbose` or at file log level `debug`.
   A registered hook counts in `hook runner initialized with <n> registered hooks`, a debug-level line of the `plugins` logger.
@@ -599,7 +625,7 @@ Every running fact names its OpenClaw version and the date it ran.
 - `openclaw plugins install npm-pack:<path.tgz>` installs a local tarball that `npm pack` built.
   It uses the same managed npm project path as a registry install, and the tarball must sit on the Gateway host.
   (documentation: [Install plugins, Archives](https://docs.openclaw.ai/cli/plugins/install#archives) and [Install](https://docs.openclaw.ai/cli/plugins/install#install), `docs/cli/plugins/install.md`, read 2026-11-05;
-  running: OpenClaw 2026.11.1, the `package` job of [run 42119970365](https://github.com/Akurganow/model-router/actions/runs/42119970365), which ran `openclaw plugins install "npm-pack:$TARBALL" --force --accept-capabilities` and `openclaw plugins inspect model-router-openclaw --runtime --json`, 2026-11-05)
+  running: OpenClaw 2026.11.1, with `openclaw plugins install "npm-pack:$TARBALL" --force --accept-capabilities` and `openclaw plugins inspect model-router-openclaw --runtime --json`, 2026-11-05)
 - `openclaw plugins update <id>` reuses the tracked install spec.
   (documentation: [Manage plugins, Update plugins](https://docs.openclaw.ai/plugins/manage-plugins#update-plugins))
 - `openclaw plugins disable <id>` toggles the plugin's config entry and leaves the installed files.
@@ -717,7 +743,6 @@ Every running fact names its OpenClaw version and the date it ran.
   A build that registered them in `full` mode only also listed them in that run.
   (running: OpenClaw 2026.10.10, the plugin's npm tarball installed with `npm-pack:`, commands sent through `chat.send` over the Gateway WebSocket, 2026-11-06)
 - With the hook registered in `full` and `discovery` mode, a Gateway chat turn on `openrouter/openai/gpt-4.1` called `sessions_spawn` with a task alone.
-  The plugin logged `model-router L0 openrouter/openai/gpt-4.1-mini · medium · p=0.97/1.00 · jev jev-1.14.0 · 676/30 tok`.
   The child session ran on `openai/gpt-4.1-mini` through OpenRouter with thinking level `medium`.
   (running: OpenClaw 2026.10.10, the plugin's npm tarball installed with `npm-pack:`, one `chat.send` turn over the Gateway WebSocket, 2026-11-06)
 - A Gateway chat turn with a prepared plugin generation runs inside that generation's scope, and its hook runner then reads hooks from that registry alone, with no overlay of the Gateway registry.
@@ -780,10 +805,9 @@ Every running fact names its OpenClaw version and the date it ran.
 - The plugin's `api.logger` is the registry logger, bound once when OpenClaw builds the plugin API. No hook call or hook timeout gates it.
   (source: [`registry-api.ts` L120–L125](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/registry-api.ts#L120-L125),
   [`api-builder.ts` L143](https://github.com/openclaw/openclaw/blob/d48be80a63791215ff337596cf93f0cb5b80a233/src/plugins/api-builder.ts#L143))
-- At the plugin's routing limit, the Gateway log read `model-router skipped, timeout` once, and the spawn ran unchanged.
+- At the plugin's routing limit, the spawn ran unchanged.
   The hook timeout was 3000 ms, so the routing limit was 1000 ms. The Jev request went through a proxy that accepted the connection and never answered.
-  The child's first model request followed the line by about 1 s, on the caller's model, a local stub that refused connections.
-  No later `model-router` line appeared.
+  The child's first model request came about 1 s after the routing limit, on the caller's model, a local stub that refused connections.
   (running: OpenClaw 2026.10.10, `POST /tools/invoke` with `sessions_spawn` on a copy of the state folder, 2026-11-11)
 - The operator's per-hook timeout of 12 s beat the plugin's 10 s and the all-hooks value of 20 s.
   A handler that slept 13 s got `403 Tool call blocked because before_tool_call hook failed`, and the log read `timed out after 12000ms`.
@@ -947,6 +971,18 @@ These facts are source readings at commit `847611dcaa3b` (tag `v2026.11.3`), not
   (documentation: [`ask-user.md` L22–L48](https://github.com/openclaw/openclaw/blob/847611dcaa3bf0e2783335f961dd1fd0580e4d9f/docs/tools/ask-user.md#L22-L48))
 - WhatsApp, Signal and iMessage do not expose `ask_user`, so the agent asks in plain text.
   (documentation at `main` `8e6768f91235`: [`whatsapp.md` L243–L244](https://github.com/openclaw/openclaw/blob/8e6768f91235b7b094f7f8dde96735d727a3f748/docs/channels/whatsapp.md#L243-L244), [`signal.md` L433–L434](https://github.com/openclaw/openclaw/blob/8e6768f91235b7b094f7f8dde96735d727a3f748/docs/channels/signal.md#L433-L434), [`rich-messages.md` L121–L122](https://github.com/openclaw/openclaw/blob/8e6768f91235b7b094f7f8dde96735d727a3f748/docs/channels/imessage/rich-messages.md#L121-L122))
+
+### OpenClaw project skills and the Gateway
+
+Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenClaw#openclaw-project-skills-and-the-gateway)
+
+- OpenClaw reads skills from `<workspace>/skills` and `<workspace>/.agents/skills` of the agent's workspace, and `skills/` wins a name clash.
+  It never walks up into parent folders, and it does not read `.claude/skills`.
+- `OPENCLAW_HOME`, `OPENCLAW_STATE_DIR` and `OPENCLAW_CONFIG_PATH` replace the home folder, the state folder and the config file.
+- `openclaw gateway run` starts the Gateway. It refuses to start unless `gateway.mode` is `local`, and `--allow-unconfigured` skips that check.
+- `POST /tools/invoke` takes `tool` and `args`, and with `gateway.auth.mode` `token` it needs `Authorization: Bearer <token>`.
+  `sessions_spawn` is on its default deny list, `gateway.tools.allow` lifts that, and a denied tool returns 404.
+- `SIGINT` or `SIGTERM` stops the Gateway process. A shell or wrapper that does not forward signals leaves the Gateway serving after the wrapper is killed.
 
 ### OpenClaw gaps
 
@@ -1123,9 +1159,8 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
   Under `plugins.isolation: host`, two tasks of one call routed to `openai/gpt-6-luna` at effort `low` ran two child sessions with `model = openai/gpt-6-luna` and effort `low`; the summaries were `ping` and `pong`.
   (running: Hermes v0.22.7, the probe plugin, `hermes -z "<call delegate_task once …>" -m google/gemini-2.5-flash --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 330 s alarm, once for each turn, 2026-11-06)
 - This repository's plugin routed a real call. One `delegate_task` call held a lookup task and a design task. The provider was `typesafe`, `small_model` was `openrouter openai/gpt-6-luna` and `large_model` was `openrouter openai/gpt-6.1-terra`.
-  In process, the lookup task read `model-router L0 openai/gpt-6-luna · medium · p=0.67/0.99 · jev jev-1.14.0 · 686/30 tok`, and the design task read `model-router L2 openai/gpt-6.1-terra · high · p=1.00/0.60 · jev jev-1.14.0 · 705/30 tok`.
-  The child sessions ran `openai/gpt-6-luna` at effort `medium` and `openai/gpt-6.1-terra` at effort `high`. Each result entry carried the line in `route.label`, and `agent.log` held both lines.
-  After `hermes gateway stop` and `plugins.isolation: host`, the same call gave the same levels, models and efforts, with `p=0.63/0.99` and `p=1.00/0.61`. `route.label` carried both lines, and `agent.log` held no routing line.
+  In process, the child sessions ran `openai/gpt-6-luna` at effort `medium` and `openai/gpt-6.1-terra` at effort `high`. Each result entry carried the plugin's label in `route.label`, and `agent.log` held the plugin's line for each task.
+  After `hermes gateway stop` and `plugins.isolation: host`, the same call gave the same levels, models and efforts. `route.label` carried both labels, and `agent.log` held no plugin line.
   (running: Hermes v0.22.7, the plugin installed with `hermes plugins install "file://<clone>#plugins/model-router-hermes" --enable` on a fresh Hermes home and set up as its README says, `hermes -z "<call delegate_task once with two tasks …>" -m openai/gpt-6-luna --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 400 s alarm, once for each mode, 2026-11-06, repeated after the request began to key the models by slot and the reply dropped the level)
 - Hermes maps a requested effort that a wire does not support to the nearest weaker supported level, and to the weakest level when none is weaker.
   (source: [`reasoning_effort.py` L127–L139](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/agent/reasoning_effort.py#L127-L139))
@@ -1157,8 +1192,8 @@ This repository's plugin requires Hermes 0.22.6 or later, set by `requires_herme
 - A session routes on the backend its `delegate_task` schema was built from. A plugin update or a backend change applies from the next session, or at the next turn after `/delegation <backend> --now`. A task that carries a parameter its session's schema lacks is refused alone.
   (documentation: [`delegation-provider-plugin.md` L171–L188](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/website/docs/developer-guide/delegation-provider-plugin.md#L171-L188))
 - A real delegating model filled the parameters. One `delegate_task` call held a new task and a re-dispatch of a task described as failed at level 1. The provider was `typesafe`, `small_model` was `openrouter qwen/qwen3.7-flash` and `large_model` was `openrouter openai/gpt-6-luna`.
-  The model gave both tasks a `description`, and gave the re-dispatch `level: 2` and `reasoning_effort: "high"`. The new task read `model-router L0 qwen/qwen3.7-flash · medium · p=0.99/1.00 · jev jev-1.14.0 · 699/30 tok`.
-  The re-dispatch ran on `openai/gpt-6-luna` at effort `high`, and its result's `route` held `backend`, `provider`, `model`, `reasoning_effort` and `service_tier` but no `label`. `agent.log` held the first line only.
+  The model gave both tasks a `description`, and gave the re-dispatch `level: 2` and `reasoning_effort: "high"`.
+  The re-dispatch ran on `openai/gpt-6-luna` at effort `high`, and its result's `route` held `backend`, `provider`, `model`, `reasoning_effort` and `service_tier` but no `label`. `agent.log` held the plugin's line for the new task only.
   (running: Hermes v0.23.0, the plugin installed from this branch with `hermes plugins install "file://<clone>#plugins/model-router-hermes" --enable` on a fresh Hermes home, `hermes -z "<call delegate_task once with two tasks …>" -m qwen/qwen3.7-flash --provider openrouter -t delegation --ignore-rules --usage-file <file>` under a 400 s alarm, 2026-11-11)
 - Under `plugins.isolation: host`, the parent builds a `DelegationProvider` whose methods run in the plugin host, so `task_parameters` and `description` cross as plain JSON.
   (source: [`plugin_isolation.py` L63–L78](https://github.com/NousResearch/hermes-agent/blob/3b421578588243f920886e6fe79a6faa87ea026e/hermes_cli/plugin_isolation.py#L63-L78), at v0.23.1)
@@ -1260,6 +1295,16 @@ These facts are source readings at commit `3b421578588243f920886e6fe79a6faa87ea0
 - The tests of the plugin call each handler and the router directly with a fake Hermes API. One test file, `plugins/model-router-hermes/tests/test_real_hermes.py`, runs only under Hermes's interpreter. It calls each Hermes function the shim uses, and compares the default route with Hermes's bundled default backend.
   It also registers the provider with Hermes's delegation registry, reads the `delegate_task` schema, and routes tasks through `resolve_task_routes`, so a pin raise that changes the parameter seam fails CI. Those tests use Hermes's private name `_registry`. They read the schema through `tools.registry.registry.get_definitions` with a temporary `HERMES_HOME`, as Hermes documents.
   (source: `plugins/model-router-hermes/tests/`; documentation: [`delegation-provider-plugin.md` L203–L209](https://github.com/NousResearch/hermes-agent/blob/2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19/website/docs/developer-guide/delegation-provider-plugin.md#L203-L209))
+
+### Hermes project skills and home
+
+Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#hermes-project-skills-and-home)
+
+- Hermes reads project skills from `.hermes/skills` and `.agents/skills` under the project root, the nearest folder at or above the working directory that holds `.git`.
+  It loads them only when `skills.trusted_project_dirs` lists that root, and the list is empty by default.
+  It does not read `.claude/skills`.
+- `HERMES_HOME` names the Hermes home.
+- `hermes plugins install "file://<repository>#<folder>"` clones the repository with `git clone --depth 1` and installs `<folder>` from the clone, so it takes the committed `HEAD`, not the working tree.
 
 ### Hermes gaps
 
