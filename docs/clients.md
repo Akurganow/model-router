@@ -700,7 +700,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 - Hermes routes the tasks of a call in one loop, in index order, in the thread that runs the call. It builds the children after the loop ends.
   `delegate_task` is exempt from the generic sequential tool deadline, so Hermes puts no timeout around `route_task`.
 - The main agent's turn is not routed through the provider. Only `delegate_task` tasks are, and internal callers that pass their own credentials bypass the backend.
-- `label` is short text shown with the child's progress and result. Every result entry of a task routed by a non-default backend carries `route`: the backend, the label, and what the child runs on.
+- `label` is short text shown with the child's progress and result. Every result entry of a task routed by a non-default backend carries `route`, with the backend and what the child runs on, and `label` when the route sets one.
 - A delegated task takes the routed model and effort, each task of a call its own, in process and under `plugins.isolation: host`.
   The child session runs with the route's `model` and with `reasoning_config = {enabled: true, effort: <the route's effort>}`.
 - Hermes maps a requested effort that a wire does not support to the nearest weaker supported level, and to the weakest level when none is weaker.
