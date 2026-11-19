@@ -75,6 +75,8 @@ every commit as a [conventional commit](#commits).
   version and the CI checks.
   `docs/providers.md` holds what the four plugins do the same way when they ask Jev.
 - `evals/` and `scripts/evals.ts` run real clients against the plugins.
+- `.agents/skills/` holds the project skills of the agents that work in this
+  repository, and `.claude/skills` is a symbolic link to it.
 
 ### Generated files
 
@@ -226,7 +228,7 @@ the key only from a source that keeps it out of the command line.
 A run that calls a paid model needs a question that no free check answers.
 Jev calls, such as calibration, are cheap and exempt.
 [The live-run skill](.agents/skills/live-run/SKILL.md) holds the procedure of
-such a run.
+such a run, for an agent and for a person.
 
 ## Commits
 

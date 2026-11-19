@@ -12,10 +12,11 @@ This file adds what an agent gets wrong without being told.
   - [Repository layout](CONTRIBUTING.md#repository-layout) and [Build and check](CONTRIBUTING.md#build-and-check);
   - the README of each plugin it touches.
 - Look up when the case comes:
-  - [docs/clients.md](docs/clients.md) for a harness fact, by its headings,
-    never whole.
+  - [docs/clients.md](docs/clients.md) for a harness fact, by its headings, never whole.
   - [docs/design.md](docs/design.md) when the build or CI changes.
-  - Other CONTRIBUTING.md sections via the links below.
+  - In CONTRIBUTING.md: [Calibration](CONTRIBUTING.md#calibration) for a tier or work text, [Dependencies](CONTRIBUTING.md#dependencies) for a pin,
+    [Type declarations](CONTRIBUTING.md#type-declarations) for the plugin tests, [Try the OpenClaw plugin from a checkout](CONTRIBUTING.md#try-the-openclaw-plugin-from-a-checkout) to run OpenClaw on your edit,
+    and [Publishing to npm](CONTRIBUTING.md#publishing-to-npm) for a release.
 
 ## What the plugins do and never do
 
@@ -45,8 +46,7 @@ This file adds what an agent gets wrong without being told.
 - Shared logic lives once.
   [Repository layout](CONTRIBUTING.md#repository-layout) says where.
 - A claim about a harness needs a source: a permalink at a pinned commit, or
-  a fact in docs/clients.md with its client version and date. New runs go
-  on the [wiki](https://github.com/Akurganow/model-router/wiki).
+  a fact in [docs/clients.md](docs/clients.md) that names the client version it was seen on.
 
 ## A rule about the source goes to Biome first
 
@@ -115,9 +115,9 @@ This file adds what an agent gets wrong without being told.
 
 ## Live runs
 
-- Start no live run unasked.
+- Start no live run without the maintainer's word.
 - Never start an interactive harness session from an agent session.
-- Never change a user's settings, auto-update choice or plugin versions.
+- Never change a user's settings, auto-update choice or installed plugin versions.
 - `.agents/skills/live-run/SKILL.md` holds the procedure.
 
 ## Writing
