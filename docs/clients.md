@@ -1,11 +1,14 @@
 # How each client loads a package
 
 This page says what each client reads from a package in this repository and from a project folder.
-Each fact is a plain statement, with no release, date or commit as its evidence.
-The evidence of each fact, the release, the date and the links, is on the [wiki's evidence pages](https://github.com/Akurganow/model-router/wiki#evidence-pages).
-The `Evidence:` line under a heading links the section of its facts there.
+A fact says what the client does, in the present tense, and tells nothing of what a run did.
+A condition of a fact stays in it: a setting that must be on, a scope, an isolation mode, or a platform where the behaviour differs.
+A version stays only when it is the subject of the fact or when code or CI depends on it.
+A fact is as strong as its evidence, and the evidence says which: documented, read in the source, or seen in a run.
+A heading with evidence holds one line before its first fact, `Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-<client>#<heading>)`, which links the section of the same name on the client's evidence page.
+The heading is the address, so a heading renamed or added here is renamed or added on the wiki too.
+[Adding evidence](https://github.com/Akurganow/model-router/wiki#adding-evidence) on the wiki gives the rest of the rules.
 The records of this project's own runs are on the [wiki](https://github.com/Akurganow/model-router/wiki).
-This page quotes no output of this project's plugin or scripts and links no CI run of this repository.
 Install commands and install-time notes are in the [README](../README.md#install).
 The reasons built on these facts are in [About this repository's design](design.md).
 
@@ -80,8 +83,6 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
   A relative-path plugin in a marketplace added from a local path loads in place instead.
 - Background auto-update is off for a third-party marketplace until a user or an administrator turns it on.
   Without it, a user runs `claude plugin update <plugin>@<marketplace>`.
-- `claude plugin marketplace add` of a checkout's path printed `Successfully added marketplace: model-router (declared in user settings)`.
-  Then `claude plugin install model-router@model-router` printed `Successfully installed plugin: model-router@model-router (scope: user)`.
 
 ### Hooks module
 
@@ -110,11 +111,6 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
   Explore and Plan return no agent ID, so Claude cannot resume them.
   A per-invocation `model` and `effort` stay in effect on the resumed run, and `CLAUDE_CODE_EFFORT_LEVEL` outranks the effort.
 - A model that a hook sets at `agent.spawn` stays on the run that `SendMessage` resumes.
-  The debug log held one routing line for the two runs, so the resume was not scored again.
-  The subagent's messages carried `message.model` `claude-haiku-5-5` on its first run and on the resumed run.
-  The session's own messages carried `claude-sonnet-5-5`.
-  The stream carries no request's effort, so the run does not show the effort of the resumed request.
-  A run with `--model haiku` routed the same task to `haiku`, so it could not tell the two models apart.
 - `turn.complete` carries a subagent's `agentId` once for each run of its loop.
   No event marks a subagent as gone: an agent that completed, failed or was stopped can still resume under its id.
 - `turn.step` carries the subagent's `agentId`, and a hook may rewrite its `effort`.
@@ -132,11 +128,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 - A validation run does not check a `SKILL.md` at the plugin root.
 - For a mod, `claude plugin validate` prints `hooks:` and `calls:` lines that list the events and the API calls found in the module.
   It prints a line for each hook that can refuse an action, with or without a `.catch` handler.
-- `claude plugin validate --strict plugins/model-router` printed those lines and `✔ Validation passed` on Ubuntu and macOS.
-  It also noted that its checks apply none of the plugin directory's own rules for hooks modules.
+  It also notes that its checks apply none of the plugin directory's own rules for hooks modules.
 - `claude plugin test [directory]` runs every file under the directory whose name ends in `.test.ts` or `.test.tsx`.
   It needs no session, sign-in or network, and exits `1` when a test fails.
-- `claude plugin test plugins/model-router` ran the plugin's test files with no session and passed on Ubuntu.
 
 ### Package files
 
@@ -153,13 +147,14 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 
 - Claude Code loads project skills from `.claude/skills/` in the folder it starts in and in each parent up to the repository root.
 - `CLAUDE_CONFIG_DIR` replaces the configuration folder `~/.claude`, which holds the settings, the session history and the plugins.
-- `--debug-file <path>` writes the debug log to that path and turns debug mode on. Without it the debug log is `~/.claude/debug/<session-id>.txt`.
+- `--debug-file <path>` writes the debug log to that path and turns debug mode on.
+  Without it the debug log is `~/.claude/debug/<session-id>.txt`.
 
 ### Claude Code gaps
 
 Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-Code#claude-code-gaps)
 
-The Claude Code documentation gives no rule for three points.
+The Mods reference gives no rule for three points.
 It gives none for the declaration form of `register` in a hooks module, for free `setTimeout` globals or for a size limit on the module.
 `checkClaudeBundle` and `MAX_BUNDLE_BYTES` in `scripts/build.ts` check those three anyway.
 
@@ -222,8 +217,6 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
   An upgrade keeps settings and disabled state.
 - `marketplace.autoUpdate` is `off`, `notify` or `auto`, and `notify` is the default.
   In `notify` mode omp writes update availability to the debug log only.
-- `omp plugin marketplace add` of a checkout's path printed `✔ Added marketplace`.
-  Then `omp plugin install model-router@model-router` printed `✔ Installed model-router from model-router (<version>)`.
 
 ### omp install names
 
@@ -232,31 +225,24 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 - omp passes an extension no plugin name.
   The extension's API object has no member that names the plugin, the package, the manifest or the settings.
 - omp keys the lockfile entries `plugins` and `settings`, the `node_modules/<name>` link and the project override by the `name` in the installed `package.json`.
-  An extension reads that name from `new URL("../package.json", import.meta.url)`, because the bundle sits in a folder beside the file.
-  The catalogue entry name, `<entry>@<marketplace>` and the other plugin's name returned no settings.
-- A catalogue install of entry `probe` with package name `probe-omp` stored its settings under `probe-omp`.
-  `omp plugin config set probe …` printed `Plugin "probe" not found`, and `omp plugin config set probe-omp …` set the value.
-- An npm install of `@probe-scratch/settings-probe` stored its settings under the scoped name.
-  The unscoped name printed `Plugin "settings-probe" not found`.
+  An extension can read that name from its own `package.json`, for example through `new URL("../package.json", import.meta.url)` when its bundle sits in a subfolder.
+  A lookup under the catalogue entry name, `<entry>@<marketplace>` or another plugin's name finds no settings.
+- A catalogue install stores its settings under the package name, not the entry name.
+  `omp plugin config set` takes the package name, and the entry name gives `Plugin "<entry>" not found`.
+- An npm install of a scoped package stores its settings under the scoped name.
+  The unscoped name gives `Plugin "<name>" not found`.
 - `omp plugin install` takes a registry name for npm.
   A path to a `.tgz` file fails with `ENOTDIR`, and a local folder installs by link.
-- `omp plugin upgrade @probe-scratch/settings-probe` moved the plugin from 0.0.1 to 0.0.2 and kept the stored setting.
-  Before 0.0.2 existed it printed `is up to date (0.0.1)`.
-  `omp plugin upgrade probe@probe-market` also kept the settings, after a catalogue entry gained a higher `version`.
-- A project file, `<project>/.omp/plugin-overrides.json`, overrode the stored setting of the npm plugin and left the catalogue plugin's value alone.
-- With both plugins installed, each extension read its own setting, and no value crossed over.
 - omp rejects a catalogue plugin whose package name equals an installed package name, case-insensitively.
 - The settings read of an extension covers the user scope lockfile only.
   A plugin installed with `--scope project` keeps its lockfile under the project, and that read does not see it.
-- The plugin installed from the checkout and from the unpacked tarball, and loaded its commands.
-  That run covers the install, not the settings name.
 
 ### omp per-call model
 
 Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp-per-call-model)
 
 - A `task` item may carry `model`, one exact `provider/model-id` selector.
-  omp accepts it only when `task.perCallModel` is `on`, and the setting defaults to `off`.
+  From omp 18.14.2, omp accepts it only when `task.perCallModel` is `on`, and the setting defaults to `off`.
 - Every item `model` other than `undefined` passes the per-call check before any spawn, unless the item's agent is `seance`.
   With `task.perCallModel` off, or with a value that is not one exact selector, the whole call fails.
   A role alias such as `@smol` fails too.
@@ -267,9 +253,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
   It becomes the spawn's only model pattern, and the spawn has no model role.
 - `before_subagent_spawn` sends those patterns as `patterns`, or the agent's own patterns when the item sets no model.
   A `model` the hook returns replaces them, a per-call model included.
-- A role that the plugin returned for an item that set its own model won: the spawn ran on that role, not on the item's model.
-  A level 0 item that named a large model got `@smol`, and a level 2 item that named a small one got `@slow`.
-- omp 18.12.6 has no `task.perCallModel` setting: it arrived in 18.14.2.
+- With `task.perCallModel` on, a role that a `before_subagent_spawn` hook returns for an item that sets its own `model` wins over that model: the spawn runs on the role.
+- omp 18.12.6 has no `task.perCallModel` setting, and the setting arrived in 18.14.2.
 - At omp 18.12.6 the docs mark the item `model` as seance only.
   Yet the task tool passes it on as the request model for any agent, and the request model outranks the agent's own model.
 - From omp 18.18.4 the `task` tool advertises the item `model` only when `task.perCallModel` is `on` or the bundled seance is spawnable.
@@ -283,7 +268,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 - Early task launch asks that gate: the task tool calls `authorizeLaunch` before a launch, and `authorizeLaunch` calls the policy gate.
 - `task.speculativeLaunch`, on by default, starts each subagent as soon as its `tasks[]` item has streamed.
   Its description says it requires "no extension tool lifecycle handlers".
-- Early local reads ask the same gate. `tools.speculativeExecution.enabled`, which turns them on, is experimental and off by default.
+- Early local reads ask the same gate.
+  `tools.speculativeExecution.enabled`, which turns them on, is experimental and off by default.
 - The default tool approval mode is `yolo`, so without a `tool_call` handler speculative task launch is active by default.
 - `pi.on("tool_call", handler)` takes no tool filter, and the runner counts any handler for the event name.
   `tool_execution_start` carries the arguments but is a mirrored notification that does not gate dispatch.
@@ -296,27 +282,27 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 - When a `tool_call` handler passes the timeout, omp blocks the tool call with the reason `Extension <path> timed out after <n>ms`.
 - A `before_subagent_spawn` handler gets a fixed 30 s instead, `extensionHandlerTimeoutMs`.
   On that timeout omp logs it, and the spawn goes on without a model change.
-- An extension that read `lookup("extensionHandlers.toolCallTimeoutMs")?.get(pi.pi.settings)` got 30000 with no setting and 2000 with the setting at 2000.
-  With the setting at 2000 and a `tool_call` handler that slept 3000 ms, the `task` call ended with `Extension <path> timed out after 2000ms`, and no subagent request reached the provider.
+- An extension reads the configured value through omp's settings lookup, which gives 30000 when no value is set.
 
 ### omp model roles
 
 Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp-model-roles)
 
-- omp knows 16 roles, and `midl` is not one of them. Only `smol`, `slow` and the kind roles have catalogue priority lists.
+- omp knows 16 roles, and `midl` is not one of them.
+  Only `smol`, `slow` and the kind roles have catalogue priority lists.
 - Model roles live under `modelRoles` in `config.yml`, not in `models.yml`.
   A role's value is a model selector such as `provider/modelId`, and a chat role's value can end in a thinking selector such as `:low`.
 - The Roles view of `/models` names `smol` Fast and `slow` Thinking, and ends with a `+ New role…` row that adds a custom role.
 - `modelRoles` accepts any role name, so a role such as `midl` needs no change in omp.
-- A custom role that `modelRoles` names resolves: `ctx.models.resolve("@mid")` gave the configured model, and a spawn hook that returned `@mid:medium` ran it at `medium`.
-  A custom role that `modelRoles` does not name gives `undefined`, and a hook that returned it failed the subagent with `Error: No model selected.` and exit code 1.
+- A custom role that `modelRoles` names resolves through `ctx.models.resolve`, and a spawn hook that returns it, with or without a level suffix, runs the child on the configured model.
+  A custom role that `modelRoles` does not name gives `undefined`, and a hook that returns it fails the subagent with `Error: No model selected.`
 - `ctx.models.resolve` resolves against `modelRegistry.getAvailable()`, which checks configured auth without running a key command.
   A built-in provider with no credential gives `undefined`, for the model id and for a role that names it.
-  A `models.yml` provider whose `apiKey` is a command that prints nothing gives a full model, and `getApiKeyForProvider` gives `undefined` for it. A hook that returned that role ran the child on the parent's model, with exit 0 and no error.
+  A `models.yml` provider whose `apiKey` is a command that prints nothing gives a full model, though `getApiKeyForProvider` gives `undefined` for it.
+  A hook that returns that role runs the child on the parent's model, with no error.
 - A `smol` or `slow` role that `modelRoles` does not name resolves through an explicitly configured `default` model before omp's built-in priority list.
-  With `smol` unset, `ctx.models.resolve("@smol")` gave the `default` model.
 - A child's retry fallback chain is `retry.fallbackChains` at the spawn's own model role, kept from before the role's expansion, and otherwise at `default`.
-  A role that a spawn hook returns does not change the spawn's role, so `retry.fallbackChains.midl` does not reach a spawn the plugin gives `@midl`.
+  A role that a spawn hook returns does not change the spawn's role, so `retry.fallbackChains` at that role does not reach the spawn.
 
 ### omp thinking levels
 
@@ -325,7 +311,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 - A `model` that a `before_subagent_spawn` handler returns replaces the spawn's patterns, and omp expands it like a configured role.
   A role alias with a level suffix, such as `@smol:high`, expands to every pattern of the role with `:high` appended.
 - omp reads the text after a pattern's last colon as a level when it is `inherit`, `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` or `auto`, or a prefix of two characters or more that names one of the first eight only, such as `hi`, `med` or `xhi`.
-  The match is case-sensitive. Any other suffix, such as `:free` or `:8b`, stays part of the model id.
+  The match is case-sensitive.
+  Any other suffix, such as `:free` or `:8b`, stays part of the model id.
   The role and pattern paths pass `MAX_THINKING_SUFFIX_OPTIONS`, so `:max` and `:auto` parse there.
 - The ladder's four efforts, `low`, `medium`, `high` and `xhigh`, are omp `Effort` values with the same strings.
 - The executor ranks the item's `effort` first, then an explicit `:level` on the resolved pattern, then the agent's own level, then a level derived from the pattern.
@@ -337,24 +324,16 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 - The spawn event's `patterns` are the expanded model patterns omp would spawn with.
   omp fills them from the spawn policy's model override, so the list can be empty.
   A hook that returns an empty list leaves the policy unchanged.
-- At 18.18.9 only, a user agent whose model tag names a level ignores the item's `effort`.
+- At omp 18.18.9 only, a user agent whose model tag names a level ignores the item's `effort`.
   The plugin skips a user agent that declares a model, so this rule does not reach a routed spawn.
-- A probe hook's suffix set the child's level. With no hook the child ran on the parent's model at `high`.
-  `@smol:high` ran the small model at `high`, `@smol:xhigh` at `xhigh`, and the event's own patterns with `:low` kept the parent's model at `low`.
-- The item's `effort` won over the hook: with `task.enableEffort` on, an item `effort: "lo"` and a hook `@smol:high` ran the small model at `minimal`, its lowest level.
-  The hook's suffix won over a project agent's `thinking-level: low` and over a level on the role, `modelRoles.smol: stub/small:low`.
-  `task.maxEffort: low` with a hook `@smol:high` ran the child at `high`.
-- The built plugin, with its Jev requests answered inside the omp process and the stand-in model, set the child's model and level as [Effort](../plugins/model-router-omp/README.md#effort) says.
-  Level 0 ran the small model at `high` or `xhigh`, level 1 the parent's model at `low` or `medium`, and level 2 the large model at `medium` or `high`, as the work level picked.
-  `task.maxEffort: low` capped level 0 at `low`, and `task.maxEffort: medium` capped level 2 at `medium`.
-  With `task.maxEffort: minimal`, an item `effort: "lo"` or `modelRoles.smol: stub/small:low`, the plugin returned `@smol` alone, and its line named the source of the effort.
-- A level on the `smol` role reached the spawn's patterns of the bundled `scout` agent as `stub/small:low`.
-  At level 1 the plugin then returned nothing, and the child ran at `low`, as it did without the plugin.
-  A level on the `default` role did not reach the patterns of a `task` spawn, which read `stub/parent`.
-  Without the plugin that child ran at `high`, not at the role's `low`.
-  A project agent with `thinking-level: low` and no model ran at `low` without the plugin and at the ladder's `medium` on the large model at level 2.
-- At level 2 for `scout` with `modelRoles.smol: stub/small:low`, the spawn's patterns read `stub/small:low`, the plugin returned `@slow:medium`, and the child ran the large model at `medium`.
-  With `task.enableEffort` off, an item `effort: "hi"` changed nothing without the plugin: the child ran the parent's model at `high`. With the plugin at level 0 and work 2, it returned `@smol:xhigh`, and the child ran the small model at `xhigh`.
+- A level suffix that a `before_subagent_spawn` hook returns sets the child's level.
+  On a role the child runs the role's model at that level, and on the event's own patterns it keeps the parent's model at that level.
+- With `task.enableEffort` on, the item's `effort` wins over a hook's suffix.
+  A hook's suffix wins over a project agent's `thinking-level` and over a level on the role.
+- A level on the `smol` role reaches the patterns that a spawn hook receives for the bundled `scout` agent.
+  A level on the `default` role does not reach the patterns of a `task` spawn, and that child runs at its own level, not at the role's.
+  A project agent with `thinking-level: low` and no model runs at `low`.
+  Under the `extended` scope, the routed effort replaces a level on the `smol` role and a project agent's `thinking-level`.
 
 ### omp project skills and folders
 
@@ -375,14 +354,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 
 Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp-gaps)
 
-No documentation page under `docs/` describes the `omp.settings` block.
-The settings facts above rest on source.
-`marketplace.md` lists no `privacyPolicyUrl` entry field.
-The catalogue parser preserves extra entry fields, but no source says what omp does with this one.
-The settings-name facts of [omp install names](#omp-install-names) come from one run on a single omp release.
-CI tests the two omp pins that [Oh My Pi](#oh-my-pi) names.
-The `package` job in `.github/workflows/ci.yml` installs the unpacked tarball, lists the package and checks that omp loads it, but reads no setting, so no run exercises the settings name on either pin.
-The settings-name facts are unchecked on every other omp release.
+`marketplace.md` describes no `omp.settings` block and lists no `privacyPolicyUrl` entry field.
+The catalogue parser preserves extra entry fields, and the code read does not show what omp does with this one.
 
 The plugin routes the subagents of a `task` call only.
 omp also fires `before_subagent_spawn` for eval `agent()` and `workpool()` spawns, with `invocationKind` `"eval"`.
@@ -390,7 +363,7 @@ The plugin returns nothing for them, because no `task` batch scored them.
 Some subagents start with no `before_subagent_spawn` event, so no plugin can change their model:
 `/cleanse` workers, vibe workers, follow-up turns of a running subagent, revived subagents, and a seance that reuses a prepared session.
 
-The stand-in model accepted every level, so no run exercised omp's clamp of a level to the range a model supports.
+The facts above do not say how omp clamps a level to the range a model supports.
 The plugin reads a level on the role it picks and on any role that role names with `@`.
 A role left unset falls back to omp's own defaults, which the plugin does not read, so the routed effort replaces a level set there.
 
@@ -413,23 +386,15 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   When the plugin's own config is absent and the plugin requires it, OpenClaw records the install disabled.
   `openclaw plugins enable <id>` then enables it.
 - With a local Gateway running, install, enable, disable and uninstall apply through it.
-  Without one, they save the change for the next start.
-  `openclaw plugins inspect <id> --runtime --json` loads the plugin module.
-  The page says the report lists what the plugin registered.
-  The report lists only what the plugin registers in `tool-discovery` mode, as the next bullet records.
+  Without one, they save the change for the next start, and `plugins install` prints `Installed plugin: <id>` and `Saved for the next Gateway start.`
+  `openclaw plugins inspect <id> --runtime --json` loads the plugin module and lists what the plugin registers in `tool-discovery` mode, as the next bullet records.
 - `openclaw plugins inspect <id> --runtime` loads the plugin in `tool-discovery` mode, not in `full` mode.
   The mode list calls `tool-discovery` "capability discovery for executable tools", and `full` "live runtime activation".
   In that mode this plugin registers only its config tool, so `inspect` lists `model_router_config` and no hook or command.
-- The `package` job installed the packed tarball and ran `openclaw plugins inspect model-router-openclaw --runtime --json`.
-  `scripts/check-openclaw-install.ts` read the report and passed.
-  So the report held the plugin id, the package name and the package version, status `loaded`, and `imported` and `enabled` true.
-  It also held `model_router_config` in `contracts.tools` and no diagnostics.
-  The script then called the installed bundle's `register()` on a recording API in `full` mode, instead of reading the registration from the report.
-  The install printed `Installed plugin: model-router-openclaw` and `Saved for the next Gateway start.`, and the script passed, with the bundle registering the hook, the config tool and the two option commands.
+- The `inspect --runtime --json` report holds the plugin id, the package name and version, a status that reads `loaded` for a loaded plugin, `imported` and `enabled`, the plugin's tools in `contracts.tools`, and diagnostics.
 - The Gateway log shows a command registration as `Registered plugin command: /<name> (plugin: <id>)`.
   OpenClaw writes the line through `logVerbose`, which logs under `--verbose` or at file log level `debug`.
   A registered hook counts in `hook runner initialized with <n> registered hooks`, a debug-level line of the `plugins` logger.
-  A probe plugin's registration appeared in the Gateway log as `Registered plugin command: /probescope` when the Gateway loaded the plugin.
 - In the default `hybrid` reload mode, a change under `plugins.entries.<id>` replaces that plugin's runtime instance and reruns registration.
 - `openclaw plugins install --link <path>` adds a local folder to `plugins.load.paths`, needs capability consent, and does not inherit official package trust.
   `openclaw plugins reload <id>` reloads a plugin after an edit.
@@ -454,11 +419,10 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   `id` is the key in `plugins.entries.<id>`.
   `uiHints` carries labels and sensitivity hints, and `skills` lists skill folders relative to the plugin root.
 - OpenClaw validates a plugin's config against the manifest's `configSchema` when it reads or writes the config and before the plugin loads.
-  This plugin's schema sets `additionalProperties: false`, so a setting the manifest does not declare fails validation.
-  `openclaw config set plugins.entries.model-router-openclaw.config.unknown_model x/y` exited 1 and saved nothing.
-  It printed `Config change declined. No settings were saved.` and `Config validation failed: plugins.entries.model-router-openclaw.config: invalid config: must not have additional properties: "unknown_model"`.
-  With that key written into the config file by hand, `openclaw gateway run` refused to start.
-  `openclaw config validate` named the same cause and offered `openclaw doctor --fix`.
+  A schema that sets `additionalProperties: false` rejects a setting the manifest does not declare.
+  `openclaw config set` then exits 1, saves nothing and prints `Config change declined. No settings were saved.`
+  A config file that holds such a key stops `openclaw gateway run` from starting.
+  `openclaw config validate` names the same cause and offers `openclaw doctor --fix`.
 - `activation.onStartup` set to `true` imports the plugin when the Gateway starts.
 - `contracts.tools` lists the tool names a plugin owns, and a runtime `api.registerTool` call must match it.
 - `configContracts.secretInputs` names the config paths under `plugins.entries.<id>.config` that hold secrets.
@@ -473,9 +437,6 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   Handlers default to priority `0`, higher priorities run first, and registration order breaks ties.
 - `api.on(name, handler, opts)` accepts `matcher`, a non-empty list of tool ids, together with `priority` and `timeoutMs`.
 - A default export that is a plain object `{ id, register(api) }`, with no import from OpenClaw, loads and registers.
-  `openclaw plugins inspect <id> --json` printed status `loaded`.
-- `api.registrationMode` read `full` when the Gateway loaded the plugin.
-  The plugin registered a second time with `discovery` after an agent turn.
 - `api.registrationMode` takes six values: `full`, `discovery`, `tool-discovery`, `setup-only`, `setup-runtime` and `cli-metadata`.
 - The loader calls `register(api)` once per load, with the mode of that load's plan.
 - A plugin that is not a channel meets four modes: `cli-metadata` for CLI metadata capture, `tool-discovery` for a scoped tool load, `full` for a load with runtime side effects, and `discovery` for any other load.
@@ -504,21 +465,19 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
 - `registerTool` needs the tool name in the manifest's `contracts.tools`, or the registration is refused.
 - Before a tool's `execute`, the agent loop checks the call's arguments against the tool's parameter schema and answers a failed check with a validation error.
   So in an agent run, an argument the schema does not allow never reaches `execute`.
-- With the tool and the commands registered in `full` and `discovery` mode (before the hook joined `discovery`), `/commands` listed `/model-router-provider` and `/model-router-scope`, and `/model-router-scope extended` wrote `extended` to the config.
-  That held after a fresh Gateway start and after an install into the running Gateway.
-  A build that registered them in `full` mode only also listed them in that run.
-- With the hook registered in `full` and `discovery` mode, a Gateway chat turn on `openrouter/openai/gpt-4.1` called `sessions_spawn` with a task alone.
-  The child session ran on `openai/gpt-4.1-mini` through OpenRouter with thinking level `medium`.
+- A plugin's commands registered in `full` and `discovery` mode are listed by `/commands` and run from a Gateway chat turn, after a fresh Gateway start and after an install into the running Gateway.
+  Commands registered in `full` mode only are listed there too.
+- A `before_tool_call` hook registered in `full` and `discovery` mode rewrites a `sessions_spawn` call in a Gateway chat turn.
+  A call with a task alone starts a child session on the model and the thinking level that the hook returns.
 - A Gateway chat turn with a prepared plugin generation runs inside that generation's scope, and its hook runner then reads hooks from that registry alone, with no overlay of the Gateway registry.
   `before_tool_call` always runs through that hook runner.
   So a plugin that registers its `before_tool_call` hook only in `full` mode routes no `sessions_spawn` of a turn whose `discovery` load called its `register`.
   A plugin is borrowed or registered in one registry, never both, and the overlay keys typed hooks by plugin id and hook name, so a hook in `full` and `discovery` runs once per call.
 - Activating a registry initialises the global hook runner from it.
-- `api.on("before_tool_call", handler, { matcher: ["sessions_spawn"], priority: 100, timeoutMs: 10000 })` was accepted.
-- `api.pluginConfig` held only `plugins.entries.<id>.config`.
-  The operator's `hooks` settings sat under `api.config.plugins.entries.<id>.hooks`, readable at registration.
+- `api.pluginConfig` holds only `plugins.entries.<id>.config`.
+  The operator's `hooks` settings sit under `api.config.plugins.entries.<id>.hooks`, readable at registration.
   `api.runtime.config.current` exists.
-- A plugin loaded from `plugins.load.paths` without an install record loaded with a trust note and was active.
+- A plugin loaded from `plugins.load.paths` without an install record loads with a trust note and is active.
 
 ### OpenClaw hook and spawn
 
@@ -526,6 +485,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
 
 - `before_tool_call` receives `event.toolName` and `event.params`, and `ctx.agentId`, `ctx.sessionKey` and an optional `ctx.abortSignal`.
   It can return `params`, `block` or `requireApproval`.
+  `ctx.agentId` is the requester, and `event.params` holds only the keys the caller passed.
 - A handler that returns `params` rewrites the tool parameters.
   Each handler sees a copy of the original event, and the last returned `params` wins.
 - Native Codex tools reject parameter rewrites.
@@ -537,21 +497,13 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
 - `hooks.timeouts.<hookName>` overrides `hooks.timeoutMs`, which overrides the plugin's `timeoutMs`.
   Both operator fields take positive integers up to 600000 ms.
 - A `before_tool_call` handler gets 15 seconds by default, and a thrown error or a timeout blocks the tool call.
+  On `POST /tools/invoke` a timeout answers `403 Tool call blocked because before_tool_call hook failed`, and the log reads `timed out after <n>ms`.
   The global hook runner marks `before_tool_call` fail-closed.
 - A hook timeout does not abort the handler.
 - `ctx.abortSignal` aborts only when the owning tool call is cancelled. A hook timeout does not abort it.
 - The plugin's `api.logger` is the registry logger, bound once when OpenClaw builds the plugin API. No hook call or hook timeout gates it.
-- At the plugin's routing limit, the spawn ran unchanged.
-  The hook timeout was 3000 ms, so the routing limit was 1000 ms. The Jev request went through a proxy that accepted the connection and never answered.
-  The child's first model request came about 1 s after the routing limit, on the caller's model, a local stub that refused connections.
-- The operator's per-hook timeout of 12 s beat the plugin's 10 s and the all-hooks value of 20 s.
-  A handler that slept 13 s got `403 Tool call blocked because before_tool_call hook failed`, and the log read `timed out after 12000ms`.
-  A handler that slept 11 s, over the plugin's own 10 s, finished and blocked by its own result.
-- The handler saw event keys `toolName`, `params` and `toolCallId`, and context keys `toolName`, `agentId`, `sessionKey`, `abortSignal` and `toolCallId`.
-  `ctx.agentId` was the requester, and `ctx.abortSignal` was an `AbortSignal`.
-  The `params` held only the keys the caller passed.
 - The hook wraps the tool in the agent tool wrapper.
-  Loopback MCP calls run the same hook and execute with the hook's `params`.
+  Loopback MCP calls run the same hook and execute with the hook's `params`, so the rewrite also applies to a caller on the Claude CLI backend.
 - `before_tool_call` receives the arguments that the tool reads next.
   The wrapper passes the call's `params` to the hook, and `sessions_spawn` defines no `prepareBeforeToolCallParams` to rewrite them first.
   Only a trusted tool policy or a granted approval may adjust them before the hook.
@@ -562,14 +514,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   It counts the value only when it is a string, trims it, and treats an empty result as absent.
   `model` then passes `normalizeToolModelOverride`, which also treats `default`, in any case, as no override.
   The tool reads `runtime` as `params.runtime === "acp"`, and `taskName` as `params.taskName`, with no snake_case form.
-- A handler that returned `{ params: { model, thinking } }` set both on a real `sessions_spawn`.
-  The shallow merge kept `task`, and the result read `status: accepted`, the routed model, `modelApplied: true` and `mode: run`.
-  The child transcript held a `model_change` to the routed model and a `thinking_level_change` to the routed level.
-  The caller's session read thinking `off` and the child's read the routed level, with reasoning tokens in its reply.
-- The same rewrite took effect when the caller's agent ran on the Claude CLI backend.
-  The hook fired for the loopback MCP call, with event keys `toolName`, `params`, `runId` and `toolCallId`.
-  The result, `resolvedModel` and the child's transcript matched the embedded-runtime run.
-  The run showed no login, logout, expiry or credential message.
+- A handler that returns `{ params: { model, thinking } }` sets both on a real `sessions_spawn`.
+  The shallow merge keeps `task`, and the result reads `status: accepted`, `modelApplied: true` and `mode: run`.
+  The child's transcript holds a `model_change` and a `thinking_level_change`, and the caller's session keeps its own thinking level.
 - A native sub-agent inherits the caller's model and explicitly chosen thinking level, unless `agents.defaults.subagents.model` or `.thinking` is set, or the agent sets `subagents.model` or `subagents.thinking`.
   An explicit `sessions_spawn.model` or `.thinking` still wins.
 - `sessions_spawn` takes `taskName`, `label`, `agentId`, `runtime` (`subagent` or `acp`), `model`, `thinking`, `context`, `mode`, `thread`, `visible` and `sandbox`.
@@ -592,8 +539,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
 
 - A plugin command declares `requiredScopes`, and a command with a non-empty list can receive `senderIsOwner`.
   The admin scope is `operator.admin`.
-- A client with `operator.admin` ran the command, and the handler got `senderIsOwner: true` and `gatewayClientScopes` with the scope.
-  A client with `operator.read` and `operator.write` only got `This command requires gateway scope: operator.admin.`, and the handler did not run.
+- A Gateway client with `operator.admin` runs the command, and the handler gets `senderIsOwner: true` and `gatewayClientScopes` with the scope.
+  A client with `operator.read` and `operator.write` only gets `This command requires gateway scope: operator.admin.`, and the handler does not run.
 - A channel message carries no gateway scopes.
   `GatewayClientScopes` is set only for a message from the gateway client, and the command context passes it on as `gatewayClientScopes`.
 - For a command with `requiredScopes`, OpenClaw blocks a client whose scopes lack the scope.
@@ -613,8 +560,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
 
 Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenClaw#openclaw-runtime-logs-and-environment)
 
-- The Gateway ran on Bun.
-  `fetch`, `AbortSignal.any` and `AbortSignal.timeout` were functions in the hook and the command handler, and `fetch` reached an external host.
+- The Gateway runs on Bun.
+  `fetch`, `AbortSignal.any` and `AbortSignal.timeout` are functions in a plugin's hook and command handlers, and `fetch` reaches an external host.
 - A config write under `plugins.entries.<id>` makes the Gateway replace that plugin's runtime instance.
   The replacement waits for the old instance's retained work to finish, up to a 60 s drain budget.
   While it waits, the Gateway logs `Plugin replacement queued behind <n> retained work item(s) for plugin <id>; applies when they finish within the 60s drain budget.`
@@ -626,11 +573,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   OpenClaw drops known provider credential variables from it, and `OPENROUTER_API_KEY` is on that list.
   `TYPESAFE_API_KEY` is not on the static list.
   The global `~/.openclaw/.env` and the Gateway's process environment are trusted sources.
-- Plugins receive resolved values for the `secretInputs` paths a manifest declares.
-  The page says: "plugins receive resolved values with defaults selected from the source config".
+- Plugins receive resolved values, with defaults selected from the source config, for the `secretInputs` paths a manifest declares.
   This plugin declares `api_key` and `openrouter_api_key`.
   It reads the live config first, where it skips a value that is not text, such as an unresolved SecretRef object, and then `api.pluginConfig`.
-  No live probe has checked a SecretRef.
 
 ### OpenClaw question tool
 
@@ -658,24 +603,15 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
 
 Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenClaw#openclaw-gaps)
 
-CI installs the packed tarball through `npm-pack:` on the OpenClaw release that `.github/actions/setup-openclaw/package.json` pins, and the probes loaded the plugin through `plugins.load.paths`.
-The registry install of the npm package has not run, because the package is not published yet.
-The `npm:` install command rests on documentation.
-No run kept the `inspect --runtime` report.
-The `package` job's log holds the check's verdict, not the JSON, so that the report lists no hook or command rests on the source.
-The commands write the config through `api.runtime.config.mutateConfigFile`, and no live run has checked that write.
 The plugin update page says updates need a stopped Gateway.
 The plugin management page says an update refreshes a running one.
-The two pages disagree, and no run settled it.
+The two pages disagree.
 The hook runs only when a tool call runs.
 Five paths start an agent session without that tool. [Paths the hook never sees](../plugins/model-router-openclaw/README.md#paths-the-hook-never-sees) lists them.
-No source read lists every such path.
+Other such paths may exist.
 The meeting bot's realtime consult also runs an agent under a sub-agent session key without that tool.
-No run covers a sandboxed child with a CLI-backend model, or an `outputSchema` spawn on a model without tools.
-The sandbox rule for CLI backends and the collector child's need for tools rest on the documentation.
-The source check of the workspace `.env` list left out variables that an installed provider plugin adds.
+The workspace `.env` list in the source leaves out the variables that an installed provider plugin adds.
 OpenClaw may drop `TYPESAFE_API_KEY` when such a plugin declares it.
-No run has shown the `skipped, cancelled` line. It rests on the `ctx.abortSignal` source and the unit tests.
 `before_model_resolve` can replace a run's model, provider and fallback chain.
 It receives only the prompt and attachment metadata, and its result holds no thinking level.
 It runs at the start of every embedded agent run, a sub-agent's included, unless the session's model selection is locked.
@@ -688,7 +624,7 @@ It also cannot set the effort, which the plugin sets through `sessions_spawn`'s 
 
 Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#hermes-agent)
 
-This repository's plugin requires Hermes 0.22.6 or later, set by `requires_hermes` in `plugin.yaml`, and CI installs the release that `.github/actions/setup-hermes/action.yml` pins.
+`requires_hermes` in `plugins/model-router-hermes/plugin.yaml` sets the Hermes release that this repository's plugin needs, and `.github/actions/setup-hermes/action.yml` pins the release that CI installs.
 
 ### Hermes install and update
 
@@ -707,9 +643,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
   A hand edit of `delegation.backend` changes nothing in a running session.
 - A configured backend that no enabled plugin provides fails closed. `delegate_task` returns a tool error that ends in `No subagent was started.` and names `hermes config set delegation.backend default` as the fix.
   A disabled or removed plugin is such a case.
-- `hermes plugins install file://<repo>#plugins/<name> --enable` with standard input closed installed and enabled a plugin from a subfolder with no prompt.
-  The scan gave the verdict `safe`.
-- `hermes plugins capabilities model-router-hermes` printed `declared: (none)`, and `hermes plugins doctor model-router-hermes` passed discovery, manifest, import and registration with `registrations: 1 tool(s), 0 hook(s)`.
+- `hermes plugins install file://<repo>#plugins/<name> --enable` installs and enables a plugin from a subfolder with no prompt, also with standard input closed.
+- `hermes plugins capabilities <name>` prints what an installed plugin declares, and `hermes plugins doctor <name>` checks its discovery, manifest, import and registration.
 
 ### Hermes package files
 
@@ -720,8 +655,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
   `provides_tools` lists the tools the plugin registers and does not decide whether they load.
 - `config_schema` describes the keys under `plugins.entries.<id>.settings`. A mismatch logs a warning and never fails the load.
   The types are `str`, `int`, `float`, `bool`, `list`, `dict` and `secret`. A `secret` entry names the `.env` variable that stores it with `env:`.
+  The Desktop settings form edits a `dict` entry in a JSON editor.
 - This repository's `plugin.yaml` holds JSON text, which is valid YAML. The builder writes it from `metadata/source.json` and `src/`.
-  `hermes plugins validate` parsed it, and reported that its `requires_hermes` spec parses and `config schema — shape valid`.
+  `hermes plugins validate` reads a manifest in that form, and checks that its `requires_hermes` spec parses and that its `config_schema` has a valid shape.
 - The plugin registers its skill folders with `ctx.register_skill(<folder name>, <SKILL.md>)`. The agent loads a plugin skill as `skill_view("<plugin>:<skill>")`.
   Plugin skills are read-only, and the system prompt's skill index does not list them.
 
@@ -731,10 +667,10 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 
 - `ctx.get_config(key, default)` reads `plugins.entries.<plugin id>.settings.<key>`, and returns `default` when the entry or the key is absent. It applies no `config_schema` default.
   `ctx.set_config(key, value)` writes one value in that subtree.
-- `hermes config set plugins.entries.model-router-hermes.settings.small_model '{"provider": "openrouter", "model": "openai/gpt-4.1-mini"}'` stored a mapping with those two fields. `hermes config get` printed them on two lines.
+- `hermes config set` on a key under `plugins.entries.<plugin id>.settings` takes a JSON object and stores it as a mapping. `hermes config get` prints its fields on separate lines.
 - A `secret` entry never reaches `config.yaml`. The Desktop settings form stores it in `.env` under the entry's `env:` name, and the plugin reads it with `get_secret(NAME)` from `agent.secret_scope`.
-- `get_secret("TYPESAFE_API_KEY")` returned the value from the Hermes home's `.env`, for a plugin that declared a `config_schema` secret with `env: TYPESAFE_API_KEY`, in process and in the plugin host. The variable was also in the environment of the host and of the gateway.
-- `ctx.get_config("probe_setting")` returned the value from `plugins.entries.probe-router.settings`, in process and in the plugin host.
+- `get_secret(NAME)` returns the value of a `config_schema` secret's variable from the Hermes home's `.env`, in process and in the plugin host. The variable is also in the environment of the host and of the gateway.
+- `ctx.get_config(key)` returns the value from `plugins.entries.<plugin id>.settings`, in process and in the plugin host.
 - A plugin slash command's handler runs in the gateway process that owns the session. It can declare `session_id`, `session_key`, `platform` or `source` as keyword arguments, and Hermes passes them.
   The handler returns its text.
 - Hermes names `api_server`, `cli`, `codex`, `desktop`, `gateway`, `kanban`, `local`, `msgraph_webhook`, `tool`, `tui` and `webhook` as surfaces that are not a human messaging channel.
@@ -749,28 +685,24 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
   `config` is the `delegation` section of the active profile's `config.yaml`, and `dict(config)` is the default route.
 - `route_task` gets `{goal, context, index}` plus the parameters the backend declared. This plugin declares three, as [Hermes task parameters](#hermes-task-parameters) says, and `context` can be `None`.
   Nothing else crosses: no role, no agent description, no toolsets, no images and no output schema.
-- The `config` argument held `api_key, api_mode, backend, backends, base_url, child_timeout_seconds, compression_threshold_tokens, fallback_providers, gateway_mode, independent_completions, inherit_mcp_toolsets, max_concurrent_children, max_iterations, max_spawn_depth, max_summary_chars, model, oneshot_max_children, orchestrator_enabled, provider, reasoning_effort, request_overrides, subagent_auto_approve, surface_child_process_notifications`. `backend` was the plugin's backend name.
+- The `config` argument holds `api_key, api_mode, backend, backends, base_url, child_timeout_seconds, compression_threshold_tokens, fallback_providers, gateway_mode, independent_completions, inherit_mcp_toolsets, max_concurrent_children, max_iterations, max_spawn_depth, max_summary_chars, model, oneshot_max_children, orchestrator_enabled, provider, reasoning_effort, request_overrides, subagent_auto_approve, surface_child_process_notifications`. `backend` is the name of the backend that routes the call.
 - A route may carry `model`, `provider`, `base_url`, `api_key`, `api_mode`, `request_overrides`, `reasoning_effort`, `service_tier`, `fallback_providers`, `profile` and `label`. Hermes drops every other key silently.
   Hermes's own default backend returns the `delegation` section without `service_tier`.
   This repository's `router.py` returns the same dict with a `label`, a `model`, a `provider` and a `reasoning_effort` changed on top, so `api_mode` and `request_overrides` stay in every route, also when the provider changes.
-- A returned route resolves through the credential resolver of the `delegation` section. A `provider` runs `resolve_runtime_provider`; an empty route inherits the parent's route.
+- A route that `route_task` returns resolves through the credential resolver of the `delegation` section. A `provider` runs `resolve_runtime_provider`; an empty route inherits the parent's route.
   `request_overrides` apply on every branch.
 - A child's effort is the route's effort, else `delegation.reasoning_effort`, else the parent's level.
   A backend's `reasoning_effort` outside the known levels refuses the task, except a value equal to `delegation.reasoning_effort`.
 - A child pinned by provider, endpoint or model gets no fallback providers unless `delegation.fallback_providers` declares them.
 - A raise from `route_task` refuses that task: Hermes logs `delegation provider <name>.route_task() raised` and reports `Task <i>: delegation backend '<name>' failed: <error>`.
   A return of `None` or of a non-mapping refuses it too. A refusal is per task, and the call is a tool error only when every task is refused.
-  A returned `{}` is not a refusal: the child inherits the parent's route.
+  A `{}` return is not a refusal: the child inherits the parent's route.
 - Hermes routes the tasks of a call in one loop, in index order, in the thread that runs the call. It builds the children after the loop ends.
   `delegate_task` is exempt from the generic sequential tool deadline, so Hermes puts no timeout around `route_task`.
 - The main agent's turn is not routed through the provider. Only `delegate_task` tasks are, and internal callers that pass their own credentials bypass the backend.
-- `label` is short text shown with the child's progress and result. Every result entry of a task routed by a non-default backend carries `route`: the backend, the label, and what the child ran on.
-- A delegated task takes the routed model and effort. One in-process task, routed to `openai/gpt-4.1-mini` at effort `low`, ran a child session with `model = openai/gpt-4.1-mini` and `reasoning_config = {enabled: true, effort: low}`.
-  The result entry carried `route: {backend: probe-router, label, model, provider: openrouter, reasoning_effort: low, service_tier: normal}` and the summary `pong`.
-  Under `plugins.isolation: host`, two tasks of one call routed to `openai/gpt-6-luna` at effort `low` ran two child sessions with `model = openai/gpt-6-luna` and effort `low`; the summaries were `ping` and `pong`.
-- This repository's plugin routed a real call. One `delegate_task` call held a lookup task and a design task. The provider was `typesafe`, `small_model` was `openrouter openai/gpt-6-luna` and `large_model` was `openrouter openai/gpt-6.1-terra`.
-  In process, the child sessions ran `openai/gpt-6-luna` at effort `medium` and `openai/gpt-6.1-terra` at effort `high`. Each result entry carried the plugin's label in `route.label`, and `agent.log` held the plugin's line for each task.
-  After `hermes gateway stop` and `plugins.isolation: host`, the same call gave the same levels, models and efforts. `route.label` carried both labels, and `agent.log` held no plugin line.
+- `label` is short text shown with the child's progress and result. Every result entry of a task routed by a non-default backend carries `route`: the backend, the label, and what the child runs on.
+- A delegated task takes the routed model and effort, each task of a call its own, in process and under `plugins.isolation: host`.
+  The child session runs with the route's `model` and with `reasoning_config = {enabled: true, effort: <the route's effort>}`.
 - Hermes maps a requested effort that a wire does not support to the nearest weaker supported level, and to the weakest level when none is weaker.
 
 ### Hermes task parameters
@@ -784,11 +716,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 - Before `route_task`, Hermes checks only three things. A non-`None` value for a name no backend declared refuses the task. A value outside a declared `enum` refuses it. A `None` value counts as absent.
   Hermes checks no `type`. A `level` of `True` passes the enum `[0, 1, 2]`, because Python compares `True` equal to `1`.
 - The payload is `{goal, context, index}` plus each declared parameter whose value is not `None`.
-- This repository's plugin declares `description`, `reasoning_effort` and `level`, and appends one line from `constants.json`. `schema_extension` returned all three, none reserved, and `_build_dynamic_schema_overrides()` put them in `tasks.items.properties` and ended the tool description with the line.
+- This repository's plugin declares `description`, `reasoning_effort` and `level`, and appends one line from `constants.json`. None of the three names is reserved, so Hermes puts all three in `tasks.items.properties` and ends the tool description with the line.
 - A session routes on the backend its `delegate_task` schema was built from. A plugin update or a backend change applies from the next session, or at the next turn after `/delegation <backend> --now`. A task that carries a parameter its session's schema lacks is refused alone.
-- A real delegating model filled the parameters. One `delegate_task` call held a new task and a re-dispatch of a task described as failed at level 1. The provider was `typesafe`, `small_model` was `openrouter qwen/qwen3.7-flash` and `large_model` was `openrouter openai/gpt-6-luna`.
-  The model gave both tasks a `description`, and gave the re-dispatch `level: 2` and `reasoning_effort: "high"`.
-  The re-dispatch ran on `openai/gpt-6-luna` at effort `high`, and its result's `route` held `backend`, `provider`, `model`, `reasoning_effort` and `service_tier` but no `label`. `agent.log` held the plugin's line for the new task only.
+- A delegating model fills the parameters that a backend declares, and the child runs on the route that the backend returns for them.
 - Under `plugins.isolation: host`, the parent builds a `DelegationProvider` whose methods run in the plugin host, so `task_parameters` and `description` cross as plain JSON.
 - A route without a `fallback_providers` of its own takes `delegation.fallback_providers`, and a profile route keeps its profile's chain. The plugin's route copies the `delegation` section, so a routed child gets exactly that list, and none when it is `null`.
 - A route may name a `profile`, which runs the child as another Hermes profile with its own config, model, credentials, skills and `SOUL.md`. Hermes ignores every other route key on it. Hermes v0.23.1 adds a `route_keys` property for settings editors, which routing does not use. The plugin sets neither.
@@ -810,16 +740,15 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 
 Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#hermes-runtime-logs-and-environment)
 
-- A `hermes -z` turn on a home with no gateway starts one, with `python3 -m hermes_cli.main --profile default gateway run --quiet --idle-exit`. On macOS it starts as a one-off launchd job through `osascript`.
+- A `hermes -z` turn on a home with no gateway starts one with `gateway run --quiet --idle-exit`. On macOS it starts as a one-off launchd job through `osascript`.
   The provider runs in that gateway process, on a `ThreadPoolExecutor` thread.
-- The gateway keeps the plugin loaded between CLI turns. Module state carried over from turn 1 to turn 2: a counter read 1, then 2 and 3, in one process.
-  A change of `plugins.isolation` or of the plugin's code applies after `hermes gateway stop`. The turn that followed a change of `plugins.isolation` without a stop did not run in host mode, so the probe did not count it.
+- The gateway keeps the plugin loaded between CLI turns, so module state carries over.
+  A change of `plugins.isolation` or of the plugin's code applies after `hermes gateway stop`.
   `hermes gateway stop` with `HERMES_HOME` set stops the gateway and its plugin host.
-- Under `plugins.isolation: host`, the provider ran in `python3 -m hermes_cli.plugin_host_child`, a child of the gateway, one per profile. `HERMES_PLUGIN_HOST_PROCESS` was set, the context was `RemotePluginContext`, and the call thread was `plugin-host-rpc`.
-  Module state persisted across the tasks of one call: a counter read 1, then 2, in one host process.
+- Under `plugins.isolation: host`, the provider runs in `python3 -m hermes_cli.plugin_host_child`, a child of the gateway, one per profile. The host sets `HERMES_PLUGIN_HOST_PROCESS`, hands the plugin a `RemotePluginContext` and calls it on the thread `plugin-host-rpc`.
+  Module state persists across the tasks of one call.
 - `hermes_constants.find_node_executable("node")` reads the Node that Hermes's package manager selected, and returns `None` when it installed none. It never falls back to the Node on the user's `PATH`.
-  It found Hermes's Node in both modes. A Node round trip (spawn, standard input, standard output) took 63 to 89 ms in process and 376 to 388 ms in the host.
-  `route_task` took 78 to 102 ms in process, 1726 ms for the first task in a fresh host and 401 ms for the next.
+  It finds Hermes's Node in process and in the plugin host.
 - Hermes writes `agent.log` at INFO and above, in the `logs` folder of the Hermes home. The plugin host sets its own log level from `HERMES_PLUGIN_HOST_LOG_LEVEL`, with `WARNING` as the default, so it drops INFO lines unless the variable says otherwise.
 - Hermes runs natively on Windows 10 and Windows 11, without WSL. `find_node_executable` has Windows branches.
   A program started with a replaced environment on Windows needs `SYSTEMROOT`, so the plugin passes it to Node.
@@ -833,23 +762,20 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 - Every `hermes plugins install` and `hermes plugins update` scans the plugin tree before it activates it. The verdicts are `safe`, `caution` (confirm, or pass `--force`) and `dangerous` (blocked, and `--force` does not override).
   Documentation prose cannot make a verdict `dangerous` alone, but a leaked provider key keeps its full severity there, and so does anything under a bundled `skills/` tree.
 - A medium finding alone is `safe`. The rule `python_subprocess` is medium severity.
-- `scan_plugin` over `plugins/model-router-hermes` gave the verdict `safe` with one finding: `python_subprocess`, severity medium, category execution, at `node.py` line 87.
-- A probe plugin that shipped a copy of the OpenClaw esbuild bundle (71 KB) gave one medium finding, `python_subprocess`, at the `subprocess.run(` line, and none for the bundle. Its first install attempt was blocked as `dangerous` by a key-shaped literal.
-  The rule matches a name containing `secret`, `token`, `api_key` or `password` assigned a quoted value of 20 or more characters. No file of the plugin may hold one outside its `tests/` tree, where the rule caps a finding at medium.
-- `hermes plugins validate plugins/model-router-hermes` passed with 15 checks marked passed, including `security scan — safe`, and one warning.
-  The warning listed the plugin's imports of private Hermes modules.
-  It says such imports can break on any release. CI runs `validate` on the pinned release and a Renovate rule raises the pin, so a break shows in CI ([Hermes CI](#hermes-ci)). It ends with `Isolation — runs in the plugin host (plugins.isolation: host)` and `Validation passed.`
-- The admission lint lists a plugin's imports of private Hermes modules with file and line. It is a warning and never a refusal. The public list holds `agent.delegation_provider`, `agent.delegation_backends`, `agent.secret_scope` and `hermes_constants`, and none of the modules the warning named.
-- A probe plugin's `hermes plugins validate` passed with one warning that listed four private core imports, and a note that the plugin runs in the plugin host under `plugins.isolation: host`. `hermes plugins doctor <name>` passed discovery, manifest, import and registration.
+- A key-shaped literal in a plugin blocks its install as `dangerous`. The rule matches a name containing `secret`, `token`, `api_key` or `password` assigned a quoted value of 20 or more characters.
+  No file of a plugin may hold one outside its `tests/` tree, where the rule caps a finding at medium. A bundled esbuild output gets no finding when no rule matches its text.
+- `hermes plugins validate <path>` checks the plugin and warns about its imports of private Hermes modules.
+  The warning says such imports can break on any release. CI runs `validate` on the pinned release and a Renovate rule raises the pin, so a break shows in CI ([Hermes CI](#hermes-ci)). The output ends with `Validation passed.`, and with an `Isolation` note when `plugins.isolation: host` is on.
+- The admission lint lists a plugin's imports of private Hermes modules with file and line. It is a warning and never a refusal. The public list holds `agent.delegation_provider`, `agent.delegation_backends`, `agent.secret_scope` and `hermes_constants`.
 
 ### Hermes CI
 
 Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#hermes-ci)
 
-- The `hermes` job runs the plugin's tests on Python 3.11 and 3.14 with `uv`, runs `hermes plugins validate plugins/model-router-hermes`, installs the plugin from the checkout with `hermes plugins install "file://$PWD#plugins/model-router-hermes" --enable < /dev/null`, checks `hermes plugins list --plain --no-bundled`, sets `delegation.backend` to `model-router` and reads it back, and runs the tests again under Hermes's own interpreter.
-  The install clones the checkout's own commit through a `file://` route, as a user's install clones the repository's subfolder.
+- The `hermes` job runs the plugin's tests on Python 3.11 and 3.14 with `uv`, runs `hermes plugins validate` on the plugin, installs the plugin from the checkout through a `file://` route with standard input closed, checks the plugin list, sets `delegation.backend` to `model-router` and reads it back, and runs the tests again under Hermes's own interpreter.
+  The install clones the checkout's own commit, as a user's install clones the repository's subfolder.
   Hermes keeps its home under the runner's temp folder, and no key is set.
-- The `setup-hermes` action clones the release tag, checks that `HEAD` equals the pinned commit, and runs `uv sync --frozen --no-dev --no-build --python 3.14`, so only the wheels that Hermes's own `uv.lock` locks install. It then checks that `hermes --version` names the tag.
+- The `setup-hermes` action clones the release tag, checks that `HEAD` equals the pinned commit, and runs `uv sync` frozen, without development dependencies and without builds, so only the wheels that Hermes's own `uv.lock` locks install. It then checks that `hermes --version` names the tag.
   It pins a release tag and the commit of that tag. A Renovate rule raises the tag and the commit together with no age delay (see [CONTRIBUTING.md, Dependencies](../CONTRIBUTING.md#dependencies)).
 - The tests of the plugin call each handler and the router directly with a fake Hermes API. One test file, `plugins/model-router-hermes/tests/test_real_hermes.py`, runs only under Hermes's interpreter. It calls each Hermes function the shim uses, and compares the default route with Hermes's bundled default backend.
   It also registers the provider with Hermes's delegation registry, reads the `delegate_task` schema, and routes tasks through `resolve_task_routes`, so a pin raise that changes the parameter seam fails CI. Those tests use Hermes's private name `_registry`. They read the schema through `tools.registry.registry.get_definitions` with a temporary `HERMES_HOME`, as Hermes documents.
@@ -866,13 +792,6 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 
 ### Hermes gaps
 
-Most probes ran a probe plugin and not this repository's plugin.
-The probe plugin ran Node on a small script and shipped the OpenClaw bundle for the scanner.
-This repository's plugin passed `validate`, the scan and the `file://` install, as the facts above record. It routed one real call of two tasks, in process and in the plugin host, and one call with task parameters, in process. No run used a fallback between providers, and no run with task parameters used the plugin host.
-No run used the repository form `Akurganow/model-router/plugins/model-router-hermes` from the README, a `--ref` pin or `hermes plugins update`.
-No run used native Windows, so the `SYSTEMROOT` rule rests on the Python documentation.
-No run used a proxy, so the proxy behaviour rests on the Node documentation.
-No run sent two concurrent sessions through one gateway. That they share one budget record follows from the gateway facts above.
-No run checked that Hermes clamps a routed effort for a delegated child. The clamp is read from `reasoning_effort.py`.
-No live session ran `/model-router-provider`, the settings form in Hermes Desktop or the `model_router_config` tool. Their tests call the handlers directly.
-The settings form edits a `dict` slot in a JSON editor, as the documentation says, and no run used it.
+Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#hermes-gaps)
+
+Every open point about Hermes is a run that has not happened yet, and the wiki's gaps section lists them.
