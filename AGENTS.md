@@ -4,17 +4,18 @@ These rules bind every coding agent that works in this repository.
 `CLAUDE.md` is a symbolic link to this file, so both names give one text.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) holds the rules for every contributor.
-This file adds what an agent gets wrong without being told. Where
-CONTRIBUTING.md already states a rule, this file links to it.
+This file adds what an agent gets wrong without being told.
 
 ## Read first
 
-- [CONTRIBUTING.md](CONTRIBUTING.md): the layout, the build, the checks and
-  the commits.
-- [docs/design.md](docs/design.md): why the build and CI are shaped as they
-  are.
-- [docs/clients.md](docs/clients.md): the cited facts about each harness.
-- The README of each plugin you change.
+- Before a change:
+  - [Repository layout](CONTRIBUTING.md#repository-layout) and [Build and check](CONTRIBUTING.md#build-and-check);
+  - the README of each plugin it touches.
+- Look up when the case comes:
+  - [docs/clients.md](docs/clients.md) for a harness fact, by its headings,
+    never whole.
+  - [docs/design.md](docs/design.md) when the build or CI changes.
+  - Other CONTRIBUTING.md sections via the links below.
 
 ## What the plugins do and never do
 
@@ -44,7 +45,8 @@ CONTRIBUTING.md already states a rule, this file links to it.
 - Shared logic lives once.
   [Repository layout](CONTRIBUTING.md#repository-layout) says where.
 - A claim about a harness needs a source: a permalink at a pinned commit, or
-  a run recorded in [docs/clients.md](docs/clients.md).
+  a fact in docs/clients.md with its client version and date. New runs go
+  on the [wiki](https://github.com/Akurganow/model-router/wiki).
 
 ## A rule about the source goes to Biome first
 
@@ -113,12 +115,10 @@ CONTRIBUTING.md already states a rule, this file links to it.
 
 ## Live runs
 
-- [Paid runs](CONTRIBUTING.md#paid-runs) says when a run that calls a paid
-  model is worth it. Ask the maintainer before one.
-- Run a harness against a copy of its configuration folder. Never change a
-  user's settings, auto-update choice or installed plugin versions, and never
-  restore a settings file whole.
+- Start no live run unasked.
 - Never start an interactive harness session from an agent session.
+- Never change a user's settings, auto-update choice or plugin versions.
+- `.agents/skills/live-run/SKILL.md` holds the procedure.
 
 ## Writing
 
