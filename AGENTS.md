@@ -67,7 +67,7 @@ This file adds what an agent gets wrong without being told.
   that matches nothing would otherwise switch the rule off unseen.
 - Write a test for such a rule only when Biome cannot hold it cheaply:
   - the rule needs a value the code computes, as the reason scan in
-    `src/core/reasons.test.ts` does;
+    `src/core/__tests__/unit/reasons.test.ts` does;
   - the rule counts across files;
   - Biome does not read the file: a generated bundle, a manifest, a workflow.
 - Behaviour stays with tests: what the code returns, prints or sends.
