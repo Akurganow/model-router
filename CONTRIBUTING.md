@@ -21,7 +21,7 @@ every commit as a [conventional commit](#commits).
   - `utils/` imports only `utils/`. `core/` imports only `core/` and
     `utils/`. An adapter imports only itself, `core/` and `utils/`.
   - Biome enforces these directions. The `noRestrictedImports` overrides in
-    `biome.json` ban the imports of each layer. Three plugins in
+    `biome.json` ban the imports of each layer. Plugins in
     `scripts/lint/` ban a computed `import()` in `src/`, a re-export in
     `src/utils/` and a shared skip reason spelled outside
     `src/core/reasons.ts`.

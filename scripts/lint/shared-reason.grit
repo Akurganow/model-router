@@ -1,23 +1,17 @@
 language js
 
-// This plugin spells the texts of src/core/reasons.ts a second time, so a changed text there must change here too.
-// A Grit regex must match the whole node text, hence the [\s\S]* around the texts.
+// A new or changed text of src/core/reasons.ts goes into this list too.
+// A builder goes in as the fixed text around its argument, with the space that marks where the argument sits.
+// A one-word text counts only as a whole literal, because the word also fills other strings.
+// Grit matches the whole node text and does not group an alternation, hence the [\s\S]* and the outer group.
 or {
-	JsStringLiteralExpression() as $node where {
-		or {
-			$node <: r"[\s\S]*(?:caller effort|config effort|subagent model set|settings unreadable|key unset|bad reply|network error|rejected request|HTTP | is outside the core scope| agent discovery failed| agent unknown| sets its own model|small model unset|middle model unset|large model unset)[\s\S]*",
-			$node <: r"^(?:\"(?:timeout|failed|cancelled)\"|'(?:timeout|failed|cancelled)')$"
-		}
-	},
-	JsTemplateChunkElement() as $node where {
-		$node <: r"[\s\S]*(?:caller effort|config effort|subagent model set|settings unreadable|key unset|bad reply|network error|rejected request|HTTP | is outside the core scope| agent discovery failed| agent unknown| sets its own model|small model unset|middle model unset|large model unset)[\s\S]*"
-	},
-	JsTemplateExpression() as $node where {
-		$node <: r"^`(?:timeout|failed|cancelled)`$"
-	}
-} where {
-	$filename <: r".*/src/.*",
+	JsStringLiteralExpression(),
+	JsTemplateChunkElement(),
+	TsStringLiteralType()
+} as $node where {
+	$node <: r"(?:[\s\S]*(?:caller effort|config effort|subagent model set|settings unreadable|key unset|bad reply|network error|rejected request|HTTP | is outside the core scope| agent discovery failed| agent unknown| sets its own model)[\s\S]*|[\"']?(?:timeout|failed|cancelled)[\"']?)",
+	$filename <: r".*/src/(?:core|utils|adapters)/.*",
 	$filename <: not r".*/src/core/reasons\.ts",
 	$filename <: not r".*/__tests__/.*",
-	register_diagnostic(span=$node, message="A shared skip reason lives in src/core/reasons.ts: import it from there.", severity="error")
+	register_diagnostic(span=$node, message="This text is a shared skip reason: use its constant or builder from src/core/reasons.ts.", severity="error")
 }

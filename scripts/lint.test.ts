@@ -43,7 +43,7 @@ const ENTRY_ADAPTER = "The bundle entry imports no other adapter";
 const ESBUILD = "The version writer and the check load no esbuild";
 const DYNAMIC = "import() takes a string literal";
 const REEXPORT = "A utils/ file re-exports nothing";
-const SHARED_REASON = "A shared skip reason lives in src/core/reasons.ts";
+const SHARED_REASON = "This text is a shared skip reason";
 
 const faults: Fault[] = [
 	{
@@ -283,6 +283,13 @@ const faults: Fault[] = [
 		form: "a fixed text of a reason builder in a template literal",
 		file: "src/utils/reasons-spelled.ts",
 		code: `export const c = (id: string) => \`\${id} is outside the core scope\`;`,
+		category: PLUGIN,
+		message: SHARED_REASON,
+	},
+	{
+		form: "a one-word shared reason as a string literal type",
+		file: "src/adapters/hermes/reasons-spelled.ts",
+		code: 'export type D = "failed";',
 		category: PLUGIN,
 		message: SHARED_REASON,
 	},
