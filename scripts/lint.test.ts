@@ -58,12 +58,22 @@ const ESBUILD = "The version writer and the check load no esbuild";
 const DYNAMIC = "import() takes a string literal";
 const REEXPORT = "A utils/ file re-exports nothing";
 const SHARED_REASON = "This text is a shared skip reason";
+const CORE_NODE = "A core/ file imports no Node module";
+const CORE_TIMEOUT =
+	"The core sets no timer of its own, and AbortSignal.timeout is one";
+const SRC_OUTSIDE = "A src/ file imports nothing from scripts/ or plugins/";
 const PROCESS_ENV_MESSAGE = "Don't use process.env";
 // The JSON report keeps the rule's own sentence and drops the configured message, so the
-// test tells the three globals apart by the name this sentence carries.
+// test tells the globals apart by the name this sentence carries.
 const FETCH_GLOBAL = "Do not use the global variable fetch";
 const TIMER_GLOBAL = "Do not use the global variable setTimeout";
 const CLEAR_GLOBAL = "Do not use the global variable clearTimeout";
+const GLOBAL_THIS = "Do not use the global variable globalThis";
+const INTERVAL_GLOBAL = "Do not use the global variable setInterval";
+const CLEAR_INTERVAL_GLOBAL = "Do not use the global variable clearInterval";
+const WEB_SOCKET_GLOBAL = "Do not use the global variable WebSocket";
+const XHR_GLOBAL = "Do not use the global variable XMLHttpRequest";
+const EVENT_SOURCE_GLOBAL = "Do not use the global variable EventSource";
 
 const faults: Fault[] = [
 	{
@@ -433,6 +443,104 @@ const faults: Fault[] = [
 		message: CLEAR_GLOBAL,
 	},
 	{
+		form: "a format reads a global through globalThis",
+		file: "src/core/scoring/formats/globals.ts",
+		code: "export const g = () => globalThis;",
+		category: GLOBALS,
+		message: GLOBAL_THIS,
+	},
+	{
+		form: "a format calls the global setInterval",
+		file: "src/core/scoring/formats/globals.ts",
+		code: "export const i = () => setInterval(() => {}, 1);",
+		category: GLOBALS,
+		message: INTERVAL_GLOBAL,
+	},
+	{
+		form: "a format calls the global clearInterval",
+		file: "src/core/scoring/formats/globals.ts",
+		code: "export const ci = () => clearInterval(undefined);",
+		category: GLOBALS,
+		message: CLEAR_INTERVAL_GLOBAL,
+	},
+	{
+		form: "a format opens a WebSocket",
+		file: "src/core/scoring/formats/globals.ts",
+		code: 'export const w = () => new WebSocket("wss://example.test");',
+		category: GLOBALS,
+		message: WEB_SOCKET_GLOBAL,
+	},
+	{
+		form: "a format opens an XMLHttpRequest",
+		file: "src/core/scoring/formats/globals.ts",
+		code: "export const x = () => new XMLHttpRequest();",
+		category: GLOBALS,
+		message: XHR_GLOBAL,
+	},
+	{
+		form: "a format opens an EventSource",
+		file: "src/core/scoring/formats/globals.ts",
+		code: 'export const e = () => new EventSource("https://example.test");',
+		category: GLOBALS,
+		message: EVENT_SOURCE_GLOBAL,
+	},
+	{
+		form: "core imports a node: module",
+		file: "src/core/brief/node.ts",
+		code: 'import { n1 } from "node:https";',
+		category: PLUGIN,
+		message: CORE_NODE,
+	},
+	{
+		form: "core imports a node: module with import()",
+		file: "src/core/brief/node.ts",
+		code: 'export const n2 = () => import("node:https");',
+		category: PLUGIN,
+		message: CORE_NODE,
+	},
+	{
+		form: "core names a type of a node: module with import().X",
+		file: "src/core/brief/node.ts",
+		code: 'export type N3 = import("node:https").Agent;',
+		category: PLUGIN,
+		message: CORE_NODE,
+	},
+	{
+		form: "core calls AbortSignal.timeout",
+		file: "src/core/brief/node.ts",
+		code: "export const n4 = () => AbortSignal.timeout(1);",
+		category: PLUGIN,
+		message: CORE_TIMEOUT,
+	},
+	{
+		form: "a core file imports from scripts/",
+		file: "src/core/brief/outside.ts",
+		code: 'import { b } from "../../../scripts/build.ts";',
+		category: PLUGIN,
+		message: SRC_OUTSIDE,
+	},
+	{
+		form: "an adapter test imports from plugins/",
+		file: "src/adapters/omp/__tests__/unit/outside.test.ts",
+		code: 'import { r } from "../../../../../plugins/model-router/hooks/register.js";',
+		category: PLUGIN,
+		message: SRC_OUTSIDE,
+	},
+	{
+		form: "a utils file imports from scripts/ with import()",
+		file: "src/utils/outside.ts",
+		code: 'export const o = () => import("../../scripts/build.ts");',
+		category: PLUGIN,
+		message: SRC_OUTSIDE,
+	},
+	{
+		form: "an adapter names a type of plugins/ with typeof import()",
+		file: "src/adapters/hermes/outside.ts",
+		code: 'export type P = typeof import("../../../plugins/model-router/hooks/register.js");',
+		category: PLUGIN,
+		message: SRC_OUTSIDE,
+	},
+	{
 		form: "a multi-word shared reason in a string literal",
 		file: "src/core/options/reasons-spelled.ts",
 		code: 'export const a = "skipped: caller effort";',
@@ -494,7 +602,8 @@ const valid: Record<string, string> = {
 	"src/adapters/omp/valid.ts": [
 		'import { c } from "../../core/c.ts";',
 		'import { u } from "../../utils/u.ts";',
-		"export const v = [c, u];",
+		'import { p } from "some-package/plugins/loader";',
+		"export const v = [c, u, p];",
 	].join("\n"),
 	"src/adapters/openclaw/valid.ts": [
 		'import { c } from "../../core/c.ts";',
@@ -515,10 +624,36 @@ const valid: Record<string, string> = {
 	].join("\n"),
 	"src/adapters/omp/reads-env.ts": ["export const v = process.env;"].join("\n"),
 	"src/core/__tests__/unit/uses-globals.test.ts": [
-		"export const v = [fetch, setTimeout, clearTimeout];",
+		'import { readFileSync } from "node:fs";',
+		"export const v = [",
+		"\tfetch,",
+		"\tsetTimeout,",
+		"\tclearTimeout,",
+		"\tglobalThis,",
+		"\tsetInterval,",
+		"\tclearInterval,",
+		"\tWebSocket,",
+		"\tXMLHttpRequest,",
+		"\tEventSource,",
+		"\treadFileSync,",
+		"\tAbortSignal.timeout(1),",
+		"];",
 	].join("\n"),
 	"src/adapters/omp/uses-globals.ts": [
-		"export const v = [fetch, setTimeout, clearTimeout];",
+		'import { readFileSync } from "node:fs";',
+		"export const v = [",
+		"\tfetch,",
+		"\tsetTimeout,",
+		"\tclearTimeout,",
+		"\tglobalThis,",
+		"\tsetInterval,",
+		"\tclearInterval,",
+		"\tWebSocket,",
+		"\tXMLHttpRequest,",
+		"\tEventSource,",
+		"\treadFileSync,",
+		"\tAbortSignal.timeout(1),",
+		"];",
 	].join("\n"),
 	"src/adapters/__tests__/integration/drives-several.test.ts": [
 		'import { a } from "../../omp/a.ts";',
@@ -539,8 +674,7 @@ const clean: Record<string, string[]> = {
 	"src/core/parts/consumer.ts": [
 		'import { p } from "./part.ts";',
 		'import { u } from "../../utils/u.ts";',
-		'import { readFileSync } from "node:fs";',
-		"export const v = [p, u, readFileSync];",
+		"export const v = [p, u];",
 	],
 	"src/core/providers/layers.ts": [
 		'import { p } from "../parts/part.ts";',

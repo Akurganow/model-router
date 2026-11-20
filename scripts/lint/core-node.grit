@@ -1,0 +1,27 @@
+language js
+
+// A plugin and not an override: noRestrictedImports cannot read an import()
+// call or a type-position import, and one plugin file holds both reports.
+// JsModuleSource is the specifier of a static import, a bare import and an
+// export … from. An import() call holds its argument as an expression.
+// TsImportType is an import in a type position: typeof import("…") and
+// import("…").X.
+// A TsImportType node holds the whole type, so the pattern allows
+// import( or typeof import( before the quote.
+or {
+	or {
+		JsModuleSource() as $specifier,
+		`import($specifier)`,
+		TsImportType() as $specifier
+	} where {
+		$specifier <: r"(?:(?:typeof\s+)?import\s*\(\s*)?[\"']node:[\s\S]*",
+		$filename <: r".*/src/core/.*",
+		$filename <: not r".*/__tests__/.*",
+		register_diagnostic(span=$specifier, message="A core/ file imports no Node module: the caller passes what the core needs.", severity="error")
+	},
+	`AbortSignal.timeout($args)` as $call where {
+		$filename <: r".*/src/core/.*",
+		$filename <: not r".*/__tests__/.*",
+		register_diagnostic(span=$call, message="The core sets no timer of its own, and AbortSignal.timeout is one: call clock.after on the Clock port the caller passes.", severity="error")
+	}
+}
