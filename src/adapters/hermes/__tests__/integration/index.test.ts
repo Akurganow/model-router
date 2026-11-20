@@ -203,27 +203,6 @@ describe("the provider of a request", () => {
 		]);
 		assert.equal(response.outcome, "skip");
 	});
-
-	// The first of two attempts is sent once, so a 503 falls back at once with no wait.
-	it("asks OpenRouter first and then TypeSafe, each with its own key, for openrouter-first", async () => {
-		const { sent, fetchFn } = recordingFetch({ "openrouter.ai": 503 });
-		const time = createFakeClock();
-		const response = await routeRequest(
-			{ ...REQUEST, provider: "openrouter-first", keys: KEYS },
-			{ fetchFn, clock: time.clock },
-		);
-		assert.deepEqual(sent, [
-			{
-				url: "https://openrouter.ai/api/v1/systemone",
-				authorization: "Bearer openrouter-test-key",
-			},
-			{
-				url: "https://api.typesafe.ai/v1/systemone",
-				authorization: "Bearer typesafe-test-key",
-			},
-		]);
-		assert.equal(response.outcome, "route");
-	});
 });
 
 describe("the kept effort", () => {

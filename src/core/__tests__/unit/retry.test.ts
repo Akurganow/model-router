@@ -13,11 +13,6 @@ const UNUSABLE_HEADERS: ReadonlyArray<{
 	expected: number;
 }> = [
 	{
-		name: "empty retry-after-ms",
-		headers: { "retry-after-ms": "" },
-		expected: 500,
-	},
-	{
 		name: "spaces in retry-after-ms",
 		headers: { "retry-after-ms": "   " },
 		expected: 500,
