@@ -84,7 +84,7 @@ test("a denied call says so and returns the denial", KEYED, async ($, on) => {
 	const { h, outcome } = await callOnce($, on, {}, { spawnDeny: "no" });
 	expect(outcome.deny).toBe("no");
 	expect(h.logs).toEqual([
-		"L0 haiku · high · p=0.90/0.60 · jev jev-1.14.0 · 1/1 tok",
+		"L0 haiku · high · p=0.90/0.60 · typesafe jev-1.14.0 · 1/1 tok",
 		"denied",
 	]);
 });

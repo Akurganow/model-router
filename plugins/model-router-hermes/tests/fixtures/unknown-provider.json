@@ -29,13 +29,13 @@
 		"outcome": "route",
 		"slot": "small",
 		"effort": "high",
-		"line": "model-router L0 openai/small · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+		"line": "model-router L0 openai/small · high · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok"
 	},
 	"route": {
 		"api_mode": "chat_completions",
 		"model": "small-model",
 		"provider": "openrouter",
 		"reasoning_effort": "high",
-		"label": "model-router L0 openai/small · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+		"label": "model-router L0 openai/small · high · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok"
 	}
 }

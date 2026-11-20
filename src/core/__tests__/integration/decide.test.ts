@@ -14,6 +14,7 @@ const part = (level: 0 | 1 | 2, p: number) => ({
 });
 const decision = (parts: Decision["parts"], model = "m"): Decision => ({
 	parts,
+	provider: "typesafe",
 	model,
 	usage: { input_tokens: 1, output_tokens: 2 },
 });
@@ -29,7 +30,7 @@ test("a tier and a work part give both levels and a joined probability", () => {
 			tier: 0,
 			work: 1,
 			probabilities: "0.90/0.70",
-			suffix: " · jev m · 1/2 tok",
+			suffix: " · typesafe m · 1/2 tok",
 		},
 	);
 });
@@ -80,7 +81,7 @@ test("scoreWork asks for the tier and work questions and reads both levels", asy
 		tier: 2,
 		work: 0,
 		probabilities: "0.90/0.90",
-		suffix: " · jev jev-1.14.0 · 812/9 tok",
+		suffix: " · typesafe jev-1.14.0 · 812/9 tok",
 	});
 	assert.equal(bodies.length, 1);
 	assert.deepEqual((bodies[0] as { questions: unknown }).questions, {

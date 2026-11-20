@@ -117,7 +117,7 @@ test("tier alone sends no work question", async () => {
 	assert.equal(sent.model, MODEL);
 });
 
-test("a valid reply gives each part its level, probabilities, model and usage", async () => {
+test("a valid reply gives each part its level, probabilities, provider, model and usage", async () => {
 	const { fetchFn } = answering(VALID);
 	const decision = asDecision(await run(fetchFn));
 	const { tier: tierPart, work: workPart } = decision.parts;
@@ -128,6 +128,7 @@ test("a valid reply gives each part its level, probabilities, model and usage", 
 		1: 0.8,
 		2: 0.1,
 	});
+	assert.equal(decision.provider, "typesafe");
 	assert.equal(decision.model, "jev-1.14.0");
 	assert.deepEqual(decision.usage, { input_tokens: 120, output_tokens: 8 });
 });
@@ -241,32 +242,59 @@ test("the suffix keeps safe characters and /, caps the model at 40 and prints us
 	assert.equal(decision.model, `typesafe/jev1.14b${"x".repeat(23)}`);
 	assert.equal(
 		decisionSuffix(decision),
-		` · jev ${decision.model} · 120/8 tok`,
+		` · typesafe ${decision.model} · 120/8 tok`,
 	);
 });
 
 test("the suffix leaves out null, missing or unsafe usage", () => {
 	const model = "jev-1";
 	assert.equal(
-		decisionSuffix({ model, usage: { input_tokens: null, output_tokens: 3 } }),
-		" · jev jev-1",
+		decisionSuffix({
+			provider: "typesafe",
+			model,
+			usage: { input_tokens: null, output_tokens: 3 },
+		}),
+		" · typesafe jev-1",
 	);
-	assert.equal(decisionSuffix({ model, usage: undefined }), " · jev jev-1");
 	assert.equal(
-		decisionSuffix({ model, usage: { input_tokens: -1, output_tokens: 3 } }),
-		" · jev jev-1",
+		decisionSuffix({ provider: "typesafe", model, usage: undefined }),
+		" · typesafe jev-1",
 	);
-	assert.equal(decisionSuffix({ model: "", usage: undefined }), "");
-});
-
-test("the suffix names the answering provider after a fallback", () => {
 	assert.equal(
 		decisionSuffix({
+			provider: "typesafe",
+			model,
+			usage: { input_tokens: -1, output_tokens: 3 },
+		}),
+		" · typesafe jev-1",
+	);
+});
+
+test("the suffix names the provider alone when the reply carries no model name", () => {
+	assert.equal(
+		decisionSuffix({ provider: "typesafe", model: "", usage: undefined }),
+		" · typesafe",
+	);
+});
+
+test("the suffix ends with the failed provider and its reason after a fallback", () => {
+	assert.equal(
+		decisionSuffix({
+			provider: "openrouter",
 			model: "jev-1",
 			usage: { input_tokens: 120, output_tokens: 8 },
-			via: { provider: "openrouter", first: "typesafe", reason: "HTTP 503" },
+			firstFailed: { provider: "typesafe", reason: "HTTP 503" },
 		}),
-		" · jev jev-1 · 120/8 tok · via openrouter (typesafe HTTP 503)",
+		" · openrouter jev-1 · 120/8 tok · typesafe HTTP 503",
+	);
+	assert.equal(
+		decisionSuffix({
+			provider: "openrouter",
+			model: "",
+			usage: undefined,
+			firstFailed: { provider: "typesafe", reason: "HTTP 503" },
+		}),
+		" · openrouter · typesafe HTTP 503",
 	);
 });
 
@@ -279,9 +307,9 @@ test("a 503 falls back once to the next provider with its own host and key", asy
 		`https://api.typesafe.ai/v1/systemone Bearer ${KEY}`,
 		`https://openrouter.ai/api/v1/systemone Bearer ${OR_KEY}`,
 	]);
-	assert.deepEqual(decision.via, {
-		provider: "openrouter",
-		first: "typesafe",
+	assert.equal(decision.provider, "openrouter");
+	assert.deepEqual(decision.firstFailed, {
+		provider: "typesafe",
 		reason: "HTTP 503",
 	});
 });
@@ -321,9 +349,9 @@ test("openrouter-first asks OpenRouter first and falls back after a network erro
 	const decision = asDecision(await run(fetchFn, { attempts }));
 	assert.equal(sent.length, 2);
 	assert.match(sent[0] ?? "", /^https:\/\/openrouter\.ai\//);
-	assert.deepEqual(decision.via, {
-		provider: "typesafe",
-		first: "openrouter",
+	assert.equal(decision.provider, "typesafe");
+	assert.deepEqual(decision.firstFailed, {
+		provider: "openrouter",
 		reason: "network error",
 	});
 });
@@ -348,7 +376,7 @@ test("a per-attempt timeout falls back and reports timeout", async (t) => {
 	await time.pass(1);
 	const decision = asDecision(await time.settled(routed));
 	assert.equal(bodies.length, 2);
-	assert.equal(decision.via?.reason, "timeout");
+	assert.equal(decision.firstFailed?.reason, "timeout");
 });
 
 test("a 400, a 422 or a bad reply ends the call with its one-attempt reason", async () => {
@@ -440,6 +468,7 @@ const DECISION = {
 		tier: { level: 2, probabilities: { 0: 0.1, 1: 0.2, 2: 0.7 } },
 		work: { level: 1, probabilities: { 0: 0.1, 1: 0.8, 2: 0.1 } },
 	},
+	provider: "typesafe",
 	model: "jev-1.14.0",
 	usage: { input_tokens: 120, output_tokens: 8 },
 };
@@ -504,7 +533,8 @@ test("a status that falls back gives the next provider's decision, any other end
 	const time = fakeTime(t);
 	const fellBack = (reason: string) => ({
 		...DECISION,
-		via: { provider: "openrouter", first: "typesafe", reason },
+		provider: "openrouter",
+		firstFailed: { provider: "typesafe", reason },
 	});
 	const cases: [number, unknown, number][] = [
 		[401, fellBack("HTTP 401"), 2],
@@ -539,7 +569,10 @@ test("the first of two attempts times out at 2000 ms and falls back", async (t) 
 	await time.pass(1);
 	assert.equal(bodies.length, 2);
 	assert.equal(inits[0]?.signal?.aborted, true);
-	assert.equal(asDecision(await time.settled(routed)).via?.reason, "timeout");
+	assert.equal(
+		asDecision(await time.settled(routed)).firstFailed?.reason,
+		"timeout",
+	);
 });
 
 test("each request of the last attempt times out at 10000 ms", async (t) => {
@@ -594,7 +627,10 @@ test("a fetch that ignores its signal ends at the attempt timeout and falls back
 	const routed = run(fetchFn, { attempts: BOTH });
 	await time.pass(2000);
 	assert.equal(bodies.length, 2);
-	assert.equal(asDecision(await time.settled(routed)).via?.reason, "timeout");
+	assert.equal(
+		asDecision(await time.settled(routed)).firstFailed?.reason,
+		"timeout",
+	);
 });
 
 test("a signal aborted before the call is cancelled and sends no request", async (t) => {
@@ -621,7 +657,10 @@ test("a reply whose text never arrives ends at the attempt timeout", async (t) =
 	assert.equal(bodies.length, 1);
 	await time.pass(1);
 	assert.equal(bodies.length, 2);
-	assert.equal(asDecision(await time.settled(routed)).via?.reason, "timeout");
+	assert.equal(
+		asDecision(await time.settled(routed)).firstFailed?.reason,
+		"timeout",
+	);
 });
 
 test("a network error is retried after 375–500 ms and then 750–1000 ms", async (t) => {
@@ -829,7 +868,8 @@ const EXITS: readonly Exit[] = [
 		passMs: 2000,
 		expected: {
 			...DECISION,
-			via: { provider: "openrouter", first: "typesafe", reason: "timeout" },
+			provider: "openrouter",
+			firstFailed: { provider: "typesafe", reason: "timeout" },
 		},
 	},
 	{

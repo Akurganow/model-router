@@ -27,7 +27,7 @@ afterEach(() => mock.timers.reset());
 const install = () => createExtension(world.imports)(world.pi);
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const PREFIX = "model-router ";
-const SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
+const SUFFIX = " · typesafe jev-1.14.0 · 812/9 tok";
 
 test("the factory registers the four handlers", () => {
 	install();
@@ -147,7 +147,7 @@ test("a project narrowing auto sends the request to its provider with that provi
 	);
 	assert.equal(
 		world.notes[0],
-		`${PREFIX}task 1: L0 @smol · high · p=0.90/0.90${SUFFIX}`,
+		`${PREFIX}task 1: L0 @smol · high · p=0.90/0.90 · openrouter jev-1.14.0 · 812/9 tok`,
 	);
 });
 
@@ -271,7 +271,7 @@ test("a role omp does not resolve reads as unset in the batch", async () => {
 	world.resolvable.delete("@smol");
 	await world.toolCall("c", { tasks: [{ task: "level0 a" }] });
 	assert.deepEqual(world.notes, [
-		"model-router task 1: L0 small model unset · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"model-router task 1: L0 small model unset · high · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok",
 	]);
 });
 
@@ -393,7 +393,6 @@ test("at most four items are scored at once", async () => {
 	assert.equal(world.notes.length, 1);
 });
 
-const VIA = " · via openrouter (typesafe HTTP 503)";
 const entriesOf = (note: string | undefined) =>
 	(note ?? "").slice(PREFIX.length).split(" | ");
 const count = (url: string) => world.sent.filter((s) => s.url === url).length;
@@ -409,11 +408,13 @@ test("in an outage, items that start later in the batch pass over the failed pro
 	await world.toolCall("c", { tasks });
 	assert.equal(count(ENDPOINT), 4);
 	assert.equal(count(OR_ENDPOINT), 6);
-	const line = `L1 middle model unset · medium · p=0.90/0.90${SUFFIX}`;
 	assert.deepEqual(entriesOf(world.notes[0]), [
-		...[1, 2, 3, 4].map((n) => `task ${n}: ${line}${VIA}`),
-		`task 5: ${line}`,
-		`task 6: ${line}`,
+		"task 1: L1 middle model unset · medium · p=0.90/0.90 · openrouter jev-1.14.0 · 812/9 tok · typesafe HTTP 503",
+		"task 2: L1 middle model unset · medium · p=0.90/0.90 · openrouter jev-1.14.0 · 812/9 tok · typesafe HTTP 503",
+		"task 3: L1 middle model unset · medium · p=0.90/0.90 · openrouter jev-1.14.0 · 812/9 tok · typesafe HTTP 503",
+		"task 4: L1 middle model unset · medium · p=0.90/0.90 · openrouter jev-1.14.0 · 812/9 tok · typesafe HTTP 503",
+		"task 5: L1 middle model unset · medium · p=0.90/0.90 · openrouter jev-1.14.0 · 812/9 tok",
+		"task 6: L1 middle model unset · medium · p=0.90/0.90 · openrouter jev-1.14.0 · 812/9 tok",
 	]);
 	await world.toolCall("d", { tasks: [{ task: "a" }] });
 	assert.equal(count(ENDPOINT), 5);
@@ -444,10 +445,12 @@ test("an item that starts while another waits on its fallback already passes ove
 	await world.toolCall("c", { tasks });
 	assert.equal(count(ENDPOINT), 4);
 	assert.equal(count(OR_ENDPOINT), 2);
-	const line = `L1 middle model unset · medium · p=0.90/0.90${SUFFIX}`;
 	assert.deepEqual(entriesOf(world.notes[0]), [
-		`task 1: ${line}${VIA}`,
-		...[2, 3, 4, 5].map((n) => `task ${n}: ${line}`),
+		"task 1: L1 middle model unset · medium · p=0.90/0.90 · openrouter jev-1.14.0 · 812/9 tok · typesafe HTTP 503",
+		"task 2: L1 middle model unset · medium · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok",
+		"task 3: L1 middle model unset · medium · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok",
+		"task 4: L1 middle model unset · medium · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok",
+		"task 5: L1 middle model unset · medium · p=0.90/0.90 · openrouter jev-1.14.0 · 812/9 tok",
 	]);
 });
 

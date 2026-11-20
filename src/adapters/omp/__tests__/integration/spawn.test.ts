@@ -9,7 +9,8 @@ const world = useWorld();
 const install = () => createExtension(world.imports)(world.pi);
 const twoTasks = () =>
 	world.toolCall("c", { tasks: [{ task: "level0 a" }, { task: "level2 b" }] });
-const LINE = "L2 @slow · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok";
+const LINE =
+	"L2 @slow · medium · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok";
 // The spawn-time line for one item, after its batch line.
 const skipAt = (n: number, reason: string) =>
 	`model-router task ${n}: skipped, ${reason}`;
@@ -211,7 +212,7 @@ test("level 1 with no model patterns returns nothing and says why", async () => 
 	await world.toolCall("c", { tasks: [{ task: "level1 a" }] });
 	assert.equal(await world.spawn("c:0"), undefined);
 	assert.deepEqual(world.notes.slice(1), [
-		"model-router task 1: L1 middle model unset · no model patterns · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"model-router task 1: L1 middle model unset · no model patterns · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok",
 	]);
 });
 
@@ -221,7 +222,7 @@ test("a role that stops resolving before the spawn is not returned, and the line
 	world.resolvable.delete("@slow");
 	assert.equal(await world.spawn("c:1"), undefined);
 	assert.deepEqual(world.notes.slice(1), [
-		"model-router task 2: L2 large model unset · no model patterns · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"model-router task 2: L2 large model unset · no model patterns · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok",
 	]);
 	assert.equal((await world.spawn("c:0"))?.model, "@smol:high");
 });
@@ -258,10 +259,10 @@ test("a role that stops resolving before the spawn gives the spawn's patterns th
 	world.resolvable.delete("@slow");
 	assert.deepEqual(await world.spawn("c:1", { patterns: ["prov/parent"] }), {
 		model: ["prov/parent:medium"],
-		note: "model-router L2 large model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		note: "model-router L2 large model unset · medium · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok",
 	});
 	assert.deepEqual(world.notes.slice(1), [
-		"model-router task 2: L2 large model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"model-router task 2: L2 large model unset · medium · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok",
 	]);
 });
 
@@ -276,11 +277,11 @@ test("a slot set after the batch gives the spawn its role, and both lines are pr
 	world.resolvable.add("@midl");
 	assert.deepEqual(await world.spawn("c:0", { patterns: ["prov/parent"] }), {
 		model: "@midl:medium",
-		note: "model-router L1 @midl · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		note: "model-router L1 @midl · medium · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok",
 	});
 	assert.deepEqual(world.notes, [
-		"model-router task 1: L1 middle model unset · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
-		"model-router task 1: L1 @midl · medium · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+		"model-router task 1: L1 middle model unset · medium · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok",
+		"model-router task 1: L1 @midl · medium · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok",
 	]);
 });
 

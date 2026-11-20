@@ -29,11 +29,11 @@
 		"outcome": "route",
 		"slot": "middle",
 		"effort": "high",
-		"line": "model-router L1 middle model unset · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+		"line": "model-router L1 middle model unset · high · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok"
 	},
 	"route": {
 		"api_mode": "chat_completions",
 		"reasoning_effort": "high",
-		"label": "model-router L1 middle model unset · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok"
+		"label": "model-router L1 middle model unset · high · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok"
 	}
 }

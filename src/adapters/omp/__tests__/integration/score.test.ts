@@ -12,7 +12,7 @@ const world = useWorld();
 const install = () => createExtension(world.imports)(world.pi);
 const LEVELS: readonly Level[] = [0, 1, 2];
 const TARGETS = ["@smol", "middle model unset", "@slow"];
-const SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
+const SUFFIX = " · typesafe jev-1.14.0 · 812/9 tok";
 
 for (const tier of LEVELS)
 	for (const work of LEVELS)

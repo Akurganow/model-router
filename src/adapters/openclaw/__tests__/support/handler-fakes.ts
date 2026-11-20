@@ -23,7 +23,7 @@ export const CONTEXT: ToolContext = {
 	agentId: REQUESTER,
 };
 export const TASK = "do the work";
-export const SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
+export const SUFFIX = " · typesafe jev-1.14.0 · 812/9 tok";
 type Setup = {
 	levels?: Levels;
 	settings?: Record<string, unknown>;
