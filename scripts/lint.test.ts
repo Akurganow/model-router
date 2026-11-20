@@ -181,6 +181,13 @@ const faults: Fault[] = [
 		message: CORE,
 	},
 	{
+		form: "core names a type of an adapter with import().X",
+		file: "src/core/brief/layers.ts",
+		code: 'export type A = import("../../adapters/omp/a.ts").A;',
+		category: PLUGIN,
+		message: CORE,
+	},
+	{
 		form: "a format imports decision",
 		file: "src/core/scoring/formats/layers.ts",
 		code: 'import { ladder } from "../../decision/ladder.ts";',
@@ -219,6 +226,13 @@ const faults: Fault[] = [
 		form: "a brief file imports a __tests__ file for its effects",
 		file: "src/core/brief/layers.ts",
 		code: 'import "../__tests__/support/t6.ts";',
+		category: PLUGIN,
+		message: TESTS_IMPORT,
+	},
+	{
+		form: "a brief file names a type of a __tests__ file with typeof import()",
+		file: "src/core/brief/layers.ts",
+		code: 'export type T11 = typeof import("../__tests__/support/t11.ts");',
 		category: PLUGIN,
 		message: TESTS_IMPORT,
 	},

@@ -5,9 +5,12 @@ language js
 // their own import bans would switch this rule off.
 // JsModuleSource is the specifier of a static import, a bare import and an
 // export … from. An import() call holds its argument as an expression.
+// TsImportType is an import in a type position: typeof import("…") and
+// import("…").X.
 or {
 	JsModuleSource() as $specifier,
-	`import($specifier)`
+	`import($specifier)`,
+	TsImportType() as $specifier
 } where {
 	$specifier <: r"[\s\S]*/__tests__/[\s\S]*",
 	$filename <: r".*/src/(?:core|utils|adapters)/.*",
