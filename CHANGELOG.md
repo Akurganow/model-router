@@ -3,6 +3,63 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.23.1 - 2026-11-20
+#### Bug Fixes
+- keep an error status when its reply body cannot be read (8aae98a)
+- keep the retry wait on older Node, a late global fetch and a blank Retry-After (b60880a)
+- send the scoring request without the TypeSafe SDK (b9fe35c)
+#### Documentation
+- say how an unreadable reply body counts for the fallback (ebce696)
+- give the header count one home and say request for one request (f631cf1)
+- state the four request headers and the end of the SDK (df90a65)
+- drop the probe's config keys and a plugin sentence from Hermes routing (e173751)
+- say that a Hermes route carries a label only when it sets one (f5014f6)
+- say where the evidence of a client fact lives (15f3782)
+- state the client facts without the runs that showed them (40fcea3)
+- say what goes into unit, integration and support (6d22169)
+- move the pinned evidence of harness facts to the wiki (60c6887)
+- state new client facts plainly and keep their evidence on the wiki (5de438b)
+- drop the commit and plugin pins this change added to clients.md (2b18292)
+- drop the settings exception from the live-run skill (4fbcdfa)
+- ask before touching settings, pass the omp model, stop the Gateway (8620f82)
+- wrap AGENTS.md and close four gaps of the live-run skill (eba8951)
+- answer the review of the live-run skill and the client facts (4ad89a7)
+- keep run records in the wiki and load the live-run procedure on demand (ed626cc)
+- drop the versions that Renovate raises from four texts (6631570)
+- rewrap the Dependencies paragraph (f620ca1)
+- say that a young security fix gets a failing pull request (9353f4c)
+- let the setup-hermes action carry the Hermes pin (6da1474)
+#### Tests
+- (**hermes**) drop the noqa marker from the delegate_tool import (3f29f0d)
+- (**hermes**) read the delegate_task schema through Hermes's documented route (9796e52)
+- drop repeated rows and guard the parts against the scoring code (2520595)
+- pin each wait and timeout alone and the statuses that fall back (35ee527)
+- fail a pending route call at once and make hang behave like fetch (cb9c061)
+- pin the scoring request, retries and failures through route (301c466)
+- narrow the shared-reason rule to the texts reasons.ts holds (712ed9d)
+- hold the shared-reason rule in Biome (3f9df52)
+- name the shared fakes and handles after scoring (a585961)
+- move the tests of src into __tests__ folders (c469334)
+- move the shared reply and clock fakes into __tests__/support (27cb67e)
+#### Continuous Integration
+- (**deps**) update openclaw (85f5630)
+- (**deps**) update dependency @oh-my-pi/pi-coding-agent to v19 (e9c1eeb)
+- (**deps**) update dependency nousresearch/hermes-agent to v0.23.2 (ec63aac)
+- drop the npm install from the package job (7ea75bf)
+- drop the zod override of the OpenClaw install (f496353)
+- say that the advisory allow list has no path scope (6093f0b)
+- name the one OpenClaw release the advisory was seen in (e66fb26)
+- allow the @hono/node-server advisory of the OpenClaw install (251b93e)
+- stop Renovate from raising its own npm constraint (bc0fb6a)
+- let Renovate write every npm lockfile and clean up its config (bfe38ad)
+- say why the uv cache saves at the end of the hermes job (9d0870d)
+- install from a download cache and reinstall a skipped platform binary (53b0f47)
+#### Miscellaneous Chores
+- ignore a node_modules symlink too (f6cee16)
+
+- - -
+
+
 ## v0.23.0 - 2026-11-18
 #### Features
 - BREAKING: drop the config tool's setting help and the omp key dialog (8fff2d8)
