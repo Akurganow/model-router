@@ -1,4 +1,5 @@
-import { type Failure, isFailure } from "../failure.ts";
+import { nonEmpty } from "../../../utils/text.ts";
+import { type Failure, isFailure, SERVER_ERRORS } from "../failure.ts";
 
 // The defaults when the caller names none: two retries after the first request, and 10 s for each
 // request. The routing limit ends a longer wait first.
@@ -10,7 +11,6 @@ const BACKOFF_MAX_MS = 5000;
 // Up to a quarter off each backoff at random, so that callers that fail together do not retry together.
 const BACKOFF_JITTER = 0.25;
 const SERVER_DELAY_MAX_MS = 60000;
-const SERVER_ERRORS = { min: 500, max: 599 };
 
 export type HeaderReader = { get(name: string): string | null };
 
@@ -38,11 +38,11 @@ export function isRetried(
 }
 
 function serverDelayMs(headers: HeaderReader): number | undefined {
-	const rawMs = headers.get("retry-after-ms");
-	const ms = rawMs === null ? Number.NaN : Number(rawMs);
+	const rawMs = nonEmpty(headers.get("retry-after-ms"));
+	const ms = rawMs === undefined ? Number.NaN : Number(rawMs);
 	if (Number.isFinite(ms) && ms >= 0) return ms;
-	const raw = headers.get("retry-after");
-	if (raw === null) return undefined;
+	const raw = nonEmpty(headers.get("retry-after"));
+	if (raw === undefined) return undefined;
 	const seconds = Number(raw);
 	if (Number.isFinite(seconds)) {
 		return seconds >= 0 ? seconds * 1000 : undefined;

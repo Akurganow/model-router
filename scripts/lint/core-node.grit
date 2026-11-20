@@ -1,0 +1,24 @@
+language js
+
+// A plugin and not an override: an override sets noRestrictedImports for a
+// file and replaces every earlier override of that rule, so each core folder
+// with its own import ban would switch this ban off.
+// core-adapter.grit explains the three specifier forms.
+// A type import holds the whole type as its text, hence the [^"']* before the quote.
+or {
+	or {
+		JsModuleSource() as $specifier,
+		`import($specifier)`,
+		TsImportType() as $specifier
+	} where {
+		$specifier <: r"[^\"']*[\"']node:[\s\S]*",
+		$filename <: r".*/src/core/.*",
+		$filename <: not r".*/__tests__/.*",
+		register_diagnostic(span=$specifier, message="A core/ file imports no Node module: the caller passes what the core needs.", severity="error")
+	},
+	`AbortSignal.timeout($args)` as $call where {
+		$filename <: r".*/src/core/.*",
+		$filename <: not r".*/__tests__/.*",
+		register_diagnostic(span=$call, message="The core sets no timer of its own, and AbortSignal.timeout is one: call clock.after on the Clock port the caller passes.", severity="error")
+	}
+}

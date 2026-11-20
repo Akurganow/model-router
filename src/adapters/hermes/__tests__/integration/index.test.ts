@@ -4,11 +4,16 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
+	scoringReply,
+	systemOneAnswer,
+} from "../../../../core/__tests__/support/replies.ts";
+import {
 	buildPrompt,
 	DEFAULT_ROLE,
 	ROLE_CAP,
 } from "../../../../core/brief/brief.ts";
 import { ROUTING_LIMIT_MS } from "../../../../core/scoring/limit.ts";
+import type { Fetch } from "../../../../core/scoring/transport/send.ts";
 import { createFakeClock } from "../../../../utils/__tests__/support/fake-clock.ts";
 import { readRequest } from "../../request.ts";
 import { routeRequest } from "../../route.ts";
@@ -161,6 +166,66 @@ describe("the request to Jev", () => {
 	});
 });
 
+describe("the provider of a request", () => {
+	const KEYS = {
+		typesafe: "typesafe-test-key",
+		openrouter: "openrouter-test-key",
+	};
+	// Answers each call by its host with the status the map names, else with a good reply.
+	function recordingFetch(statuses: Readonly<Record<string, number>>) {
+		const sent: { url: string; authorization: string | null }[] = [];
+		const fetchFn: Fetch = async (url, init) => {
+			sent.push({
+				url,
+				authorization: new Headers(init.headers).get("authorization"),
+			});
+			const status = statuses[new URL(url).host];
+			return status === undefined
+				? scoringReply(200, systemOneAnswer(1, 1))
+				: scoringReply(status, {});
+		};
+		return { sent, fetchFn };
+	}
+
+	// A 401 falls back and is not retried, so a one-provider plan sends it once and a two-provider plan sends a second request.
+	it("asks only OpenRouter, with its key, when the request names openrouter and holds both keys", async () => {
+		const { sent, fetchFn } = recordingFetch({ "openrouter.ai": 401 });
+		const time = createFakeClock();
+		const response = await routeRequest(
+			{ ...REQUEST, provider: "openrouter", keys: KEYS },
+			{ fetchFn, clock: time.clock },
+		);
+		assert.deepEqual(sent, [
+			{
+				url: "https://openrouter.ai/api/v1/systemone",
+				authorization: "Bearer openrouter-test-key",
+			},
+		]);
+		assert.equal(response.outcome, "skip");
+	});
+
+	// The first of two attempts is sent once, so a 503 falls back at once with no wait.
+	it("asks OpenRouter first and then TypeSafe, each with its own key, for openrouter-first", async () => {
+		const { sent, fetchFn } = recordingFetch({ "openrouter.ai": 503 });
+		const time = createFakeClock();
+		const response = await routeRequest(
+			{ ...REQUEST, provider: "openrouter-first", keys: KEYS },
+			{ fetchFn, clock: time.clock },
+		);
+		assert.deepEqual(sent, [
+			{
+				url: "https://openrouter.ai/api/v1/systemone",
+				authorization: "Bearer openrouter-test-key",
+			},
+			{
+				url: "https://api.typesafe.ai/v1/systemone",
+				authorization: "Bearer typesafe-test-key",
+			},
+		]);
+		assert.equal(response.outcome, "route");
+	});
+});
+
 describe("the kept effort", () => {
 	const L2 = [
 		{ host: "api.typesafe.ai", reply: { levels: { tier: 2, work: 2 } } },
@@ -284,6 +349,29 @@ describe("the models of a request", () => {
 			small: "a/s",
 			middle: undefined,
 			large: "a/l",
+		});
+	});
+});
+
+describe("the keys of a request", () => {
+	const keys = (raw: unknown) => (readRequest(raw) ?? assert.fail()).keys;
+
+	it("drops a blank, spaces-only or null key and keeps the other provider's key", () => {
+		for (const blank of ["", "   ", null]) {
+			assert.deepEqual(
+				keys({ keys: { typesafe: blank, openrouter: "or-test-key" } }),
+				{ openrouter: "or-test-key" },
+			);
+			assert.deepEqual(
+				keys({ keys: { typesafe: "ts-test-key", openrouter: blank } }),
+				{ typesafe: "ts-test-key" },
+			);
+		}
+	});
+
+	it("trims the padding of a key", () => {
+		assert.deepEqual(keys({ keys: { typesafe: "  ts-test-key  " } }), {
+			typesafe: "ts-test-key",
 		});
 	});
 });

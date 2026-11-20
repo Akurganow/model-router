@@ -33,7 +33,7 @@ export const MARKERS = [
 ] as const;
 
 type MarkerKind = (typeof MARKERS)[number]["kind"];
-export type Hit = { path: string; line: number; kind: MarkerKind };
+type Hit = { path: string; line: number; kind: MarkerKind };
 type AddedLine = { path: string; line: number; text: string };
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));

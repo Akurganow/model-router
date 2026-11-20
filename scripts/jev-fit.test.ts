@@ -29,3 +29,10 @@ test("fitWarnings warns once per other model and skips the fitted, missing and e
 		[fitWarning(OTHER_JEV)],
 	);
 });
+
+test("fitWarnings reads the name behind a vendor prefix and warns with the bare name", () => {
+	assert.deepEqual(fitWarnings([`typesafe/${FITTED_ON}`]), []);
+	assert.deepEqual(fitWarnings([OTHER_JEV, `typesafe/${OTHER_JEV}`]), [
+		fitWarning(OTHER_JEV),
+	]);
+});

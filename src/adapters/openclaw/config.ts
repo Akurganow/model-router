@@ -34,7 +34,7 @@ const ADMIN_SCOPE = "operator.admin";
 const LINE_BREAK = "\n";
 
 export const NOT_OWNER = "only the owner can change it";
-export const TOOL_DESCRIPTION = readOnlyToolDescription([
+const TOOL_DESCRIPTION = readOnlyToolDescription([
 	"the provider",
 	"the scope",
 	"the three models",

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { scoringReply } from "../../../../core/__tests__/support/replies.ts";
 import {
 	DEFAULT_ROLE,
 	prepareBrief,
@@ -12,12 +13,14 @@ import {
 	setsOwnModel,
 	UNREADABLE,
 } from "../../../../core/output/reasons.ts";
-import { SPAWN_TOOL } from "../../router.ts";
+import type { Fetch } from "../../../../core/scoring/transport/send.ts";
+import { createBeforeToolCall, SPAWN_TOOL } from "../../router.ts";
 import { PLUGIN_ID } from "../../settings.ts";
 import type { BeforeToolCallResult } from "../../types.ts";
 import type { Levels } from "../support/fakes.ts";
 import {
 	CONTEXT,
+	DEADLINE_MS,
 	field,
 	lines,
 	REQUESTER,
@@ -40,6 +43,50 @@ describe("provider", () => {
 			s.scoring.requests.map(({ url }) => new URL(url).host),
 			["openrouter.ai"],
 		);
+	});
+
+	// The first of two attempts is sent once, so a 503 falls back at once with no wait.
+	const fallbackHosts = async (provider: string, failing: string) => {
+		const s = setup({
+			settings: {
+				provider,
+				api_key: "typesafe-test-key",
+				openrouter_api_key: "openrouter-test-key",
+			},
+		});
+		const hosts: string[] = [];
+		const fetchFn: Fetch = (url, init) => {
+			const { host } = new URL(url);
+			hosts.push(host);
+			return host === failing
+				? Promise.resolve(scoringReply(503, {}))
+				: s.scoring.fetch(url, init);
+		};
+		const handler = createBeforeToolCall(s.api, DEADLINE_MS, {
+			fetchFn,
+			clock: s.time.clock,
+			env: {},
+		});
+		const result = await handler(
+			{ toolName: SPAWN_TOOL, params: { task: TASK } },
+			CONTEXT,
+		);
+		assert.ok(result);
+		return hosts;
+	};
+
+	it("asks TypeSafe, then OpenRouter when TypeSafe fails, under auto", async () => {
+		assert.deepEqual(await fallbackHosts("auto", "api.typesafe.ai"), [
+			"api.typesafe.ai",
+			"openrouter.ai",
+		]);
+	});
+
+	it("asks OpenRouter, then TypeSafe when OpenRouter fails, under openrouter-first", async () => {
+		assert.deepEqual(await fallbackHosts("openrouter-first", "openrouter.ai"), [
+			"openrouter.ai",
+			"api.typesafe.ai",
+		]);
 	});
 });
 

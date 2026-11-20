@@ -4,7 +4,7 @@ import { type Schema, validate } from "./schema.ts";
 import type { SlotSetting, ValueSetting } from "./values.ts";
 
 export const SOURCE_PATH = "metadata/source.json";
-export const SCHEMA_PATH = "metadata/source.schema.json";
+const SCHEMA_PATH = "metadata/source.schema.json";
 
 type PerHarness = {
 	readonly claude: string;

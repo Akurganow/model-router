@@ -29,7 +29,7 @@ export type Rule = {
 	name: string;
 	fit: (train: readonly Row[]) => { tier: Pick; work: Pick };
 };
-export type Score = {
+type Score = {
 	agreement: number;
 	uncontested: number;
 	under: number;

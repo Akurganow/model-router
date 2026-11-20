@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { errorText } from "../src/utils/error.ts";
 import { NPM_ROOT } from "./build/outputs.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 
@@ -79,7 +80,7 @@ export function comparePackedFiles(
 	].join("\n");
 }
 
-export type Packed = { tarball: string; files: string[] };
+type Packed = { tarball: string; files: string[] };
 type PackResult = { filename: string; files: { path: string }[] };
 
 /**
@@ -168,7 +169,7 @@ export function main(args: string[], root: string): number {
 		console.log(verifyPack(join(root, NPM_ROOT), destination).tarball);
 		return 0;
 	} catch (error) {
-		console.error(error instanceof Error ? error.message : error);
+		console.error(errorText(error));
 		return 1;
 	}
 }

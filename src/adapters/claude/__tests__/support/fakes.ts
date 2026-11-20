@@ -54,7 +54,7 @@ export const ANSWER = JSON.stringify({
 });
 
 type Offer = { agent: string; source: string; description?: string };
-export const BUILT_IN_DEFAULT: Offer = {
+const BUILT_IN_DEFAULT: Offer = {
 	agent: "general-purpose",
 	source: "built-in",
 };

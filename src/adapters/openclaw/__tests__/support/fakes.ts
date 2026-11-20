@@ -25,7 +25,7 @@ type FakeCalls = {
 	config: unknown[];
 	mutate: ConfigMutation[];
 };
-export type RuntimeMember = keyof FakeCalls;
+type RuntimeMember = keyof FakeCalls;
 
 // What the fake runtime answers. A test changes a field between calls.
 type RuntimeAnswers = {
@@ -36,7 +36,7 @@ type RuntimeAnswers = {
  * A runtime whose members answer from `answers`, record their arguments in `calls`
  * and throw when the test adds their name to `throwOn`.
  */
-export function createFakeRuntime(initial: Partial<RuntimeAnswers> = {}) {
+function createFakeRuntime(initial: Partial<RuntimeAnswers> = {}) {
 	const answers: RuntimeAnswers = {
 		config: {},
 		...initial,

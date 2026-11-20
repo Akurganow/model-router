@@ -207,7 +207,7 @@ export async function main(args: string[], root: string): Promise<number> {
 			);
 		return problems.length === 0 ? 0 : 1;
 	} catch (error) {
-		console.error(error instanceof Error ? error.message : error);
+		console.error(errorText(error));
 		return 1;
 	}
 }

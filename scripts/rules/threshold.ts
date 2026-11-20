@@ -57,7 +57,7 @@ const middle = (xs: readonly number[]): number =>
 // agreement: most agreement, then least under-routing.
 // cap: lowest summed level while under-routing stays at or below the baseline's, then most agreement.
 // A plateau of equal candidates yields its componentwise median.
-export function fitThresholds(
+function fitThresholds(
 	mode: Mode,
 	target: Target,
 	samples: readonly Sample[],

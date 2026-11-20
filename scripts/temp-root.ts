@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach } from "node:test";
 
-export type TempRoot = {
+type TempRoot = {
 	readonly root: string;
 	put(path: string, text: string): void;
 	read(path: string): string;

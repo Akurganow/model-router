@@ -21,3 +21,12 @@ test("the tier stays at the middle unless an end is clearly more likely", () => 
 	assert.equal(tier.pick({ "0": 0.55, "1": 0.4, "2": 0.05 }), 0);
 	assert.equal(tier.pick({ "0": 0.34, "1": 0.33, "2": 0.33 }), 1);
 });
+
+test("the tier leaves the middle just past each factor and not just short of it", () => {
+	// Down: 2 ** 0.25 times a middle of 0.4 is 0.4757.
+	assert.equal(tier.pick({ "0": 0.475, "1": 0.4, "2": 0.1 }), 1);
+	assert.equal(tier.pick({ "0": 0.476, "1": 0.4, "2": 0.1 }), 0);
+	// Up: 2 ** 0.5 times a middle of 0.4 is 0.5657.
+	assert.equal(tier.pick({ "0": 0.03, "1": 0.4, "2": 0.565 }), 1);
+	assert.equal(tier.pick({ "0": 0.03, "1": 0.4, "2": 0.566 }), 2);
+});

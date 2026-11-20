@@ -85,22 +85,17 @@ async function exchange(
 	}
 }
 
-// Waits `ms`: gives true when the time runs out, and false at once when the caller aborts first.
-function pause(
-	ms: number,
-	caller: AbortSignal,
-	clock: Clock,
-): Promise<boolean> {
-	if (caller.aborted) return Promise.resolve(false);
+// Waits `ms`, or until the caller aborts. The next `exchange` sees an abort and sends nothing.
+function pause(ms: number, caller: AbortSignal, clock: Clock): Promise<void> {
+	if (caller.aborted) return Promise.resolve();
 	return new Promise((resolve) => {
-		const done = (waited: boolean) => {
+		const done = () => {
 			timer.cancel();
-			caller.removeEventListener("abort", onAbort);
-			resolve(waited);
+			caller.removeEventListener("abort", done);
+			resolve();
 		};
-		const onAbort = () => done(false);
-		const timer = clock.after(ms, () => done(true));
-		caller.addEventListener("abort", onAbort, { once: true });
+		const timer = clock.after(ms, done);
+		caller.addEventListener("abort", done, { once: true });
 	});
 }
 
@@ -133,7 +128,6 @@ export async function send(
 			clock,
 		);
 		if (retry >= retries || !isRetried(outcome)) return outcome;
-		if (!(await pause(retryDelayMs(retry, headers), signal, clock)))
-			return ABORTED;
+		await pause(retryDelayMs(retry, headers), signal, clock);
 	}
 }

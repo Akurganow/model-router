@@ -1,0 +1,17 @@
+language js
+
+// A plugin and not an override: an override sets noRestrictedImports for a
+// file and replaces every earlier override of that rule, so the folders with
+// their own import bans would switch this ban off.
+// core-adapter.grit explains the three specifier forms.
+// Only a relative specifier counts: a package path may hold /plugins/.
+// A type import holds the whole type as its text, hence the [^"']* before the quote.
+or {
+	JsModuleSource() as $specifier,
+	`import($specifier)`,
+	TsImportType() as $specifier
+} where {
+	$specifier <: r"[^\"']*[\"'](?:\.\./)+(?:scripts|plugins)/[\s\S]*",
+	$filename <: r".*/src/(?:core|utils|adapters)/.*",
+	register_diagnostic(span=$specifier, message="A src/ file imports nothing from scripts/ or plugins/.", severity="error")
+}
