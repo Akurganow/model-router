@@ -180,5 +180,5 @@ The line then names the provider that answered, as the `provider` setting names 
 The model its reply names follows the provider, and then the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`.
 A reply with no model name or no token counts leaves that part out, and the provider stays.
 
-After a fallback, a routed line ends with the provider that failed and its reason, for example ` · openrouter jev-1.14.0 · 812/9 tok · typesafe HTTP 503`.
+After a fallback, a routed line ends with the provider that failed and its reason, for example ` · openrouter typesafe/jev-1.14.0 · 812/9 tok · typesafe HTTP 503`.
 After both providers fail, a skip reason names each provider with its own reason, in the order they were tried, for example `skipped, typesafe HTTP 503, openrouter timeout`.

@@ -217,7 +217,7 @@ The plugin puts one line per routed or skipped task in the task's `route.label`.
 
 ```text
 model-router L0 <model> · medium · p=0.91/0.84 · typesafe jev-1.14.0 · 812/9 tok
-model-router L1 middle model unset · config effort · p=0.62/0.70
+model-router L1 middle model unset · config effort · p=0.62/0.70 · typesafe jev-1.14.0 · 640/9 tok
 model-router skipped, key unset
 ```
 

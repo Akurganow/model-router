@@ -81,7 +81,7 @@ Find out which of these already hold, with the `model_router_config` tool and om
 - A level with no model shows the slot, as `L0 small model unset`, `L1 middle model unset` or `L2 large model unset`.
 - A kept label replaces the effort: `caller effort` when the item's own `effort` applies, `config effort` when a thinking level comes from omp's settings or the role, and `no model patterns` when the spawn has none.
 - The provider that answered follows, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them.
-- After a fallback, the entry ends with the provider that failed and its reason, as in ` · typesafe HTTP 503`.
+- After a fallback, the entry ends with the provider that failed and its reason, as in ` · openrouter typesafe/jev-1.14.0 · 812/9 tok · typesafe HTTP 503`.
 - A skipped entry reads `task <n>: skipped, <reason>`. After both providers fail, the reason names each provider, as in `skipped, typesafe HTTP 503, openrouter timeout`.
 - A spawn can print a second line for the same item. That later line holds.
 - With `task.batch` off, or with the plugin disabled, no line appears.
