@@ -70,8 +70,8 @@ This is the whole surface:
 | hook | `tool.call{tool=mcp__model-router__config}` | Answers the `config` tool: the settings and the dialogs. |
 | hook | `turn.step` | Sets the routed `effort` on the subagent's requests. |
 | hook | `turn.complete` | Forgets that a finished subagent's first request already waited for the spawns in flight. |
-| call | `$.clock.after` | The request's timers run on it, for example the retry wait. |
-| call | `$.clock.sleep` | Times the 8 s limit. |
+| call | `$.clock.after` | The 8 s limit and the request's timers run on it, for example the retry wait. |
+| call | `$.clock.sleep` | Bounds the wait of a subagent's first request for the spawns in flight, 1 s at most. |
 | call | `$.config.set` | Writes the `provider` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. |
 | call | `$.env.get` | Reads `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY`, and whether `CLAUDE_CODE_EFFORT_LEVEL` is set, the only variables the mod reads. |
 | call | `$.http.fetch` | Sends the request to TypeSafe or OpenRouter. |

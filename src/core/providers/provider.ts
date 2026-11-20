@@ -87,6 +87,19 @@ export async function collectKeys(
 	return keys;
 }
 
+/** The same rule as collectKeys, for a lookup that answers at once. */
+export function collectKeysSync(
+	value: unknown,
+	lookup: (provider: Provider) => string | undefined,
+): Keys {
+	const keys: Keys = {};
+	for (const provider of order(value)) {
+		const key = lookup(provider);
+		if (key !== undefined) keys[provider] = key;
+	}
+	return keys;
+}
+
 /**
  * Returns one attempt for each provider the value allows whose key is a
  * non-empty string, carrying that key. Every attempt but the last gives up

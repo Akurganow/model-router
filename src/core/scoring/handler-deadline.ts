@@ -1,4 +1,4 @@
-import { ROUTING_LIMIT_MS } from "./route.ts";
+import { ROUTING_LIMIT_MS } from "./limit.ts";
 
 // A handler keeps this much of its host's timeout back for the work around scoring.
 export const HANDLER_MARGIN_MS = 2000;

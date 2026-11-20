@@ -1,24 +1,12 @@
 import { routingState } from "../../core/brief/brief.ts";
 import { scoreWork } from "../../core/decision/decide.ts";
-import { effortFor } from "../../core/decision/ladder.ts";
-import {
-	pickModel,
-	type SlotModel,
-	slotForLevel,
-	slotState,
-} from "../../core/decision/slots.ts";
-import {
-	LINE_PREFIX,
-	routedLine,
-	skippedLine,
-} from "../../core/output/line.ts";
-import type { Level } from "../../core/parts/part.ts";
+import { outcomeOf } from "../../core/decision/outcome.ts";
+import { LINE_PREFIX, skippedLine } from "../../core/output/line.ts";
 import { type Keys, plan } from "../../core/providers/provider.ts";
 import { MIN_DEADLINE_MS } from "../../core/scoring/handler-deadline.ts";
-import { abortCategory, LIMIT_REACHED } from "../../core/scoring/route.ts";
+import { abortCategory, raceDeadline } from "../../core/scoring/limit.ts";
 import type { Fetch } from "../../core/scoring/transport/send.ts";
-import type { Clock } from "../../utils/clock.ts";
-import { raceDeadline } from "../../utils/deadline.ts";
+import { type Clock, realClock } from "../../utils/clock.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import { type Gate, gateSpawn } from "./gates.ts";
 import { readSpawn, type SpawnRequest } from "./params.ts";
@@ -40,6 +28,7 @@ export const HOOK = "before_tool_call";
 
 export type RouterDeps = {
 	readonly fetchFn: Fetch;
+	// Times the deadline only. The scoring call's own timers run on realClock.
 	readonly clock: Clock;
 	readonly env: Environment;
 };
@@ -107,16 +96,9 @@ async function score(
 		}),
 		attempts: plan(settings.provider, keys),
 		fetchFn: deps.fetchFn,
+		clock: realClock,
 		signal,
 	});
-}
-
-/**
- * Returns the state of the slot the level picks: `set` with its model when the
- * setting names one, `unset` when it names none. The model is not checked.
- */
-function slotOf(settings: OpenClawSettings, level: Level): SlotModel {
-	return slotState(settings.models[slotForLevel(level)]);
 }
 
 /**
@@ -158,22 +140,15 @@ async function routeGated(
 	if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
 	const decided = await score(spawn, settings, keys, gate);
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
-	const picked = pickModel(decided.tier, slotOf(settings, decided.tier));
-	const { model } = picked;
-	const kept = gate.effort.kind === "keep" ? gate.effort.label : undefined;
-	const effort = effortFor(decided.tier, decided.work);
-	log(
-		routedLine({
-			level: decided.tier,
-			target: picked.target,
-			effort: kept ?? effort,
-			probabilities: decided.probabilities,
-			suffix: decided.suffix,
-		}),
+	const { model, effort, line } = outcomeOf(
+		decided,
+		settings.models,
+		gate.effort.kind === "keep" ? gate.effort.label : undefined,
 	);
+	log(line);
 	const set = {
 		...(model === undefined ? {} : { model }),
-		...(kept === undefined ? { thinking: effort } : {}),
+		...(effort === undefined ? {} : { thinking: effort }),
 	};
 	return Object.keys(set).length === 0 ? undefined : { params: set };
 }
@@ -199,7 +174,6 @@ export function createBeforeToolCall(
 				deadlineMs,
 				deps.clock,
 				ctx?.abortSignal,
-				LIMIT_REACHED,
 			);
 		} catch {
 			// Reading a malformed event or context can throw.

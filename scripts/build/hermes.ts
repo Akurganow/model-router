@@ -24,7 +24,7 @@ import {
 	PROVIDER_VALUES,
 	resolve as resolveProvider,
 } from "../../src/core/providers/provider.ts";
-import { ROUTING_LIMIT_MS } from "../../src/core/scoring/route.ts";
+import { ROUTING_LIMIT_MS } from "../../src/core/scoring/limit.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";

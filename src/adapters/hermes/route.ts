@@ -1,17 +1,8 @@
 import { DEFAULT_ROLE, routingState } from "../../core/brief/brief.ts";
 import { type DecidedWithWork, scoreWork } from "../../core/decision/decide.ts";
-import { effortFor } from "../../core/decision/ladder.ts";
-import {
-	pickModel,
-	type Slot,
-	slotForLevel,
-	slotState,
-} from "../../core/decision/slots.ts";
-import {
-	LINE_PREFIX,
-	routedLine,
-	skippedLine,
-} from "../../core/output/line.ts";
+import { outcomeOf } from "../../core/decision/outcome.ts";
+import type { Slot } from "../../core/decision/slots.ts";
+import { LINE_PREFIX, skippedLine } from "../../core/output/line.ts";
 import {
 	CALLER_EFFORT,
 	CONFIG_EFFORT,
@@ -19,13 +10,17 @@ import {
 	TIMEOUT,
 } from "../../core/output/reasons.ts";
 import { plan } from "../../core/providers/provider.ts";
-import { LIMIT_REACHED, type Skipped } from "../../core/scoring/route.ts";
+import { raceDeadline } from "../../core/scoring/limit.ts";
+import type { Skipped } from "../../core/scoring/route.ts";
 import type { Fetch } from "../../core/scoring/transport/send.ts";
-import type { Clock } from "../../utils/clock.ts";
-import { raceDeadline } from "../../utils/deadline.ts";
+import { type Clock, realClock } from "../../utils/clock.ts";
 import { type HermesRequest, type KeptEffort, readRequest } from "./request.ts";
 
-type HermesDeps = { readonly fetchFn: Fetch; readonly clock: Clock };
+type HermesDeps = {
+	readonly fetchFn: Fetch;
+	// Times the deadline only. The scoring call's own timers run on realClock.
+	readonly clock: Clock;
+};
 type HermesResponse =
 	| {
 			readonly outcome: "route";
@@ -63,6 +58,7 @@ async function score(
 		}),
 		attempts: plan(request.provider, request.keys),
 		fetchFn,
+		clock: realClock,
 		signal,
 	});
 }
@@ -91,27 +87,18 @@ function answer(
 	request: HermesRequest,
 	decided: DecidedWithWork,
 ): HermesResponse {
-	const level = decided.tier;
-	const slot = slotForLevel(level);
-	const model = request.models[slot];
-	const effort = effortFor(level, decided.work);
-	const kept =
+	const { slot, effort, line } = outcomeOf(
+		decided,
+		request.models,
 		request.keptEffort === undefined
 			? undefined
-			: KEPT_LABELS[request.keptEffort];
+			: KEPT_LABELS[request.keptEffort],
+	);
 	return {
 		outcome: "route",
 		slot,
-		effort: kept === undefined ? effort : null,
-		line:
-			LINE_PREFIX +
-			routedLine({
-				level,
-				target: pickModel(level, slotState(model)).target,
-				effort: kept ?? effort,
-				probabilities: decided.probabilities,
-				suffix: decided.suffix,
-			}),
+		effort: effort ?? null,
+		line: LINE_PREFIX + line,
 	};
 }
 
@@ -135,7 +122,6 @@ export async function routeRequest(
 			request.budgetMs,
 			deps.clock,
 			undefined,
-			LIMIT_REACHED,
 		);
 		if (decided === undefined) return skip(TIMEOUT);
 		return "skipped" in decided

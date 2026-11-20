@@ -492,13 +492,13 @@ function retryDelayMs(retry, headers) {
 }
 
 // src/core/scoring/transport/send.ts
-async function exchange(fetchFn, url, request, caller, timeout) {
+async function exchange(fetchFn, url, request, caller, timeout, clock) {
   if (caller.aborted) return { outcome: ABORTED };
   const controller = new AbortController();
   const stopped = new Promise((_, reject) => {
     controller.signal.addEventListener("abort", () => reject(), { once: true });
   });
-  const timer = setTimeout(() => controller.abort(), timeout);
+  const timer = clock.after(timeout, () => controller.abort());
   const cancel = () => controller.abort(caller.reason);
   caller.addEventListener("abort", cancel, { once: true });
   try {
@@ -526,25 +526,25 @@ async function exchange(fetchFn, url, request, caller, timeout) {
     if (caller.aborted) return { outcome: ABORTED };
     return { outcome: controller.signal.aborted ? TIMED_OUT : NETWORK };
   } finally {
-    clearTimeout(timer);
+    timer.cancel();
     caller.removeEventListener("abort", cancel);
   }
 }
-function pause(ms, caller) {
+function pause(ms, caller, clock) {
   if (caller.aborted) return Promise.resolve(false);
   return new Promise((resolve2) => {
     const done = (waited) => {
-      clearTimeout(timer);
+      timer.cancel();
       caller.removeEventListener("abort", onAbort);
       resolve2(waited);
     };
     const onAbort = () => done(false);
-    const timer = setTimeout(() => done(true), ms);
+    const timer = clock.after(ms, () => done(true));
     caller.addEventListener("abort", onAbort, { once: true });
   });
 }
 async function send(fetchFn, url, request, options) {
-  const { signal } = options;
+  const { signal, clock } = options;
   const timeout = options.timeout ?? TIMEOUT_MS;
   const retries = options.retries ?? RETRIES;
   for (let retry = 0; ; retry++) {
@@ -553,10 +553,12 @@ async function send(fetchFn, url, request, options) {
       url,
       request,
       signal,
-      timeout
+      timeout,
+      clock
     );
     if (retry >= retries || !isRetried(outcome)) return outcome;
-    if (!await pause(retryDelayMs(retry, headers), signal)) return ABORTED;
+    if (!await pause(retryDelayMs(retry, headers), signal, clock))
+      return ABORTED;
   }
 }
 
@@ -564,7 +566,7 @@ async function send(fetchFn, url, request, options) {
 var VERSION = true ? "0.24.0" : "dev";
 var USER_AGENT = `model-router/${VERSION} (+https://github.com/Akurganow/model-router)`;
 async function askOnce(input, attempt) {
-  const { parts, state, fetchFn, signal } = input;
+  const { parts, state, fetchFn, clock, signal } = input;
   const endpoint = endpointOf(attempt);
   if (!endpoint) return UNKNOWN;
   const { url, format } = endpoint;
@@ -583,6 +585,7 @@ async function askOnce(input, attempt) {
     },
     {
       signal,
+      clock,
       ...attempt.timeout !== void 0 && { timeout: attempt.timeout },
       ...attempt.retries !== void 0 && { retries: attempt.retries }
     }
@@ -606,11 +609,56 @@ async function ask(input, attempt) {
   }
 }
 
-// src/core/scoring/route.ts
+// src/core/scoring/limit.ts
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 function abortCategory(signal) {
   return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
 }
+function limitSignal(ms, clock, parent) {
+  const controller = new AbortController();
+  const { signal } = controller;
+  const disarmed = { signal, disarm: () => void 0 };
+  if (ms <= 0) {
+    controller.abort(LIMIT_REACHED);
+    return disarmed;
+  }
+  if (parent?.aborted) {
+    controller.abort(parent.reason);
+    return disarmed;
+  }
+  const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
+  const onParentAbort = () => controller.abort(parent?.reason);
+  parent?.addEventListener("abort", onParentAbort, { once: true });
+  return {
+    signal,
+    disarm: () => {
+      parent?.removeEventListener("abort", onParentAbort);
+      timer.cancel();
+    }
+  };
+}
+async function raceDeadline(work2, deadlineMs, clock, parent) {
+  try {
+    const { signal, disarm } = limitSignal(deadlineMs, clock, parent);
+    try {
+      return await new Promise((settle) => {
+        const onAbort = () => settle(void 0);
+        signal.addEventListener("abort", onAbort, { once: true });
+        if (signal.aborted) onAbort();
+        work2(signal).then(settle, () => settle(void 0));
+      });
+    } finally {
+      try {
+        disarm();
+      } catch {
+      }
+    }
+  } catch {
+    return void 0;
+  }
+}
+
+// src/core/scoring/route.ts
 async function route(input) {
   const { attempts, signal } = input;
   if (attempts.length === 0) return { skipped: KEY_UNSET };
@@ -697,6 +745,27 @@ function pickModel(level, state) {
   return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
 }
 
+// src/core/decision/outcome.ts
+function outcomeOf(decided, models, kept) {
+  const picked = pickModel(
+    decided.tier,
+    slotState(models[slotForLevel(decided.tier)])
+  );
+  const ladder = effortFor(decided.tier, decided.work);
+  return {
+    slot: picked.slot,
+    model: picked.model,
+    effort: kept === void 0 ? ladder : void 0,
+    line: routedLine({
+      level: decided.tier,
+      target: picked.target,
+      effort: kept ?? ladder,
+      probabilities: decided.probabilities,
+      suffix: decided.suffix
+    })
+  };
+}
+
 // src/core/providers/provider.ts
 var PROVIDERS = ["typesafe", "openrouter"];
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
@@ -723,40 +792,6 @@ function plan(value, keys) {
   return attempts.map(
     (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt
   );
-}
-
-// src/utils/deadline.ts
-async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
-  try {
-    const stop = new AbortController();
-    const signal = AbortSignal.any(
-      hostSignal ? [stop.signal, hostSignal] : [stop.signal]
-    );
-    return await new Promise((settle) => {
-      const timer = clock.after(deadlineMs, () => {
-        stop.abort(reason);
-        settle(void 0);
-      });
-      const onHostAbort = () => {
-        settle(void 0);
-        try {
-          timer.cancel();
-        } catch {
-        }
-      };
-      hostSignal?.addEventListener("abort", onHostAbort, { once: true });
-      if (hostSignal?.aborted) onHostAbort();
-      work2(signal).then(
-        (result) => signal.aborted ? void 0 : result,
-        () => void 0
-      ).then(settle).finally(() => {
-        timer.cancel();
-        hostSignal?.removeEventListener("abort", onHostAbort);
-      }).catch(() => void 0);
-    });
-  } catch {
-    return void 0;
-  }
 }
 
 // src/adapters/hermes/request.ts
@@ -813,6 +848,7 @@ async function score(request, { fetchFn }, signal) {
     }),
     attempts: plan(request.provider, request.keys),
     fetchFn,
+    clock: realClock,
     signal
   });
 }
@@ -824,22 +860,16 @@ async function scored(request, deps, signal) {
   }
 }
 function answer(request, decided) {
-  const level = decided.tier;
-  const slot = slotForLevel(level);
-  const model = request.models[slot];
-  const effort = effortFor(level, decided.work);
-  const kept = request.keptEffort === void 0 ? void 0 : KEPT_LABELS[request.keptEffort];
+  const { slot, effort, line } = outcomeOf(
+    decided,
+    request.models,
+    request.keptEffort === void 0 ? void 0 : KEPT_LABELS[request.keptEffort]
+  );
   return {
     outcome: "route",
     slot,
-    effort: kept === void 0 ? effort : null,
-    line: LINE_PREFIX + routedLine({
-      level,
-      target: pickModel(level, slotState(model)).target,
-      effort: kept ?? effort,
-      probabilities: decided.probabilities,
-      suffix: decided.suffix
-    })
+    effort: effort ?? null,
+    line: LINE_PREFIX + line
   };
 }
 async function routeRequest(raw, deps) {
@@ -851,8 +881,7 @@ async function routeRequest(raw, deps) {
       (signal) => scored(request, deps, signal),
       request.budgetMs,
       deps.clock,
-      void 0,
-      LIMIT_REACHED
+      void 0
     );
     if (decided === void 0) return skip2(TIMEOUT);
     return "skipped" in decided ? skip2(decided.skipped) : answer(request, decided);

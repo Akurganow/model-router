@@ -553,13 +553,7 @@ async function withSettings(omp, ctx, show) {
   return settings === void 0 ? UNREADABLE : show(settings);
 }
 var readAll = (omp, ctx) => withSettings(omp, ctx, async ({ provider, scope }) => {
-  const names = order(provider);
-  const found = await Promise.all(names.map((name) => findKey(ctx, name)));
-  const keys = {};
-  names.forEach((name, i) => {
-    const key = found[i];
-    if (key !== void 0) keys[name] = key;
-  });
+  const keys = await collectKeys(provider, (name) => findKey(ctx, name));
   return settingsReport(provider, scope, [], keys);
 });
 async function apply(omp, ctx, setting, value) {
@@ -624,323 +618,34 @@ function registerConfig(omp, pi) {
   });
 }
 
-// src/core/parts/part.ts
-var LEVELS = [0, 1, 2];
-var fromMiddle = (down, up) => (p) => {
-  const low = p[0] > down * p[1];
-  const high = p[2] > up * p[1];
-  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
-  return low ? 0 : high ? 2 : 1;
-};
-
-// src/core/scoring/failure.ts
-var ABORTED = { failure: "aborted" };
-var TIMED_OUT = { failure: "timed out" };
-var NETWORK = { failure: "network" };
-var MALFORMED = { failure: "malformed" };
-var UNKNOWN = { failure: "unknown" };
-var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
-  401,
-  402,
-  403,
-  404,
-  408,
-  429
-]);
-var SERVER_ERRORS = { min: 500, max: 599 };
-var OK = { min: 200, max: 299 };
-var isSuccess = (status) => status >= OK.min && status <= OK.max;
-var isFailure = (value) => Object.hasOwn(value, "failure");
-function skipText(failure, aborted) {
-  switch (failure.failure) {
-    case "aborted":
-      return aborted;
-    case "timed out":
-      return TIMEOUT;
-    case "network":
-      return NETWORK_ERROR;
-    case "status":
-      return httpStatus(failure.status);
-    case "malformed":
-      return BAD_REPLY;
-    case "unknown":
-      return FAILED;
-  }
-}
-function fallsBack(failure) {
-  switch (failure.failure) {
-    case "timed out":
-    case "network":
-      return true;
-    case "status":
-      return FALLBACK_STATUSES.has(failure.status) || failure.status >= SERVER_ERRORS.min && failure.status <= SERVER_ERRORS.max;
-    case "aborted":
-    case "malformed":
-    case "unknown":
-      return false;
-  }
-}
-
-// src/core/scoring/formats/system-one.ts
-var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
-function parseProbabilities(answers, key) {
-  const a = isRecord(answers) ? answers[key] : void 0;
-  if (!isRecord(a)) return void 0;
-  const { type, probabilities } = a;
-  if (type !== "score" || !isRecord(probabilities)) return void 0;
-  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
-  const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
-    return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
-}
-function parse(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return void 0;
-  }
-}
-var count = (v) => typeof v === "number" ? v : null;
-function usageOf(usage) {
-  if (!isRecord(usage)) return void 0;
-  const { input_tokens, output_tokens } = usage;
-  return {
-    input_tokens: count(input_tokens),
-    output_tokens: count(output_tokens)
-  };
-}
-function read2(parts, text) {
-  const reply2 = parse(text);
-  const { answers, model, usage } = isRecord(reply2) ? reply2 : {};
-  const pairs = [];
-  for (const part of parts) {
-    const probabilities = parseProbabilities(answers, part.key);
-    if (!probabilities) return MALFORMED;
-    pairs.push([part, probabilities]);
-  }
-  return { answers: pairs, model, usage: usageOf(usage) };
-}
-var SYSTEM_ONE = {
-  body: (parts, state, model) => JSON.stringify({
-    state,
-    model,
-    questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
-  }),
-  read: read2
-};
-
-// src/core/scoring/endpoints.ts
-var ENDPOINTS = {
-  typesafe: {
-    url: "https://api.typesafe.ai/v1/systemone",
-    format: SYSTEM_ONE
-  },
-  openrouter: {
-    url: "https://openrouter.ai/api/v1/systemone",
-    format: SYSTEM_ONE
-  }
-};
-var endpointOf = (attempt2) => Object.hasOwn(ENDPOINTS, attempt2.provider) ? ENDPOINTS[attempt2.provider] : void 0;
-
-// src/core/scoring/reply.ts
-var MODEL_CHARS_MAX = 40;
-var cleanModel = (model) => typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "";
-
-// src/core/scoring/transport/retry.ts
-var RETRIES = 2;
-var TIMEOUT_MS = 1e4;
-var BACKOFF_INITIAL_MS = 500;
-var BACKOFF_MAX_MS = 5e3;
-var BACKOFF_JITTER = 0.25;
-var SERVER_DELAY_MAX_MS = 6e4;
-var SERVER_ERRORS2 = { min: 500, max: 599 };
-function isRetried(outcome) {
-  if (!isFailure(outcome))
-    return outcome.status === 408 || outcome.status === 429 || outcome.status >= SERVER_ERRORS2.min && outcome.status <= SERVER_ERRORS2.max;
-  switch (outcome.failure) {
-    case "timed out":
-    case "network":
-      return true;
-    case "aborted":
-    case "status":
-    case "malformed":
-    case "unknown":
-      return false;
-  }
-}
-function serverDelayMs(headers) {
-  const rawMs = headers.get("retry-after-ms");
-  const ms = rawMs === null ? Number.NaN : Number(rawMs);
-  if (Number.isFinite(ms) && ms >= 0) return ms;
-  const raw = headers.get("retry-after");
-  if (raw === null) return void 0;
-  const seconds = Number(raw);
-  if (Number.isFinite(seconds)) {
-    return seconds >= 0 ? seconds * 1e3 : void 0;
-  }
-  const date = Date.parse(raw);
-  return Number.isNaN(date) ? void 0 : Math.max(0, date - Date.now());
-}
-function retryDelayMs(retry, headers) {
-  const server = headers === void 0 ? void 0 : serverDelayMs(headers);
-  if (server !== void 0 && server <= SERVER_DELAY_MAX_MS) return server;
-  const backoff = Math.min(BACKOFF_INITIAL_MS * 2 ** retry, BACKOFF_MAX_MS);
-  return Math.round(backoff * (1 - Math.random() * BACKOFF_JITTER));
-}
-
-// src/core/scoring/transport/send.ts
-async function exchange(fetchFn, url, request, caller, timeout) {
-  if (caller.aborted) return { outcome: ABORTED };
-  const controller = new AbortController();
-  const stopped = new Promise((_, reject) => {
-    controller.signal.addEventListener("abort", () => reject(), { once: true });
-  });
-  const timer = setTimeout(() => controller.abort(), timeout);
-  const cancel = () => controller.abort(caller.reason);
-  caller.addEventListener("abort", cancel, { once: true });
-  try {
-    const reply2 = await Promise.race([
-      fetchFn(url, {
-        method: "POST",
-        headers: request.headers,
-        body: request.body,
-        signal: controller.signal
-      }),
-      stopped
-    ]);
-    let text;
-    try {
-      text = await Promise.race([reply2.text(), stopped]);
-    } catch (error) {
-      if (isSuccess(reply2.status) || caller.aborted) throw error;
-      return {
-        outcome: { status: reply2.status, text: "" },
-        headers: reply2.headers
-      };
-    }
-    return { outcome: { status: reply2.status, text }, headers: reply2.headers };
-  } catch {
-    if (caller.aborted) return { outcome: ABORTED };
-    return { outcome: controller.signal.aborted ? TIMED_OUT : NETWORK };
-  } finally {
-    clearTimeout(timer);
-    caller.removeEventListener("abort", cancel);
-  }
-}
-function pause(ms, caller) {
-  if (caller.aborted) return Promise.resolve(false);
-  return new Promise((resolve2) => {
-    const done = (waited) => {
-      clearTimeout(timer);
-      caller.removeEventListener("abort", onAbort);
-      resolve2(waited);
-    };
-    const onAbort = () => done(false);
-    const timer = setTimeout(() => done(true), ms);
-    caller.addEventListener("abort", onAbort, { once: true });
-  });
-}
-async function send(fetchFn, url, request, options) {
-  const { signal } = options;
-  const timeout = options.timeout ?? TIMEOUT_MS;
-  const retries = options.retries ?? RETRIES;
-  for (let retry = 0; ; retry++) {
-    const { outcome, headers } = await exchange(
-      fetchFn,
-      url,
-      request,
-      signal,
-      timeout
-    );
-    if (retry >= retries || !isRetried(outcome)) return outcome;
-    if (!await pause(retryDelayMs(retry, headers), signal)) return ABORTED;
-  }
-}
-
-// src/core/scoring/ask.ts
-var VERSION = true ? "0.24.0" : "dev";
-var USER_AGENT = `model-router/${VERSION} (+https://github.com/Akurganow/model-router)`;
-async function askOnce(input, attempt2) {
-  const { parts, state, fetchFn, signal } = input;
-  const endpoint = endpointOf(attempt2);
-  if (!endpoint) return UNKNOWN;
-  const { url, format } = endpoint;
-  const body = format.body(parts, state, attempt2.model);
-  const received = await send(
-    fetchFn,
-    url,
-    {
-      headers: {
-        Authorization: `Bearer ${attempt2.key}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "User-Agent": USER_AGENT
-      },
-      body
-    },
-    {
-      signal,
-      ...attempt2.timeout !== void 0 && { timeout: attempt2.timeout },
-      ...attempt2.retries !== void 0 && { retries: attempt2.retries }
-    }
-  );
-  if (isFailure(received)) return received;
-  if (!isSuccess(received.status))
-    return { failure: "status", status: received.status };
-  const read3 = format.read(parts, received.text);
-  if (isFailure(read3)) return read3;
-  return {
-    answers: read3.answers,
-    model: cleanModel(read3.model),
-    usage: read3.usage
-  };
-}
-async function ask2(input, attempt2) {
-  try {
-    return await askOnce(input, attempt2);
-  } catch {
-    return UNKNOWN;
-  }
-}
-
-// src/core/scoring/route.ts
+// src/core/scoring/limit.ts
 var ROUTING_LIMIT_MS = 8e3;
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 function abortCategory(signal) {
   return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
 }
-async function route(input) {
-  const { attempts, signal } = input;
-  if (attempts.length === 0) return { skipped: KEY_UNSET };
-  const failed = [];
-  for (const [i, attempt2] of attempts.entries()) {
-    const result = await ask2(input, attempt2);
-    if (isFailure(result)) {
-      failed.push({
-        provider: attempt2.provider,
-        reason: skipText(result, abortCategory(signal))
-      });
-      if (!fallsBack(result)) break;
-      if (i < attempts.length - 1) input.onFallback?.(attempt2.provider);
-      continue;
-    }
-    const decision = toDecision(result, attempt2.provider);
-    const [first] = failed;
-    return first ? { ...decision, firstFailed: first } : decision;
+function limitSignal(ms, clock, parent) {
+  const controller = new AbortController();
+  const { signal } = controller;
+  const disarmed = { signal, disarm: () => void 0 };
+  if (ms <= 0) {
+    controller.abort(LIMIT_REACHED);
+    return disarmed;
   }
-  return skip(failed);
-}
-function skip(failed) {
-  const [first, ...rest] = failed;
-  if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
-  return { skipped: failed.map(failedAttemptText).join(", ") };
-}
-function toDecision({ answers, model, usage }, provider) {
-  const parts = {};
-  for (const [part, probabilities] of answers)
-    parts[part.key] = { level: part.pick(probabilities), probabilities };
-  return { parts, provider, model, usage };
+  if (parent?.aborted) {
+    controller.abort(parent.reason);
+    return disarmed;
+  }
+  const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
+  const onParentAbort = () => controller.abort(parent?.reason);
+  parent?.addEventListener("abort", onParentAbort, { once: true });
+  return {
+    signal,
+    disarm: () => {
+      parent?.removeEventListener("abort", onParentAbort);
+      timer.cancel();
+    }
+  };
 }
 
 // src/core/scoring/handler-deadline.ts
@@ -1103,6 +808,15 @@ async function discover(pi, ctx) {
   }
 }
 
+// src/core/parts/part.ts
+var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
+};
+
 // src/core/parts/tier.ts
 var TIER_DOWN = 2 ** 0.25;
 var TIER_UP = 2 ** 0.5;
@@ -1140,6 +854,314 @@ var work = {
   },
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
+
+// src/core/scoring/failure.ts
+var ABORTED = { failure: "aborted" };
+var TIMED_OUT = { failure: "timed out" };
+var NETWORK = { failure: "network" };
+var MALFORMED = { failure: "malformed" };
+var UNKNOWN = { failure: "unknown" };
+var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
+  401,
+  402,
+  403,
+  404,
+  408,
+  429
+]);
+var SERVER_ERRORS = { min: 500, max: 599 };
+var OK = { min: 200, max: 299 };
+var isSuccess = (status) => status >= OK.min && status <= OK.max;
+var isFailure = (value) => Object.hasOwn(value, "failure");
+function skipText(failure, aborted) {
+  switch (failure.failure) {
+    case "aborted":
+      return aborted;
+    case "timed out":
+      return TIMEOUT;
+    case "network":
+      return NETWORK_ERROR;
+    case "status":
+      return httpStatus(failure.status);
+    case "malformed":
+      return BAD_REPLY;
+    case "unknown":
+      return FAILED;
+  }
+}
+function fallsBack(failure) {
+  switch (failure.failure) {
+    case "timed out":
+    case "network":
+      return true;
+    case "status":
+      return FALLBACK_STATUSES.has(failure.status) || failure.status >= SERVER_ERRORS.min && failure.status <= SERVER_ERRORS.max;
+    case "aborted":
+    case "malformed":
+    case "unknown":
+      return false;
+  }
+}
+
+// src/core/scoring/formats/system-one.ts
+var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
+function parseProbabilities(answers, key) {
+  const a = isRecord(answers) ? answers[key] : void 0;
+  if (!isRecord(a)) return void 0;
+  const { type, probabilities } = a;
+  if (type !== "score" || !isRecord(probabilities)) return void 0;
+  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
+  const { 0: p0, 1: p1, 2: p2 } = probabilities;
+  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+function parse(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return void 0;
+  }
+}
+var count = (v) => typeof v === "number" ? v : null;
+function usageOf(usage) {
+  if (!isRecord(usage)) return void 0;
+  const { input_tokens, output_tokens } = usage;
+  return {
+    input_tokens: count(input_tokens),
+    output_tokens: count(output_tokens)
+  };
+}
+function read2(parts, text) {
+  const reply2 = parse(text);
+  const { answers, model, usage } = isRecord(reply2) ? reply2 : {};
+  const pairs = [];
+  for (const part of parts) {
+    const probabilities = parseProbabilities(answers, part.key);
+    if (!probabilities) return MALFORMED;
+    pairs.push([part, probabilities]);
+  }
+  return { answers: pairs, model, usage: usageOf(usage) };
+}
+var SYSTEM_ONE = {
+  body: (parts, state, model) => JSON.stringify({
+    state,
+    model,
+    questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
+  }),
+  read: read2
+};
+
+// src/core/scoring/endpoints.ts
+var ENDPOINTS = {
+  typesafe: {
+    url: "https://api.typesafe.ai/v1/systemone",
+    format: SYSTEM_ONE
+  },
+  openrouter: {
+    url: "https://openrouter.ai/api/v1/systemone",
+    format: SYSTEM_ONE
+  }
+};
+var endpointOf = (attempt2) => Object.hasOwn(ENDPOINTS, attempt2.provider) ? ENDPOINTS[attempt2.provider] : void 0;
+
+// src/core/scoring/reply.ts
+var MODEL_CHARS_MAX = 40;
+var cleanModel = (model) => typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "";
+
+// src/core/scoring/transport/retry.ts
+var RETRIES = 2;
+var TIMEOUT_MS = 1e4;
+var BACKOFF_INITIAL_MS = 500;
+var BACKOFF_MAX_MS = 5e3;
+var BACKOFF_JITTER = 0.25;
+var SERVER_DELAY_MAX_MS = 6e4;
+var SERVER_ERRORS2 = { min: 500, max: 599 };
+function isRetried(outcome) {
+  if (!isFailure(outcome))
+    return outcome.status === 408 || outcome.status === 429 || outcome.status >= SERVER_ERRORS2.min && outcome.status <= SERVER_ERRORS2.max;
+  switch (outcome.failure) {
+    case "timed out":
+    case "network":
+      return true;
+    case "aborted":
+    case "status":
+    case "malformed":
+    case "unknown":
+      return false;
+  }
+}
+function serverDelayMs(headers) {
+  const rawMs = headers.get("retry-after-ms");
+  const ms = rawMs === null ? Number.NaN : Number(rawMs);
+  if (Number.isFinite(ms) && ms >= 0) return ms;
+  const raw = headers.get("retry-after");
+  if (raw === null) return void 0;
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds)) {
+    return seconds >= 0 ? seconds * 1e3 : void 0;
+  }
+  const date = Date.parse(raw);
+  return Number.isNaN(date) ? void 0 : Math.max(0, date - Date.now());
+}
+function retryDelayMs(retry, headers) {
+  const server = headers === void 0 ? void 0 : serverDelayMs(headers);
+  if (server !== void 0 && server <= SERVER_DELAY_MAX_MS) return server;
+  const backoff = Math.min(BACKOFF_INITIAL_MS * 2 ** retry, BACKOFF_MAX_MS);
+  return Math.round(backoff * (1 - Math.random() * BACKOFF_JITTER));
+}
+
+// src/core/scoring/transport/send.ts
+async function exchange(fetchFn, url, request, caller, timeout, clock) {
+  if (caller.aborted) return { outcome: ABORTED };
+  const controller = new AbortController();
+  const stopped = new Promise((_, reject) => {
+    controller.signal.addEventListener("abort", () => reject(), { once: true });
+  });
+  const timer = clock.after(timeout, () => controller.abort());
+  const cancel = () => controller.abort(caller.reason);
+  caller.addEventListener("abort", cancel, { once: true });
+  try {
+    const reply2 = await Promise.race([
+      fetchFn(url, {
+        method: "POST",
+        headers: request.headers,
+        body: request.body,
+        signal: controller.signal
+      }),
+      stopped
+    ]);
+    let text;
+    try {
+      text = await Promise.race([reply2.text(), stopped]);
+    } catch (error) {
+      if (isSuccess(reply2.status) || caller.aborted) throw error;
+      return {
+        outcome: { status: reply2.status, text: "" },
+        headers: reply2.headers
+      };
+    }
+    return { outcome: { status: reply2.status, text }, headers: reply2.headers };
+  } catch {
+    if (caller.aborted) return { outcome: ABORTED };
+    return { outcome: controller.signal.aborted ? TIMED_OUT : NETWORK };
+  } finally {
+    timer.cancel();
+    caller.removeEventListener("abort", cancel);
+  }
+}
+function pause(ms, caller, clock) {
+  if (caller.aborted) return Promise.resolve(false);
+  return new Promise((resolve2) => {
+    const done = (waited) => {
+      timer.cancel();
+      caller.removeEventListener("abort", onAbort);
+      resolve2(waited);
+    };
+    const onAbort = () => done(false);
+    const timer = clock.after(ms, () => done(true));
+    caller.addEventListener("abort", onAbort, { once: true });
+  });
+}
+async function send(fetchFn, url, request, options) {
+  const { signal, clock } = options;
+  const timeout = options.timeout ?? TIMEOUT_MS;
+  const retries = options.retries ?? RETRIES;
+  for (let retry = 0; ; retry++) {
+    const { outcome, headers } = await exchange(
+      fetchFn,
+      url,
+      request,
+      signal,
+      timeout,
+      clock
+    );
+    if (retry >= retries || !isRetried(outcome)) return outcome;
+    if (!await pause(retryDelayMs(retry, headers), signal, clock))
+      return ABORTED;
+  }
+}
+
+// src/core/scoring/ask.ts
+var VERSION = true ? "0.24.0" : "dev";
+var USER_AGENT = `model-router/${VERSION} (+https://github.com/Akurganow/model-router)`;
+async function askOnce(input, attempt2) {
+  const { parts, state, fetchFn, clock, signal } = input;
+  const endpoint = endpointOf(attempt2);
+  if (!endpoint) return UNKNOWN;
+  const { url, format } = endpoint;
+  const body = format.body(parts, state, attempt2.model);
+  const received = await send(
+    fetchFn,
+    url,
+    {
+      headers: {
+        Authorization: `Bearer ${attempt2.key}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": USER_AGENT
+      },
+      body
+    },
+    {
+      signal,
+      clock,
+      ...attempt2.timeout !== void 0 && { timeout: attempt2.timeout },
+      ...attempt2.retries !== void 0 && { retries: attempt2.retries }
+    }
+  );
+  if (isFailure(received)) return received;
+  if (!isSuccess(received.status))
+    return { failure: "status", status: received.status };
+  const read3 = format.read(parts, received.text);
+  if (isFailure(read3)) return read3;
+  return {
+    answers: read3.answers,
+    model: cleanModel(read3.model),
+    usage: read3.usage
+  };
+}
+async function ask2(input, attempt2) {
+  try {
+    return await askOnce(input, attempt2);
+  } catch {
+    return UNKNOWN;
+  }
+}
+
+// src/core/scoring/route.ts
+async function route(input) {
+  const { attempts, signal } = input;
+  if (attempts.length === 0) return { skipped: KEY_UNSET };
+  const failed = [];
+  for (const [i, attempt2] of attempts.entries()) {
+    const result = await ask2(input, attempt2);
+    if (isFailure(result)) {
+      failed.push({
+        provider: attempt2.provider,
+        reason: skipText(result, abortCategory(signal))
+      });
+      if (!fallsBack(result)) break;
+      if (i < attempts.length - 1) input.onFallback?.(attempt2.provider);
+      continue;
+    }
+    const decision = toDecision(result, attempt2.provider);
+    const [first] = failed;
+    return first ? { ...decision, firstFailed: first } : decision;
+  }
+  return skip(failed);
+}
+function skip(failed) {
+  const [first, ...rest] = failed;
+  if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
+  return { skipped: failed.map(failedAttemptText).join(", ") };
+}
+function toDecision({ answers, model, usage }, provider) {
+  const parts = {};
+  for (const [part, probabilities] of answers)
+    parts[part.key] = { level: part.pick(probabilities), probabilities };
+  return { parts, provider, model, usage };
+}
 
 // src/core/decision/decide.ts
 var BAD = { skipped: BAD_REPLY };
@@ -1182,12 +1204,18 @@ var EFFORT_BY_TIER = {
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
+// src/utils/clock.ts
+var realClock = {
+  after: (ms, fn) => {
+    const timer = setTimeout(fn, ms);
+    return { cancel: () => clearTimeout(timer) };
+  }
+};
+
 // src/adapters/omp/score.ts
 var MAX_PARALLEL = 4;
 async function scoreItems(items, context, { attempts, facts }, deadline) {
-  const limit = new AbortController();
-  if (deadline <= 0) limit.abort(LIMIT_REACHED);
-  const timer = setTimeout(() => limit.abort(LIMIT_REACHED), deadline);
+  const limit = limitSignal(deadline, realClock);
   const passedOver = /* @__PURE__ */ new Set();
   try {
     return await mapLimit(items, MAX_PARALLEL, async (pending) => {
@@ -1208,7 +1236,7 @@ async function scoreItems(items, context, { attempts, facts }, deadline) {
       return { ...pending, stored: toStored(decided, item, facts) };
     });
   } finally {
-    clearTimeout(timer);
+    limit.disarm();
   }
 }
 function scoreItem(item, context, role, routing, signal) {
@@ -1221,6 +1249,7 @@ function scoreItem(item, context, role, routing, signal) {
     }),
     ...routing,
     fetchFn: fetch,
+    clock: realClock,
     signal
   });
 }

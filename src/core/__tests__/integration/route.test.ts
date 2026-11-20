@@ -3,18 +3,14 @@
 import assert from "node:assert/strict";
 import { getEventListeners } from "node:events";
 import { test } from "node:test";
+import { realClock } from "../../../utils/clock.ts";
 import { routingState } from "../../brief/brief.ts";
 import { KEY_UNSET } from "../../output/reasons.ts";
 import { tier } from "../../parts/tier.ts";
 import { work } from "../../parts/work.ts";
 import { type Attempt, plan } from "../../providers/provider.ts";
-import {
-	type Decision,
-	LIMIT_REACHED,
-	ROUTING_LIMIT_MS,
-	type RouteInput,
-	route,
-} from "../../scoring/route.ts";
+import { LIMIT_REACHED, ROUTING_LIMIT_MS } from "../../scoring/limit.ts";
+import { type Decision, type RouteInput, route } from "../../scoring/route.ts";
 import { brokenReply, scoringReply, stalledReply } from "../support/replies.ts";
 import { fakeTime } from "../support/time.ts";
 
@@ -82,6 +78,7 @@ function run(
 		state: STATE,
 		attempts: [{ provider: "typesafe", model: MODEL, key: KEY }],
 		fetchFn,
+		clock: realClock,
 		signal: new AbortController().signal,
 		...extra,
 	});

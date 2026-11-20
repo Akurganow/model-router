@@ -29,7 +29,10 @@ export async function readKeys(
 
 // plugin validate lists the variables a module reads, so each $.env.get names its variable literally.
 function keyVariable($: Engine, provider: Provider): Promise<unknown> {
-	return provider === "typesafe"
-		? $.env.get("TYPESAFE_API_KEY")
-		: $.env.get("OPENROUTER_API_KEY");
+	switch (provider) {
+		case "typesafe":
+			return $.env.get("TYPESAFE_API_KEY");
+		case "openrouter":
+			return $.env.get("OPENROUTER_API_KEY");
+	}
 }

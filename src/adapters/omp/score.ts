@@ -4,11 +4,9 @@ import { effortFor } from "../../core/decision/ladder.ts";
 import { pickModel, slotForLevel } from "../../core/decision/slots.ts";
 import { skippedLine } from "../../core/output/line.ts";
 import type { Provider } from "../../core/providers/provider.ts";
-import {
-	LIMIT_REACHED,
-	type RouteInput,
-	type Skipped,
-} from "../../core/scoring/route.ts";
+import { limitSignal } from "../../core/scoring/limit.ts";
+import type { RouteInput, Skipped } from "../../core/scoring/route.ts";
+import { realClock } from "../../utils/clock.ts";
 import { lineFor, planEffort, type Routed } from "./effort.ts";
 import type { Batch } from "./gates.ts";
 import { type Facts, itemCheck, roleOf } from "./items.ts";
@@ -40,10 +38,8 @@ export async function scoreItems(
 	{ attempts, facts }: Batch,
 	deadline: number,
 ): Promise<Scored[]> {
-	const limit = new AbortController();
 	// A deadline the gates used up leaves no time to send anything.
-	if (deadline <= 0) limit.abort(LIMIT_REACHED);
-	const timer = setTimeout(() => limit.abort(LIMIT_REACHED), deadline);
+	const limit = limitSignal(deadline, realClock);
 	const passedOver = new Set<Provider>();
 	try {
 		return await mapLimit(items, MAX_PARALLEL, async (pending) => {
@@ -64,7 +60,7 @@ export async function scoreItems(
 			return { ...pending, stored: toStored(decided, item, facts) };
 		});
 	} finally {
-		clearTimeout(timer);
+		limit.disarm();
 	}
 }
 
@@ -84,6 +80,7 @@ function scoreItem(
 		}),
 		...routing,
 		fetchFn: fetch,
+		clock: realClock,
 		signal,
 	});
 }
@@ -96,6 +93,9 @@ const skipped = (reason: string): Stored => ({ line: skippedLine(reason) });
  * the slot's state when it has none. The line shows
  * the effort the batch's facts allow, before the spawn's patterns are known.
  * Returns a skip line alone when the decision is a skip. Never throws.
+ * omp composes the effort, the pick and the line here and does not call
+ * outcomeOf: its effort plan reads the picked model and the omp settings, and
+ * the line is built again at the spawn.
  */
 function toStored(
 	decided: DecidedWithWork | Skipped,

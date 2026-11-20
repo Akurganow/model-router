@@ -9,11 +9,10 @@ import {
 	type Scope,
 } from "../../core/options/scope.ts";
 import {
+	collectKeysSync,
 	KEY_FIELDS,
 	KEY_VARIABLES,
 	type Keys,
-	order,
-	type Provider,
 	type ProviderValue,
 	parseProvider,
 	resolve,
@@ -108,18 +107,6 @@ export function readSettings(
 	};
 }
 
-function collectKeys(
-	value: unknown,
-	lookup: (provider: Provider) => string | undefined,
-): Keys {
-	const keys: Keys = {};
-	for (const provider of order(value)) {
-		const key = lookup(provider);
-		if (key !== undefined) keys[provider] = key;
-	}
-	return keys;
-}
-
 /**
  * Returns the Jev keys of the providers the value allows, each from a source
  * field or else from its environment variable. A provider with no key is
@@ -133,7 +120,7 @@ export function readKeys(
 	env: Environment,
 ): Keys {
 	const from = sources(live, pluginConfig);
-	return collectKeys(
+	return collectKeysSync(
 		providerValue,
 		(provider) =>
 			firstValid(from, KEY_FIELDS[provider], nonEmpty) ??

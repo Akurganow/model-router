@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { MIN_DEADLINE_MS } from "../../../../core/scoring/handler-deadline.ts";
-import { LIMIT_REACHED } from "../../../../core/scoring/route.ts";
+import { LIMIT_REACHED } from "../../../../core/scoring/limit.ts";
 import { createBeforeToolCall, SPAWN_TOOL } from "../../router.ts";
 import type { BeforeToolCallEvent, ToolContext } from "../../types.ts";
 import {

@@ -50,7 +50,17 @@
 			"linter": {
 				"rules": {
 					"style": {
-						"noProcessEnv": "error"
+						"noProcessEnv": "error",
+						"noRestrictedGlobals": {
+							"level": "error",
+							"options": {
+								"deniedGlobals": {
+									"fetch": "The core opens no connection of its own: call the Fetch port the caller passes.",
+									"setTimeout": "The core sets no timer of its own: call clock.after on the Clock port the caller passes.",
+									"clearTimeout": "The core clears no timer of its own: call cancel on the timer that clock.after returned."
+								}
+							}
+						}
 					}
 				}
 			}

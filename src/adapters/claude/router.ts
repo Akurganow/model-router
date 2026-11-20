@@ -3,19 +3,14 @@ import {
 	roleText,
 	routingState,
 } from "../../core/brief/brief.ts";
-import { type DecidedWithWork, scoreWork } from "../../core/decision/decide.ts";
-import { effortFor } from "../../core/decision/ladder.ts";
+import { scoreWork } from "../../core/decision/decide.ts";
+import { outcomeOf } from "../../core/decision/outcome.ts";
 import { resolveScope, type Scope } from "../../core/options/scope.ts";
-import { routedLine, skippedLine } from "../../core/output/line.ts";
+import { skippedLine } from "../../core/output/line.ts";
 import { CALLER_EFFORT } from "../../core/output/reasons.ts";
-import type { Level } from "../../core/parts/part.ts";
 import { plan } from "../../core/providers/provider.ts";
-import {
-	LIMIT_REACHED,
-	ROUTING_LIMIT_MS,
-	type RouteInput,
-	type Skipped,
-} from "../../core/scoring/route.ts";
+import { limitSignal, ROUTING_LIMIT_MS } from "../../core/scoring/limit.ts";
+import type { RouteInput } from "../../core/scoring/route.ts";
 import type { Fetch } from "../../core/scoring/transport/send.ts";
 import {
 	type AgentCall,
@@ -32,9 +27,9 @@ import {
 	type TurnStep,
 } from "./host.ts";
 import { readKeys } from "./keys.ts";
-import { installTimers } from "./timers.ts";
 
-const MODELS = ["haiku", "sonnet", "opus"] as const;
+// Claude Code names a fixed model for each slot, so every slot is set.
+const MODELS = { small: "haiku", middle: "sonnet", large: "opus" };
 
 const BUILT_IN = "built-in";
 // The origin of a spawn the Agent tool makes. Another plugin's $.agent.spawn carries its own name.
@@ -108,10 +103,6 @@ export async function noteCallerEffort(
 	}
 }
 
-function useClockTimers($: Engine): void {
-	installTimers((ms, fn) => $.clock.after(ms, fn));
-}
-
 // Extended scope never reads the offers: any agent without a model of its own is routed, a fork excepted.
 function routable(spawn: AgentSpawn, scope: Scope): boolean {
 	const agent = spawn.subagentType;
@@ -143,7 +134,6 @@ export async function routeSpawn(
 	next: Next<Started>,
 	options: Options,
 ): Promise<Started> {
-	useClockTimers($);
 	const callerSet = callerEffort.delete(spawn.tool_use_id);
 	if (
 		next.origin.plugin !== ENGINE ||
@@ -160,9 +150,8 @@ export async function routeSpawn(
 		state,
 		attempts: plan(options.provider, keys),
 	});
-	const picked = pick(decided);
-	if ("skipped" in picked) {
-		await $.ui.log(skippedLine(picked.skipped));
+	if ("skipped" in decided) {
+		await $.ui.log(skippedLine(decided.skipped));
 		return next(spawn);
 	}
 	// Claude Code ranks this variable above any per-invocation effort, so a set value keeps the engine's effort.
@@ -171,10 +160,10 @@ export async function routeSpawn(
 		: (await $.env.get("CLAUDE_CODE_EFFORT_LEVEL"))
 			? "env effort"
 			: undefined;
-	await $.ui.log(decisionLine(picked, kept));
-	const { model, effort } = picked;
-	const started = next({ ...spawn, model });
-	if (kept === undefined) track(started, effort);
+	const { model, effort, line } = outcomeOf(decided, MODELS, kept);
+	await $.ui.log(line);
+	const started = next(model === undefined ? spawn : { ...spawn, model });
+	if (effort !== undefined) track(started, effort);
 	const outcome = await started;
 	if (outcome.deny !== undefined) await $.ui.log("denied");
 	return outcome;
@@ -238,94 +227,41 @@ async function spawnsSettled($: Engine): Promise<void> {
 	}
 }
 
-type Picked = {
-	model: (typeof MODELS)[number];
-	effort: string;
-	level: Level;
-	probabilities: string;
-	suffix: string;
-};
-
-/**
- * Returns the model, effort, level, probabilities and suffix for the levels
- * Jev decided. Returns the skip unchanged. Never throws.
- */
-function pick(decided: DecidedWithWork | Skipped): Picked | Skipped {
-	if ("skipped" in decided) return decided;
-	return {
-		model: MODELS[decided.tier],
-		effort: effortFor(decided.tier, decided.work),
-		level: decided.tier,
-		probabilities: decided.probabilities,
-		suffix: decided.suffix,
-	};
-}
-
-/**
- * Returns the routing line for a pick. A kept effort replaces the picked
- * effort. Never throws.
- */
-function decisionLine(picked: Picked, kept: string | undefined): string {
-	return routedLine({
-		level: picked.level,
-		target: picked.model,
-		effort: kept ?? picked.effort,
-		probabilities: picked.probabilities,
-		suffix: picked.suffix,
-	});
-}
-
 // The limit covers the whole call, retries included. Aborting also ends the retry wait, so no request follows a skip.
 async function scored(
 	$: Engine,
 	cancel: AbortSignal,
 	input: Pick<RouteInput, "state" | "attempts">,
 ) {
-	const stop = new AbortController();
-	$.clock.sleep(ROUTING_LIMIT_MS, { signal: stop.signal }).then(
-		() => stop.abort(LIMIT_REACHED),
-		() => undefined,
-	);
+	const clock = {
+		after: (ms: number, fn: () => void) => $.clock.after(ms, fn),
+	};
+	const limit = limitSignal(ROUTING_LIMIT_MS, clock, cancel);
 	try {
 		return await scoreWork({
 			...input,
 			fetchFn: engineFetch($),
-			signal: AbortSignal.any([stop.signal, cancel]),
+			clock,
+			signal: limit.signal,
 		});
 	} finally {
-		stop.abort();
+		limit.disarm();
 	}
 }
 
-// $.http.fetch takes no signal, so the call races the abort. The request itself runs to its end.
+// $.http.fetch takes no signal. The transport races this call against its own abort, so a skip
+// ends the wait at once while the request itself runs to its end.
 function engineFetch($: Engine): Fetch {
-	return (url, init) => {
+	return async (url, init) => {
 		const { body } = init;
-		return abortable(async () => {
-			await logRequest($, body);
-			const reply = await $.http.fetch(url, {
-				method: init.method,
-				headers: init.headers,
-				body,
-			});
-			return toReply(reply);
-		}, init.signal);
+		await logRequest($, body);
+		const reply = await $.http.fetch(url, {
+			method: init.method,
+			headers: init.headers,
+			body,
+		});
+		return toReply(reply);
 	};
-}
-
-function abortable<T>(
-	start: () => Promise<T>,
-	signal: AbortSignal | null | undefined,
-): Promise<T> {
-	if (!signal) return start();
-	return new Promise((resolve, reject) => {
-		if (signal.aborted) return reject(signal.reason);
-		const onAbort = () => reject(signal.reason);
-		signal.addEventListener("abort", onAbort, { once: true });
-		start()
-			.then(resolve, reject)
-			.finally(() => signal.removeEventListener("abort", onAbort));
-	});
 }
 
 // Only the body goes to the log. Headers carry the key.

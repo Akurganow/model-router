@@ -9,14 +9,14 @@ import {
 	plan,
 } from "../src/core/providers/provider.ts";
 import { ENDPOINTS } from "../src/core/scoring/endpoints.ts";
+import { limitSignal, ROUTING_LIMIT_MS } from "../src/core/scoring/limit.ts";
 import {
 	type Decision,
-	LIMIT_REACHED,
-	ROUTING_LIMIT_MS,
 	route,
 	type Skipped,
 } from "../src/core/scoring/route.ts";
 import type { Fetch } from "../src/core/scoring/transport/send.ts";
+import { realClock } from "../src/utils/clock.ts";
 import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";
 import { fitWarnings } from "./jev-fit.ts";
 
@@ -46,8 +46,7 @@ export async function runCase(
 	attempts: readonly Attempt[],
 	fetchFn: Fetch,
 ): Promise<Decision | Skipped> {
-	const limit = new AbortController();
-	const timer = setTimeout(() => limit.abort(LIMIT_REACHED), ROUTING_LIMIT_MS);
+	const limit = limitSignal(ROUTING_LIMIT_MS, realClock);
 	try {
 		return await route({
 			parts: [tier, work],
@@ -58,10 +57,11 @@ export async function runCase(
 			}),
 			attempts,
 			fetchFn,
+			clock: realClock,
 			signal: limit.signal,
 		});
 	} finally {
-		clearTimeout(timer);
+		limit.disarm();
 	}
 }
 

@@ -1,3 +1,4 @@
+import type { Clock } from "../../../utils/clock.ts";
 import {
 	ABORTED,
 	type Failure,
@@ -41,6 +42,7 @@ async function exchange(
 	request: Pick<FetchInit, "headers" | "body">,
 	caller: AbortSignal,
 	timeout: number,
+	clock: Clock,
 ): Promise<Exchange> {
 	if (caller.aborted) return { outcome: ABORTED };
 	const controller = new AbortController();
@@ -48,7 +50,7 @@ async function exchange(
 	const stopped = new Promise<never>((_, reject) => {
 		controller.signal.addEventListener("abort", () => reject(), { once: true });
 	});
-	const timer = setTimeout(() => controller.abort(), timeout);
+	const timer = clock.after(timeout, () => controller.abort());
 	// The fetch sees the caller's reason, so a routing limit differs from a cancel there too.
 	const cancel = () => controller.abort(caller.reason);
 	caller.addEventListener("abort", cancel, { once: true });
@@ -78,22 +80,26 @@ async function exchange(
 		if (caller.aborted) return { outcome: ABORTED };
 		return { outcome: controller.signal.aborted ? TIMED_OUT : NETWORK };
 	} finally {
-		clearTimeout(timer);
+		timer.cancel();
 		caller.removeEventListener("abort", cancel);
 	}
 }
 
 // Waits `ms`: gives true when the time runs out, and false at once when the caller aborts first.
-function pause(ms: number, caller: AbortSignal): Promise<boolean> {
+function pause(
+	ms: number,
+	caller: AbortSignal,
+	clock: Clock,
+): Promise<boolean> {
 	if (caller.aborted) return Promise.resolve(false);
 	return new Promise((resolve) => {
 		const done = (waited: boolean) => {
-			clearTimeout(timer);
+			timer.cancel();
 			caller.removeEventListener("abort", onAbort);
 			resolve(waited);
 		};
 		const onAbort = () => done(false);
-		const timer = setTimeout(() => done(true), ms);
+		const timer = clock.after(ms, () => done(true));
 		caller.addEventListener("abort", onAbort, { once: true });
 	});
 }
@@ -109,11 +115,12 @@ export async function send(
 	},
 	options: {
 		readonly signal: AbortSignal;
+		readonly clock: Clock;
 		readonly timeout?: number;
 		readonly retries?: number;
 	},
 ): Promise<Received | Failure> {
-	const { signal } = options;
+	const { signal, clock } = options;
 	const timeout = options.timeout ?? TIMEOUT_MS;
 	const retries = options.retries ?? RETRIES;
 	for (let retry = 0; ; retry++) {
@@ -123,8 +130,10 @@ export async function send(
 			request,
 			signal,
 			timeout,
+			clock,
 		);
 		if (retry >= retries || !isRetried(outcome)) return outcome;
-		if (!(await pause(retryDelayMs(retry, headers), signal))) return ABORTED;
+		if (!(await pause(retryDelayMs(retry, headers), signal, clock)))
+			return ABORTED;
 	}
 }
