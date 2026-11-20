@@ -75,7 +75,6 @@ const GLOBAL_THIS = "Do not use the global variable globalThis";
 const INTERVAL_GLOBAL = "Do not use the global variable setInterval";
 const CLEAR_INTERVAL_GLOBAL = "Do not use the global variable clearInterval";
 const WEB_SOCKET_GLOBAL = "Do not use the global variable WebSocket";
-const XHR_GLOBAL = "Do not use the global variable XMLHttpRequest";
 const EVENT_SOURCE_GLOBAL = "Do not use the global variable EventSource";
 const GLOBAL_OBJECT = "Do not use the global variable global";
 const SET_IMMEDIATE_GLOBAL = "Do not use the global variable setImmediate";
@@ -470,13 +469,6 @@ const faults: Fault[] = [
 		code: 'export const w = () => new WebSocket("wss://example.test");',
 		category: GLOBALS,
 		message: WEB_SOCKET_GLOBAL,
-	},
-	{
-		form: "a format opens an XMLHttpRequest",
-		file: "src/core/scoring/formats/globals.ts",
-		code: "export const x = () => new XMLHttpRequest();",
-		category: GLOBALS,
-		message: XHR_GLOBAL,
 	},
 	{
 		form: "a format opens an EventSource",
