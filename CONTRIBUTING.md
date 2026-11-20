@@ -24,7 +24,7 @@ every commit as a [conventional commit](#commits).
     `biome.json` ban the imports of each layer. Plugins in
     `scripts/lint/` ban a computed `import()` in `src/`, a re-export in
     `src/utils/` and a shared skip reason spelled outside
-    `src/core/reasons.ts`.
+    `src/core/output/reasons.ts`.
   - `scripts/lint.test.ts` plants one fault for each rule and checks that
     Biome reports it.
   - [AGENTS.md](AGENTS.md#a-rule-about-the-source-goes-to-biome-first)

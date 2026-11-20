@@ -135,7 +135,7 @@ new Jev release.
 
 Jev reads the agent's role with the task. Claude Code's `general-purpose` and
 `claude` agents and omp's bundled `task` agent send one fixed text instead of
-their harness's description. The text is `DEFAULT_ROLE` in `src/core/brief.ts`.
+their harness's description. The text is `DEFAULT_ROLE` in `src/core/brief/brief.ts`.
 
 Under Claude Code's `extended` scope, a `general-purpose` or `claude` agent you
 define sends its own description, as
