@@ -295,7 +295,7 @@ async function send(fetchFn, url, request, options) {
 }
 
 // src/core/scoring/ask.ts
-var VERSION = true ? "0.23.1" : "dev";
+var VERSION = true ? "0.24.0" : "dev";
 var USER_AGENT = `model-router/${VERSION} (+https://github.com/Akurganow/model-router)`;
 async function askOnce(input, attempt) {
   const { parts, state, keys, fetchFn, signal } = input;

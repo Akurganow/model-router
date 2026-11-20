@@ -3,6 +3,20 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.24.0 - 2026-11-20
+#### Features
+- name the answering provider in the routing line (c11bb03)
+#### Documentation
+- say what the model of a decision holds (3fea935)
+- show the whole tail in the routing line examples (913843a)
+- describe the provider and the failure tail of the routing line (28eae30)
+#### Tests
+- bind the evals parse to the suffix the core writes (5e4a7ae)
+- read the model after the provider in the evals parse (4998356)
+
+- - -
+
+
 ## v0.23.1 - 2026-11-20
 #### Bug Fixes
 - keep an error status when its reply body cannot be read (8aae98a)
