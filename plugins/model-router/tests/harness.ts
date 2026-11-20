@@ -67,6 +67,8 @@ type AgentArgs = Loose & {
 	name?: string;
 };
 type Reply = {
+	// Overrides the setup's delay for this reply.
+	delayMs?: number;
 	status?: number;
 	headers?: Record<string, string>;
 	text?: string;
@@ -181,7 +183,6 @@ const fetchHandler =
 			status = 200,
 			replies = [],
 			offline = false,
-			delayMs = 0,
 		} = setup;
 		h.fetched += 1;
 		h.requests.push(e);
@@ -190,9 +191,10 @@ const fetchHandler =
 		h.sent = sent;
 		const { Authorization } = e.init?.headers ?? {};
 		h.auth = Authorization;
+		const reply = replies[Math.min(h.fetched, replies.length) - 1] ?? {};
+		const delayMs = reply.delayMs ?? setup.delayMs ?? 0;
 		if (delayMs > 0) await h.clock.sleep(delayMs);
 		if (offline) return { deny: "offline" };
-		const reply = replies[Math.min(h.fetched, replies.length) - 1] ?? {};
 		const code = reply.status ?? status;
 		const body = reply.text ?? (typeof text === "function" ? text(sent) : text);
 		return {

@@ -112,3 +112,47 @@ test("a hook failure lets the call run unchanged", KEYED, async ($, on) => {
 	expect(h.received.prompt).toBe(42);
 	expect(outcome.result).toBe("ok");
 });
+
+// TypeSafe answers 503 at once and falls back; OpenRouter does not answer for a minute.
+const BOTH_KEYS = {
+	api_key: "typesafe-key",
+	openrouter_api_key: "openrouter-key",
+	provider: "auto",
+};
+const SLOW_FALLBACK = {
+	replies: [{ status: 503, text: "down" }, { delayMs: 60000 }],
+};
+
+test(
+	"the limit after a fallback names both providers",
+	{ options: BOTH_KEYS },
+	async ($, on) => {
+		const h = harness(on, SLOW_FALLBACK);
+		await offerAll($);
+		const pending = runAgent($, h);
+		await h.clock.advance(7999);
+		expect(h.logs).toEqual([]);
+		await h.clock.advance(1);
+		await pending;
+		expect(h.fetched).toBe(2);
+		expect(h.received.model).toBeUndefined();
+		expect(h.logs).toEqual(["skipped, typesafe HTTP 503, openrouter timeout"]);
+	},
+);
+
+test(
+	"an abandoned spawn after a fallback names both providers",
+	{ options: BOTH_KEYS, plugins: [interrupter] },
+	async ($, on) => {
+		const h = harness(on, SLOW_FALLBACK);
+		await offerAll($);
+		const pending = runAgent($, h);
+		await h.clock.advance(100);
+		expect(await pending).toEqual({ deny: "interrupted" });
+		expect(h.fetched).toBe(2);
+		expect(h.received.model).toBeUndefined();
+		expect(h.logs).toEqual([
+			"skipped, typesafe HTTP 503, openrouter cancelled",
+		]);
+	},
+);
