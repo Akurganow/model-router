@@ -20,10 +20,11 @@ export function jsonLines(text: string): Record<string, unknown>[] {
 	return events;
 }
 
-// decisionSuffix in src/core/compose.ts writes the answering provider right after the probabilities,
-// then the model cut to these characters. The lookahead keeps the failure tail from reading as a model.
+// The pattern starts right after the probabilities, because the failure tail has the same
+// "<provider> <word>" form. The model is optional: a reply may name none. cleanModel in
+// src/core/scoring/reply.ts cuts the model to these characters.
 const MODEL_SEGMENT = new RegExp(
-	` · p=\\S+ · (?:${PROVIDERS.join("|")})(?: (?<jev>[A-Za-z0-9._/-]+))?(?= · |$)`,
+	` · p=\\S+ · (?:${PROVIDERS.join("|")})(?: (?<jev>[A-Za-z0-9._/-]+))?`,
 );
 
 export function jevModel(line: string): string | null {
