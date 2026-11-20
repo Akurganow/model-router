@@ -28,10 +28,10 @@ every commit as a [conventional commit](#commits).
     `src/`, an import from a `__tests__` folder in a source file of `src/`,
     a re-export in `src/utils/` and a shared skip reason spelled outside
     `src/core/output/reasons.ts`.
-  - An override replaces an earlier one for its files, so the override of
-    `scoring/formats/` repeats the ban of `scoring/`, and the lint test
-    plants a fault for each. The ban on `scoring/route.ts` is a plugin, so
-    no third override repeats the ban of `scoring/`.
+  - An override replaces an earlier one for its files, so a ban that must
+    hold under a narrower override is a plugin. The overrides read no import
+    in a type position, `typeof import("…")` or `import("…").X`; the plugins
+    that ban an import read it.
   - `scripts/lint.test.ts` plants one fault for each rule and checks that
     Biome reports it.
   - [AGENTS.md](AGENTS.md#a-rule-about-the-source-goes-to-biome-first)
@@ -54,19 +54,19 @@ every commit as a [conventional commit](#commits).
   - `brief/`: the task text that leaves the machine, condensed and masked.
   - `parts/`: the questions `tier` and `work`, their shared types and the
     pick rule. It imports only `parts/part.ts` and `utils/`.
-  - `providers/`: the provider list, each provider's name in prose, the
-    values of the `provider` setting, their order, the key names and the
-    plan of attempts. An attempt carries its provider's key. It imports
-    nothing from `scoring/`.
+  - `providers/`: the provider list, the values of the `provider` setting,
+    their order, the key names, each provider's default model and the plan
+    of attempts. An attempt carries its provider's key. It imports nothing
+    from `scoring/`.
   - `scoring/`: the call. `route` asks the attempts in order and picks each
     part's level, `ask` sends one request, `endpoints.ts` holds one table
     with each provider's URL and wire format, `formats/` holds the wire
     formats, `transport/` the request and its retries. It also holds the
     routing limit and a handler's deadline. It imports nothing from
-    `decision/` or `options/`. `formats/` imports no `ask.ts`, no `route.ts`
-    and no `endpoints.ts`, and nothing from `transport/` or `providers/`.
-    `route.ts` imports no wire format, nothing from `transport/` and not
-    `endpoints.ts`.
+    `decision/` or `options/`. `formats/` imports only its own folder,
+    `scoring/failure.ts`, `scoring/reply.ts`, `parts/part.ts`,
+    `brief/brief.ts` and `utils/`. `route.ts` imports no wire format,
+    nothing from `transport/` and not `endpoints.ts`.
   - `decision/`: `scoreWork`, the entry every adapter calls, which reads the
     tier and work levels; the effort ladder; the slots.
   - `options/`: the settings and the scope, with their report and dialog
