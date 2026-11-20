@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { getEventListeners } from "node:events";
 import { test } from "node:test";
-import { routingState } from "../../brief.ts";
+import { routingState } from "../../brief/brief.ts";
 import {
 	type Decision,
 	decisionSuffix,
@@ -12,8 +12,8 @@ import {
 	type RouteInput,
 	route,
 } from "../../compose.ts";
+import { KEY_UNSET } from "../../output/reasons.ts";
 import { type Attempt, plan } from "../../provider.ts";
-import { KEY_UNSET } from "../../reasons.ts";
 import { tier } from "../../tier.ts";
 import { work } from "../../work.ts";
 import { brokenReply, scoringReply, stalledReply } from "../support/replies.ts";

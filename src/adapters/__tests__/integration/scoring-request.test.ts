@@ -5,7 +5,7 @@ import {
 	scoringReply,
 	systemOneAnswer,
 } from "../../../core/__tests__/support/replies.ts";
-import { DEFAULT_ROLE } from "../../../core/brief.ts";
+import { DEFAULT_ROLE } from "../../../core/brief/brief.ts";
 import { tier } from "../../../core/tier.ts";
 import { work } from "../../../core/work.ts";
 import { createFakeClock } from "../../../utils/__tests__/support/fake-clock.ts";

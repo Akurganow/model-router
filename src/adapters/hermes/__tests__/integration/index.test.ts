@@ -3,7 +3,11 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { buildPrompt, DEFAULT_ROLE, ROLE_CAP } from "../../../../core/brief.ts";
+import {
+	buildPrompt,
+	DEFAULT_ROLE,
+	ROLE_CAP,
+} from "../../../../core/brief/brief.ts";
 import { ROUTING_LIMIT_MS } from "../../../../core/compose.ts";
 import { createFakeClock } from "../../../../utils/__tests__/support/fake-clock.ts";
 import { readRequest } from "../../request.ts";

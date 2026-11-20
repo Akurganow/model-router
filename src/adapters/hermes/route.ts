@@ -1,22 +1,26 @@
-import { DEFAULT_ROLE, routingState } from "../../core/brief.ts";
+import { DEFAULT_ROLE, routingState } from "../../core/brief/brief.ts";
 import { LIMIT_REACHED, type Skipped } from "../../core/compose.ts";
 import { type DecidedWithWork, scoreWork } from "../../core/decide.ts";
-import { effortFor } from "../../core/ladder.ts";
-import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
-import { plan } from "../../core/provider.ts";
-import {
-	CALLER_EFFORT,
-	CONFIG_EFFORT,
-	FAILED,
-	TIMEOUT,
-} from "../../core/reasons.ts";
-import type { Fetch } from "../../core/scoring/transport/send.ts";
+import { effortFor } from "../../core/decision/ladder.ts";
 import {
 	pickModel,
 	type Slot,
 	slotForLevel,
 	slotState,
-} from "../../core/slots.ts";
+} from "../../core/decision/slots.ts";
+import {
+	LINE_PREFIX,
+	routedLine,
+	skippedLine,
+} from "../../core/output/line.ts";
+import {
+	CALLER_EFFORT,
+	CONFIG_EFFORT,
+	FAILED,
+	TIMEOUT,
+} from "../../core/output/reasons.ts";
+import { plan } from "../../core/provider.ts";
+import type { Fetch } from "../../core/scoring/transport/send.ts";
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
 import { type HermesRequest, type KeptEffort, readRequest } from "./request.ts";

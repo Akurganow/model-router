@@ -1,11 +1,11 @@
-import { EFFORTS } from "../../core/ladder.ts";
-import { LEVELS } from "../../core/part.ts";
+import { EFFORTS } from "../../core/decision/ladder.ts";
 import {
 	FAILED,
 	KEY_UNSET,
 	SUBAGENT_MODEL_SET,
 	TIMEOUT,
-} from "../../core/reasons.ts";
+} from "../../core/output/reasons.ts";
+import { LEVELS } from "../../core/part.ts";
 
 // The reason Python gives when no Node runtime is on the path.
 const NODE_NOT_FOUND = "node not found";

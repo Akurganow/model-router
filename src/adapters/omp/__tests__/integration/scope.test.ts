@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DEFAULT_ROLE, roleText } from "../../../../core/brief.ts";
-import { skippedLine } from "../../../../core/line.ts";
+import { DEFAULT_ROLE, roleText } from "../../../../core/brief/brief.ts";
+import { skippedLine } from "../../../../core/output/line.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
 	KEY_UNSET,
 	setsOwnModel,
 	UNREADABLE,
-} from "../../../../core/reasons.ts";
+} from "../../../../core/output/reasons.ts";
 import { createExtension } from "../../router.ts";
 import { AGENTS, extend } from "../support/fake-agents.ts";
 import { lockfileScoped, throws, useWorld } from "../support/fakes.ts";

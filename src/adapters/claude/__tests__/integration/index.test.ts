@@ -4,9 +4,9 @@ import {
 	DEFAULT_ROLE,
 	NO_DESCRIPTION,
 	roleText,
-} from "../../../../core/brief.ts";
-import { skippedLine } from "../../../../core/line.ts";
-import { KEY_UNSET } from "../../../../core/reasons.ts";
+} from "../../../../core/brief/brief.ts";
+import { skippedLine } from "../../../../core/output/line.ts";
+import { KEY_UNSET } from "../../../../core/output/reasons.ts";
 import { EFFORTS_MAX } from "../../host.ts";
 import {
 	AGENT_CALL,

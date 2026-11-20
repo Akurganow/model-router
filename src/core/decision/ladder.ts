@@ -1,4 +1,4 @@
-import type { Level } from "./part.ts";
+import type { Level } from "../part.ts";
 
 // Every effort the ladder gives, weakest first.
 export const EFFORTS = ["low", "medium", "high", "xhigh"] as const;

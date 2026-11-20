@@ -4,15 +4,7 @@ import {
 	taskParameterTexts,
 } from "../../src/adapters/hermes/texts.ts";
 import { ROUTING_LIMIT_MS } from "../../src/core/compose.ts";
-import { EFFORTS } from "../../src/core/ladder.ts";
-import { LINE_PREFIX, pinnedLine, skippedLine } from "../../src/core/line.ts";
-import { LEVELS, type Level } from "../../src/core/part.ts";
-import {
-	KEY_VARIABLES,
-	order,
-	PROVIDER_VALUES,
-	resolve as resolveProvider,
-} from "../../src/core/provider.ts";
+import { EFFORTS } from "../../src/core/decision/ladder.ts";
 import {
 	pickModel,
 	SLOT_SETTINGS,
@@ -20,7 +12,19 @@ import {
 	slotForLevel,
 	slotRecord,
 	slotSetting,
-} from "../../src/core/slots.ts";
+} from "../../src/core/decision/slots.ts";
+import {
+	LINE_PREFIX,
+	pinnedLine,
+	skippedLine,
+} from "../../src/core/output/line.ts";
+import { LEVELS, type Level } from "../../src/core/part.ts";
+import {
+	KEY_VARIABLES,
+	order,
+	PROVIDER_VALUES,
+	resolve as resolveProvider,
+} from "../../src/core/provider.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";

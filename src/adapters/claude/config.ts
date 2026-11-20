@@ -12,7 +12,7 @@ import {
 	VALUE_SETTINGS,
 	type ValueSetting,
 	valueLine,
-} from "../../core/settings.ts";
+} from "../../core/options/settings.ts";
 import { serializer } from "../../utils/serializer.ts";
 import type {
 	CommandOutput,

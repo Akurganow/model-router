@@ -8,7 +8,7 @@ import {
 	unchanged,
 	useOneOf,
 	valueLine,
-} from "../../../../core/settings.ts";
+} from "../../../../core/options/settings.ts";
 import {
 	NOT_OWNER,
 	registerConfigCommands,

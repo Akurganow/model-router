@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { systemOneAnswer } from "../../../../core/__tests__/support/replies.ts";
 import { ROUTING_LIMIT_MS } from "../../../../core/compose.ts";
-import { effortFor } from "../../../../core/ladder.ts";
+import { effortFor } from "../../../../core/decision/ladder.ts";
 import type { Level } from "../../../../core/part.ts";
 import { createExtension } from "../../router.ts";
 import { type Pending, scoreItems } from "../../score.ts";

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import { afterEach, mock, test } from "node:test";
-import { ROLE_CAP } from "../src/core/brief.ts";
+import { ROLE_CAP } from "../src/core/brief/brief.ts";
 import { plan } from "../src/core/provider.ts";
 import { type Case, caseHead, main, readKey, runCase } from "./calibrate.ts";
 import { FITTED_ON, fitWarning } from "./jev-fit.ts";

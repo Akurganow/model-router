@@ -1,4 +1,4 @@
-import { FAILED } from "../../core/reasons.ts";
+import { FAILED } from "../../core/output/reasons.ts";
 import { realClock } from "../../utils/clock.ts";
 import { routeRequest, skip } from "./route.ts";
 

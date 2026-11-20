@@ -4,7 +4,7 @@ import {
 	DEFAULT_ROLE,
 	NO_DESCRIPTION,
 	roleText,
-} from "../../../../core/brief.ts";
+} from "../../../../core/brief/brief.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
@@ -12,7 +12,7 @@ import {
 	outsideCoreScope,
 	setsOwnModel,
 	UNREADABLE,
-} from "../../../../core/reasons.ts";
+} from "../../../../core/output/reasons.ts";
 import { readSpawn } from "../../params.ts";
 import type { OpenClawConfig } from "../../types.ts";
 import {

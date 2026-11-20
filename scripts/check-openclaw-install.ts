@@ -9,7 +9,7 @@ import type {
 	OpenClawApi,
 	RegistrationMode,
 } from "../src/adapters/openclaw/types.ts";
-import { TOOL_NAME } from "../src/core/settings.ts";
+import { TOOL_NAME } from "../src/core/options/settings.ts";
 import { errorText } from "../src/utils/error.ts";
 import { nonEmpty } from "../src/utils/text.ts";
 import { NPM_ROOT } from "./build/outputs.ts";

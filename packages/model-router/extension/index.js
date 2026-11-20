@@ -31,7 +31,7 @@ function readInstalledName(moduleUrl) {
   }
 }
 
-// src/core/brief.ts
+// src/core/brief/brief.ts
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
 var NO_DESCRIPTION = "An agent with no description.";
@@ -263,7 +263,19 @@ function routingState(raw) {
   };
 }
 
-// src/core/line.ts
+// src/core/decision/slots.ts
+var SLOTS = ["small", "middle", "large"];
+var slotForLevel = (level) => SLOTS[level];
+var slotSetting = (slot) => `${slot}_model`;
+var SLOT_SETTINGS = SLOTS.map(slotSetting);
+var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
+var slotState = (model) => model === void 0 ? { state: "unset" } : { state: "set", model };
+function pickModel(level, state) {
+  const slot = slotForLevel(level);
+  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
+}
+
+// src/core/output/line.ts
 var LINE_PREFIX = "model-router ";
 var ENTRY_SEPARATOR = " | ";
 var pinnedLine = (level, target) => `L${level} ${target}`;
@@ -280,17 +292,8 @@ function routedLine({
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 
-// src/core/slots.ts
-var SLOTS = ["small", "middle", "large"];
-var slotForLevel = (level) => SLOTS[level];
-var slotSetting = (slot) => `${slot}_model`;
-var SLOT_SETTINGS = SLOTS.map(slotSetting);
-var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
-var slotState = (model) => model === void 0 ? { state: "unset" } : { state: "set", model };
-function pickModel(level, state) {
-  const slot = slotForLevel(level);
-  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
-}
+// src/utils/error.ts
+var errorText = (err) => err instanceof Error ? err.message : String(err);
 
 // src/core/provider.ts
 var PROVIDER_VALUES = [
@@ -340,32 +343,13 @@ function plan(value, keys) {
   );
 }
 
-// src/core/reasons.ts
-var CALLER_EFFORT = "caller effort";
-var CONFIG_EFFORT = "config effort";
-var UNREADABLE = "settings unreadable";
-var KEY_UNSET = "key unset";
-var BAD_REPLY = "bad reply";
-var TIMEOUT = "timeout";
-var FAILED = "failed";
-var NETWORK_ERROR = "network error";
-var httpStatus = (status) => `HTTP ${status}`;
-var CANCELLED = "cancelled";
-var outsideCoreScope = (id) => `${id} is outside the core scope`;
-var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
-var agentUnknown = (id) => `${id} agent unknown`;
-var setsOwnModel = (id) => `${id} sets its own model`;
-
-// src/utils/error.ts
-var errorText = (err) => err instanceof Error ? err.message : String(err);
-
-// src/core/scope.ts
+// src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
 var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
 var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
-// src/core/settings.ts
+// src/core/options/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
 var TOOL_NAME = "model_router_config";
 var LABEL_SEPARATOR = " - ";
@@ -446,6 +430,22 @@ var COMMAND_DESCRIPTIONS = {
   provider: describeCommand("provider"),
   scope: describeCommand("scope")
 };
+
+// src/core/output/reasons.ts
+var CALLER_EFFORT = "caller effort";
+var CONFIG_EFFORT = "config effort";
+var UNREADABLE = "settings unreadable";
+var KEY_UNSET = "key unset";
+var BAD_REPLY = "bad reply";
+var TIMEOUT = "timeout";
+var FAILED = "failed";
+var NETWORK_ERROR = "network error";
+var httpStatus = (status) => `HTTP ${status}`;
+var CANCELLED = "cancelled";
+var outsideCoreScope = (id) => `${id} is outside the core scope`;
+var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
+var agentUnknown = (id) => `${id} agent unknown`;
+var setsOwnModel = (id) => `${id} sets its own model`;
 
 // src/utils/serializer.ts
 function serializer() {
@@ -1156,7 +1156,7 @@ async function scoreWork(input) {
   return decide2(decision, tier.key, work.key);
 }
 
-// src/core/ladder.ts
+// src/core/decision/ladder.ts
 var EFFORT_BY_TIER = {
   0: ["medium", "high", "xhigh"],
   1: ["low", "medium", "high"],

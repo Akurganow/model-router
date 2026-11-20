@@ -69,13 +69,13 @@ function plan(value, keys) {
   );
 }
 
-// src/core/scope.ts
+// src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
 var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
 var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
-// src/core/settings.ts
+// src/core/options/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
 var LABEL_SEPARATOR = " - ";
 var TEXTS = {
@@ -270,7 +270,7 @@ async function configCommand($, e, setting, options) {
   return { text: await write($, setting, args) };
 }
 
-// src/core/brief.ts
+// src/core/brief/brief.ts
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
 var NO_DESCRIPTION = "An agent with no description.";
@@ -499,7 +499,7 @@ function routingState(raw) {
   };
 }
 
-// src/core/reasons.ts
+// src/core/output/reasons.ts
 var CALLER_EFFORT = "caller effort";
 var KEY_UNSET = "key unset";
 var BAD_REPLY = "bad reply";
@@ -895,7 +895,7 @@ async function scoreWork(input) {
   return decide2(decision, tier.key, work.key);
 }
 
-// src/core/ladder.ts
+// src/core/decision/ladder.ts
 var EFFORT_BY_TIER = {
   0: ["medium", "high", "xhigh"],
   1: ["low", "medium", "high"],
@@ -903,7 +903,7 @@ var EFFORT_BY_TIER = {
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
-// src/core/line.ts
+// src/core/output/line.ts
 var pinnedLine = (level, target) => `L${level} ${target}`;
 function routedLine({
   level,

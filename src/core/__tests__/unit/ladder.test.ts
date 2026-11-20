@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { effortFor } from "../../ladder.ts";
+import { effortFor } from "../../decision/ladder.ts";
 import type { Level } from "../../part.ts";
 
 // The values are written out, not read from the ladder.

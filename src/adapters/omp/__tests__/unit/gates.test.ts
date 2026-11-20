@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
-import { plan } from "../../../../core/provider.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
@@ -8,7 +7,8 @@ import {
 	outsideCoreScope,
 	setsOwnModel,
 	UNREADABLE,
-} from "../../../../core/reasons.ts";
+} from "../../../../core/output/reasons.ts";
+import { plan } from "../../../../core/provider.ts";
 import { checkGates, slotModel } from "../../gates.ts";
 import { AGENTS, extend } from "../support/fake-agents.ts";
 import {

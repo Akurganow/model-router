@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { NO_ANSWER, unchanged, valueLine } from "../../../../core/settings.ts";
+import {
+	NO_ANSWER,
+	unchanged,
+	valueLine,
+} from "../../../../core/options/settings.ts";
 import {
 	configCall,
 	configCommand,

@@ -8,9 +8,9 @@ import {
 	readKeys,
 	readSettings,
 } from "../src/adapters/openclaw/settings.ts";
+import { SCOPE_VALUES } from "../src/core/options/scope.ts";
+import { TOOL_NAME } from "../src/core/options/settings.ts";
 import { KEY_FIELDS } from "../src/core/provider.ts";
-import { SCOPE_VALUES } from "../src/core/scope.ts";
-import { TOOL_NAME } from "../src/core/settings.ts";
 import { formatJson } from "./build/json.ts";
 import { renderOpenclaw } from "./build/openclaw.ts";
 import { OPENCLAW_OUTPUTS } from "./build/outputs.ts";

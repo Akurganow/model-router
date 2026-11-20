@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { UNREADABLE } from "../../../../core/reasons.ts";
 import {
 	alreadyValue,
 	ask,
@@ -12,7 +11,8 @@ import {
 	useOneOf,
 	type ValueSetting,
 	valueLine,
-} from "../../../../core/settings.ts";
+} from "../../../../core/options/settings.ts";
+import { UNREADABLE } from "../../../../core/output/reasons.ts";
 import { projectOverrides } from "../../config.ts";
 import { createExtension } from "../../router.ts";
 import type { OmpImports, ToolSpec } from "../../types.ts";
