@@ -8,7 +8,7 @@ import {
 	DEFAULT_ROLE,
 	ROLE_CAP,
 } from "../../../../core/brief/brief.ts";
-import { ROUTING_LIMIT_MS } from "../../../../core/compose.ts";
+import { ROUTING_LIMIT_MS } from "../../../../core/scoring/route.ts";
 import { createFakeClock } from "../../../../utils/__tests__/support/fake-clock.ts";
 import { readRequest } from "../../request.ts";
 import { routeRequest } from "../../route.ts";

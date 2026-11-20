@@ -9,7 +9,7 @@ import {
 	PROVIDER_VALUES,
 	parseProvider,
 	plan,
-} from "../../provider.ts";
+} from "../../providers/provider.ts";
 
 const T = { provider: "typesafe", model: "jev-latest" };
 const O = { provider: "openrouter", model: "jev-latest" };

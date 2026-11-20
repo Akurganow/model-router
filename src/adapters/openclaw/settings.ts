@@ -17,7 +17,7 @@ import {
 	type ProviderValue,
 	parseProvider,
 	resolve,
-} from "../../core/provider.ts";
+} from "../../core/providers/provider.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import type { OpenClawApi, OpenClawConfig } from "./types.ts";

@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import type { RouteInput } from "../../core/compose.ts";
 import { resolveScope, type Scope } from "../../core/options/scope.ts";
 import {
 	collectKeys,
@@ -8,7 +7,8 @@ import {
 	type ProviderValue,
 	plan,
 	resolve as resolveProvider,
-} from "../../core/provider.ts";
+} from "../../core/providers/provider.ts";
+import type { RouteInput } from "../../core/scoring/route.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import type { Facts } from "./items.ts";

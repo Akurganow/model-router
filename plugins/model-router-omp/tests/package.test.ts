@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { SCOPE_VALUES } from "../../../src/core/options/scope.ts";
-import { PROVIDER_VALUES } from "../../../src/core/provider.ts";
+import { PROVIDER_VALUES } from "../../../src/core/providers/provider.ts";
 
 const PLUGIN = join(import.meta.dirname, "..");
 const ENTRY = "./extension/index.js";

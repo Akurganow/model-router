@@ -46,26 +46,6 @@
 			}
 		},
 		{
-			"includes": ["src/core/**"],
-			"linter": {
-				"rules": {
-					"style": {
-						"noRestrictedImports": {
-							"level": "error",
-							"options": {
-								"patterns": [
-									{
-										"group": ["**/adapters/**"],
-										"message": "A core/ file imports no adapter."
-									}
-								]
-							}
-						}
-					}
-				}
-			}
-		},
-		{
 			"includes": ["src/core/**", "!**/__tests__/**"],
 			"linter": {
 				"rules": {
@@ -76,7 +56,7 @@
 			}
 		},
 		{
-			"includes": ["src/core/tier.ts", "src/core/work.ts"],
+			"includes": ["src/core/parts/**"],
 			"linter": {
 				"rules": {
 					"style": {
@@ -85,14 +65,97 @@
 							"options": {
 								"patterns": [
 									{
+										"group": ["./**", "../**", "!./part.ts", "!../../utils/**"],
+										"message": "A parts/ file imports only ./part.ts and utils/."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/core/providers/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["**/scoring/**"],
+										"message": "A providers/ file imports nothing from scoring/."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/core/output/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["**/scoring/**", "**/decision/**"],
+										"message": "An output/ file imports nothing from scoring/ or decision/."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/core/scoring/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["**/decision/**", "**/options/**"],
+										"message": "A scoring/ file imports nothing from decision/ or options/."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/core/scoring/formats/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["**/decision/**", "**/options/**"],
+										"message": "A scoring/ file imports nothing from decision/ or options/."
+									},
+									{
 										"group": [
-											"**/adapters/**",
-											"**/tier.ts",
-											"**/work.ts",
-											"**/scoring/**",
-											"**/compose.ts"
+											"**/ask.*",
+											"**/route.*",
+											"**/transport/**",
+											"**/providers/**"
 										],
-										"message": "A part imports no adapter, no scoring code and not the other part."
+										"message": "A wire format imports no ask.ts, no route.ts, nothing from transport/ and nothing from providers/."
 									}
 								]
 							}
@@ -230,6 +293,8 @@
 	"plugins": [
 		"./scripts/lint/literal-import.grit",
 		"./scripts/lint/utils-reexport.grit",
-		"./scripts/lint/shared-reason.grit"
+		"./scripts/lint/shared-reason.grit",
+		"./scripts/lint/tests-import.grit",
+		"./scripts/lint/core-adapter.grit"
 	]
 }

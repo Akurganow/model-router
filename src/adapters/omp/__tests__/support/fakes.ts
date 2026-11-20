@@ -7,7 +7,7 @@ import {
 	systemOneAnswer,
 } from "../../../../core/__tests__/support/replies.ts";
 import { TOOL_NAME } from "../../../../core/options/settings.ts";
-import { KEY_VARIABLES, plan } from "../../../../core/provider.ts";
+import { KEY_VARIABLES, plan } from "../../../../core/providers/provider.ts";
 import type { Batch } from "../../gates.ts";
 import type {
 	CommandSpec,

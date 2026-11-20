@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { tier } from "../../tier.ts";
-import { work } from "../../work.ts";
+import { tier } from "../../parts/tier.ts";
+import { work } from "../../parts/work.ts";
 
 test("both parts share one shape: a key, a score question and a pick function", () => {
 	for (const part of [tier, work]) {

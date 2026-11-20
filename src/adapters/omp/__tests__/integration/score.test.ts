@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { systemOneAnswer } from "../../../../core/__tests__/support/replies.ts";
-import { ROUTING_LIMIT_MS } from "../../../../core/compose.ts";
 import { effortFor } from "../../../../core/decision/ladder.ts";
-import type { Level } from "../../../../core/part.ts";
+import type { Level } from "../../../../core/parts/part.ts";
+import { ROUTING_LIMIT_MS } from "../../../../core/scoring/route.ts";
 import { createExtension } from "../../router.ts";
 import { type Pending, scoreItems } from "../../score.ts";
 import { batch, useWorld } from "../support/fakes.ts";

@@ -9,7 +9,10 @@ import {
 	VALUE_SETTINGS,
 	type ValueSetting,
 } from "../../src/core/options/settings.ts";
-import { KEY_FIELDS, PROVIDER_VALUES } from "../../src/core/provider.ts";
+import {
+	KEY_FIELDS,
+	PROVIDER_VALUES,
+} from "../../src/core/providers/provider.ts";
 
 // Every fact the renderers take from src/ comes through this module, so a
 // manifest can never name a value or a command text the code does not know.

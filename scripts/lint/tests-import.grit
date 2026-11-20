@@ -1,0 +1,19 @@
+language js
+
+// A plugin and not an override: an override sets noRestrictedImports for a
+// file and replaces every earlier override of that rule, so the folders with
+// their own import bans would switch this rule off.
+// JsModuleSource is the specifier of a static import, a bare import and an
+// export … from. An import() call holds its argument as an expression.
+// TsImportType is an import in a type position: typeof import("…") and
+// import("…").X.
+or {
+	JsModuleSource() as $specifier,
+	`import($specifier)`,
+	TsImportType() as $specifier
+} where {
+	$specifier <: r"[\s\S]*/__tests__/[\s\S]*",
+	$filename <: r".*/src/(?:core|utils|adapters)/.*",
+	$filename <: not r".*/src/(?:core|utils|adapters)/(?:.*/)?__tests__/.*",
+	register_diagnostic(span=$specifier, message="A source file imports nothing from a __tests__ folder.", severity="error")
+}

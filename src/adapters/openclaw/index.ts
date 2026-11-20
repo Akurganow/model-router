@@ -1,11 +1,11 @@
-import { ROUTING_LIMIT_MS } from "../../core/compose.ts";
+import { LINE_PREFIX } from "../../core/output/line.ts";
 import {
 	deadlineFor,
 	HANDLER_MARGIN_MS,
 	MIN_DEADLINE_MS,
 	MIN_TIMEOUT_MS,
-} from "../../core/handler-deadline.ts";
-import { LINE_PREFIX } from "../../core/output/line.ts";
+} from "../../core/scoring/handler-deadline.ts";
+import { ROUTING_LIMIT_MS } from "../../core/scoring/route.ts";
 import { realClock } from "../../utils/clock.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { registerConfigCommands, registerConfigTool } from "./config.ts";

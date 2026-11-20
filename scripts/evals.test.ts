@@ -9,9 +9,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { decisionSuffix } from "../src/core/compose.ts";
 import { pickModel, type SlotModel } from "../src/core/decision/slots.ts";
-import { LINE_PREFIX, routedLine } from "../src/core/output/line.ts";
+import {
+	decisionSuffix,
+	LINE_PREFIX,
+	routedLine,
+} from "../src/core/output/line.ts";
 import { type Case, check, validateCases } from "./evals/cases.ts";
 import { claude } from "./evals/claude.ts";
 import { omp } from "./evals/omp.ts";
@@ -443,8 +446,9 @@ for (const [state, tier, target] of [
 			suffix: decisionSuffix({
 				provider: "openrouter",
 				model: "typesafe/jev-1.14.0",
-				usage: { input_tokens: 812, output_tokens: 9 },
-				firstFailed: { provider: "typesafe", reason: "HTTP 503" },
+				inputTokens: 812,
+				outputTokens: 9,
+				failed: { provider: "typesafe", reason: "HTTP 503" },
 			}),
 		});
 		const evidence = omp.parse({

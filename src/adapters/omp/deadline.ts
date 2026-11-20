@@ -1,4 +1,7 @@
-import { deadlineFor, MIN_DEADLINE_MS } from "../../core/handler-deadline.ts";
+import {
+	deadlineFor,
+	MIN_DEADLINE_MS,
+} from "../../core/scoring/handler-deadline.ts";
 import { isPositiveNumber } from "../../utils/guards.ts";
 
 // omp gives every tool_call handler this long when its setting is unusable.

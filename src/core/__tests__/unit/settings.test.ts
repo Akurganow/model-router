@@ -24,7 +24,7 @@ import {
 	VALUE_SETTINGS,
 	valueLine,
 } from "../../options/settings.ts";
-import { order, PROVIDER_VALUES } from "../../provider.ts";
+import { order, PROVIDER_VALUES } from "../../providers/provider.ts";
 
 test("lists the value settings", () => {
 	assert.deepEqual(VALUE_SETTINGS, ["provider", "scope"]);

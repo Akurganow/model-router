@@ -7,7 +7,7 @@ import {
 	VALUE_SETTINGS,
 	type ValueSetting,
 } from "../src/core/options/settings.ts";
-import { PROVIDER_VALUES } from "../src/core/provider.ts";
+import { PROVIDER_VALUES } from "../src/core/providers/provider.ts";
 import { loadSource } from "./build/source.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));

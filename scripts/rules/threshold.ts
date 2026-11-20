@@ -1,6 +1,6 @@
-import type { Level, Part, Probabilities } from "../../src/core/part.ts";
-import { tier as tierPart } from "../../src/core/tier.ts";
-import { work as workPart } from "../../src/core/work.ts";
+import type { Level, Part, Probabilities } from "../../src/core/parts/part.ts";
+import { tier as tierPart } from "../../src/core/parts/tier.ts";
+import { work as workPart } from "../../src/core/parts/work.ts";
 import type { Pick, Row, Rule } from "../compare-rules.ts";
 
 export type Thresholds = { down: number; up: number };

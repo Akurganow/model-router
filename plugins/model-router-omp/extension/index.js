@@ -275,6 +275,23 @@ function pickModel(level, state) {
   return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
 }
 
+// src/core/output/reasons.ts
+var CALLER_EFFORT = "caller effort";
+var CONFIG_EFFORT = "config effort";
+var UNREADABLE = "settings unreadable";
+var KEY_UNSET = "key unset";
+var BAD_REPLY = "bad reply";
+var TIMEOUT = "timeout";
+var FAILED = "failed";
+var NETWORK_ERROR = "network error";
+var httpStatus = (status) => `HTTP ${status}`;
+var CANCELLED = "cancelled";
+var outsideCoreScope = (id) => `${id} is outside the core scope`;
+var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
+var agentUnknown = (id) => `${id} agent unknown`;
+var setsOwnModel = (id) => `${id} sets its own model`;
+var failedAttemptText = (f) => `${f.provider} ${f.reason}`;
+
 // src/core/output/line.ts
 var LINE_PREFIX = "model-router ";
 var ENTRY_SEPARATOR = " | ";
@@ -291,11 +308,23 @@ function routedLine({
 }
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
+var PROBABILITY_DIGITS = 2;
+var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+function decisionSuffix({
+  provider,
+  model,
+  inputTokens,
+  outputTokens,
+  failed
+}) {
+  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
+}
 
 // src/utils/error.ts
 var errorText = (err) => err instanceof Error ? err.message : String(err);
 
-// src/core/provider.ts
+// src/core/providers/provider.ts
 var PROVIDER_VALUES = [
   "auto",
   "openrouter-first",
@@ -430,22 +459,6 @@ var COMMAND_DESCRIPTIONS = {
   provider: describeCommand("provider"),
   scope: describeCommand("scope")
 };
-
-// src/core/output/reasons.ts
-var CALLER_EFFORT = "caller effort";
-var CONFIG_EFFORT = "config effort";
-var UNREADABLE = "settings unreadable";
-var KEY_UNSET = "key unset";
-var BAD_REPLY = "bad reply";
-var TIMEOUT = "timeout";
-var FAILED = "failed";
-var NETWORK_ERROR = "network error";
-var httpStatus = (status) => `HTTP ${status}`;
-var CANCELLED = "cancelled";
-var outsideCoreScope = (id) => `${id} is outside the core scope`;
-var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
-var agentUnknown = (id) => `${id} agent unknown`;
-var setsOwnModel = (id) => `${id} sets its own model`;
 
 // src/utils/serializer.ts
 function serializer() {
@@ -661,7 +674,7 @@ function fallsBack(failure) {
   }
 }
 
-// src/core/part.ts
+// src/core/parts/part.ts
 var LEVELS = [0, 1, 2];
 var fromMiddle = (down, up) => (p) => {
   const low = p[0] > down * p[1];
@@ -669,8 +682,6 @@ var fromMiddle = (down, up) => (p) => {
   if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
   return low ? 0 : high ? 2 : 1;
 };
-var PROBABILITY_DIGITS = 2;
-var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 
 // src/core/scoring/formats/system-one.ts
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
@@ -724,7 +735,6 @@ var SYSTEM_ONE = {
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
-var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 var cleanModel = (model) => typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "";
 
 // src/core/scoring/transport/retry.ts
@@ -881,7 +891,7 @@ async function ask2(input, attempt2) {
   }
 }
 
-// src/core/compose.ts
+// src/core/scoring/route.ts
 var ROUTING_LIMIT_MS = 8e3;
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 function abortCategory(signal) {
@@ -902,36 +912,25 @@ async function route(input) {
       if (i < attempts.length - 1) input.onFallback?.(attempt2.provider);
       continue;
     }
-    const decision = decide(result, attempt2.provider);
+    const decision = toDecision(result, attempt2.provider);
     const [first] = failed;
     return first ? { ...decision, firstFailed: first } : decision;
   }
   return skip(failed);
 }
-var named = (f) => `${f.provider} ${f.reason}`;
 function skip(failed) {
   const [first, ...rest] = failed;
   if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
-  return { skipped: failed.map(named).join(", ") };
+  return { skipped: failed.map(failedAttemptText).join(", ") };
 }
-function decide({ answers, model, usage }, provider) {
+function toDecision({ answers, model, usage }, provider) {
   const parts = {};
   for (const [part, probabilities] of answers)
     parts[part.key] = { level: part.pick(probabilities), probabilities };
   return { parts, provider, model, usage };
 }
-function decisionSuffix({
-  provider,
-  model,
-  usage,
-  firstFailed
-}) {
-  const input = usage?.input_tokens;
-  const output = usage?.output_tokens;
-  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (firstFailed ? ` \xB7 ${named(firstFailed)}` : "");
-}
 
-// src/core/handler-deadline.ts
+// src/core/scoring/handler-deadline.ts
 var HANDLER_MARGIN_MS = 2e3;
 var MIN_DEADLINE_MS = 1e3;
 var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
@@ -1091,7 +1090,7 @@ async function discover(pi, ctx) {
   }
 }
 
-// src/core/tier.ts
+// src/core/parts/tier.ts
 var TIER_DOWN = 2 ** 0.25;
 var TIER_UP = 2 ** 0.5;
 var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
@@ -1110,7 +1109,7 @@ var tier = {
   pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
 
-// src/core/work.ts
+// src/core/parts/work.ts
 var WORK_DOWN = 2 ** 1.25;
 var WORK_UP = 2 ** 0.5;
 var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
@@ -1129,7 +1128,7 @@ var work = {
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
-// src/core/decide.ts
+// src/core/decision/decide.ts
 var BAD = { skipped: BAD_REPLY };
 var levelOf = (decision, key) => {
   const part = decision.parts[key];
@@ -1138,7 +1137,7 @@ var levelOf = (decision, key) => {
     probability: formatProbability(part.probabilities[part.level])
   };
 };
-function decide2(decision, tierKey, workKey) {
+function decide(decision, tierKey, workKey) {
   if ("skipped" in decision) return decision;
   const tier2 = levelOf(decision, tierKey);
   if (!tier2) return BAD;
@@ -1148,12 +1147,18 @@ function decide2(decision, tierKey, workKey) {
     tier: tier2.level,
     work: work2.level,
     probabilities: `${tier2.probability}/${work2.probability}`,
-    suffix: decisionSuffix(decision)
+    suffix: decisionSuffix({
+      provider: decision.provider,
+      model: decision.model,
+      inputTokens: decision.usage?.input_tokens,
+      outputTokens: decision.usage?.output_tokens,
+      failed: decision.firstFailed
+    })
   };
 }
 async function scoreWork(input) {
   const decision = await route({ ...input, parts: [tier, work] });
-  return decide2(decision, tier.key, work.key);
+  return decide(decision, tier.key, work.key);
 }
 
 // src/core/decision/ladder.ts

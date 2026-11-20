@@ -8,7 +8,7 @@ import {
 	setsOwnModel,
 	UNREADABLE,
 } from "../../../../core/output/reasons.ts";
-import { plan } from "../../../../core/provider.ts";
+import { plan } from "../../../../core/providers/provider.ts";
 import { checkGates, slotModel } from "../../gates.ts";
 import { AGENTS, extend } from "../support/fake-agents.ts";
 import {

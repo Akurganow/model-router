@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Effort } from "../../../../core/decision/ladder.ts";
-import type { Level } from "../../../../core/part.ts";
+import type { Level } from "../../../../core/parts/part.ts";
 import { capped, carriesLevel, planEffort, type Routed } from "../../effort.ts";
 
 // omp's parser at 18.12.6 and 18.18.9: full names, `auto`, and unambiguous prefixes of two characters or more.

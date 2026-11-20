@@ -3,7 +3,7 @@ import {
 	KEY_FIELDS,
 	type Keys,
 	type Provider,
-} from "../../core/provider.ts";
+} from "../../core/providers/provider.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import type { Engine, Options } from "./host.ts";
 

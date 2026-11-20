@@ -21,8 +21,3 @@ export const fromMiddle =
 		if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
 		return low ? 0 : high ? 2 : 1;
 	};
-
-const PROBABILITY_DIGITS = 2;
-
-export const formatProbability = (p: number): string =>
-	p.toFixed(PROBABILITY_DIGITS);

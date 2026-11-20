@@ -8,6 +8,7 @@ var FAILED = "failed";
 var NETWORK_ERROR = "network error";
 var httpStatus = (status) => `HTTP ${status}`;
 var CANCELLED = "cancelled";
+var failedAttemptText = (f) => `${f.provider} ${f.reason}`;
 
 // src/utils/clock.ts
 var realClock = {
@@ -255,7 +256,82 @@ function routingState(raw) {
   };
 }
 
-// src/core/provider.ts
+// src/core/output/line.ts
+var LINE_PREFIX = "model-router ";
+var pinnedLine = (level, target) => `L${level} ${target}`;
+function routedLine({
+  level,
+  target,
+  effort,
+  probabilities,
+  suffix
+}) {
+  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
+  return `${pinnedLine(level, target)}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+}
+var SKIPPED_PREFIX = "skipped, ";
+var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
+var PROBABILITY_DIGITS = 2;
+var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+function decisionSuffix({
+  provider,
+  model,
+  inputTokens,
+  outputTokens,
+  failed
+}) {
+  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
+}
+
+// src/core/parts/part.ts
+var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
+};
+
+// src/core/parts/tier.ts
+var TIER_DOWN = 2 ** 0.25;
+var TIER_UP = 2 ** 0.5;
+var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
+var TIER_TEXTS = [
+  "Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
+  "Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
+  "Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."
+];
+var tier = {
+  key: "tier",
+  question: {
+    type: "score",
+    instructions: TIER_INSTRUCTIONS,
+    criteria: TIER_TEXTS
+  },
+  pick: fromMiddle(TIER_DOWN, TIER_UP)
+};
+
+// src/core/parts/work.ts
+var WORK_DOWN = 2 ** 1.25;
+var WORK_UP = 2 ** 0.5;
+var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
+var WORK_TEXTS = [
+  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
+  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
+  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
+];
+var work = {
+  key: "work",
+  question: {
+    type: "score",
+    instructions: WORK_INSTRUCTIONS,
+    criteria: WORK_TEXTS
+  },
+  pick: fromMiddle(WORK_DOWN, WORK_UP)
+};
+
+// src/core/providers/provider.ts
 var PROVIDERS = ["typesafe", "openrouter"];
 var HOSTS = {
   typesafe: "https://api.typesafe.ai",
@@ -337,17 +413,6 @@ function fallsBack(failure) {
 var isRecord = (v) => typeof v === "object" && v !== null;
 var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
 
-// src/core/part.ts
-var LEVELS = [0, 1, 2];
-var fromMiddle = (down, up) => (p) => {
-  const low = p[0] > down * p[1];
-  const high = p[2] > up * p[1];
-  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
-  return low ? 0 : high ? 2 : 1;
-};
-var PROBABILITY_DIGITS = 2;
-var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
-
 // src/core/scoring/formats/system-one.ts
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
 function parseProbabilities(answers, key) {
@@ -400,7 +465,6 @@ var SYSTEM_ONE = {
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
-var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 var cleanModel = (model) => typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "";
 
 // src/core/scoring/transport/retry.ts
@@ -557,7 +621,7 @@ async function ask(input, attempt) {
   }
 }
 
-// src/core/compose.ts
+// src/core/scoring/route.ts
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 function abortCategory(signal) {
   return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
@@ -577,74 +641,25 @@ async function route(input) {
       if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
       continue;
     }
-    const decision = decide(result, attempt.provider);
+    const decision = toDecision(result, attempt.provider);
     const [first] = failed;
     return first ? { ...decision, firstFailed: first } : decision;
   }
   return skip(failed);
 }
-var named = (f) => `${f.provider} ${f.reason}`;
 function skip(failed) {
   const [first, ...rest] = failed;
   if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
-  return { skipped: failed.map(named).join(", ") };
+  return { skipped: failed.map(failedAttemptText).join(", ") };
 }
-function decide({ answers, model, usage }, provider) {
+function toDecision({ answers, model, usage }, provider) {
   const parts = {};
   for (const [part, probabilities] of answers)
     parts[part.key] = { level: part.pick(probabilities), probabilities };
   return { parts, provider, model, usage };
 }
-function decisionSuffix({
-  provider,
-  model,
-  usage,
-  firstFailed
-}) {
-  const input = usage?.input_tokens;
-  const output = usage?.output_tokens;
-  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (firstFailed ? ` \xB7 ${named(firstFailed)}` : "");
-}
 
-// src/core/tier.ts
-var TIER_DOWN = 2 ** 0.25;
-var TIER_UP = 2 ** 0.5;
-var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
-var TIER_TEXTS = [
-  "Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
-  "Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
-  "Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."
-];
-var tier = {
-  key: "tier",
-  question: {
-    type: "score",
-    instructions: TIER_INSTRUCTIONS,
-    criteria: TIER_TEXTS
-  },
-  pick: fromMiddle(TIER_DOWN, TIER_UP)
-};
-
-// src/core/work.ts
-var WORK_DOWN = 2 ** 1.25;
-var WORK_UP = 2 ** 0.5;
-var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
-var WORK_TEXTS = [
-  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
-  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
-  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
-];
-var work = {
-  key: "work",
-  question: {
-    type: "score",
-    instructions: WORK_INSTRUCTIONS,
-    criteria: WORK_TEXTS
-  },
-  pick: fromMiddle(WORK_DOWN, WORK_UP)
-};
-
-// src/core/decide.ts
+// src/core/decision/decide.ts
 var BAD = { skipped: BAD_REPLY };
 var levelOf = (decision, key) => {
   const part = decision.parts[key];
@@ -653,7 +668,7 @@ var levelOf = (decision, key) => {
     probability: formatProbability(part.probabilities[part.level])
   };
 };
-function decide2(decision, tierKey, workKey) {
+function decide(decision, tierKey, workKey) {
   if ("skipped" in decision) return decision;
   const tier2 = levelOf(decision, tierKey);
   if (!tier2) return BAD;
@@ -663,12 +678,18 @@ function decide2(decision, tierKey, workKey) {
     tier: tier2.level,
     work: work2.level,
     probabilities: `${tier2.probability}/${work2.probability}`,
-    suffix: decisionSuffix(decision)
+    suffix: decisionSuffix({
+      provider: decision.provider,
+      model: decision.model,
+      inputTokens: decision.usage?.input_tokens,
+      outputTokens: decision.usage?.output_tokens,
+      failed: decision.firstFailed
+    })
   };
 }
 async function scoreWork(input) {
   const decision = await route({ ...input, parts: [tier, work] });
-  return decide2(decision, tier.key, work.key);
+  return decide(decision, tier.key, work.key);
 }
 
 // src/core/decision/ladder.ts
@@ -690,22 +711,6 @@ function pickModel(level, state) {
   const slot = slotForLevel(level);
   return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
 }
-
-// src/core/output/line.ts
-var LINE_PREFIX = "model-router ";
-var pinnedLine = (level, target) => `L${level} ${target}`;
-function routedLine({
-  level,
-  target,
-  effort,
-  probabilities,
-  suffix
-}) {
-  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `${pinnedLine(level, target)}${effortSegment} \xB7 p=${probabilities}${suffix}`;
-}
-var SKIPPED_PREFIX = "skipped, ";
-var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 
 // src/utils/deadline.ts
 async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {

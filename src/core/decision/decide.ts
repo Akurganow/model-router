@@ -1,14 +1,14 @@
+import { decisionSuffix, formatProbability } from "../output/line.ts";
+import { BAD_REPLY } from "../output/reasons.ts";
+import type { Level } from "../parts/part.ts";
+import { tier } from "../parts/tier.ts";
+import { work } from "../parts/work.ts";
 import {
 	type Decision,
-	decisionSuffix,
 	type RouteInput,
 	route,
 	type Skipped,
-} from "./compose.ts";
-import { BAD_REPLY } from "./output/reasons.ts";
-import { formatProbability, type Level } from "./part.ts";
-import { tier } from "./tier.ts";
-import { work } from "./work.ts";
+} from "../scoring/route.ts";
 
 export type DecidedWithWork = {
 	readonly tier: Level;
@@ -55,7 +55,13 @@ export function decide(
 		tier: tier.level,
 		work: work.level,
 		probabilities: `${tier.probability}/${work.probability}`,
-		suffix: decisionSuffix(decision),
+		suffix: decisionSuffix({
+			provider: decision.provider,
+			model: decision.model,
+			inputTokens: decision.usage?.input_tokens,
+			outputTokens: decision.usage?.output_tokens,
+			failed: decision.firstFailed,
+		}),
 	};
 }
 

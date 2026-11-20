@@ -3,7 +3,6 @@ import {
 	HERMES_TEXTS,
 	taskParameterTexts,
 } from "../../src/adapters/hermes/texts.ts";
-import { ROUTING_LIMIT_MS } from "../../src/core/compose.ts";
 import { EFFORTS } from "../../src/core/decision/ladder.ts";
 import {
 	pickModel,
@@ -18,13 +17,14 @@ import {
 	pinnedLine,
 	skippedLine,
 } from "../../src/core/output/line.ts";
-import { LEVELS, type Level } from "../../src/core/part.ts";
+import { LEVELS, type Level } from "../../src/core/parts/part.ts";
 import {
 	KEY_VARIABLES,
 	order,
 	PROVIDER_VALUES,
 	resolve as resolveProvider,
-} from "../../src/core/provider.ts";
+} from "../../src/core/providers/provider.ts";
+import { ROUTING_LIMIT_MS } from "../../src/core/scoring/route.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";
