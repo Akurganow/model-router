@@ -16,9 +16,10 @@ import {
 import { useTempRoot } from "./temp-root.ts";
 
 const GOOD = `export function register(on) {
-	return setTimeout(() => {}, 1);
+	return on;
 }
 `;
+const CLAUDE_ENTRY = "src/adapters/claude/index.ts";
 
 const box = useTempRoot("build-");
 const outPath = () => join(box.root, "out", "register.js");
@@ -27,11 +28,10 @@ const buildClaude = (source: string) => {
 	return buildBundle("claude", join(box.root, "entry.ts"), outPath());
 };
 
-test("a good Claude Code entry builds with the timers rebound", async () => {
+test("a good Claude Code entry builds and keeps the register form", async () => {
 	assert.deepEqual(await buildClaude(GOOD), []);
 	const code = readFileSync(outPath(), "utf8");
 	assert.match(code, /^function register\(/m);
-	assert.match(code, /^function setTimeout\(/m);
 	assert.match(code.trimEnd(), /export \{\s*register\s*\};?$/);
 });
 
@@ -44,6 +44,12 @@ test("a free setTimeout fails the timer check", () => {
 	const code =
 		"function register() {}\nsetTimeout(() => {}, 1);\nexport { register };\n";
 	assert.match(checkClaudeBundle(code).join("\n"), /setTimeout/);
+});
+
+test("a free clearTimeout fails the timer check", () => {
+	const code =
+		"function register() {}\nclearTimeout(undefined);\nexport { register };\n";
+	assert.match(checkClaudeBundle(code).join("\n"), /clearTimeout/);
 });
 
 test("a call to a property named setTimeout is not a free reference", () => {
@@ -67,10 +73,10 @@ test("two builds give identical bytes", async () => {
 	assert.deepEqual(readFileSync(outPath()), first);
 });
 
-test("the output names the shim by repo-relative path only", async () => {
-	await buildClaude(GOOD);
+test("the output names sources by repo-relative path only", async () => {
+	assert.deepEqual(await buildBundle("claude", CLAUDE_ENTRY, outPath()), []);
 	const code = readFileSync(outPath(), "utf8");
-	assert.match(code, /^\/\/ src\/adapters\/claude\/timers\.ts$/m);
+	assert.match(code, /^\/\/ src\/adapters\/claude\/router\.ts$/m);
 	assert.equal(
 		code.includes(fileURLToPath(new URL("../", import.meta.url))),
 		false,

@@ -23,6 +23,7 @@ const COMMAND_TIMEOUT_MS = 30_000;
 
 const RESTRICTED = "lint/style/noRestrictedImports";
 const PROCESS_ENV = "lint/style/noProcessEnv";
+const GLOBALS = "lint/style/noRestrictedGlobals";
 const PLUGIN = "plugin";
 
 type Fault = {
@@ -31,7 +32,11 @@ type Fault = {
 	// Planted on its own line. `before` is one more line that the fault needs.
 	code: string;
 	before?: string;
-	category: typeof RESTRICTED | typeof PROCESS_ENV | typeof PLUGIN;
+	category:
+		| typeof RESTRICTED
+		| typeof PROCESS_ENV
+		| typeof GLOBALS
+		| typeof PLUGIN;
 	message: string;
 };
 
@@ -54,6 +59,11 @@ const DYNAMIC = "import() takes a string literal";
 const REEXPORT = "A utils/ file re-exports nothing";
 const SHARED_REASON = "This text is a shared skip reason";
 const PROCESS_ENV_MESSAGE = "Don't use process.env";
+// The JSON report keeps the rule's own sentence and drops the configured message, so the
+// test tells the three globals apart by the name this sentence carries.
+const FETCH_GLOBAL = "Do not use the global variable fetch";
+const TIMER_GLOBAL = "Do not use the global variable setTimeout";
+const CLEAR_GLOBAL = "Do not use the global variable clearTimeout";
 
 const faults: Fault[] = [
 	{
@@ -402,6 +412,27 @@ const faults: Fault[] = [
 		message: PROCESS_ENV_MESSAGE,
 	},
 	{
+		form: "a format calls the global fetch",
+		file: "src/core/scoring/formats/globals.ts",
+		code: 'export const f = () => fetch("https://example.test");',
+		category: GLOBALS,
+		message: FETCH_GLOBAL,
+	},
+	{
+		form: "a format calls the global setTimeout",
+		file: "src/core/scoring/formats/globals.ts",
+		code: "export const s = () => setTimeout(() => {}, 1);",
+		category: GLOBALS,
+		message: TIMER_GLOBAL,
+	},
+	{
+		form: "a format calls the global clearTimeout",
+		file: "src/core/scoring/formats/globals.ts",
+		code: "export const c = () => clearTimeout(undefined);",
+		category: GLOBALS,
+		message: CLEAR_GLOBAL,
+	},
+	{
 		form: "a multi-word shared reason in a string literal",
 		file: "src/core/options/reasons-spelled.ts",
 		code: 'export const a = "skipped: caller effort";',
@@ -483,6 +514,12 @@ const valid: Record<string, string> = {
 		"export const v = [s, c];",
 	].join("\n"),
 	"src/adapters/omp/reads-env.ts": ["export const v = process.env;"].join("\n"),
+	"src/core/__tests__/unit/uses-globals.test.ts": [
+		"export const v = [fetch, setTimeout, clearTimeout];",
+	].join("\n"),
+	"src/adapters/omp/uses-globals.ts": [
+		"export const v = [fetch, setTimeout, clearTimeout];",
+	].join("\n"),
 	"src/adapters/__tests__/integration/drives-several.test.ts": [
 		'import { a } from "../../omp/a.ts";',
 		'import { b } from "../../claude/b.ts";',
@@ -612,6 +649,7 @@ describe("the Biome layer rules", () => {
 			({ category }) =>
 				category === RESTRICTED ||
 				category === PROCESS_ENV ||
+				category === GLOBALS ||
 				category === PLUGIN,
 		);
 	});

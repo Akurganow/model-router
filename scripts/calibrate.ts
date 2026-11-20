@@ -17,6 +17,7 @@ import {
 	type Skipped,
 } from "../src/core/scoring/route.ts";
 import type { Fetch } from "../src/core/scoring/transport/send.ts";
+import { realClock } from "../src/utils/clock.ts";
 import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";
 import { fitWarnings } from "./jev-fit.ts";
 
@@ -58,6 +59,7 @@ export async function runCase(
 			}),
 			attempts,
 			fetchFn,
+			clock: realClock,
 			signal: limit.signal,
 		});
 	} finally {

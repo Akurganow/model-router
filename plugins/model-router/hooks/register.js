@@ -1,23 +1,3 @@
-// src/adapters/claude/timers.ts
-var after;
-function installTimers(implementation) {
-  after = implementation;
-}
-function installed(name) {
-  if (after === void 0)
-    throw new Error(
-      `${name} was called before installTimers; call installTimers with the $.clock.after wrapper at the start of the hook`
-    );
-  return after;
-}
-function setTimeout(fn, ms) {
-  return installed("setTimeout")(ms, fn);
-}
-function clearTimeout(timer) {
-  installed("clearTimeout");
-  timer?.cancel();
-}
-
 // src/utils/error.ts
 var errorText = (err) => err instanceof Error ? err.message : String(err);
 
@@ -742,13 +722,13 @@ function retryDelayMs(retry, headers) {
 }
 
 // src/core/scoring/transport/send.ts
-async function exchange(fetchFn, url, request, caller, timeout) {
+async function exchange(fetchFn, url, request, caller, timeout, clock) {
   if (caller.aborted) return { outcome: ABORTED };
   const controller = new AbortController();
   const stopped = new Promise((_, reject) => {
     controller.signal.addEventListener("abort", () => reject(), { once: true });
   });
-  const timer = setTimeout(() => controller.abort(), timeout);
+  const timer = clock.after(timeout, () => controller.abort());
   const cancel = () => controller.abort(caller.reason);
   caller.addEventListener("abort", cancel, { once: true });
   try {
@@ -776,25 +756,25 @@ async function exchange(fetchFn, url, request, caller, timeout) {
     if (caller.aborted) return { outcome: ABORTED };
     return { outcome: controller.signal.aborted ? TIMED_OUT : NETWORK };
   } finally {
-    clearTimeout(timer);
+    timer.cancel();
     caller.removeEventListener("abort", cancel);
   }
 }
-function pause(ms, caller) {
+function pause(ms, caller, clock) {
   if (caller.aborted) return Promise.resolve(false);
   return new Promise((resolve2) => {
     const done = (waited2) => {
-      clearTimeout(timer);
+      timer.cancel();
       caller.removeEventListener("abort", onAbort);
       resolve2(waited2);
     };
     const onAbort = () => done(false);
-    const timer = setTimeout(() => done(true), ms);
+    const timer = clock.after(ms, () => done(true));
     caller.addEventListener("abort", onAbort, { once: true });
   });
 }
 async function send(fetchFn, url, request, options) {
-  const { signal } = options;
+  const { signal, clock } = options;
   const timeout = options.timeout ?? TIMEOUT_MS;
   const retries = options.retries ?? RETRIES;
   for (let retry = 0; ; retry++) {
@@ -803,10 +783,12 @@ async function send(fetchFn, url, request, options) {
       url,
       request,
       signal,
-      timeout
+      timeout,
+      clock
     );
     if (retry >= retries || !isRetried(outcome)) return outcome;
-    if (!await pause(retryDelayMs(retry, headers), signal)) return ABORTED;
+    if (!await pause(retryDelayMs(retry, headers), signal, clock))
+      return ABORTED;
   }
 }
 
@@ -814,7 +796,7 @@ async function send(fetchFn, url, request, options) {
 var VERSION = true ? "0.24.0" : "dev";
 var USER_AGENT = `model-router/${VERSION} (+https://github.com/Akurganow/model-router)`;
 async function askOnce(input, attempt) {
-  const { parts, state, fetchFn, signal } = input;
+  const { parts, state, fetchFn, clock, signal } = input;
   const endpoint = endpointOf(attempt);
   if (!endpoint) return UNKNOWN;
   const { url, format } = endpoint;
@@ -833,6 +815,7 @@ async function askOnce(input, attempt) {
     },
     {
       signal,
+      clock,
       ...attempt.timeout !== void 0 && { timeout: attempt.timeout },
       ...attempt.retries !== void 0 && { retries: attempt.retries }
     }
@@ -985,9 +968,6 @@ async function noteCallerEffort(_, e, next) {
     throw error;
   }
 }
-function useClockTimers($) {
-  installTimers((ms, fn) => $.clock.after(ms, fn));
-}
 function routable(spawn, scope) {
   const agent = spawn.subagentType;
   if (spawn.name !== void 0 || spawn.model !== void 0) return false;
@@ -1002,7 +982,6 @@ function roleFor(agent) {
   return DEFAULT_ROLE_AGENTS.has(agent) && own ? DEFAULT_ROLE : roleText(offer?.description);
 }
 async function routeSpawn($, spawn, next, options) {
-  useClockTimers($);
   const callerSet = callerEffort.delete(spawn.tool_use_id);
   if (next.origin.plugin !== ENGINE || !routable(spawn, resolveScope(options.scope)))
     return next(spawn);
@@ -1103,6 +1082,7 @@ async function scored($, cancel, input) {
     return await scoreWork({
       ...input,
       fetchFn: engineFetch($),
+      clock: { after: (ms, fn) => $.clock.after(ms, fn) },
       signal: AbortSignal.any([stop.signal, cancel])
     });
   } finally {
@@ -1110,27 +1090,16 @@ async function scored($, cancel, input) {
   }
 }
 function engineFetch($) {
-  return (url, init) => {
+  return async (url, init) => {
     const { body } = init;
-    return abortable(async () => {
-      await logRequest($, body);
-      const reply = await $.http.fetch(url, {
-        method: init.method,
-        headers: init.headers,
-        body
-      });
-      return toReply(reply);
-    }, init.signal);
+    await logRequest($, body);
+    const reply = await $.http.fetch(url, {
+      method: init.method,
+      headers: init.headers,
+      body
+    });
+    return toReply(reply);
   };
-}
-function abortable(start, signal) {
-  if (!signal) return start();
-  return new Promise((resolve2, reject) => {
-    if (signal.aborted) return reject(signal.reason);
-    const onAbort = () => reject(signal.reason);
-    signal.addEventListener("abort", onAbort, { once: true });
-    start().then(resolve2, reject).finally(() => signal.removeEventListener("abort", onAbort));
-  });
 }
 async function logRequest($, body) {
   const pieces = Math.ceil(body.length / DEBUG_PIECE_CHARS);

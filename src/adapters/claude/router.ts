@@ -32,7 +32,6 @@ import {
 	type TurnStep,
 } from "./host.ts";
 import { readKeys } from "./keys.ts";
-import { installTimers } from "./timers.ts";
 
 const MODELS = ["haiku", "sonnet", "opus"] as const;
 
@@ -108,10 +107,6 @@ export async function noteCallerEffort(
 	}
 }
 
-function useClockTimers($: Engine): void {
-	installTimers((ms, fn) => $.clock.after(ms, fn));
-}
-
 // Extended scope never reads the offers: any agent without a model of its own is routed, a fork excepted.
 function routable(spawn: AgentSpawn, scope: Scope): boolean {
 	const agent = spawn.subagentType;
@@ -143,7 +138,6 @@ export async function routeSpawn(
 	next: Next<Started>,
 	options: Options,
 ): Promise<Started> {
-	useClockTimers($);
 	const callerSet = callerEffort.delete(spawn.tool_use_id);
 	if (
 		next.origin.plugin !== ENGINE ||
@@ -290,6 +284,7 @@ async function scored(
 		return await scoreWork({
 			...input,
 			fetchFn: engineFetch($),
+			clock: { after: (ms, fn) => $.clock.after(ms, fn) },
 			signal: AbortSignal.any([stop.signal, cancel]),
 		});
 	} finally {
@@ -297,35 +292,19 @@ async function scored(
 	}
 }
 
-// $.http.fetch takes no signal, so the call races the abort. The request itself runs to its end.
+// $.http.fetch takes no signal. The transport races this call against its own abort, so a skip
+// ends the wait at once while the request itself runs to its end.
 function engineFetch($: Engine): Fetch {
-	return (url, init) => {
+	return async (url, init) => {
 		const { body } = init;
-		return abortable(async () => {
-			await logRequest($, body);
-			const reply = await $.http.fetch(url, {
-				method: init.method,
-				headers: init.headers,
-				body,
-			});
-			return toReply(reply);
-		}, init.signal);
+		await logRequest($, body);
+		const reply = await $.http.fetch(url, {
+			method: init.method,
+			headers: init.headers,
+			body,
+		});
+		return toReply(reply);
 	};
-}
-
-function abortable<T>(
-	start: () => Promise<T>,
-	signal: AbortSignal | null | undefined,
-): Promise<T> {
-	if (!signal) return start();
-	return new Promise((resolve, reject) => {
-		if (signal.aborted) return reject(signal.reason);
-		const onAbort = () => reject(signal.reason);
-		signal.addEventListener("abort", onAbort, { once: true });
-		start()
-			.then(resolve, reject)
-			.finally(() => signal.removeEventListener("abort", onAbort));
-	});
 }
 
 // Only the body goes to the log. Headers carry the key.

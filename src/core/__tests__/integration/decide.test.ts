@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { realClock } from "../../../utils/clock.ts";
 import { routingState } from "../../brief/brief.ts";
 import { decide, scoreWork } from "../../decision/decide.ts";
 import { tier } from "../../parts/tier.ts";
@@ -87,6 +88,7 @@ async function scoreAgainst(body: unknown) {
 			bodies.push(JSON.parse(String(init?.body)));
 			return scoringReply(200, body);
 		},
+		clock: realClock,
 		signal: new AbortController().signal,
 	});
 	return { result, bodies };

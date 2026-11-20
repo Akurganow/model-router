@@ -21,7 +21,7 @@ import {
 import { plan } from "../../core/providers/provider.ts";
 import { LIMIT_REACHED, type Skipped } from "../../core/scoring/route.ts";
 import type { Fetch } from "../../core/scoring/transport/send.ts";
-import type { Clock } from "../../utils/clock.ts";
+import { type Clock, realClock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
 import { type HermesRequest, type KeptEffort, readRequest } from "./request.ts";
 
@@ -63,6 +63,7 @@ async function score(
 		}),
 		attempts: plan(request.provider, request.keys),
 		fetchFn,
+		clock: realClock,
 		signal,
 	});
 }

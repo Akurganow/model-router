@@ -492,13 +492,13 @@ function retryDelayMs(retry, headers) {
 }
 
 // src/core/scoring/transport/send.ts
-async function exchange(fetchFn, url, request, caller, timeout) {
+async function exchange(fetchFn, url, request, caller, timeout, clock) {
   if (caller.aborted) return { outcome: ABORTED };
   const controller = new AbortController();
   const stopped = new Promise((_, reject) => {
     controller.signal.addEventListener("abort", () => reject(), { once: true });
   });
-  const timer = setTimeout(() => controller.abort(), timeout);
+  const timer = clock.after(timeout, () => controller.abort());
   const cancel = () => controller.abort(caller.reason);
   caller.addEventListener("abort", cancel, { once: true });
   try {
@@ -526,25 +526,25 @@ async function exchange(fetchFn, url, request, caller, timeout) {
     if (caller.aborted) return { outcome: ABORTED };
     return { outcome: controller.signal.aborted ? TIMED_OUT : NETWORK };
   } finally {
-    clearTimeout(timer);
+    timer.cancel();
     caller.removeEventListener("abort", cancel);
   }
 }
-function pause(ms, caller) {
+function pause(ms, caller, clock) {
   if (caller.aborted) return Promise.resolve(false);
   return new Promise((resolve2) => {
     const done = (waited) => {
-      clearTimeout(timer);
+      timer.cancel();
       caller.removeEventListener("abort", onAbort);
       resolve2(waited);
     };
     const onAbort = () => done(false);
-    const timer = setTimeout(() => done(true), ms);
+    const timer = clock.after(ms, () => done(true));
     caller.addEventListener("abort", onAbort, { once: true });
   });
 }
 async function send(fetchFn, url, request, options) {
-  const { signal } = options;
+  const { signal, clock } = options;
   const timeout = options.timeout ?? TIMEOUT_MS;
   const retries = options.retries ?? RETRIES;
   for (let retry = 0; ; retry++) {
@@ -553,10 +553,12 @@ async function send(fetchFn, url, request, options) {
       url,
       request,
       signal,
-      timeout
+      timeout,
+      clock
     );
     if (retry >= retries || !isRetried(outcome)) return outcome;
-    if (!await pause(retryDelayMs(retry, headers), signal)) return ABORTED;
+    if (!await pause(retryDelayMs(retry, headers), signal, clock))
+      return ABORTED;
   }
 }
 
@@ -564,7 +566,7 @@ async function send(fetchFn, url, request, options) {
 var VERSION = true ? "0.24.0" : "dev";
 var USER_AGENT = `model-router/${VERSION} (+https://github.com/Akurganow/model-router)`;
 async function askOnce(input, attempt) {
-  const { parts, state, fetchFn, signal } = input;
+  const { parts, state, fetchFn, clock, signal } = input;
   const endpoint = endpointOf(attempt);
   if (!endpoint) return UNKNOWN;
   const { url, format } = endpoint;
@@ -583,6 +585,7 @@ async function askOnce(input, attempt) {
     },
     {
       signal,
+      clock,
       ...attempt.timeout !== void 0 && { timeout: attempt.timeout },
       ...attempt.retries !== void 0 && { retries: attempt.retries }
     }
@@ -813,6 +816,7 @@ async function score(request, { fetchFn }, signal) {
     }),
     attempts: plan(request.provider, request.keys),
     fetchFn,
+    clock: realClock,
     signal
   });
 }

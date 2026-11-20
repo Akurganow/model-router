@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { getEventListeners } from "node:events";
 import { test } from "node:test";
+import { realClock } from "../../../utils/clock.ts";
 import { routingState } from "../../brief/brief.ts";
 import { KEY_UNSET } from "../../output/reasons.ts";
 import { tier } from "../../parts/tier.ts";
@@ -82,6 +83,7 @@ function run(
 		state: STATE,
 		attempts: [{ provider: "typesafe", model: MODEL, key: KEY }],
 		fetchFn,
+		clock: realClock,
 		signal: new AbortController().signal,
 		...extra,
 	});

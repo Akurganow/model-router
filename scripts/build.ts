@@ -21,7 +21,6 @@ import { renderReadme } from "./build/readme.ts";
 import { loadSource, type Source } from "./build/source.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
-const TIMERS = "src/adapters/claude/timers.ts";
 export const MAX_BUNDLE_BYTES = 1048576;
 const TIMER_NAMES = ["setTimeout", "clearTimeout"];
 
@@ -29,7 +28,7 @@ type Harness = "claude" | "omp" | "openclaw" | "hermes";
 
 // The OpenClaw and Hermes bundles keep no module external except the node: built-ins, which esbuild leaves alone on the node platform.
 const HOST_OPTIONS: Readonly<Record<Harness, BuildOptions>> = {
-	claude: { platform: "neutral", inject: [TIMERS] },
+	claude: { platform: "neutral" },
 	omp: { platform: "node", external: ["@oh-my-pi/*"] },
 	openclaw: { platform: "node" },
 	hermes: { platform: "node" },
@@ -38,8 +37,7 @@ const HOST_OPTIONS: Readonly<Record<Harness, BuildOptions>> = {
 /**
  * Bundles one harness entry to `out` and returns its problems: the Claude Code
  * shape checks and the size limit. The Claude Code hooks module has no timer
- * globals, so its bundle injects a shim that rebinds the free names to
- * $.clock.after.
+ * globals; the core waits on the clock its caller passes.
  */
 export async function buildBundle(
 	harness: Harness,
@@ -73,8 +71,8 @@ export async function buildBundle(
 
 /**
  * Lists why a Claude Code bundle would not load as a hooks module: no top-level
- * `function register(`, no final `export { register }`, or a timer global the
- * shim did not bind.
+ * `function register(`, no final `export { register }`, or a free timer global,
+ * which the hooks module does not have.
  */
 export function checkClaudeBundle(code: string): string[] {
 	const problems: string[] = [];
@@ -84,15 +82,12 @@ export function checkClaudeBundle(code: string): string[] {
 		);
 	if (!/export \{\s*register\s*\};?\s*$/.test(code))
 		problems.push("the bundle must end with `export { register }`");
-	// The shim declares both names at top level, so a reference without that declaration is a free global.
-	for (const name of TIMER_NAMES) {
-		const referenced = new RegExp(`(?<![.\\w$])${name}\\b`).test(code);
-		const declared = new RegExp(`^function ${name}\\(`, "m").test(code);
-		if (referenced && !declared)
+	// A property access such as `globalThis.setTimeout` is no free reference.
+	for (const name of TIMER_NAMES)
+		if (new RegExp(`(?<![.\\w$])${name}\\b`).test(code))
 			problems.push(
-				`the bundle uses a free ${name}; the inject of ${TIMERS} did not bind it`,
+				`the bundle uses a free ${name}; the hooks module has no timer globals, so the core must wait on the clock its caller passes`,
 			);
-	}
 	return problems;
 }
 

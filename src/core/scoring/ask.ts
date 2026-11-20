@@ -1,3 +1,4 @@
+import type { Clock } from "../../utils/clock.ts";
 import type { RoutingState } from "../brief/brief.ts";
 import type { Part, Probabilities } from "../parts/part.ts";
 import type { Attempt } from "../providers/provider.ts";
@@ -16,6 +17,7 @@ export type AskInput = {
 	readonly parts: readonly Part[];
 	readonly state: RoutingState;
 	readonly fetchFn: Fetch;
+	readonly clock: Clock;
 	readonly signal: AbortSignal;
 };
 export type Reply = {
@@ -28,7 +30,7 @@ async function askOnce(
 	input: AskInput,
 	attempt: Attempt,
 ): Promise<Reply | Failure> {
-	const { parts, state, fetchFn, signal } = input;
+	const { parts, state, fetchFn, clock, signal } = input;
 	const endpoint = endpointOf(attempt);
 	if (!endpoint) return UNKNOWN;
 	const { url, format } = endpoint;
@@ -47,6 +49,7 @@ async function askOnce(
 		},
 		{
 			signal,
+			clock,
 			...(attempt.timeout !== undefined && { timeout: attempt.timeout }),
 			...(attempt.retries !== undefined && { retries: attempt.retries }),
 		},

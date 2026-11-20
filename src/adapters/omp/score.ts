@@ -9,6 +9,7 @@ import {
 	type RouteInput,
 	type Skipped,
 } from "../../core/scoring/route.ts";
+import { realClock } from "../../utils/clock.ts";
 import { lineFor, planEffort, type Routed } from "./effort.ts";
 import type { Batch } from "./gates.ts";
 import { type Facts, itemCheck, roleOf } from "./items.ts";
@@ -84,6 +85,7 @@ function scoreItem(
 		}),
 		...routing,
 		fetchFn: fetch,
+		clock: realClock,
 		signal,
 	});
 }
