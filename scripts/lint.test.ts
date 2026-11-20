@@ -38,7 +38,13 @@ type Fault = {
 const UTILS = "A utils/ file imports only other utils/ files";
 const CORE = "A core/ file imports no adapter";
 const ADAPTER = "An adapter imports no other adapter";
-const PART = "A part imports no adapter";
+const PARTS = "A parts/ file imports only ./part.ts and utils/";
+const PROVIDERS = "A providers/ file imports nothing from scoring/";
+const OUTPUT = "An output/ file imports nothing from scoring/ or decision/";
+const SCORING = "A scoring/ file imports nothing from decision/ or options/";
+const FORMAT =
+	"A wire format imports no ask.ts, no route.ts, nothing from transport/ and nothing from providers/";
+const TESTS_IMPORT = "A source file imports nothing from a __tests__ folder";
 const ENTRY_OPENCLAW = "The bundle entry imports nothing from OpenClaw";
 const ENTRY_ADAPTER = "The bundle entry imports no other adapter";
 const ESBUILD = "The version writer and the check load no esbuild";
@@ -78,52 +84,227 @@ const faults: Fault[] = [
 	},
 	{
 		form: "core imports an adapter",
-		file: "src/core/layers.ts",
-		code: 'import { a } from "../adapters/omp/a.ts";',
+		file: "src/core/brief/layers.ts",
+		code: 'import { a } from "../../adapters/omp/a.ts";',
 		category: RESTRICTED,
 		message: CORE,
 	},
 	{
-		form: "tier imports work",
-		file: "src/core/tier.ts",
+		form: "a part imports the other part, work",
+		file: "src/core/parts/consumer.ts",
 		code: 'import { w } from "./work.ts";',
 		category: RESTRICTED,
-		message: PART,
+		message: PARTS,
 	},
 	{
-		form: "tier imports compose",
-		file: "src/core/tier.ts",
-		code: 'import { c } from "./compose.ts";',
-		category: RESTRICTED,
-		message: PART,
-	},
-	{
-		form: "tier imports scoring code",
-		file: "src/core/tier.ts",
-		code: 'import { ask } from "./scoring/ask.ts";',
-		category: RESTRICTED,
-		message: PART,
-	},
-	{
-		form: "tier imports an adapter",
-		file: "src/core/tier.ts",
-		code: 'import { o } from "../adapters/omp/o.ts";',
-		category: RESTRICTED,
-		message: PART,
-	},
-	{
-		form: "work imports tier",
-		file: "src/core/work.ts",
+		form: "a part imports the other part, tier",
+		file: "src/core/parts/other-consumer.ts",
 		code: 'import { t } from "./tier.ts";',
 		category: RESTRICTED,
-		message: PART,
+		message: PARTS,
 	},
 	{
-		form: "work imports scoring code",
-		file: "src/core/work.ts",
-		code: 'import { ask } from "./scoring/ask.ts";',
+		form: "a part imports scoring code",
+		file: "src/core/parts/consumer.ts",
+		code: 'import { ask } from "../scoring/ask.ts";',
 		category: RESTRICTED,
-		message: PART,
+		message: PARTS,
+	},
+	{
+		form: "a part imports another core folder",
+		file: "src/core/parts/consumer.ts",
+		code: 'import { ladder } from "../decision/ladder.ts";',
+		category: RESTRICTED,
+		message: PARTS,
+	},
+	{
+		form: "a part imports an adapter",
+		file: "src/core/parts/consumer.ts",
+		code: 'import { o } from "../../adapters/omp/o.ts";',
+		category: RESTRICTED,
+		message: PARTS,
+	},
+	{
+		form: "providers import scoring",
+		file: "src/core/providers/layers.ts",
+		code: 'import { ask } from "../scoring/ask.ts";',
+		category: RESTRICTED,
+		message: PROVIDERS,
+	},
+	{
+		form: "providers import an adapter",
+		file: "src/core/providers/layers.ts",
+		code: 'import { o } from "../../adapters/omp/o.ts";',
+		category: RESTRICTED,
+		message: CORE,
+	},
+	{
+		form: "output imports scoring",
+		file: "src/core/output/layers.ts",
+		code: 'import { ask } from "../scoring/ask.ts";',
+		category: RESTRICTED,
+		message: OUTPUT,
+	},
+	{
+		form: "output imports decision",
+		file: "src/core/output/layers.ts",
+		code: 'import { decide } from "../decision/decide.ts";',
+		category: RESTRICTED,
+		message: OUTPUT,
+	},
+	{
+		form: "output imports an adapter",
+		file: "src/core/output/layers.ts",
+		code: 'import { o } from "../../adapters/omp/o.ts";',
+		category: RESTRICTED,
+		message: CORE,
+	},
+	{
+		form: "scoring imports decision",
+		file: "src/core/scoring/layers.ts",
+		code: 'import { ladder } from "../decision/ladder.ts";',
+		category: RESTRICTED,
+		message: SCORING,
+	},
+	{
+		form: "scoring imports options",
+		file: "src/core/scoring/layers.ts",
+		code: 'import { opts } from "../options/o.ts";',
+		category: RESTRICTED,
+		message: SCORING,
+	},
+	{
+		form: "scoring imports an adapter",
+		file: "src/core/scoring/layers.ts",
+		code: 'import { o } from "../../adapters/omp/o.ts";',
+		category: RESTRICTED,
+		message: CORE,
+	},
+	{
+		form: "transport imports decision",
+		file: "src/core/scoring/transport/layers.ts",
+		code: 'import { ladder } from "../../decision/ladder.ts";',
+		category: RESTRICTED,
+		message: SCORING,
+	},
+	{
+		form: "a format imports ask.ts",
+		file: "src/core/scoring/formats/layers.ts",
+		code: 'import { ask } from "../ask.ts";',
+		category: RESTRICTED,
+		message: FORMAT,
+	},
+	{
+		form: "a format imports route.ts",
+		file: "src/core/scoring/formats/layers.ts",
+		code: 'import { route } from "../route.ts";',
+		category: RESTRICTED,
+		message: FORMAT,
+	},
+	{
+		form: "a format imports transport code",
+		file: "src/core/scoring/formats/layers.ts",
+		code: 'import { send } from "../transport/send.ts";',
+		category: RESTRICTED,
+		message: FORMAT,
+	},
+	{
+		form: "a format imports a provider",
+		file: "src/core/scoring/formats/layers.ts",
+		code: 'import { provider } from "../../providers/provider.ts";',
+		category: RESTRICTED,
+		message: FORMAT,
+	},
+	{
+		form: "a format imports an adapter",
+		file: "src/core/scoring/formats/layers.ts",
+		code: 'import { o } from "../../../adapters/omp/o.ts";',
+		category: RESTRICTED,
+		message: CORE,
+	},
+	{
+		form: "a format imports decision",
+		file: "src/core/scoring/formats/layers.ts",
+		code: 'import { ladder } from "../../decision/ladder.ts";',
+		category: RESTRICTED,
+		message: SCORING,
+	},
+	{
+		form: "a format imports options",
+		file: "src/core/scoring/formats/layers.ts",
+		code: 'import { opts } from "../../options/o.ts";',
+		category: RESTRICTED,
+		message: SCORING,
+	},
+	{
+		form: "an output file imports from a __tests__ folder",
+		file: "src/core/output/layers.ts",
+		code: 'import { t1 } from "../__tests__/support/t1.ts";',
+		category: PLUGIN,
+		message: TESTS_IMPORT,
+	},
+	{
+		form: "a format imports a type from a __tests__ folder",
+		file: "src/core/scoring/formats/layers.ts",
+		code: 'import type { T2 } from "../../__tests__/support/t2.ts";',
+		category: PLUGIN,
+		message: TESTS_IMPORT,
+	},
+	{
+		form: "a providers file re-exports from a __tests__ folder",
+		file: "src/core/providers/layers.ts",
+		code: 'export { t3 } from "../__tests__/support/t3.ts";',
+		category: PLUGIN,
+		message: TESTS_IMPORT,
+	},
+	{
+		form: "a scoring file re-exports everything from a __tests__ folder",
+		file: "src/core/scoring/layers.ts",
+		code: 'export * from "../__tests__/support/t4.ts";',
+		category: PLUGIN,
+		message: TESTS_IMPORT,
+	},
+	{
+		form: "a transport file imports a __tests__ folder with import()",
+		file: "src/core/scoring/transport/layers.ts",
+		code: 'export const t5 = () => import("../../__tests__/support/t5.ts");',
+		category: PLUGIN,
+		message: TESTS_IMPORT,
+	},
+	{
+		form: "a brief file imports a __tests__ file for its effects",
+		file: "src/core/brief/layers.ts",
+		code: 'import "../__tests__/support/t6.ts";',
+		category: PLUGIN,
+		message: TESTS_IMPORT,
+	},
+	{
+		form: "utils imports from a __tests__ folder",
+		file: "src/utils/layers.ts",
+		code: 'import { t7 } from "./__tests__/support/t7.ts";',
+		category: PLUGIN,
+		message: TESTS_IMPORT,
+	},
+	{
+		form: "utils imports a __tests__ folder with import()",
+		file: "src/utils/layers.ts",
+		code: 'export const t8 = () => import("./__tests__/support/t8.ts");',
+		category: PLUGIN,
+		message: TESTS_IMPORT,
+	},
+	{
+		form: "an adapter imports from a __tests__ folder of core",
+		file: "src/adapters/omp/layers.ts",
+		code: 'import { t9 } from "../../core/__tests__/support/t9.ts";',
+		category: PLUGIN,
+		message: TESTS_IMPORT,
+	},
+	{
+		form: "an adapter re-exports a type from a __tests__ folder",
+		file: "src/adapters/claude/layers.ts",
+		code: 'export type { T10 } from "../__tests__/support/t10.ts";',
+		category: PLUGIN,
+		message: TESTS_IMPORT,
 	},
 	{
 		form: "claude imports omp",
@@ -204,14 +385,14 @@ const faults: Fault[] = [
 	},
 	{
 		form: "import() of a variable",
-		file: "src/core/dynamic.ts",
+		file: "src/core/brief/dynamic.ts",
 		code: "export const a = (path: string) => import(path);",
 		category: PLUGIN,
 		message: DYNAMIC,
 	},
 	{
 		form: "import() of a template",
-		file: "src/core/dynamic.ts",
+		file: "src/core/brief/dynamic.ts",
 		code: "export const b = () => import(`./b.ts`);",
 		category: PLUGIN,
 		message: DYNAMIC,
@@ -276,14 +457,14 @@ const faults: Fault[] = [
 	},
 	{
 		form: "core reads process.env",
-		file: "src/core/reads-env.ts",
+		file: "src/core/brief/reads-env.ts",
 		code: "export const e = process.env;",
 		category: PROCESS_ENV,
 		message: PROCESS_ENV_MESSAGE,
 	},
 	{
 		form: "a multi-word shared reason in a string literal",
-		file: "src/core/reasons-spelled.ts",
+		file: "src/core/options/reasons-spelled.ts",
 		code: 'export const a = "skipped: caller effort";',
 		category: PLUGIN,
 		message: SHARED_REASON,
@@ -322,17 +503,17 @@ const valid: Record<string, string> = {
 		"export { local };",
 		"export const v = [a, quoted];",
 	].join("\n"),
-	"src/core/valid.ts": [
-		'import { u } from "../utils/u.ts";',
-		'import { t } from "./tier.ts";',
-		'import { w } from "./work.ts";',
-		'import { c } from "./compose.ts";',
-		'// import { x } from "../adapters/omp/x.ts"',
+	"src/core/brief/valid.ts": [
+		'import { u } from "../../utils/u.ts";',
+		'import { t } from "../parts/tier.ts";',
+		'import { w } from "../parts/work.ts";',
+		'import { p } from "../providers/provider.ts";',
+		'// import { x } from "../../adapters/omp/x.ts"',
 		"// import(path)",
 		'export const lazy = () => import("./lazy.ts");',
 		'export const withOptions = () => import("./a.json", { with: { type: "json" } });',
 		'export type Lazy = typeof import("./lazy.ts");',
-		"export const v = [u, t, w, c];",
+		"export const v = [u, t, w, p];",
 	].join("\n"),
 	"src/adapters/claude/valid.ts": [
 		'import { c } from "../../core/c.ts";',
@@ -357,6 +538,46 @@ const valid: Record<string, string> = {
 	"src/core/__tests__/unit/reads-env.test.ts": [
 		"export const v = process.env;",
 	].join("\n"),
+	"src/core/parts/__tests__/unit/imports-what-parts-ban.test.ts": [
+		'import { w } from "../../work.ts";',
+		'import { a } from "../../../scoring/ask.ts";',
+		'import { l } from "../../../decision/ladder.ts";',
+		"export const v = [w, a, l];",
+	].join("\n"),
+	"src/core/providers/__tests__/unit/imports-what-providers-ban.test.ts": [
+		'import { a } from "../../../scoring/ask.ts";',
+		"export const v = a;",
+	].join("\n"),
+	"src/core/output/__tests__/unit/imports-what-output-bans.test.ts": [
+		'import { a } from "../../../scoring/ask.ts";',
+		'import { d } from "../../../decision/decide.ts";',
+		"export const v = [a, d];",
+	].join("\n"),
+	"src/core/scoring/__tests__/unit/imports-what-scoring-bans.test.ts": [
+		'import { d } from "../../../decision/decide.ts";',
+		'import { o } from "../../../options/o.ts";',
+		"export const v = [d, o];",
+	].join("\n"),
+	"src/core/scoring/formats/__tests__/unit/imports-what-formats-ban.test.ts": [
+		'import { a } from "../../../ask.ts";',
+		'import { r } from "../../../route.ts";',
+		'import { s } from "../../../transport/send.ts";',
+		'import { p } from "../../../../providers/provider.ts";',
+		'import { d } from "../../../../decision/decide.ts";',
+		'import { o } from "../../../../options/o.ts";',
+		"export const v = [a, r, s, p, d, o];",
+	].join("\n"),
+	"src/core/__tests__/unit/imports-support.test.ts": [
+		'import { s } from "../support/s.ts";',
+		'export { s as again } from "../support/s.ts";',
+		'export const lazy = () => import("../support/s.ts");',
+		"export const v = s;",
+	].join("\n"),
+	"src/adapters/omp/__tests__/unit/imports-support.test.ts": [
+		'import { s } from "../support/s.ts";',
+		'import { c } from "../../../../core/__tests__/support/c.ts";',
+		"export const v = [s, c];",
+	].join("\n"),
 	"src/adapters/omp/reads-env.ts": ["export const v = process.env;"].join("\n"),
 	"src/adapters/__tests__/integration/drives-several.test.ts": [
 		'import { a } from "../../omp/a.ts";',
@@ -365,21 +586,44 @@ const valid: Record<string, string> = {
 	].join("\n"),
 	"scripts/valid.ts": [
 		'import { build } from "esbuild";',
+		'import { s } from "../src/core/__tests__/support/s.ts";',
 		"export const load = (path: string) => import(path);",
-		"export const v = build;",
+		"export const v = [build, s];",
 	].join("\n"),
 };
 
 // Lines that obey the rules, appended to a file that also holds faults. They
-// show that a narrow override still allows what its layer allows.
+// show that a narrow override still allows what its folder allows.
 const clean: Record<string, string[]> = {
-	"src/core/tier.ts": [
-		'import { part } from "./part.ts";',
-		"export const t = part;",
+	"src/core/parts/consumer.ts": [
+		'import { p } from "./part.ts";',
+		'import { u } from "../../utils/u.ts";',
+		'import { readFileSync } from "node:fs";',
+		"export const v = [p, u, readFileSync];",
 	],
-	"src/core/work.ts": [
-		'import { u } from "../utils/u.ts";',
-		"export const w = u;",
+	"src/core/providers/layers.ts": [
+		'import { p } from "../parts/part.ts";',
+		"export const v = p;",
+	],
+	"src/core/output/layers.ts": [
+		'import { p } from "../parts/part.ts";',
+		'import { r } from "./reasons.ts";',
+		"export const v = [p, r];",
+	],
+	"src/core/scoring/layers.ts": [
+		'import { p } from "../providers/provider.ts";',
+		'import { r } from "../output/reasons.ts";',
+		'import { q } from "../parts/part.ts";',
+		'import { k } from "./ask.ts";',
+		"export const v = [p, r, q, k];",
+	],
+	"src/core/scoring/formats/layers.ts": [
+		'import { f } from "../failure.ts";',
+		'import { r } from "../reply.ts";',
+		'import { m } from "./format.ts";',
+		'import { p } from "../../parts/part.ts";',
+		'import { g } from "../../../utils/guards.ts";',
+		"export const v = [f, r, m, p, g];",
 	],
 	"src/adapters/openclaw/index.ts": [
 		'import { c } from "../../core/c.ts";',
