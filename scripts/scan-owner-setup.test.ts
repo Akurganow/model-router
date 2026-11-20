@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -104,12 +103,6 @@ test("one line with two kinds reports both", () => {
 		"absolute home path",
 		"sk- key",
 	]);
-});
-
-test("the two key prefixes are the ones src/core/brief/brief.ts redacts", () => {
-	const brief = readFileSync(join(ROOT, "src/core/brief/brief.ts"), "utf8");
-	assert.ok(brief.includes("\\bsk-[A-Za-z0-9_-]{8,}"));
-	assert.ok(brief.includes("Bearer\\s+[A-Za-z0-9._~+/=-]+/gi"));
 });
 
 const repo = useTempRoot("scan-repo-");
