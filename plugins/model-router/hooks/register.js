@@ -862,21 +862,16 @@ function limitSignal(ms, clock, parent) {
     controller.abort(parent.reason);
     return disarmed;
   }
+  const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
   const onParentAbort = () => controller.abort(parent?.reason);
   parent?.addEventListener("abort", onParentAbort, { once: true });
-  try {
-    const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
-    return {
-      signal,
-      disarm: () => {
-        parent?.removeEventListener("abort", onParentAbort);
-        timer.cancel();
-      }
-    };
-  } catch (error) {
-    parent?.removeEventListener("abort", onParentAbort);
-    throw error;
-  }
+  return {
+    signal,
+    disarm: () => {
+      parent?.removeEventListener("abort", onParentAbort);
+      timer.cancel();
+    }
+  };
 }
 
 // src/core/scoring/route.ts
@@ -967,7 +962,10 @@ function pickModel(level, state) {
 
 // src/core/decision/outcome.ts
 function outcomeOf(decided, models, kept) {
-  const picked = pickModel(decided.tier, models[slotForLevel(decided.tier)]);
+  const picked = pickModel(
+    decided.tier,
+    slotState(models[slotForLevel(decided.tier)])
+  );
   const ladder = effortFor(decided.tier, decided.work);
   return {
     slot: picked.slot,
@@ -984,11 +982,7 @@ function outcomeOf(decided, models, kept) {
 }
 
 // src/adapters/claude/router.ts
-var MODELS2 = {
-  small: slotState("haiku"),
-  middle: slotState("sonnet"),
-  large: slotState("opus")
-};
+var MODELS2 = { small: "haiku", middle: "sonnet", large: "opus" };
 var BUILT_IN = "built-in";
 var ENGINE = "engine";
 var GENERAL_PURPOSE = "general-purpose";

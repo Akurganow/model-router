@@ -5,7 +5,6 @@ import {
 } from "../../core/brief/brief.ts";
 import { scoreWork } from "../../core/decision/decide.ts";
 import { outcomeOf } from "../../core/decision/outcome.ts";
-import { slotState } from "../../core/decision/slots.ts";
 import { resolveScope, type Scope } from "../../core/options/scope.ts";
 import { skippedLine } from "../../core/output/line.ts";
 import { CALLER_EFFORT } from "../../core/output/reasons.ts";
@@ -30,11 +29,7 @@ import {
 import { readKeys } from "./keys.ts";
 
 // Claude Code names a fixed model for each slot, so every slot is set.
-const MODELS = {
-	small: slotState("haiku"),
-	middle: slotState("sonnet"),
-	large: slotState("opus"),
-} as const;
+const MODELS = { small: "haiku", middle: "sonnet", large: "opus" };
 
 const BUILT_IN = "built-in";
 // The origin of a spawn the Agent tool makes. Another plugin's $.agent.spawn carries its own name.

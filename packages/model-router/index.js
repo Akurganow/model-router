@@ -62,34 +62,26 @@ function limitSignal(ms, clock, parent) {
     controller.abort(parent.reason);
     return disarmed;
   }
+  const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
   const onParentAbort = () => controller.abort(parent?.reason);
   parent?.addEventListener("abort", onParentAbort, { once: true });
-  try {
-    const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
-    return {
-      signal,
-      disarm: () => {
-        parent?.removeEventListener("abort", onParentAbort);
-        timer.cancel();
-      }
-    };
-  } catch (error) {
-    parent?.removeEventListener("abort", onParentAbort);
-    throw error;
-  }
+  return {
+    signal,
+    disarm: () => {
+      parent?.removeEventListener("abort", onParentAbort);
+      timer.cancel();
+    }
+  };
 }
-async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
+async function raceDeadline(work2, deadlineMs, clock, parent) {
   try {
-    const { signal, disarm } = limitSignal(deadlineMs, clock, hostSignal);
+    const { signal, disarm } = limitSignal(deadlineMs, clock, parent);
     try {
       return await new Promise((settle) => {
         const onAbort = () => settle(void 0);
         signal.addEventListener("abort", onAbort, { once: true });
         if (signal.aborted) onAbort();
-        work2(signal).then(
-          (result) => signal.aborted ? void 0 : result,
-          () => void 0
-        ).then(settle);
+        work2(signal).then(settle, () => settle(void 0));
       });
     } finally {
       try {
@@ -1021,7 +1013,10 @@ var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
 // src/core/decision/outcome.ts
 function outcomeOf(decided, models, kept) {
-  const picked = pickModel(decided.tier, models[slotForLevel(decided.tier)]);
+  const picked = pickModel(
+    decided.tier,
+    slotState(models[slotForLevel(decided.tier)])
+  );
   const ladder = effortFor(decided.tier, decided.work);
   return {
     slot: picked.slot,
@@ -1246,7 +1241,7 @@ async function routeGated(spawn, settings, keys, gate, log) {
   if ("skipped" in decided) return void log(skippedLine(decided.skipped));
   const { model, effort, line } = outcomeOf(
     decided,
-    slotRecord((slot) => slotState(settings.models[slot])),
+    settings.models,
     gate.effort.kind === "keep" ? gate.effort.label : void 0
   );
   log(line);

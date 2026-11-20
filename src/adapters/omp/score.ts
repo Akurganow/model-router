@@ -93,6 +93,9 @@ const skipped = (reason: string): Stored => ({ line: skippedLine(reason) });
  * the slot's state when it has none. The line shows
  * the effort the batch's facts allow, before the spawn's patterns are known.
  * Returns a skip line alone when the decision is a skip. Never throws.
+ * omp composes the effort, the pick and the line here and does not call
+ * outcomeOf: its effort plan reads the picked model and the omp settings, and
+ * the line is built again at the spawn.
  */
 function toStored(
 	decided: DecidedWithWork | Skipped,

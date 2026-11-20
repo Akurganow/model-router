@@ -636,21 +636,16 @@ function limitSignal(ms, clock, parent) {
     controller.abort(parent.reason);
     return disarmed;
   }
+  const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
   const onParentAbort = () => controller.abort(parent?.reason);
   parent?.addEventListener("abort", onParentAbort, { once: true });
-  try {
-    const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
-    return {
-      signal,
-      disarm: () => {
-        parent?.removeEventListener("abort", onParentAbort);
-        timer.cancel();
-      }
-    };
-  } catch (error) {
-    parent?.removeEventListener("abort", onParentAbort);
-    throw error;
-  }
+  return {
+    signal,
+    disarm: () => {
+      parent?.removeEventListener("abort", onParentAbort);
+      timer.cancel();
+    }
+  };
 }
 
 // src/core/scoring/handler-deadline.ts

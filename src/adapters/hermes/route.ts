@@ -1,7 +1,7 @@
 import { DEFAULT_ROLE, routingState } from "../../core/brief/brief.ts";
 import { type DecidedWithWork, scoreWork } from "../../core/decision/decide.ts";
 import { outcomeOf } from "../../core/decision/outcome.ts";
-import { type Slot, slotRecord, slotState } from "../../core/decision/slots.ts";
+import type { Slot } from "../../core/decision/slots.ts";
 import { LINE_PREFIX, skippedLine } from "../../core/output/line.ts";
 import {
 	CALLER_EFFORT,
@@ -16,7 +16,11 @@ import type { Fetch } from "../../core/scoring/transport/send.ts";
 import { type Clock, realClock } from "../../utils/clock.ts";
 import { type HermesRequest, type KeptEffort, readRequest } from "./request.ts";
 
-type HermesDeps = { readonly fetchFn: Fetch; readonly clock: Clock };
+type HermesDeps = {
+	readonly fetchFn: Fetch;
+	// Times the deadline only. The scoring call's own timers run on realClock.
+	readonly clock: Clock;
+};
 type HermesResponse =
 	| {
 			readonly outcome: "route";
@@ -85,7 +89,7 @@ function answer(
 ): HermesResponse {
 	const { slot, effort, line } = outcomeOf(
 		decided,
-		slotRecord((name) => slotState(request.models[name])),
+		request.models,
 		request.keptEffort === undefined
 			? undefined
 			: KEPT_LABELS[request.keptEffort],

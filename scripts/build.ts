@@ -86,7 +86,7 @@ export function checkClaudeBundle(code: string): string[] {
 	for (const name of TIMER_NAMES)
 		if (new RegExp(`(?<![.\\w$])${name}\\b`).test(code))
 			problems.push(
-				`the bundle uses a free ${name}; the hooks module has no timer globals, so the core must wait on the clock its caller passes`,
+				`the bundle uses a free ${name}; the hooks module has no timer globals, so wait on $.clock or on the clock the caller passes`,
 			);
 	return problems;
 }

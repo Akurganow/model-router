@@ -1,7 +1,6 @@
 import { routingState } from "../../core/brief/brief.ts";
 import { scoreWork } from "../../core/decision/decide.ts";
 import { outcomeOf } from "../../core/decision/outcome.ts";
-import { slotRecord, slotState } from "../../core/decision/slots.ts";
 import { LINE_PREFIX, skippedLine } from "../../core/output/line.ts";
 import { type Keys, plan } from "../../core/providers/provider.ts";
 import { MIN_DEADLINE_MS } from "../../core/scoring/handler-deadline.ts";
@@ -29,6 +28,7 @@ export const HOOK = "before_tool_call";
 
 export type RouterDeps = {
 	readonly fetchFn: Fetch;
+	// Times the deadline only. The scoring call's own timers run on realClock.
 	readonly clock: Clock;
 	readonly env: Environment;
 };
@@ -142,7 +142,7 @@ async function routeGated(
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
 	const { model, effort, line } = outcomeOf(
 		decided,
-		slotRecord((slot) => slotState(settings.models[slot])),
+		settings.models,
 		gate.effort.kind === "keep" ? gate.effort.label : undefined,
 	);
 	log(line);

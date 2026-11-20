@@ -626,34 +626,26 @@ function limitSignal(ms, clock, parent) {
     controller.abort(parent.reason);
     return disarmed;
   }
+  const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
   const onParentAbort = () => controller.abort(parent?.reason);
   parent?.addEventListener("abort", onParentAbort, { once: true });
-  try {
-    const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
-    return {
-      signal,
-      disarm: () => {
-        parent?.removeEventListener("abort", onParentAbort);
-        timer.cancel();
-      }
-    };
-  } catch (error) {
-    parent?.removeEventListener("abort", onParentAbort);
-    throw error;
-  }
+  return {
+    signal,
+    disarm: () => {
+      parent?.removeEventListener("abort", onParentAbort);
+      timer.cancel();
+    }
+  };
 }
-async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
+async function raceDeadline(work2, deadlineMs, clock, parent) {
   try {
-    const { signal, disarm } = limitSignal(deadlineMs, clock, hostSignal);
+    const { signal, disarm } = limitSignal(deadlineMs, clock, parent);
     try {
       return await new Promise((settle) => {
         const onAbort = () => settle(void 0);
         signal.addEventListener("abort", onAbort, { once: true });
         if (signal.aborted) onAbort();
-        work2(signal).then(
-          (result) => signal.aborted ? void 0 : result,
-          () => void 0
-        ).then(settle);
+        work2(signal).then(settle, () => settle(void 0));
       });
     } finally {
       try {
@@ -755,7 +747,10 @@ function pickModel(level, state) {
 
 // src/core/decision/outcome.ts
 function outcomeOf(decided, models, kept) {
-  const picked = pickModel(decided.tier, models[slotForLevel(decided.tier)]);
+  const picked = pickModel(
+    decided.tier,
+    slotState(models[slotForLevel(decided.tier)])
+  );
   const ladder = effortFor(decided.tier, decided.work);
   return {
     slot: picked.slot,
@@ -867,7 +862,7 @@ async function scored(request, deps, signal) {
 function answer(request, decided) {
   const { slot, effort, line } = outcomeOf(
     decided,
-    slotRecord((name) => slotState(request.models[name])),
+    request.models,
     request.keptEffort === void 0 ? void 0 : KEPT_LABELS[request.keptEffort]
   );
   return {

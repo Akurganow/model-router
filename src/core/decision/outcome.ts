@@ -1,14 +1,9 @@
 import { routedLine } from "../output/line.ts";
 import type { DecidedWithWork } from "./decide.ts";
 import { type Effort, effortFor } from "./ladder.ts";
-import {
-	pickModel,
-	type Slot,
-	type SlotModels,
-	slotForLevel,
-} from "./slots.ts";
+import { pickModel, type Slot, slotForLevel, slotState } from "./slots.ts";
 
-export type Outcome = {
+type Outcome = {
 	readonly slot: Slot;
 	// Undefined when the slot is unset: the harness keeps its own model.
 	readonly model: string | undefined;
@@ -20,16 +15,19 @@ export type Outcome = {
 
 /**
  * Returns what a scored call comes to: the slot the tier picks, that slot's
- * model, the ladder's effort and the routing line. `kept` labels an effort the
- * adapter keeps. The line then shows the label and `effort` is undefined.
- * Never throws.
+ * model, the ladder's effort and the routing line. `models` names each slot's
+ * model, or none for a slot that is unset. `kept` labels an effort the adapter
+ * keeps. The line then shows the label and `effort` is undefined. Never throws.
  */
 export function outcomeOf(
 	decided: DecidedWithWork,
-	models: SlotModels,
+	models: Readonly<Record<Slot, string | undefined>>,
 	kept?: string,
 ): Outcome {
-	const picked = pickModel(decided.tier, models[slotForLevel(decided.tier)]);
+	const picked = pickModel(
+		decided.tier,
+		slotState(models[slotForLevel(decided.tier)]),
+	);
 	const ladder = effortFor(decided.tier, decided.work);
 	return {
 		slot: picked.slot,
