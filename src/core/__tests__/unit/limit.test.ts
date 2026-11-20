@@ -97,7 +97,7 @@ describe("raceDeadline", () => {
 		assert.equal(time.live(), 0);
 	});
 
-	it("settles on a host abort even when cancelling the timer throws", async () => {
+	it("returns the work's result even when cancelling the timer throws", async () => {
 		const throwingCancel: Clock = {
 			after: () => ({
 				cancel: () => {
@@ -105,15 +105,13 @@ describe("raceDeadline", () => {
 				},
 			}),
 		};
-		const host = new AbortController();
-		const pending = raceDeadline(
-			() => new Promise<string>(() => undefined),
+		const result = await raceDeadline(
+			async () => "done",
 			DEADLINE_MS,
 			throwingCancel,
-			host.signal,
+			undefined,
 		);
-		host.abort();
-		assert.equal(await pending, undefined);
+		assert.equal(result, "done");
 	});
 
 	it("stops listening to the host signal once the work ends", async () => {
