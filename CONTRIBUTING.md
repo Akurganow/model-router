@@ -21,6 +21,16 @@ every commit as a [conventional commit](#commits).
   - `utils/` imports nothing from `core/` or an adapter. `core/` imports no
     adapter. An adapter imports no other adapter. No file of `src/` imports
     from `scripts/` or `plugins/`.
+  - A file of `src/core/`, `src/utils/` or `scripts/` imports its own folder
+    and the folders below it by `./`, and everything else by an alias:
+    `#core/`, `#utils/`, `#adapters/` or `#scripts/`. The `imports` map in
+    the root `package.json` holds the aliases, and a specifier keeps its
+    `.ts` extension. `tsc` rejects that extension on an alias while
+    `rewriteRelativeImportExtensions` is on, so `src/tsconfig.json` and
+    `scripts/tsconfig.json` turn it off. The tests under `plugins/` import by
+    relative path: `plugins/model-router-omp/` holds its own `package.json`,
+    so the root map does not reach its tests, and the tests of the other
+    plugins are spelled the same way.
   - Biome enforces these bans. The `noRestrictedImports` overrides in
     `biome.json` ban the imports of `utils/` and of each adapter, and hold
     the folder bans that the list of core folders below names. In the
@@ -33,8 +43,12 @@ every commit as a [conventional commit](#commits).
     `scripts/` or `plugins/` in `src/`, the imports of `scoring/route.ts`
     that the list below bans, a computed `import()` in `src/`, an import
     from a `__tests__` folder in a source file of `src/`, a re-export in
-    `src/utils/` and a shared skip reason spelled outside
-    `src/core/output/reasons.ts`.
+    `src/utils/`, a shared skip reason spelled outside
+    `src/core/output/reasons.ts` and an import by `../` in `src/core/`,
+    `src/utils/` and `scripts/`.
+  - Where a banned import lies outside the importing file's folder, a ban on
+    a file of `src/core/` or `src/utils/` reads its alias. The `../` path to
+    the same file falls to the plugin that bans every `../` there.
   - An override replaces an earlier one of the same rule for its files, so
     an import ban that must hold under a narrower override is a plugin. The
     overrides read no import in a type position, `typeof import("…")` or
