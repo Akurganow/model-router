@@ -22,9 +22,18 @@ every commit as a [conventional commit](#commits).
     `utils/`. An adapter imports only itself, `core/` and `utils/`.
   - Biome enforces these directions. The `noRestrictedImports` overrides in
     `biome.json` ban the imports of each layer. Plugins in
-    `scripts/lint/` ban a computed `import()` in `src/`, a re-export in
+    `scripts/lint/` ban a computed `import()` in `src/`, an import from a
+    `__tests__` folder in a source file of `src/`, a re-export in
     `src/utils/` and a shared skip reason spelled outside
     `src/core/output/reasons.ts`.
+  - The overrides also hold these edges between the folders of `src/core/`,
+    for every file outside `__tests__/`:
+    - `parts/` imports only `parts/part.ts` and `utils/`;
+    - `providers/` imports nothing from `scoring/`;
+    - `output/` imports nothing from `scoring/` or `decision/`;
+    - `scoring/` imports nothing from `decision/` or `options/`;
+    - `scoring/formats/` imports no `ask.ts` and no `route.ts`, and nothing
+      from `transport/` or `providers/`.
   - `scripts/lint.test.ts` plants one fault for each rule and checks that
     Biome reports it.
   - [AGENTS.md](AGENTS.md#a-rule-about-the-source-goes-to-biome-first)
@@ -42,8 +51,21 @@ every commit as a [conventional commit](#commits).
   | A non-test file of `utils/` | Two or more users outside `utils/` |
 
   In the last row, tests and scripts count as users.
-- `src/core/part.ts` holds the shared types and the answer check.
-  `src/core/tier.ts` and `src/core/work.ts` both build on it.
+- `src/core/` holds one folder for each job:
+  - `brief/`: the task text that leaves the machine, condensed and masked;
+  - `parts/`: the questions `tier` and `work`, their shared types and the
+    pick rule;
+  - `providers/`: the provider list, the values of the `provider` setting,
+    their order, the key names and the plan of attempts;
+  - `scoring/`: the call. `route` asks the attempts in order, `ask` sends
+    one, `formats/` holds the wire formats, `transport/` the request and its
+    retries;
+  - `decision/`: from the scores to the level, the effort ladder and the
+    slot;
+  - `options/`: the settings and the scope;
+  - `output/`: every text of the core that a user sees: the routing line,
+    its tail and the skip reasons. A failure's mapping to its reason stays
+    in `scoring/`.
 - `plugins/model-router` is the Claude Code plugin.
 - `plugins/model-router-omp` is the omp plugin.
 - `plugins/model-router-openclaw` is the OpenClaw plugin.
@@ -222,9 +244,9 @@ Each case in `calibration.jsonl` names its source, its license and the basis
 of its label. For a label that the brief supports both ways, set the array
 `contested` to `["expected"]`, `["work"]` or both.
 
-Fix a miss by rewording a tier text in `src/core/tier.ts` or a work-level text in
-`src/core/work.ts`. Then rebuild with `node scripts/build.ts`. Never lower the
-bar.
+Fix a miss by rewording a tier text in `src/core/parts/tier.ts` or a
+work-level text in `src/core/parts/work.ts`. Then rebuild with
+`node scripts/build.ts`. Never lower the bar.
 
 The masked prompt keeps the key out of command lines and shell history. Pipe
 the key only from a source that keeps it out of the command line.
