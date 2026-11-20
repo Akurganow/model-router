@@ -19,6 +19,7 @@ export type Decision = {
 	>;
 	// The provider that answered.
 	readonly provider: Provider;
+	// The model the reply names, cleaned; empty when it names none.
 	readonly model: string;
 	readonly usage: Usage | undefined;
 	// The first failed attempt, set only when the answer came after a fallback.
