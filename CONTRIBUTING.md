@@ -22,16 +22,19 @@ every commit as a [conventional commit](#commits).
     `utils/`. An adapter imports only itself, `core/` and `utils/`.
   - Biome enforces these directions. The `noRestrictedImports` overrides in
     `biome.json` ban the imports of `utils/` and of each adapter, and hold
-    the folder bans that the list of core folders below names. Plugins in
+    the folder bans that the list of core folders below names. A
+    `noRestrictedGlobals` override bans the global `fetch`, `setTimeout` and
+    `clearTimeout` in the source files of `src/core/`: the core calls the
+    fetch and the clock that its caller passes. Plugins in
     `scripts/lint/` ban an adapter import in `src/core/`, the imports of
     `scoring/route.ts` that the list below bans, a computed `import()` in
     `src/`, an import from a `__tests__` folder in a source file of `src/`,
     a re-export in `src/utils/` and a shared skip reason spelled outside
     `src/core/output/reasons.ts`.
-  - An override replaces an earlier one for its files, so a ban that must
-    hold under a narrower override is a plugin. The overrides read no import
-    in a type position, `typeof import("…")` or `import("…").X`; the plugins
-    that ban an import read it.
+  - An override replaces an earlier one of the same rule for its files, so
+    an import ban that must hold under a narrower override is a plugin. The
+    overrides read no import in a type position, `typeof import("…")` or
+    `import("…").X`; the plugins that ban an import read it.
   - `scripts/lint.test.ts` plants one fault for each rule and checks that
     Biome reports it.
   - [AGENTS.md](AGENTS.md#a-rule-about-the-source-goes-to-biome-first)
@@ -56,19 +59,25 @@ every commit as a [conventional commit](#commits).
     pick rule. It imports only `parts/part.ts` and `utils/`.
   - `providers/`: the provider list, the values of the `provider` setting,
     their order, the key names, each provider's default model and the plan
-    of attempts. An attempt carries its provider's key. It imports nothing
-    from `scoring/`.
+    of attempts. An attempt carries its provider's key. `collectKeys` and
+    `collectKeysSync` hold the one rule that collects the keys, for a lookup
+    that waits and for one that answers at once. It imports nothing from
+    `scoring/`.
   - `scoring/`: the call. `route` asks the attempts in order and picks each
     part's level, `ask` sends one request, `endpoints.ts` holds one table
     with each provider's URL and wire format, `formats/` holds the wire
-    formats, `transport/` the request and its retries. It also holds the
-    routing limit and a handler's deadline. It imports nothing from
+    formats, `transport/` the request and its retries. `limit.ts` holds the
+    routing limit: its duration, the signal that the clock aborts when it
+    runs out, and the race of a handler's work against a deadline.
+    `handler-deadline.ts` holds a handler's deadline. It imports nothing from
     `decision/` or `options/`. `formats/` imports only its own folder,
     `scoring/failure.ts`, `scoring/reply.ts`, `parts/part.ts`,
     `brief/brief.ts` and `utils/`. `route.ts` imports no wire format,
     nothing from `transport/` and not `endpoints.ts`.
   - `decision/`: `scoreWork`, the entry every adapter calls, which reads the
-    tier and work levels; the effort ladder; the slots.
+    tier and work levels; the effort ladder; the slots; `outcomeOf`, which
+    gives the slot, its model, the effort to set and the routing line of a
+    scored call.
   - `options/`: the settings and the scope, with their report and dialog
     texts.
   - `output/`: the routing line, its suffix and the shared skip reasons. It
