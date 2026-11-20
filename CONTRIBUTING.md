@@ -61,8 +61,9 @@ every commit as a [conventional commit](#commits).
     their order, the key names, each provider's default model and the plan
     of attempts. An attempt carries its provider's key. `collectKeys` and
     `collectKeysSync` hold the one rule that collects the keys, for a lookup
-    that waits and for one that answers at once. It imports nothing from
-    `scoring/`.
+    that waits and for one that answers at once; `found_keys` in the Hermes
+    plugin's `settings.py` walks the same order in Python, over the generated
+    constants. It imports nothing from `scoring/`.
   - `scoring/`: the call. `route` asks the attempts in order and picks each
     part's level, `ask` sends one request, `endpoints.ts` holds one table
     with each provider's URL and wire format, `formats/` holds the wire
