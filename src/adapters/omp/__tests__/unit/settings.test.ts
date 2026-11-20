@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { KEY_VARIABLES } from "../../../../core/providers/provider.ts";
-import { findKeys, narrow, readSettings } from "../../settings.ts";
+import { findAttempts, narrow, readSettings } from "../../settings.ts";
 import {
 	KEY,
 	lockfileScoped,
@@ -81,7 +81,7 @@ test("a provider takes its key from omp's credential and the other from the vari
 	setEnv(KEY_VARIABLES.openrouter, "env-or-key");
 	world.credential = async (provider) =>
 		provider === "typesafe" ? KEY : undefined;
-	const { attempts } = await findKeys(world.ctx(), "auto");
+	const attempts = await findAttempts(world.ctx(), "auto");
 	assert.deepEqual(attempts, [
 		{
 			provider: "typesafe",
@@ -101,7 +101,7 @@ test("a credential store that throws falls through to the variable and the next 
 	world.credential = async () => {
 		throw new Error("store locked");
 	};
-	const { attempts } = await findKeys(world.ctx(), "auto");
+	const attempts = await findAttempts(world.ctx(), "auto");
 	assert.deepEqual(attempts, [
 		{
 			provider: "typesafe",

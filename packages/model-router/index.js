@@ -140,8 +140,7 @@ function usageOf(usage) {
     output_tokens: count(output_tokens)
   };
 }
-function read(parts, status, text) {
-  if (!isSuccess(status)) return { failure: "status", status };
+function read(parts, text) {
   const reply = parse(text);
   const { answers, model, usage } = isRecord(reply) ? reply : {};
   const pairs = [];
@@ -317,7 +316,9 @@ async function askOnce(input, attempt) {
     }
   );
   if (isFailure(received)) return received;
-  const read2 = format.read(parts, received.status, received.text);
+  if (!isSuccess(received.status))
+    return { failure: "status", status: received.status };
+  const read2 = format.read(parts, received.text);
   if (isFailure(read2)) return read2;
   return {
     answers: read2.answers,
@@ -419,7 +420,10 @@ var KEY_FIELDS = {
   openrouter: "openrouter_api_key"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var MODEL = "jev-latest";
+var MODELS = {
+  typesafe: "jev-latest",
+  openrouter: "jev-latest"
+};
 var DEFAULT_VALUE = "typesafe";
 var ORDER = {
   auto: PROVIDERS,
@@ -434,7 +438,7 @@ function plan(value, keys) {
   const attempts = [];
   for (const provider of order(value)) {
     const key = keys[provider];
-    if (key) attempts.push({ provider, model: MODEL, key });
+    if (key) attempts.push({ provider, model: MODELS[provider], key });
   }
   return attempts.map(
     (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt

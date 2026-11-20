@@ -5,6 +5,7 @@ import {
 	slotState,
 } from "../../core/decision/slots.ts";
 import { KEY_UNSET, UNREADABLE } from "../../core/output/reasons.ts";
+import type { Attempt } from "../../core/providers/provider.ts";
 import {
 	type Facts,
 	ROLE_MARK,
@@ -13,8 +14,7 @@ import {
 	TASK,
 } from "./items.ts";
 import {
-	findKeys,
-	type Routing,
+	findAttempts,
 	readConfig,
 	readSettings,
 	type Settings,
@@ -24,7 +24,10 @@ import type { Context, OmpImports, Pi } from "./types.ts";
 // The omp model role that holds each slot's model.
 const ROLE_NAMES = { small: "smol", middle: "midl", large: "slow" } as const;
 
-export type Batch = Routing & { readonly facts: Facts };
+export type Batch = {
+	readonly attempts: readonly Attempt[];
+	readonly facts: Facts;
+};
 type Closed = { readonly closed: string };
 
 // A spawn is judged like a batch item, for its own agent. Its effort needs the facts read again.
@@ -41,7 +44,7 @@ export async function checkGates(
 }
 
 /**
- * Returns the routing and the facts for the whole batch, or a closed reason
+ * Returns the attempts and the facts for the whole batch, or a closed reason
  * when a gate shuts it: unreadable settings, an unset key or an unreadable
  * config. Each gate fails closed, and the keys are the cheapest check. What
  * each item needs to be judged comes back as facts, read once. Never throws.
@@ -53,14 +56,14 @@ export async function openBatch(
 	settings: Settings | undefined,
 ): Promise<Batch | Closed> {
 	if (settings === undefined) return { closed: UNREADABLE };
-	const routing = await findKeys(ctx, settings.provider);
-	if (routing.attempts.length === 0) return { closed: KEY_UNSET };
+	const attempts = await findAttempts(ctx, settings.provider);
+	if (attempts.length === 0) return { closed: KEY_UNSET };
 	const config = readConfig(omp.lookup, pi.pi.settings);
 	if (config === undefined) return { closed: UNREADABLE };
 	const agents = await discover(pi, ctx);
 	const models = slotRecord((slot) => slotModel(ctx, slot));
 	return {
-		...routing,
+		attempts,
 		facts: { ...config, scope: settings.scope, agents, models },
 	};
 }

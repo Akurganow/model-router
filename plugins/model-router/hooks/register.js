@@ -34,7 +34,10 @@ var KEY_FIELDS = {
   openrouter: "openrouter_api_key"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var MODEL = "jev-latest";
+var MODELS = {
+  typesafe: "jev-latest",
+  openrouter: "jev-latest"
+};
 var DEFAULT_VALUE = "typesafe";
 var ORDER = {
   auto: PROVIDERS,
@@ -57,7 +60,7 @@ function plan(value, keys) {
   const attempts = [];
   for (const provider of order(value)) {
     const key = keys[provider];
-    if (key) attempts.push({ provider, model: MODEL, key });
+    if (key) attempts.push({ provider, model: MODELS[provider], key });
   }
   return attempts.map(
     (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt
@@ -659,8 +662,7 @@ function usageOf(usage) {
     output_tokens: count(output_tokens)
   };
 }
-function read2(parts, status, text) {
-  if (!isSuccess(status)) return { failure: "status", status };
+function read2(parts, text) {
   const reply = parse(text);
   const { answers, model, usage } = isRecord(reply) ? reply : {};
   const pairs = [];
@@ -836,7 +838,9 @@ async function askOnce(input, attempt) {
     }
   );
   if (isFailure(received)) return received;
-  const read3 = format.read(parts, received.status, received.text);
+  if (!isSuccess(received.status))
+    return { failure: "status", status: received.status };
+  const read3 = format.read(parts, received.text);
   if (isFailure(read3)) return read3;
   return {
     answers: read3.answers,
@@ -933,7 +937,7 @@ var EFFORT_BY_TIER = {
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
 // src/adapters/claude/router.ts
-var MODELS = ["haiku", "sonnet", "opus"];
+var MODELS2 = ["haiku", "sonnet", "opus"];
 var BUILT_IN = "built-in";
 var ENGINE = "engine";
 var GENERAL_PURPOSE = "general-purpose";
@@ -1073,7 +1077,7 @@ async function spawnsSettled($) {
 function pick2(decided) {
   if ("skipped" in decided) return decided;
   return {
-    model: MODELS[decided.tier],
+    model: MODELS2[decided.tier],
     effort: effortFor(decided.tier, decided.work),
     level: decided.tier,
     probabilities: decided.probabilities,

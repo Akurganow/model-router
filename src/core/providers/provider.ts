@@ -9,11 +9,6 @@ export type ProviderValue = (typeof PROVIDER_VALUES)[number];
 export const PROVIDERS = ["typesafe", "openrouter"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
-export const PROVIDER_NAMES: Readonly<Record<Provider, string>> = {
-	typesafe: "TypeSafe",
-	openrouter: "OpenRouter",
-};
-
 // Every harness reads a provider's key from the same variable.
 export const KEY_VARIABLES: Readonly<Record<Provider, string>> = {
 	typesafe: "TYPESAFE_API_KEY",
@@ -30,8 +25,12 @@ export const KEY_FIELDS = {
 export type Keys = Partial<Record<Provider, string>>;
 
 export const FIRST_ATTEMPT_TIMEOUT_MS = 2000;
-// Both providers resolve this alias to their newest Jev release.
-const MODEL = "jev-latest";
+// Each provider's row is the model its endpoint understands. Both resolve this alias to their
+// newest Jev release.
+const MODELS: Readonly<Record<Provider, string>> = {
+	typesafe: "jev-latest",
+	openrouter: "jev-latest",
+};
 const DEFAULT_VALUE: ProviderValue = "typesafe";
 
 const ORDER: Readonly<Record<ProviderValue, readonly Provider[]>> = {
@@ -44,7 +43,7 @@ const ORDER: Readonly<Record<ProviderValue, readonly Provider[]>> = {
 export type Attempt = {
 	readonly provider: Provider;
 	readonly model: string;
-	// Reaches only the Authorization header; never print it.
+	// Reaches only the request's auth header; never print it.
 	readonly key: string;
 	readonly timeout?: number;
 	readonly retries?: number;
@@ -94,14 +93,11 @@ export async function collectKeys(
  * fast, so the next one gets most of the routing limit. Returns no attempts
  * when no key is set. Never throws.
  */
-export function plan(
-	value: unknown,
-	keys: Readonly<Partial<Record<Provider, string | undefined>>>,
-): Attempt[] {
+export function plan(value: unknown, keys: Readonly<Keys>): Attempt[] {
 	const attempts: Attempt[] = [];
 	for (const provider of order(value)) {
 		const key = keys[provider];
-		if (key) attempts.push({ provider, model: MODEL, key });
+		if (key) attempts.push({ provider, model: MODELS[provider], key });
 	}
 	return attempts.map((attempt, i) =>
 		i < attempts.length - 1

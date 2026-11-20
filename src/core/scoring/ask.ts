@@ -2,7 +2,7 @@ import type { RoutingState } from "../brief/brief.ts";
 import type { Part, Probabilities } from "../parts/part.ts";
 import type { Attempt } from "../providers/provider.ts";
 import { endpointOf } from "./endpoints.ts";
-import { type Failure, isFailure, UNKNOWN } from "./failure.ts";
+import { type Failure, isFailure, isSuccess, UNKNOWN } from "./failure.ts";
 import { cleanModel, type Usage } from "./reply.ts";
 import { type Fetch, send } from "./transport/send.ts";
 
@@ -52,7 +52,9 @@ async function askOnce(
 		},
 	);
 	if (isFailure(received)) return received;
-	const read = format.read(parts, received.status, received.text);
+	if (!isSuccess(received.status))
+		return { failure: "status", status: received.status };
+	const read = format.read(parts, received.text);
 	if (isFailure(read)) return read;
 	return {
 		answers: read.answers,

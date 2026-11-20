@@ -5,7 +5,6 @@ import { tier } from "../src/core/parts/tier.ts";
 import { work } from "../src/core/parts/work.ts";
 import {
 	type Attempt,
-	PROVIDER_NAMES,
 	type Provider,
 	plan,
 } from "../src/core/providers/provider.ts";
@@ -24,7 +23,11 @@ import { fitWarnings } from "./jev-fit.ts";
 const AGREEMENT_BAR = 0.85;
 const CASE_HEAD_CHARS = 60;
 const PERCENT = 100;
-const USAGE = `usage: node scripts/calibrate.ts <typesafe|openrouter> [model] [--record <file>]  (typesafe sends the cases to ${ENDPOINTS.typesafe.url}, openrouter to ${ENDPOINTS.openrouter.url}; enter that host's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
+const PROVIDER_NAMES: Readonly<Record<Provider, string>> = {
+	typesafe: "TypeSafe",
+	openrouter: "OpenRouter",
+};
+const USAGE = `usage: node scripts/calibrate.ts <typesafe|openrouter> [model] [--record <file>]  (typesafe sends the cases to ${ENDPOINTS.typesafe.url}, openrouter to ${ENDPOINTS.openrouter.url}; enter that provider's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
 
 export type Case = {
 	role: string;

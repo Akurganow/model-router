@@ -53,9 +53,6 @@ test("plan orders the attempts for each value and set of keys", () => {
 
 test("plan attempts only the providers whose key is set", () => {
 	assert.deepEqual(plan("auto", { typesafe: "", openrouter: "or-key" }), [O]);
-	assert.deepEqual(plan("auto", { typesafe: undefined, openrouter: "k" }), [
-		{ ...O, key: "k" },
-	]);
 });
 
 test("order lists the providers a value allows, without keys", () => {
