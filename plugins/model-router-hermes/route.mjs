@@ -1,4 +1,4 @@
-// src/core/reasons.ts
+// src/core/output/reasons.ts
 var CALLER_EFFORT = "caller effort";
 var CONFIG_EFFORT = "config effort";
 var KEY_UNSET = "key unset";
@@ -23,7 +23,7 @@ var nonEmpty = (value) => {
   return text === "" ? void 0 : text;
 };
 
-// src/core/brief.ts
+// src/core/brief/brief.ts
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
 var NO_DESCRIPTION = "An agent with no description.";
@@ -671,7 +671,7 @@ async function scoreWork(input) {
   return decide2(decision, tier.key, work.key);
 }
 
-// src/core/ladder.ts
+// src/core/decision/ladder.ts
 var EFFORT_BY_TIER = {
   0: ["medium", "high", "xhigh"],
   1: ["low", "medium", "high"],
@@ -679,7 +679,19 @@ var EFFORT_BY_TIER = {
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
-// src/core/line.ts
+// src/core/decision/slots.ts
+var SLOTS = ["small", "middle", "large"];
+var slotForLevel = (level) => SLOTS[level];
+var slotSetting = (slot) => `${slot}_model`;
+var SLOT_SETTINGS = SLOTS.map(slotSetting);
+var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
+var slotState = (model) => model === void 0 ? { state: "unset" } : { state: "set", model };
+function pickModel(level, state) {
+  const slot = slotForLevel(level);
+  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
+}
+
+// src/core/output/line.ts
 var LINE_PREFIX = "model-router ";
 var pinnedLine = (level, target) => `L${level} ${target}`;
 function routedLine({
@@ -694,18 +706,6 @@ function routedLine({
 }
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
-
-// src/core/slots.ts
-var SLOTS = ["small", "middle", "large"];
-var slotForLevel = (level) => SLOTS[level];
-var slotSetting = (slot) => `${slot}_model`;
-var SLOT_SETTINGS = SLOTS.map(slotSetting);
-var slotRecord = (make) => Object.fromEntries(SLOTS.map((slot) => [slot, make(slot)]));
-var slotState = (model) => model === void 0 ? { state: "unset" } : { state: "set", model };
-function pickModel(level, state) {
-  const slot = slotForLevel(level);
-  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
-}
 
 // src/utils/deadline.ts
 async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {

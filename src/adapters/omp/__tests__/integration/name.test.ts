@@ -4,8 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { pathToFileURL } from "node:url";
-import { UNREADABLE } from "../../../../core/reasons.ts";
-import { ask, TOOL_NAME, unchanged } from "../../../../core/settings.ts";
+import {
+	ask,
+	TOOL_NAME,
+	unchanged,
+} from "../../../../core/options/settings.ts";
+import { UNREADABLE } from "../../../../core/output/reasons.ts";
 import { checkGates } from "../../gates.ts";
 import { readInstalledName } from "../../name.ts";
 import { createExtension } from "../../router.ts";

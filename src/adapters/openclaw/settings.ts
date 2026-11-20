@@ -1,4 +1,14 @@
 import {
+	type Slot,
+	slotRecord,
+	slotSetting,
+} from "../../core/decision/slots.ts";
+import {
+	parseScope,
+	resolveScope,
+	type Scope,
+} from "../../core/options/scope.ts";
+import {
 	KEY_FIELDS,
 	KEY_VARIABLES,
 	type Keys,
@@ -8,8 +18,6 @@ import {
 	parseProvider,
 	resolve,
 } from "../../core/provider.ts";
-import { parseScope, resolveScope, type Scope } from "../../core/scope.ts";
-import { type Slot, slotRecord, slotSetting } from "../../core/slots.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import type { OpenClawApi, OpenClawConfig } from "./types.ts";

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DEFAULT_ROLE } from "../../../core/brief.ts";
+import { DEFAULT_ROLE } from "../../../core/brief/brief.ts";
 import { routedCall } from "../../claude/__tests__/support/fakes.ts";
 import { useWorld } from "../../omp/__tests__/support/fakes.ts";
 import { createExtension } from "../../omp/router.ts";

@@ -1,10 +1,10 @@
-import { KEY_UNSET, UNREADABLE } from "../../core/reasons.ts";
 import {
 	type Slot,
 	type SlotModel,
 	slotRecord,
 	slotState,
-} from "../../core/slots.ts";
+} from "../../core/decision/slots.ts";
+import { KEY_UNSET, UNREADABLE } from "../../core/output/reasons.ts";
 import {
 	type Facts,
 	ROLE_MARK,

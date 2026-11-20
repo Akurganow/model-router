@@ -1,4 +1,4 @@
-import type { RoutingState } from "../../brief.ts";
+import type { RoutingState } from "../../brief/brief.ts";
 import type { Part, Probabilities } from "../../part.ts";
 import type { Failure } from "../failure.ts";
 import type { Usage } from "../reply.ts";

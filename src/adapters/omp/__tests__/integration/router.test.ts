@@ -5,8 +5,8 @@ import {
 	DEFAULT_ROLE,
 	NO_DESCRIPTION,
 	roleText,
-} from "../../../../core/brief.ts";
-import { KEY_UNSET, UNREADABLE } from "../../../../core/reasons.ts";
+} from "../../../../core/brief/brief.ts";
+import { KEY_UNSET, UNREADABLE } from "../../../../core/output/reasons.ts";
 import { tier } from "../../../../core/tier.ts";
 import { work } from "../../../../core/work.ts";
 import { createExtension } from "../../router.ts";

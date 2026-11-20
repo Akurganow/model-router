@@ -5,8 +5,8 @@ import {
 	route,
 	type Skipped,
 } from "./compose.ts";
+import { BAD_REPLY } from "./output/reasons.ts";
 import { formatProbability, type Level } from "./part.ts";
-import { BAD_REPLY } from "./reasons.ts";
 import { tier } from "./tier.ts";
 import { work } from "./work.ts";
 

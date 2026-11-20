@@ -5,7 +5,7 @@ import {
 	MIN_DEADLINE_MS,
 	MIN_TIMEOUT_MS,
 } from "../../core/handler-deadline.ts";
-import { LINE_PREFIX } from "../../core/line.ts";
+import { LINE_PREFIX } from "../../core/output/line.ts";
 import { realClock } from "../../utils/clock.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { registerConfigCommands, registerConfigTool } from "./config.ts";

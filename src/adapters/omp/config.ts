@@ -1,5 +1,3 @@
-import { type Keys, order } from "../../core/provider.ts";
-import { UNREADABLE } from "../../core/reasons.ts";
 import {
 	alreadyValue,
 	badCall,
@@ -18,7 +16,9 @@ import {
 	VALUE_SETTINGS,
 	type ValueSetting,
 	valueLine,
-} from "../../core/settings.ts";
+} from "../../core/options/settings.ts";
+import { UNREADABLE } from "../../core/output/reasons.ts";
+import { type Keys, order } from "../../core/provider.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { serializer } from "../../utils/serializer.ts";
 import { findKey, readSettings, type Settings } from "./settings.ts";

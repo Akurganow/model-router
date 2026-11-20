@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { prepareBrief, routingState } from "../src/core/brief.ts";
+import { prepareBrief, routingState } from "../src/core/brief/brief.ts";
 import {
 	type Decision,
 	LIMIT_REACHED,
@@ -7,6 +7,7 @@ import {
 	route,
 	type Skipped,
 } from "../src/core/compose.ts";
+import { PROVIDER_NAMES } from "../src/core/options/settings.ts";
 import { formatProbability } from "../src/core/part.ts";
 import {
 	type Attempt,
@@ -16,7 +17,6 @@ import {
 	plan,
 } from "../src/core/provider.ts";
 import type { Fetch } from "../src/core/scoring/transport/send.ts";
-import { PROVIDER_NAMES } from "../src/core/settings.ts";
 import { tier } from "../src/core/tier.ts";
 import { work } from "../src/core/work.ts";
 import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";

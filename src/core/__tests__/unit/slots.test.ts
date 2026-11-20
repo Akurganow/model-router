@@ -9,7 +9,7 @@ import {
 	slotRecord,
 	slotSetting,
 	slotState,
-} from "../../slots.ts";
+} from "../../decision/slots.ts";
 
 test("the slots run small, middle, large in level order", () => {
 	assert.deepEqual(SLOTS, ["small", "middle", "large"]);

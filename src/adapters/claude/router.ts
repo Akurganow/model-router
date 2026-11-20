@@ -1,4 +1,8 @@
-import { DEFAULT_ROLE, roleText, routingState } from "../../core/brief.ts";
+import {
+	DEFAULT_ROLE,
+	roleText,
+	routingState,
+} from "../../core/brief/brief.ts";
 import {
 	LIMIT_REACHED,
 	ROUTING_LIMIT_MS,
@@ -6,12 +10,12 @@ import {
 	type Skipped,
 } from "../../core/compose.ts";
 import { type DecidedWithWork, scoreWork } from "../../core/decide.ts";
-import { effortFor } from "../../core/ladder.ts";
-import { routedLine, skippedLine } from "../../core/line.ts";
+import { effortFor } from "../../core/decision/ladder.ts";
+import { resolveScope, type Scope } from "../../core/options/scope.ts";
+import { routedLine, skippedLine } from "../../core/output/line.ts";
+import { CALLER_EFFORT } from "../../core/output/reasons.ts";
 import type { Level } from "../../core/part.ts";
 import { plan } from "../../core/provider.ts";
-import { CALLER_EFFORT } from "../../core/reasons.ts";
-import { resolveScope, type Scope } from "../../core/scope.ts";
 import type { Fetch } from "../../core/scoring/transport/send.ts";
 import {
 	type AgentCall,

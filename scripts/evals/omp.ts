@@ -1,4 +1,4 @@
-import { ENTRY_SEPARATOR, LINE_PREFIX } from "../../src/core/line.ts";
+import { ENTRY_SEPARATOR, LINE_PREFIX } from "../../src/core/output/line.ts";
 import type { Level } from "../../src/core/part.ts";
 import { get, isRecord, jevModel, jsonLines } from "./stream.ts";
 import type { Adapter, Evidence } from "./types.ts";

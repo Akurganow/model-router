@@ -1,6 +1,6 @@
+import { CANCELLED, FAILED, KEY_UNSET, TIMEOUT } from "./output/reasons.ts";
 import type { Level, Probabilities } from "./part.ts";
 import type { Attempt, Provider } from "./provider.ts";
-import { CANCELLED, FAILED, KEY_UNSET, TIMEOUT } from "./reasons.ts";
 import { type AskInput, ask, type Reply } from "./scoring/ask.ts";
 import { fallsBack, isFailure, skipText } from "./scoring/failure.ts";
 import { isCount, type Usage } from "./scoring/reply.ts";

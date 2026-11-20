@@ -2,8 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { order, PROVIDER_VALUES } from "../../provider.ts";
-import { SCOPE_VALUES } from "../../scope.ts";
+import { SCOPE_VALUES } from "../../options/scope.ts";
 import {
 	alreadyValue,
 	ask,
@@ -24,7 +23,8 @@ import {
 	useOneOf,
 	VALUE_SETTINGS,
 	valueLine,
-} from "../../settings.ts";
+} from "../../options/settings.ts";
+import { order, PROVIDER_VALUES } from "../../provider.ts";
 
 test("lists the value settings", () => {
 	assert.deepEqual(VALUE_SETTINGS, ["provider", "scope"]);

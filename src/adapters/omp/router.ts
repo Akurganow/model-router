@@ -1,6 +1,10 @@
-import { contextText } from "../../core/brief.ts";
-import { ENTRY_SEPARATOR, LINE_PREFIX, skippedLine } from "../../core/line.ts";
-import { pickModel, slotForLevel } from "../../core/slots.ts";
+import { contextText } from "../../core/brief/brief.ts";
+import { pickModel, slotForLevel } from "../../core/decision/slots.ts";
+import {
+	ENTRY_SEPARATOR,
+	LINE_PREFIX,
+	skippedLine,
+} from "../../core/output/line.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { registerConfig, say } from "./config.ts";
 import { budgetFor } from "./deadline.ts";

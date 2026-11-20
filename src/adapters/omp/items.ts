@@ -1,12 +1,12 @@
-import { DEFAULT_ROLE, roleText } from "../../core/brief.ts";
+import { DEFAULT_ROLE, roleText } from "../../core/brief/brief.ts";
+import type { SlotModels } from "../../core/decision/slots.ts";
+import type { Scope } from "../../core/options/scope.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
 	outsideCoreScope,
 	setsOwnModel,
-} from "../../core/reasons.ts";
-import type { Scope } from "../../core/scope.ts";
-import type { SlotModels } from "../../core/slots.ts";
+} from "../../core/output/reasons.ts";
 import { isSet } from "../../utils/guards.ts";
 import type { DiscoveredAgent } from "./types.ts";
 

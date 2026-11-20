@@ -6,8 +6,8 @@ import {
 	scoringReply,
 	systemOneAnswer,
 } from "../../../../core/__tests__/support/replies.ts";
+import { TOOL_NAME } from "../../../../core/options/settings.ts";
 import { KEY_VARIABLES, plan } from "../../../../core/provider.ts";
-import { TOOL_NAME } from "../../../../core/settings.ts";
 import type { Batch } from "../../gates.ts";
 import type {
 	CommandSpec,

@@ -1,3 +1,4 @@
+import { SLOTS, slotLine, slotSetting } from "../../core/decision/slots.ts";
 import {
 	alreadyValue,
 	COMMAND_DESCRIPTIONS,
@@ -13,8 +14,7 @@ import {
 	VALUE_SETTINGS,
 	type ValueSetting,
 	valueLine,
-} from "../../core/settings.ts";
-import { SLOTS, slotLine, slotSetting } from "../../core/slots.ts";
+} from "../../core/options/settings.ts";
 import { errorText } from "../../utils/error.ts";
 import {
 	type Environment,

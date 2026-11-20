@@ -4,14 +4,14 @@ import {
 	DEFAULT_ROLE,
 	prepareBrief,
 	roleText,
-} from "../../../../core/brief.ts";
-import { LINE_PREFIX, skippedLine } from "../../../../core/line.ts";
+} from "../../../../core/brief/brief.ts";
+import { LINE_PREFIX, skippedLine } from "../../../../core/output/line.ts";
 import {
 	KEY_UNSET,
 	outsideCoreScope,
 	setsOwnModel,
 	UNREADABLE,
-} from "../../../../core/reasons.ts";
+} from "../../../../core/output/reasons.ts";
 import { SPAWN_TOOL } from "../../router.ts";
 import { PLUGIN_ID } from "../../settings.ts";
 import type { BeforeToolCallResult } from "../../types.ts";

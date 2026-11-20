@@ -1,4 +1,8 @@
-import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "../../core/brief.ts";
+import {
+	DEFAULT_ROLE,
+	NO_DESCRIPTION,
+	roleText,
+} from "../../core/brief/brief.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
@@ -9,7 +13,7 @@ import {
 	SUBAGENT_MODEL_SET,
 	setsOwnModel,
 	UNREADABLE,
-} from "../../core/reasons.ts";
+} from "../../core/output/reasons.ts";
 import { isRecord, isSet } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import { findAgent, sameAgent } from "./agents.ts";

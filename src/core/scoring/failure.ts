@@ -4,7 +4,7 @@ import {
 	httpStatus,
 	NETWORK_ERROR,
 	TIMEOUT,
-} from "../reasons.ts";
+} from "../output/reasons.ts";
 
 // A failure holds a tag and, for a status, the number. Never a cause, a body, a task or a key.
 export type Failure =

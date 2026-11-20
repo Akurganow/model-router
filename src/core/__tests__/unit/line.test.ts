@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { pinnedLine, routedLine, skippedLine } from "../../line.ts";
+import { pinnedLine, routedLine, skippedLine } from "../../output/line.ts";
 
 const BASE = {
 	level: 2,

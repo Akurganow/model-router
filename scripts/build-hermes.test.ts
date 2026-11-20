@@ -10,7 +10,7 @@ import {
 	taskParameterTexts,
 } from "../src/adapters/hermes/texts.ts";
 import { ROUTING_LIMIT_MS } from "../src/core/compose.ts";
-import { EFFORTS, effortFor } from "../src/core/ladder.ts";
+import { EFFORTS, effortFor } from "../src/core/decision/ladder.ts";
 import { LEVELS } from "../src/core/part.ts";
 import {
 	KEY_VARIABLES,

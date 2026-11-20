@@ -1,4 +1,4 @@
-import type { Level } from "./part.ts";
+import type { Level } from "../part.ts";
 
 type RoutedLine = {
 	readonly level: Level;

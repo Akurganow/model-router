@@ -1,18 +1,22 @@
-import { routingState } from "../../core/brief.ts";
+import { routingState } from "../../core/brief/brief.ts";
 import { abortCategory, LIMIT_REACHED } from "../../core/compose.ts";
 import { scoreWork } from "../../core/decide.ts";
-import { MIN_DEADLINE_MS } from "../../core/handler-deadline.ts";
-import { effortFor } from "../../core/ladder.ts";
-import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
-import type { Level } from "../../core/part.ts";
-import { type Keys, plan } from "../../core/provider.ts";
-import type { Fetch } from "../../core/scoring/transport/send.ts";
+import { effortFor } from "../../core/decision/ladder.ts";
 import {
 	pickModel,
 	type SlotModel,
 	slotForLevel,
 	slotState,
-} from "../../core/slots.ts";
+} from "../../core/decision/slots.ts";
+import { MIN_DEADLINE_MS } from "../../core/handler-deadline.ts";
+import {
+	LINE_PREFIX,
+	routedLine,
+	skippedLine,
+} from "../../core/output/line.ts";
+import type { Level } from "../../core/part.ts";
+import { type Keys, plan } from "../../core/provider.ts";
+import type { Fetch } from "../../core/scoring/transport/send.ts";
 import type { Clock } from "../../utils/clock.ts";
 import { raceDeadline } from "../../utils/deadline.ts";
 import { nonEmpty } from "../../utils/text.ts";

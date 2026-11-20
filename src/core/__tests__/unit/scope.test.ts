@@ -6,7 +6,7 @@ import {
 	parseScope,
 	resolveScope,
 	SCOPE_VALUES,
-} from "../../scope.ts";
+} from "../../options/scope.ts";
 
 test("exports two values and the core default", () => {
 	assert.deepEqual(SCOPE_VALUES, ["core", "extended"]);

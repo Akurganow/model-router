@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { outsideCoreScope, setsOwnModel } from "../../../../core/reasons.ts";
+import {
+	outsideCoreScope,
+	setsOwnModel,
+} from "../../../../core/output/reasons.ts";
 import type { OpenClawSettings } from "../../settings.ts";
 import {
 	effort,

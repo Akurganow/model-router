@@ -4,7 +4,7 @@ import { test } from "node:test";
 import {
 	COMMAND_DESCRIPTIONS,
 	VALUE_SETTINGS,
-} from "../../../../core/settings.ts";
+} from "../../../../core/options/settings.ts";
 
 const CONFIG_TOOL = "mcp__model-router__config";
 

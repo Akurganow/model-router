@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { routingState } from "../../brief.ts";
+import { routingState } from "../../brief/brief.ts";
 import type { Decision } from "../../compose.ts";
 import { decide, scoreWork } from "../../decide.ts";
 import { plan } from "../../provider.ts";

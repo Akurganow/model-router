@@ -1,4 +1,4 @@
-import type { Level } from "./part.ts";
+import type { Level } from "../part.ts";
 
 // The slots in level order: level 0 takes its model from small, 1 from middle, 2 from large.
 export const SLOTS = ["small", "middle", "large"] as const;
