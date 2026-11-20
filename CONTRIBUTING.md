@@ -23,18 +23,18 @@ every commit as a [conventional commit](#commits).
     from `scripts/` or `plugins/`.
   - Biome enforces these bans. The `noRestrictedImports` overrides in
     `biome.json` ban the imports of `utils/` and of each adapter, and hold
-    the folder bans that the list of core folders below names. A
-    `noRestrictedGlobals` override bans these globals in the source files of
-    `src/core/`: `fetch`, `WebSocket`, `XMLHttpRequest`, `EventSource`,
-    `setTimeout`, `clearTimeout`, `setInterval`, `clearInterval` and
-    `globalThis`. The core calls the fetch and the clock that its caller
-    passes. Plugins in `scripts/lint/` ban an adapter import in `src/core/`,
-    a `node:` import and a call of `AbortSignal.timeout` in the source files
-    of `src/core/`, an import from `scripts/` or `plugins/` in `src/`, the
-    imports of `scoring/route.ts` that the list below bans, a computed
-    `import()` in `src/`, an import from a `__tests__` folder in a source
-    file of `src/`, a re-export in `src/utils/` and a shared skip reason
-    spelled outside `src/core/output/reasons.ts`.
+    the folder bans that the list of core folders below names. In the
+    source files of `src/core/`, a `noRestrictedGlobals` override bans the
+    connection and timer globals and the global object, and a Node module
+    imported without `node:` is an error. The core calls the fetch and the
+    clock that its caller passes. Plugins in `scripts/lint/` ban an adapter
+    import in `src/core/`, a `node:` import and a call of
+    `AbortSignal.timeout` in the source files of `src/core/`, an import from
+    `scripts/` or `plugins/` in `src/`, the imports of `scoring/route.ts`
+    that the list below bans, a computed `import()` in `src/`, an import
+    from a `__tests__` folder in a source file of `src/`, a re-export in
+    `src/utils/` and a shared skip reason spelled outside
+    `src/core/output/reasons.ts`.
   - An override replaces an earlier one of the same rule for its files, so
     an import ban that must hold under a narrower override is a plugin. The
     overrides read no import in a type position, `typeof import("…")` or
@@ -100,8 +100,10 @@ every commit as a [conventional commit](#commits).
   Its Python uses the standard library only, so it has no `pyproject.toml`
   and no requirements file. The builder writes its `plugin.yaml`,
   `constants.json` and `route.mjs`. The Python reads from `constants.json`
-  the routing limit, the provider, slot and effort tables, and the texts of
-  the skips, the task parameters, the tool and the command.
+  what the TypeScript sources define, and holds on its own what they have no
+  part in: the environment of the Node step and its log and failure texts.
+  The names of the request to the Node step, of its reply and of the task
+  parameters are spelled on both sides.
 - `packages/model-router` is the npm package that OpenClaw and omp install.
   The builder writes it, and CI packs the committed tree. Never edit it by
   hand.
