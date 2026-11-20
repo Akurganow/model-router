@@ -7,8 +7,9 @@ language js
 // export … from. An import() call holds its argument as an expression.
 // TsImportType is an import in a type position: typeof import("…") and
 // import("…").X.
-// Only the alias counts: parent-import.grit bans the ../ path to an adapter.
-// A type import holds the whole type as its text, hence the [^"']* before the quote.
+// Only the alias counts: parent-import.grit bans every specifier that holds a
+// ../, so a relative path to an adapter falls to it.
+// src-outside.grit explains the [^"']* before the quote.
 or {
 	JsModuleSource() as $specifier,
 	`import($specifier)`,

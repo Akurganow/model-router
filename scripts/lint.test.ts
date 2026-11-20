@@ -647,6 +647,27 @@ const faults: Fault[] = [
 		message: PARENT,
 	},
 	{
+		form: "a core file re-exports an adapter through ./../",
+		file: "src/core/decision/parent.ts",
+		code: 'export { SPAWN_TOOL } from "./../../adapters/openclaw/router.ts";',
+		category: PLUGIN,
+		message: PARENT,
+	},
+	{
+		form: "a utils file imports core through ./../",
+		file: "src/utils/parent.ts",
+		code: 'import { decide } from "./../core/decision/decide.ts";',
+		category: PLUGIN,
+		message: PARENT,
+	},
+	{
+		form: "a utils file imports core through a folder below and back up",
+		file: "src/utils/parent.ts",
+		code: 'import { x } from "./sub/../../core/x.ts";',
+		category: PLUGIN,
+		message: PARENT,
+	},
+	{
 		form: "a multi-word shared reason in a string literal",
 		file: "src/core/options/reasons-spelled.ts",
 		code: 'export const a = "skipped: caller effort";',

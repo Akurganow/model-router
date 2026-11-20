@@ -76,6 +76,10 @@
 			}
 		},
 		{
+			"includes": ["src/core/**", "src/utils/**", "scripts/**"],
+			"plugins": ["./scripts/lint/parent-import.grit"]
+		},
+		{
 			"includes": ["src/core/parts/**"],
 			"linter": {
 				"rules": {
@@ -316,7 +320,6 @@
 		"./scripts/lint/core-adapter.grit",
 		"./scripts/lint/route-imports.grit",
 		"./scripts/lint/core-node.grit",
-		"./scripts/lint/src-outside.grit",
-		"./scripts/lint/parent-import.grit"
+		"./scripts/lint/src-outside.grit"
 	]
 }
