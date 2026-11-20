@@ -3,6 +3,59 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.24.1 - 2026-11-20
+#### Bug Fixes
+- count a blank retry header as absent (0f13676)
+#### Documentation
+- list decision models to support later in the README (ad6ec4b)
+- name the kinds of banned globals and the split of the Hermes constants (290797d)
+- state the import bans and the Hermes constants as they are (3630f82)
+- name a key's setting only where the harness has one (31c0708)
+- drop an unsourced sentence from the eval steps of the add-provider skill (a2c1d30)
+- make the eval steps of the add-provider skill select the provider (4427bc1)
+- make the key test step always hold and put the OpenClaw privacy step back (31e647e)
+- put the decisions of the add-provider skill before its edits (3243d3f)
+- add the skill for adding a scoring provider (ea4cee4)
+- name the Python walk of the key order beside the two core forms (ffd3e0e)
+- name the limit, the outcome, both key forms and the global ban (43a456f)
+- say what a wire format may import and what an override does not read (0e1b591)
+- name the endpoint table and the route.ts ban in the core folder list (660ab2f)
+- give each core folder its job and its import ban in one list (89bc75c)
+- list the core folders and cite the moved files at their new paths (9967620)
+- cite the moved core files at their new paths (3902bb5)
+#### Tests
+- pin the provider order in two adapters, a padded key and the likelier end (2301363)
+- add boundary rows for the pick factors and rows for the Hermes request (9912146)
+- make the throwing-cancel row hold its guard and drop the outcome rows (a18ccee)
+- pin the Claude Code skip text for a limit and a cancel after a fallback (7908928)
+- hold the suffix mapping in the decide test (c7a9aad)
+#### Build system
+- name the bare model in the fit warning (899f553)
+- ignore a vendor prefix in the fit warning (73b0e71)
+#### Refactoring
+- ban a bare Node import and three more globals in the core (ae6b6a4)
+- cut duplicates, a dead return and needless exports (f1f947a)
+- close the holes in the core's connection ban and ban outside imports in src (0a891ac)
+- give outcomeOf plain model names and trim the limit's inside (b10baaa)
+- give the key rule a synchronous form beside the asynchronous one (e24a943)
+- take the outcome of a scored call from one core function (54773e0)
+- give the routing limit one home in the core (df5c69a)
+- wait on the clock the caller passes (717a4f4)
+- list what a wire format may import (9b7fda8)
+- read an error status in ask and key the default model by provider (3cf516d)
+- keep formats, transport and the endpoint table out of route.ts (2fcd3d4)
+- split the scoring call into a format seam with an endpoint table (466932a)
+- read type-position imports in the two import plugins (6ae8521)
+- ban an adapter import in core with a plugin (891099d)
+- spell the plain failed attempt of the suffix once (e66d148)
+- hold the import edges between the core folders in Biome (fc0204c)
+- move the routing line's tail and the probability format to output (e44b5a0)
+- move scoring, parts, providers and decide into core subfolders (ad4576a)
+- move brief, options, output, the ladder and the slots into core subfolders (f7b0ed6)
+
+- - -
+
+
 ## v0.24.0 - 2026-11-20
 #### Features
 - name the answering provider in the routing line (c11bb03)
