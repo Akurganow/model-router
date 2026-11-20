@@ -37,7 +37,7 @@ const MAX_PARALLEL = 4;
 export async function scoreItems(
 	items: readonly Pending[],
 	context: string,
-	{ attempts, keys, facts }: Batch,
+	{ attempts, facts }: Batch,
 	deadline: number,
 ): Promise<Scored[]> {
 	const limit = new AbortController();
@@ -52,7 +52,6 @@ export async function scoreItems(
 			if (reason !== undefined) return { ...pending, stored: skipped(reason) };
 			const routing = {
 				attempts: attempts.filter((a) => !passedOver.has(a.provider)),
-				keys,
 				onFallback: (p: Provider) => void passedOver.add(p),
 			};
 			const decided = await scoreItem(
@@ -73,7 +72,7 @@ function scoreItem(
 	item: TaskItem,
 	context: string,
 	role: string,
-	routing: Pick<RouteInput, "attempts" | "keys" | "onFallback">,
+	routing: Pick<RouteInput, "attempts" | "onFallback">,
 	signal: AbortSignal,
 ): Promise<DecidedWithWork | Skipped> {
 	return scoreWork({

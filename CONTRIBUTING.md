@@ -22,14 +22,16 @@ every commit as a [conventional commit](#commits).
     `utils/`. An adapter imports only itself, `core/` and `utils/`.
   - Biome enforces these directions. The `noRestrictedImports` overrides in
     `biome.json` ban the imports of `utils/` and of each adapter, and hold
-    the import bans that the list of core folders below names. Plugins in
-    `scripts/lint/` ban an adapter import in `src/core/`, a computed
-    `import()` in `src/`, an import from a `__tests__` folder in a source
-    file of `src/`, a re-export in `src/utils/` and a shared skip reason
-    spelled outside `src/core/output/reasons.ts`.
-  - An override replaces an earlier one for its files, so the override of
-    `scoring/formats/` repeats the ban of `scoring/`, and the lint test
-    plants a fault for each.
+    the folder bans that the list of core folders below names. Plugins in
+    `scripts/lint/` ban an adapter import in `src/core/`, the imports of
+    `scoring/route.ts` that the list below bans, a computed `import()` in
+    `src/`, an import from a `__tests__` folder in a source file of `src/`,
+    a re-export in `src/utils/` and a shared skip reason spelled outside
+    `src/core/output/reasons.ts`.
+  - An override replaces an earlier one for its files, so a ban that must
+    hold under a narrower override is a plugin. The overrides read no import
+    in a type position, `typeof import("…")` or `import("…").X`; the plugins
+    that ban an import read it.
   - `scripts/lint.test.ts` plants one fault for each rule and checks that
     Biome reports it.
   - [AGENTS.md](AGENTS.md#a-rule-about-the-source-goes-to-biome-first)
@@ -53,14 +55,18 @@ every commit as a [conventional commit](#commits).
   - `parts/`: the questions `tier` and `work`, their shared types and the
     pick rule. It imports only `parts/part.ts` and `utils/`.
   - `providers/`: the provider list, the values of the `provider` setting,
-    their order, the key names and the plan of attempts. It imports nothing
+    their order, the key names, each provider's default model and the plan
+    of attempts. An attempt carries its provider's key. It imports nothing
     from `scoring/`.
   - `scoring/`: the call. `route` asks the attempts in order and picks each
-    part's level, `ask` sends one request, `formats/` holds the wire
+    part's level, `ask` sends one request, `endpoints.ts` holds one table
+    with each provider's URL and wire format, `formats/` holds the wire
     formats, `transport/` the request and its retries. It also holds the
     routing limit and a handler's deadline. It imports nothing from
-    `decision/` or `options/`. `formats/` imports no `ask.ts` and no
-    `route.ts`, and nothing from `transport/` or `providers/`.
+    `decision/` or `options/`. `formats/` imports only its own folder,
+    `scoring/failure.ts`, `scoring/reply.ts`, `parts/part.ts`,
+    `brief/brief.ts` and `utils/`. `route.ts` imports no wire format,
+    nothing from `transport/` and not `endpoints.ts`.
   - `decision/`: `scoreWork`, the entry every adapter calls, which reads the
     tier and work levels; the effort ladder; the slots.
   - `options/`: the settings and the scope, with their report and dialog
@@ -215,8 +221,8 @@ node scripts/calibrate.ts <typesafe|openrouter> [model]
 `scripts/calibrate.ts` is a developer tool, and Claude Code never runs it. It
 needs Node 22.18 or 23.6 or later. Its first argument names the provider. It
 reads that provider's key from a masked prompt or from stdin. The prompt names
-the host that gets the key, for example
-`OpenRouter API key for https://openrouter.ai/api:`. The script sends
+the URL that gets the key, for example
+`OpenRouter API key for https://openrouter.ai/api/v1/systemone:`. The script sends
 `calibration.jsonl`, 172 labelled cases, to the endpoint that the
 plugins use for that provider. Its optional second argument names the Jev
 model and defaults to `jev-latest`. It exits 1 when tier or work

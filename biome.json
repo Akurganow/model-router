@@ -145,17 +145,15 @@
 							"options": {
 								"patterns": [
 									{
-										"group": ["**/decision/**", "**/options/**"],
-										"message": "A scoring/ file imports nothing from decision/ or options/."
-									},
-									{
 										"group": [
-											"**/ask.*",
-											"**/route.*",
-											"**/transport/**",
-											"**/providers/**"
+											"../**",
+											"!../failure.ts",
+											"!../reply.ts",
+											"!../../parts/part.ts",
+											"!../../brief/brief.ts",
+											"!../../../utils/**"
 										],
-										"message": "A wire format imports no ask.ts, no route.ts, nothing from transport/ and nothing from providers/."
+										"message": "A wire format imports only its own folder, ../failure.ts, ../reply.ts, parts/part.ts, brief/brief.ts and utils/."
 									}
 								]
 							}
@@ -295,6 +293,7 @@
 		"./scripts/lint/utils-reexport.grit",
 		"./scripts/lint/shared-reason.grit",
 		"./scripts/lint/tests-import.grit",
-		"./scripts/lint/core-adapter.grit"
+		"./scripts/lint/core-adapter.grit",
+		"./scripts/lint/route-imports.grit"
 	]
 }

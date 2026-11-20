@@ -82,8 +82,7 @@ async function scoreAgainst(body: unknown) {
 	const bodies: unknown[] = [];
 	const result = await scoreWork({
 		state: STATE,
-		attempts: plan("typesafe", { typesafe: true, openrouter: false }),
-		keys: { typesafe: "test-key" },
+		attempts: plan("typesafe", { typesafe: "test-key" }),
 		fetchFn: async (_url, init) => {
 			bodies.push(JSON.parse(String(init?.body)));
 			return scoringReply(200, body);
@@ -111,15 +110,4 @@ test("scoreWork asks for the tier and work questions and reads both levels", asy
 test("scoreWork returns a bad reply for a reply without the work part", async () => {
 	const { result } = await scoreAgainst(systemOneAnswer(2));
 	assert.deepEqual(result, { skipped: "bad reply" });
-});
-
-test("scoreWork returns the skip of a call with no usable provider", async () => {
-	const result = await scoreWork({
-		state: STATE,
-		attempts: plan("typesafe", { typesafe: true, openrouter: false }),
-		keys: {},
-		fetchFn: async () => scoringReply(200, systemOneAnswer(1, 1)),
-		signal: new AbortController().signal,
-	});
-	assert.ok("skipped" in result);
 });

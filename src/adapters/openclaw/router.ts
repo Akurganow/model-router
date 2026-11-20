@@ -106,7 +106,6 @@ async function score(
 			task: gate.task,
 		}),
 		attempts: plan(settings.provider, keys),
-		keys,
 		fetchFn: deps.fetchFn,
 		signal,
 	});

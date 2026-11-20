@@ -17,11 +17,6 @@ const COMMAND_PREFIX = "model-router-";
 export const commandName = (setting: ValueSetting): string =>
 	`${COMMAND_PREFIX}${setting}`;
 
-export const PROVIDER_NAMES: Readonly<Record<Provider, string>> = {
-	typesafe: "TypeSafe",
-	openrouter: "OpenRouter",
-};
-
 const LABEL_SEPARATOR = " - ";
 
 type ValueText = {

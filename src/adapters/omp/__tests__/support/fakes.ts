@@ -363,8 +363,7 @@ export function logged(
 
 // A batch that scores through the typesafe key, over the agents omp discovered.
 export const batch = (agents: DiscoveredAgent[]): Batch => ({
-	attempts: plan("typesafe", { typesafe: true, openrouter: false }),
-	keys: { typesafe: "ts-key" },
+	attempts: plan("typesafe", { typesafe: "ts-key" }),
 	facts: {
 		scope: "core",
 		roles: {},

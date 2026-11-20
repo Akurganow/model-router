@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolveScope, type Scope } from "../../core/options/scope.ts";
 import {
+	type Attempt,
 	collectKeys,
 	KEY_VARIABLES,
 	type Provider,
@@ -8,7 +9,6 @@ import {
 	plan,
 	resolve as resolveProvider,
 } from "../../core/providers/provider.ts";
-import type { RouteInput } from "../../core/scoring/route.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import type { Facts } from "./items.ts";
@@ -17,7 +17,6 @@ import type { Context, Lookup, OmpImports } from "./types.ts";
 
 const NARROWABLE: readonly ProviderValue[] = ["auto", "openrouter-first"];
 
-export type Routing = Pick<RouteInput, "attempts" | "keys">;
 export type Settings = {
 	readonly provider: ProviderValue;
 	readonly scope: Scope;
@@ -85,13 +84,16 @@ async function readGlobal(
 }
 
 /**
- * Returns the attempts and the keys for the providers the value allows. Reads
+ * Returns the attempts, each with its key, for the providers the value allows. Reads
  * only those providers. omp's own credential comes first, then the variable.
  * Returns no attempts when no key is set. Never throws.
  */
-export async function findKeys(ctx: Context, value: string): Promise<Routing> {
+export async function findAttempts(
+	ctx: Context,
+	value: string,
+): Promise<Attempt[]> {
 	const keys = await collectKeys(value, (provider) => findKey(ctx, provider));
-	return { attempts: plan(value, keys), keys };
+	return plan(value, keys);
 }
 
 /**

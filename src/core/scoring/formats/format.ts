@@ -6,11 +6,13 @@ import type { Usage } from "../reply.ts";
 export type Answers = {
 	// One pair per part.
 	readonly answers: readonly (readonly [Part, Probabilities])[];
+	// The model the reply names, raw; `ask` cleans it.
 	readonly model: unknown;
 	readonly usage: Usage | undefined;
 };
 
-// One scoring API's request body and reply. A format maps its API's token counts into Usage.
+// One scoring API's request body and the reading of its successful reply. `ask` handles an error
+// status before `read`. A format maps its API's token counts into Usage.
 // `body` may throw when a question cannot be serialised; `read` never throws.
 export type Format = {
 	readonly body: (
@@ -18,9 +20,5 @@ export type Format = {
 		state: RoutingState,
 		model: string,
 	) => string;
-	readonly read: (
-		parts: readonly Part[],
-		status: number,
-		text: string,
-	) => Answers | Failure;
+	readonly read: (parts: readonly Part[], text: string) => Answers | Failure;
 };

@@ -1,6 +1,6 @@
 import { isRecord } from "../../../utils/guards.ts";
 import { LEVELS, type Part, type Probabilities } from "../../parts/part.ts";
-import { type Failure, isSuccess, MALFORMED } from "../failure.ts";
+import { type Failure, MALFORMED } from "../failure.ts";
 import type { Usage } from "../reply.ts";
 import type { Answers, Format } from "./format.ts";
 
@@ -43,12 +43,7 @@ function usageOf(usage: unknown): Usage | undefined {
 	};
 }
 
-function read(
-	parts: readonly Part[],
-	status: number,
-	text: string,
-): Answers | Failure {
-	if (!isSuccess(status)) return { failure: "status", status };
+function read(parts: readonly Part[], text: string): Answers | Failure {
 	const reply = parse(text);
 	const { answers, model, usage }: Record<string, unknown> = isRecord(reply)
 		? reply

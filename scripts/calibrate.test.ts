@@ -37,8 +37,7 @@ test("runCase sends the brief through the client and returns the decision", asyn
 	};
 	const d = await runCase(
 		CASE,
-		plan("typesafe", { typesafe: true, openrouter: false }),
-		{ typesafe: "test-key" },
+		plan("typesafe", { typesafe: "test-key" }),
 		fetchFn,
 	);
 	assert.ok(!("skipped" in d));
@@ -64,8 +63,7 @@ test("runCase sends the role collapsed and cut to the role cap", async () => {
 	const role = `coder\n\n  helper ${"x".repeat(ROLE_CAP * 2)}`;
 	await runCase(
 		{ ...CASE, role },
-		plan("typesafe", { typesafe: true, openrouter: false }),
-		{ typesafe: "test-key" },
+		plan("typesafe", { typesafe: "test-key" }),
 		fetchFn,
 	);
 	assert.ok(body.includes("coder helper x"), "whitespace is collapsed");
@@ -82,8 +80,7 @@ test("runCase masks the description like the plugins do", async () => {
 	const key = ["sk", "a1B2c3D4e5F6g7H8"].join("-");
 	await runCase(
 		{ ...CASE, description: `Fix it with ${key}` },
-		plan("typesafe", { typesafe: true, openrouter: false }),
-		{ typesafe: "test-key" },
+		plan("typesafe", { typesafe: "test-key" }),
 		fetchFn,
 	);
 	assert.equal(JSON.parse(body).state.description, "Fix it with ***");
@@ -142,7 +139,7 @@ test("a typed key ends at enter, and backspace removes a character", async () =>
 	assert.deepEqual(stdin.raw, [true, false]);
 	assert.match(
 		out.join(""),
-		/OpenRouter API key for https:\/\/openrouter\.ai\/api: /,
+		/OpenRouter API key for https:\/\/openrouter\.ai\/api\/v1\/systemone: /,
 	);
 });
 

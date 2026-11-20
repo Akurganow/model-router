@@ -44,49 +44,24 @@ function decisionSuffix({
   return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
 }
 
-// src/core/providers/provider.ts
-var PROVIDER_VALUES = [
-  "auto",
-  "openrouter-first",
-  "typesafe",
-  "openrouter"
-];
-var PROVIDERS = ["typesafe", "openrouter"];
-var HOSTS = {
-  typesafe: "https://api.typesafe.ai",
-  openrouter: "https://openrouter.ai/api"
+// src/utils/text.ts
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
 };
-var KEY_VARIABLES = {
-  typesafe: "TYPESAFE_API_KEY",
-  openrouter: "OPENROUTER_API_KEY"
+
+// src/utils/guards.ts
+var isRecord = (v) => typeof v === "object" && v !== null;
+var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
+
+// src/core/parts/part.ts
+var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
 };
-var KEY_FIELDS = {
-  typesafe: "api_key",
-  openrouter: "openrouter_api_key"
-};
-var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var MODEL = "jev-latest";
-var DEFAULT_VALUE = "typesafe";
-var ORDER = {
-  auto: PROVIDERS,
-  "openrouter-first": ["openrouter", "typesafe"],
-  typesafe: ["typesafe"],
-  openrouter: ["openrouter"]
-};
-var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
-var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
-var order = (value) => ORDER[resolve(value)];
-function plan(value, keys) {
-  const providers = order(value).filter((p) => Boolean(keys[p]));
-  return providers.map(
-    (provider, i) => i < providers.length - 1 ? {
-      provider,
-      model: MODEL,
-      timeout: FIRST_ATTEMPT_TIMEOUT_MS,
-      retry: { maxRetries: 0 }
-    } : { provider, model: MODEL }
-  );
-}
 
 // src/core/scoring/failure.ts
 var ABORTED = { failure: "aborted" };
@@ -136,25 +111,6 @@ function fallsBack(failure2) {
   }
 }
 
-// src/utils/text.ts
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
-};
-
-// src/utils/guards.ts
-var isRecord = (v) => typeof v === "object" && v !== null;
-var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
-
-// src/core/parts/part.ts
-var LEVELS = [0, 1, 2];
-var fromMiddle = (down, up) => (p) => {
-  const low = p[0] > down * p[1];
-  const high = p[2] > up * p[1];
-  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
-  return low ? 0 : high ? 2 : 1;
-};
-
 // src/core/scoring/formats/system-one.ts
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
 function parseProbabilities(answers, key) {
@@ -184,8 +140,7 @@ function usageOf(usage) {
     output_tokens: count(output_tokens)
   };
 }
-function read(parts, status, text) {
-  if (!isSuccess(status)) return { failure: "status", status };
+function read(parts, text) {
   const reply = parse(text);
   const { answers, model, usage } = isRecord(reply) ? reply : {};
   const pairs = [];
@@ -204,6 +159,19 @@ var SYSTEM_ONE = {
   }),
   read
 };
+
+// src/core/scoring/endpoints.ts
+var ENDPOINTS = {
+  typesafe: {
+    url: "https://api.typesafe.ai/v1/systemone",
+    format: SYSTEM_ONE
+  },
+  openrouter: {
+    url: "https://openrouter.ai/api/v1/systemone",
+    format: SYSTEM_ONE
+  }
+};
+var endpointOf = (attempt) => Object.hasOwn(ENDPOINTS, attempt.provider) ? ENDPOINTS[attempt.provider] : void 0;
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
@@ -324,16 +292,17 @@ async function send(fetchFn, url, request, options) {
 var VERSION = true ? "0.24.0" : "dev";
 var USER_AGENT = `model-router/${VERSION} (+https://github.com/Akurganow/model-router)`;
 async function askOnce(input, attempt) {
-  const { parts, state, keys, fetchFn, signal } = input;
-  const key = keys[attempt.provider];
-  if (!key) return UNKNOWN;
-  const body = SYSTEM_ONE.body(parts, state, attempt.model);
+  const { parts, state, fetchFn, signal } = input;
+  const endpoint = endpointOf(attempt);
+  if (!endpoint) return UNKNOWN;
+  const { url, format } = endpoint;
+  const body = format.body(parts, state, attempt.model);
   const received = await send(
     fetchFn,
-    `${HOSTS[attempt.provider]}/v1/systemone`,
+    url,
     {
       headers: {
-        Authorization: `Bearer ${key}`,
+        Authorization: `Bearer ${attempt.key}`,
         Accept: "application/json",
         "Content-Type": "application/json",
         "User-Agent": USER_AGENT
@@ -343,11 +312,13 @@ async function askOnce(input, attempt) {
     {
       signal,
       ...attempt.timeout !== void 0 && { timeout: attempt.timeout },
-      ...attempt.retry && { retries: attempt.retry.maxRetries }
+      ...attempt.retries !== void 0 && { retries: attempt.retries }
     }
   );
   if (isFailure(received)) return received;
-  const read2 = SYSTEM_ONE.read(parts, received.status, received.text);
+  if (!isSuccess(received.status))
+    return { failure: "status", status: received.status };
+  const read2 = format.read(parts, received.text);
   if (isFailure(read2)) return read2;
   return {
     answers: read2.answers,
@@ -431,6 +402,48 @@ var slotLine = (name, shown) => `${name}: ${shown ?? "unset"}`;
 
 // src/utils/error.ts
 var errorText = (err) => err instanceof Error ? err.message : String(err);
+
+// src/core/providers/provider.ts
+var PROVIDER_VALUES = [
+  "auto",
+  "openrouter-first",
+  "typesafe",
+  "openrouter"
+];
+var PROVIDERS = ["typesafe", "openrouter"];
+var KEY_VARIABLES = {
+  typesafe: "TYPESAFE_API_KEY",
+  openrouter: "OPENROUTER_API_KEY"
+};
+var KEY_FIELDS = {
+  typesafe: "api_key",
+  openrouter: "openrouter_api_key"
+};
+var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
+var MODELS = {
+  typesafe: "jev-latest",
+  openrouter: "jev-latest"
+};
+var DEFAULT_VALUE = "typesafe";
+var ORDER = {
+  auto: PROVIDERS,
+  "openrouter-first": ["openrouter", "typesafe"],
+  typesafe: ["typesafe"],
+  openrouter: ["openrouter"]
+};
+var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
+var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
+var order = (value) => ORDER[resolve(value)];
+function plan(value, keys) {
+  const attempts = [];
+  for (const provider of order(value)) {
+    const key = keys[provider];
+    if (key) attempts.push({ provider, model: MODELS[provider], key });
+  }
+  return attempts.map(
+    (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt
+  );
+}
 
 // src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
@@ -1164,7 +1177,6 @@ async function score({ deps, signal }, settings, keys, gate) {
       task: gate.task
     }),
     attempts: plan(settings.provider, keys),
-    keys,
     fetchFn: deps.fetchFn,
     signal
   });

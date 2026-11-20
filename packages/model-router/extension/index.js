@@ -332,16 +332,15 @@ var PROVIDER_VALUES = [
   "openrouter"
 ];
 var PROVIDERS = ["typesafe", "openrouter"];
-var HOSTS = {
-  typesafe: "https://api.typesafe.ai",
-  openrouter: "https://openrouter.ai/api"
-};
 var KEY_VARIABLES = {
   typesafe: "TYPESAFE_API_KEY",
   openrouter: "OPENROUTER_API_KEY"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var MODEL = "jev-latest";
+var MODELS = {
+  typesafe: "jev-latest",
+  openrouter: "jev-latest"
+};
 var DEFAULT_VALUE = "typesafe";
 var ORDER = {
   auto: PROVIDERS,
@@ -361,14 +360,13 @@ async function collectKeys(value, lookup2) {
   return keys;
 }
 function plan(value, keys) {
-  const providers = order(value).filter((p) => Boolean(keys[p]));
-  return providers.map(
-    (provider, i) => i < providers.length - 1 ? {
-      provider,
-      model: MODEL,
-      timeout: FIRST_ATTEMPT_TIMEOUT_MS,
-      retry: { maxRetries: 0 }
-    } : { provider, model: MODEL }
+  const attempts = [];
+  for (const provider of order(value)) {
+    const key = keys[provider];
+    if (key) attempts.push({ provider, model: MODELS[provider], key });
+  }
+  return attempts.map(
+    (attempt2, i) => i < attempts.length - 1 ? { ...attempt2, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt2
   );
 }
 
@@ -508,9 +506,9 @@ async function readGlobal(path, plugin) {
   const mine = isRecord(settings) ? settings[plugin] : void 0;
   return isRecord(mine) ? mine : {};
 }
-async function findKeys(ctx, value) {
+async function findAttempts(ctx, value) {
   const keys = await collectKeys(value, (provider) => findKey(ctx, provider));
-  return { attempts: plan(value, keys), keys };
+  return plan(value, keys);
 }
 async function findKey(ctx, provider) {
   try {
@@ -626,6 +624,15 @@ function registerConfig(omp, pi) {
   });
 }
 
+// src/core/parts/part.ts
+var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
+};
+
 // src/core/scoring/failure.ts
 var ABORTED = { failure: "aborted" };
 var TIMED_OUT = { failure: "timed out" };
@@ -674,15 +681,6 @@ function fallsBack(failure) {
   }
 }
 
-// src/core/parts/part.ts
-var LEVELS = [0, 1, 2];
-var fromMiddle = (down, up) => (p) => {
-  const low = p[0] > down * p[1];
-  const high = p[2] > up * p[1];
-  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
-  return low ? 0 : high ? 2 : 1;
-};
-
 // src/core/scoring/formats/system-one.ts
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
 function parseProbabilities(answers, key) {
@@ -712,8 +710,7 @@ function usageOf(usage) {
     output_tokens: count(output_tokens)
   };
 }
-function read2(parts, status, text) {
-  if (!isSuccess(status)) return { failure: "status", status };
+function read2(parts, text) {
   const reply2 = parse(text);
   const { answers, model, usage } = isRecord(reply2) ? reply2 : {};
   const pairs = [];
@@ -732,6 +729,19 @@ var SYSTEM_ONE = {
   }),
   read: read2
 };
+
+// src/core/scoring/endpoints.ts
+var ENDPOINTS = {
+  typesafe: {
+    url: "https://api.typesafe.ai/v1/systemone",
+    format: SYSTEM_ONE
+  },
+  openrouter: {
+    url: "https://openrouter.ai/api/v1/systemone",
+    format: SYSTEM_ONE
+  }
+};
+var endpointOf = (attempt2) => Object.hasOwn(ENDPOINTS, attempt2.provider) ? ENDPOINTS[attempt2.provider] : void 0;
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
@@ -852,16 +862,17 @@ async function send(fetchFn, url, request, options) {
 var VERSION = true ? "0.24.0" : "dev";
 var USER_AGENT = `model-router/${VERSION} (+https://github.com/Akurganow/model-router)`;
 async function askOnce(input, attempt2) {
-  const { parts, state, keys, fetchFn, signal } = input;
-  const key = keys[attempt2.provider];
-  if (!key) return UNKNOWN;
-  const body = SYSTEM_ONE.body(parts, state, attempt2.model);
+  const { parts, state, fetchFn, signal } = input;
+  const endpoint = endpointOf(attempt2);
+  if (!endpoint) return UNKNOWN;
+  const { url, format } = endpoint;
+  const body = format.body(parts, state, attempt2.model);
   const received = await send(
     fetchFn,
-    `${HOSTS[attempt2.provider]}/v1/systemone`,
+    url,
     {
       headers: {
-        Authorization: `Bearer ${key}`,
+        Authorization: `Bearer ${attempt2.key}`,
         Accept: "application/json",
         "Content-Type": "application/json",
         "User-Agent": USER_AGENT
@@ -871,11 +882,13 @@ async function askOnce(input, attempt2) {
     {
       signal,
       ...attempt2.timeout !== void 0 && { timeout: attempt2.timeout },
-      ...attempt2.retry && { retries: attempt2.retry.maxRetries }
+      ...attempt2.retries !== void 0 && { retries: attempt2.retries }
     }
   );
   if (isFailure(received)) return received;
-  const read3 = SYSTEM_ONE.read(parts, received.status, received.text);
+  if (!isSuccess(received.status))
+    return { failure: "status", status: received.status };
+  const read3 = format.read(parts, received.text);
   if (isFailure(read3)) return read3;
   return {
     answers: read3.answers,
@@ -1060,14 +1073,14 @@ async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
 }
 async function openBatch(omp, pi, ctx, settings) {
   if (settings === void 0) return { closed: UNREADABLE };
-  const routing = await findKeys(ctx, settings.provider);
-  if (routing.attempts.length === 0) return { closed: KEY_UNSET };
+  const attempts = await findAttempts(ctx, settings.provider);
+  if (attempts.length === 0) return { closed: KEY_UNSET };
   const config = readConfig(omp.lookup, pi.pi.settings);
   if (config === void 0) return { closed: UNREADABLE };
   const agents = await discover(pi, ctx);
   const models = slotRecord((slot) => slotModel(ctx, slot));
   return {
-    ...routing,
+    attempts,
     facts: { ...config, scope: settings.scope, agents, models }
   };
 }
@@ -1171,7 +1184,7 @@ var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
 // src/adapters/omp/score.ts
 var MAX_PARALLEL = 4;
-async function scoreItems(items, context, { attempts, keys, facts }, deadline) {
+async function scoreItems(items, context, { attempts, facts }, deadline) {
   const limit = new AbortController();
   if (deadline <= 0) limit.abort(LIMIT_REACHED);
   const timer = setTimeout(() => limit.abort(LIMIT_REACHED), deadline);
@@ -1183,7 +1196,6 @@ async function scoreItems(items, context, { attempts, keys, facts }, deadline) {
       if (reason !== void 0) return { ...pending, stored: skipped(reason) };
       const routing = {
         attempts: attempts.filter((a) => !passedOver.has(a.provider)),
-        keys,
         onFallback: (p) => void passedOver.add(p)
       };
       const decided = await scoreItem(

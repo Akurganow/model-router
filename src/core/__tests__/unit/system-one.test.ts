@@ -19,7 +19,7 @@ const answers = (
 ) => ({ tier: dist(tierP), work: dist(workP) });
 
 const read = (parts: readonly Part[], reply: unknown) =>
-	SYSTEM_ONE.read(parts, 200, JSON.stringify({ answers: reply }));
+	SYSTEM_ONE.read(parts, JSON.stringify({ answers: reply }));
 
 const BAD_REPLY = { failure: "malformed" };
 

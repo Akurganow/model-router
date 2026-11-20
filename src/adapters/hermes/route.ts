@@ -54,7 +54,6 @@ async function score(
 	{ fetchFn }: HermesDeps,
 	signal: AbortSignal,
 ) {
-	const { keys } = request;
 	return scoreWork({
 		state: routingState({
 			role: DEFAULT_ROLE,
@@ -62,8 +61,7 @@ async function score(
 			task: request.task,
 			context: request.context,
 		}),
-		attempts: plan(request.provider, keys),
-		keys,
+		attempts: plan(request.provider, request.keys),
 		fetchFn,
 		signal,
 	});

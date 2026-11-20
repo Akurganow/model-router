@@ -331,35 +331,9 @@ var work = {
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
-// src/core/providers/provider.ts
-var PROVIDERS = ["typesafe", "openrouter"];
-var HOSTS = {
-  typesafe: "https://api.typesafe.ai",
-  openrouter: "https://openrouter.ai/api"
-};
-var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var MODEL = "jev-latest";
-var DEFAULT_VALUE = "typesafe";
-var ORDER = {
-  auto: PROVIDERS,
-  "openrouter-first": ["openrouter", "typesafe"],
-  typesafe: ["typesafe"],
-  openrouter: ["openrouter"]
-};
-var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
-var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
-var order = (value) => ORDER[resolve(value)];
-function plan(value, keys) {
-  const providers = order(value).filter((p) => Boolean(keys[p]));
-  return providers.map(
-    (provider, i) => i < providers.length - 1 ? {
-      provider,
-      model: MODEL,
-      timeout: FIRST_ATTEMPT_TIMEOUT_MS,
-      retry: { maxRetries: 0 }
-    } : { provider, model: MODEL }
-  );
-}
+// src/utils/guards.ts
+var isRecord = (v) => typeof v === "object" && v !== null;
+var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
 
 // src/core/scoring/failure.ts
 var ABORTED = { failure: "aborted" };
@@ -409,10 +383,6 @@ function fallsBack(failure) {
   }
 }
 
-// src/utils/guards.ts
-var isRecord = (v) => typeof v === "object" && v !== null;
-var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
-
 // src/core/scoring/formats/system-one.ts
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
 function parseProbabilities(answers, key) {
@@ -442,8 +412,7 @@ function usageOf(usage) {
     output_tokens: count(output_tokens)
   };
 }
-function read(parts, status, text) {
-  if (!isSuccess(status)) return { failure: "status", status };
+function read(parts, text) {
   const reply = parse(text);
   const { answers, model, usage } = isRecord(reply) ? reply : {};
   const pairs = [];
@@ -462,6 +431,19 @@ var SYSTEM_ONE = {
   }),
   read
 };
+
+// src/core/scoring/endpoints.ts
+var ENDPOINTS = {
+  typesafe: {
+    url: "https://api.typesafe.ai/v1/systemone",
+    format: SYSTEM_ONE
+  },
+  openrouter: {
+    url: "https://openrouter.ai/api/v1/systemone",
+    format: SYSTEM_ONE
+  }
+};
+var endpointOf = (attempt) => Object.hasOwn(ENDPOINTS, attempt.provider) ? ENDPOINTS[attempt.provider] : void 0;
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
@@ -582,16 +564,17 @@ async function send(fetchFn, url, request, options) {
 var VERSION = true ? "0.24.0" : "dev";
 var USER_AGENT = `model-router/${VERSION} (+https://github.com/Akurganow/model-router)`;
 async function askOnce(input, attempt) {
-  const { parts, state, keys, fetchFn, signal } = input;
-  const key = keys[attempt.provider];
-  if (!key) return UNKNOWN;
-  const body = SYSTEM_ONE.body(parts, state, attempt.model);
+  const { parts, state, fetchFn, signal } = input;
+  const endpoint = endpointOf(attempt);
+  if (!endpoint) return UNKNOWN;
+  const { url, format } = endpoint;
+  const body = format.body(parts, state, attempt.model);
   const received = await send(
     fetchFn,
-    `${HOSTS[attempt.provider]}/v1/systemone`,
+    url,
     {
       headers: {
-        Authorization: `Bearer ${key}`,
+        Authorization: `Bearer ${attempt.key}`,
         Accept: "application/json",
         "Content-Type": "application/json",
         "User-Agent": USER_AGENT
@@ -601,11 +584,13 @@ async function askOnce(input, attempt) {
     {
       signal,
       ...attempt.timeout !== void 0 && { timeout: attempt.timeout },
-      ...attempt.retry && { retries: attempt.retry.maxRetries }
+      ...attempt.retries !== void 0 && { retries: attempt.retries }
     }
   );
   if (isFailure(received)) return received;
-  const read2 = SYSTEM_ONE.read(parts, received.status, received.text);
+  if (!isSuccess(received.status))
+    return { failure: "status", status: received.status };
+  const read2 = format.read(parts, received.text);
   if (isFailure(read2)) return read2;
   return {
     answers: read2.answers,
@@ -712,6 +697,34 @@ function pickModel(level, state) {
   return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
 }
 
+// src/core/providers/provider.ts
+var PROVIDERS = ["typesafe", "openrouter"];
+var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
+var MODELS = {
+  typesafe: "jev-latest",
+  openrouter: "jev-latest"
+};
+var DEFAULT_VALUE = "typesafe";
+var ORDER = {
+  auto: PROVIDERS,
+  "openrouter-first": ["openrouter", "typesafe"],
+  typesafe: ["typesafe"],
+  openrouter: ["openrouter"]
+};
+var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
+var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
+var order = (value) => ORDER[resolve(value)];
+function plan(value, keys) {
+  const attempts = [];
+  for (const provider of order(value)) {
+    const key = keys[provider];
+    if (key) attempts.push({ provider, model: MODELS[provider], key });
+  }
+  return attempts.map(
+    (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt
+  );
+}
+
 // src/utils/deadline.ts
 async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
   try {
@@ -791,7 +804,6 @@ var KEPT_LABELS = {
   caller: CALLER_EFFORT
 };
 async function score(request, { fetchFn }, signal) {
-  const { keys } = request;
   return scoreWork({
     state: routingState({
       role: DEFAULT_ROLE,
@@ -799,8 +811,7 @@ async function score(request, { fetchFn }, signal) {
       task: request.task,
       context: request.context
     }),
-    attempts: plan(request.provider, keys),
-    keys,
+    attempts: plan(request.provider, request.keys),
     fetchFn,
     signal
   });

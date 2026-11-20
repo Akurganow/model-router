@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { KEY_VARIABLES } from "../../../../core/providers/provider.ts";
-import { findKeys, narrow, readSettings } from "../../settings.ts";
+import { findAttempts, narrow, readSettings } from "../../settings.ts";
 import {
 	KEY,
 	lockfileScoped,
@@ -81,8 +81,17 @@ test("a provider takes its key from omp's credential and the other from the vari
 	setEnv(KEY_VARIABLES.openrouter, "env-or-key");
 	world.credential = async (provider) =>
 		provider === "typesafe" ? KEY : undefined;
-	const { keys } = await findKeys(world.ctx(), "auto");
-	assert.deepEqual(keys, { typesafe: KEY, openrouter: "env-or-key" });
+	const attempts = await findAttempts(world.ctx(), "auto");
+	assert.deepEqual(attempts, [
+		{
+			provider: "typesafe",
+			model: "jev-latest",
+			key: KEY,
+			timeout: 2000,
+			retries: 0,
+		},
+		{ provider: "openrouter", model: "jev-latest", key: "env-or-key" },
+	]);
 	assert.deepEqual(world.asked, ["typesafe", "openrouter"]);
 });
 
@@ -92,7 +101,16 @@ test("a credential store that throws falls through to the variable and the next 
 	world.credential = async () => {
 		throw new Error("store locked");
 	};
-	const { keys } = await findKeys(world.ctx(), "auto");
-	assert.deepEqual(keys, { typesafe: "env-ts-key", openrouter: "env-or-key" });
+	const attempts = await findAttempts(world.ctx(), "auto");
+	assert.deepEqual(attempts, [
+		{
+			provider: "typesafe",
+			model: "jev-latest",
+			key: "env-ts-key",
+			timeout: 2000,
+			retries: 0,
+		},
+		{ provider: "openrouter", model: "jev-latest", key: "env-or-key" },
+	]);
 	assert.deepEqual(world.asked, ["typesafe", "openrouter"]);
 });
