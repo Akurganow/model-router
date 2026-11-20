@@ -1,3 +1,5 @@
+import { PROVIDERS } from "../../src/core/provider.ts";
+
 // Reads a field of an object whose shape the client owns, which dot access refuses on an index signature.
 export const get = (o: Record<string, unknown>, key: string): unknown => o[key];
 
@@ -18,10 +20,13 @@ export function jsonLines(text: string): Record<string, unknown>[] {
 	return events;
 }
 
-// decisionSuffix in src/core/compose.ts writes " · jev <model>" with the model cut to these characters.
-const JEV_SEGMENT = / · jev (?<jev>[A-Za-z0-9._/-]+)/;
+// decisionSuffix in src/core/compose.ts writes the answering provider right after the probabilities,
+// then the model cut to these characters. The lookahead keeps the failure tail from reading as a model.
+const MODEL_SEGMENT = new RegExp(
+	` · p=\\S+ · (?:${PROVIDERS.join("|")})(?: (?<jev>[A-Za-z0-9._/-]+))?(?= · |$)`,
+);
 
 export function jevModel(line: string): string | null {
-	const { jev } = JEV_SEGMENT.exec(line)?.groups ?? {};
+	const { jev } = MODEL_SEGMENT.exec(line)?.groups ?? {};
 	return jev ?? null;
 }

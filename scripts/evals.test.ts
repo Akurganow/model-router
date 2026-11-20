@@ -19,7 +19,8 @@ import { clientEnv, normalisePaths, scrub } from "./evals/scrub.ts";
 import { FITTED_ON, fitWarning } from "./jev-fit.ts";
 import { OTHER_JEV } from "./jev-fit-fakes.ts";
 
-const LINE = "L1 sonnet · medium · p=0.80/0.55 · jev jev-1.14.0 · 800/9 tok";
+const LINE =
+	"L1 sonnet · medium · p=0.80/0.55 · typesafe jev-1.14.0 · 800/9 tok";
 const jsonl = (...events: object[]) =>
 	events.map((e) => JSON.stringify(e)).join("\n");
 const spawn = { type: "tool_use", name: "Agent", input: { prompt: "x" } };
@@ -29,7 +30,7 @@ const ompTask = {
 	args: { tasks: [{ agent: "task", task: "read it" }] },
 };
 const OMP_LINE =
-	"task 1: L0 @smol · high · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok";
+	"task 1: L0 @smol · high · p=0.91/0.62 · typesafe jev-1.14.0 · 812/9 tok";
 
 test("claude: a ui_log decision line after an Agent call is routed evidence", () => {
 	const stdout = jsonl(
@@ -354,20 +355,42 @@ test("missingKeys names the client key and the TypeSafe key that are unset", () 
 });
 
 test("both adapters read the answering Jev model from the decision line", () => {
-	const claudeLine = `L1 sonnet · medium · p=0.80/0.55 · jev ${OTHER_JEV} · 800/9 tok`;
+	const claudeLine = `L1 sonnet · medium · p=0.80/0.55 · typesafe ${OTHER_JEV} · 800/9 tok`;
 	const stdout = jsonl({ type: "system", subtype: "ui_log", text: claudeLine });
 	assert.equal(claude.parse({ stdout, stderr: "" }).jev, OTHER_JEV);
-	const ompLine = `task 1: L0 @smol · high · p=0.91/0.62 · jev ${OTHER_JEV} · 812/9 tok`;
+	const ompLine = `task 1: L0 @smol · high · p=0.91/0.62 · openrouter ${OTHER_JEV} · 812/9 tok`;
 	const stderr = `model-router ${ompLine}\n`;
 	assert.equal(omp.parse({ stdout: "", stderr }).jev, OTHER_JEV);
 });
 
-test("a decision line without the jev segment gives no Jev model", () => {
+test("a decision line that names no model gives no Jev model", () => {
 	const text = "L2 opus · caller effort · p=0.9/0.6";
 	const stdout = jsonl({ type: "system", subtype: "ui_log", text });
 	assert.equal(claude.parse({ stdout, stderr: "" }).jev, null);
 	const stderr = "model-router task 1: L2 @slow · medium · p=0.90/0.70\n";
 	assert.equal(omp.parse({ stdout: "", stderr }).jev, null);
+});
+
+test("a failure tail with no model gives no Jev model", () => {
+	const text = "L2 opus · high · p=0.90/0.60 · openrouter · typesafe HTTP 503";
+	const stdout = jsonl({ type: "system", subtype: "ui_log", text });
+	assert.equal(claude.parse({ stdout, stderr: "" }).jev, null);
+	const stderr =
+		"model-router task 1: L2 @slow · medium · p=0.90/0.70 · openrouter · typesafe HTTP 503\n";
+	assert.equal(omp.parse({ stdout: "", stderr }).jev, null);
+});
+
+test("a provider alone with token counts gives no Jev model", () => {
+	const text = "L2 opus · high · p=0.90/0.60 · typesafe · 800/9 tok";
+	const stdout = jsonl({ type: "system", subtype: "ui_log", text });
+	assert.equal(claude.parse({ stdout, stderr: "" }).jev, null);
+});
+
+test("a line with a model and a failure tail still gives the model", () => {
+	const text =
+		"L1 sonnet · medium · p=0.80/0.55 · openrouter jev-1.14.0 · 800/9 tok · typesafe HTTP 503";
+	const stdout = jsonl({ type: "system", subtype: "ui_log", text });
+	assert.equal(claude.parse({ stdout, stderr: "" }).jev, "jev-1.14.0");
 });
 
 // Runs body with a fake claude on PATH whose decision line names the given Jev model.
@@ -378,7 +401,7 @@ function withFakeClaude<T>(jev: string, body: () => T): T {
 		{
 			type: "system",
 			subtype: "ui_log",
-			text: `L1 sonnet · medium · p=0.80/0.55 · jev ${jev}`,
+			text: `L1 sonnet · medium · p=0.80/0.55 · typesafe ${jev}`,
 		},
 	);
 	const bin = join(dir, "claude");
@@ -421,7 +444,7 @@ for (const [state, tier, target] of [
 			target: pickModel(tier, state).target,
 			effort: "medium",
 			probabilities: "0.80/0.55",
-			suffix: " · jev jev-1.14.0 · 812/9 tok",
+			suffix: " · typesafe jev-1.14.0 · 812/9 tok",
 		});
 		const evidence = omp.parse({
 			stdout: "",
