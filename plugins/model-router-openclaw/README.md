@@ -239,7 +239,7 @@ The plugin reads the parameters of a `sessions_spawn` call as OpenClaw's tool do
 OpenClaw shows no line in the chat. The plugin writes one line per routed or skipped spawn to the Gateway log. Read it with `openclaw logs --follow --plain`. The line starts with `model-router`.
 
 ```text
-model-router L0 acme/small · medium · p=0.91/0.84 · jev jev-1.14.0 · 812/9 tok
+model-router L0 acme/small · medium · p=0.91/0.84 · typesafe jev-1.14.0 · 812/9 tok
 model-router L1 middle model unset · caller effort · p=0.62/0.70
 model-router skipped, key unset
 ```

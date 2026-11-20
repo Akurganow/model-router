@@ -81,9 +81,10 @@ Find out which of these already hold, with the `model_router_config` tool and He
 
 - The line is in the `route.label` field of each `delegate_task` result, in every plugin isolation mode.
 - Hermes also logs the line at INFO in `agent.log`, once for each distinct line. Under `plugins.isolation: host` that log drops INFO lines, so only `route.label` shows it.
-- A routed line reads `model-router L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`. A Jev model and token counts can follow.
+- A routed line reads `model-router L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`.
+- The provider that answered follows, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them.
 - The slot state is `<slot> model unset`. The kept label is `config effort` or `caller effort`.
-- After a fallback the line ends with the provider that answered and why the first failed, as in ` · via openrouter (typesafe HTTP 503)`.
+- After a fallback, the line ends with the provider that failed and its reason, as in ` · typesafe HTTP 503`.
 - A skipped line reads `model-router skipped, <reason>`. The task then runs on Hermes's own route.
 
 ### The skip reasons

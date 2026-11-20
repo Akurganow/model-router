@@ -322,7 +322,7 @@ tool. Three dispatches and what the mod does with them:
 The first runs on `haiku`. For it the log shows:
 
 ```text
-model-router L0 haiku · medium · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok
+model-router L0 haiku · medium · p=0.91/0.62 · typesafe jev-1.14.0 · 812/9 tok
 ```
 
 The second number is the probability of the chosen work index.

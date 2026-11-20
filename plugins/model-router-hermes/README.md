@@ -216,7 +216,7 @@ Node reads the switch from 22.21.0 on the 22 line, and from 24.0.0. An older Nod
 The plugin puts one line per routed or skipped task in the task's `route.label`. A task that sets `level` and gets its model carries no line, as [Parameters of `delegate_task`](#parameters-of-delegate_task) says. Hermes shows the label with the child's progress and with the child's result, in every plugin isolation mode. The plugin also writes the line to `~/.hermes/logs/agent.log` at INFO, once for each distinct line. The line starts with `model-router`.
 
 ```text
-model-router L0 <model> · medium · p=0.91/0.84 · jev jev-1.14.0 · 812/9 tok
+model-router L0 <model> · medium · p=0.91/0.84 · typesafe jev-1.14.0 · 812/9 tok
 model-router L1 middle model unset · config effort · p=0.62/0.70
 model-router skipped, key unset
 ```

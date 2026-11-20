@@ -86,11 +86,12 @@ More than one can hold. Report every one that holds.
 
 ### The routed line
 
-- Each routed call logs one dim line that starts with `model-router`, for example `model-router L0 haiku · medium · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok`.
-- It holds the level (`L0`, `L1` or `L2`), the model, the effort, the probability of each chosen level, the Jev model and the token counts. The Jev model and token counts are left out when the reply lacks them.
+- Each routed call logs one dim line that starts with `model-router`, for example `model-router L0 haiku · medium · p=0.91/0.62 · typesafe jev-1.14.0 · 812/9 tok`.
+- It holds the level (`L0`, `L1` or `L2`), the model, the effort and the probability of each chosen level.
+- The provider that answered follows, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them.
 - `caller effort` or `env effort` takes the place of the effort when a kept effort applies.
 - A call that Claude Code then refuses adds a second line, `denied`.
-- After a fallback to the second provider, the line ends with ` · via <provider> (<first provider> <reason>)`, for example ` · via openrouter (typesafe HTTP 503)`.
+- After a fallback, the line ends with the provider that failed and its reason, as in ` · typesafe HTTP 503`.
 - After both providers fail, the line names each, for example `skipped, typesafe HTTP 503, openrouter timeout`.
 - A skipped call runs unchanged.
 

@@ -280,7 +280,7 @@ Use the Agent tool with the general-purpose agent, and no model or name, to list
 The plugin then logs one line for the routed call, like this example:
 
 ```text
-model-router L0 haiku · medium · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok
+model-router L0 haiku · medium · p=0.91/0.62 · typesafe jev-1.14.0 · 812/9 tok
 ```
 
 This README has not checked where VS Code or the desktop app shows the line.

@@ -83,11 +83,13 @@ openrouter key: unset
 ### The log line
 
 - OpenClaw shows no line in the chat. The plugin writes one line per routed or skipped spawn to the Gateway log. The line starts with `model-router`.
-- A routed line reads `L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`, followed by the provider and token counts. The model is the slot string as written. An unset slot shows `<slot> model unset`, and that spawn keeps OpenClaw's model.
+- A routed line reads `L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`. The model is the slot string as written. An unset slot shows `<slot> model unset`, and that spawn keeps OpenClaw's model.
+- The provider that answered follows, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them.
+- After a fallback, the line ends with the provider that failed and its reason, as in ` · typesafe HTTP 503`.
 - Example lines:
 
 ```text
-model-router L0 acme/small · medium · p=0.91/0.84 · jev jev-1.14.0 · 812/9 tok
+model-router L0 acme/small · medium · p=0.91/0.84 · typesafe jev-1.14.0 · 812/9 tok
 model-router L1 middle model unset · caller effort · p=0.62/0.70
 model-router skipped, key unset
 ```
