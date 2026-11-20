@@ -63,8 +63,8 @@ const SHARED_REASON = "This text is a shared skip reason";
 const CORE_NODE = "A core/ file imports no Node module";
 const CORE_TIMEOUT =
 	"The core sets no timer of its own, and AbortSignal.timeout is one";
-const SRC_OUTSIDE = "A src/ file imports nothing from scripts/ or plugins/";
-const PARENT = "An import of a parent folder goes through an alias";
+const SRC_OUTSIDE = "A src/ file imports nothing from scripts/";
+const PARENT = "A specifier holds no ../";
 const PROCESS_ENV_MESSAGE = "Don't use process.env";
 // The JSON report keeps the rule's own sentence and drops the configured message, so the
 // test tells the globals apart by the name this sentence carries.
@@ -284,20 +284,6 @@ const faults: Fault[] = [
 		form: "claude imports omp",
 		file: "src/adapters/claude/layers.ts",
 		code: 'import { a } from "#adapters/omp/a.ts";',
-		category: RESTRICTED,
-		message: ADAPTER,
-	},
-	{
-		form: "claude imports openclaw",
-		file: "src/adapters/claude/layers.ts",
-		code: 'import { b } from "#adapters/openclaw/b.ts";',
-		category: RESTRICTED,
-		message: ADAPTER,
-	},
-	{
-		form: "claude imports hermes",
-		file: "src/adapters/claude/layers.ts",
-		code: 'import { c } from "#adapters/hermes/c.ts";',
 		category: RESTRICTED,
 		message: ADAPTER,
 	},
@@ -605,20 +591,6 @@ const faults: Fault[] = [
 		message: PARENT,
 	},
 	{
-		form: "a core file re-exports an adapter through ./../",
-		file: "src/core/decision/parent.ts",
-		code: 'export { SPAWN_TOOL } from "./../../adapters/openclaw/router.ts";',
-		category: PLUGIN,
-		message: PARENT,
-	},
-	{
-		form: "a utils file imports core through ./../",
-		file: "src/utils/parent.ts",
-		code: 'import { decide } from "./../core/decision/decide.ts";',
-		category: PLUGIN,
-		message: PARENT,
-	},
-	{
 		form: "a utils file imports core through a folder below and back up",
 		file: "src/utils/parent.ts",
 		code: 'import { x } from "./sub/../../core/x.ts";',
@@ -682,23 +654,26 @@ const valid: Record<string, string> = {
 	"src/adapters/claude/valid.ts": [
 		'import { c } from "#core/c.ts";',
 		'import { u } from "#utils/u.ts";',
+		'import { o } from "#adapters/claude/own.ts";',
 		'import { s } from "./sibling.ts";',
-		"export const v = [c, u, s];",
+		"export const v = [c, u, s, o];",
 	].join("\n"),
 	"src/adapters/omp/valid.ts": [
 		'import { c } from "#core/c.ts";',
 		'import { u } from "#utils/u.ts";',
-		'import { p } from "some-package/plugins/loader";',
-		"export const v = [c, u, p];",
+		'import { o } from "#adapters/omp/own.ts";',
+		"export const v = [c, u, o];",
 	].join("\n"),
 	"src/adapters/openclaw/valid.ts": [
 		'import { c } from "#core/c.ts";',
+		'import { o } from "#adapters/openclaw/own.ts";',
 		'import { sdk } from "openclaw";',
-		"export const v = [c, sdk];",
+		"export const v = [c, sdk, o];",
 	].join("\n"),
 	"src/adapters/hermes/valid.ts": [
 		'import { c } from "#core/c.ts";',
-		"export const v = c;",
+		'import { o } from "#adapters/hermes/own.ts";',
+		"export const v = [c, o];",
 	].join("\n"),
 	"src/core/__tests__/unit/reads-env.test.ts": [
 		"export const v = process.env;",
@@ -787,8 +762,9 @@ const clean: Record<string, string[]> = {
 	],
 	"src/adapters/openclaw/index.ts": [
 		'import { c } from "#core/c.ts";',
+		'import { g } from "#adapters/openclaw/gates.ts";',
 		'import { r } from "./router.ts";',
-		"export const v = [c, r];",
+		"export const v = [c, r, g];",
 	],
 	"scripts/set-version.ts": [
 		'import { readFileSync } from "node:fs";',

@@ -196,11 +196,7 @@
 							"options": {
 								"patterns": [
 									{
-										"group": [
-											"#adapters/omp/**",
-											"#adapters/openclaw/**",
-											"#adapters/hermes/**"
-										],
+										"group": ["#adapters/**", "!#adapters/claude/**"],
 										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
 									}
 								]
@@ -220,11 +216,7 @@
 							"options": {
 								"patterns": [
 									{
-										"group": [
-											"#adapters/claude/**",
-											"#adapters/openclaw/**",
-											"#adapters/hermes/**"
-										],
+										"group": ["#adapters/**", "!#adapters/omp/**"],
 										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
 									}
 								]
@@ -244,11 +236,7 @@
 							"options": {
 								"patterns": [
 									{
-										"group": [
-											"#adapters/claude/**",
-											"#adapters/omp/**",
-											"#adapters/hermes/**"
-										],
+										"group": ["#adapters/**", "!#adapters/openclaw/**"],
 										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
 									}
 								]
@@ -273,9 +261,8 @@
 									{
 										"group": [
 											"openclaw/**",
-											"#adapters/claude/**",
-											"#adapters/omp/**",
-											"#adapters/hermes/**"
+											"#adapters/**",
+											"!#adapters/openclaw/**"
 										],
 										"message": "The bundle entry imports no other adapter and nothing from OpenClaw."
 									}
@@ -296,11 +283,7 @@
 							"options": {
 								"patterns": [
 									{
-										"group": [
-											"#adapters/claude/**",
-											"#adapters/omp/**",
-											"#adapters/openclaw/**"
-										],
+										"group": ["#adapters/**", "!#adapters/hermes/**"],
 										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
 									}
 								]

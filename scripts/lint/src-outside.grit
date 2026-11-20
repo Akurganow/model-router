@@ -4,8 +4,7 @@ language js
 // file and replaces every earlier override of that rule, so the folders with
 // their own import bans would switch this ban off.
 // core-adapter.grit explains the three specifier forms.
-// Only the #scripts/ alias counts. plugins/ has no alias, so a path to it
-// holds a ../, and parent-import.grit bans every such specifier in src/.
+// Only the #scripts/ alias counts, for the reason core-adapter.grit gives.
 // A type import holds the whole type as its text, hence the [^"']* before the quote.
 or {
 	JsModuleSource() as $specifier,
@@ -14,5 +13,5 @@ or {
 } where {
 	$specifier <: r"[^\"']*[\"']#scripts/[\s\S]*",
 	$filename <: r".*/src/(?:core|utils|adapters)/.*",
-	register_diagnostic(span=$specifier, message="A src/ file imports nothing from scripts/ or plugins/.", severity="error")
+	register_diagnostic(span=$specifier, message="A src/ file imports nothing from scripts/.", severity="error")
 }
