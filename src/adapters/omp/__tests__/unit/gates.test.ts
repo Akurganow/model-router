@@ -1,15 +1,6 @@
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
-import {
-	agentDiscoveryFailed,
-	agentUnknown,
-	KEY_UNSET,
-	outsideCoreScope,
-	setsOwnModel,
-	UNREADABLE,
-} from "../../../../core/output/reasons.ts";
-import { checkGates, slotModel } from "../../gates.ts";
-import { AGENTS, extend } from "../support/fake-agents.ts";
+import { AGENTS, extend } from "#adapters/omp/__tests__/support/fake-agents.ts";
 import {
 	KEY,
 	KEY_VARIABLE,
@@ -20,7 +11,16 @@ import {
 	throws,
 	unreadable,
 	useWorld,
-} from "../support/fakes.ts";
+} from "#adapters/omp/__tests__/support/fakes.ts";
+import { checkGates, slotModel } from "#adapters/omp/gates.ts";
+import {
+	agentDiscoveryFailed,
+	agentUnknown,
+	KEY_UNSET,
+	outsideCoreScope,
+	setsOwnModel,
+	UNREADABLE,
+} from "#core/output/reasons.ts";
 
 const world = useWorld();
 const ENV_KEY = "env-key-0002";

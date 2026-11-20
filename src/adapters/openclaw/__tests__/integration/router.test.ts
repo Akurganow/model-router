@@ -1,23 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { scoringReply } from "../../../../core/__tests__/support/replies.ts";
-import {
-	DEFAULT_ROLE,
-	prepareBrief,
-	roleText,
-} from "../../../../core/brief/brief.ts";
-import { LINE_PREFIX, skippedLine } from "../../../../core/output/line.ts";
-import {
-	KEY_UNSET,
-	outsideCoreScope,
-	setsOwnModel,
-	UNREADABLE,
-} from "../../../../core/output/reasons.ts";
-import type { Fetch } from "../../../../core/scoring/transport/send.ts";
-import { createBeforeToolCall, SPAWN_TOOL } from "../../router.ts";
-import { PLUGIN_ID } from "../../settings.ts";
-import type { BeforeToolCallResult } from "../../types.ts";
-import type { Levels } from "../support/fakes.ts";
+import type { Levels } from "#adapters/openclaw/__tests__/support/fakes.ts";
 import {
 	CONTEXT,
 	DEADLINE_MS,
@@ -27,7 +10,20 @@ import {
 	SUFFIX,
 	setup,
 	TASK,
-} from "../support/handler-fakes.ts";
+} from "#adapters/openclaw/__tests__/support/handler-fakes.ts";
+import { createBeforeToolCall, SPAWN_TOOL } from "#adapters/openclaw/router.ts";
+import { PLUGIN_ID } from "#adapters/openclaw/settings.ts";
+import type { BeforeToolCallResult } from "#adapters/openclaw/types.ts";
+import { scoringReply } from "#core/__tests__/support/replies.ts";
+import { DEFAULT_ROLE, prepareBrief, roleText } from "#core/brief/brief.ts";
+import { LINE_PREFIX, skippedLine } from "#core/output/line.ts";
+import {
+	KEY_UNSET,
+	outsideCoreScope,
+	setsOwnModel,
+	UNREADABLE,
+} from "#core/output/reasons.ts";
+import type { Fetch } from "#core/scoring/transport/send.ts";
 
 // The `DECISION_LINE` pattern of scripts/evals/claude.ts, which the evals read the decision line with.
 const DECISION_LINE =

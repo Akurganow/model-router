@@ -1,9 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { MIN_DEADLINE_MS } from "../../../../core/scoring/handler-deadline.ts";
-import { LIMIT_REACHED } from "../../../../core/scoring/limit.ts";
-import { createBeforeToolCall, SPAWN_TOOL } from "../../router.ts";
-import type { BeforeToolCallEvent, ToolContext } from "../../types.ts";
 import {
 	CONTEXT,
 	DEADLINE_MS,
@@ -11,7 +7,14 @@ import {
 	settle,
 	setup,
 	TASK,
-} from "../support/handler-fakes.ts";
+} from "#adapters/openclaw/__tests__/support/handler-fakes.ts";
+import { createBeforeToolCall, SPAWN_TOOL } from "#adapters/openclaw/router.ts";
+import type {
+	BeforeToolCallEvent,
+	ToolContext,
+} from "#adapters/openclaw/types.ts";
+import { MIN_DEADLINE_MS } from "#core/scoring/handler-deadline.ts";
+import { LIMIT_REACHED } from "#core/scoring/limit.ts";
 
 describe("failure", () => {
 	const faults: [string, (s: ReturnType<typeof setup>) => void][] = [

@@ -1,14 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-	DEFAULT_ROLE,
-	NO_DESCRIPTION,
-	roleText,
-} from "../../../../core/brief/brief.ts";
-import { skippedLine } from "../../../../core/output/line.ts";
-import { KEY_UNSET } from "../../../../core/output/reasons.ts";
-import { EFFORTS_MAX } from "../../host.ts";
-import {
 	AGENT_CALL,
 	ANSWER,
 	CLOCK,
@@ -17,7 +9,11 @@ import {
 	registered,
 	routedCall,
 	SPAWN,
-} from "../support/fakes.ts";
+} from "#adapters/claude/__tests__/support/fakes.ts";
+import { EFFORTS_MAX } from "#adapters/claude/host.ts";
+import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "#core/brief/brief.ts";
+import { skippedLine } from "#core/output/line.ts";
+import { KEY_UNSET } from "#core/output/reasons.ts";
 
 test("a new registration forgets the offers made before it", async () => {
 	const logs: string[] = [];

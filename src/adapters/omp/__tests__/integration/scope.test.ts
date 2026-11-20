@@ -1,17 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DEFAULT_ROLE, roleText } from "../../../../core/brief/brief.ts";
-import { skippedLine } from "../../../../core/output/line.ts";
+import { AGENTS, extend } from "#adapters/omp/__tests__/support/fake-agents.ts";
+import {
+	lockfileScoped,
+	throws,
+	useWorld,
+} from "#adapters/omp/__tests__/support/fakes.ts";
+import { createExtension } from "#adapters/omp/router.ts";
+import { DEFAULT_ROLE, roleText } from "#core/brief/brief.ts";
+import { skippedLine } from "#core/output/line.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
 	KEY_UNSET,
 	setsOwnModel,
 	UNREADABLE,
-} from "../../../../core/output/reasons.ts";
-import { createExtension } from "../../router.ts";
-import { AGENTS, extend } from "../support/fake-agents.ts";
-import { lockfileScoped, throws, useWorld } from "../support/fakes.ts";
+} from "#core/output/reasons.ts";
 
 const world = useWorld();
 const PREFIX = "model-router ";

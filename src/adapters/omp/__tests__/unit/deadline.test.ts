@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { budgetFor } from "../../deadline.ts";
+import { budgetFor } from "#adapters/omp/deadline.ts";
 
 const closed = (timeout: number, left: number) => ({
 	closed: `tool call timeout ${timeout} ms leaves ${left} ms to route`,

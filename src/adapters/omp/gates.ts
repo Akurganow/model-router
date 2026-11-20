@@ -3,9 +3,9 @@ import {
 	type SlotModel,
 	slotRecord,
 	slotState,
-} from "../../core/decision/slots.ts";
-import { KEY_UNSET, UNREADABLE } from "../../core/output/reasons.ts";
-import type { Attempt } from "../../core/providers/provider.ts";
+} from "#core/decision/slots.ts";
+import { KEY_UNSET, UNREADABLE } from "#core/output/reasons.ts";
+import type { Attempt } from "#core/providers/provider.ts";
 import {
 	type Facts,
 	ROLE_MARK,

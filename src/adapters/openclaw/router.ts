@@ -1,13 +1,13 @@
-import { routingState } from "../../core/brief/brief.ts";
-import { scoreWork } from "../../core/decision/decide.ts";
-import { outcomeOf } from "../../core/decision/outcome.ts";
-import { LINE_PREFIX, skippedLine } from "../../core/output/line.ts";
-import { type Keys, plan } from "../../core/providers/provider.ts";
-import { MIN_DEADLINE_MS } from "../../core/scoring/handler-deadline.ts";
-import { abortCategory, raceDeadline } from "../../core/scoring/limit.ts";
-import type { Fetch } from "../../core/scoring/transport/send.ts";
-import { type Clock, realClock } from "../../utils/clock.ts";
-import { nonEmpty } from "../../utils/text.ts";
+import { routingState } from "#core/brief/brief.ts";
+import { scoreWork } from "#core/decision/decide.ts";
+import { outcomeOf } from "#core/decision/outcome.ts";
+import { LINE_PREFIX, skippedLine } from "#core/output/line.ts";
+import { type Keys, plan } from "#core/providers/provider.ts";
+import { MIN_DEADLINE_MS } from "#core/scoring/handler-deadline.ts";
+import { abortCategory, raceDeadline } from "#core/scoring/limit.ts";
+import type { Fetch } from "#core/scoring/transport/send.ts";
+import { type Clock, realClock } from "#utils/clock.ts";
+import { nonEmpty } from "#utils/text.ts";
 import { type Gate, gateSpawn } from "./gates.ts";
 import { readSpawn, type SpawnRequest } from "./params.ts";
 import {

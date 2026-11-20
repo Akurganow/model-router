@@ -5,16 +5,15 @@ import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { pathToFileURL } from "node:url";
 import {
-	ask,
-	TOOL_NAME,
-	unchanged,
-} from "../../../../core/options/settings.ts";
-import { UNREADABLE } from "../../../../core/output/reasons.ts";
-import { checkGates } from "../../gates.ts";
-import { readInstalledName } from "../../name.ts";
-import { createExtension } from "../../router.ts";
-import { readSettings } from "../../settings.ts";
-import { lockfileWith, useWorld } from "../support/fakes.ts";
+	lockfileWith,
+	useWorld,
+} from "#adapters/omp/__tests__/support/fakes.ts";
+import { checkGates } from "#adapters/omp/gates.ts";
+import { readInstalledName } from "#adapters/omp/name.ts";
+import { createExtension } from "#adapters/omp/router.ts";
+import { readSettings } from "#adapters/omp/settings.ts";
+import { ask, TOOL_NAME, unchanged } from "#core/options/settings.ts";
+import { UNREADABLE } from "#core/output/reasons.ts";
 
 const CATALOGUE = "model-router-omp";
 const SCOPED = "@akurganow/model-router";

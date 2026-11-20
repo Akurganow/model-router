@@ -1,7 +1,7 @@
-import type { Effort } from "../../core/decision/ladder.ts";
-import { routedLine } from "../../core/output/line.ts";
-import { CALLER_EFFORT, CONFIG_EFFORT } from "../../core/output/reasons.ts";
-import type { Level } from "../../core/parts/part.ts";
+import type { Effort } from "#core/decision/ladder.ts";
+import { routedLine } from "#core/output/line.ts";
+import { CALLER_EFFORT, CONFIG_EFFORT } from "#core/output/reasons.ts";
+import type { Level } from "#core/parts/part.ts";
 import { type Facts, ROLE_MARK } from "./items.ts";
 
 // A slot with no model keeps the agent's model, so a spawn with no model patterns leaves nothing to put a level on.

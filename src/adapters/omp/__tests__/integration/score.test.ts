@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { systemOneAnswer } from "../../../../core/__tests__/support/replies.ts";
-import { effortFor } from "../../../../core/decision/ladder.ts";
-import type { Level } from "../../../../core/parts/part.ts";
-import { ROUTING_LIMIT_MS } from "../../../../core/scoring/limit.ts";
-import { createExtension } from "../../router.ts";
-import { type Pending, scoreItems } from "../../score.ts";
-import { batch, useWorld } from "../support/fakes.ts";
+import { batch, useWorld } from "#adapters/omp/__tests__/support/fakes.ts";
+import { createExtension } from "#adapters/omp/router.ts";
+import { type Pending, scoreItems } from "#adapters/omp/score.ts";
+import { systemOneAnswer } from "#core/__tests__/support/replies.ts";
+import { effortFor } from "#core/decision/ladder.ts";
+import type { Level } from "#core/parts/part.ts";
+import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 
 const world = useWorld();
 const install = () => createExtension(world.imports)(world.pi);

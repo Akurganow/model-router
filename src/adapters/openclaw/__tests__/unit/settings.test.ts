@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { KEY_VARIABLES } from "../../../../core/providers/provider.ts";
+import {
+	createFakeApi,
+	traced,
+	tracedEnv,
+} from "#adapters/openclaw/__tests__/support/fakes.ts";
 import {
 	PLUGIN_ID,
 	pluginEntry,
@@ -8,9 +12,9 @@ import {
 	readSettings,
 	readState,
 	withPluginSetting,
-} from "../../settings.ts";
-import type { OpenClawConfig } from "../../types.ts";
-import { createFakeApi, traced, tracedEnv } from "../support/fakes.ts";
+} from "#adapters/openclaw/settings.ts";
+import type { OpenClawConfig } from "#adapters/openclaw/types.ts";
+import { KEY_VARIABLES } from "#core/providers/provider.ts";
 
 const live = (config: Record<string, unknown>): OpenClawConfig => ({
 	plugins: { entries: { [PLUGIN_ID]: { config } } },

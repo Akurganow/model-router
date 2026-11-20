@@ -12,8 +12,8 @@ import {
 	VALUE_SETTINGS,
 	type ValueSetting,
 	valueLine,
-} from "../../core/options/settings.ts";
-import { serializer } from "../../utils/serializer.ts";
+} from "#core/options/settings.ts";
+import { serializer } from "#utils/serializer.ts";
 import type {
 	CommandOutput,
 	CommandRun,
