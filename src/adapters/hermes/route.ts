@@ -63,7 +63,6 @@ async function score(
 			context: request.context,
 		}),
 		attempts: plan(request.provider, keys),
-		keys,
 		fetchFn,
 		signal,
 	});

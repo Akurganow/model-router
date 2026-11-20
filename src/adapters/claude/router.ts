@@ -159,7 +159,6 @@ export async function routeSpawn(
 	const decided = await scored($, next.signal, {
 		state,
 		attempts: plan(options.provider, keys),
-		keys,
 	});
 	const picked = pick(decided);
 	if ("skipped" in picked) {
@@ -280,7 +279,7 @@ function decisionLine(picked: Picked, kept: string | undefined): string {
 async function scored(
 	$: Engine,
 	cancel: AbortSignal,
-	input: Pick<RouteInput, "state" | "attempts" | "keys">,
+	input: Pick<RouteInput, "state" | "attempts">,
 ) {
 	const stop = new AbortController();
 	$.clock.sleep(ROUTING_LIMIT_MS, { signal: stop.signal }).then(

@@ -21,7 +21,7 @@ import { fakeTime } from "../support/time.ts";
 const KEY = "test-key";
 const OR_KEY = "test-openrouter-key";
 const KEYS = { typesafe: KEY, openrouter: OR_KEY };
-const BOTH = plan("auto", { typesafe: true, openrouter: true });
+const BOTH = plan("auto", KEYS);
 const MODEL = "jev-test";
 const STATE = routingState({
 	role: "coder",
@@ -80,8 +80,7 @@ function run(
 	return route({
 		parts: [tier, work],
 		state: STATE,
-		attempts: [{ provider: "typesafe", model: MODEL }],
-		keys: KEYS,
+		attempts: [{ provider: "typesafe", model: MODEL, key: KEY }],
 		fetchFn,
 		signal: new AbortController().signal,
 		...extra,
@@ -285,10 +284,7 @@ test("openrouter-first asks OpenRouter first and falls back after a network erro
 		if (count === 1) throw new TypeError("fetch failed");
 		return scoringReply(200, VALID);
 	});
-	const attempts = plan("openrouter-first", {
-		typesafe: true,
-		openrouter: true,
-	});
+	const attempts = plan("openrouter-first", KEYS);
 	const decision = asDecision(await run(fetchFn, { attempts }));
 	assert.equal(sent.length, 2);
 	assert.match(sent[0] ?? "", /^https:\/\/openrouter\.ai\//);
@@ -299,16 +295,26 @@ test("openrouter-first asks OpenRouter first and falls back after a network erro
 	});
 });
 
+test("an attempt whose provider has no endpoint is skipped as failed and sends nothing", async () => {
+	const { sent, fetchFn } = answering(VALID);
+	const attempts = [
+		{ provider: "toString", model: MODEL, key: KEY },
+	] as unknown as Attempt[];
+	assert.deepEqual(await run(fetchFn, { attempts }), { skipped: "failed" });
+	assert.equal(sent.length, 0);
+});
+
 test("a per-attempt timeout falls back and reports timeout", async (t) => {
 	const time = fakeTime(t);
 	const attempts: Attempt[] = [
 		{
 			provider: "typesafe",
 			model: MODEL,
+			key: KEY,
 			timeout: 20,
-			retry: { maxRetries: 0 },
+			retries: 0,
 		},
-		{ provider: "openrouter", model: MODEL },
+		{ provider: "openrouter", model: MODEL, key: OR_KEY },
 	];
 	const { bodies, fetchFn } = stub((init, count) =>
 		count === 1 ? hang(init, count) : Promise.resolve(scoringReply(200, VALID)),

@@ -4,33 +4,28 @@ import { test } from "node:test";
 import {
 	collectKeys,
 	FIRST_ATTEMPT_TIMEOUT_MS,
-	HOSTS,
 	order,
 	PROVIDER_VALUES,
 	parseProvider,
 	plan,
 } from "../../providers/provider.ts";
 
-const T = { provider: "typesafe", model: "jev-latest" };
-const O = { provider: "openrouter", model: "jev-latest" };
-const FIRST = { timeout: 2000, retry: { maxRetries: 0 } };
+const T = { provider: "typesafe", model: "jev-latest", key: "ts-key" };
+const O = { provider: "openrouter", model: "jev-latest", key: "or-key" };
+const FIRST = { timeout: 2000, retries: 0 };
 
 const NONE = {};
 const TS = { typesafe: "ts-key" };
 const OR = { openrouter: "or-key" };
 const BOTH = { typesafe: "ts-key", openrouter: "or-key" };
 
-test("exports four values, two hosts and a 2000 ms first attempt", () => {
+test("exports four values and a 2000 ms first attempt", () => {
 	assert.deepEqual(PROVIDER_VALUES, [
 		"auto",
 		"openrouter-first",
 		"typesafe",
 		"openrouter",
 	]);
-	assert.deepEqual(HOSTS, {
-		typesafe: "https://api.typesafe.ai",
-		openrouter: "https://openrouter.ai/api",
-	});
 	assert.equal(FIRST_ATTEMPT_TIMEOUT_MS, 2000);
 });
 
@@ -58,8 +53,9 @@ test("plan orders the attempts for each value and set of keys", () => {
 
 test("plan attempts only the providers whose key is set", () => {
 	assert.deepEqual(plan("auto", { typesafe: "", openrouter: "or-key" }), [O]);
-	assert.deepEqual(plan("auto", { typesafe: undefined, openrouter: "k" }), [O]);
-	assert.deepEqual(plan("auto", { typesafe: false, openrouter: true }), [O]);
+	assert.deepEqual(plan("auto", { typesafe: undefined, openrouter: "k" }), [
+		{ ...O, key: "k" },
+	]);
 });
 
 test("order lists the providers a value allows, without keys", () => {

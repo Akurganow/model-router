@@ -9,10 +9,9 @@ export type ProviderValue = (typeof PROVIDER_VALUES)[number];
 export const PROVIDERS = ["typesafe", "openrouter"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 
-// ask appends /v1/systemone to the host.
-export const HOSTS: Readonly<Record<Provider, string>> = {
-	typesafe: "https://api.typesafe.ai",
-	openrouter: "https://openrouter.ai/api",
+export const PROVIDER_NAMES: Readonly<Record<Provider, string>> = {
+	typesafe: "TypeSafe",
+	openrouter: "OpenRouter",
 };
 
 // Every harness reads a provider's key from the same variable.
@@ -45,8 +44,10 @@ const ORDER: Readonly<Record<ProviderValue, readonly Provider[]>> = {
 export type Attempt = {
 	readonly provider: Provider;
 	readonly model: string;
+	// Reaches only the Authorization header; never print it.
+	readonly key: string;
 	readonly timeout?: number;
-	readonly retry?: { readonly maxRetries: number };
+	readonly retries?: number;
 };
 
 /**
@@ -88,24 +89,23 @@ export async function collectKeys(
 }
 
 /**
- * Returns one attempt for each provider the value allows whose entry in keys is
- * set: a key, or true for a caller that holds none. Every attempt but the last
- * gives up fast, so the next one gets most of the routing limit. Returns no
- * attempts when no entry is set. Never throws.
+ * Returns one attempt for each provider the value allows whose key is a
+ * non-empty string, carrying that key. Every attempt but the last gives up
+ * fast, so the next one gets most of the routing limit. Returns no attempts
+ * when no key is set. Never throws.
  */
 export function plan(
 	value: unknown,
-	keys: Readonly<Partial<Record<Provider, unknown>>>,
+	keys: Readonly<Partial<Record<Provider, string | undefined>>>,
 ): Attempt[] {
-	const providers = order(value).filter((p) => Boolean(keys[p]));
-	return providers.map((provider, i) =>
-		i < providers.length - 1
-			? {
-					provider,
-					model: MODEL,
-					timeout: FIRST_ATTEMPT_TIMEOUT_MS,
-					retry: { maxRetries: 0 },
-				}
-			: { provider, model: MODEL },
+	const attempts: Attempt[] = [];
+	for (const provider of order(value)) {
+		const key = keys[provider];
+		if (key) attempts.push({ provider, model: MODEL, key });
+	}
+	return attempts.map((attempt, i) =>
+		i < attempts.length - 1
+			? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 }
+			: attempt,
 	);
 }

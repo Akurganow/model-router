@@ -17,7 +17,7 @@ import type { Context, Lookup, OmpImports } from "./types.ts";
 
 const NARROWABLE: readonly ProviderValue[] = ["auto", "openrouter-first"];
 
-export type Routing = Pick<RouteInput, "attempts" | "keys">;
+export type Routing = Pick<RouteInput, "attempts">;
 export type Settings = {
 	readonly provider: ProviderValue;
 	readonly scope: Scope;
@@ -85,13 +85,13 @@ async function readGlobal(
 }
 
 /**
- * Returns the attempts and the keys for the providers the value allows. Reads
+ * Returns the attempts, each with its key, for the providers the value allows. Reads
  * only those providers. omp's own credential comes first, then the variable.
  * Returns no attempts when no key is set. Never throws.
  */
 export async function findKeys(ctx: Context, value: string): Promise<Routing> {
 	const keys = await collectKeys(value, (provider) => findKey(ctx, provider));
-	return { attempts: plan(value, keys), keys };
+	return { attempts: plan(value, keys) };
 }
 
 /**

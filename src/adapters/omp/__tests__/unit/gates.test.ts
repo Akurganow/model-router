@@ -8,7 +8,6 @@ import {
 	setsOwnModel,
 	UNREADABLE,
 } from "../../../../core/output/reasons.ts";
-import { plan } from "../../../../core/providers/provider.ts";
 import { checkGates, slotModel } from "../../gates.ts";
 import { AGENTS, extend } from "../support/fake-agents.ts";
 import {
@@ -26,23 +25,17 @@ import {
 const world = useWorld();
 const ENV_KEY = "env-key-0002";
 const OR_ENV_KEY = "env-or-key-0004";
-const TS_ONLY = { typesafe: true, openrouter: false };
-const OR_ONLY = { typesafe: false, openrouter: true };
 const open = (key = KEY) => ({
-	attempts: plan("typesafe", TS_ONLY),
-	keys: { typesafe: key },
+	attempts: [{ provider: "typesafe", model: "jev-latest", key }],
 });
 const openOr = (key = OR_KEY) => ({
-	attempts: plan("openrouter", OR_ONLY),
-	keys: { openrouter: key },
+	attempts: [{ provider: "openrouter", model: "jev-latest", key }],
 });
 
 const ctx = world.ctx;
 // The routing alone: the facts are the batch's, which other tests check.
 const routing = (result: Awaited<ReturnType<typeof checkGates>>) =>
-	"closed" in result
-		? result
-		: { attempts: result.attempts, keys: result.keys };
+	"closed" in result ? result : { attempts: result.attempts };
 const gates = async () =>
 	routing(await checkGates(world.imports, world.pi, ctx()));
 
@@ -126,10 +119,17 @@ test("the default reads no OpenRouter credential and no OpenRouter variable", as
 
 test("both providers in order, each with its own key", async () => {
 	world.lockfile = lockfileWith("openrouter-first");
-	const both = { typesafe: true, openrouter: true };
 	assert.deepEqual(await gates(), {
-		attempts: plan("openrouter-first", both),
-		keys: { openrouter: OR_KEY, typesafe: KEY },
+		attempts: [
+			{
+				provider: "openrouter",
+				model: "jev-latest",
+				key: OR_KEY,
+				timeout: 2000,
+				retries: 0,
+			},
+			{ provider: "typesafe", model: "jev-latest", key: KEY },
+		],
 	});
 	assert.deepEqual(world.asked, ["openrouter", "typesafe"]);
 });

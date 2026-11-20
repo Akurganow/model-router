@@ -1,16 +1,15 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { prepareBrief, routingState } from "../src/core/brief/brief.ts";
-import { PROVIDER_NAMES } from "../src/core/options/settings.ts";
 import { formatProbability } from "../src/core/output/line.ts";
 import { tier } from "../src/core/parts/tier.ts";
 import { work } from "../src/core/parts/work.ts";
 import {
 	type Attempt,
-	HOSTS,
-	type Keys,
+	PROVIDER_NAMES,
 	type Provider,
 	plan,
 } from "../src/core/providers/provider.ts";
+import { ENDPOINTS } from "../src/core/scoring/endpoints.ts";
 import {
 	type Decision,
 	LIMIT_REACHED,
@@ -25,7 +24,7 @@ import { fitWarnings } from "./jev-fit.ts";
 const AGREEMENT_BAR = 0.85;
 const CASE_HEAD_CHARS = 60;
 const PERCENT = 100;
-const USAGE = `usage: node scripts/calibrate.ts <typesafe|openrouter> [model] [--record <file>]  (typesafe sends the cases to ${HOSTS.typesafe}, openrouter to ${HOSTS.openrouter}; enter that host's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
+const USAGE = `usage: node scripts/calibrate.ts <typesafe|openrouter> [model] [--record <file>]  (typesafe sends the cases to ${ENDPOINTS.typesafe.url}, openrouter to ${ENDPOINTS.openrouter.url}; enter that host's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
 
 export type Case = {
 	role: string;
@@ -42,7 +41,6 @@ export const caseHead = (text: string): string =>
 export async function runCase(
 	c: Case,
 	attempts: readonly Attempt[],
-	keys: Keys,
 	fetchFn: Fetch,
 ): Promise<Decision | Skipped> {
 	const limit = new AbortController();
@@ -56,7 +54,6 @@ export async function runCase(
 				task: c.text,
 			}),
 			attempts,
-			keys,
 			fetchFn,
 			signal: limit.signal,
 		});
@@ -82,7 +79,7 @@ function typeKey(
 	provider: Provider,
 ): Promise<string> {
 	process.stderr.write(
-		`${PROVIDER_NAMES[provider]} API key for ${HOSTS[provider]}: `,
+		`${PROVIDER_NAMES[provider]} API key for ${ENDPOINTS[provider].url}: `,
 	);
 	stdin.setRawMode(true);
 	stdin.resume();
@@ -189,7 +186,7 @@ export async function main(
 	let workHits = 0;
 	const rows: string[] = [];
 	for (const c of cases) {
-		const d = await runCase(c, attempts, { [provider]: key }, fetchFn);
+		const d = await runCase(c, attempts, fetchFn);
 		const head = caseHead(c.text);
 		if ("skipped" in d) {
 			console.log(`skip  ${head}  ${d.skipped}`);
