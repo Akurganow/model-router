@@ -1,5 +1,5 @@
 import type { Level } from "../parts/part.ts";
-import { failedAttemptText } from "./reasons.ts";
+import { failedAttemptText, type PlainFailedAttempt } from "./reasons.ts";
 
 type RoutedLine = {
 	readonly level: Level;
@@ -49,9 +49,7 @@ type DecisionSuffix = {
 	readonly model: string;
 	readonly inputTokens?: number | null | undefined;
 	readonly outputTokens?: number | null | undefined;
-	readonly failed?:
-		| { readonly provider: string; readonly reason: string }
-		| undefined;
+	readonly failed?: PlainFailedAttempt | undefined;
 };
 
 // The provider always shows. A model or usage the reply lacks is left out, never guessed.

@@ -23,8 +23,12 @@ export const agentDiscoveryFailed = (id: string): string =>
 export const agentUnknown = (id: string): string => `${id} agent unknown`;
 export const setsOwnModel = (id: string): string => `${id} sets its own model`;
 
-// Both the skip text and the routing line name a failed attempt this way.
-export const failedAttemptText = (f: {
+// A failed attempt as plain text, so this folder needs no type of the scoring code.
+export type PlainFailedAttempt = {
 	readonly provider: string;
 	readonly reason: string;
-}): string => `${f.provider} ${f.reason}`;
+};
+
+// Both the skip text and the routing line name a failed attempt this way.
+export const failedAttemptText = (f: PlainFailedAttempt): string =>
+	`${f.provider} ${f.reason}`;
