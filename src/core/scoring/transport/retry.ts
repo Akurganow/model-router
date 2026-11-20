@@ -1,3 +1,4 @@
+import { nonEmpty } from "../../../utils/text.ts";
 import { type Failure, isFailure, SERVER_ERRORS } from "../failure.ts";
 
 // The defaults when the caller names none: two retries after the first request, and 10 s for each
@@ -37,11 +38,11 @@ export function isRetried(
 }
 
 function serverDelayMs(headers: HeaderReader): number | undefined {
-	const rawMs = headers.get("retry-after-ms");
-	const ms = rawMs === null ? Number.NaN : Number(rawMs);
+	const rawMs = nonEmpty(headers.get("retry-after-ms"));
+	const ms = rawMs === undefined ? Number.NaN : Number(rawMs);
 	if (Number.isFinite(ms) && ms >= 0) return ms;
-	const raw = headers.get("retry-after");
-	if (raw === null) return undefined;
+	const raw = nonEmpty(headers.get("retry-after"));
+	if (raw === undefined) return undefined;
 	const seconds = Number(raw);
 	if (Number.isFinite(seconds)) {
 		return seconds >= 0 ? seconds * 1000 : undefined;

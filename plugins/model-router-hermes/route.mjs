@@ -471,11 +471,11 @@ function isRetried(outcome) {
   }
 }
 function serverDelayMs(headers) {
-  const rawMs = headers.get("retry-after-ms");
-  const ms = rawMs === null ? Number.NaN : Number(rawMs);
+  const rawMs = nonEmpty(headers.get("retry-after-ms"));
+  const ms = rawMs === void 0 ? Number.NaN : Number(rawMs);
   if (Number.isFinite(ms) && ms >= 0) return ms;
-  const raw = headers.get("retry-after");
-  if (raw === null) return void 0;
+  const raw = nonEmpty(headers.get("retry-after"));
+  if (raw === void 0) return void 0;
   const seconds = Number(raw);
   if (Number.isFinite(seconds)) {
     return seconds >= 0 ? seconds * 1e3 : void 0;
