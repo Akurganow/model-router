@@ -1,18 +1,8 @@
 import { routingState } from "../../core/brief/brief.ts";
 import { scoreWork } from "../../core/decision/decide.ts";
-import { effortFor } from "../../core/decision/ladder.ts";
-import {
-	pickModel,
-	type SlotModel,
-	slotForLevel,
-	slotState,
-} from "../../core/decision/slots.ts";
-import {
-	LINE_PREFIX,
-	routedLine,
-	skippedLine,
-} from "../../core/output/line.ts";
-import type { Level } from "../../core/parts/part.ts";
+import { outcomeOf } from "../../core/decision/outcome.ts";
+import { slotRecord, slotState } from "../../core/decision/slots.ts";
+import { LINE_PREFIX, skippedLine } from "../../core/output/line.ts";
 import { type Keys, plan } from "../../core/providers/provider.ts";
 import { MIN_DEADLINE_MS } from "../../core/scoring/handler-deadline.ts";
 import { abortCategory, raceDeadline } from "../../core/scoring/limit.ts";
@@ -112,14 +102,6 @@ async function score(
 }
 
 /**
- * Returns the state of the slot the level picks: `set` with its model when the
- * setting names one, `unset` when it names none. The model is not checked.
- */
-function slotOf(settings: OpenClawSettings, level: Level): SlotModel {
-	return slotState(settings.models[slotForLevel(level)]);
-}
-
-/**
  * Returns the params to merge into the spawn, or undefined when the spawn stays
  * as written. Undefined covers a spawn that passes, a skip, and a route that
  * sets nothing. A passing spawn writes no line. Every other spawn writes one:
@@ -158,22 +140,15 @@ async function routeGated(
 	if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
 	const decided = await score(spawn, settings, keys, gate);
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
-	const picked = pickModel(decided.tier, slotOf(settings, decided.tier));
-	const { model } = picked;
-	const kept = gate.effort.kind === "keep" ? gate.effort.label : undefined;
-	const effort = effortFor(decided.tier, decided.work);
-	log(
-		routedLine({
-			level: decided.tier,
-			target: picked.target,
-			effort: kept ?? effort,
-			probabilities: decided.probabilities,
-			suffix: decided.suffix,
-		}),
+	const { model, effort, line } = outcomeOf(
+		decided,
+		slotRecord((slot) => slotState(settings.models[slot])),
+		gate.effort.kind === "keep" ? gate.effort.label : undefined,
 	);
+	log(line);
 	const set = {
 		...(model === undefined ? {} : { model }),
-		...(kept === undefined ? { thinking: effort } : {}),
+		...(effort === undefined ? {} : { thinking: effort }),
 	};
 	return Object.keys(set).length === 0 ? undefined : { params: set };
 }

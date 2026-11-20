@@ -1,17 +1,8 @@
 import { DEFAULT_ROLE, routingState } from "../../core/brief/brief.ts";
 import { type DecidedWithWork, scoreWork } from "../../core/decision/decide.ts";
-import { effortFor } from "../../core/decision/ladder.ts";
-import {
-	pickModel,
-	type Slot,
-	slotForLevel,
-	slotState,
-} from "../../core/decision/slots.ts";
-import {
-	LINE_PREFIX,
-	routedLine,
-	skippedLine,
-} from "../../core/output/line.ts";
+import { outcomeOf } from "../../core/decision/outcome.ts";
+import { type Slot, slotRecord, slotState } from "../../core/decision/slots.ts";
+import { LINE_PREFIX, skippedLine } from "../../core/output/line.ts";
 import {
 	CALLER_EFFORT,
 	CONFIG_EFFORT,
@@ -92,27 +83,18 @@ function answer(
 	request: HermesRequest,
 	decided: DecidedWithWork,
 ): HermesResponse {
-	const level = decided.tier;
-	const slot = slotForLevel(level);
-	const model = request.models[slot];
-	const effort = effortFor(level, decided.work);
-	const kept =
+	const { slot, effort, line } = outcomeOf(
+		decided,
+		slotRecord((name) => slotState(request.models[name])),
 		request.keptEffort === undefined
 			? undefined
-			: KEPT_LABELS[request.keptEffort];
+			: KEPT_LABELS[request.keptEffort],
+	);
 	return {
 		outcome: "route",
 		slot,
-		effort: kept === undefined ? effort : null,
-		line:
-			LINE_PREFIX +
-			routedLine({
-				level,
-				target: pickModel(level, slotState(model)).target,
-				effort: kept ?? effort,
-				probabilities: decided.probabilities,
-				suffix: decided.suffix,
-			}),
+		effort: effort ?? null,
+		line: LINE_PREFIX + line,
 	};
 }
 

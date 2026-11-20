@@ -949,8 +949,41 @@ var EFFORT_BY_TIER = {
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
+// src/core/decision/slots.ts
+var SLOTS = ["small", "middle", "large"];
+var slotForLevel = (level) => SLOTS[level];
+var slotSetting = (slot) => `${slot}_model`;
+var SLOT_SETTINGS = SLOTS.map(slotSetting);
+var slotState = (model) => model === void 0 ? { state: "unset" } : { state: "set", model };
+function pickModel(level, state) {
+  const slot = slotForLevel(level);
+  return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
+}
+
+// src/core/decision/outcome.ts
+function outcomeOf(decided, models, kept) {
+  const picked = pickModel(decided.tier, models[slotForLevel(decided.tier)]);
+  const ladder = effortFor(decided.tier, decided.work);
+  return {
+    slot: picked.slot,
+    model: picked.model,
+    effort: kept === void 0 ? ladder : void 0,
+    line: routedLine({
+      level: decided.tier,
+      target: picked.target,
+      effort: kept ?? ladder,
+      probabilities: decided.probabilities,
+      suffix: decided.suffix
+    })
+  };
+}
+
 // src/adapters/claude/router.ts
-var MODELS2 = ["haiku", "sonnet", "opus"];
+var MODELS2 = {
+  small: slotState("haiku"),
+  middle: slotState("sonnet"),
+  large: slotState("opus")
+};
 var BUILT_IN = "built-in";
 var ENGINE = "engine";
 var GENERAL_PURPOSE = "general-purpose";
@@ -1025,16 +1058,15 @@ async function routeSpawn($, spawn, next, options) {
     state,
     attempts: plan(options.provider, keys)
   });
-  const picked = pick2(decided);
-  if ("skipped" in picked) {
-    await $.ui.log(skippedLine(picked.skipped));
+  if ("skipped" in decided) {
+    await $.ui.log(skippedLine(decided.skipped));
     return next(spawn);
   }
   const kept = callerSet ? CALLER_EFFORT : await $.env.get("CLAUDE_CODE_EFFORT_LEVEL") ? "env effort" : void 0;
-  await $.ui.log(decisionLine(picked, kept));
-  const { model, effort } = picked;
-  const started = next({ ...spawn, model });
-  if (kept === void 0) track(started, effort);
+  const { model, effort, line } = outcomeOf(decided, MODELS2, kept);
+  await $.ui.log(line);
+  const started = next(model === void 0 ? spawn : { ...spawn, model });
+  if (effort !== void 0) track(started, effort);
   const outcome = await started;
   if (outcome.deny !== void 0) await $.ui.log("denied");
   return outcome;
@@ -1082,25 +1114,6 @@ async function spawnsSettled($) {
   } finally {
     stop.abort();
   }
-}
-function pick2(decided) {
-  if ("skipped" in decided) return decided;
-  return {
-    model: MODELS2[decided.tier],
-    effort: effortFor(decided.tier, decided.work),
-    level: decided.tier,
-    probabilities: decided.probabilities,
-    suffix: decided.suffix
-  };
-}
-function decisionLine(picked, kept) {
-  return routedLine({
-    level: picked.level,
-    target: picked.model,
-    effort: kept ?? picked.effort,
-    probabilities: picked.probabilities,
-    suffix: picked.suffix
-  });
 }
 async function scored($, cancel, input) {
   const clock = {

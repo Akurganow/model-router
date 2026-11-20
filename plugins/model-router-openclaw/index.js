@@ -1019,6 +1019,24 @@ var EFFORT_BY_TIER = {
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 
+// src/core/decision/outcome.ts
+function outcomeOf(decided, models, kept) {
+  const picked = pickModel(decided.tier, models[slotForLevel(decided.tier)]);
+  const ladder = effortFor(decided.tier, decided.work);
+  return {
+    slot: picked.slot,
+    model: picked.model,
+    effort: kept === void 0 ? ladder : void 0,
+    line: routedLine({
+      level: decided.tier,
+      target: picked.target,
+      effort: kept ?? ladder,
+      probabilities: decided.probabilities,
+      suffix: decided.suffix
+    })
+  };
+}
+
 // src/adapters/openclaw/agents.ts
 var DEFAULT_AGENT_ID = "main";
 var MAX_ID_LENGTH = 64;
@@ -1204,9 +1222,6 @@ async function score({ deps, signal }, settings, keys, gate) {
     signal
   });
 }
-function slotOf(settings, level) {
-  return slotState(settings.models[slotForLevel(level)]);
-}
 async function routeSpawn(spawn) {
   const { api, deps, signal, request, requester } = spawn;
   const { config, settings, keys } = readState(api, deps.env);
@@ -1229,22 +1244,15 @@ async function routeGated(spawn, settings, keys, gate, log) {
   if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
   const decided = await score(spawn, settings, keys, gate);
   if ("skipped" in decided) return void log(skippedLine(decided.skipped));
-  const picked = pickModel(decided.tier, slotOf(settings, decided.tier));
-  const { model } = picked;
-  const kept = gate.effort.kind === "keep" ? gate.effort.label : void 0;
-  const effort = effortFor(decided.tier, decided.work);
-  log(
-    routedLine({
-      level: decided.tier,
-      target: picked.target,
-      effort: kept ?? effort,
-      probabilities: decided.probabilities,
-      suffix: decided.suffix
-    })
+  const { model, effort, line } = outcomeOf(
+    decided,
+    slotRecord((slot) => slotState(settings.models[slot])),
+    gate.effort.kind === "keep" ? gate.effort.label : void 0
   );
+  log(line);
   const set = {
     ...model === void 0 ? {} : { model },
-    ...kept === void 0 ? { thinking: effort } : {}
+    ...effort === void 0 ? {} : { thinking: effort }
   };
   return Object.keys(set).length === 0 ? void 0 : { params: set };
 }

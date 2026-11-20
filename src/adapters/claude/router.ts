@@ -3,15 +3,15 @@ import {
 	roleText,
 	routingState,
 } from "../../core/brief/brief.ts";
-import { type DecidedWithWork, scoreWork } from "../../core/decision/decide.ts";
-import { effortFor } from "../../core/decision/ladder.ts";
+import { scoreWork } from "../../core/decision/decide.ts";
+import { outcomeOf } from "../../core/decision/outcome.ts";
+import { slotState } from "../../core/decision/slots.ts";
 import { resolveScope, type Scope } from "../../core/options/scope.ts";
-import { routedLine, skippedLine } from "../../core/output/line.ts";
+import { skippedLine } from "../../core/output/line.ts";
 import { CALLER_EFFORT } from "../../core/output/reasons.ts";
-import type { Level } from "../../core/parts/part.ts";
 import { plan } from "../../core/providers/provider.ts";
 import { limitSignal, ROUTING_LIMIT_MS } from "../../core/scoring/limit.ts";
-import type { RouteInput, Skipped } from "../../core/scoring/route.ts";
+import type { RouteInput } from "../../core/scoring/route.ts";
 import type { Fetch } from "../../core/scoring/transport/send.ts";
 import {
 	type AgentCall,
@@ -29,7 +29,12 @@ import {
 } from "./host.ts";
 import { readKeys } from "./keys.ts";
 
-const MODELS = ["haiku", "sonnet", "opus"] as const;
+// Claude Code names a fixed model for each slot, so every slot is set.
+const MODELS = {
+	small: slotState("haiku"),
+	middle: slotState("sonnet"),
+	large: slotState("opus"),
+} as const;
 
 const BUILT_IN = "built-in";
 // The origin of a spawn the Agent tool makes. Another plugin's $.agent.spawn carries its own name.
@@ -150,9 +155,8 @@ export async function routeSpawn(
 		state,
 		attempts: plan(options.provider, keys),
 	});
-	const picked = pick(decided);
-	if ("skipped" in picked) {
-		await $.ui.log(skippedLine(picked.skipped));
+	if ("skipped" in decided) {
+		await $.ui.log(skippedLine(decided.skipped));
 		return next(spawn);
 	}
 	// Claude Code ranks this variable above any per-invocation effort, so a set value keeps the engine's effort.
@@ -161,10 +165,10 @@ export async function routeSpawn(
 		: (await $.env.get("CLAUDE_CODE_EFFORT_LEVEL"))
 			? "env effort"
 			: undefined;
-	await $.ui.log(decisionLine(picked, kept));
-	const { model, effort } = picked;
-	const started = next({ ...spawn, model });
-	if (kept === undefined) track(started, effort);
+	const { model, effort, line } = outcomeOf(decided, MODELS, kept);
+	await $.ui.log(line);
+	const started = next(model === undefined ? spawn : { ...spawn, model });
+	if (effort !== undefined) track(started, effort);
 	const outcome = await started;
 	if (outcome.deny !== undefined) await $.ui.log("denied");
 	return outcome;
@@ -226,43 +230,6 @@ async function spawnsSettled($: Engine): Promise<void> {
 	} finally {
 		stop.abort();
 	}
-}
-
-type Picked = {
-	model: (typeof MODELS)[number];
-	effort: string;
-	level: Level;
-	probabilities: string;
-	suffix: string;
-};
-
-/**
- * Returns the model, effort, level, probabilities and suffix for the levels
- * Jev decided. Returns the skip unchanged. Never throws.
- */
-function pick(decided: DecidedWithWork | Skipped): Picked | Skipped {
-	if ("skipped" in decided) return decided;
-	return {
-		model: MODELS[decided.tier],
-		effort: effortFor(decided.tier, decided.work),
-		level: decided.tier,
-		probabilities: decided.probabilities,
-		suffix: decided.suffix,
-	};
-}
-
-/**
- * Returns the routing line for a pick. A kept effort replaces the picked
- * effort. Never throws.
- */
-function decisionLine(picked: Picked, kept: string | undefined): string {
-	return routedLine({
-		level: picked.level,
-		target: picked.model,
-		effort: kept ?? picked.effort,
-		probabilities: picked.probabilities,
-		suffix: picked.suffix,
-	});
 }
 
 // The limit covers the whole call, retries included. Aborting also ends the retry wait, so no request follows a skip.

@@ -753,6 +753,24 @@ function pickModel(level, state) {
   return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
 }
 
+// src/core/decision/outcome.ts
+function outcomeOf(decided, models, kept) {
+  const picked = pickModel(decided.tier, models[slotForLevel(decided.tier)]);
+  const ladder = effortFor(decided.tier, decided.work);
+  return {
+    slot: picked.slot,
+    model: picked.model,
+    effort: kept === void 0 ? ladder : void 0,
+    line: routedLine({
+      level: decided.tier,
+      target: picked.target,
+      effort: kept ?? ladder,
+      probabilities: decided.probabilities,
+      suffix: decided.suffix
+    })
+  };
+}
+
 // src/core/providers/provider.ts
 var PROVIDERS = ["typesafe", "openrouter"];
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
@@ -847,22 +865,16 @@ async function scored(request, deps, signal) {
   }
 }
 function answer(request, decided) {
-  const level = decided.tier;
-  const slot = slotForLevel(level);
-  const model = request.models[slot];
-  const effort = effortFor(level, decided.work);
-  const kept = request.keptEffort === void 0 ? void 0 : KEPT_LABELS[request.keptEffort];
+  const { slot, effort, line } = outcomeOf(
+    decided,
+    slotRecord((name) => slotState(request.models[name])),
+    request.keptEffort === void 0 ? void 0 : KEPT_LABELS[request.keptEffort]
+  );
   return {
     outcome: "route",
     slot,
-    effort: kept === void 0 ? effort : null,
-    line: LINE_PREFIX + routedLine({
-      level,
-      target: pickModel(level, slotState(model)).target,
-      effort: kept ?? effort,
-      probabilities: decided.probabilities,
-      suffix: decided.suffix
-    })
+    effort: effort ?? null,
+    line: LINE_PREFIX + line
   };
 }
 async function routeRequest(raw, deps) {
