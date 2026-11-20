@@ -275,6 +275,23 @@ function pickModel(level, state) {
   return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
 }
 
+// src/core/output/reasons.ts
+var CALLER_EFFORT = "caller effort";
+var CONFIG_EFFORT = "config effort";
+var UNREADABLE = "settings unreadable";
+var KEY_UNSET = "key unset";
+var BAD_REPLY = "bad reply";
+var TIMEOUT = "timeout";
+var FAILED = "failed";
+var NETWORK_ERROR = "network error";
+var httpStatus = (status) => `HTTP ${status}`;
+var CANCELLED = "cancelled";
+var outsideCoreScope = (id) => `${id} is outside the core scope`;
+var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
+var agentUnknown = (id) => `${id} agent unknown`;
+var setsOwnModel = (id) => `${id} sets its own model`;
+var failedAttemptText = (f) => `${f.provider} ${f.reason}`;
+
 // src/core/output/line.ts
 var LINE_PREFIX = "model-router ";
 var ENTRY_SEPARATOR = " | ";
@@ -291,6 +308,18 @@ function routedLine({
 }
 var SKIPPED_PREFIX = "skipped, ";
 var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
+var PROBABILITY_DIGITS = 2;
+var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+function decisionSuffix({
+  provider,
+  model,
+  inputTokens,
+  outputTokens,
+  failed
+}) {
+  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
+}
 
 // src/utils/error.ts
 var errorText = (err) => err instanceof Error ? err.message : String(err);
@@ -430,22 +459,6 @@ var COMMAND_DESCRIPTIONS = {
   provider: describeCommand("provider"),
   scope: describeCommand("scope")
 };
-
-// src/core/output/reasons.ts
-var CALLER_EFFORT = "caller effort";
-var CONFIG_EFFORT = "config effort";
-var UNREADABLE = "settings unreadable";
-var KEY_UNSET = "key unset";
-var BAD_REPLY = "bad reply";
-var TIMEOUT = "timeout";
-var FAILED = "failed";
-var NETWORK_ERROR = "network error";
-var httpStatus = (status) => `HTTP ${status}`;
-var CANCELLED = "cancelled";
-var outsideCoreScope = (id) => `${id} is outside the core scope`;
-var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
-var agentUnknown = (id) => `${id} agent unknown`;
-var setsOwnModel = (id) => `${id} sets its own model`;
 
 // src/utils/serializer.ts
 function serializer() {
@@ -669,8 +682,6 @@ var fromMiddle = (down, up) => (p) => {
   if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
   return low ? 0 : high ? 2 : 1;
 };
-var PROBABILITY_DIGITS = 2;
-var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 
 // src/core/scoring/formats/system-one.ts
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
@@ -724,7 +735,6 @@ var SYSTEM_ONE = {
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
-var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 var cleanModel = (model) => typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "";
 
 // src/core/scoring/transport/retry.ts
@@ -902,33 +912,22 @@ async function route(input) {
       if (i < attempts.length - 1) input.onFallback?.(attempt2.provider);
       continue;
     }
-    const decision = decide(result, attempt2.provider);
+    const decision = toDecision(result, attempt2.provider);
     const [first] = failed;
     return first ? { ...decision, firstFailed: first } : decision;
   }
   return skip(failed);
 }
-var named = (f) => `${f.provider} ${f.reason}`;
 function skip(failed) {
   const [first, ...rest] = failed;
   if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
-  return { skipped: failed.map(named).join(", ") };
+  return { skipped: failed.map(failedAttemptText).join(", ") };
 }
-function decide({ answers, model, usage }, provider) {
+function toDecision({ answers, model, usage }, provider) {
   const parts = {};
   for (const [part, probabilities] of answers)
     parts[part.key] = { level: part.pick(probabilities), probabilities };
   return { parts, provider, model, usage };
-}
-function decisionSuffix({
-  provider,
-  model,
-  usage,
-  firstFailed
-}) {
-  const input = usage?.input_tokens;
-  const output = usage?.output_tokens;
-  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (firstFailed ? ` \xB7 ${named(firstFailed)}` : "");
 }
 
 // src/core/scoring/handler-deadline.ts
@@ -1138,7 +1137,7 @@ var levelOf = (decision, key) => {
     probability: formatProbability(part.probabilities[part.level])
   };
 };
-function decide2(decision, tierKey, workKey) {
+function decide(decision, tierKey, workKey) {
   if ("skipped" in decision) return decision;
   const tier2 = levelOf(decision, tierKey);
   if (!tier2) return BAD;
@@ -1148,12 +1147,18 @@ function decide2(decision, tierKey, workKey) {
     tier: tier2.level,
     work: work2.level,
     probabilities: `${tier2.probability}/${work2.probability}`,
-    suffix: decisionSuffix(decision)
+    suffix: decisionSuffix({
+      provider: decision.provider,
+      model: decision.model,
+      inputTokens: decision.usage?.input_tokens,
+      outputTokens: decision.usage?.output_tokens,
+      failed: decision.firstFailed
+    })
   };
 }
 async function scoreWork(input) {
   const decision = await route({ ...input, parts: [tier, work] });
-  return decide2(decision, tier.key, work.key);
+  return decide(decision, tier.key, work.key);
 }
 
 // src/core/decision/ladder.ts

@@ -508,6 +508,34 @@ var FAILED = "failed";
 var NETWORK_ERROR = "network error";
 var httpStatus = (status) => `HTTP ${status}`;
 var CANCELLED = "cancelled";
+var failedAttemptText = (f) => `${f.provider} ${f.reason}`;
+
+// src/core/output/line.ts
+var pinnedLine = (level, target) => `L${level} ${target}`;
+function routedLine({
+  level,
+  target,
+  effort,
+  probabilities,
+  suffix
+}) {
+  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
+  return `${pinnedLine(level, target)}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+}
+var SKIPPED_PREFIX = "skipped, ";
+var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
+var PROBABILITY_DIGITS = 2;
+var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
+var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+function decisionSuffix({
+  provider,
+  model,
+  inputTokens,
+  outputTokens,
+  failed
+}) {
+  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
+}
 
 // src/core/parts/part.ts
 var LEVELS = [0, 1, 2];
@@ -517,8 +545,6 @@ var fromMiddle = (down, up) => (p) => {
   if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
   return low ? 0 : high ? 2 : 1;
 };
-var PROBABILITY_DIGITS = 2;
-var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 
 // src/core/parts/tier.ts
 var TIER_DOWN = 2 ** 0.25;
@@ -661,7 +687,6 @@ var SYSTEM_ONE = {
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
-var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 var cleanModel = (model) => typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "";
 
 // src/core/scoring/transport/retry.ts
@@ -839,33 +864,22 @@ async function route(input) {
       if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
       continue;
     }
-    const decision = decide(result, attempt.provider);
+    const decision = toDecision(result, attempt.provider);
     const [first] = failed;
     return first ? { ...decision, firstFailed: first } : decision;
   }
   return skip(failed);
 }
-var named = (f) => `${f.provider} ${f.reason}`;
 function skip(failed) {
   const [first, ...rest] = failed;
   if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
-  return { skipped: failed.map(named).join(", ") };
+  return { skipped: failed.map(failedAttemptText).join(", ") };
 }
-function decide({ answers, model, usage }, provider) {
+function toDecision({ answers, model, usage }, provider) {
   const parts = {};
   for (const [part, probabilities] of answers)
     parts[part.key] = { level: part.pick(probabilities), probabilities };
   return { parts, provider, model, usage };
-}
-function decisionSuffix({
-  provider,
-  model,
-  usage,
-  firstFailed
-}) {
-  const input = usage?.input_tokens;
-  const output = usage?.output_tokens;
-  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (firstFailed ? ` \xB7 ${named(firstFailed)}` : "");
 }
 
 // src/core/decision/decide.ts
@@ -877,7 +891,7 @@ var levelOf = (decision, key) => {
     probability: formatProbability(part.probabilities[part.level])
   };
 };
-function decide2(decision, tierKey, workKey) {
+function decide(decision, tierKey, workKey) {
   if ("skipped" in decision) return decision;
   const tier2 = levelOf(decision, tierKey);
   if (!tier2) return BAD;
@@ -887,12 +901,18 @@ function decide2(decision, tierKey, workKey) {
     tier: tier2.level,
     work: work2.level,
     probabilities: `${tier2.probability}/${work2.probability}`,
-    suffix: decisionSuffix(decision)
+    suffix: decisionSuffix({
+      provider: decision.provider,
+      model: decision.model,
+      inputTokens: decision.usage?.input_tokens,
+      outputTokens: decision.usage?.output_tokens,
+      failed: decision.firstFailed
+    })
   };
 }
 async function scoreWork(input) {
   const decision = await route({ ...input, parts: [tier, work] });
-  return decide2(decision, tier.key, work.key);
+  return decide(decision, tier.key, work.key);
 }
 
 // src/core/decision/ladder.ts
@@ -902,21 +922,6 @@ var EFFORT_BY_TIER = {
   2: ["low", "medium", "high"]
 };
 var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
-
-// src/core/output/line.ts
-var pinnedLine = (level, target) => `L${level} ${target}`;
-function routedLine({
-  level,
-  target,
-  effort,
-  probabilities,
-  suffix
-}) {
-  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `${pinnedLine(level, target)}${effortSegment} \xB7 p=${probabilities}${suffix}`;
-}
-var SKIPPED_PREFIX = "skipped, ";
-var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 
 // src/adapters/claude/router.ts
 var MODELS = ["haiku", "sonnet", "opus"];

@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { prepareBrief, routingState } from "../src/core/brief/brief.ts";
 import { PROVIDER_NAMES } from "../src/core/options/settings.ts";
-import { formatProbability } from "../src/core/parts/part.ts";
+import { formatProbability } from "../src/core/output/line.ts";
 import { tier } from "../src/core/parts/tier.ts";
 import { work } from "../src/core/parts/work.ts";
 import {

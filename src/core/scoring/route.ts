@@ -1,9 +1,15 @@
-import { CANCELLED, FAILED, KEY_UNSET, TIMEOUT } from "../output/reasons.ts";
+import {
+	CANCELLED,
+	FAILED,
+	failedAttemptText,
+	KEY_UNSET,
+	TIMEOUT,
+} from "../output/reasons.ts";
 import type { Level, Probabilities } from "../parts/part.ts";
 import type { Attempt, Provider } from "../providers/provider.ts";
 import { type AskInput, ask, type Reply } from "./ask.ts";
 import { fallsBack, isFailure, skipText } from "./failure.ts";
-import { isCount, type Usage } from "./reply.ts";
+import type { Usage } from "./reply.ts";
 
 export const ROUTING_LIMIT_MS = 8000;
 // Adapters abort their signal with this reason when the limit runs out, so a timeout differs from a cancel.
@@ -58,24 +64,21 @@ export async function route(input: RouteInput): Promise<Decision | Skipped> {
 			if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
 			continue;
 		}
-		const decision = decide(result, attempt.provider);
+		const decision = toDecision(result, attempt.provider);
 		const [first] = failed;
 		return first ? { ...decision, firstFailed: first } : decision;
 	}
 	return skip(failed);
 }
 
-// Both the skip text and the routing line name a failed attempt this way.
-const named = (f: FailedAttempt): string => `${f.provider} ${f.reason}`;
-
 // A one-attempt skip keeps the bare reason; two attempts name each provider in order.
 function skip(failed: readonly FailedAttempt[]): Skipped {
 	const [first, ...rest] = failed;
 	if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
-	return { skipped: failed.map(named).join(", ") };
+	return { skipped: failed.map(failedAttemptText).join(", ") };
 }
 
-function decide(
+function toDecision(
 	{ answers, model, usage }: Reply,
 	provider: Provider,
 ): Decision {
@@ -84,21 +87,4 @@ function decide(
 	for (const [part, probabilities] of answers)
 		parts[part.key] = { level: part.pick(probabilities), probabilities };
 	return { parts, provider, model, usage };
-}
-
-// The provider always shows. A model or usage the reply lacks is left out, never guessed.
-export function decisionSuffix({
-	provider,
-	model,
-	usage,
-	firstFailed,
-}: Pick<Decision, "provider" | "model" | "usage" | "firstFailed">): string {
-	const input = usage?.input_tokens;
-	const output = usage?.output_tokens;
-	return (
-		` · ${provider}` +
-		(model ? ` ${model}` : "") +
-		(isCount(input) && isCount(output) ? ` · ${input}/${output} tok` : "") +
-		(firstFailed ? ` · ${named(firstFailed)}` : "")
-	);
 }

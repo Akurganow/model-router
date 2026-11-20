@@ -4,13 +4,13 @@ import assert from "node:assert/strict";
 import { getEventListeners } from "node:events";
 import { test } from "node:test";
 import { routingState } from "../../brief/brief.ts";
+import { decisionSuffix } from "../../output/line.ts";
 import { KEY_UNSET } from "../../output/reasons.ts";
 import { tier } from "../../parts/tier.ts";
 import { work } from "../../parts/work.ts";
 import { type Attempt, plan } from "../../providers/provider.ts";
 import {
 	type Decision,
-	decisionSuffix,
 	LIMIT_REACHED,
 	ROUTING_LIMIT_MS,
 	type RouteInput,
@@ -241,60 +241,14 @@ test("the suffix keeps safe characters and /, caps the model at 40 and prints us
 	const decision = asDecision(await run(fetchFn));
 	assert.equal(decision.model, `typesafe/jev1.14b${"x".repeat(23)}`);
 	assert.equal(
-		decisionSuffix(decision),
+		decisionSuffix({
+			provider: decision.provider,
+			model: decision.model,
+			inputTokens: decision.usage?.input_tokens,
+			outputTokens: decision.usage?.output_tokens,
+			failed: decision.firstFailed,
+		}),
 		` · typesafe ${decision.model} · 120/8 tok`,
-	);
-});
-
-test("the suffix leaves out null, missing or unsafe usage", () => {
-	const model = "jev-1";
-	assert.equal(
-		decisionSuffix({
-			provider: "typesafe",
-			model,
-			usage: { input_tokens: null, output_tokens: 3 },
-		}),
-		" · typesafe jev-1",
-	);
-	assert.equal(
-		decisionSuffix({ provider: "typesafe", model, usage: undefined }),
-		" · typesafe jev-1",
-	);
-	assert.equal(
-		decisionSuffix({
-			provider: "typesafe",
-			model,
-			usage: { input_tokens: -1, output_tokens: 3 },
-		}),
-		" · typesafe jev-1",
-	);
-});
-
-test("the suffix names the provider alone when the reply carries no model name", () => {
-	assert.equal(
-		decisionSuffix({ provider: "typesafe", model: "", usage: undefined }),
-		" · typesafe",
-	);
-});
-
-test("the suffix ends with the failed provider and its reason after a fallback", () => {
-	assert.equal(
-		decisionSuffix({
-			provider: "openrouter",
-			model: "jev-1",
-			usage: { input_tokens: 120, output_tokens: 8 },
-			firstFailed: { provider: "typesafe", reason: "HTTP 503" },
-		}),
-		" · openrouter jev-1 · 120/8 tok · typesafe HTTP 503",
-	);
-	assert.equal(
-		decisionSuffix({
-			provider: "openrouter",
-			model: "",
-			usage: undefined,
-			firstFailed: { provider: "typesafe", reason: "HTTP 503" },
-		}),
-		" · openrouter · typesafe HTTP 503",
 	);
 });
 

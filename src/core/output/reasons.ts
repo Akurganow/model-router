@@ -22,3 +22,9 @@ export const agentDiscoveryFailed = (id: string): string =>
 	`${id} agent discovery failed`;
 export const agentUnknown = (id: string): string => `${id} agent unknown`;
 export const setsOwnModel = (id: string): string => `${id} sets its own model`;
+
+// Both the skip text and the routing line name a failed attempt this way.
+export const failedAttemptText = (f: {
+	readonly provider: string;
+	readonly reason: string;
+}): string => `${f.provider} ${f.reason}`;
