@@ -21,19 +21,15 @@ every commit as a [conventional commit](#commits).
   - `utils/` imports only `utils/`. `core/` imports only `core/` and
     `utils/`. An adapter imports only itself, `core/` and `utils/`.
   - Biome enforces these directions. The `noRestrictedImports` overrides in
-    `biome.json` ban the imports of each layer. Plugins in
-    `scripts/lint/` ban a computed `import()` in `src/`, an import from a
-    `__tests__` folder in a source file of `src/`, a re-export in
-    `src/utils/` and a shared skip reason spelled outside
-    `src/core/output/reasons.ts`.
-  - The overrides also hold these edges between the folders of `src/core/`,
-    for every file outside `__tests__/`:
-    - `parts/` imports only `parts/part.ts` and `utils/`;
-    - `providers/` imports nothing from `scoring/`;
-    - `output/` imports nothing from `scoring/` or `decision/`;
-    - `scoring/` imports nothing from `decision/` or `options/`;
-    - `scoring/formats/` imports no `ask.ts` and no `route.ts`, and nothing
-      from `transport/` or `providers/`.
+    `biome.json` ban the imports of `utils/` and of each adapter, and hold
+    the import bans that the list of core folders below names. Plugins in
+    `scripts/lint/` ban an adapter import in `src/core/`, a computed
+    `import()` in `src/`, an import from a `__tests__` folder in a source
+    file of `src/`, a re-export in `src/utils/` and a shared skip reason
+    spelled outside `src/core/output/reasons.ts`.
+  - An override replaces an earlier one for its files, so the override of
+    `scoring/formats/` repeats the ban of `scoring/`, and the lint test
+    plants a fault for each.
   - `scripts/lint.test.ts` plants one fault for each rule and checks that
     Biome reports it.
   - [AGENTS.md](AGENTS.md#a-rule-about-the-source-goes-to-biome-first)
@@ -51,21 +47,27 @@ every commit as a [conventional commit](#commits).
   | A non-test file of `utils/` | Two or more users outside `utils/` |
 
   In the last row, tests and scripts count as users.
-- `src/core/` holds one folder for each job:
-  - `brief/`: the task text that leaves the machine, condensed and masked;
+- `src/core/` holds one folder for each job. Where a line names an import
+  ban, Biome holds it.
+  - `brief/`: the task text that leaves the machine, condensed and masked.
   - `parts/`: the questions `tier` and `work`, their shared types and the
-    pick rule;
+    pick rule. It imports only `parts/part.ts` and `utils/`.
   - `providers/`: the provider list, the values of the `provider` setting,
-    their order, the key names and the plan of attempts;
-  - `scoring/`: the call. `route` asks the attempts in order, `ask` sends
-    one, `formats/` holds the wire formats, `transport/` the request and its
-    retries;
-  - `decision/`: from the scores to the level, the effort ladder and the
-    slot;
-  - `options/`: the settings and the scope;
-  - `output/`: every text of the core that a user sees: the routing line,
-    its tail and the skip reasons. A failure's mapping to its reason stays
-    in `scoring/`.
+    their order, the key names and the plan of attempts. It imports nothing
+    from `scoring/`.
+  - `scoring/`: the call. `route` asks the attempts in order and picks each
+    part's level, `ask` sends one request, `formats/` holds the wire
+    formats, `transport/` the request and its retries. It also holds the
+    routing limit and a handler's deadline. It imports nothing from
+    `decision/` or `options/`. `formats/` imports no `ask.ts` and no
+    `route.ts`, and nothing from `transport/` or `providers/`.
+  - `decision/`: `scoreWork`, the entry every adapter calls, which reads the
+    tier and work levels; the effort ladder; the slots.
+  - `options/`: the settings and the scope, with their report and dialog
+    texts.
+  - `output/`: the routing line, its suffix and the shared skip reasons. It
+    imports nothing from `scoring/` or `decision/`. A failure's mapping to
+    its reason stays in `scoring/`.
 - `plugins/model-router` is the Claude Code plugin.
 - `plugins/model-router-omp` is the omp plugin.
 - `plugins/model-router-openclaw` is the OpenClaw plugin.
