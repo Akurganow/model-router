@@ -4,8 +4,8 @@ language js
 // specifier forms. A URL such as new URL("../", import.meta.url) is none of them.
 // src-outside.grit explains the [^"']* before the quote.
 // A ../ segment counts anywhere in the specifier, so ./../ is no way around.
-// biome.json names the folders this plugin reads. src/adapters/ still holds
-// relative imports, so it is not among them.
+// biome.json names the folders this plugin reads: src/ and scripts/. The
+// tests under plugins/ import by relative path, so they are not among them.
 or {
 	JsModuleSource() as $specifier,
 	`import($specifier)`,

@@ -76,7 +76,7 @@
 			}
 		},
 		{
-			"includes": ["src/core/**", "src/utils/**", "scripts/**"],
+			"includes": ["src/**", "scripts/**"],
 			"plugins": ["./scripts/lint/parent-import.grit"]
 		},
 		{
@@ -196,7 +196,11 @@
 							"options": {
 								"patterns": [
 									{
-										"group": ["**/omp/**", "**/openclaw/**", "**/hermes/**"],
+										"group": [
+											"#adapters/omp/**",
+											"#adapters/openclaw/**",
+											"#adapters/hermes/**"
+										],
 										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
 									}
 								]
@@ -216,7 +220,11 @@
 							"options": {
 								"patterns": [
 									{
-										"group": ["**/claude/**", "**/openclaw/**", "**/hermes/**"],
+										"group": [
+											"#adapters/claude/**",
+											"#adapters/openclaw/**",
+											"#adapters/hermes/**"
+										],
 										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
 									}
 								]
@@ -236,7 +244,11 @@
 							"options": {
 								"patterns": [
 									{
-										"group": ["**/claude/**", "**/omp/**", "**/hermes/**"],
+										"group": [
+											"#adapters/claude/**",
+											"#adapters/omp/**",
+											"#adapters/hermes/**"
+										],
 										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
 									}
 								]
@@ -261,9 +273,9 @@
 									{
 										"group": [
 											"openclaw/**",
-											"**/claude/**",
-											"**/omp/**",
-											"**/hermes/**"
+											"#adapters/claude/**",
+											"#adapters/omp/**",
+											"#adapters/hermes/**"
 										],
 										"message": "The bundle entry imports no other adapter and nothing from OpenClaw."
 									}
@@ -284,7 +296,11 @@
 							"options": {
 								"patterns": [
 									{
-										"group": ["**/claude/**", "**/omp/**", "**/openclaw/**"],
+										"group": [
+											"#adapters/claude/**",
+											"#adapters/omp/**",
+											"#adapters/openclaw/**"
+										],
 										"message": "An adapter imports no other adapter: move shared code to core/ or utils/."
 									}
 								]
