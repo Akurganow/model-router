@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 import { getEventListeners } from "node:events";
 import { test } from "node:test";
 import { routingState } from "../../brief/brief.ts";
-import { decisionSuffix } from "../../output/line.ts";
 import { KEY_UNSET } from "../../output/reasons.ts";
 import { tier } from "../../parts/tier.ts";
 import { work } from "../../parts/work.ts";
@@ -235,21 +234,11 @@ test("a skip holds neither the response body, the task nor the key", async () =>
 		assert.ok(!text.includes(leak), `leaked ${leak}`);
 });
 
-test("the suffix keeps safe characters and /, caps the model at 40 and prints usage", async () => {
+test("the model keeps safe characters and / and is capped at 40", async () => {
 	const model = `typesafe/jev 1.14<b>${"x".repeat(60)}`;
 	const { fetchFn } = answering({ ...VALID, model });
 	const decision = asDecision(await run(fetchFn));
 	assert.equal(decision.model, `typesafe/jev1.14b${"x".repeat(23)}`);
-	assert.equal(
-		decisionSuffix({
-			provider: decision.provider,
-			model: decision.model,
-			inputTokens: decision.usage?.input_tokens,
-			outputTokens: decision.usage?.output_tokens,
-			failed: decision.firstFailed,
-		}),
-		` · typesafe ${decision.model} · 120/8 tok`,
-	);
 });
 
 test("a 503 falls back once to the next provider with its own host and key", async () => {

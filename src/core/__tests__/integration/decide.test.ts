@@ -35,6 +35,24 @@ test("a tier and a work part give both levels and a joined probability", () => {
 	);
 });
 
+test("a decision after a fallback ends its suffix with the failed provider and its reason", () => {
+	const decided = decide(
+		{
+			...decision({ tier: part(0, 0.9), work: part(1, 0.7) }),
+			provider: "openrouter",
+			firstFailed: { provider: "typesafe", reason: "HTTP 503" },
+		},
+		"tier",
+		"work",
+	);
+	assert.deepEqual(decided, {
+		tier: 0,
+		work: 1,
+		probabilities: "0.90/0.70",
+		suffix: " · openrouter m · 1/2 tok · typesafe HTTP 503",
+	});
+});
+
 test("a missing part is a bad reply", () => {
 	assert.deepEqual(decide(decision({ tier: part(1, 0.9) }), "tier", "work"), {
 		skipped: "bad reply",
