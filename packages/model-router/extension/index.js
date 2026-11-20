@@ -275,6 +275,12 @@ function pickModel(level, state) {
   return state.state === "set" ? { slot, model: state.model, target: state.model } : { slot, model: void 0, target: `${slot} model unset` };
 }
 
+// src/core/options/scope.ts
+var SCOPE_VALUES = ["core", "extended"];
+var DEFAULT_SCOPE = "core";
+var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
+var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
+
 // src/core/output/reasons.ts
 var CALLER_EFFORT = "caller effort";
 var CONFIG_EFFORT = "config effort";
@@ -369,12 +375,6 @@ function plan(value, keys) {
     (attempt2, i) => i < attempts.length - 1 ? { ...attempt2, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt2
   );
 }
-
-// src/core/options/scope.ts
-var SCOPE_VALUES = ["core", "extended"];
-var DEFAULT_SCOPE = "core";
-var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
-var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/core/options/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];
@@ -976,10 +976,9 @@ var BACKOFF_INITIAL_MS = 500;
 var BACKOFF_MAX_MS = 5e3;
 var BACKOFF_JITTER = 0.25;
 var SERVER_DELAY_MAX_MS = 6e4;
-var SERVER_ERRORS2 = { min: 500, max: 599 };
 function isRetried(outcome) {
   if (!isFailure(outcome))
-    return outcome.status === 408 || outcome.status === 429 || outcome.status >= SERVER_ERRORS2.min && outcome.status <= SERVER_ERRORS2.max;
+    return outcome.status === 408 || outcome.status === 429 || outcome.status >= SERVER_ERRORS.min && outcome.status <= SERVER_ERRORS.max;
   switch (outcome.failure) {
     case "timed out":
     case "network":
@@ -1051,16 +1050,15 @@ async function exchange(fetchFn, url, request, caller, timeout, clock) {
   }
 }
 function pause(ms, caller, clock) {
-  if (caller.aborted) return Promise.resolve(false);
+  if (caller.aborted) return Promise.resolve();
   return new Promise((resolve2) => {
-    const done = (waited) => {
+    const done = () => {
       timer.cancel();
-      caller.removeEventListener("abort", onAbort);
-      resolve2(waited);
+      caller.removeEventListener("abort", done);
+      resolve2();
     };
-    const onAbort = () => done(false);
-    const timer = clock.after(ms, () => done(true));
-    caller.addEventListener("abort", onAbort, { once: true });
+    const timer = clock.after(ms, done);
+    caller.addEventListener("abort", done, { once: true });
   });
 }
 async function send(fetchFn, url, request, options) {
@@ -1077,8 +1075,7 @@ async function send(fetchFn, url, request, options) {
       clock
     );
     if (retry >= retries || !isRetried(outcome)) return outcome;
-    if (!await pause(retryDelayMs(retry, headers), signal, clock))
-      return ABORTED;
+    await pause(retryDelayMs(retry, headers), signal, clock);
   }
 }
 
@@ -1386,7 +1383,7 @@ function createRouter(omp, pi) {
     const eligible = eligibleItems(tasks);
     if (eligible.length === 0) return;
     const settings = await readSettings(omp, ctx.cwd);
-    const scope = settings?.scope ?? "core";
+    const scope = settings?.scope ?? DEFAULT_SCOPE;
     const items = eligible.filter(({ agent }) => inScope(agent, scope));
     if (items.length === 0) return;
     const skipAll = (reason) => report(

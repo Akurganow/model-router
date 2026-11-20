@@ -691,10 +691,9 @@ var BACKOFF_INITIAL_MS = 500;
 var BACKOFF_MAX_MS = 5e3;
 var BACKOFF_JITTER = 0.25;
 var SERVER_DELAY_MAX_MS = 6e4;
-var SERVER_ERRORS2 = { min: 500, max: 599 };
 function isRetried(outcome) {
   if (!isFailure(outcome))
-    return outcome.status === 408 || outcome.status === 429 || outcome.status >= SERVER_ERRORS2.min && outcome.status <= SERVER_ERRORS2.max;
+    return outcome.status === 408 || outcome.status === 429 || outcome.status >= SERVER_ERRORS.min && outcome.status <= SERVER_ERRORS.max;
   switch (outcome.failure) {
     case "timed out":
     case "network":
@@ -766,16 +765,15 @@ async function exchange(fetchFn, url, request, caller, timeout, clock) {
   }
 }
 function pause(ms, caller, clock) {
-  if (caller.aborted) return Promise.resolve(false);
+  if (caller.aborted) return Promise.resolve();
   return new Promise((resolve2) => {
-    const done = (waited2) => {
+    const done = () => {
       timer.cancel();
-      caller.removeEventListener("abort", onAbort);
-      resolve2(waited2);
+      caller.removeEventListener("abort", done);
+      resolve2();
     };
-    const onAbort = () => done(false);
-    const timer = clock.after(ms, () => done(true));
-    caller.addEventListener("abort", onAbort, { once: true });
+    const timer = clock.after(ms, done);
+    caller.addEventListener("abort", done, { once: true });
   });
 }
 async function send(fetchFn, url, request, options) {
@@ -792,8 +790,7 @@ async function send(fetchFn, url, request, options) {
       clock
     );
     if (retry >= retries || !isRetried(outcome)) return outcome;
-    if (!await pause(retryDelayMs(retry, headers), signal, clock))
-      return ABORTED;
+    await pause(retryDelayMs(retry, headers), signal, clock);
   }
 }
 

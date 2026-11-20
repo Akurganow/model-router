@@ -1,4 +1,4 @@
-import { type Failure, isFailure } from "../failure.ts";
+import { type Failure, isFailure, SERVER_ERRORS } from "../failure.ts";
 
 // The defaults when the caller names none: two retries after the first request, and 10 s for each
 // request. The routing limit ends a longer wait first.
@@ -10,7 +10,6 @@ const BACKOFF_MAX_MS = 5000;
 // Up to a quarter off each backoff at random, so that callers that fail together do not retry together.
 const BACKOFF_JITTER = 0.25;
 const SERVER_DELAY_MAX_MS = 60000;
-const SERVER_ERRORS = { min: 500, max: 599 };
 
 export type HeaderReader = { get(name: string): string | null };
 

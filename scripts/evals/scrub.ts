@@ -1,4 +1,6 @@
-export const TYPESAFE_KEY = "TYPESAFE_API_KEY";
+import { KEY_VARIABLES } from "../../src/core/providers/provider.ts";
+
+export const TYPESAFE_KEY = KEY_VARIABLES.typesafe;
 const SECRET_NAME = /KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL/i;
 const MIN_SECRET_CHARS = 8;
 const MASK = "***";

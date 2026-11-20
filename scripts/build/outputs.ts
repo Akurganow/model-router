@@ -22,7 +22,7 @@ export const OPENCLAW_OUTPUTS = {
 	bundle: "plugins/model-router-openclaw/index.js",
 } as const;
 
-export const HERMES_DIR = "plugins/model-router-hermes";
+const HERMES_DIR = "plugins/model-router-hermes";
 
 // plugin.yaml holds JSON text, which is valid YAML, so Hermes's YAML reader and the version check both read it.
 export const HERMES_OUTPUTS = {
@@ -43,7 +43,8 @@ export const NPM_OUTPUTS = {
 
 export type Copy = { readonly from: string; readonly to: string };
 
-// The licence of the OpenClaw plugin carries the notice for the SDK code its bundle contains.
+// The licence of the OpenClaw plugin carries the notice for the code ported from the TypeSafe SDK,
+// which the OpenClaw bundle and the omp bundle both contain.
 export const NPM_FILE_COPIES: readonly Copy[] = [
 	{
 		from: `${OPENCLAW_DIR}/LICENSE`,

@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 
-export type JsonValue =
+type JsonValue =
 	| string
 	| number
 	| boolean
@@ -16,7 +16,7 @@ export type Rendered = { readonly path: string; readonly text: string };
 
 // Biome keeps an object expanded when its input is expanded, so an object that
 // the committed files hold on one line reaches Biome on one line.
-export class OneLine {
+class OneLine {
 	readonly value: JsonValue;
 	constructor(value: JsonValue) {
 		this.value = value;

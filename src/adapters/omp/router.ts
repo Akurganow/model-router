@@ -1,5 +1,6 @@
 import { contextText } from "../../core/brief/brief.ts";
 import { pickModel, slotForLevel } from "../../core/decision/slots.ts";
+import { DEFAULT_SCOPE } from "../../core/options/scope.ts";
 import {
 	ENTRY_SEPARATOR,
 	LINE_PREFIX,
@@ -81,7 +82,7 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		if (eligible.length === 0) return;
 		const settings = await readSettings(omp, ctx.cwd);
 		// Unreadable settings leave only the core scope's items to close the batch.
-		const scope = settings?.scope ?? "core";
+		const scope = settings?.scope ?? DEFAULT_SCOPE;
 		const items = eligible.filter(({ agent }) => inScope(agent, scope));
 		if (items.length === 0) return;
 		const skipAll = (reason: string) =>

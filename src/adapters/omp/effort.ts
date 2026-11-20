@@ -44,7 +44,7 @@ export function carriesLevel(pattern: string): boolean {
 }
 
 // omp splits a role value on commas, as normalizeModelPatternList does.
-export const patternsOf = (value: unknown): string[] =>
+const patternsOf = (value: unknown): string[] =>
 	(typeof value === "string" ? [value] : Array.isArray(value) ? value : [])
 		.filter((v): v is string => typeof v === "string")
 		.flatMap((v) => v.split(","))
