@@ -63,10 +63,14 @@
 									"clearInterval": "The core clears no timer of its own: call cancel on the timer that clock.after returned.",
 									"WebSocket": "The core opens no connection of its own: call the Fetch port the caller passes.",
 									"XMLHttpRequest": "The core opens no connection of its own: call the Fetch port the caller passes.",
-									"EventSource": "The core opens no connection of its own: call the Fetch port the caller passes."
+									"EventSource": "The core opens no connection of its own: call the Fetch port the caller passes.",
+									"global": "The core reaches no global through global: call the port the caller passes.",
+									"setImmediate": "The core sets no timer of its own: call clock.after on the Clock port the caller passes.",
+									"clearImmediate": "The core clears no timer of its own: call cancel on the timer that clock.after returned."
 								}
 							}
-						}
+						},
+						"useNodejsImportProtocol": "error"
 					}
 				}
 			}

@@ -25,6 +25,7 @@ const RESTRICTED = "lint/style/noRestrictedImports";
 const PROCESS_ENV = "lint/style/noProcessEnv";
 const GLOBALS = "lint/style/noRestrictedGlobals";
 const PLUGIN = "plugin";
+const NODE_PROTOCOL = "lint/style/useNodejsImportProtocol";
 
 type Fault = {
 	form: string;
@@ -36,7 +37,8 @@ type Fault = {
 		| typeof RESTRICTED
 		| typeof PROCESS_ENV
 		| typeof GLOBALS
-		| typeof PLUGIN;
+		| typeof PLUGIN
+		| typeof NODE_PROTOCOL;
 	message: string;
 };
 
@@ -74,6 +76,11 @@ const CLEAR_INTERVAL_GLOBAL = "Do not use the global variable clearInterval";
 const WEB_SOCKET_GLOBAL = "Do not use the global variable WebSocket";
 const XHR_GLOBAL = "Do not use the global variable XMLHttpRequest";
 const EVENT_SOURCE_GLOBAL = "Do not use the global variable EventSource";
+const GLOBAL_OBJECT = "Do not use the global variable global";
+const SET_IMMEDIATE_GLOBAL = "Do not use the global variable setImmediate";
+const CLEAR_IMMEDIATE_GLOBAL = "Do not use the global variable clearImmediate";
+const NODE_PROTOCOL_MESSAGE =
+	"A Node.js builtin module should be imported with the node: protocol";
 
 const faults: Fault[] = [
 	{
@@ -485,6 +492,27 @@ const faults: Fault[] = [
 		message: EVENT_SOURCE_GLOBAL,
 	},
 	{
+		form: "a format reads a global through global.fetch",
+		file: "src/core/scoring/formats/globals.ts",
+		code: 'export const gl = () => global.fetch("https://example.test");',
+		category: GLOBALS,
+		message: GLOBAL_OBJECT,
+	},
+	{
+		form: "a format calls the global setImmediate",
+		file: "src/core/scoring/formats/globals.ts",
+		code: "export const si = () => setImmediate(() => {});",
+		category: GLOBALS,
+		message: SET_IMMEDIATE_GLOBAL,
+	},
+	{
+		form: "a format calls the global clearImmediate",
+		file: "src/core/scoring/formats/globals.ts",
+		code: "export const cim = () => clearImmediate(undefined);",
+		category: GLOBALS,
+		message: CLEAR_IMMEDIATE_GLOBAL,
+	},
+	{
 		form: "core imports a node: module",
 		file: "src/core/brief/node.ts",
 		code: 'import { n1 } from "node:https";',
@@ -511,6 +539,13 @@ const faults: Fault[] = [
 		code: "export const n4 = () => AbortSignal.timeout(1);",
 		category: PLUGIN,
 		message: CORE_TIMEOUT,
+	},
+	{
+		form: "core imports a Node module without the node: protocol",
+		file: "src/core/brief/node.ts",
+		code: 'import { request } from "https";',
+		category: NODE_PROTOCOL,
+		message: NODE_PROTOCOL_MESSAGE,
 	},
 	{
 		form: "a core file imports from scripts/",
@@ -629,12 +664,6 @@ const valid: Record<string, string> = {
 		"\tfetch,",
 		"\tsetTimeout,",
 		"\tclearTimeout,",
-		"\tglobalThis,",
-		"\tsetInterval,",
-		"\tclearInterval,",
-		"\tWebSocket,",
-		"\tXMLHttpRequest,",
-		"\tEventSource,",
 		"\treadFileSync,",
 		"\tAbortSignal.timeout(1),",
 		"];",
@@ -645,12 +674,6 @@ const valid: Record<string, string> = {
 		"\tfetch,",
 		"\tsetTimeout,",
 		"\tclearTimeout,",
-		"\tglobalThis,",
-		"\tsetInterval,",
-		"\tclearInterval,",
-		"\tWebSocket,",
-		"\tXMLHttpRequest,",
-		"\tEventSource,",
 		"\treadFileSync,",
 		"\tAbortSignal.timeout(1),",
 		"];",
@@ -722,6 +745,7 @@ const clean: Record<string, string[]> = {
 
 type Diagnostic = {
 	category: string;
+	severity: string;
 	message: string;
 	location: { path: string; start: { line: number } };
 };
@@ -784,7 +808,8 @@ describe("the Biome layer rules", () => {
 				category === RESTRICTED ||
 				category === PROCESS_ENV ||
 				category === GLOBALS ||
-				category === PLUGIN,
+				category === PLUGIN ||
+				category === NODE_PROTOCOL,
 		);
 	});
 
@@ -798,6 +823,8 @@ describe("the Biome layer rules", () => {
 			);
 			assert.equal(hits.length, 1, `${fault.file}:${line}: ${fault.code}`);
 			assert.equal(hits[0]?.category, fault.category);
+			// Biome passes a rule at info, so a planted fault must be an error.
+			assert.equal(hits[0]?.severity, "error");
 			assert.ok(hits[0]?.message.startsWith(fault.message), hits[0]?.message);
 		});
 

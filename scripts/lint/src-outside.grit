@@ -3,19 +3,15 @@ language js
 // A plugin and not an override: an override sets noRestrictedImports for a
 // file and replaces every earlier override of that rule, so the folders with
 // their own import bans would switch this ban off.
+// core-adapter.grit explains the three specifier forms.
 // Only a relative specifier counts: a package path may hold /plugins/.
-// JsModuleSource is the specifier of a static import, a bare import and an
-// export … from. An import() call holds its argument as an expression.
-// TsImportType is an import in a type position: typeof import("…") and
-// import("…").X.
-// A TsImportType node holds the whole type, so the pattern allows
-// import( or typeof import( before the quote.
+// A type import holds the whole type as its text, hence the [^"']* before the quote.
 or {
 	JsModuleSource() as $specifier,
 	`import($specifier)`,
 	TsImportType() as $specifier
 } where {
-	$specifier <: r"(?:(?:typeof\s+)?import\s*\(\s*)?[\"'](?:\.\./)+(?:scripts|plugins)/[\s\S]*",
+	$specifier <: r"[^\"']*[\"'](?:\.\./)+(?:scripts|plugins)/[\s\S]*",
 	$filename <: r".*/src/(?:core|utils|adapters)/.*",
 	register_diagnostic(span=$specifier, message="A src/ file imports nothing from scripts/ or plugins/.", severity="error")
 }
