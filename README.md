@@ -280,7 +280,7 @@ Use the Agent tool with the general-purpose agent, and no model or name, to list
 The plugin then logs one line for the routed call, like this example:
 
 ```text
-model-router L0 haiku · medium · p=0.91/0.62 · jev jev-1.14.0 · 812/9 tok
+model-router L0 haiku · medium · p=0.91/0.62 · typesafe jev-1.14.0 · 812/9 tok
 ```
 
 This README has not checked where VS Code or the desktop app shows the line.
@@ -291,7 +291,7 @@ If the line says `skipped, <cause>`, or no line appears, see
 plugin prints one line per batch, like this example:
 
 ```text
-model-router task 1: L0 @smol · high · p=0.91/0.84 | task 2: L1 middle model unset · medium · p=0.62/0.70 | task 3: skipped, timeout
+model-router task 1: L0 @smol · high · p=0.91/0.84 · typesafe jev-1.14.0 · 812/9 tok | task 2: L1 middle model unset · medium · p=0.62/0.70 · typesafe jev-1.14.0 · 640/9 tok | task 3: skipped, timeout
 ```
 
 An entry such as `L1 middle model unset` is no error: the level ran on the

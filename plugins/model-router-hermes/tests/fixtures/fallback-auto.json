@@ -36,11 +36,11 @@
 		"outcome": "route",
 		"slot": "middle",
 		"effort": "low",
-		"line": "model-router L1 middle model unset · low · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok · via openrouter (typesafe HTTP 500)"
+		"line": "model-router L1 middle model unset · low · p=0.90/0.90 · openrouter jev-1.14.0 · 812/9 tok · typesafe HTTP 500"
 	},
 	"route": {
 		"api_mode": "chat_completions",
 		"reasoning_effort": "low",
-		"label": "model-router L1 middle model unset · low · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok · via openrouter (typesafe HTTP 500)"
+		"label": "model-router L1 middle model unset · low · p=0.90/0.90 · openrouter jev-1.14.0 · 812/9 tok · typesafe HTTP 500"
 	}
 }

@@ -16,7 +16,7 @@ test(
 		expect(h.received.prompt).toBe(PROMPT);
 		expect(outcome.result).toBe("ok");
 		expect(h.logs).toEqual([
-			"L0 haiku · high · p=0.90/0.60 · jev jev-1.14.0 · 1/1 tok",
+			"L0 haiku · high · p=0.90/0.60 · typesafe jev-1.14.0 · 1/1 tok",
 		]);
 	},
 );
@@ -146,7 +146,7 @@ test(
 		expect(h.received.model).toBe("sonnet");
 		expect(h.received.effort).toBe("low");
 		expect(h.logs).toEqual([
-			"L1 sonnet · caller effort · p=0.80/0.60 · jev jev-1.14.0 · 1/1 tok",
+			"L1 sonnet · caller effort · p=0.80/0.60 · typesafe jev-1.14.0 · 1/1 tok",
 		]);
 	},
 );

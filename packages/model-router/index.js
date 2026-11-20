@@ -358,39 +358,33 @@ async function route(input) {
       if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
       continue;
     }
-    const decision = decide(result);
+    const decision = decide(result, attempt.provider);
     const [first] = failed;
-    if (!first) return decision;
-    const via = {
-      provider: attempt.provider,
-      first: first.provider,
-      reason: first.reason
-    };
-    return { ...decision, via };
+    return first ? { ...decision, firstFailed: first } : decision;
   }
   return skip(failed);
 }
+var named = (f) => `${f.provider} ${f.reason}`;
 function skip(failed) {
   const [first, ...rest] = failed;
   if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
-  return {
-    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
-  };
+  return { skipped: failed.map(named).join(", ") };
 }
-function decide({ answers, model, usage }) {
+function decide({ answers, model, usage }, provider) {
   const parts = {};
   for (const [part, probabilities] of answers)
     parts[part.key] = { level: part.pick(probabilities), probabilities };
-  return { parts, model, usage };
+  return { parts, provider, model, usage };
 }
 function decisionSuffix({
+  provider,
   model,
   usage,
-  via
+  firstFailed
 }) {
   const input = usage?.input_tokens;
   const output = usage?.output_tokens;
-  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
+  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (firstFailed ? ` \xB7 ${named(firstFailed)}` : "");
 }
 
 // src/core/handler-deadline.ts
@@ -1067,15 +1061,15 @@ function gateSpawn(input) {
   const { spawn, requester, settings, config } = input;
   const { task } = spawn;
   if (task === void 0 || passesSilently(spawn)) return PASS;
-  const named = spawn.agent.kind === "id" ? spawn.agent.id : void 0;
-  const isRequesterSpawn = named === void 0 || requester !== void 0 && sameAgent(named, requester);
-  const target = isRequesterSpawn ? requester : named;
+  const named2 = spawn.agent.kind === "id" ? spawn.agent.id : void 0;
+  const isRequesterSpawn = named2 === void 0 || requester !== void 0 && sameAgent(named2, requester);
+  const target = isRequesterSpawn ? requester : named2;
   if (!input.hasKey) return skip2(KEY_UNSET);
   if (!isRequesterSpawn && settings.scope === "core")
-    return skip2(outsideCoreScope(named));
+    return skip2(outsideCoreScope(named2));
   if (subagentModelSet(input, target)) return skip2(SUBAGENT_MODEL_SET);
   if (!isRequesterSpawn) {
-    const reason = otherAgentSkip(named, input);
+    const reason = otherAgentSkip(named2, input);
     if (reason !== void 0) return skip2(reason);
   }
   if (config === void 0) return skip2(UNREADABLE);

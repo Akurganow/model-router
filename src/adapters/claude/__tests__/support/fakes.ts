@@ -199,7 +199,7 @@ export const answer = ({ tier, work, model, usage }: Answers): HttpReply => {
 
 const TOKENS = { input_tokens: 812, output_tokens: 9 };
 export const FULL = { model: "jev-1.14.0", usage: TOKENS };
-export const FULL_SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
+export const FULL_SUFFIX = " · typesafe jev-1.14.0 · 812/9 tok";
 
 export const routed = (answers: Answers, run: Omit<Call, "reply"> = {}) =>
 	routedCall({

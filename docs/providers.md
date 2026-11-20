@@ -175,7 +175,10 @@ A missing key, a closed gate, an error or a timeout leaves the task to run as th
 A routed line holds the chosen level as `L<level>`, then the model or role it sets, or the state of a slot with no model.
 It then holds `p=` with the probability of each chosen level, one for each question the plugin asks.
 Each plugin's README gives the exact shape.
-When the reply carries them, the line also names the Jev model and the token counts.
 
-After a fallback, a routed line ends with the provider that answered and why the first one failed, for example ` · via openrouter (typesafe HTTP 503)`.
+The line then names the provider that answered, as the `provider` setting names it: `typesafe` or `openrouter`.
+The model its reply names follows the provider, and then the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`.
+A reply with no model name or no token counts leaves that part out, and the provider stays.
+
+After a fallback, a routed line ends with the provider that failed and its reason, for example ` · openrouter typesafe/jev-1.14.0 · 812/9 tok · typesafe HTTP 503`.
 After both providers fail, a skip reason names each provider with its own reason, in the order they were tried, for example `skipped, typesafe HTTP 503, openrouter timeout`.

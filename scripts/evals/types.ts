@@ -9,7 +9,7 @@ export type Evidence = {
 	effort: string | null;
 	target: string | null;
 	reply: string | null;
-	// The model Jev answered as, from the decision line's jev segment.
+	// The model Jev answered as, read after the provider on the decision line.
 	jev: string | null;
 };
 

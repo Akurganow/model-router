@@ -5,20 +5,20 @@ import { pinnedLine, routedLine, skippedLine } from "../../line.ts";
 const BASE = {
 	level: 2,
 	probabilities: "0.90/0.80",
-	suffix: " · jev x",
+	suffix: " · typesafe x",
 } as const;
 
 test("a routed line with an effort carries the effort segment", () => {
 	assert.equal(
 		routedLine({ ...BASE, target: "opus", effort: "high" }),
-		"L2 opus · high · p=0.90/0.80 · jev x",
+		"L2 opus · high · p=0.90/0.80 · typesafe x",
 	);
 });
 
 test("a routed line without an effort leaves the segment out", () => {
 	assert.equal(
 		routedLine({ ...BASE, level: 0, target: "@smol" }),
-		"L0 @smol · p=0.90/0.80 · jev x",
+		"L0 @smol · p=0.90/0.80 · typesafe x",
 	);
 });
 
@@ -30,7 +30,7 @@ test("a routed line names a slot that has no model", () => {
 			target: "middle model unset",
 			effort: "medium",
 		}),
-		"L1 middle model unset · medium · p=0.90/0.80 · jev x",
+		"L1 middle model unset · medium · p=0.90/0.80 · typesafe x",
 	);
 });
 

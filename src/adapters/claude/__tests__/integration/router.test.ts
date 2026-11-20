@@ -78,15 +78,18 @@ describe("decision line suffix", () => {
 		(await routed({ tier: 1, work: 1, ...extra }, run)).logs[0];
 	const BASE = "L1 sonnet · medium · p=0.90/0.90";
 
-	test("the Jev model and the token counts follow the probabilities", async () => {
+	test("the provider, its model and the token counts follow the probabilities", async () => {
 		assert.equal(await line(FULL), `${BASE}${FULL_SUFFIX}`);
 	});
 
 	test("usage with one count, or a count that is not a whole number, adds no tokens", async () => {
-		assert.equal(await line({ usage: { input_tokens: 5 } }), BASE);
+		assert.equal(
+			await line({ usage: { input_tokens: 5 } }),
+			"L1 sonnet · medium · p=0.90/0.90 · typesafe",
+		);
 		assert.equal(
 			await line({ usage: { input_tokens: 5, output_tokens: 1.5 } }),
-			BASE,
+			"L1 sonnet · medium · p=0.90/0.90 · typesafe",
 		);
 	});
 });

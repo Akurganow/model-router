@@ -169,13 +169,13 @@ describe("the kept effort", () => {
 				outcome: "route",
 				slot: "large",
 				effort: "high",
-				line: "model-router L2 openai/large · high · p=0.90/0.90 · jev jev-1.14.0 · 812/9 tok",
+				line: "model-router L2 openai/large · high · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok",
 			});
 		});
 });
 
 describe("the slot and model each level takes", () => {
-	const SUFFIX = " · jev jev-1.14.0 · 812/9 tok";
+	const SUFFIX = " · typesafe jev-1.14.0 · 812/9 tok";
 	const line = (tier: number, target: string, effort: string) =>
 		`model-router L${tier} ${target} · ${effort} · p=0.90/0.90${SUFFIX}`;
 

@@ -13,18 +13,17 @@ type FailedAttempt = {
 	readonly provider: Provider;
 	readonly reason: string;
 };
-type Via = {
-	readonly provider: Provider;
-	readonly first: Provider;
-	readonly reason: string;
-};
 export type Decision = {
 	readonly parts: Readonly<
 		Record<string, { level: Level; probabilities: Probabilities }>
 	>;
+	// The provider that answered.
+	readonly provider: Provider;
+	// The model the reply names, cleaned; empty when it names none.
 	readonly model: string;
 	readonly usage: Usage | undefined;
-	readonly via?: Via;
+	// The first failed attempt, set only when the answer came after a fallback.
+	readonly firstFailed?: FailedAttempt;
 };
 export type Skipped = { readonly skipped: string };
 export type RouteInput = AskInput & {
@@ -59,47 +58,47 @@ export async function route(input: RouteInput): Promise<Decision | Skipped> {
 			if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
 			continue;
 		}
-		const decision = decide(result);
+		const decision = decide(result, attempt.provider);
 		const [first] = failed;
-		if (!first) return decision;
-		const via = {
-			provider: attempt.provider,
-			first: first.provider,
-			reason: first.reason,
-		};
-		return { ...decision, via };
+		return first ? { ...decision, firstFailed: first } : decision;
 	}
 	return skip(failed);
 }
+
+// Both the skip text and the routing line name a failed attempt this way.
+const named = (f: FailedAttempt): string => `${f.provider} ${f.reason}`;
 
 // A one-attempt skip keeps the bare reason; two attempts name each provider in order.
 function skip(failed: readonly FailedAttempt[]): Skipped {
 	const [first, ...rest] = failed;
 	if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
-	return {
-		skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", "),
-	};
+	return { skipped: failed.map(named).join(", ") };
 }
 
-function decide({ answers, model, usage }: Reply): Decision {
+function decide(
+	{ answers, model, usage }: Reply,
+	provider: Provider,
+): Decision {
 	const parts: Record<string, { level: Level; probabilities: Probabilities }> =
 		{};
 	for (const [part, probabilities] of answers)
 		parts[part.key] = { level: part.pick(probabilities), probabilities };
-	return { parts, model, usage };
+	return { parts, provider, model, usage };
 }
 
-// Fields the reply lacks are left out, never guessed.
+// The provider always shows. A model or usage the reply lacks is left out, never guessed.
 export function decisionSuffix({
+	provider,
 	model,
 	usage,
-	via,
-}: Pick<Decision, "model" | "usage" | "via">): string {
+	firstFailed,
+}: Pick<Decision, "provider" | "model" | "usage" | "firstFailed">): string {
 	const input = usage?.input_tokens;
 	const output = usage?.output_tokens;
 	return (
-		(model ? ` · jev ${model}` : "") +
+		` · ${provider}` +
+		(model ? ` ${model}` : "") +
 		(isCount(input) && isCount(output) ? ` · ${input}/${output} tok` : "") +
-		(via ? ` · via ${via.provider} (${via.first} ${via.reason})` : "")
+		(firstFailed ? ` · ${named(firstFailed)}` : "")
 	);
 }

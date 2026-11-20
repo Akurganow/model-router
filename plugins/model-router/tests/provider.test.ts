@@ -72,7 +72,7 @@ test(
 		);
 		expect(h.received.model).toBe("haiku");
 		expect(h.logs).toEqual([
-			"L0 haiku · high · p=0.90/0.60 · jev jev-1.14.0 · 1/1 tok · via openrouter (typesafe HTTP 503)",
+			"L0 haiku · high · p=0.90/0.60 · openrouter jev-1.14.0 · 1/1 tok · typesafe HTTP 503",
 		]);
 	},
 );

@@ -902,39 +902,33 @@ async function route(input) {
       if (i < attempts.length - 1) input.onFallback?.(attempt2.provider);
       continue;
     }
-    const decision = decide(result);
+    const decision = decide(result, attempt2.provider);
     const [first] = failed;
-    if (!first) return decision;
-    const via = {
-      provider: attempt2.provider,
-      first: first.provider,
-      reason: first.reason
-    };
-    return { ...decision, via };
+    return first ? { ...decision, firstFailed: first } : decision;
   }
   return skip(failed);
 }
+var named = (f) => `${f.provider} ${f.reason}`;
 function skip(failed) {
   const [first, ...rest] = failed;
   if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
-  return {
-    skipped: failed.map((f) => `${f.provider} ${f.reason}`).join(", ")
-  };
+  return { skipped: failed.map(named).join(", ") };
 }
-function decide({ answers, model, usage }) {
+function decide({ answers, model, usage }, provider) {
   const parts = {};
   for (const [part, probabilities] of answers)
     parts[part.key] = { level: part.pick(probabilities), probabilities };
-  return { parts, model, usage };
+  return { parts, provider, model, usage };
 }
 function decisionSuffix({
+  provider,
   model,
   usage,
-  via
+  firstFailed
 }) {
   const input = usage?.input_tokens;
   const output = usage?.output_tokens;
-  return (model ? ` \xB7 jev ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (via ? ` \xB7 via ${via.provider} (${via.first} ${via.reason})` : "");
+  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (firstFailed ? ` \xB7 ${named(firstFailed)}` : "");
 }
 
 // src/core/handler-deadline.ts

@@ -198,7 +198,7 @@ With no set role and a kept effort, there is nothing to set. The plugin returns 
 The plugin prints one line per batch. The line starts with `model-router`. It goes to omp's notice area, or to standard error when omp has no UI. Each routed or skipped item adds one entry, numbered by its position in the call. Under `core`, an item for another agent adds none. The label stays `task <n>`. Agent names appear only inside skip reasons.
 
 ```text
-model-router task 1: L0 @smol · high · p=0.91/0.84 | task 2: L1 @midl · medium · p=0.66/0.72 | task 3: L1 middle model unset · caller effort · p=0.62/0.70 | task 4: skipped, timeout
+model-router task 1: L0 @smol · high · p=0.91/0.84 · typesafe jev-1.14.0 · 812/9 tok | task 2: L1 @midl · medium · p=0.66/0.72 · typesafe jev-1.14.0 · 734/9 tok | task 3: L1 middle model unset · caller effort · p=0.62/0.70 · typesafe jev-1.14.0 · 640/9 tok | task 4: skipped, timeout
 ```
 
 A routed entry reads `L<level> <role or slot state> · <effort or kept label> · p=<tier>/<work>`. The slot state is `<slot> model unset`, as [Models](#models) says. The probabilities belong to the chosen level and the chosen work index. [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the labels. [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says what else an entry holds and how it ends after a fallback.
@@ -211,7 +211,7 @@ A routed item can still skip at spawn time, or get another line there. The batch
 
 ```text
 model-router task 2: skipped, task model override set
-model-router task 3: L2 large model unset · config effort · p=0.88/0.71
+model-router task 3: L2 large model unset · config effort · p=0.88/0.71 · typesafe jev-1.14.0 · 905/9 tok
 ```
 
 ### Gate reasons
