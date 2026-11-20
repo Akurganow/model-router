@@ -239,8 +239,7 @@ The next step holds only for a key with a Hermes setting of its own.
 ### Evals
 
 No eval sets a `provider` value today, so each client asks the default, `typesafe`.
-A file in a case's work folder cannot select a provider.
-Claude Code keeps it in its user settings, as [Manifest](../../../docs/clients.md#manifest) says.
+Claude Code keeps it under `pluginConfigs` in `settings.json`, as [Manifest](../../../docs/clients.md#manifest) says.
 omp keeps it in its lockfile, as [omp manifest and settings](../../../docs/clients.md#omp-manifest-and-settings) says, and a project may only narrow it.
 `MODEL_SEGMENT` in `scripts/evals/stream.ts` reads the decision line: it accepts any name of `PROVIDERS` and keeps only the model.
 So a case passes whichever provider answered.
