@@ -2,17 +2,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-	APIConnectionError,
-	APIError,
-	APITimeoutError,
-	APIUserAbortError,
-	TypeSafeError,
-} from "@typesafe-ai/sdk";
-import { LIMIT_REACHED } from "../../compose.ts";
-import {
 	collectKeys,
 	FIRST_ATTEMPT_TIMEOUT_MS,
-	fallsBack,
 	HOSTS,
 	order,
 	PROVIDER_VALUES,
@@ -122,31 +113,6 @@ test("collectKeys stops at a rejection and passes it through", async () => {
 test("collectKeys keeps an empty key", async () => {
 	const keys = await collectKeys("typesafe", async () => "");
 	assert.deepEqual(keys, { typesafe: "" });
-});
-
-test("falls back after a connection error, a timeout and the listed statuses", () => {
-	const fallBack = [
-		new APIConnectionError(),
-		new APITimeoutError(FIRST_ATTEMPT_TIMEOUT_MS),
-		...[401, 402, 403, 404, 408, 429, 500, 503, 599].map(
-			(status) => new APIError(status, undefined, new Headers()),
-		),
-	];
-	for (const err of fallBack) assert.equal(fallsBack(err), true, String(err));
-});
-
-test("does not fall back after 400, 422, an abort or a non-API error", () => {
-	const stay = [
-		...[400, 422].map(
-			(status) => new APIError(status, undefined, new Headers()),
-		),
-		new APIUserAbortError(),
-		new APIUserAbortError(undefined, { cause: LIMIT_REACHED }),
-		new TypeSafeError("rejected"),
-		new TypeError("boom"),
-		LIMIT_REACHED,
-	];
-	for (const err of stay) assert.equal(fallsBack(err), false, String(err));
 });
 
 test("parseProvider keeps a known value and drops anything else", () => {

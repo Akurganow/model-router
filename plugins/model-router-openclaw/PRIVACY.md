@@ -75,11 +75,8 @@ JSON body holds:
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them
 
-The `x-typesafe-runtime` header names the Gateway's runtime, the operating
-system and the architecture. It tells the provider which runtime, system and
-architecture the Gateway runs on.
 [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
-lists the other headers, which the bundled SDK builds. The task text holds
+lists the headers the plugin sets. The task text holds
 whatever the caller put in it, which can include code. The request is sent when
 OpenClaw runs the `before_tool_call` hook, before the spawn starts. A spawn that
 a later hook or a policy blocks was already sent. That list is the whole

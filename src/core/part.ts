@@ -1,5 +1,3 @@
-import { isRecord } from "../utils/guards.ts";
-
 export type Level = 0 | 1 | 2;
 export type Probabilities = Record<`${Level}`, number>;
 export type Part = {
@@ -28,23 +26,3 @@ const PROBABILITY_DIGITS = 2;
 
 export const formatProbability = (p: number): string =>
 	p.toFixed(PROBABILITY_DIGITS);
-
-// NaN fails both comparisons, so the range alone also rejects it.
-const isProbability = (p: unknown): p is number =>
-	typeof p === "number" && p >= 0 && p <= 1;
-
-// Every part reads its answer through this one check.
-export function parseProbabilities(
-	answers: unknown,
-	key: string,
-): Probabilities | undefined {
-	const a = isRecord(answers) ? answers[key] : undefined;
-	if (!isRecord(a)) return undefined;
-	const { type, probabilities } = a;
-	if (type !== "score" || !isRecord(probabilities)) return undefined;
-	if (Object.keys(probabilities).length !== LEVELS.length) return undefined;
-	const { 0: p0, 1: p1, 2: p2 } = probabilities;
-	if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
-		return undefined;
-	return { 0: p0, 1: p1, 2: p2 };
-}

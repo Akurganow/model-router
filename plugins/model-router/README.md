@@ -70,7 +70,7 @@ This is the whole surface:
 | hook | `tool.call{tool=mcp__model-router__config}` | Answers the `config` tool: the settings and the dialogs. |
 | hook | `turn.step` | Sets the routed `effort` on the subagent's requests. |
 | hook | `turn.complete` | Forgets that a finished subagent's first request already waited for the spawns in flight. |
-| call | `$.clock.after` | The TypeSafe SDK's timers run on it, for example its retry wait. |
+| call | `$.clock.after` | The request's timers run on it, for example the retry wait. |
 | call | `$.clock.sleep` | Times the 8 s limit. |
 | call | `$.config.set` | Writes the `provider` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. |
 | call | `$.env.get` | Reads `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY`, and whether `CLAUDE_CODE_EFFORT_LEVEL` is set, the only variables the mod reads. |
@@ -365,7 +365,6 @@ Claude Code then refuses adds a second line, `denied`.
     and an OpenRouter key in your OpenRouter account. `HTTP 429` and
     `HTTP 503` mean the provider refused or failed on every attempt. Try
     again later.
-  - `rejected request`: the SDK refused the request itself.
   - `failed`: any other error.
 - A subagent ran on a model you did not expect: the mod did not route the
   call, or `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` forced a model. Under

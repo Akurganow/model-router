@@ -10,9 +10,8 @@ export const BAD_REPLY = "bad reply";
 // The skip texts for a run past the routing limit and for a failure of no known kind.
 export const TIMEOUT = "timeout";
 export const FAILED = "failed";
-// The skip texts for a request that got no answer: no connection, or a request the SDK refused itself.
+// The skip text for a request that got no answer because no connection was made.
 export const NETWORK_ERROR = "network error";
-export const REJECTED_REQUEST = "rejected request";
 export const httpStatus = (status: number | undefined): string =>
 	`HTTP ${status}`;
 // The skip text for work the caller cancelled before the limit ran out.

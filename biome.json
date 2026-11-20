@@ -66,6 +66,16 @@
 			}
 		},
 		{
+			"includes": ["src/core/**", "!**/__tests__/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noProcessEnv": "error"
+					}
+				}
+			}
+		},
+		{
 			"includes": ["src/core/tier.ts", "src/core/work.ts"],
 			"linter": {
 				"rules": {
@@ -79,10 +89,10 @@
 											"**/adapters/**",
 											"**/tier.ts",
 											"**/work.ts",
-											"**/client.ts",
+											"**/scoring/**",
 											"**/compose.ts"
 										],
-										"message": "A part imports no adapter, no client file and not the other part."
+										"message": "A part imports no adapter, no scoring code and not the other part."
 									}
 								]
 							}

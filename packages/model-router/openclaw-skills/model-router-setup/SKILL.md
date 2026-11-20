@@ -114,7 +114,7 @@ Skip reasons, checked in this order, with the fix:
 - `settings unreadable`: the plugin cannot read OpenClaw's live config.
 - `timeout`: the 8 s routing limit expired. The limit shrinks to the hook timeout minus 2 s when that is smaller.
 - `cancelled`: OpenClaw cancelled the `sessions_spawn` call before routing finished.
-- `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer. Look at the provider, the key and the network.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: Jev did not answer. Look at the provider, the key and the network.
 
 ### Checking routing
 

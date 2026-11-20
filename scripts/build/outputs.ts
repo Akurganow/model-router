@@ -43,7 +43,7 @@ export const NPM_OUTPUTS = {
 
 export type Copy = { readonly from: string; readonly to: string };
 
-// The licence of the OpenClaw plugin carries the notice for the SDK its bundle inlines.
+// The licence of the OpenClaw plugin carries the notice for the SDK code its bundle contains.
 export const NPM_FILE_COPIES: readonly Copy[] = [
 	{
 		from: `${OPENCLAW_DIR}/LICENSE`,

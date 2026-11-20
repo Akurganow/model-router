@@ -185,7 +185,7 @@ Every task without a `level` meets these gates in order. The first that fails sk
 A scored task can still skip:
 
 - `timeout`: Jev did not answer within the budget.
-- `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: Jev did not answer at all, or the Node step failed. `failed` also covers any error in the plugin. After two providers, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: Jev did not answer at all, or the Node step failed. `failed` also covers any error in the plugin. After two providers, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 [Facts behind this section](../../docs/clients.md#hermes-routing-and-refusals)
 

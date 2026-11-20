@@ -12,7 +12,7 @@ import {
 } from "./harness.ts";
 
 test(
-	"an HTTP error passes through after the SDK retries and names the status",
+	"an HTTP error passes through after the transport retries and names the status",
 	KEYED,
 	async ($, on) => {
 		const h = await retried($, on, { text: "overloaded", status: 529 });
@@ -23,7 +23,7 @@ test(
 );
 
 test(
-	"a failing network passes through after the SDK retries",
+	"a failing network passes through after the transport retries",
 	KEYED,
 	async ($, on) => {
 		const h = await retried($, on, { offline: true });

@@ -92,7 +92,7 @@ Find out which of these already hold, with the `model_router_config` tool and He
 - `subagent model set`: the `delegation` section sets a model. The person decides whether to clear it.
 - `node not found`: Hermes has no Node of its own. The plugin runs scoring in that Node and never uses a Node on `PATH`. The person adds a Node for Hermes.
 - `timeout`: the routing limit of 8 s for a whole `delegate_task` call ran out. No setting fixes it.
-- `HTTP <status>`, `network error`, `rejected request`, `bad reply` or `failed`: the provider gave no answer, or the plugin failed. No setting fixes it. After two providers the reason names each.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the provider gave no answer, or the plugin failed. No setting fixes it. After two providers the reason names each.
 - Check every reason that holds, not only the first.
 
 ### The routing check

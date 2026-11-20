@@ -102,7 +102,6 @@ More than one can hold. Report every one that holds.
 - `cancelled`: Claude Code abandoned the call before the answer came, for example after an interrupt.
 - `network error`: every attempt failed before an answer came. An organization fetch policy that refuses openrouter.ai shows as this too.
 - `HTTP <status>`: the provider answered with that status. `HTTP 401` means the provider rejected the key. `HTTP 429` and `HTTP 503` mean the provider refused or failed on every attempt.
-- `rejected request`: the SDK refused the request itself.
 - `failed`: any other error.
 
 ### The routing check

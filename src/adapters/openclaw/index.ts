@@ -7,7 +7,6 @@ import {
 } from "../../core/handler-deadline.ts";
 import { LINE_PREFIX } from "../../core/line.ts";
 import { realClock } from "../../utils/clock.ts";
-import { streamedFetch } from "../../utils/fetch.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { registerConfigCommands, registerConfigTool } from "./config.ts";
 import {
@@ -115,7 +114,8 @@ function register(api: OpenClawApi, deps: RouterDeps): void {
 
 export function createPlugin(
 	deps: RouterDeps = {
-		fetchFn: streamedFetch,
+		// A lookup at each call, so a host that replaces the global fetch later is not bypassed.
+		fetchFn: (url, init) => fetch(url, init),
 		clock: realClock,
 		env: process.env,
 	},

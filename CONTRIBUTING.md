@@ -63,8 +63,8 @@ every commit as a [conventional commit](#commits).
   catalogues and the README install region. `metadata/source.json` is the
   source, and `metadata/source.schema.json` checks it.
 - `scripts/build.ts` reads the source and writes every generated file. It also
-  builds the bundle of each plugin from `src/`. Every bundle inlines the
-  TypeSafe SDK, so each plugin runs on its own.
+  builds the bundle of each plugin from `src/`. Each bundle holds all the
+  code the plugin needs, so each plugin runs on its own.
 - `scripts/build/` holds the renderers, one for each harness's manifest and
   catalogue and one for the README install region, and their shared helpers:
   the JSON writer, the schema check, the source loader, the values taken from

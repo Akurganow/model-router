@@ -9,7 +9,7 @@ or {
 	JsTemplateChunkElement(),
 	TsStringLiteralType()
 } as $node where {
-	$node <: r"(?:[\s\S]*(?:caller effort|config effort|subagent model set|settings unreadable|key unset|bad reply|network error|rejected request|HTTP | is outside the core scope| agent discovery failed| agent unknown| sets its own model)[\s\S]*|[\"']?(?:timeout|failed|cancelled)[\"']?)",
+	$node <: r"(?:[\s\S]*(?:caller effort|config effort|subagent model set|settings unreadable|key unset|bad reply|network error|HTTP | is outside the core scope| agent discovery failed| agent unknown| sets its own model)[\s\S]*|[\"']?(?:timeout|failed|cancelled)[\"']?)",
 	$filename <: r".*/src/(?:core|utils|adapters)/.*",
 	$filename <: not r".*/src/core/reasons\.ts",
 	$filename <: not r".*/__tests__/.*",

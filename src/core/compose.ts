@@ -1,45 +1,18 @@
-import {
-	APIConnectionError,
-	APIError,
-	APITimeoutError,
-	APIUserAbortError,
-	type Fetch,
-	TypeSafeError,
-	type Usage,
-} from "@typesafe-ai/sdk";
-import { isRecord } from "../utils/guards.ts";
-import type { RoutingState } from "./brief.ts";
-import { createClient } from "./client.ts";
-import {
-	type Level,
-	type Part,
-	type Probabilities,
-	parseProbabilities,
-} from "./part.ts";
-import {
-	type Attempt,
-	fallsBack,
-	type Keys,
-	type Provider,
-} from "./provider.ts";
-import {
-	BAD_REPLY,
-	CANCELLED,
-	FAILED,
-	httpStatus,
-	KEY_UNSET,
-	NETWORK_ERROR,
-	REJECTED_REQUEST,
-	TIMEOUT,
-} from "./reasons.ts";
+import type { Level, Probabilities } from "./part.ts";
+import type { Attempt, Provider } from "./provider.ts";
+import { CANCELLED, FAILED, KEY_UNSET, TIMEOUT } from "./reasons.ts";
+import { type AskInput, ask, type Reply } from "./scoring/ask.ts";
+import { fallsBack, isFailure, skipText } from "./scoring/failure.ts";
+import { isCount, type Usage } from "./scoring/reply.ts";
 
 export const ROUTING_LIMIT_MS = 8000;
 // Adapters abort their signal with this reason when the limit runs out, so a timeout differs from a cancel.
 export const LIMIT_REACHED = Symbol("routing limit reached");
 
-const MODEL_CHARS_MAX = 40;
-
-type Failure = { readonly provider: Provider; readonly reason: string };
+type FailedAttempt = {
+	readonly provider: Provider;
+	readonly reason: string;
+};
 type Via = {
 	readonly provider: Provider;
 	readonly first: Provider;
@@ -54,64 +27,39 @@ export type Decision = {
 	readonly via?: Via;
 };
 export type Skipped = { readonly skipped: string };
-export type RouteInput = {
-	readonly parts: readonly Part[];
-	readonly state: RoutingState;
+export type RouteInput = AskInput & {
 	readonly attempts: readonly Attempt[];
-	readonly keys: Keys;
-	readonly fetchFn: Fetch;
-	readonly signal: AbortSignal;
 	readonly onFallback?: (provider: Provider) => void;
 };
-
-const isCount = (v: unknown): v is number =>
-	typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 
 /** Returns the skip text for an aborted signal: the routing limit or the caller's cancel. */
 export function abortCategory(signal: AbortSignal): string {
 	return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
 }
 
-// The category comes from the error class or status, never from its message: messages can echo the key or the body.
-function skipCategory(err: unknown, signal: AbortSignal): string {
-	if (err instanceof APIUserAbortError) return abortCategory(signal);
-	if (err instanceof APIError) return httpStatus(err.status);
-	if (err instanceof APITimeoutError) return TIMEOUT;
-	if (err instanceof APIConnectionError) return NETWORK_ERROR;
-	if (err instanceof TypeSafeError) return REJECTED_REQUEST;
-	return FAILED;
-}
-
 /**
  * Asks the attempts in order and returns the first decision whose parts all
  * parse. Returns a key-unset skip when there are no attempts, and a skip naming
  * each failed provider when none succeeds. A failed attempt falls to the next
- * one only when fallsBack allows it, and a reply that fails to parse ends the
- * loop. One signal covers every attempt, so the routing limit also ends a
- * fallback. A failed attempt never throws out of it.
+ * one only when fallsBack allows it, and a bad reply ends the loop. One signal
+ * covers every attempt, so the routing limit also ends a fallback. A failed attempt never throws out of it.
  */
 export async function route(input: RouteInput): Promise<Decision | Skipped> {
-	const { parts, attempts, signal } = input;
+	const { attempts, signal } = input;
 	if (attempts.length === 0) return { skipped: KEY_UNSET };
-	const failed: Failure[] = [];
+	const failed: FailedAttempt[] = [];
 	for (const [i, attempt] of attempts.entries()) {
-		let result: unknown;
-		try {
-			result = await ask(input, attempt);
-		} catch (err) {
+		const result = await ask(input, attempt);
+		if (isFailure(result)) {
 			failed.push({
 				provider: attempt.provider,
-				reason: skipCategory(err, signal),
+				reason: skipText(result, abortCategory(signal)),
 			});
-			if (!fallsBack(err)) break;
+			if (!fallsBack(result)) break;
 			if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
 			continue;
 		}
-		const decision = parseReply(parts, result);
-		if ("skipped" in decision) {
-			failed.push({ provider: attempt.provider, reason: decision.skipped });
-			break;
-		}
+		const decision = decide(result);
 		const [first] = failed;
 		if (!first) return decision;
 		const via = {
@@ -124,21 +72,8 @@ export async function route(input: RouteInput): Promise<Decision | Skipped> {
 	return skip(failed);
 }
 
-function ask(input: RouteInput, attempt: Attempt): Promise<unknown> {
-	const { parts, state, keys, fetchFn, signal } = input;
-	const { provider, model, ...overrides } = attempt;
-	return createClient(provider, keys[provider], model, fetchFn).systemOne(
-		{
-			state,
-			model,
-			questions: Object.fromEntries(parts.map((p) => [p.key, p.question])),
-		},
-		{ ...overrides, signal },
-	);
-}
-
 // A one-attempt skip keeps the bare reason; two attempts name each provider in order.
-function skip(failed: readonly Failure[]): Skipped {
+function skip(failed: readonly FailedAttempt[]): Skipped {
 	const [first, ...rest] = failed;
 	if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
 	return {
@@ -146,30 +81,12 @@ function skip(failed: readonly Failure[]): Skipped {
 	};
 }
 
-function parseReply(
-	parts: readonly Part[],
-	result: unknown,
-): Decision | Skipped {
-	const { answers, model, usage }: Record<string, unknown> = isRecord(result)
-		? result
-		: {};
-	const decided: Record<
-		string,
-		{ level: Level; probabilities: Probabilities }
-	> = {};
-	for (const part of parts) {
-		const probabilities = parseProbabilities(answers, part.key);
-		if (!probabilities) return { skipped: BAD_REPLY };
-		decided[part.key] = { level: part.pick(probabilities), probabilities };
-	}
-	return {
-		parts: decided,
-		model:
-			typeof model === "string"
-				? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX)
-				: "",
-		usage: isRecord(usage) ? (usage as unknown as Usage) : undefined,
-	};
+function decide({ answers, model, usage }: Reply): Decision {
+	const parts: Record<string, { level: Level; probabilities: Probabilities }> =
+		{};
+	for (const [part, probabilities] of answers)
+		parts[part.key] = { level: part.pick(probabilities), probabilities };
+	return { parts, model, usage };
 }
 
 // Fields the reply lacks are left out, never guessed.

@@ -16,7 +16,7 @@ import { type Attempt, plan } from "../../provider.ts";
 import { KEY_UNSET } from "../../reasons.ts";
 import { tier } from "../../tier.ts";
 import { work } from "../../work.ts";
-import { scoringReply, stalledReply } from "../support/replies.ts";
+import { brokenReply, scoringReply, stalledReply } from "../support/replies.ts";
 import { fakeTime } from "../support/time.ts";
 
 const KEY = "test-key";
@@ -143,15 +143,6 @@ test("a limit abort is a timeout", async (t) => {
 	assert.equal(bodies.length, 1);
 });
 
-test("a plain abort is cancelled", async () => {
-	const { fetchFn } = answering(VALID);
-	const controller = new AbortController();
-	controller.abort();
-	assert.deepEqual(await run(fetchFn, { signal: controller.signal }), {
-		skipped: "cancelled",
-	});
-});
-
 test("a fetch rejection is a network error after two retries", async (t) => {
 	const time = fakeTime(t);
 	const { bodies, fetchFn } = stub(async () => {
@@ -195,13 +186,13 @@ test("a malformed or incomplete answer is a bad reply", async () => {
 	}
 });
 
-test("a request the SDK rejects locally is a rejected request with no fetch", async () => {
+test("a task that quotes an image reference is sent as text and gives a decision", async () => {
 	const task = "see <image:00112233445566778899aabbccddeeff>";
 	const { bodies, fetchFn } = answering(VALID);
 	const state = routingState({ ...STATE, task });
-	const routed = await run(fetchFn, { state });
-	assert.deepEqual(routed, { skipped: "rejected request" });
-	assert.equal(bodies.length, 0);
+	asDecision(await run(fetchFn, { state }));
+	assert.equal(bodies.length, 1);
+	assert.equal(JSON.parse(bodies[0] ?? "").state.task, task);
 });
 
 test("no attempt is key unset and makes no request", async () => {
@@ -474,13 +465,16 @@ test("tier and work send the System One body as one string", async () => {
 	);
 });
 
-test("a request carries the bearer key and JSON Accept and Content-Type", async () => {
+test("a request hands the fetch exactly four headers", async () => {
 	const { inits, fetchFn } = answering(VALID);
 	await run(fetchFn);
-	const headers = new Headers(inits[0]?.headers);
-	assert.equal(headers.get("authorization"), "Bearer test-key");
-	assert.equal(headers.get("accept"), "application/json");
-	assert.equal(headers.get("content-type"), "application/json");
+	assert.deepEqual(inits[0]?.headers, {
+		Authorization: "Bearer test-key",
+		Accept: "application/json",
+		"Content-Type": "application/json",
+		"User-Agent":
+			"model-router/dev (+https://github.com/Akurganow/model-router)",
+	});
 });
 
 test("a status gives HTTP n after one request, or after three when it is retried", async (t) => {
@@ -586,6 +580,35 @@ test("the last attempt of a plan times out at 10000 ms", async (t) => {
 	assert.deepEqual(await time.settled(routed), {
 		skipped: "typesafe HTTP 503, openrouter cancelled",
 	});
+});
+
+test("a fetch that ignores its signal ends at the attempt timeout and falls back", {
+	timeout: 2000,
+}, async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub((_init, count) =>
+		count === 1
+			? new Promise<Response>(() => undefined)
+			: Promise.resolve(scoringReply(200, VALID)),
+	);
+	const routed = run(fetchFn, { attempts: BOTH });
+	await time.pass(2000);
+	assert.equal(bodies.length, 2);
+	assert.equal(asDecision(await time.settled(routed)).via?.reason, "timeout");
+});
+
+test("a signal aborted before the call is cancelled and sends no request", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = answering(VALID);
+	const controller = new AbortController();
+	controller.abort();
+	assert.deepEqual(
+		await time.settled(run(fetchFn, { signal: controller.signal })),
+		{
+			skipped: "cancelled",
+		},
+	);
+	assert.equal(bodies.length, 0);
 });
 
 test("a reply whose text never arrives ends at the attempt timeout", async (t) => {
@@ -710,6 +733,47 @@ test("an abort during a backoff is cancelled and sends no second request", async
 test("an abort while the reply text is read is cancelled", async (t) => {
 	const time = fakeTime(t);
 	const { bodies, fetchFn } = stub(async () => stalledReply());
+	const controller = new AbortController();
+	const routed = run(fetchFn, { signal: controller.signal });
+	await time.pass(100);
+	controller.abort();
+	assert.equal(bodies.length, 1);
+	assert.deepEqual(await time.settled(routed), { skipped: "cancelled" });
+});
+
+test("a 400 whose body read rejects ends the call and does not fall back", async () => {
+	const { sent, fetchFn } = stub(async () => brokenReply(400));
+	assert.deepEqual(await run(fetchFn, { attempts: BOTH }), {
+		skipped: "HTTP 400",
+	});
+	assert.deepEqual(sent, [
+		`https://api.typesafe.ai/v1/systemone Bearer ${KEY}`,
+	]);
+});
+
+test("a 400 whose body never ends ends the call at the attempt timeout and does not fall back", async (t) => {
+	const time = fakeTime(t);
+	const { sent, fetchFn } = stub(async () => stalledReply(400));
+	const routed = run(fetchFn, { attempts: BOTH });
+	await time.pass(2000);
+	assert.deepEqual(await time.settled(routed), { skipped: "HTTP 400" });
+	assert.deepEqual(sent, [
+		`https://api.typesafe.ai/v1/systemone Bearer ${KEY}`,
+	]);
+});
+
+test("a 200 whose body read rejects is a network error after three requests", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub(async () => brokenReply(200));
+	const routed = run(fetchFn);
+	await time.pass(BACKOFFS_MS);
+	assert.deepEqual(await time.settled(routed), { skipped: "network error" });
+	assert.equal(bodies.length, 3);
+});
+
+test("an abort while the text of a 400 is read is cancelled", async (t) => {
+	const time = fakeTime(t);
+	const { bodies, fetchFn } = stub(async () => stalledReply(400));
 	const controller = new AbortController();
 	const routed = run(fetchFn, { signal: controller.signal });
 	await time.pass(100);

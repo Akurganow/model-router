@@ -1,4 +1,3 @@
-import type { Fetch } from "@typesafe-ai/sdk";
 import { DEFAULT_ROLE, routingState } from "../../core/brief.ts";
 import { LIMIT_REACHED, type Skipped } from "../../core/compose.ts";
 import { type DecidedWithWork, scoreWork } from "../../core/decide.ts";
@@ -11,6 +10,7 @@ import {
 	FAILED,
 	TIMEOUT,
 } from "../../core/reasons.ts";
+import type { Fetch } from "../../core/scoring/transport/send.ts";
 import {
 	pickModel,
 	type Slot,

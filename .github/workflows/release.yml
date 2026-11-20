@@ -62,7 +62,7 @@ jobs:
         with:
           cache-dependency-path: package-lock.json
 
-      # The build needs esbuild, Biome and the TypeSafe SDK from the lockfile.
+      # The build needs esbuild and Biome from the lockfile.
       # A launcher that fails sends npm ci once more, as in ci.yml's check job.
       - name: Install the dev tools
         run: |

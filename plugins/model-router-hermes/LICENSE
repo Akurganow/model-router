@@ -24,8 +24,8 @@ SOFTWARE.
 
 Third-party notice
 
-`route.mjs` bundles the package `@typesafe-ai/sdk`, the TypeSafe SDK. It is
-distributed under this licence:
+`route.mjs` contains code ported from the package `@typesafe-ai/sdk`,
+the TypeSafe SDK. That package is distributed under this licence:
 
 MIT License
 

@@ -1,4 +1,3 @@
-import type { Fetch } from "@typesafe-ai/sdk";
 import { routingState } from "../../core/brief.ts";
 import { abortCategory, LIMIT_REACHED } from "../../core/compose.ts";
 import { scoreWork } from "../../core/decide.ts";
@@ -7,6 +6,7 @@ import { effortFor } from "../../core/ladder.ts";
 import { LINE_PREFIX, routedLine, skippedLine } from "../../core/line.ts";
 import type { Level } from "../../core/part.ts";
 import { type Keys, plan } from "../../core/provider.ts";
+import type { Fetch } from "../../core/scoring/transport/send.ts";
 import {
 	pickModel,
 	type SlotModel,

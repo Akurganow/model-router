@@ -87,7 +87,7 @@ test(
 				{ status: 502, text: "down" },
 			],
 		});
-		// One request to the first provider, then the second with the SDK's retries.
+		// One request to the first provider, then the second with the transport's retries.
 		expect(h.requests.map((r) => r.url)).toEqual([
 			OPENROUTER_URL,
 			TYPESAFE_URL,

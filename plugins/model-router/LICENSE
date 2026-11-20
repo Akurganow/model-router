@@ -24,8 +24,8 @@ SOFTWARE.
 
 Third-party notice
 
-`hooks/register.js` bundles the package `@typesafe-ai/sdk`, the TypeSafe SDK. It is
-distributed under this licence:
+`hooks/register.js` contains code ported from the package `@typesafe-ai/sdk`,
+the TypeSafe SDK. That package is distributed under this licence:
 
 MIT License
 

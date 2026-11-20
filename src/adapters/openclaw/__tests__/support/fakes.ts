@@ -1,9 +1,9 @@
-import type { Fetch } from "@typesafe-ai/sdk";
 import {
 	scoringReply,
 	systemOneAnswer,
 } from "../../../../core/__tests__/support/replies.ts";
 import { KEY_FIELDS, type Provider } from "../../../../core/provider.ts";
+import type { Fetch } from "../../../../core/scoring/transport/send.ts";
 import type {
 	BeforeToolCallHandler,
 	CommandDefinition,
@@ -193,7 +193,10 @@ export function createScoringFetch(initial: Levels = { tier: 1, work: 1 }) {
 	 * signal aborts, a status mode answers an empty body with that status, and the
 	 * other mode answers the levels. Rejects when the body is not JSON.
 	 */
-	const fetch: Fetch = async (url, init) => {
+	const fetch = async (
+		url: string,
+		init?: Partial<Parameters<Fetch>[1]>,
+	): ReturnType<Fetch> => {
 		// Like the real fetch, an aborted signal fails before anything is sent.
 		init?.signal?.throwIfAborted();
 		const request: ScoringRequest = {
