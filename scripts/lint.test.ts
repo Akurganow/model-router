@@ -43,7 +43,7 @@ const PROVIDERS = "A providers/ file imports nothing from scoring/";
 const OUTPUT = "An output/ file imports nothing from scoring/ or decision/";
 const SCORING = "A scoring/ file imports nothing from decision/ or options/";
 const FORMAT =
-	"A wire format imports no ask.ts, no route.ts, no endpoints.ts, nothing from transport/ and nothing from providers/";
+	"A wire format imports only its own folder, ../failure.ts, ../reply.ts, parts/part.ts, brief/brief.ts and utils/";
 const ROUTE =
 	"route.ts imports no wire format, nothing from transport/ and not the endpoint table";
 const TESTS_IMPORT = "A source file imports nothing from a __tests__ folder";
@@ -141,6 +141,13 @@ const faults: Fault[] = [
 		message: SCORING,
 	},
 	{
+		form: "a scoring file imports an adapter",
+		file: "src/core/scoring/layers.ts",
+		code: 'import { o } from "../../adapters/omp/o.ts";',
+		category: PLUGIN,
+		message: CORE,
+	},
+	{
 		form: "transport imports decision",
 		file: "src/core/scoring/transport/layers.ts",
 		code: 'import { ladder } from "../../decision/ladder.ts";',
@@ -148,46 +155,11 @@ const faults: Fault[] = [
 		message: SCORING,
 	},
 	{
-		form: "a format imports ask.ts",
-		file: "src/core/scoring/formats/layers.ts",
-		code: 'import { ask } from "../ask.ts";',
-		category: RESTRICTED,
-		message: FORMAT,
-	},
-	{
-		form: "a format imports route.ts",
-		file: "src/core/scoring/formats/layers.ts",
-		code: 'import { route } from "../route.ts";',
-		category: RESTRICTED,
-		message: FORMAT,
-	},
-	{
-		form: "a format imports transport code",
-		file: "src/core/scoring/formats/layers.ts",
-		code: 'import { send } from "../transport/send.ts";',
-		category: RESTRICTED,
-		message: FORMAT,
-	},
-	{
-		form: "a format imports the endpoint table",
+		form: "a format imports a scoring file outside its list",
 		file: "src/core/scoring/formats/layers.ts",
 		code: 'import { e } from "../endpoints.ts";',
 		category: RESTRICTED,
 		message: FORMAT,
-	},
-	{
-		form: "a format imports a provider",
-		file: "src/core/scoring/formats/layers.ts",
-		code: 'import { provider } from "../../providers/provider.ts";',
-		category: RESTRICTED,
-		message: FORMAT,
-	},
-	{
-		form: "a format imports an adapter",
-		file: "src/core/scoring/formats/layers.ts",
-		code: 'import { o } from "../../../adapters/omp/o.ts";',
-		category: PLUGIN,
-		message: CORE,
 	},
 	{
 		form: "core names a type of an adapter with import().X",
@@ -197,18 +169,11 @@ const faults: Fault[] = [
 		message: CORE,
 	},
 	{
-		form: "a format imports decision",
+		form: "a format imports a file two folders up outside its list",
 		file: "src/core/scoring/formats/layers.ts",
 		code: 'import { ladder } from "../../decision/ladder.ts";',
 		category: RESTRICTED,
-		message: SCORING,
-	},
-	{
-		form: "a format imports options",
-		file: "src/core/scoring/formats/layers.ts",
-		code: 'import { opts } from "../../options/o.ts";',
-		category: RESTRICTED,
-		message: SCORING,
+		message: FORMAT,
 	},
 	{
 		form: "an output file imports from a __tests__ folder",
@@ -569,8 +534,9 @@ const clean: Record<string, string[]> = {
 		'import { r } from "../reply.ts";',
 		'import { m } from "./format.ts";',
 		'import { p } from "../../parts/part.ts";',
+		'import { b } from "../../brief/brief.ts";',
 		'import { g } from "../../../utils/guards.ts";',
-		"export const v = [f, r, m, p, g];",
+		"export const v = [f, r, m, p, b, g];",
 	],
 	"src/adapters/openclaw/index.ts": [
 		'import { c } from "../../core/c.ts";',

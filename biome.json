@@ -145,18 +145,15 @@
 							"options": {
 								"patterns": [
 									{
-										"group": ["**/decision/**", "**/options/**"],
-										"message": "A scoring/ file imports nothing from decision/ or options/."
-									},
-									{
 										"group": [
-											"**/ask.*",
-											"**/route.*",
-											"**/endpoints.*",
-											"**/transport/**",
-											"**/providers/**"
+											"../**",
+											"!../failure.ts",
+											"!../reply.ts",
+											"!../../parts/part.ts",
+											"!../../brief/brief.ts",
+											"!../../../utils/**"
 										],
-										"message": "A wire format imports no ask.ts, no route.ts, no endpoints.ts, nothing from transport/ and nothing from providers/."
+										"message": "A wire format imports only its own folder, ../failure.ts, ../reply.ts, parts/part.ts, brief/brief.ts and utils/."
 									}
 								]
 							}
