@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import type { Readable, Writable } from "node:stream";
-import { errorText } from "../src/utils/error.ts";
+import { errorText } from "#utils/error.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 
 // Written out apart from the plugin's settings list, so a renamed command fails this check.

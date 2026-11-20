@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it, mock } from "node:test";
-import { createFakeClock } from "../../../utils/__tests__/support/fake-clock.ts";
-import type { Clock } from "../../../utils/clock.ts";
 import {
 	abortCategory,
 	LIMIT_REACHED,
 	limitSignal,
 	raceDeadline,
-} from "../../scoring/limit.ts";
+} from "#core/scoring/limit.ts";
+import { createFakeClock } from "#utils/__tests__/support/fake-clock.ts";
+import type { Clock } from "#utils/clock.ts";
 
 describe("raceDeadline", () => {
 	const DEADLINE_MS = 5000;

@@ -1,11 +1,11 @@
-import { errorText } from "../../utils/error.ts";
 import {
 	type Keys,
 	order,
 	PROVIDER_VALUES,
 	type Provider,
 	resolve as resolveProvider,
-} from "../providers/provider.ts";
+} from "#core/providers/provider.ts";
+import { errorText } from "#utils/error.ts";
 import { resolveScope, SCOPE_VALUES } from "./scope.ts";
 
 export const VALUE_SETTINGS = ["provider", "scope"] as const;

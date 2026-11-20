@@ -1,14 +1,14 @@
-import { decisionSuffix, formatProbability } from "../output/line.ts";
-import { BAD_REPLY } from "../output/reasons.ts";
-import type { Level } from "../parts/part.ts";
-import { tier } from "../parts/tier.ts";
-import { work } from "../parts/work.ts";
+import { decisionSuffix, formatProbability } from "#core/output/line.ts";
+import { BAD_REPLY } from "#core/output/reasons.ts";
+import type { Level } from "#core/parts/part.ts";
+import { tier } from "#core/parts/tier.ts";
+import { work } from "#core/parts/work.ts";
 import {
 	type Decision,
 	type RouteInput,
 	route,
 	type Skipped,
-} from "../scoring/route.ts";
+} from "#core/scoring/route.ts";
 
 export type DecidedWithWork = {
 	readonly tier: Level;

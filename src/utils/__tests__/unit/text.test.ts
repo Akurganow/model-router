@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { nonEmpty } from "../../text.ts";
+import { nonEmpty } from "#utils/text.ts";
 
 test("nonEmpty gives a string trimmed", () => {
 	assert.equal(nonEmpty("key"), "key");

@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { test } from "node:test";
-import { VALUE_SETTINGS } from "../src/core/options/settings.ts";
+import { VALUE_SETTINGS } from "#core/options/settings.ts";
 import {
 	askCommands,
 	COMMANDS,

@@ -1,7 +1,7 @@
-import type { RoutingState } from "../../brief/brief.ts";
-import type { Part, Probabilities } from "../../parts/part.ts";
-import type { Failure } from "../failure.ts";
-import type { Usage } from "../reply.ts";
+import type { RoutingState } from "#core/brief/brief.ts";
+import type { Part, Probabilities } from "#core/parts/part.ts";
+import type { Failure } from "#core/scoring/failure.ts";
+import type { Usage } from "#core/scoring/reply.ts";
 
 export type Answers = {
 	// One pair per part.

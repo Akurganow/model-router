@@ -131,9 +131,6 @@ function pickModel(level, state) {
 }
 var slotLine = (name, shown) => `${name}: ${shown ?? "unset"}`;
 
-// src/utils/error.ts
-var errorText = (err) => err instanceof Error ? err.message : String(err);
-
 // src/core/providers/provider.ts
 var PROVIDER_VALUES = [
   "auto",
@@ -183,6 +180,9 @@ function plan(value, keys) {
     (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt
   );
 }
+
+// src/utils/error.ts
+var errorText = (err) => err instanceof Error ? err.message : String(err);
 
 // src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];

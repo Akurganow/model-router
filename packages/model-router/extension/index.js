@@ -327,9 +327,6 @@ function decisionSuffix({
   return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
 }
 
-// src/utils/error.ts
-var errorText = (err) => err instanceof Error ? err.message : String(err);
-
 // src/core/providers/provider.ts
 var PROVIDER_VALUES = [
   "auto",
@@ -375,6 +372,9 @@ function plan(value, keys) {
     (attempt2, i) => i < attempts.length - 1 ? { ...attempt2, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt2
   );
 }
+
+// src/utils/error.ts
+var errorText = (err) => err instanceof Error ? err.message : String(err);
 
 // src/core/options/settings.ts
 var VALUE_SETTINGS = ["provider", "scope"];

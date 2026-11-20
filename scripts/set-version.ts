@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { errorText } from "../src/utils/error.ts";
+import { errorText } from "#utils/error.ts";
 import { SOURCE_PATH } from "./build/source.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 import { checkVersions } from "./manifests.ts";

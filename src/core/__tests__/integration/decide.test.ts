@@ -1,13 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { realClock } from "../../../utils/clock.ts";
-import { routingState } from "../../brief/brief.ts";
-import { decide, scoreWork } from "../../decision/decide.ts";
-import { tier } from "../../parts/tier.ts";
-import { work } from "../../parts/work.ts";
-import { plan } from "../../providers/provider.ts";
-import type { Decision } from "../../scoring/route.ts";
-import { scoringReply, systemOneAnswer } from "../support/replies.ts";
+import {
+	scoringReply,
+	systemOneAnswer,
+} from "#core/__tests__/support/replies.ts";
+import { routingState } from "#core/brief/brief.ts";
+import { decide, scoreWork } from "#core/decision/decide.ts";
+import { tier } from "#core/parts/tier.ts";
+import { work } from "#core/parts/work.ts";
+import { plan } from "#core/providers/provider.ts";
+import type { Decision } from "#core/scoring/route.ts";
+import { realClock } from "#utils/clock.ts";
 
 const part = (level: 0 | 1 | 2, p: number) => ({
 	level,

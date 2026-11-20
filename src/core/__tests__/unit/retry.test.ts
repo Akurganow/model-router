@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { retryDelayMs } from "../../scoring/transport/retry.ts";
+import { retryDelayMs } from "#core/scoring/transport/retry.ts";
 
 const reader = (values: Record<string, string>) => ({
 	get: (name: string): string | null => values[name] ?? null,

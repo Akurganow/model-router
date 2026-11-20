@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isPositiveNumber, isRecord, isSet } from "../../guards.ts";
+import { isPositiveNumber, isRecord, isSet } from "#utils/guards.ts";
 
 test("isSet counts text only when it is not blank", () => {
 	for (const value of ["", "  ", "\t\n"]) assert.equal(isSet(value), false);

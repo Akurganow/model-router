@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { fitWarnings } from "../jev-fit.ts";
+import { fitWarnings } from "#scripts/jev-fit.ts";
 import { ADAPTERS } from "./adapters.ts";
 import { type Case, check } from "./cases.ts";
 import { clientEnv, normalisePaths, scrub, TYPESAFE_KEY } from "./scrub.ts";

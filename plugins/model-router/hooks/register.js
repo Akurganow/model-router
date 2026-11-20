@@ -1,6 +1,3 @@
-// src/utils/error.ts
-var errorText = (err) => err instanceof Error ? err.message : String(err);
-
 // src/core/providers/provider.ts
 var PROVIDER_VALUES = [
   "auto",
@@ -46,6 +43,9 @@ function plan(value, keys) {
     (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt
   );
 }
+
+// src/utils/error.ts
+var errorText = (err) => err instanceof Error ? err.message : String(err);
 
 // src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
@@ -567,9 +567,6 @@ var work = {
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
-// src/utils/guards.ts
-var isRecord = (v) => typeof v === "object" && v !== null;
-
 // src/core/scoring/failure.ts
 var ABORTED = { failure: "aborted" };
 var TIMED_OUT = { failure: "timed out" };
@@ -617,6 +614,9 @@ function fallsBack(failure) {
       return false;
   }
 }
+
+// src/utils/guards.ts
+var isRecord = (v) => typeof v === "object" && v !== null;
 
 // src/core/scoring/formats/system-one.ts
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;

@@ -1,7 +1,7 @@
-import type { Level, Part, Probabilities } from "../../src/core/parts/part.ts";
-import { tier as tierPart } from "../../src/core/parts/tier.ts";
-import { work as workPart } from "../../src/core/parts/work.ts";
-import type { Pick, Row, Rule } from "../compare-rules.ts";
+import type { Level, Part, Probabilities } from "#core/parts/part.ts";
+import { tier as tierPart } from "#core/parts/tier.ts";
+import { work as workPart } from "#core/parts/work.ts";
+import type { Pick, Row, Rule } from "#scripts/compare-rules.ts";
 
 export type Thresholds = { down: number; up: number };
 export type Mode = "absolute" | "ratio";

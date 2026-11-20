@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { SLOT_SETTINGS } from "../src/core/decision/slots.ts";
-import { VALUE_SETTINGS } from "../src/core/options/settings.ts";
+import { SLOT_SETTINGS } from "#core/decision/slots.ts";
+import { VALUE_SETTINGS } from "#core/options/settings.ts";
 import type { Schema } from "./build/schema.ts";
 import {
 	type Install,

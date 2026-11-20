@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { setupTexts } from "../src/adapters/hermes/setup.ts";
+import { setupTexts } from "#adapters/hermes/setup.ts";
 import {
 	alreadyValue,
 	COMMAND_DESCRIPTIONS,
@@ -12,8 +12,8 @@ import {
 	unchanged,
 	useOneOf,
 	valueLine,
-} from "../src/core/options/settings.ts";
-import { PROVIDER_VALUES, PROVIDERS } from "../src/core/providers/provider.ts";
+} from "#core/options/settings.ts";
+import { PROVIDER_VALUES, PROVIDERS } from "#core/providers/provider.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { HERMES_OUTPUTS } from "./build/outputs.ts";
 import { loadSource } from "./build/source.ts";

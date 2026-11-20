@@ -1,4 +1,4 @@
-import { KEY_VARIABLES } from "../../src/core/providers/provider.ts";
+import { KEY_VARIABLES } from "#core/providers/provider.ts";
 
 export const TYPESAFE_KEY = KEY_VARIABLES.typesafe;
 const SECRET_NAME = /KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL/i;

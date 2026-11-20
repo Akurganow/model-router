@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, mock, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import type { Level } from "../src/core/parts/part.ts";
+import type { Level } from "#core/parts/part.ts";
 import {
 	crossValidate,
 	main,

@@ -1,10 +1,6 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import {
-	LEVELS,
-	type Level,
-	type Probabilities,
-} from "../src/core/parts/part.ts";
+import { LEVELS, type Level, type Probabilities } from "#core/parts/part.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 import { fitWarnings } from "./jev-fit.ts";
 

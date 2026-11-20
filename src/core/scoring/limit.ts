@@ -1,5 +1,5 @@
-import type { Clock } from "../../utils/clock.ts";
-import { CANCELLED, TIMEOUT } from "../output/reasons.ts";
+import { CANCELLED, TIMEOUT } from "#core/output/reasons.ts";
+import type { Clock } from "#utils/clock.ts";
 
 export const ROUTING_LIMIT_MS = 8000;
 // limitSignal aborts with this reason when the limit runs out, so a timeout differs from a cancel.

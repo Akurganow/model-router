@@ -7,12 +7,15 @@ language js
 // export … from. An import() call holds its argument as an expression.
 // TsImportType is an import in a type position: typeof import("…") and
 // import("…").X.
+// Only the alias counts: parent-import.grit bans every specifier that holds a
+// ../, so a relative path to an adapter falls to it.
+// src-outside.grit explains the [^"']* before the quote.
 or {
 	JsModuleSource() as $specifier,
 	`import($specifier)`,
 	TsImportType() as $specifier
 } where {
-	$specifier <: r"[\s\S]*/adapters/[\s\S]*",
+	$specifier <: r"[^\"']*[\"']#adapters/[\s\S]*",
 	$filename <: r".*/src/core/.*",
 	register_diagnostic(span=$specifier, message="A core/ file imports no adapter.", severity="error")
 }

@@ -1,0 +1,16 @@
+language js
+
+// core-adapter.grit explains why a plugin holds this ban and the three
+// specifier forms. A URL such as new URL("../", import.meta.url) is none of them.
+// src-outside.grit explains the [^"']* before the quote.
+// A ../ segment counts anywhere in the specifier, so ./../ is no way around.
+// biome.json names the folders this plugin reads. src/adapters/ still holds
+// relative imports, so it is not among them.
+or {
+	JsModuleSource() as $specifier,
+	`import($specifier)`,
+	TsImportType() as $specifier
+} where {
+	$specifier <: r"[^\"']*[\"'](?:[^\"']*/)?\.\./[\s\S]*",
+	register_diagnostic(span=$specifier, message="An import of a parent folder goes through an alias: #core/, #utils/, #adapters/ or #scripts/.", severity="error")
+}

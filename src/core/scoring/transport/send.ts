@@ -1,11 +1,11 @@
-import type { Clock } from "../../../utils/clock.ts";
 import {
 	ABORTED,
 	type Failure,
 	isSuccess,
 	NETWORK,
 	TIMED_OUT,
-} from "../failure.ts";
+} from "#core/scoring/failure.ts";
+import type { Clock } from "#utils/clock.ts";
 import {
 	type HeaderReader,
 	isRetried,

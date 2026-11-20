@@ -1,4 +1,4 @@
-import { routedLine } from "../output/line.ts";
+import { routedLine } from "#core/output/line.ts";
 import type { DecidedWithWork } from "./decide.ts";
 import { type Effort, effortFor } from "./ladder.ts";
 import { pickModel, type Slot, slotForLevel, slotState } from "./slots.ts";

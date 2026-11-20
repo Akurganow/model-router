@@ -1,22 +1,14 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { prepareBrief, routingState } from "../src/core/brief/brief.ts";
-import { formatProbability } from "../src/core/output/line.ts";
-import { tier } from "../src/core/parts/tier.ts";
-import { work } from "../src/core/parts/work.ts";
-import {
-	type Attempt,
-	type Provider,
-	plan,
-} from "../src/core/providers/provider.ts";
-import { ENDPOINTS } from "../src/core/scoring/endpoints.ts";
-import { limitSignal, ROUTING_LIMIT_MS } from "../src/core/scoring/limit.ts";
-import {
-	type Decision,
-	route,
-	type Skipped,
-} from "../src/core/scoring/route.ts";
-import type { Fetch } from "../src/core/scoring/transport/send.ts";
-import { realClock } from "../src/utils/clock.ts";
+import { prepareBrief, routingState } from "#core/brief/brief.ts";
+import { formatProbability } from "#core/output/line.ts";
+import { tier } from "#core/parts/tier.ts";
+import { work } from "#core/parts/work.ts";
+import { type Attempt, type Provider, plan } from "#core/providers/provider.ts";
+import { ENDPOINTS } from "#core/scoring/endpoints.ts";
+import { limitSignal, ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
+import { type Decision, route, type Skipped } from "#core/scoring/route.ts";
+import type { Fetch } from "#core/scoring/transport/send.ts";
+import { realClock } from "#utils/clock.ts";
 import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";
 import { fitWarnings } from "./jev-fit.ts";
 

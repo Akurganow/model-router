@@ -1,4 +1,4 @@
-import type { Attempt, Provider } from "../providers/provider.ts";
+import type { Attempt, Provider } from "#core/providers/provider.ts";
 import type { Format } from "./formats/format.ts";
 import { SYSTEM_ONE } from "./formats/system-one.ts";
 

@@ -1,6 +1,6 @@
-import { FAILED, failedAttemptText, KEY_UNSET } from "../output/reasons.ts";
-import type { Level, Probabilities } from "../parts/part.ts";
-import type { Attempt, Provider } from "../providers/provider.ts";
+import { FAILED, failedAttemptText, KEY_UNSET } from "#core/output/reasons.ts";
+import type { Level, Probabilities } from "#core/parts/part.ts";
+import type { Attempt, Provider } from "#core/providers/provider.ts";
 import { type AskInput, ask, type Reply } from "./ask.ts";
 import { fallsBack, isFailure, skipText } from "./failure.ts";
 import { abortCategory } from "./limit.ts";

@@ -1,5 +1,9 @@
-import { nonEmpty } from "../../../utils/text.ts";
-import { type Failure, isFailure, SERVER_ERRORS } from "../failure.ts";
+import {
+	type Failure,
+	isFailure,
+	SERVER_ERRORS,
+} from "#core/scoring/failure.ts";
+import { nonEmpty } from "#utils/text.ts";
 
 // The defaults when the caller names none: two retries after the first request, and 10 s for each
 // request. The routing limit ends a longer wait first.

@@ -35,7 +35,7 @@
 							"options": {
 								"patterns": [
 									{
-										"group": ["**/core/**", "**/adapters/**"],
+										"group": ["#core/**", "#adapters/**"],
 										"message": "A utils/ file imports only other utils/ files, never core/ or an adapter."
 									}
 								]
@@ -76,6 +76,10 @@
 			}
 		},
 		{
+			"includes": ["src/core/**", "src/utils/**", "scripts/**"],
+			"plugins": ["./scripts/lint/parent-import.grit"]
+		},
+		{
 			"includes": ["src/core/parts/**"],
 			"linter": {
 				"rules": {
@@ -85,7 +89,7 @@
 							"options": {
 								"patterns": [
 									{
-										"group": ["./**", "../**", "!./part.ts", "!../../utils/**"],
+										"group": ["./**", "#*/**", "!./part.ts", "!#utils/**"],
 										"message": "A parts/ file imports only ./part.ts and utils/."
 									}
 								]
@@ -166,14 +170,14 @@
 								"patterns": [
 									{
 										"group": [
-											"../**",
-											"!../failure.ts",
-											"!../reply.ts",
-											"!../../parts/part.ts",
-											"!../../brief/brief.ts",
-											"!../../../utils/**"
+											"#*/**",
+											"!#core/scoring/failure.ts",
+											"!#core/scoring/reply.ts",
+											"!#core/parts/part.ts",
+											"!#core/brief/brief.ts",
+											"!#utils/**"
 										],
-										"message": "A wire format imports only its own folder, ../failure.ts, ../reply.ts, parts/part.ts, brief/brief.ts and utils/."
+										"message": "A wire format imports only its own folder, scoring/failure.ts, scoring/reply.ts, parts/part.ts, brief/brief.ts and utils/."
 									}
 								]
 							}

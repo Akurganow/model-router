@@ -3,16 +3,20 @@
 import assert from "node:assert/strict";
 import { getEventListeners } from "node:events";
 import { test } from "node:test";
-import { realClock } from "../../../utils/clock.ts";
-import { routingState } from "../../brief/brief.ts";
-import { KEY_UNSET } from "../../output/reasons.ts";
-import { tier } from "../../parts/tier.ts";
-import { work } from "../../parts/work.ts";
-import { type Attempt, plan } from "../../providers/provider.ts";
-import { LIMIT_REACHED, ROUTING_LIMIT_MS } from "../../scoring/limit.ts";
-import { type Decision, type RouteInput, route } from "../../scoring/route.ts";
-import { brokenReply, scoringReply, stalledReply } from "../support/replies.ts";
-import { fakeTime } from "../support/time.ts";
+import {
+	brokenReply,
+	scoringReply,
+	stalledReply,
+} from "#core/__tests__/support/replies.ts";
+import { fakeTime } from "#core/__tests__/support/time.ts";
+import { routingState } from "#core/brief/brief.ts";
+import { KEY_UNSET } from "#core/output/reasons.ts";
+import { tier } from "#core/parts/tier.ts";
+import { work } from "#core/parts/work.ts";
+import { type Attempt, plan } from "#core/providers/provider.ts";
+import { LIMIT_REACHED, ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
+import { type Decision, type RouteInput, route } from "#core/scoring/route.ts";
+import { realClock } from "#utils/clock.ts";
 
 const KEY = "test-key";
 const OR_KEY = "test-openrouter-key";
