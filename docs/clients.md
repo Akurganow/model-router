@@ -94,6 +94,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
   `options` holds the `userConfig` values with their defaults filled in.
 - Claude Code loads `.js` and `.ts` files directly, with no build step.
   A hooks module imports only files inside the plugin directory by relative path, and the one bare import allowed is `claude-code`.
+- `$.ui.ask` takes at most four options.
 - When a hooks module fails, Claude Code skips it and the session continues.
   A broken mod can therefore look like one that does nothing.
 - A mod installed from a marketplace loads at the next start of Claude Code, or at `/reload-plugins` in an open session.

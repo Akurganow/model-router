@@ -84,6 +84,10 @@ every commit as a [conventional commit](#commits).
   - `output/`: the routing line, its suffix and the shared skip reasons. It
     imports nothing from `scoring/` or `decision/`. A failure's mapping to
     its reason stays in `scoring/`.
+
+  [The add-provider skill](.agents/skills/add-provider/SKILL.md) holds the
+  steps of adding a scoring provider. No check reads the skill, so a pull
+  request that renames or moves a place it names changes the skill too.
 - `plugins/model-router` is the Claude Code plugin.
 - `plugins/model-router-omp` is the omp plugin.
 - `plugins/model-router-openclaw` is the OpenClaw plugin.
