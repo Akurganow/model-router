@@ -16,11 +16,11 @@ import {
 	VALUE_SETTINGS,
 	type ValueSetting,
 	valueLine,
-} from "../../core/options/settings.ts";
-import { UNREADABLE } from "../../core/output/reasons.ts";
-import { collectKeys } from "../../core/providers/provider.ts";
-import { isRecord } from "../../utils/guards.ts";
-import { serializer } from "../../utils/serializer.ts";
+} from "#core/options/settings.ts";
+import { UNREADABLE } from "#core/output/reasons.ts";
+import { collectKeys } from "#core/providers/provider.ts";
+import { isRecord } from "#utils/guards.ts";
+import { serializer } from "#utils/serializer.ts";
 import { findKey, readSettings, type Settings } from "./settings.ts";
 import type { Context, OmpImports, Pi, ToolReply } from "./types.ts";
 

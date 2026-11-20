@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createStore, STORE_MAX } from "../../store.ts";
+import { createStore, STORE_MAX } from "#adapters/omp/store.ts";
 
 const AGENT = "task";
 const decision = (line: string) => ({ role: "@smol", line });

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { readParam, readSpawn, readStringParam } from "../../params.ts";
+import {
+	readParam,
+	readSpawn,
+	readStringParam,
+} from "#adapters/openclaw/params.ts";
 
 describe("readParam", () => {
 	it("reads the own key, else the snake-case key", () => {

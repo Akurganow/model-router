@@ -63,8 +63,8 @@ const SHARED_REASON = "This text is a shared skip reason";
 const CORE_NODE = "A core/ file imports no Node module";
 const CORE_TIMEOUT =
 	"The core sets no timer of its own, and AbortSignal.timeout is one";
-const SRC_OUTSIDE = "A src/ file imports nothing from scripts/ or plugins/";
-const PARENT = "An import of a parent folder goes through an alias";
+const SRC_OUTSIDE = "A src/ file imports nothing from scripts/";
+const PARENT = "A specifier holds no ../";
 const PROCESS_ENV_MESSAGE = "Don't use process.env";
 // The JSON report keeps the rule's own sentence and drops the configured message, so the
 // test tells the globals apart by the name this sentence carries.
@@ -248,7 +248,7 @@ const faults: Fault[] = [
 	{
 		form: "an adapter imports from a __tests__ folder of core",
 		file: "src/adapters/omp/layers.ts",
-		code: 'import { t9 } from "../../core/__tests__/support/t9.ts";',
+		code: 'import { t9 } from "#core/__tests__/support/t9.ts";',
 		category: PLUGIN,
 		message: TESTS_IMPORT,
 	},
@@ -283,70 +283,28 @@ const faults: Fault[] = [
 	{
 		form: "claude imports omp",
 		file: "src/adapters/claude/layers.ts",
-		code: 'import { a } from "../omp/a.ts";',
-		category: RESTRICTED,
-		message: ADAPTER,
-	},
-	{
-		form: "claude imports openclaw",
-		file: "src/adapters/claude/layers.ts",
-		code: 'import { b } from "../openclaw/b.ts";',
-		category: RESTRICTED,
-		message: ADAPTER,
-	},
-	{
-		form: "claude imports hermes",
-		file: "src/adapters/claude/layers.ts",
-		code: 'import { c } from "../hermes/c.ts";',
+		code: 'import { a } from "#adapters/omp/a.ts";',
 		category: RESTRICTED,
 		message: ADAPTER,
 	},
 	{
 		form: "omp imports claude",
 		file: "src/adapters/omp/layers.ts",
-		code: 'import { a } from "../claude/a.ts";',
+		code: 'import { a } from "#adapters/claude/a.ts";',
 		category: RESTRICTED,
 		message: ADAPTER,
 	},
 	{
 		form: "openclaw imports hermes",
 		file: "src/adapters/openclaw/layers.ts",
-		code: 'import { a } from "../hermes/a.ts";',
+		code: 'import { a } from "#adapters/hermes/a.ts";',
 		category: RESTRICTED,
 		message: ADAPTER,
 	},
 	{
 		form: "hermes imports openclaw",
 		file: "src/adapters/hermes/layers.ts",
-		code: 'import { a } from "../openclaw/a.ts";',
-		category: RESTRICTED,
-		message: ADAPTER,
-	},
-	{
-		form: "claude imports omp through an alias",
-		file: "src/adapters/claude/layers.ts",
-		code: 'import { d } from "#adapters/omp/d.ts";',
-		category: RESTRICTED,
-		message: ADAPTER,
-	},
-	{
-		form: "omp imports claude through an alias",
-		file: "src/adapters/omp/layers.ts",
-		code: 'import { b } from "#adapters/claude/b.ts";',
-		category: RESTRICTED,
-		message: ADAPTER,
-	},
-	{
-		form: "openclaw imports hermes through an alias",
-		file: "src/adapters/openclaw/layers.ts",
-		code: 'import { b } from "#adapters/hermes/b.ts";',
-		category: RESTRICTED,
-		message: ADAPTER,
-	},
-	{
-		form: "hermes imports openclaw through an alias",
-		file: "src/adapters/hermes/layers.ts",
-		code: 'import { b } from "#adapters/openclaw/b.ts";',
+		code: 'import { a } from "#adapters/openclaw/a.ts";',
 		category: RESTRICTED,
 		message: ADAPTER,
 	},
@@ -367,14 +325,7 @@ const faults: Fault[] = [
 	{
 		form: "the OpenClaw entry imports another adapter",
 		file: "src/adapters/openclaw/index.ts",
-		code: 'import { c } from "../omp/c.ts";',
-		category: RESTRICTED,
-		message: ENTRY_ADAPTER,
-	},
-	{
-		form: "the OpenClaw entry imports another adapter through an alias",
-		file: "src/adapters/openclaw/index.ts",
-		code: 'import { d } from "#adapters/omp/d.ts";',
+		code: 'import { c } from "#adapters/omp/c.ts";',
 		category: RESTRICTED,
 		message: ENTRY_ADAPTER,
 	},
@@ -598,11 +549,11 @@ const faults: Fault[] = [
 		message: SRC_OUTSIDE,
 	},
 	{
-		form: "an adapter test imports from plugins/",
+		form: "an adapter test imports plugins/ by a parent path",
 		file: "src/adapters/omp/__tests__/unit/outside.test.ts",
 		code: 'import { r } from "../../../../../plugins/model-router/hooks/register.js";',
 		category: PLUGIN,
-		message: SRC_OUTSIDE,
+		message: PARENT,
 	},
 	{
 		form: "a utils file imports from scripts/ through an alias with import()",
@@ -612,16 +563,9 @@ const faults: Fault[] = [
 		message: SRC_OUTSIDE,
 	},
 	{
-		form: "an adapter names a type of plugins/ with typeof import()",
+		form: "an adapter names a type of scripts/ with typeof import()",
 		file: "src/adapters/hermes/outside.ts",
-		code: 'export type P = typeof import("../../../plugins/model-router/hooks/register.js");',
-		category: PLUGIN,
-		message: SRC_OUTSIDE,
-	},
-	{
-		form: "an adapter imports from scripts/ with a relative path",
-		file: "src/adapters/omp/outside.ts",
-		code: 'import { b } from "../../../scripts/build.ts";',
+		code: 'export type P = typeof import("#scripts/build.ts");',
 		category: PLUGIN,
 		message: SRC_OUTSIDE,
 	},
@@ -643,20 +587,6 @@ const faults: Fault[] = [
 		form: "a script names a type of a parent folder with typeof import()",
 		file: "scripts/parent.ts",
 		code: 'export type C = typeof import("../src/core/c.ts");',
-		category: PLUGIN,
-		message: PARENT,
-	},
-	{
-		form: "a core file re-exports an adapter through ./../",
-		file: "src/core/decision/parent.ts",
-		code: 'export { SPAWN_TOOL } from "./../../adapters/openclaw/router.ts";',
-		category: PLUGIN,
-		message: PARENT,
-	},
-	{
-		form: "a utils file imports core through ./../",
-		file: "src/utils/parent.ts",
-		code: 'import { decide } from "./../core/decision/decide.ts";',
 		category: PLUGIN,
 		message: PARENT,
 	},
@@ -722,32 +652,35 @@ const valid: Record<string, string> = {
 		"export const v = [u, t, w, p, s];",
 	].join("\n"),
 	"src/adapters/claude/valid.ts": [
-		'import { c } from "../../core/c.ts";',
-		'import { u } from "../../utils/u.ts";',
+		'import { c } from "#core/c.ts";',
+		'import { u } from "#utils/u.ts";',
+		'import { o } from "#adapters/claude/own.ts";',
 		'import { s } from "./sibling.ts";',
-		"export const v = [c, u, s];",
+		"export const v = [c, u, s, o];",
 	].join("\n"),
 	"src/adapters/omp/valid.ts": [
-		'import { c } from "../../core/c.ts";',
-		'import { u } from "../../utils/u.ts";',
-		'import { p } from "some-package/plugins/loader";',
-		"export const v = [c, u, p];",
+		'import { c } from "#core/c.ts";',
+		'import { u } from "#utils/u.ts";',
+		'import { o } from "#adapters/omp/own.ts";',
+		"export const v = [c, u, o];",
 	].join("\n"),
 	"src/adapters/openclaw/valid.ts": [
-		'import { c } from "../../core/c.ts";',
+		'import { c } from "#core/c.ts";',
+		'import { o } from "#adapters/openclaw/own.ts";',
 		'import { sdk } from "openclaw";',
-		"export const v = [c, sdk];",
+		"export const v = [c, sdk, o];",
 	].join("\n"),
 	"src/adapters/hermes/valid.ts": [
-		'import { c } from "../../core/c.ts";',
-		"export const v = c;",
+		'import { c } from "#core/c.ts";',
+		'import { o } from "#adapters/hermes/own.ts";',
+		"export const v = [c, o];",
 	].join("\n"),
 	"src/core/__tests__/unit/reads-env.test.ts": [
 		"export const v = process.env;",
 	].join("\n"),
 	"src/adapters/omp/__tests__/unit/imports-support.test.ts": [
-		'import { s } from "../support/s.ts";',
-		'import { c } from "../../../../core/__tests__/support/c.ts";',
+		'import { s } from "#adapters/omp/__tests__/support/s.ts";',
+		'import { c } from "#core/__tests__/support/c.ts";',
 		"export const v = [s, c];",
 	].join("\n"),
 	"src/adapters/omp/reads-env.ts": ["export const v = process.env;"].join("\n"),
@@ -772,8 +705,8 @@ const valid: Record<string, string> = {
 		"];",
 	].join("\n"),
 	"src/adapters/__tests__/integration/drives-several.test.ts": [
-		'import { a } from "../../omp/a.ts";',
-		'import { b } from "../../claude/b.ts";',
+		'import { a } from "#adapters/omp/a.ts";',
+		'import { b } from "#adapters/claude/b.ts";',
 		"export const v = [a, b];",
 	].join("\n"),
 	"scripts/valid.ts": [
@@ -828,9 +761,10 @@ const clean: Record<string, string[]> = {
 		"export const v = [f, r, m, p, b, g];",
 	],
 	"src/adapters/openclaw/index.ts": [
-		'import { c } from "../../core/c.ts";',
+		'import { c } from "#core/c.ts";',
+		'import { g } from "#adapters/openclaw/gates.ts";',
 		'import { r } from "./router.ts";',
-		"export const v = [c, r];",
+		"export const v = [c, r, g];",
 	],
 	"scripts/set-version.ts": [
 		'import { readFileSync } from "node:fs";',

@@ -1,12 +1,3 @@
-import {
-	scoringReply,
-	systemOneAnswer,
-} from "../../../../core/__tests__/support/replies.ts";
-import {
-	KEY_FIELDS,
-	type Provider,
-} from "../../../../core/providers/provider.ts";
-import type { Fetch } from "../../../../core/scoring/transport/send.ts";
 import type {
 	BeforeToolCallHandler,
 	CommandDefinition,
@@ -18,7 +9,13 @@ import type {
 	PluginRuntime,
 	RegistrationMode,
 	ToolDefinition,
-} from "../../types.ts";
+} from "#adapters/openclaw/types.ts";
+import {
+	scoringReply,
+	systemOneAnswer,
+} from "#core/__tests__/support/replies.ts";
+import { KEY_FIELDS, type Provider } from "#core/providers/provider.ts";
+import type { Fetch } from "#core/scoring/transport/send.ts";
 
 type Params<K extends keyof FakeCalls> = FakeCalls[K][number];
 type FakeCalls = {

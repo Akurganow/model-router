@@ -1,12 +1,12 @@
-import { contextText } from "../../core/brief/brief.ts";
-import { pickModel, slotForLevel } from "../../core/decision/slots.ts";
-import { DEFAULT_SCOPE } from "../../core/options/scope.ts";
+import { contextText } from "#core/brief/brief.ts";
+import { pickModel, slotForLevel } from "#core/decision/slots.ts";
+import { DEFAULT_SCOPE } from "#core/options/scope.ts";
 import {
 	ENTRY_SEPARATOR,
 	LINE_PREFIX,
 	skippedLine,
-} from "../../core/output/line.ts";
-import { isRecord } from "../../utils/guards.ts";
+} from "#core/output/line.ts";
+import { isRecord } from "#utils/guards.ts";
 import { registerConfig, say } from "./config.ts";
 import { budgetFor } from "./deadline.ts";
 import { lineFor, modelFor, planEffort } from "./effort.ts";

@@ -1,5 +1,19 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { createFakeApi } from "#adapters/openclaw/__tests__/support/fakes.ts";
+import {
+	NOT_OWNER,
+	registerConfigCommands,
+	registerConfigTool,
+} from "#adapters/openclaw/config.ts";
+import { type Environment, PLUGIN_ID } from "#adapters/openclaw/settings.ts";
+import type {
+	CommandContext,
+	CommandDefinition,
+	OpenClawApi,
+	OpenClawConfig,
+	ToolDefinition,
+} from "#adapters/openclaw/types.ts";
 import {
 	alreadyValue,
 	COMMAND_DESCRIPTIONS,
@@ -8,21 +22,7 @@ import {
 	unchanged,
 	useOneOf,
 	valueLine,
-} from "../../../../core/options/settings.ts";
-import {
-	NOT_OWNER,
-	registerConfigCommands,
-	registerConfigTool,
-} from "../../config.ts";
-import { type Environment, PLUGIN_ID } from "../../settings.ts";
-import type {
-	CommandContext,
-	CommandDefinition,
-	OpenClawApi,
-	OpenClawConfig,
-	ToolDefinition,
-} from "../../types.ts";
-import { createFakeApi } from "../support/fakes.ts";
+} from "#core/options/settings.ts";
 
 /** Registers the config tool and the commands on `api`, as the full pass does. */
 function registerConfig(api: OpenClawApi, env: Environment) {

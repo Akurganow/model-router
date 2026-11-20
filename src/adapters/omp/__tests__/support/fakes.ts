@@ -2,13 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, mock } from "node:test";
-import {
-	scoringReply,
-	systemOneAnswer,
-} from "../../../../core/__tests__/support/replies.ts";
-import { TOOL_NAME } from "../../../../core/options/settings.ts";
-import { KEY_VARIABLES, plan } from "../../../../core/providers/provider.ts";
-import type { Batch } from "../../gates.ts";
+import type { Batch } from "#adapters/omp/gates.ts";
 import type {
 	CommandSpec,
 	Context,
@@ -22,7 +16,13 @@ import type {
 	ToolProgressEvent,
 	ToolReply,
 	ToolSpec,
-} from "../../types.ts";
+} from "#adapters/omp/types.ts";
+import {
+	scoringReply,
+	systemOneAnswer,
+} from "#core/__tests__/support/replies.ts";
+import { TOOL_NAME } from "#core/options/settings.ts";
+import { KEY_VARIABLES, plan } from "#core/providers/provider.ts";
 
 export { scoringReply, systemOneAnswer };
 export const KEY = "omp-key-0001";

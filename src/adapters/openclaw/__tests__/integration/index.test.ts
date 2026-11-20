@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { keyLine } from "../../../../core/options/settings.ts";
-import { deadlineFor } from "../../../../core/scoring/handler-deadline.ts";
-import { ROUTING_LIMIT_MS } from "../../../../core/scoring/limit.ts";
-import { createFakeClock } from "../../../../utils/__tests__/support/fake-clock.ts";
-import plugin, { createPlugin } from "../../index.ts";
-import { SPAWN_TOOL } from "../../router.ts";
-import { PLUGIN_ID } from "../../settings.ts";
-import type { OpenClawApi, OpenClawConfig } from "../../types.ts";
-import { createFakeApi, createScoringFetch } from "../support/fakes.ts";
+import {
+	createFakeApi,
+	createScoringFetch,
+} from "#adapters/openclaw/__tests__/support/fakes.ts";
+import plugin, { createPlugin } from "#adapters/openclaw/index.ts";
+import { SPAWN_TOOL } from "#adapters/openclaw/router.ts";
+import { PLUGIN_ID } from "#adapters/openclaw/settings.ts";
+import type { OpenClawApi, OpenClawConfig } from "#adapters/openclaw/types.ts";
+import { keyLine } from "#core/options/settings.ts";
+import { deadlineFor } from "#core/scoring/handler-deadline.ts";
+import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
+import { createFakeClock } from "#utils/__tests__/support/fake-clock.ts";
 
 const SETTINGS = {
 	provider: "typesafe",

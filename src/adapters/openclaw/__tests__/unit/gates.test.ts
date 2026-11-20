@@ -1,21 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-	DEFAULT_ROLE,
-	NO_DESCRIPTION,
-	roleText,
-} from "../../../../core/brief/brief.ts";
-import {
-	agentDiscoveryFailed,
-	agentUnknown,
-	KEY_UNSET,
-	outsideCoreScope,
-	setsOwnModel,
-	UNREADABLE,
-} from "../../../../core/output/reasons.ts";
-import { readSpawn } from "../../params.ts";
-import type { OpenClawConfig } from "../../types.ts";
-import {
 	agents,
 	effort,
 	extended,
@@ -27,7 +12,18 @@ import {
 	SETTINGS,
 	skipped,
 	withParams,
-} from "../support/gate-fakes.ts";
+} from "#adapters/openclaw/__tests__/support/gate-fakes.ts";
+import { readSpawn } from "#adapters/openclaw/params.ts";
+import type { OpenClawConfig } from "#adapters/openclaw/types.ts";
+import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "#core/brief/brief.ts";
+import {
+	agentDiscoveryFailed,
+	agentUnknown,
+	KEY_UNSET,
+	outsideCoreScope,
+	setsOwnModel,
+	UNREADABLE,
+} from "#core/output/reasons.ts";
 
 test("a plain spawn of the requesting agent itself is routed", () => {
 	assert.deepEqual(gate(), {

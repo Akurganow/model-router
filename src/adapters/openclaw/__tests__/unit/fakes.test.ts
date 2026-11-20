@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SPAWN_TOOL } from "../../router.ts";
-import type { BeforeToolCallHandler } from "../../types.ts";
-import { createFakeApi, createScoringFetch } from "../support/fakes.ts";
+import {
+	createFakeApi,
+	createScoringFetch,
+} from "#adapters/openclaw/__tests__/support/fakes.ts";
+import { SPAWN_TOOL } from "#adapters/openclaw/router.ts";
+import type { BeforeToolCallHandler } from "#adapters/openclaw/types.ts";
 
 describe("createFakeApi", () => {
 	it("has the identity and defaults of a full registration", () => {

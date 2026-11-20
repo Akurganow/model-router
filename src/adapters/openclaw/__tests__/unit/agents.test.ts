@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { findAgent, normalizeAgentId, sameAgent } from "../../agents.ts";
-import type { OpenClawConfig } from "../../types.ts";
+import {
+	findAgent,
+	normalizeAgentId,
+	sameAgent,
+} from "#adapters/openclaw/agents.ts";
+import type { OpenClawConfig } from "#adapters/openclaw/types.ts";
 
 describe("normalizeAgentId", () => {
 	const cases: [unknown, string][] = [

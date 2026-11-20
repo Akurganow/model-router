@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DEFAULT_ROLE } from "../../../core/brief/brief.ts";
-import { routedCall } from "../../claude/__tests__/support/fakes.ts";
-import { useWorld } from "../../omp/__tests__/support/fakes.ts";
-import { createExtension } from "../../omp/router.ts";
+import { routedCall } from "#adapters/claude/__tests__/support/fakes.ts";
+import { useWorld } from "#adapters/omp/__tests__/support/fakes.ts";
+import { createExtension } from "#adapters/omp/router.ts";
+import { DEFAULT_ROLE } from "#core/brief/brief.ts";
 
 // Claude Code words its general-purpose agent differently from omp, so both sides must ignore their wording.
 const CLAUDE_WORDING = "Claude Code wording";
