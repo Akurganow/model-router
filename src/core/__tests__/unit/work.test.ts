@@ -37,3 +37,8 @@ test("the work index leaves the middle just past each factor and not just short 
 	];
 	for (const [p, expected] of cases) assert.equal(work.pick(p), expected);
 });
+
+test("when both ends beat the middle, the likelier end wins", () => {
+	assert.equal(work.pick({ "0": 0.5, "1": 0.1, "2": 0.3 }), 0);
+	assert.equal(work.pick({ "0": 0.3, "1": 0.1, "2": 0.5 }), 2);
+});
