@@ -1,7 +1,7 @@
 import {
 	type Failure,
 	isFailure,
-	SERVER_ERRORS,
+	isServerError,
 } from "#core/scoring/failure.ts";
 import { nonEmpty } from "#utils/text.ts";
 
@@ -26,8 +26,7 @@ export function isRetried(
 		return (
 			outcome.status === 408 ||
 			outcome.status === 429 ||
-			(outcome.status >= SERVER_ERRORS.min &&
-				outcome.status <= SERVER_ERRORS.max)
+			isServerError(outcome.status)
 		);
 	switch (outcome.failure) {
 		case "timed out":

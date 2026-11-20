@@ -348,6 +348,7 @@ var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
 var SERVER_ERRORS = { min: 500, max: 599 };
 var OK = { min: 200, max: 299 };
 var isSuccess = (status) => status >= OK.min && status <= OK.max;
+var isServerError = (status) => status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
 var isFailure = (value) => Object.hasOwn(value, "failure");
 function skipText(failure, aborted) {
   switch (failure.failure) {
@@ -371,7 +372,7 @@ function fallsBack(failure) {
     case "network":
       return true;
     case "status":
-      return FALLBACK_STATUSES.has(failure.status) || failure.status >= SERVER_ERRORS.min && failure.status <= SERVER_ERRORS.max;
+      return FALLBACK_STATUSES.has(failure.status) || isServerError(failure.status);
     case "aborted":
     case "malformed":
     case "unknown":
@@ -458,7 +459,7 @@ var BACKOFF_JITTER = 0.25;
 var SERVER_DELAY_MAX_MS = 6e4;
 function isRetried(outcome) {
   if (!isFailure(outcome))
-    return outcome.status === 408 || outcome.status === 429 || outcome.status >= SERVER_ERRORS.min && outcome.status <= SERVER_ERRORS.max;
+    return outcome.status === 408 || outcome.status === 429 || isServerError(outcome.status);
   switch (outcome.failure) {
     case "timed out":
     case "network":
