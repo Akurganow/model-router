@@ -1,5 +1,5 @@
 import { isRecord } from "../../../utils/guards.ts";
-import { LEVELS, type Part, type Probabilities } from "../../part.ts";
+import { LEVELS, type Part, type Probabilities } from "../../parts/part.ts";
 import { type Failure, isSuccess, MALFORMED } from "../failure.ts";
 import type { Usage } from "../reply.ts";
 import type { Answers, Format } from "./format.ts";

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Level, Probabilities } from "../../part.ts";
-import { WORK_TEXTS, work } from "../../work.ts";
+import type { Level, Probabilities } from "../../parts/part.ts";
+import { WORK_TEXTS, work } from "../../parts/work.ts";
 
 test("the work question carries its key, the score type, instructions that name the task, and the three texts", () => {
 	assert.equal(work.key, "work");

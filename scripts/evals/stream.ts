@@ -1,4 +1,4 @@
-import { PROVIDERS } from "../../src/core/provider.ts";
+import { PROVIDERS } from "../../src/core/providers/provider.ts";
 
 // Reads a field of an object whose shape the client owns, which dot access refuses on an index signature.
 export const get = (o: Record<string, unknown>, key: string): unknown => o[key];

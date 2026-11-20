@@ -1,9 +1,9 @@
-import { CANCELLED, FAILED, KEY_UNSET, TIMEOUT } from "./output/reasons.ts";
-import type { Level, Probabilities } from "./part.ts";
-import type { Attempt, Provider } from "./provider.ts";
-import { type AskInput, ask, type Reply } from "./scoring/ask.ts";
-import { fallsBack, isFailure, skipText } from "./scoring/failure.ts";
-import { isCount, type Usage } from "./scoring/reply.ts";
+import { CANCELLED, FAILED, KEY_UNSET, TIMEOUT } from "../output/reasons.ts";
+import type { Level, Probabilities } from "../parts/part.ts";
+import type { Attempt, Provider } from "../providers/provider.ts";
+import { type AskInput, ask, type Reply } from "./ask.ts";
+import { fallsBack, isFailure, skipText } from "./failure.ts";
+import { isCount, type Usage } from "./reply.ts";
 
 export const ROUTING_LIMIT_MS = 8000;
 // Adapters abort their signal with this reason when the limit runs out, so a timeout differs from a cancel.

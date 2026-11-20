@@ -1,6 +1,6 @@
 import type { RoutingState } from "../brief/brief.ts";
-import type { Part, Probabilities } from "../part.ts";
-import { type Attempt, HOSTS, type Keys } from "../provider.ts";
+import type { Part, Probabilities } from "../parts/part.ts";
+import { type Attempt, HOSTS, type Keys } from "../providers/provider.ts";
 import { type Failure, isFailure, UNKNOWN } from "./failure.ts";
 import { SYSTEM_ONE } from "./formats/system-one.ts";
 import { cleanModel, type Usage } from "./reply.ts";

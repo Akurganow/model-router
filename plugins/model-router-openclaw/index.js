@@ -1,3 +1,19 @@
+// src/core/output/line.ts
+var LINE_PREFIX = "model-router ";
+var pinnedLine = (level, target) => `L${level} ${target}`;
+function routedLine({
+  level,
+  target,
+  effort,
+  probabilities,
+  suffix
+}) {
+  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
+  return `${pinnedLine(level, target)}${effortSegment} \xB7 p=${probabilities}${suffix}`;
+}
+var SKIPPED_PREFIX = "skipped, ";
+var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
+
 // src/core/output/reasons.ts
 var CALLER_EFFORT = "caller effort";
 var CONFIG_EFFORT = "config effort";
@@ -15,7 +31,7 @@ var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
 var agentUnknown = (id) => `${id} agent unknown`;
 var setsOwnModel = (id) => `${id} sets its own model`;
 
-// src/core/provider.ts
+// src/core/providers/provider.ts
 var PROVIDER_VALUES = [
   "auto",
   "openrouter-first",
@@ -117,7 +133,7 @@ var nonEmpty = (value) => {
 var isRecord = (v) => typeof v === "object" && v !== null;
 var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
 
-// src/core/part.ts
+// src/core/parts/part.ts
 var LEVELS = [0, 1, 2];
 var fromMiddle = (down, up) => (p) => {
   const low = p[0] > down * p[1];
@@ -337,7 +353,7 @@ async function ask(input, attempt) {
   }
 }
 
-// src/core/compose.ts
+// src/core/scoring/route.ts
 var ROUTING_LIMIT_MS = 8e3;
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 function abortCategory(signal) {
@@ -387,27 +403,11 @@ function decisionSuffix({
   return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(input) && isCount(output) ? ` \xB7 ${input}/${output} tok` : "") + (firstFailed ? ` \xB7 ${named(firstFailed)}` : "");
 }
 
-// src/core/handler-deadline.ts
+// src/core/scoring/handler-deadline.ts
 var HANDLER_MARGIN_MS = 2e3;
 var MIN_DEADLINE_MS = 1e3;
 var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
 var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
-
-// src/core/output/line.ts
-var LINE_PREFIX = "model-router ";
-var pinnedLine = (level, target) => `L${level} ${target}`;
-function routedLine({
-  level,
-  target,
-  effort,
-  probabilities,
-  suffix
-}) {
-  const effortSegment = effort === void 0 ? "" : ` \xB7 ${effort}`;
-  return `${pinnedLine(level, target)}${effortSegment} \xB7 p=${probabilities}${suffix}`;
-}
-var SKIPPED_PREFIX = "skipped, ";
-var skippedLine = (reason) => `${SKIPPED_PREFIX}${reason}`;
 
 // src/utils/clock.ts
 var realClock = {
@@ -872,7 +872,7 @@ function routingState(raw) {
   };
 }
 
-// src/core/tier.ts
+// src/core/parts/tier.ts
 var TIER_DOWN = 2 ** 0.25;
 var TIER_UP = 2 ** 0.5;
 var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
@@ -891,7 +891,7 @@ var tier = {
   pick: fromMiddle(TIER_DOWN, TIER_UP)
 };
 
-// src/core/work.ts
+// src/core/parts/work.ts
 var WORK_DOWN = 2 ** 1.25;
 var WORK_UP = 2 ** 0.5;
 var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
@@ -910,7 +910,7 @@ var work = {
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
-// src/core/decide.ts
+// src/core/decision/decide.ts
 var BAD = { skipped: BAD_REPLY };
 var levelOf = (decision, key) => {
   const part = decision.parts[key];

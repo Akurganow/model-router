@@ -1,24 +1,24 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { prepareBrief, routingState } from "../src/core/brief/brief.ts";
-import {
-	type Decision,
-	LIMIT_REACHED,
-	ROUTING_LIMIT_MS,
-	route,
-	type Skipped,
-} from "../src/core/compose.ts";
 import { PROVIDER_NAMES } from "../src/core/options/settings.ts";
-import { formatProbability } from "../src/core/part.ts";
+import { formatProbability } from "../src/core/parts/part.ts";
+import { tier } from "../src/core/parts/tier.ts";
+import { work } from "../src/core/parts/work.ts";
 import {
 	type Attempt,
 	HOSTS,
 	type Keys,
 	type Provider,
 	plan,
-} from "../src/core/provider.ts";
+} from "../src/core/providers/provider.ts";
+import {
+	type Decision,
+	LIMIT_REACHED,
+	ROUTING_LIMIT_MS,
+	route,
+	type Skipped,
+} from "../src/core/scoring/route.ts";
 import type { Fetch } from "../src/core/scoring/transport/send.ts";
-import { tier } from "../src/core/tier.ts";
-import { work } from "../src/core/work.ts";
 import { EXIT_INTERRUPTED, EXIT_USAGE } from "./exit-codes.ts";
 import { fitWarnings } from "./jev-fit.ts";
 

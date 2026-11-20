@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { resolveScope } from "../src/core/options/scope.ts";
 import { VALUE_SETTINGS } from "../src/core/options/settings.ts";
-import { resolve as resolveProvider } from "../src/core/provider.ts";
+import { resolve as resolveProvider } from "../src/core/providers/provider.ts";
 import { formatRendered } from "./build/json.ts";
 import { renderReadme } from "./build/readme.ts";
 import { loadSource } from "./build/source.ts";

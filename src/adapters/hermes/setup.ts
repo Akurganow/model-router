@@ -15,7 +15,7 @@ import {
 	PROVIDER_VALUES,
 	PROVIDERS,
 	type Provider,
-} from "../../core/provider.ts";
+} from "../../core/providers/provider.ts";
 
 // Hermes puts a plugin tool in a toolset of its own, and a plugin toolset is on in a default session.
 const TOOLSET = "model_router";

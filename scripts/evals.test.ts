@@ -9,9 +9,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { decisionSuffix } from "../src/core/compose.ts";
 import { pickModel, type SlotModel } from "../src/core/decision/slots.ts";
 import { LINE_PREFIX, routedLine } from "../src/core/output/line.ts";
+import { decisionSuffix } from "../src/core/scoring/route.ts";
 import { type Case, check, validateCases } from "./evals/cases.ts";
 import { claude } from "./evals/claude.ts";
 import { omp } from "./evals/omp.ts";

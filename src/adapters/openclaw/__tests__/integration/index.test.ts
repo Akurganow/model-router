@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ROUTING_LIMIT_MS } from "../../../../core/compose.ts";
-import { deadlineFor } from "../../../../core/handler-deadline.ts";
 import { keyLine } from "../../../../core/options/settings.ts";
+import { deadlineFor } from "../../../../core/scoring/handler-deadline.ts";
+import { ROUTING_LIMIT_MS } from "../../../../core/scoring/route.ts";
 import { createFakeClock } from "../../../../utils/__tests__/support/fake-clock.ts";
 import plugin, { createPlugin } from "../../index.ts";
 import { SPAWN_TOOL } from "../../router.ts";

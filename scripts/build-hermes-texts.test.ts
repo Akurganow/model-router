@@ -13,7 +13,7 @@ import {
 	useOneOf,
 	valueLine,
 } from "../src/core/options/settings.ts";
-import { PROVIDER_VALUES, PROVIDERS } from "../src/core/provider.ts";
+import { PROVIDER_VALUES, PROVIDERS } from "../src/core/providers/provider.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { HERMES_OUTPUTS } from "./build/outputs.ts";
 import { loadSource } from "./build/source.ts";

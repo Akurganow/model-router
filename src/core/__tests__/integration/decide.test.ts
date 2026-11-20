@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { routingState } from "../../brief/brief.ts";
-import type { Decision } from "../../compose.ts";
-import { decide, scoreWork } from "../../decide.ts";
-import { plan } from "../../provider.ts";
-import { tier } from "../../tier.ts";
-import { work } from "../../work.ts";
+import { decide, scoreWork } from "../../decision/decide.ts";
+import { tier } from "../../parts/tier.ts";
+import { work } from "../../parts/work.ts";
+import { plan } from "../../providers/provider.ts";
+import type { Decision } from "../../scoring/route.ts";
 import { scoringReply, systemOneAnswer } from "../support/replies.ts";
 
 const part = (level: 0 | 1 | 2, p: number) => ({

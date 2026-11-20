@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ROUTING_LIMIT_MS } from "../../compose.ts";
 import {
 	deadlineFor,
 	MIN_DEADLINE_MS,
 	MIN_TIMEOUT_MS,
-} from "../../handler-deadline.ts";
+} from "../../scoring/handler-deadline.ts";
+import { ROUTING_LIMIT_MS } from "../../scoring/route.ts";
 
 describe("deadlineFor", () => {
 	it("leaves the minimum deadline at the minimum hook timeout", () => {

@@ -7,8 +7,8 @@ import {
 	roleText,
 } from "../../../../core/brief/brief.ts";
 import { KEY_UNSET, UNREADABLE } from "../../../../core/output/reasons.ts";
-import { tier } from "../../../../core/tier.ts";
-import { work } from "../../../../core/work.ts";
+import { tier } from "../../../../core/parts/tier.ts";
+import { work } from "../../../../core/parts/work.ts";
 import { createExtension } from "../../router.ts";
 import {
 	ENDPOINT,

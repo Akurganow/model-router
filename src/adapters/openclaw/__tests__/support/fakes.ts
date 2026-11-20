@@ -2,7 +2,10 @@ import {
 	scoringReply,
 	systemOneAnswer,
 } from "../../../../core/__tests__/support/replies.ts";
-import { KEY_FIELDS, type Provider } from "../../../../core/provider.ts";
+import {
+	KEY_FIELDS,
+	type Provider,
+} from "../../../../core/providers/provider.ts";
 import type { Fetch } from "../../../../core/scoring/transport/send.ts";
 import type {
 	BeforeToolCallHandler,

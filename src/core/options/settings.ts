@@ -5,7 +5,7 @@ import {
 	PROVIDER_VALUES,
 	type Provider,
 	resolve as resolveProvider,
-} from "../provider.ts";
+} from "../providers/provider.ts";
 import { resolveScope, SCOPE_VALUES } from "./scope.ts";
 
 export const VALUE_SETTINGS = ["provider", "scope"] as const;

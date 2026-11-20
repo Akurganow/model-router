@@ -4,6 +4,10 @@ import assert from "node:assert/strict";
 import { getEventListeners } from "node:events";
 import { test } from "node:test";
 import { routingState } from "../../brief/brief.ts";
+import { KEY_UNSET } from "../../output/reasons.ts";
+import { tier } from "../../parts/tier.ts";
+import { work } from "../../parts/work.ts";
+import { type Attempt, plan } from "../../providers/provider.ts";
 import {
 	type Decision,
 	decisionSuffix,
@@ -11,11 +15,7 @@ import {
 	ROUTING_LIMIT_MS,
 	type RouteInput,
 	route,
-} from "../../compose.ts";
-import { KEY_UNSET } from "../../output/reasons.ts";
-import { type Attempt, plan } from "../../provider.ts";
-import { tier } from "../../tier.ts";
-import { work } from "../../work.ts";
+} from "../../scoring/route.ts";
 import { brokenReply, scoringReply, stalledReply } from "../support/replies.ts";
 import { fakeTime } from "../support/time.ts";
 

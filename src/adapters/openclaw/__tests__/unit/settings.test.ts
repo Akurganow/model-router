@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { KEY_VARIABLES } from "../../../../core/provider.ts";
+import { KEY_VARIABLES } from "../../../../core/providers/provider.ts";
 import {
 	PLUGIN_ID,
 	pluginEntry,
