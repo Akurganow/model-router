@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
-import type { Level, Probabilities } from "../../src/core/parts/part.ts";
-import { tier } from "../../src/core/parts/tier.ts";
-import { work } from "../../src/core/parts/work.ts";
-import { readRows } from "../compare-rules.ts";
+import type { Level, Probabilities } from "#core/parts/part.ts";
+import { tier } from "#core/parts/tier.ts";
+import { work } from "#core/parts/work.ts";
+import { readRows } from "#scripts/compare-rules.ts";
 import {
 	decide,
 	type Fit,

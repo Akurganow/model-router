@@ -7,10 +7,10 @@ import {
 	PLUGIN_ID,
 	readKeys,
 	readSettings,
-} from "../src/adapters/openclaw/settings.ts";
-import { SCOPE_VALUES } from "../src/core/options/scope.ts";
-import { TOOL_NAME } from "../src/core/options/settings.ts";
-import { KEY_FIELDS } from "../src/core/providers/provider.ts";
+} from "#adapters/openclaw/settings.ts";
+import { SCOPE_VALUES } from "#core/options/scope.ts";
+import { TOOL_NAME } from "#core/options/settings.ts";
+import { KEY_FIELDS } from "#core/providers/provider.ts";
 import { formatJson } from "./build/json.ts";
 import { renderOpenclaw } from "./build/openclaw.ts";
 import { OPENCLAW_OUTPUTS } from "./build/outputs.ts";

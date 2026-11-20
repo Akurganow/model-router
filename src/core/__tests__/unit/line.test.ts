@@ -6,7 +6,7 @@ import {
 	pinnedLine,
 	routedLine,
 	skippedLine,
-} from "../../output/line.ts";
+} from "#core/output/line.ts";
 
 const BASE = {
 	level: 2,

@@ -1,4 +1,4 @@
-import type { Clock } from "../../clock.ts";
+import type { Clock } from "#utils/clock.ts";
 
 /**
  * A clock that runs a timer only when the test calls `fire`.

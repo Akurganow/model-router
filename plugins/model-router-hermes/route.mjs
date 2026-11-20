@@ -331,10 +331,6 @@ var work = {
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
-// src/utils/guards.ts
-var isRecord = (v) => typeof v === "object" && v !== null;
-var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
-
 // src/core/scoring/failure.ts
 var ABORTED = { failure: "aborted" };
 var TIMED_OUT = { failure: "timed out" };
@@ -382,6 +378,10 @@ function fallsBack(failure) {
       return false;
   }
 }
+
+// src/utils/guards.ts
+var isRecord = (v) => typeof v === "object" && v !== null;
+var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
 
 // src/core/scoring/formats/system-one.ts
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;

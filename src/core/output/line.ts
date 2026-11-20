@@ -1,4 +1,4 @@
-import type { Level } from "../parts/part.ts";
+import type { Level } from "#core/parts/part.ts";
 import { failedAttemptText, type PlainFailedAttempt } from "./reasons.ts";
 
 type RoutedLine = {

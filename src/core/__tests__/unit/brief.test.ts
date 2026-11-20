@@ -16,7 +16,7 @@ import {
 	roleText,
 	routingState,
 	TOKEN_PREFIXES,
-} from "../../brief/brief.ts";
+} from "#core/brief/brief.ts";
 
 const CALIBRATION = new URL("../../../../calibration.jsonl", import.meta.url);
 

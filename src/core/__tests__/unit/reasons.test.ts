@@ -16,7 +16,7 @@ import {
 	setsOwnModel,
 	TIMEOUT,
 	UNREADABLE,
-} from "../../output/reasons.ts";
+} from "#core/output/reasons.ts";
 
 // Every shared reason with the text the harnesses print: the constants, then the builders with one argument each.
 const CONSTANTS: [string, string][] = [

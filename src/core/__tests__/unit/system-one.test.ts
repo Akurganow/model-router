@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Part } from "../../parts/part.ts";
-import { tier } from "../../parts/tier.ts";
-import { work } from "../../parts/work.ts";
-import { SYSTEM_ONE } from "../../scoring/formats/system-one.ts";
+import type { Part } from "#core/parts/part.ts";
+import { tier } from "#core/parts/tier.ts";
+import { work } from "#core/parts/work.ts";
+import { SYSTEM_ONE } from "#core/scoring/formats/system-one.ts";
 
 const dist = (p: Record<string, unknown>) => ({
 	type: "score",

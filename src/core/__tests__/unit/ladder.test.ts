@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { effortFor } from "../../decision/ladder.ts";
-import type { Level } from "../../parts/part.ts";
+import { effortFor } from "#core/decision/ladder.ts";
+import type { Level } from "#core/parts/part.ts";
 
 // The values are written out, not read from the ladder.
 const ROWS: readonly (readonly [Level, readonly string[]])[] = [

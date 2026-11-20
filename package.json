@@ -4,6 +4,12 @@
 	"engines": {
 		"npm": ">=11.10.0"
 	},
+	"imports": {
+		"#core/*": "./src/core/*",
+		"#utils/*": "./src/utils/*",
+		"#adapters/*": "./src/adapters/*",
+		"#scripts/*": "./scripts/*"
+	},
 	"scripts": {
 		"check": "tsc -p src && tsc -p scripts && node scripts/set-version.ts --check && npm test && biome ci --error-on-warnings .",
 		"check:plugin-types": "tsc -p .",

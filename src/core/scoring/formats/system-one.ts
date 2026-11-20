@@ -1,7 +1,7 @@
-import { isRecord } from "../../../utils/guards.ts";
-import { LEVELS, type Part, type Probabilities } from "../../parts/part.ts";
-import { type Failure, MALFORMED } from "../failure.ts";
-import type { Usage } from "../reply.ts";
+import { LEVELS, type Part, type Probabilities } from "#core/parts/part.ts";
+import { type Failure, MALFORMED } from "#core/scoring/failure.ts";
+import type { Usage } from "#core/scoring/reply.ts";
+import { isRecord } from "#utils/guards.ts";
 import type { Answers, Format } from "./format.ts";
 
 // NaN fails both comparisons, so the range alone also rejects it.

@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { errorText } from "../src/utils/error.ts";
+import { errorText } from "#utils/error.ts";
 import { NPM_ROOT } from "./build/outputs.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 

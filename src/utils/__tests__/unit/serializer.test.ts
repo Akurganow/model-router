@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { serializer } from "../../serializer.ts";
+import { serializer } from "#utils/serializer.ts";
 
 const idle = async () => {
 	for (let i = 0; i < 20; i++) await new Promise((r) => setImmediate(r));

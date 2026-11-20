@@ -4,8 +4,8 @@ import {
 	deadlineFor,
 	MIN_DEADLINE_MS,
 	MIN_TIMEOUT_MS,
-} from "../../scoring/handler-deadline.ts";
-import { ROUTING_LIMIT_MS } from "../../scoring/limit.ts";
+} from "#core/scoring/handler-deadline.ts";
+import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 
 describe("deadlineFor", () => {
 	it("leaves the minimum deadline at the minimum hook timeout", () => {
