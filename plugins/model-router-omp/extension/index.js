@@ -624,6 +624,201 @@ function registerConfig(omp, pi) {
   });
 }
 
+// src/core/scoring/limit.ts
+var ROUTING_LIMIT_MS = 8e3;
+var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
+function abortCategory(signal) {
+  return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
+}
+function limitSignal(ms, clock, parent) {
+  const controller = new AbortController();
+  const { signal } = controller;
+  const disarmed = { signal, disarm: () => void 0 };
+  if (ms <= 0) {
+    controller.abort(LIMIT_REACHED);
+    return disarmed;
+  }
+  if (parent?.aborted) {
+    controller.abort(parent.reason);
+    return disarmed;
+  }
+  const onParentAbort = () => controller.abort(parent?.reason);
+  parent?.addEventListener("abort", onParentAbort, { once: true });
+  try {
+    const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
+    return {
+      signal,
+      disarm: () => {
+        parent?.removeEventListener("abort", onParentAbort);
+        timer.cancel();
+      }
+    };
+  } catch (error) {
+    parent?.removeEventListener("abort", onParentAbort);
+    throw error;
+  }
+}
+
+// src/core/scoring/handler-deadline.ts
+var HANDLER_MARGIN_MS = 2e3;
+var MIN_DEADLINE_MS = 1e3;
+var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
+var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
+
+// src/adapters/omp/deadline.ts
+var DEFAULT_TIMEOUT_MS = 3e4;
+function budgetFor(value) {
+  const timeout = isPositiveNumber(value) ? value : DEFAULT_TIMEOUT_MS;
+  const deadline = deadlineFor(timeout);
+  if (deadline >= MIN_DEADLINE_MS) return { deadline };
+  return {
+    closed: `tool call timeout ${timeout} ms leaves ${Math.max(0, deadline)} ms to route`
+  };
+}
+
+// src/adapters/omp/items.ts
+var TASK = "task";
+var BUNDLED = "bundled";
+var ROLE_MARK = "@";
+var SEANCE = "seance";
+var CUSTOM_AGENT = "custom task agent";
+var inScope = (name, scope) => scope === "extended" || name === TASK;
+var findAgent = (name, { agents }) => agents?.find((agent) => agent.name === name);
+var ownRole = (agent) => agent?.model?.find((model) => model.startsWith(ROLE_MARK))?.slice(ROLE_MARK.length);
+function userChoice(name, facts) {
+  if (name === TASK && isSet(facts.roles[TASK])) return "task model role set";
+  if (Object.hasOwn(facts.overrides, name) && isSet(facts.overrides[name]))
+    return `${name} model override set`;
+  if (facts.disabled.includes(name)) return `${name} agent disabled`;
+  return void 0;
+}
+function agentGate(name, facts) {
+  const found = findAgent(name, facts);
+  if (found?.source === BUNDLED) return void 0;
+  if (facts.scope === "core") return CUSTOM_AGENT;
+  if (facts.agents === void 0) return agentDiscoveryFailed(name);
+  if (found === void 0) return agentUnknown(name);
+  return found.model?.length ? setsOwnModel(name) : void 0;
+}
+var seanceGate = (name) => name === SEANCE ? `${name} spawns without the hook omp gives plugins, so its model cannot change` : void 0;
+var modelGate = (model) => model === void 0 ? void 0 : setsOwnModel("the item");
+function itemCheck(name, facts, model) {
+  if (!inScope(name, facts.scope)) return outsideCoreScope(name);
+  return userChoice(name, facts) ?? seanceGate(name) ?? modelGate(model) ?? agentGate(name, facts);
+}
+function spawnCheck({ agent, modelRole }, facts) {
+  const reason = itemCheck(agent, facts);
+  if (reason !== void 0) return reason;
+  return modelRole && modelRole !== ownRole(findAgent(agent, facts)) ? `${agent} spawns with another model role` : void 0;
+}
+function roleOf(name, facts) {
+  const found = findAgent(name, facts);
+  return name === TASK && found?.source === BUNDLED ? DEFAULT_ROLE : roleText(found?.description);
+}
+
+// src/adapters/omp/effort.ts
+var NO_PATTERNS = "no model patterns";
+var SELECTORS = [
+  "inherit",
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max"
+];
+var AUTO = "auto";
+var MIN_PREFIX = 2;
+var CEILINGS = ["minimal", "low", "medium", "high", "xhigh", "max"];
+var LOWEST = CEILINGS.indexOf("low");
+function carriesLevel(pattern) {
+  const colon = pattern.lastIndexOf(":");
+  if (colon < 0) return false;
+  const suffix = pattern.slice(colon + 1);
+  if (suffix === AUTO || SELECTORS.includes(suffix))
+    return true;
+  return suffix.length >= MIN_PREFIX && SELECTORS.filter((selector) => selector.startsWith(suffix)).length === 1;
+}
+var patternsOf = (value) => (typeof value === "string" ? [value] : Array.isArray(value) ? value : []).filter((v) => typeof v === "string").flatMap((v) => v.split(",")).map((v) => v.trim()).filter((v) => v !== "");
+function roleCarriesLevel(role, roles, seen = /* @__PURE__ */ new Set()) {
+  if (seen.has(role) || !Object.hasOwn(roles, role)) return false;
+  seen.add(role);
+  return patternsOf(roles[role]).some(
+    (pattern) => carriesLevel(pattern) || pattern.startsWith(ROLE_MARK) && roleCarriesLevel(pattern.slice(ROLE_MARK.length), roles, seen)
+  );
+}
+function capped(effort, ceiling) {
+  if (ceiling === void 0) return effort;
+  const top = CEILINGS.indexOf(ceiling);
+  if (top < LOWEST) return void 0;
+  return CEILINGS.indexOf(effort) <= top ? effort : CEILINGS[top];
+}
+function planEffort({ ladder, itemEffort }, model, { roles, maxEffort, effortEnabled }, patterns) {
+  if (itemEffort && effortEnabled) return { kept: CALLER_EFFORT };
+  if (model !== void 0 && roleCarriesLevel(model.slice(ROLE_MARK.length), roles))
+    return { kept: CONFIG_EFFORT };
+  if (model === void 0 && patterns?.some(carriesLevel))
+    return { kept: CONFIG_EFFORT };
+  const effort = capped(ladder, maxEffort);
+  if (effort === void 0) return { kept: CONFIG_EFFORT };
+  if (model === void 0 && patterns?.length === 0)
+    return { kept: NO_PATTERNS };
+  return { set: effort };
+}
+var lineFor = (routed, target, plan2) => routedLine({
+  level: routed.level,
+  target,
+  effort: "set" in plan2 ? plan2.set : plan2.kept,
+  probabilities: routed.probabilities,
+  suffix: routed.suffix
+});
+function modelFor(model, plan2, patterns) {
+  if (model !== void 0)
+    return "set" in plan2 ? `${model}:${plan2.set}` : model;
+  return "set" in plan2 ? patterns.map((p) => `${p}:${plan2.set}`) : void 0;
+}
+
+// src/adapters/omp/gates.ts
+var ROLE_NAMES = { small: "smol", middle: "midl", large: "slow" };
+async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
+  const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
+  if ("closed" in batch) return batch;
+  const reason = spawnCheck(spawning, batch.facts);
+  return reason === void 0 ? batch : { closed: reason };
+}
+async function openBatch(omp, pi, ctx, settings) {
+  if (settings === void 0) return { closed: UNREADABLE };
+  const attempts = await findAttempts(ctx, settings.provider);
+  if (attempts.length === 0) return { closed: KEY_UNSET };
+  const config = readConfig(omp.lookup, pi.pi.settings);
+  if (config === void 0) return { closed: UNREADABLE };
+  const agents = await discover(pi, ctx);
+  const models = slotRecord((slot) => slotModel(ctx, slot));
+  return {
+    attempts,
+    facts: { ...config, scope: settings.scope, agents, models }
+  };
+}
+function slotModel(ctx, slot) {
+  const role = ROLE_MARK + ROLE_NAMES[slot];
+  return slotState(resolves(ctx, role) ? role : void 0);
+}
+function resolves(ctx, role) {
+  try {
+    return ctx.models.resolve(role) !== void 0;
+  } catch {
+    return false;
+  }
+}
+async function discover(pi, ctx) {
+  try {
+    return (await pi.pi.discoverAgents(ctx.cwd)).agents;
+  } catch {
+    return void 0;
+  }
+}
+
 // src/core/parts/part.ts
 var LEVELS = [0, 1, 2];
 var fromMiddle = (down, up) => (p) => {
@@ -631,6 +826,44 @@ var fromMiddle = (down, up) => (p) => {
   const high = p[2] > up * p[1];
   if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
   return low ? 0 : high ? 2 : 1;
+};
+
+// src/core/parts/tier.ts
+var TIER_DOWN = 2 ** 0.25;
+var TIER_UP = 2 ** 0.5;
+var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
+var TIER_TEXTS = [
+  "Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
+  "Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
+  "Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."
+];
+var tier = {
+  key: "tier",
+  question: {
+    type: "score",
+    instructions: TIER_INSTRUCTIONS,
+    criteria: TIER_TEXTS
+  },
+  pick: fromMiddle(TIER_DOWN, TIER_UP)
+};
+
+// src/core/parts/work.ts
+var WORK_DOWN = 2 ** 1.25;
+var WORK_UP = 2 ** 0.5;
+var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
+var WORK_TEXTS = [
+  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
+  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
+  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
+];
+var work = {
+  key: "work",
+  question: {
+    type: "score",
+    instructions: WORK_INSTRUCTIONS,
+    criteria: WORK_TEXTS
+  },
+  pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
 // src/core/scoring/failure.ts
@@ -908,11 +1141,6 @@ async function ask2(input, attempt2) {
 }
 
 // src/core/scoring/route.ts
-var ROUTING_LIMIT_MS = 8e3;
-var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
-function abortCategory(signal) {
-  return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
-}
 async function route(input) {
   const { attempts, signal } = input;
   if (attempts.length === 0) return { skipped: KEY_UNSET };
@@ -945,204 +1173,6 @@ function toDecision({ answers, model, usage }, provider) {
     parts[part.key] = { level: part.pick(probabilities), probabilities };
   return { parts, provider, model, usage };
 }
-
-// src/core/scoring/handler-deadline.ts
-var HANDLER_MARGIN_MS = 2e3;
-var MIN_DEADLINE_MS = 1e3;
-var MIN_TIMEOUT_MS = MIN_DEADLINE_MS + HANDLER_MARGIN_MS;
-var deadlineFor = (timeout) => Math.min(ROUTING_LIMIT_MS, timeout - HANDLER_MARGIN_MS);
-
-// src/adapters/omp/deadline.ts
-var DEFAULT_TIMEOUT_MS = 3e4;
-function budgetFor(value) {
-  const timeout = isPositiveNumber(value) ? value : DEFAULT_TIMEOUT_MS;
-  const deadline = deadlineFor(timeout);
-  if (deadline >= MIN_DEADLINE_MS) return { deadline };
-  return {
-    closed: `tool call timeout ${timeout} ms leaves ${Math.max(0, deadline)} ms to route`
-  };
-}
-
-// src/adapters/omp/items.ts
-var TASK = "task";
-var BUNDLED = "bundled";
-var ROLE_MARK = "@";
-var SEANCE = "seance";
-var CUSTOM_AGENT = "custom task agent";
-var inScope = (name, scope) => scope === "extended" || name === TASK;
-var findAgent = (name, { agents }) => agents?.find((agent) => agent.name === name);
-var ownRole = (agent) => agent?.model?.find((model) => model.startsWith(ROLE_MARK))?.slice(ROLE_MARK.length);
-function userChoice(name, facts) {
-  if (name === TASK && isSet(facts.roles[TASK])) return "task model role set";
-  if (Object.hasOwn(facts.overrides, name) && isSet(facts.overrides[name]))
-    return `${name} model override set`;
-  if (facts.disabled.includes(name)) return `${name} agent disabled`;
-  return void 0;
-}
-function agentGate(name, facts) {
-  const found = findAgent(name, facts);
-  if (found?.source === BUNDLED) return void 0;
-  if (facts.scope === "core") return CUSTOM_AGENT;
-  if (facts.agents === void 0) return agentDiscoveryFailed(name);
-  if (found === void 0) return agentUnknown(name);
-  return found.model?.length ? setsOwnModel(name) : void 0;
-}
-var seanceGate = (name) => name === SEANCE ? `${name} spawns without the hook omp gives plugins, so its model cannot change` : void 0;
-var modelGate = (model) => model === void 0 ? void 0 : setsOwnModel("the item");
-function itemCheck(name, facts, model) {
-  if (!inScope(name, facts.scope)) return outsideCoreScope(name);
-  return userChoice(name, facts) ?? seanceGate(name) ?? modelGate(model) ?? agentGate(name, facts);
-}
-function spawnCheck({ agent, modelRole }, facts) {
-  const reason = itemCheck(agent, facts);
-  if (reason !== void 0) return reason;
-  return modelRole && modelRole !== ownRole(findAgent(agent, facts)) ? `${agent} spawns with another model role` : void 0;
-}
-function roleOf(name, facts) {
-  const found = findAgent(name, facts);
-  return name === TASK && found?.source === BUNDLED ? DEFAULT_ROLE : roleText(found?.description);
-}
-
-// src/adapters/omp/effort.ts
-var NO_PATTERNS = "no model patterns";
-var SELECTORS = [
-  "inherit",
-  "off",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-  "max"
-];
-var AUTO = "auto";
-var MIN_PREFIX = 2;
-var CEILINGS = ["minimal", "low", "medium", "high", "xhigh", "max"];
-var LOWEST = CEILINGS.indexOf("low");
-function carriesLevel(pattern) {
-  const colon = pattern.lastIndexOf(":");
-  if (colon < 0) return false;
-  const suffix = pattern.slice(colon + 1);
-  if (suffix === AUTO || SELECTORS.includes(suffix))
-    return true;
-  return suffix.length >= MIN_PREFIX && SELECTORS.filter((selector) => selector.startsWith(suffix)).length === 1;
-}
-var patternsOf = (value) => (typeof value === "string" ? [value] : Array.isArray(value) ? value : []).filter((v) => typeof v === "string").flatMap((v) => v.split(",")).map((v) => v.trim()).filter((v) => v !== "");
-function roleCarriesLevel(role, roles, seen = /* @__PURE__ */ new Set()) {
-  if (seen.has(role) || !Object.hasOwn(roles, role)) return false;
-  seen.add(role);
-  return patternsOf(roles[role]).some(
-    (pattern) => carriesLevel(pattern) || pattern.startsWith(ROLE_MARK) && roleCarriesLevel(pattern.slice(ROLE_MARK.length), roles, seen)
-  );
-}
-function capped(effort, ceiling) {
-  if (ceiling === void 0) return effort;
-  const top = CEILINGS.indexOf(ceiling);
-  if (top < LOWEST) return void 0;
-  return CEILINGS.indexOf(effort) <= top ? effort : CEILINGS[top];
-}
-function planEffort({ ladder, itemEffort }, model, { roles, maxEffort, effortEnabled }, patterns) {
-  if (itemEffort && effortEnabled) return { kept: CALLER_EFFORT };
-  if (model !== void 0 && roleCarriesLevel(model.slice(ROLE_MARK.length), roles))
-    return { kept: CONFIG_EFFORT };
-  if (model === void 0 && patterns?.some(carriesLevel))
-    return { kept: CONFIG_EFFORT };
-  const effort = capped(ladder, maxEffort);
-  if (effort === void 0) return { kept: CONFIG_EFFORT };
-  if (model === void 0 && patterns?.length === 0)
-    return { kept: NO_PATTERNS };
-  return { set: effort };
-}
-var lineFor = (routed, target, plan2) => routedLine({
-  level: routed.level,
-  target,
-  effort: "set" in plan2 ? plan2.set : plan2.kept,
-  probabilities: routed.probabilities,
-  suffix: routed.suffix
-});
-function modelFor(model, plan2, patterns) {
-  if (model !== void 0)
-    return "set" in plan2 ? `${model}:${plan2.set}` : model;
-  return "set" in plan2 ? patterns.map((p) => `${p}:${plan2.set}`) : void 0;
-}
-
-// src/adapters/omp/gates.ts
-var ROLE_NAMES = { small: "smol", middle: "midl", large: "slow" };
-async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
-  const batch = await openBatch(omp, pi, ctx, await readSettings(omp, ctx.cwd));
-  if ("closed" in batch) return batch;
-  const reason = spawnCheck(spawning, batch.facts);
-  return reason === void 0 ? batch : { closed: reason };
-}
-async function openBatch(omp, pi, ctx, settings) {
-  if (settings === void 0) return { closed: UNREADABLE };
-  const attempts = await findAttempts(ctx, settings.provider);
-  if (attempts.length === 0) return { closed: KEY_UNSET };
-  const config = readConfig(omp.lookup, pi.pi.settings);
-  if (config === void 0) return { closed: UNREADABLE };
-  const agents = await discover(pi, ctx);
-  const models = slotRecord((slot) => slotModel(ctx, slot));
-  return {
-    attempts,
-    facts: { ...config, scope: settings.scope, agents, models }
-  };
-}
-function slotModel(ctx, slot) {
-  const role = ROLE_MARK + ROLE_NAMES[slot];
-  return slotState(resolves(ctx, role) ? role : void 0);
-}
-function resolves(ctx, role) {
-  try {
-    return ctx.models.resolve(role) !== void 0;
-  } catch {
-    return false;
-  }
-}
-async function discover(pi, ctx) {
-  try {
-    return (await pi.pi.discoverAgents(ctx.cwd)).agents;
-  } catch {
-    return void 0;
-  }
-}
-
-// src/core/parts/tier.ts
-var TIER_DOWN = 2 ** 0.25;
-var TIER_UP = 2 ** 0.5;
-var TIER_INSTRUCTIONS = "How much judgment does completing `task` require from an agent whose role is `role`? `description` is the caller's one-line summary of the task.";
-var TIER_TEXTS = [
-  "Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
-  "Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
-  "Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause."
-];
-var tier = {
-  key: "tier",
-  question: {
-    type: "score",
-    instructions: TIER_INSTRUCTIONS,
-    criteria: TIER_TEXTS
-  },
-  pick: fromMiddle(TIER_DOWN, TIER_UP)
-};
-
-// src/core/parts/work.ts
-var WORK_DOWN = 2 ** 1.25;
-var WORK_UP = 2 ** 0.5;
-var WORK_INSTRUCTIONS = "How much work does completing `task` take for an agent whose role is `role`, once the judgment is settled? Count the steps, the files and the edge cases to verify.";
-var WORK_TEXTS = [
-  "A short task: one or two mechanical steps in one place, nothing to diagnose, and the given command is the whole check.",
-  "An ordinary task: reading or diagnosing code, a few steps or files, and a result to verify.",
-  "A long or delicate task: many steps or files, hidden edge cases, or a wrong result that would look right."
-];
-var work = {
-  key: "work",
-  question: {
-    type: "score",
-    instructions: WORK_INSTRUCTIONS,
-    criteria: WORK_TEXTS
-  },
-  pick: fromMiddle(WORK_DOWN, WORK_UP)
-};
 
 // src/core/decision/decide.ts
 var BAD = { skipped: BAD_REPLY };
@@ -1196,9 +1226,7 @@ var realClock = {
 // src/adapters/omp/score.ts
 var MAX_PARALLEL = 4;
 async function scoreItems(items, context, { attempts, facts }, deadline) {
-  const limit = new AbortController();
-  if (deadline <= 0) limit.abort(LIMIT_REACHED);
-  const timer = setTimeout(() => limit.abort(LIMIT_REACHED), deadline);
+  const limit = limitSignal(deadline, realClock);
   const passedOver = /* @__PURE__ */ new Set();
   try {
     return await mapLimit(items, MAX_PARALLEL, async (pending) => {
@@ -1219,7 +1247,7 @@ async function scoreItems(items, context, { attempts, facts }, deadline) {
       return { ...pending, stored: toStored(decided, item, facts) };
     });
   } finally {
-    clearTimeout(timer);
+    limit.disarm();
   }
 }
 function scoreItem(item, context, role, routing, signal) {

@@ -5,7 +5,7 @@ import {
 	MIN_DEADLINE_MS,
 	MIN_TIMEOUT_MS,
 } from "../../core/scoring/handler-deadline.ts";
-import { ROUTING_LIMIT_MS } from "../../core/scoring/route.ts";
+import { ROUTING_LIMIT_MS } from "../../core/scoring/limit.ts";
 import { realClock } from "../../utils/clock.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { registerConfigCommands, registerConfigTool } from "./config.ts";

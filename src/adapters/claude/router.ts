@@ -10,12 +10,8 @@ import { routedLine, skippedLine } from "../../core/output/line.ts";
 import { CALLER_EFFORT } from "../../core/output/reasons.ts";
 import type { Level } from "../../core/parts/part.ts";
 import { plan } from "../../core/providers/provider.ts";
-import {
-	LIMIT_REACHED,
-	ROUTING_LIMIT_MS,
-	type RouteInput,
-	type Skipped,
-} from "../../core/scoring/route.ts";
+import { limitSignal, ROUTING_LIMIT_MS } from "../../core/scoring/limit.ts";
+import type { RouteInput, Skipped } from "../../core/scoring/route.ts";
 import type { Fetch } from "../../core/scoring/transport/send.ts";
 import {
 	type AgentCall,
@@ -275,20 +271,19 @@ async function scored(
 	cancel: AbortSignal,
 	input: Pick<RouteInput, "state" | "attempts">,
 ) {
-	const stop = new AbortController();
-	$.clock.sleep(ROUTING_LIMIT_MS, { signal: stop.signal }).then(
-		() => stop.abort(LIMIT_REACHED),
-		() => undefined,
-	);
+	const clock = {
+		after: (ms: number, fn: () => void) => $.clock.after(ms, fn),
+	};
+	const limit = limitSignal(ROUTING_LIMIT_MS, clock, cancel);
 	try {
 		return await scoreWork({
 			...input,
 			fetchFn: engineFetch($),
-			clock: { after: (ms, fn) => $.clock.after(ms, fn) },
-			signal: AbortSignal.any([stop.signal, cancel]),
+			clock,
+			signal: limit.signal,
 		});
 	} finally {
-		stop.abort();
+		limit.disarm();
 	}
 }
 

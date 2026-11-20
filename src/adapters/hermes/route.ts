@@ -19,10 +19,10 @@ import {
 	TIMEOUT,
 } from "../../core/output/reasons.ts";
 import { plan } from "../../core/providers/provider.ts";
-import { LIMIT_REACHED, type Skipped } from "../../core/scoring/route.ts";
+import { raceDeadline } from "../../core/scoring/limit.ts";
+import type { Skipped } from "../../core/scoring/route.ts";
 import type { Fetch } from "../../core/scoring/transport/send.ts";
 import { type Clock, realClock } from "../../utils/clock.ts";
-import { raceDeadline } from "../../utils/deadline.ts";
 import { type HermesRequest, type KeptEffort, readRequest } from "./request.ts";
 
 type HermesDeps = { readonly fetchFn: Fetch; readonly clock: Clock };
@@ -136,7 +136,6 @@ export async function routeRequest(
 			request.budgetMs,
 			deps.clock,
 			undefined,
-			LIMIT_REACHED,
 		);
 		if (decided === undefined) return skip(TIMEOUT);
 		return "skipped" in decided

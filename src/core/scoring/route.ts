@@ -1,19 +1,10 @@
-import {
-	CANCELLED,
-	FAILED,
-	failedAttemptText,
-	KEY_UNSET,
-	TIMEOUT,
-} from "../output/reasons.ts";
+import { FAILED, failedAttemptText, KEY_UNSET } from "../output/reasons.ts";
 import type { Level, Probabilities } from "../parts/part.ts";
 import type { Attempt, Provider } from "../providers/provider.ts";
 import { type AskInput, ask, type Reply } from "./ask.ts";
 import { fallsBack, isFailure, skipText } from "./failure.ts";
+import { abortCategory } from "./limit.ts";
 import type { Usage } from "./reply.ts";
-
-export const ROUTING_LIMIT_MS = 8000;
-// Adapters abort their signal with this reason when the limit runs out, so a timeout differs from a cancel.
-export const LIMIT_REACHED = Symbol("routing limit reached");
 
 type FailedAttempt = {
 	readonly provider: Provider;
@@ -36,11 +27,6 @@ export type RouteInput = AskInput & {
 	readonly attempts: readonly Attempt[];
 	readonly onFallback?: (provider: Provider) => void;
 };
-
-/** Returns the skip text for an aborted signal: the routing limit or the caller's cancel. */
-export function abortCategory(signal: AbortSignal): string {
-	return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
-}
 
 /**
  * Asks the attempts in order and returns the first decision whose parts all

@@ -4,11 +4,8 @@ import { effortFor } from "../../core/decision/ladder.ts";
 import { pickModel, slotForLevel } from "../../core/decision/slots.ts";
 import { skippedLine } from "../../core/output/line.ts";
 import type { Provider } from "../../core/providers/provider.ts";
-import {
-	LIMIT_REACHED,
-	type RouteInput,
-	type Skipped,
-} from "../../core/scoring/route.ts";
+import { limitSignal } from "../../core/scoring/limit.ts";
+import type { RouteInput, Skipped } from "../../core/scoring/route.ts";
 import { realClock } from "../../utils/clock.ts";
 import { lineFor, planEffort, type Routed } from "./effort.ts";
 import type { Batch } from "./gates.ts";
@@ -41,10 +38,8 @@ export async function scoreItems(
 	{ attempts, facts }: Batch,
 	deadline: number,
 ): Promise<Scored[]> {
-	const limit = new AbortController();
 	// A deadline the gates used up leaves no time to send anything.
-	if (deadline <= 0) limit.abort(LIMIT_REACHED);
-	const timer = setTimeout(() => limit.abort(LIMIT_REACHED), deadline);
+	const limit = limitSignal(deadline, realClock);
 	const passedOver = new Set<Provider>();
 	try {
 		return await mapLimit(items, MAX_PARALLEL, async (pending) => {
@@ -65,7 +60,7 @@ export async function scoreItems(
 			return { ...pending, stored: toStored(decided, item, facts) };
 		});
 	} finally {
-		clearTimeout(timer);
+		limit.disarm();
 	}
 }
 

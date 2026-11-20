@@ -609,11 +609,64 @@ async function ask(input, attempt) {
   }
 }
 
-// src/core/scoring/route.ts
+// src/core/scoring/limit.ts
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 function abortCategory(signal) {
   return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
 }
+function limitSignal(ms, clock, parent) {
+  const controller = new AbortController();
+  const { signal } = controller;
+  const disarmed = { signal, disarm: () => void 0 };
+  if (ms <= 0) {
+    controller.abort(LIMIT_REACHED);
+    return disarmed;
+  }
+  if (parent?.aborted) {
+    controller.abort(parent.reason);
+    return disarmed;
+  }
+  const onParentAbort = () => controller.abort(parent?.reason);
+  parent?.addEventListener("abort", onParentAbort, { once: true });
+  try {
+    const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
+    return {
+      signal,
+      disarm: () => {
+        parent?.removeEventListener("abort", onParentAbort);
+        timer.cancel();
+      }
+    };
+  } catch (error) {
+    parent?.removeEventListener("abort", onParentAbort);
+    throw error;
+  }
+}
+async function raceDeadline(work2, deadlineMs, clock, hostSignal) {
+  try {
+    const { signal, disarm } = limitSignal(deadlineMs, clock, hostSignal);
+    try {
+      return await new Promise((settle) => {
+        const onAbort = () => settle(void 0);
+        signal.addEventListener("abort", onAbort, { once: true });
+        if (signal.aborted) onAbort();
+        work2(signal).then(
+          (result) => signal.aborted ? void 0 : result,
+          () => void 0
+        ).then(settle);
+      });
+    } finally {
+      try {
+        disarm();
+      } catch {
+      }
+    }
+  } catch {
+    return void 0;
+  }
+}
+
+// src/core/scoring/route.ts
 async function route(input) {
   const { attempts, signal } = input;
   if (attempts.length === 0) return { skipped: KEY_UNSET };
@@ -728,40 +781,6 @@ function plan(value, keys) {
   );
 }
 
-// src/utils/deadline.ts
-async function raceDeadline(work2, deadlineMs, clock, hostSignal, reason) {
-  try {
-    const stop = new AbortController();
-    const signal = AbortSignal.any(
-      hostSignal ? [stop.signal, hostSignal] : [stop.signal]
-    );
-    return await new Promise((settle) => {
-      const timer = clock.after(deadlineMs, () => {
-        stop.abort(reason);
-        settle(void 0);
-      });
-      const onHostAbort = () => {
-        settle(void 0);
-        try {
-          timer.cancel();
-        } catch {
-        }
-      };
-      hostSignal?.addEventListener("abort", onHostAbort, { once: true });
-      if (hostSignal?.aborted) onHostAbort();
-      work2(signal).then(
-        (result) => signal.aborted ? void 0 : result,
-        () => void 0
-      ).then(settle).finally(() => {
-        timer.cancel();
-        hostSignal?.removeEventListener("abort", onHostAbort);
-      }).catch(() => void 0);
-    });
-  } catch {
-    return void 0;
-  }
-}
-
 // src/adapters/hermes/request.ts
 var KEPT_EFFORTS = ["config", "caller"];
 var readKeys = (value) => Object.fromEntries(
@@ -855,8 +874,7 @@ async function routeRequest(raw, deps) {
       (signal) => scored(request, deps, signal),
       request.budgetMs,
       deps.clock,
-      void 0,
-      LIMIT_REACHED
+      void 0
     );
     if (decided === void 0) return skip2(TIMEOUT);
     return "skipped" in decided ? skip2(decided.skipped) : answer(request, decided);

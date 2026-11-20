@@ -839,12 +839,42 @@ async function ask2(input, attempt) {
   }
 }
 
-// src/core/scoring/route.ts
+// src/core/scoring/limit.ts
 var ROUTING_LIMIT_MS = 8e3;
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 function abortCategory(signal) {
   return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
 }
+function limitSignal(ms, clock, parent) {
+  const controller = new AbortController();
+  const { signal } = controller;
+  const disarmed = { signal, disarm: () => void 0 };
+  if (ms <= 0) {
+    controller.abort(LIMIT_REACHED);
+    return disarmed;
+  }
+  if (parent?.aborted) {
+    controller.abort(parent.reason);
+    return disarmed;
+  }
+  const onParentAbort = () => controller.abort(parent?.reason);
+  parent?.addEventListener("abort", onParentAbort, { once: true });
+  try {
+    const timer = clock.after(ms, () => controller.abort(LIMIT_REACHED));
+    return {
+      signal,
+      disarm: () => {
+        parent?.removeEventListener("abort", onParentAbort);
+        timer.cancel();
+      }
+    };
+  } catch (error) {
+    parent?.removeEventListener("abort", onParentAbort);
+    throw error;
+  }
+}
+
+// src/core/scoring/route.ts
 async function route(input) {
   const { attempts, signal } = input;
   if (attempts.length === 0) return { skipped: KEY_UNSET };
@@ -1073,20 +1103,19 @@ function decisionLine(picked, kept) {
   });
 }
 async function scored($, cancel, input) {
-  const stop = new AbortController();
-  $.clock.sleep(ROUTING_LIMIT_MS, { signal: stop.signal }).then(
-    () => stop.abort(LIMIT_REACHED),
-    () => void 0
-  );
+  const clock = {
+    after: (ms, fn) => $.clock.after(ms, fn)
+  };
+  const limit = limitSignal(ROUTING_LIMIT_MS, clock, cancel);
   try {
     return await scoreWork({
       ...input,
       fetchFn: engineFetch($),
-      clock: { after: (ms, fn) => $.clock.after(ms, fn) },
-      signal: AbortSignal.any([stop.signal, cancel])
+      clock,
+      signal: limit.signal
     });
   } finally {
-    stop.abort();
+    limit.disarm();
   }
 }
 function engineFetch($) {

@@ -15,10 +15,9 @@ import {
 import type { Level } from "../../core/parts/part.ts";
 import { type Keys, plan } from "../../core/providers/provider.ts";
 import { MIN_DEADLINE_MS } from "../../core/scoring/handler-deadline.ts";
-import { abortCategory, LIMIT_REACHED } from "../../core/scoring/route.ts";
+import { abortCategory, raceDeadline } from "../../core/scoring/limit.ts";
 import type { Fetch } from "../../core/scoring/transport/send.ts";
 import { type Clock, realClock } from "../../utils/clock.ts";
-import { raceDeadline } from "../../utils/deadline.ts";
 import { nonEmpty } from "../../utils/text.ts";
 import { type Gate, gateSpawn } from "./gates.ts";
 import { readSpawn, type SpawnRequest } from "./params.ts";
@@ -200,7 +199,6 @@ export function createBeforeToolCall(
 				deadlineMs,
 				deps.clock,
 				ctx?.abortSignal,
-				LIMIT_REACHED,
 			);
 		} catch {
 			// Reading a malformed event or context can throw.
