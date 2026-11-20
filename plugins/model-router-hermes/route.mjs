@@ -480,6 +480,7 @@ function serverDelayMs(headers) {
   if (Number.isFinite(seconds)) {
     return seconds >= 0 ? seconds * 1e3 : void 0;
   }
+  if (!raw.endsWith("GMT")) return void 0;
   const date = Date.parse(raw);
   return Number.isNaN(date) ? void 0 : Math.max(0, date - Date.now());
 }
