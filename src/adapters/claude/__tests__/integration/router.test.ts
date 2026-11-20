@@ -12,7 +12,7 @@ import {
 	registered,
 	routed,
 	SPAWN,
-} from "../support/fakes.ts";
+} from "#adapters/claude/__tests__/support/fakes.ts";
 
 // Rows are the tier level, columns the work level. The values are written out, not read from the ladder.
 const LADDER = [

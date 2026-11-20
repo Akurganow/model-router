@@ -1,11 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-	outsideCoreScope,
-	setsOwnModel,
-} from "../../../../core/output/reasons.ts";
-import type { OpenClawSettings } from "../../settings.ts";
-import {
 	effort,
 	extended,
 	type GateOptions,
@@ -17,7 +12,9 @@ import {
 	SETTINGS,
 	skipped,
 	withParams,
-} from "../support/gate-fakes.ts";
+} from "#adapters/openclaw/__tests__/support/gate-fakes.ts";
+import type { OpenClawSettings } from "#adapters/openclaw/settings.ts";
+import { outsideCoreScope, setsOwnModel } from "#core/output/reasons.ts";
 
 // The sessions_spawn tool reads agentId, label, model and thinking with readToolStringParam: the own key, else the snake-case key, text only, trimmed, empty counted as absent.
 const SCOPES: [string, OpenClawSettings][] = [

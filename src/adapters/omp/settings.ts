@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { resolveScope, type Scope } from "../../core/options/scope.ts";
+import { resolveScope, type Scope } from "#core/options/scope.ts";
 import {
 	type Attempt,
 	collectKeys,
@@ -8,9 +8,9 @@ import {
 	type ProviderValue,
 	plan,
 	resolve as resolveProvider,
-} from "../../core/providers/provider.ts";
-import { isRecord } from "../../utils/guards.ts";
-import { nonEmpty } from "../../utils/text.ts";
+} from "#core/providers/provider.ts";
+import { isRecord } from "#utils/guards.ts";
+import { nonEmpty } from "#utils/text.ts";
 import type { Facts } from "./items.ts";
 import { FALLBACK_NAME } from "./name.ts";
 import type { Context, Lookup, OmpImports } from "./types.ts";

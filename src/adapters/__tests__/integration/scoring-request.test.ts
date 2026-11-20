@@ -2,26 +2,26 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
-	scoringReply,
-	systemOneAnswer,
-} from "../../../core/__tests__/support/replies.ts";
-import { DEFAULT_ROLE } from "../../../core/brief/brief.ts";
-import { tier } from "../../../core/parts/tier.ts";
-import { work } from "../../../core/parts/work.ts";
-import { createFakeClock } from "../../../utils/__tests__/support/fake-clock.ts";
-import {
 	answer,
 	FULL,
 	routedCall,
-} from "../../claude/__tests__/support/fakes.ts";
-import { createScriptedScoring } from "../../hermes/__tests__/support/fakes.ts";
-import { routeRequest } from "../../hermes/route.ts";
+} from "#adapters/claude/__tests__/support/fakes.ts";
+import { createScriptedScoring } from "#adapters/hermes/__tests__/support/fakes.ts";
+import { routeRequest } from "#adapters/hermes/route.ts";
 import {
 	DEADLINE_MS,
 	REQUESTER,
 	setup,
-} from "../../openclaw/__tests__/support/handler-fakes.ts";
-import { createBeforeToolCall, SPAWN_TOOL } from "../../openclaw/router.ts";
+} from "#adapters/openclaw/__tests__/support/handler-fakes.ts";
+import { createBeforeToolCall, SPAWN_TOOL } from "#adapters/openclaw/router.ts";
+import {
+	scoringReply,
+	systemOneAnswer,
+} from "#core/__tests__/support/replies.ts";
+import { DEFAULT_ROLE } from "#core/brief/brief.ts";
+import { tier } from "#core/parts/tier.ts";
+import { work } from "#core/parts/work.ts";
+import { createFakeClock } from "#utils/__tests__/support/fake-clock.ts";
 
 const TASK = "Rename the helper in util.ts and run the tests.";
 const DESCRIPTION = "Rename one helper";

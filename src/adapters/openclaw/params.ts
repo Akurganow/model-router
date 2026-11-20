@@ -1,5 +1,5 @@
-import { isSet } from "../../utils/guards.ts";
-import { nonEmpty } from "../../utils/text.ts";
+import { isSet } from "#utils/guards.ts";
+import { nonEmpty } from "#utils/text.ts";
 
 type Params = Readonly<Record<string, unknown>>;
 

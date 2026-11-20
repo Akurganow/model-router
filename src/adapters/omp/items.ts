@@ -1,13 +1,13 @@
-import { DEFAULT_ROLE, roleText } from "../../core/brief/brief.ts";
-import type { SlotModels } from "../../core/decision/slots.ts";
-import type { Scope } from "../../core/options/scope.ts";
+import { DEFAULT_ROLE, roleText } from "#core/brief/brief.ts";
+import type { SlotModels } from "#core/decision/slots.ts";
+import type { Scope } from "#core/options/scope.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
 	outsideCoreScope,
 	setsOwnModel,
-} from "../../core/output/reasons.ts";
-import { isSet } from "../../utils/guards.ts";
+} from "#core/output/reasons.ts";
+import { isSet } from "#utils/guards.ts";
 import type { DiscoveredAgent } from "./types.ts";
 
 export const TASK = "task";

@@ -1,4 +1,4 @@
-import { slotLine } from "../../core/decision/slots.ts";
+import { slotLine } from "#core/decision/slots.ts";
 import {
 	alreadyValue,
 	COMMAND_DESCRIPTIONS,
@@ -10,12 +10,12 @@ import {
 	unchanged,
 	useOneOf,
 	valueLine,
-} from "../../core/options/settings.ts";
+} from "#core/options/settings.ts";
 import {
 	PROVIDER_VALUES,
 	PROVIDERS,
 	type Provider,
-} from "../../core/providers/provider.ts";
+} from "#core/providers/provider.ts";
 
 // Hermes puts a plugin tool in a toolset of its own, and a plugin toolset is on in a default session.
 const TOOLSET = "model_router";

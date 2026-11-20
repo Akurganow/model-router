@@ -4,13 +4,14 @@ language js
 // specifier forms. A URL such as new URL("../", import.meta.url) is none of them.
 // src-outside.grit explains the [^"']* before the quote.
 // A ../ segment counts anywhere in the specifier, so ./../ is no way around.
-// biome.json names the folders this plugin reads. src/adapters/ still holds
-// relative imports, so it is not among them.
+// This plugin holds no path pattern: a pattern reads the absolute path, so a
+// checkout below a folder named scripts would report every file. An override
+// in biome.json names its folders.
 or {
 	JsModuleSource() as $specifier,
 	`import($specifier)`,
 	TsImportType() as $specifier
 } where {
 	$specifier <: r"[^\"']*[\"'](?:[^\"']*/)?\.\./[\s\S]*",
-	register_diagnostic(span=$specifier, message="An import of a parent folder goes through an alias: #core/, #utils/, #adapters/ or #scripts/.", severity="error")
+	register_diagnostic(span=$specifier, message="A specifier holds no ../: a folder of src/ or scripts/ is imported through its alias, and nothing else is imported from a parent folder.", severity="error")
 }

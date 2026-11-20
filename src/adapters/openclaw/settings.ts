@@ -1,13 +1,5 @@
-import {
-	type Slot,
-	slotRecord,
-	slotSetting,
-} from "../../core/decision/slots.ts";
-import {
-	parseScope,
-	resolveScope,
-	type Scope,
-} from "../../core/options/scope.ts";
+import { type Slot, slotRecord, slotSetting } from "#core/decision/slots.ts";
+import { parseScope, resolveScope, type Scope } from "#core/options/scope.ts";
 import {
 	collectKeysSync,
 	KEY_FIELDS,
@@ -16,9 +8,9 @@ import {
 	type ProviderValue,
 	parseProvider,
 	resolve,
-} from "../../core/providers/provider.ts";
-import { isRecord } from "../../utils/guards.ts";
-import { nonEmpty } from "../../utils/text.ts";
+} from "#core/providers/provider.ts";
+import { isRecord } from "#utils/guards.ts";
+import { nonEmpty } from "#utils/text.ts";
 import type { OpenClawApi, OpenClawConfig } from "./types.ts";
 
 export const PLUGIN_ID = "model-router-openclaw";

@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { KEY_VARIABLES } from "../../../../core/providers/provider.ts";
-import { findAttempts, narrow, readSettings } from "../../settings.ts";
 import {
 	KEY,
 	lockfileScoped,
 	setEnv,
 	unreadable,
 	useWorld,
-} from "../support/fakes.ts";
+} from "#adapters/omp/__tests__/support/fakes.ts";
+import { findAttempts, narrow, readSettings } from "#adapters/omp/settings.ts";
+import { KEY_VARIABLES } from "#core/providers/provider.ts";
 
 const world = useWorld();
 

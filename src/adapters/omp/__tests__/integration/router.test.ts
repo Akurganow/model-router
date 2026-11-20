@@ -1,16 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, mock, test } from "node:test";
 import {
-	buildPrompt,
-	DEFAULT_ROLE,
-	NO_DESCRIPTION,
-	roleText,
-} from "../../../../core/brief/brief.ts";
-import { KEY_UNSET, UNREADABLE } from "../../../../core/output/reasons.ts";
-import { tier } from "../../../../core/parts/tier.ts";
-import { work } from "../../../../core/parts/work.ts";
-import { createExtension } from "../../router.ts";
-import {
 	ENDPOINT,
 	KEY,
 	lockfileWith,
@@ -20,7 +10,17 @@ import {
 	setEnv,
 	systemOneAnswer,
 	useWorld,
-} from "../support/fakes.ts";
+} from "#adapters/omp/__tests__/support/fakes.ts";
+import { createExtension } from "#adapters/omp/router.ts";
+import {
+	buildPrompt,
+	DEFAULT_ROLE,
+	NO_DESCRIPTION,
+	roleText,
+} from "#core/brief/brief.ts";
+import { KEY_UNSET, UNREADABLE } from "#core/output/reasons.ts";
+import { tier } from "#core/parts/tier.ts";
+import { work } from "#core/parts/work.ts";
 
 const world = useWorld();
 afterEach(() => mock.timers.reset());

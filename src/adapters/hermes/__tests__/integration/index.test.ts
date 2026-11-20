@@ -4,20 +4,19 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
+	createScriptedScoring,
+	type Step,
+} from "#adapters/hermes/__tests__/support/fakes.ts";
+import { readRequest } from "#adapters/hermes/request.ts";
+import { routeRequest } from "#adapters/hermes/route.ts";
+import {
 	scoringReply,
 	systemOneAnswer,
-} from "../../../../core/__tests__/support/replies.ts";
-import {
-	buildPrompt,
-	DEFAULT_ROLE,
-	ROLE_CAP,
-} from "../../../../core/brief/brief.ts";
-import { ROUTING_LIMIT_MS } from "../../../../core/scoring/limit.ts";
-import type { Fetch } from "../../../../core/scoring/transport/send.ts";
-import { createFakeClock } from "../../../../utils/__tests__/support/fake-clock.ts";
-import { readRequest } from "../../request.ts";
-import { routeRequest } from "../../route.ts";
-import { createScriptedScoring, type Step } from "../support/fakes.ts";
+} from "#core/__tests__/support/replies.ts";
+import { buildPrompt, DEFAULT_ROLE, ROLE_CAP } from "#core/brief/brief.ts";
+import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
+import type { Fetch } from "#core/scoring/transport/send.ts";
+import { createFakeClock } from "#utils/__tests__/support/fake-clock.ts";
 
 const FIXTURES = join(
 	import.meta.dirname,

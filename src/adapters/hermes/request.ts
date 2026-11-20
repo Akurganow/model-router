@@ -1,8 +1,8 @@
-import { contextText } from "../../core/brief/brief.ts";
-import { type Slot, slotRecord } from "../../core/decision/slots.ts";
-import { type Keys, PROVIDERS } from "../../core/providers/provider.ts";
-import { isPositiveNumber, isRecord } from "../../utils/guards.ts";
-import { nonEmpty } from "../../utils/text.ts";
+import { contextText } from "#core/brief/brief.ts";
+import { type Slot, slotRecord } from "#core/decision/slots.ts";
+import { type Keys, PROVIDERS } from "#core/providers/provider.ts";
+import { isPositiveNumber, isRecord } from "#utils/guards.ts";
+import { nonEmpty } from "#utils/text.ts";
 
 // Whose effort replaces the ladder's. Python ranks the delegation section above the caller.
 const KEPT_EFFORTS = ["config", "caller"] as const;

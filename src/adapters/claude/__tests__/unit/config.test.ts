@@ -1,24 +1,20 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-	NO_ANSWER,
-	unchanged,
-	valueLine,
-} from "../../../../core/options/settings.ts";
-import {
-	configCall,
-	configCommand,
-	REFUSED,
-	resetConfig,
-} from "../../config.ts";
-import type { CommandRun, ConfigCall, Engine } from "../../host.ts";
-import {
 	answeringEngine,
 	dialogs,
 	flush,
 	recordingEngine,
 	type Step,
-} from "../support/fakes.ts";
+} from "#adapters/claude/__tests__/support/fakes.ts";
+import {
+	configCall,
+	configCommand,
+	REFUSED,
+	resetConfig,
+} from "#adapters/claude/config.ts";
+import type { CommandRun, ConfigCall, Engine } from "#adapters/claude/host.ts";
+import { NO_ANSWER, unchanged, valueLine } from "#core/options/settings.ts";
 
 test("the refusal says nothing was read or changed", () => {
 	assert.match(REFUSED, /Permission rules deny/);

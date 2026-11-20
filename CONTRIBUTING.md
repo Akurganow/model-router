@@ -18,13 +18,13 @@ every commit as a [conventional commit](#commits).
     so does a test that reads a file the build writes.
   - `support/` holds fakes and helpers. A script in `scripts/` may import
     them; application code never does.
-  - A file of `src/core/`, `src/utils/` or `scripts/` imports its own folder
-    and the folders below it by `./`, and a file of another folder of `src/`
-    or `scripts/` by an alias: `#core/`, `#utils/`, `#adapters/` or
-    `#scripts/`. `src/adapters/` still imports by relative path. The
-    `imports` map in the root `package.json` holds the aliases, and a
-    specifier keeps its `.ts` extension. `tsc` rejects that extension on an
-    alias while `rewriteRelativeImportExtensions` is on, so
+  - A file of `src/` or `scripts/` imports its own folder and the folders
+    below it by `./`, and a file of another folder of `src/` or `scripts/`
+    by an alias: `#core/`, `#utils/`, `#adapters/` or `#scripts/`. No rule
+    checks the `./` half: a file that names its own folder by the alias
+    passes the lint. The `imports` map in the root `package.json` holds the
+    aliases, and a specifier keeps its `.ts` extension. `tsc` rejects that
+    extension on an alias while `rewriteRelativeImportExtensions` is on, so
     `src/tsconfig.json` and `scripts/tsconfig.json` turn it off. The tests
     under `plugins/` import by relative path: `plugins/model-router-omp/`
     holds its own `package.json`, so the root map does not reach its tests,
@@ -41,20 +41,22 @@ every commit as a [conventional commit](#commits).
     clock that its caller passes. Plugins in `scripts/lint/` ban an adapter
     import in `src/core/`, a `node:` import and a call of
     `AbortSignal.timeout` in the source files of `src/core/`, an import from
-    `scripts/` or `plugins/` in `src/`, the imports of `scoring/route.ts`
-    that the list below bans, a computed `import()` in `src/`, an import
-    from a `__tests__` folder in a source file of `src/`, a re-export in
+    `scripts/` in `src/`, the imports of `scoring/route.ts` that the list
+    below bans, a computed `import()` in `src/`, an import from a
+    `__tests__` folder in a source file of `src/`, a re-export in
     `src/utils/`, a shared skip reason spelled outside
     `src/core/output/reasons.ts` and a specifier that holds a `../` in
-    `src/core/`, `src/utils/` and `scripts/`.
-  - Where a banned import lies outside the importing file's folder, a ban on
-    a file of `src/core/` or `src/utils/` reads its alias. A relative path
-    to the same file holds a `../` and falls to the plugin that bans every
-    such specifier there.
+    `src/` and `scripts/`.
+  - A ban on a file of `src/` names a banned file outside that file's folder
+    by the banned file's alias: the ban on `src/utils/` reads `#core/**`. A
+    relative path to the same file holds a `../` and falls to the plugin
+    that bans every such specifier there. `plugins/` has no alias, so that
+    plugin alone bans an import of it in `src/`.
   - An override replaces an earlier one of the same rule for its files, so
-    an import ban that must hold under a narrower override is a plugin. The
-    overrides read no import in a type position, `typeof import("…")` or
-    `import("…").X`; the plugins that ban an import read it.
+    an import ban that must hold under a narrower override is a plugin. An
+    override's `plugins` list adds to the root list. The overrides read no
+    import in a type position, `typeof import("…")` or `import("…").X`; the
+    plugins that ban an import read it.
   - `scripts/lint.test.ts` plants one fault for each rule and checks that
     Biome reports it.
   - [AGENTS.md](AGENTS.md#a-rule-about-the-source-goes-to-biome-first)

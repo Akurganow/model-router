@@ -1,7 +1,8 @@
 // The api, scoring fetch and clock that stand in for OpenClaw and the scoring provider.
-import { createFakeClock } from "../../../../utils/__tests__/support/fake-clock.ts";
-import { createBeforeToolCall, SPAWN_TOOL } from "../../router.ts";
-import type { OpenClawConfig, ToolContext } from "../../types.ts";
+
+import { createBeforeToolCall, SPAWN_TOOL } from "#adapters/openclaw/router.ts";
+import type { OpenClawConfig, ToolContext } from "#adapters/openclaw/types.ts";
+import { createFakeClock } from "#utils/__tests__/support/fake-clock.ts";
 import {
 	createFakeApi,
 	createScoringFetch,

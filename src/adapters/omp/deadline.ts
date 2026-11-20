@@ -1,8 +1,8 @@
 import {
 	deadlineFor,
 	MIN_DEADLINE_MS,
-} from "../../core/scoring/handler-deadline.ts";
-import { isPositiveNumber } from "../../utils/guards.ts";
+} from "#core/scoring/handler-deadline.ts";
+import { isPositiveNumber } from "#utils/guards.ts";
 
 // omp gives every tool_call handler this long when its setting is unusable.
 const DEFAULT_TIMEOUT_MS = 30000;

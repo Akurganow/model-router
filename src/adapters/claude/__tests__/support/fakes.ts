@@ -1,6 +1,6 @@
-import { systemOneAnswer } from "../../../../core/__tests__/support/replies.ts";
-import type { Engine, HttpReply } from "../../host.ts";
-import { register } from "../../index.ts";
+import type { Engine, HttpReply } from "#adapters/claude/host.ts";
+import { register } from "#adapters/claude/index.ts";
+import { systemOneAnswer } from "#core/__tests__/support/replies.ts";
 
 type Hook = ($: unknown, e: unknown, next: unknown) => Promise<unknown>;
 

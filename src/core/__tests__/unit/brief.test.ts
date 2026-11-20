@@ -536,7 +536,19 @@ const SHAPES: [string, string, string, string][] = [
 		`pass Bearer ${TOKEN} to the API`,
 		"pass Bearer *** to the API",
 	],
+	[
+		"Bearer token",
+		"a Bearer token that holds ~, +, / and =",
+		`send Bearer ${j("ab~cd", "+ef/gh=")} now`,
+		"send Bearer *** now",
+	],
 	["sk- key", "an sk- key", `key ${SK_KEY}`, "key ***"],
+	[
+		"sk- key",
+		"an sk- key with eight characters after the prefix",
+		`key ${j("sk", "-", "abcdefgh")}`,
+		"key ***",
+	],
 	[
 		"curl user",
 		"curl -u credentials",
@@ -734,6 +746,7 @@ test("prose and look-alikes stay as they are", () => {
 		"the bypass: none and the compass: north",
 		"xargs -P 4 cmd",
 		"fix the cache-key bug and the 3-pass compiler",
+		"the label sk-abcdefg has seven characters after the prefix",
 	])
 		assert.equal(prepareBrief(text), text);
 });

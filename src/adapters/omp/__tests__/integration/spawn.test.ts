@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createExtension } from "../../router.ts";
-import { STORE_MAX } from "../../store.ts";
-import { AGENTS } from "../support/fake-agents.ts";
-import { scoringReply, useWorld } from "../support/fakes.ts";
+import { AGENTS } from "#adapters/omp/__tests__/support/fake-agents.ts";
+import {
+	scoringReply,
+	useWorld,
+} from "#adapters/omp/__tests__/support/fakes.ts";
+import { createExtension } from "#adapters/omp/router.ts";
+import { STORE_MAX } from "#adapters/omp/store.ts";
 
 const world = useWorld();
 const install = () => createExtension(world.imports)(world.pi);

@@ -1,8 +1,8 @@
 import {
 	scoringReply,
 	systemOneAnswer,
-} from "../../../../core/__tests__/support/replies.ts";
-import type { Fetch } from "../../../../core/scoring/transport/send.ts";
+} from "#core/__tests__/support/replies.ts";
+import type { Fetch } from "#core/scoring/transport/send.ts";
 
 // What one scripted Jev call answers. "hang" holds the request until its signal aborts.
 type Reply =

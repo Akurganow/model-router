@@ -1,13 +1,13 @@
-import { LINE_PREFIX } from "../../core/output/line.ts";
+import { LINE_PREFIX } from "#core/output/line.ts";
 import {
 	deadlineFor,
 	HANDLER_MARGIN_MS,
 	MIN_DEADLINE_MS,
 	MIN_TIMEOUT_MS,
-} from "../../core/scoring/handler-deadline.ts";
-import { ROUTING_LIMIT_MS } from "../../core/scoring/limit.ts";
-import { realClock } from "../../utils/clock.ts";
-import { isRecord } from "../../utils/guards.ts";
+} from "#core/scoring/handler-deadline.ts";
+import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
+import { realClock } from "#utils/clock.ts";
+import { isRecord } from "#utils/guards.ts";
 import { registerConfigCommands, registerConfigTool } from "./config.ts";
 import {
 	createBeforeToolCall,

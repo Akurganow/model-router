@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+	KEY,
+	KEY_VARIABLE,
+	lockfileScoped,
+	lockfileWith,
+	logged,
+	OR_VARIABLE,
+	setEnv,
+	useWorld,
+} from "#adapters/omp/__tests__/support/fakes.ts";
+import { projectOverrides } from "#adapters/omp/config.ts";
+import { createExtension } from "#adapters/omp/router.ts";
+import type { OmpImports, ToolSpec } from "#adapters/omp/types.ts";
+import {
 	alreadyValue,
 	ask,
 	COMMAND_DESCRIPTIONS,
@@ -11,21 +24,8 @@ import {
 	useOneOf,
 	type ValueSetting,
 	valueLine,
-} from "../../../../core/options/settings.ts";
-import { UNREADABLE } from "../../../../core/output/reasons.ts";
-import { projectOverrides } from "../../config.ts";
-import { createExtension } from "../../router.ts";
-import type { OmpImports, ToolSpec } from "../../types.ts";
-import {
-	KEY,
-	KEY_VARIABLE,
-	lockfileScoped,
-	lockfileWith,
-	logged,
-	OR_VARIABLE,
-	setEnv,
-	useWorld,
-} from "../support/fakes.ts";
+} from "#core/options/settings.ts";
+import { UNREADABLE } from "#core/output/reasons.ts";
 
 test("the project-override note names the setting", () => {
 	assert.equal(

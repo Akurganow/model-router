@@ -1,9 +1,13 @@
 // The spawn params, settings and config that stand in for what OpenClaw hands gateSpawn.
 import assert from "node:assert/strict";
-import { type Gate, type GateInput, gateSpawn } from "../../gates.ts";
-import { readSpawn } from "../../params.ts";
-import type { OpenClawSettings } from "../../settings.ts";
-import type { OpenClawConfig } from "../../types.ts";
+import {
+	type Gate,
+	type GateInput,
+	gateSpawn,
+} from "#adapters/openclaw/gates.ts";
+import { readSpawn } from "#adapters/openclaw/params.ts";
+import type { OpenClawSettings } from "#adapters/openclaw/settings.ts";
+import type { OpenClawConfig } from "#adapters/openclaw/types.ts";
 
 export const SETTINGS: OpenClawSettings = {
 	provider: "typesafe",

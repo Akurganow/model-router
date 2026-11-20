@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createExtension } from "../../router.ts";
-import { extend } from "../support/fake-agents.ts";
-import { useWorld } from "../support/fakes.ts";
+import { extend } from "#adapters/omp/__tests__/support/fake-agents.ts";
+import { useWorld } from "#adapters/omp/__tests__/support/fakes.ts";
+import { createExtension } from "#adapters/omp/router.ts";
 
 const world = useWorld();
 const TARGETS = ["@smol", "middle model unset", "@slow"] as const;

@@ -1,17 +1,13 @@
-import {
-	DEFAULT_ROLE,
-	roleText,
-	routingState,
-} from "../../core/brief/brief.ts";
-import { scoreWork } from "../../core/decision/decide.ts";
-import { outcomeOf } from "../../core/decision/outcome.ts";
-import { resolveScope, type Scope } from "../../core/options/scope.ts";
-import { skippedLine } from "../../core/output/line.ts";
-import { CALLER_EFFORT } from "../../core/output/reasons.ts";
-import { plan } from "../../core/providers/provider.ts";
-import { limitSignal, ROUTING_LIMIT_MS } from "../../core/scoring/limit.ts";
-import type { RouteInput } from "../../core/scoring/route.ts";
-import type { Fetch } from "../../core/scoring/transport/send.ts";
+import { DEFAULT_ROLE, roleText, routingState } from "#core/brief/brief.ts";
+import { scoreWork } from "#core/decision/decide.ts";
+import { outcomeOf } from "#core/decision/outcome.ts";
+import { resolveScope, type Scope } from "#core/options/scope.ts";
+import { skippedLine } from "#core/output/line.ts";
+import { CALLER_EFFORT } from "#core/output/reasons.ts";
+import { plan } from "#core/providers/provider.ts";
+import { limitSignal, ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
+import type { RouteInput } from "#core/scoring/route.ts";
+import type { Fetch } from "#core/scoring/transport/send.ts";
 import {
 	type AgentCall,
 	type AgentSpawn,

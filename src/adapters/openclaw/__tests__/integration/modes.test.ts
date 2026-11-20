@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createPlugin } from "../../index.ts";
-import { PLUGIN_ID } from "../../settings.ts";
-import type { OpenClawConfig, RegistrationMode } from "../../types.ts";
-import { createFakeApi, createScoringFetch } from "../support/fakes.ts";
+import {
+	createFakeApi,
+	createScoringFetch,
+} from "#adapters/openclaw/__tests__/support/fakes.ts";
+import { createPlugin } from "#adapters/openclaw/index.ts";
+import { PLUGIN_ID } from "#adapters/openclaw/settings.ts";
+import type {
+	OpenClawConfig,
+	RegistrationMode,
+} from "#adapters/openclaw/types.ts";
 
 const TOOL = ["model_router_config"];
 const COMMANDS = ["model-router-provider", "model-router-scope"];

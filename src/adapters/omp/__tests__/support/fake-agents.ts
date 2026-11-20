@@ -1,4 +1,4 @@
-import type { DiscoveredAgent } from "../../types.ts";
+import type { DiscoveredAgent } from "#adapters/omp/types.ts";
 import { TASK_DESCRIPTION } from "./fakes.ts";
 
 // The agents omp discovers for the extended scope. A bundled model is not a user choice, a user agent's is.
