@@ -152,10 +152,11 @@
 										"group": [
 											"**/ask.*",
 											"**/route.*",
+											"**/endpoints.*",
 											"**/transport/**",
 											"**/providers/**"
 										],
-										"message": "A wire format imports no ask.ts, no route.ts, nothing from transport/ and nothing from providers/."
+										"message": "A wire format imports no ask.ts, no route.ts, no endpoints.ts, nothing from transport/ and nothing from providers/."
 									}
 								]
 							}
@@ -295,6 +296,7 @@
 		"./scripts/lint/utils-reexport.grit",
 		"./scripts/lint/shared-reason.grit",
 		"./scripts/lint/tests-import.grit",
-		"./scripts/lint/core-adapter.grit"
+		"./scripts/lint/core-adapter.grit",
+		"./scripts/lint/route-imports.grit"
 	]
 }

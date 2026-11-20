@@ -43,7 +43,9 @@ const PROVIDERS = "A providers/ file imports nothing from scoring/";
 const OUTPUT = "An output/ file imports nothing from scoring/ or decision/";
 const SCORING = "A scoring/ file imports nothing from decision/ or options/";
 const FORMAT =
-	"A wire format imports no ask.ts, no route.ts, nothing from transport/ and nothing from providers/";
+	"A wire format imports no ask.ts, no route.ts, no endpoints.ts, nothing from transport/ and nothing from providers/";
+const ROUTE =
+	"route.ts imports no wire format, nothing from transport/ and not the endpoint table";
 const TESTS_IMPORT = "A source file imports nothing from a __tests__ folder";
 const ENTRY_OPENCLAW = "The bundle entry imports nothing from OpenClaw";
 const ENTRY_ADAPTER = "The bundle entry imports no other adapter";
@@ -167,6 +169,13 @@ const faults: Fault[] = [
 		message: FORMAT,
 	},
 	{
+		form: "a format imports the endpoint table",
+		file: "src/core/scoring/formats/layers.ts",
+		code: 'import { e } from "../endpoints.ts";',
+		category: RESTRICTED,
+		message: FORMAT,
+	},
+	{
 		form: "a format imports a provider",
 		file: "src/core/scoring/formats/layers.ts",
 		code: 'import { provider } from "../../providers/provider.ts";',
@@ -249,6 +258,27 @@ const faults: Fault[] = [
 		code: 'import { t9 } from "../../core/__tests__/support/t9.ts";',
 		category: PLUGIN,
 		message: TESTS_IMPORT,
+	},
+	{
+		form: "route.ts imports a wire format",
+		file: "src/core/scoring/route.ts",
+		code: 'import { s } from "./formats/system-one.ts";',
+		category: PLUGIN,
+		message: ROUTE,
+	},
+	{
+		form: "route.ts imports transport code with import()",
+		file: "src/core/scoring/route.ts",
+		code: 'export const t = () => import("./transport/send.ts");',
+		category: PLUGIN,
+		message: ROUTE,
+	},
+	{
+		form: "route.ts names a type of the endpoint table with import().X",
+		file: "src/core/scoring/route.ts",
+		code: 'export type E = import("./endpoints.ts").Endpoint;',
+		category: PLUGIN,
+		message: ROUTE,
 	},
 	{
 		form: "claude imports omp",
@@ -524,7 +554,15 @@ const clean: Record<string, string[]> = {
 		'import { r } from "../output/reasons.ts";',
 		'import { q } from "../parts/part.ts";',
 		'import { k } from "./ask.ts";',
-		"export const v = [p, r, q, k];",
+		'import { e } from "./endpoints.ts";',
+		"export const v = [p, r, q, k, e];",
+	],
+	"src/core/scoring/route.ts": [
+		'import { a } from "./ask.ts";',
+		'import { f } from "./failure.ts";',
+		'import { p } from "../providers/provider.ts";',
+		'import { r } from "../output/reasons.ts";',
+		"export const v = [a, f, p, r];",
 	],
 	"src/core/scoring/formats/layers.ts": [
 		'import { f } from "../failure.ts";',

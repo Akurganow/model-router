@@ -1,0 +1,22 @@
+language js
+
+// A plugin and not a third nested override: an override sets noRestrictedImports
+// for a file and replaces every earlier override of that rule, so one for
+// route.ts would repeat the scoring/ ban once more.
+// JsModuleSource is the specifier of a static import, a bare import and an
+// export … from. An import() call holds its argument as an expression.
+// TsImportType is an import in a type position: typeof import("…") and
+// import("…").X.
+or {
+	JsModuleSource() as $specifier,
+	`import($specifier)`,
+	TsImportType() as $specifier
+} where {
+	$specifier <: or {
+		r"[\s\S]*/formats/[\s\S]*",
+		r"[\s\S]*/transport/[\s\S]*",
+		r"[\s\S]*/endpoints\.[\s\S]*"
+	},
+	$filename <: r".*/src/core/scoring/route\.ts",
+	register_diagnostic(span=$specifier, message="route.ts imports no wire format, nothing from transport/ and not the endpoint table.", severity="error")
+}
