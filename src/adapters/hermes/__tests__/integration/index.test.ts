@@ -4,11 +4,16 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
+	scoringReply,
+	systemOneAnswer,
+} from "../../../../core/__tests__/support/replies.ts";
+import {
 	buildPrompt,
 	DEFAULT_ROLE,
 	ROLE_CAP,
 } from "../../../../core/brief/brief.ts";
 import { ROUTING_LIMIT_MS } from "../../../../core/scoring/limit.ts";
+import type { Fetch } from "../../../../core/scoring/transport/send.ts";
 import { createFakeClock } from "../../../../utils/__tests__/support/fake-clock.ts";
 import { readRequest } from "../../request.ts";
 import { routeRequest } from "../../route.ts";
@@ -161,6 +166,34 @@ describe("the request to Jev", () => {
 	});
 });
 
+describe("the provider of a request", () => {
+	it("asks OpenRouter, with its key, when the request names openrouter and holds both keys", async () => {
+		const sent: { url: string; authorization: string | null }[] = [];
+		const fetchFn: Fetch = async (url, init) => {
+			sent.push({
+				url,
+				authorization: new Headers(init.headers).get("authorization"),
+			});
+			return scoringReply(200, systemOneAnswer(1, 1));
+		};
+		const time = createFakeClock();
+		await routeRequest(
+			{
+				...REQUEST,
+				provider: "openrouter",
+				keys: {
+					typesafe: "typesafe-test-key",
+					openrouter: "openrouter-test-key",
+				},
+			},
+			{ fetchFn, clock: time.clock },
+		);
+		assert.equal(sent.length, 1);
+		assert.equal(sent[0]?.url, "https://openrouter.ai/api/v1/systemone");
+		assert.equal(sent[0]?.authorization, "Bearer openrouter-test-key");
+	});
+});
+
 describe("the kept effort", () => {
 	const L2 = [
 		{ host: "api.typesafe.ai", reply: { levels: { tier: 2, work: 2 } } },
@@ -285,6 +318,23 @@ describe("the models of a request", () => {
 			middle: undefined,
 			large: "a/l",
 		});
+	});
+});
+
+describe("the keys of a request", () => {
+	const keys = (raw: unknown) => (readRequest(raw) ?? assert.fail()).keys;
+
+	it("drops a blank, spaces-only or null key and keeps the other provider's key", () => {
+		for (const blank of ["", "   ", null]) {
+			assert.deepEqual(
+				keys({ keys: { typesafe: blank, openrouter: "or-test-key" } }),
+				{ openrouter: "or-test-key" },
+			);
+			assert.deepEqual(
+				keys({ keys: { typesafe: "ts-test-key", openrouter: blank } }),
+				{ typesafe: "ts-test-key" },
+			);
+		}
 	});
 });
 

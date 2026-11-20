@@ -12,6 +12,6 @@ test("both parts share one shape: a key, a score question and a pick function", 
 			"type",
 		]);
 		assert.equal(part.question.type, "score");
-		assert.ok([0, 1, 2].includes(part.pick({ "0": 1, "1": 0, "2": 0 })));
+		assert.equal(part.pick({ "0": 1, "1": 0, "2": 0 }), 0);
 	}
 });
