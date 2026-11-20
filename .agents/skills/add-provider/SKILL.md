@@ -238,17 +238,26 @@ The next step holds only for a key with a Hermes setting of its own.
 
 ### Evals
 
-The next two steps hold only when the evals score through the new provider.
+No eval sets a `provider` value today, so each client asks the default, `typesafe`.
+A file in a case's work folder cannot select a provider.
+Claude Code keeps it in its user settings, as [Manifest](../../../docs/clients.md#manifest) says.
+omp keeps it in its lockfile, as [omp manifest and settings](../../../docs/clients.md#omp-manifest-and-settings) says, and a project may only narrow it.
+`MODEL_SEGMENT` in `scripts/evals/stream.ts` reads the decision line: it accepts any name of `PROVIDERS` and keeps only the model.
+So a case passes whichever provider answered.
+
+The next four steps hold only when the evals score through the new provider.
 
 67. Pass its key in `clientEnv` in `scripts/evals/scrub.ts`, and require it in `missingKeys` in `scripts/evals/run.ts`.
 68. Name its secret in `.github/workflows/evals.yml`.
+69. In each client's job of that workflow, set the `provider` value in the client's own store after the plugin's install.
+70. Make the eval read the provider from the decision line, and fail a case that another provider answered.
 
 ### Key shapes
 
 `scripts/scan-owner-setup.ts` knows some key shapes, and so does the masking in `src/core/brief/brief.ts`.
 [The task text](../../../docs/providers.md#the-task-text) lists the shapes of the masking and changes with it.
 
-69. Check that both know the shape of the new provider's keys, and add a missing shape to each.
+71. Check that both know the shape of the new provider's keys, and add a missing shape to each.
 
 ## The texts that name the provider
 
@@ -256,36 +265,36 @@ No test reads these texts for a provider's name.
 A new provider is a new company that receives the task text.
 Each search below reads every Markdown file and `metadata/source.json`.
 
-70. Run `git grep -n -i -E 'typesafe|openrouter' -- '*.md' metadata/source.json ':!CHANGELOG.md' ':!packages'`, and read each hit.
-71. In each of the four `PRIVACY.md` under `plugins/`, name the company, its host and its privacy policy.
-72. In each of the four READMEs under `plugins/`, add the key, its variable, its setting and the provider's values.
-73. In the root `README.md`, change the set-up steps and "What leaves the machine".
-74. In each of the four `model-router-setup/SKILL.md` under `plugins/`, add the key and the values.
-75. In `docs/providers.md`, change these sections:
+72. Run `git grep -n -i -E 'typesafe|openrouter' -- '*.md' metadata/source.json ':!CHANGELOG.md' ':!packages'`, and read each hit.
+73. In each of the four `PRIVACY.md` under `plugins/`, name the company, its host and its privacy policy.
+74. In each of the four READMEs under `plugins/`, add the key, its variable, its setting and the provider's values.
+75. In the root `README.md`, change the set-up steps and "What leaves the machine".
+76. In each of the four `model-router-setup/SKILL.md` under `plugins/`, add the key and the values.
+77. In `docs/providers.md`, change these sections:
     - [Keys](../../../docs/providers.md#keys);
     - [What the providers do with it](../../../docs/providers.md#what-the-providers-do-with-it);
     - [Your choices](../../../docs/providers.md#your-choices);
     - the names and the examples of [The routing line](../../../docs/providers.md#the-routing-line);
     - the sentence of [The request](../../../docs/providers.md#the-request) on who accepts an image reference.
-76. Change the plugin descriptions in `metadata/source.json` that name the hosts.
+78. Change the plugin descriptions in `metadata/source.json` that name the hosts.
 
 A line that counts providers, keys or variables names none of them, so the first search misses it.
 
-77. Run `git grep -n -i -w -E 'both|either|two|second|other provider|four' -- '*.md' metadata/source.json ':!CHANGELOG.md' ':!packages'`, and correct each hit the change makes false.
+79. Run `git grep -n -i -w -E 'both|either|two|second|other provider|four' -- '*.md' metadata/source.json ':!CHANGELOG.md' ':!packages'`, and correct each hit the change makes false.
 
 The next step holds only for a model other than Jev.
 
-78. Run `git grep -n 'Jev' -- '*.md' metadata/source.json src/adapters/hermes/texts.ts ':!CHANGELOG.md' ':!packages'`, and correct each hit the new model makes false.
+80. Run `git grep -n 'Jev' -- '*.md' metadata/source.json src/adapters/hermes/texts.ts ':!CHANGELOG.md' ':!packages'`, and correct each hit the new model makes false.
 
 The rebuild holds for every change.
 
-79. Rebuild with `node scripts/build.ts`, because this section changed `metadata/source.json`.
+81. Rebuild with `node scripts/build.ts`, because this section changed `metadata/source.json`.
 
 ## Before the pull request
 
-80. For each file the change touched, name the check or the step of this skill that led you there.
-81. Key by `Provider` each place neither led to, or add it to this skill in the same pull request.
-82. Name the commit and the pull request `feat`, as [Commits and pull requests](../../../AGENTS.md#commits-and-pull-requests) says.
-83. Cite the page behind each API fact in the pull request text.
-84. List each harness whose path of the new key no test and no section of `docs/clients.md` proves.
-85. Ask the maintainer for a live run of each, with its question, as [the live-run skill](../live-run/SKILL.md) says.
+82. For each file the change touched, name the check or the step of this skill that led you there.
+83. Key by `Provider` each place neither led to, or add it to this skill in the same pull request.
+84. Name the commit and the pull request `feat`, as [Commits and pull requests](../../../AGENTS.md#commits-and-pull-requests) says.
+85. Cite the page behind each API fact in the pull request text.
+86. List each harness whose path of the new key no test and no section of `docs/clients.md` proves.
+87. Ask the maintainer for a live run of each, with its question, as [the live-run skill](../live-run/SKILL.md) says.
