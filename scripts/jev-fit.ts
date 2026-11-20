@@ -6,10 +6,10 @@ export const FITTED_ON = "jev-1.14.0";
 export const fitWarning = (model: string): string =>
 	`warning: Jev answered as ${model}, and the factors were fitted on ${FITTED_ON}. Refit them with scripts/calibrate.ts --record, then set FITTED_ON in scripts/jev-fit.ts to ${model}.`;
 
-/** Returns one warning per answering model other than FITTED_ON, ignoring a vendor prefix before the last `/`, in first-seen order. Skips a missing or empty name. */
+/** Returns one warning per answering model other than FITTED_ON, in first-seen order. Reads a name without its vendor prefix, the text up to the last `/`. Skips a missing or empty name. */
 export const fitWarnings = (
 	models: Iterable<string | null | undefined>,
 ): string[] =>
-	[...new Set(models)]
-		.filter((m): m is string => !!m && m.split("/").pop() !== FITTED_ON)
+	[...new Set([...models].map((m) => m?.split("/").pop()))]
+		.filter((m): m is string => !!m && m !== FITTED_ON)
 		.map(fitWarning);
