@@ -11,6 +11,6 @@ or {
 } where {
 	$specifier <: r"[\s\S]*/__tests__/[\s\S]*",
 	$filename <: r".*/src/(?:core|utils|adapters)/.*",
-	$filename <: not r".*/__tests__/.*",
+	$filename <: not r".*/src/(?:core|utils|adapters)/(?:.*/)?__tests__/.*",
 	register_diagnostic(span=$specifier, message="A source file imports nothing from a __tests__ folder.", severity="error")
 }
