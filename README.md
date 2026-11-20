@@ -487,3 +487,8 @@ https://github.com/Akurganow/model-router/issues.
 ## License
 
 MIT, as [LICENSE](LICENSE) states.
+
+## To do
+
+- Score with more decision models.
+  Candidates not supported yet: Liquid D1, Nace.AI Drex and Perplexity Decider.
