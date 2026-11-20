@@ -1,0 +1,18 @@
+language js
+
+// A plugin and not an override: an override sets noRestrictedImports for a
+// file and replaces every earlier override of that rule, so the folders with
+// their own import bans would switch this ban off.
+// core-adapter.grit explains the three specifier forms. A URL such as
+// new URL("../", import.meta.url) is none of them.
+// src/adapters/ still holds relative imports, so this rule does not read it.
+// A type import holds the whole type as its text, hence the [^"']* before the quote.
+or {
+	JsModuleSource() as $specifier,
+	`import($specifier)`,
+	TsImportType() as $specifier
+} where {
+	$specifier <: r"[^\"']*[\"']\.\./[\s\S]*",
+	$filename <: r".*/(?:src/(?:core|utils)|scripts)/.*",
+	register_diagnostic(span=$specifier, message="An import of a parent folder goes through an alias: #core/, #utils/, #adapters/ or #scripts/.", severity="error")
+}
