@@ -173,6 +173,14 @@ var ORDER = {
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => ORDER[resolve(value)];
+function collectKeysSync(value, lookup) {
+  const keys = {};
+  for (const provider of order(value)) {
+    const key = lookup(provider);
+    if (key !== void 0) keys[provider] = key;
+  }
+  return keys;
+}
 function plan(value, keys) {
   const attempts = [];
   for (const provider of order(value)) {
@@ -284,17 +292,9 @@ function readSettings(live, pluginConfig) {
     models: slotRecord((slot) => firstValid(from, slotSetting(slot), nonEmpty))
   };
 }
-function collectKeys(value, lookup) {
-  const keys = {};
-  for (const provider of order(value)) {
-    const key = lookup(provider);
-    if (key !== void 0) keys[provider] = key;
-  }
-  return keys;
-}
 function readKeys(live, pluginConfig, providerValue, env) {
   const from = sources(live, pluginConfig);
-  return collectKeys(
+  return collectKeysSync(
     providerValue,
     (provider) => firstValid(from, KEY_FIELDS[provider], nonEmpty) ?? nonEmpty(env[KEY_VARIABLES[provider]])
   );

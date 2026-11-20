@@ -176,7 +176,12 @@ async function readKeys($, options, provider) {
   );
 }
 function keyVariable($, provider) {
-  return provider === "typesafe" ? $.env.get("TYPESAFE_API_KEY") : $.env.get("OPENROUTER_API_KEY");
+  switch (provider) {
+    case "typesafe":
+      return $.env.get("TYPESAFE_API_KEY");
+    case "openrouter":
+      return $.env.get("OPENROUTER_API_KEY");
+  }
 }
 
 // src/adapters/claude/config.ts

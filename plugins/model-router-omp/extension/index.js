@@ -553,13 +553,7 @@ async function withSettings(omp, ctx, show) {
   return settings === void 0 ? UNREADABLE : show(settings);
 }
 var readAll = (omp, ctx) => withSettings(omp, ctx, async ({ provider, scope }) => {
-  const names = order(provider);
-  const found = await Promise.all(names.map((name) => findKey(ctx, name)));
-  const keys = {};
-  names.forEach((name, i) => {
-    const key = found[i];
-    if (key !== void 0) keys[name] = key;
-  });
+  const keys = await collectKeys(provider, (name) => findKey(ctx, name));
   return settingsReport(provider, scope, [], keys);
 });
 async function apply(omp, ctx, setting, value) {

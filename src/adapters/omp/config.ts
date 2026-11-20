@@ -18,7 +18,7 @@ import {
 	valueLine,
 } from "../../core/options/settings.ts";
 import { UNREADABLE } from "../../core/output/reasons.ts";
-import { type Keys, order } from "../../core/providers/provider.ts";
+import { collectKeys } from "../../core/providers/provider.ts";
 import { isRecord } from "../../utils/guards.ts";
 import { serializer } from "../../utils/serializer.ts";
 import { findKey, readSettings, type Settings } from "./settings.ts";
@@ -52,13 +52,7 @@ async function withSettings(
 // A key is only checked for presence. Nothing about it leaves this function.
 const readAll = (omp: OmpImports, ctx: Context): Promise<string> =>
 	withSettings(omp, ctx, async ({ provider, scope }) => {
-		const names = order(provider);
-		const found = await Promise.all(names.map((name) => findKey(ctx, name)));
-		const keys: Keys = {};
-		names.forEach((name, i) => {
-			const key = found[i];
-			if (key !== undefined) keys[name] = key;
-		});
+		const keys = await collectKeys(provider, (name) => findKey(ctx, name));
 		return settingsReport(provider, scope, [], keys);
 	});
 

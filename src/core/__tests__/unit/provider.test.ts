@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
 	collectKeys,
+	collectKeysSync,
 	FIRST_ATTEMPT_TIMEOUT_MS,
 	order,
 	PROVIDER_VALUES,
@@ -105,6 +106,44 @@ test("collectKeys stops at a rejection and passes it through", async () => {
 
 test("collectKeys keeps an empty key", async () => {
 	const keys = await collectKeys("typesafe", async () => "");
+	assert.deepEqual(keys, { typesafe: "" });
+});
+
+test("collectKeysSync looks up the allowed providers in order and leaves out an undefined", () => {
+	const trace: string[] = [];
+	const keys = collectKeysSync("openrouter-first", (provider) => {
+		trace.push(provider);
+		return provider === "typesafe" ? undefined : LOOKED_UP[provider];
+	});
+	assert.deepEqual(keys, { openrouter: "or-key" });
+	assert.deepEqual(trace, ["openrouter", "typesafe"]);
+});
+
+test("collectKeysSync never looks up a provider the value leaves out", () => {
+	const asked: string[] = [];
+	const keys = collectKeysSync("typesafe", (provider) => {
+		asked.push(provider);
+		return LOOKED_UP[provider];
+	});
+	assert.deepEqual(keys, { typesafe: "ts-key" });
+	assert.deepEqual(asked, ["typesafe"]);
+});
+
+test("collectKeysSync stops at a throw and passes it through", () => {
+	const asked: string[] = [];
+	assert.throws(
+		() =>
+			collectKeysSync("auto", (provider) => {
+				asked.push(provider);
+				throw new Error("lookup failed");
+			}),
+		/lookup failed/,
+	);
+	assert.deepEqual(asked, ["typesafe"]);
+});
+
+test("collectKeysSync keeps an empty key", () => {
+	const keys = collectKeysSync("typesafe", () => "");
 	assert.deepEqual(keys, { typesafe: "" });
 });
 
