@@ -693,6 +693,13 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 - `hermes config set` on a key under `plugins.entries.<plugin id>.settings` takes a JSON object and stores it as a mapping. `hermes config get` prints its fields on separate lines.
   It takes a scalar too and stores its text, which `hermes config get` prints.
 - A `secret` entry never reaches `config.yaml`. The Desktop settings form stores it in `.env` under the entry's `env:` name, and the plugin reads it with `get_secret(NAME)` from `agent.secret_scope`.
+- Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY`, so a `secret` entry with that `env:` name sets that provider's key too.
+- With the provider `auto`, or with none requested, Hermes takes its own session's provider in this order: a key or a base URL given on the command line, `model.provider` of `config.yaml`, a `model.base_url` on a loopback host when `model` names no provider, a usable `OPENROUTER_API_KEY`, the OpenRouter pool, another provider's key in the environment, an OAuth login.
+  `model.provider` may name a registry provider, `openrouter`, `custom` or a named custom provider.
+- The settings form saves a secret as it saves a provider key. Hermes writes `.env`, replaces the previous value in the `api_key` of `model`, `auxiliary.<task>`, `custom_providers.<name>` and `providers.<id>` in `config.yaml`, and loads the credential pool of each provider its registry lists for the variable.
+  It replaces the legacy `api` field of the first three too. `delegation.api_key` keeps its value.
+  The registry lists no OpenRouter provider. Hermes seeds the OpenRouter pool in `auth.json` from `OPENROUTER_API_KEY` when it loads that pool.
+- `get_secret` reads no credential pool, so it never returns a key that sits only in `auth.json`.
 - `get_secret(NAME)` returns the value of a `config_schema` secret's variable from the Hermes home's `.env`, in process and in the plugin host. The variable is also in the environment of the host and of the gateway.
 - `ctx.get_config(key)` returns the value from `plugins.entries.<plugin id>.settings`, in process and in the plugin host.
 - `ctx.get_config` returns a stored `str` value outside the entry's `choices` as stored.

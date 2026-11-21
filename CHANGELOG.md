@@ -3,6 +3,27 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.24.3 - 2026-11-21
+#### Bug Fixes
+- (**hermes**) name the local base URL in the help of the OpenRouter key (61fd498)
+- (**hermes**) say when a shared OpenRouter key scores and moves the session (e032fac)
+- (**hermes**) tell what a saved OpenRouter key changes in Hermes itself (e07595b)
+- (**hermes**) say what a key saved in the settings form replaces (c30bcaf)
+- (**hermes**) store every scoring key as a secret setting (5d0ad06)
+- (**openclaw**) say when the key in the shared variable scores (3a2dd15)
+- (**openclaw**) name the one credential the plugin shares with OpenClaw (45193d5)
+#### Documentation
+- say where a new key goes in the Hermes sentinel test (4bc46a5)
+- name every rung ahead of the OpenRouter key in Hermes's auto order (02d0f4a)
+- state the order of Hermes's auto provider and what a save rewrites (0dfeee8)
+- rewrap a paragraph of the Hermes privacy page (3cbcfb1)
+- record how Hermes saves a secret and lead add-provider by the type check (7cecb1e)
+#### Refactoring
+- write the name of a Hermes key setting once (de9b544)
+
+- - -
+
+
 ## v0.24.2 - 2026-11-21
 #### Bug Fixes
 - read a Retry-After date only in its HTTP form (27de90d)

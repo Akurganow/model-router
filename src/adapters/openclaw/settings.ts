@@ -102,8 +102,9 @@ export function readSettings(
 /**
  * Returns the Jev keys of the providers the value allows, each from a source
  * field or else from its environment variable. A provider with no key is
- * absent. OpenClaw's own provider credentials are never Jev keys. Throws only
- * when a source getter throws.
+ * absent. OpenClaw's own OpenRouter provider reads the OpenRouter variable
+ * too; no other credential of OpenClaw is a Jev key. Throws only when a source
+ * getter throws.
  */
 export function readKeys(
 	live: OpenClawConfig | undefined,

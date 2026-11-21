@@ -6,13 +6,18 @@ import {
 	VALUE_SETTINGS,
 	type ValueSetting,
 } from "#core/options/settings.ts";
-import { KEY_FIELDS, PROVIDER_VALUES } from "#core/providers/provider.ts";
+import {
+	KEY_FIELDS,
+	PROVIDER_VALUES,
+	type Provider,
+} from "#core/providers/provider.ts";
 
 // Every fact the renderers take from src/ comes through this module, so a
 // manifest can never name a value or a command text the code does not know.
 export {
 	COMMAND_DESCRIPTIONS,
 	KEY_FIELDS,
+	type Provider,
 	SLOT_SETTINGS,
 	type SlotSetting,
 	TOOL_NAME,
