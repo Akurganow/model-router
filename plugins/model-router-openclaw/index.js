@@ -266,9 +266,9 @@ function withPluginSetting(draft, setting, value) {
 function sources(live, pluginConfig) {
   return [pluginEntry(live)?.config, pluginConfig].filter(isRecord);
 }
-function firstValid(from, field, parse2) {
+function firstValid(from, field, parse) {
   for (const settings of from) {
-    const parsed = parse2(settings[field]);
+    const parsed = parse(settings[field]);
     if (parsed !== void 0) return parsed;
   }
   return void 0;
@@ -683,6 +683,7 @@ var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
 var SERVER_ERRORS = { min: 500, max: 599 };
 var OK = { min: 200, max: 299 };
 var isSuccess = (status) => status >= OK.min && status <= OK.max;
+var isServerError = (status) => status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
 var isFailure = (value) => Object.hasOwn(value, "failure");
 function skipText(failure2, aborted) {
   switch (failure2.failure) {
@@ -706,7 +707,7 @@ function fallsBack(failure2) {
     case "network":
       return true;
     case "status":
-      return FALLBACK_STATUSES.has(failure2.status) || failure2.status >= SERVER_ERRORS.min && failure2.status <= SERVER_ERRORS.max;
+      return FALLBACK_STATUSES.has(failure2.status) || isServerError(failure2.status);
     case "aborted":
     case "malformed":
     case "unknown":
@@ -714,53 +715,54 @@ function fallsBack(failure2) {
   }
 }
 
-// src/core/scoring/formats/system-one.ts
+// src/core/scoring/formats/shared.ts
+var questionMap = (parts) => Object.fromEntries(parts.map((p) => [p.key, p.question]));
+var count = (v) => typeof v === "number" ? v : null;
+var usageNamed = (input, output) => (usage) => {
+  if (!isRecord(usage)) return void 0;
+  return {
+    input_tokens: count(usage[input]),
+    output_tokens: count(usage[output])
+  };
+};
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
-function parseProbabilities(answers, key) {
+function levelProbabilities(p0, p1, p2) {
+  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+var mapAnswer = (answers, key) => {
   const a = isRecord(answers) ? answers[key] : void 0;
   if (!isRecord(a)) return void 0;
   const { type, probabilities } = a;
   if (type !== "score" || !isRecord(probabilities)) return void 0;
   if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
   const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
-    return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
-}
-function parse(text) {
+  return levelProbabilities(p0, p1, p2);
+};
+function parseJson(text) {
   try {
     return JSON.parse(text);
   } catch {
     return void 0;
   }
 }
-var count = (v) => typeof v === "number" ? v : null;
-function usageOf(usage) {
-  if (!isRecord(usage)) return void 0;
-  const { input_tokens, output_tokens } = usage;
-  return {
-    input_tokens: count(input_tokens),
-    output_tokens: count(output_tokens)
-  };
-}
-function read(parts, text) {
-  const reply = parse(text);
+var replyReader = (probabilitiesOf, usageOf) => (parts, text) => {
+  const reply = parseJson(text);
   const { answers, model, usage } = isRecord(reply) ? reply : {};
   const pairs = [];
   for (const part of parts) {
-    const probabilities = parseProbabilities(answers, part.key);
+    const probabilities = probabilitiesOf(answers, part.key);
     if (!probabilities) return MALFORMED;
     pairs.push([part, probabilities]);
   }
   return { answers: pairs, model, usage: usageOf(usage) };
-}
+};
+
+// src/core/scoring/formats/system-one.ts
 var SYSTEM_ONE = {
-  body: (parts, state, model) => JSON.stringify({
-    state,
-    model,
-    questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
-  }),
-  read
+  body: (parts, state, model) => JSON.stringify({ state, model, questions: questionMap(parts) }),
+  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
 };
 
 // src/core/scoring/endpoints.ts
@@ -801,7 +803,7 @@ var BACKOFF_JITTER = 0.25;
 var SERVER_DELAY_MAX_MS = 6e4;
 function isRetried(outcome) {
   if (!isFailure(outcome))
-    return outcome.status === 408 || outcome.status === 429 || outcome.status >= SERVER_ERRORS.min && outcome.status <= SERVER_ERRORS.max;
+    return outcome.status === 408 || outcome.status === 429 || isServerError(outcome.status);
   switch (outcome.failure) {
     case "timed out":
     case "network":
@@ -823,6 +825,7 @@ function serverDelayMs(headers) {
   if (Number.isFinite(seconds)) {
     return seconds >= 0 ? seconds * 1e3 : void 0;
   }
+  if (!raw.endsWith("GMT")) return void 0;
   const date = Date.parse(raw);
   return Number.isNaN(date) ? void 0 : Math.max(0, date - Date.now());
 }
@@ -903,7 +906,7 @@ async function send(fetchFn, url, request, options) {
 }
 
 // src/core/scoring/ask.ts
-var VERSION = true ? "0.24.1" : "dev";
+var VERSION = true ? "0.24.3" : "dev";
 var USER_AGENT = `model-router/${VERSION} (+https://github.com/Akurganow/model-router)`;
 async function askOnce(input, attempt) {
   const { parts, state, fetchFn, clock, signal } = input;
@@ -933,12 +936,12 @@ async function askOnce(input, attempt) {
   if (isFailure(received)) return received;
   if (!isSuccess(received.status))
     return { failure: "status", status: received.status };
-  const read2 = format.read(parts, received.text);
-  if (isFailure(read2)) return read2;
+  const read = format.read(parts, received.text);
+  if (isFailure(read)) return read;
   return {
-    answers: read2.answers,
-    model: cleanModel(read2.model),
-    usage: read2.usage
+    answers: read.answers,
+    model: cleanModel(read.model),
+    usage: read.usage
   };
 }
 async function ask(input, attempt) {

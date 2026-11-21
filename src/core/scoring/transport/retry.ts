@@ -1,7 +1,7 @@
 import {
 	type Failure,
 	isFailure,
-	SERVER_ERRORS,
+	isServerError,
 } from "#core/scoring/failure.ts";
 import { nonEmpty } from "#utils/text.ts";
 
@@ -26,8 +26,7 @@ export function isRetried(
 		return (
 			outcome.status === 408 ||
 			outcome.status === 429 ||
-			(outcome.status >= SERVER_ERRORS.min &&
-				outcome.status <= SERVER_ERRORS.max)
+			isServerError(outcome.status)
 		);
 	switch (outcome.failure) {
 		case "timed out":
@@ -41,6 +40,7 @@ export function isRetried(
 	}
 }
 
+// `Number("")` is 0, so a blank header would read as "retry now": `nonEmpty` makes it absent.
 function serverDelayMs(headers: HeaderReader): number | undefined {
 	const rawMs = nonEmpty(headers.get("retry-after-ms"));
 	const ms = rawMs === undefined ? Number.NaN : Number(rawMs);
@@ -51,6 +51,9 @@ function serverDelayMs(headers: HeaderReader): number | undefined {
 	if (Number.isFinite(seconds)) {
 		return seconds >= 0 ? seconds * 1000 : undefined;
 	}
+	// `Date.parse` alone is lenient: it reads "2, 3", a header sent twice, as a date in 2001.
+	// Only a text that ends in GMT, as the date a server sends does, reaches it.
+	if (!raw.endsWith("GMT")) return undefined;
 	const date = Date.parse(raw);
 	return Number.isNaN(date) ? undefined : Math.max(0, date - Date.now());
 }

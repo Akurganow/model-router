@@ -104,6 +104,7 @@ const FIXTURE: Source = {
 			middle_model: HINT,
 			large_model: HINT,
 			typesafe_api_key: HINT,
+			openrouter_api_key: HINT,
 		},
 		install: INSTALL,
 	},
@@ -192,7 +193,10 @@ test("the source names a hint for each slot setting of OpenClaw and Hermes", () 
 		EXPECTED,
 	);
 	assert.deepEqual(
-		slotKeys(source.hermes.settings, ["typesafe_api_key"]),
+		slotKeys(source.hermes.settings, [
+			"typesafe_api_key",
+			"openrouter_api_key",
+		]),
 		EXPECTED,
 	);
 	assert.deepEqual(SLOT_SETTINGS, EXPECTED);

@@ -36,9 +36,10 @@ every commit as a [conventional commit](#commits).
     `biome.json` ban the imports of `utils/` and of each adapter, and hold
     the folder bans that the list of core folders below names. In the
     source files of `src/core/`, a `noRestrictedGlobals` override bans the
-    connection and timer globals and the global object, and a Node module
-    imported without `node:` is an error. The core calls the fetch and the
-    clock that its caller passes. Plugins in `scripts/lint/` ban an adapter
+    connection and timer globals and the global object, listing only the
+    names that the type check accepts there, and a Node module imported
+    without `node:` is an error. The core calls the fetch and the clock
+    that its caller passes. Plugins in `scripts/lint/` ban an adapter
     import in `src/core/`, a `node:` import and a call of
     `AbortSignal.timeout` in the source files of `src/core/`, an import from
     `scripts/` in `src/`, the imports of `scoring/route.ts` that the list
