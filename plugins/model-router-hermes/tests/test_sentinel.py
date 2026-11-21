@@ -35,7 +35,7 @@ class SentinelTest(unittest.TestCase):
     def route(self, config, reply, **settings):
         stub = make_node_stub(self.dir, reply=reply)
         router = make_router(
-            settings=good_settings(provider="auto", **settings),
+            settings=good_settings(gateway="auto", **settings),
             api=fake_api(secrets=SECRETS),
             script=stub.script,
         )
@@ -71,7 +71,7 @@ class SentinelTest(unittest.TestCase):
         without_keys = {k: v for k, v in request.items() if k != "keys"}
         self.assertNotIn(TYPESAFE_SENTINEL, json.dumps(without_keys))
         self.assertNotIn(OPENROUTER_SENTINEL, json.dumps(without_keys))
-        for field in ("provider", "models"):
+        for field in ("provider", "gateway", "models"):
             self.assertNotIn(TASK_SENTINEL, str(request[field]))
 
     def test_config_api_key_never_reaches_node_or_a_log(self):

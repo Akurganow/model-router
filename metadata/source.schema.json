@@ -59,8 +59,8 @@
 			"additionalProperties": false,
 			"required": ["provider", "gateway", "scope"],
 			"properties": {
-				"provider": { "$ref": "#/$defs/providerOption" },
-				"gateway": { "$ref": "#/$defs/option" },
+				"provider": { "$ref": "#/$defs/hermesOption" },
+				"gateway": { "$ref": "#/$defs/hermesOption" },
 				"scope": { "$ref": "#/$defs/option" }
 			}
 		},
@@ -322,9 +322,9 @@
 				}
 			}
 		},
-		"providerOption": {
+		"hermesOption": {
 			"type": "object",
-			"description": "The provider option, which Hermes also offers. Hermes has no scope option.",
+			"description": "An option that Hermes also offers. Hermes has no scope option.",
 			"additionalProperties": false,
 			"required": ["default", "title", "descriptions"],
 			"properties": {

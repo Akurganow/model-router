@@ -12,14 +12,23 @@
     "provider": {
       "type": "str",
       "choices": [
-        "auto",
-        "openrouter-first",
-        "typesafe",
-        "openrouter"
+        "typesafe"
       ],
       "default": "typesafe",
       "label": "Scoring provider",
       "description": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to."
+    },
+    "gateway": {
+      "type": "str",
+      "choices": [
+        "direct",
+        "auto",
+        "openrouter-first",
+        "openrouter"
+      ],
+      "default": "direct",
+      "label": "OpenRouter gateway",
+      "description": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies."
     },
     "small_model": {
       "type": "dict",

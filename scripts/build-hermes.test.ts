@@ -22,7 +22,6 @@ import { buildBundle, MAX_BUNDLE_BYTES } from "./build.ts";
 import { useTempRoot } from "./temp-root.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
-const STORED_VALUES = ["auto", "openrouter-first", "typesafe", "openrouter"];
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const source = loadSource(ROOT);
 const files = renderHermes(source);
@@ -64,9 +63,10 @@ test("the manifest names the plugin, its version and its backend kind", () => {
 	assert.deepEqual(manifest.provides_tools, [TOOL_NAME]);
 });
 
-test("the manifest holds six settings and no scope", () => {
+test("the manifest holds seven settings and no scope", () => {
 	assert.deepEqual(Object.keys(schema), [
 		"provider",
+		"gateway",
 		"small_model",
 		"middle_model",
 		"large_model",
@@ -76,15 +76,28 @@ test("the manifest holds six settings and no scope", () => {
 	assert.equal(JSON.stringify(manifest).includes("scope"), false);
 });
 
-test("the provider setting offers the values the code accepts, with its default", () => {
-	assert.equal(schema.provider.type, "str");
-	assert.deepEqual(schema.provider.choices, STORED_VALUES);
-	assert.equal(schema.provider.default, "typesafe");
-	assert.equal(schema.provider.label, source.options.provider.title);
-	assert.equal(
-		schema.provider.description,
-		source.options.provider.descriptions.hermes,
-	);
+test("the provider and gateway settings offer the values the code accepts, with their defaults", () => {
+	const shown = (name: string) => ({
+		type: schema[name].type,
+		choices: schema[name].choices,
+		default: schema[name].default,
+		label: schema[name].label,
+		description: schema[name].description,
+	});
+	assert.deepEqual(shown("provider"), {
+		type: "str",
+		choices: ["typesafe"],
+		default: "typesafe",
+		label: source.options.provider.title,
+		description: source.options.provider.descriptions.hermes,
+	});
+	assert.deepEqual(shown("gateway"), {
+		type: "str",
+		choices: ["direct", "auto", "openrouter-first", "openrouter"],
+		default: "direct",
+		label: source.options.gateway.title,
+		description: source.options.gateway.descriptions.hermes,
+	});
 });
 
 test("the models are dict settings and each key is a secret stored under its variable", () => {
@@ -109,7 +122,9 @@ test("the constants hold only the keys the Python shim reads", () => {
 	assert.deepEqual(Object.keys(constants), [
 		"routingLimitMs",
 		"graceMs",
-		"providers",
+		"keyVariables",
+		"settings",
+		"choices",
 		"efforts",
 		"skips",
 		"slots",
@@ -127,17 +142,7 @@ test("the constants hold the values src/ gives", () => {
 	assert.equal(constants.routingLimitMs, ROUTING_LIMIT_MS);
 	assert.equal(constants.graceMs, HERMES_TEXTS.graceMs);
 	assert.equal(constants.backend, source.hermes.backendName);
-	assert.deepEqual(constants.providers, {
-		values: STORED_VALUES,
-		default: "typesafe",
-		order: {
-			auto: ["typesafe", "openrouter"],
-			"openrouter-first": ["openrouter", "typesafe"],
-			typesafe: ["typesafe"],
-			openrouter: ["openrouter"],
-		},
-		keyVariables: KEY_VARIABLES,
-	});
+	assert.deepEqual(constants.keyVariables, KEY_VARIABLES);
 	assert.deepEqual(constants.skips, {
 		keyUnset: "model-router skipped, key unset",
 		subagentModelSet: "model-router skipped, subagent model set",
@@ -161,6 +166,80 @@ test("the constants hold the values src/ gives", () => {
 	});
 	assert.deepEqual(constants.levels, [...LEVELS]);
 	assert.deepEqual(constants.levelSlots, ["small", "middle", "large"]);
+});
+
+test("the settings table lists provider then gateway, each with its texts", () => {
+	assert.deepEqual(constants.settings, [
+		{
+			name: "provider",
+			values: ["typesafe"],
+			default: "typesafe",
+			skip: "model-router skipped, provider not valid: run setup",
+			notValid: "provider: {stored} (not valid: use one of typesafe)",
+			valueLines: { typesafe: "provider: typesafe" },
+			useOneOf: "provider: use one of typesafe",
+			already: { typesafe: "provider unchanged: already typesafe" },
+			unchanged: "provider unchanged: ",
+			refused: "provider unchanged: only a local session can change it",
+			command: {
+				name: "model-router-provider",
+				description:
+					"Shows or changes whose model scores subagent calls: typesafe.",
+				argsHint: "<typesafe>",
+			},
+		},
+		{
+			name: "gateway",
+			values: ["direct", "auto", "openrouter-first", "openrouter"],
+			default: "direct",
+			skip: "model-router skipped, gateway not valid: run setup",
+			notValid:
+				"gateway: {stored} (not valid: use one of direct, auto, openrouter-first, openrouter)",
+			valueLines: {
+				direct: "gateway: direct",
+				auto: "gateway: auto",
+				"openrouter-first": "gateway: openrouter-first",
+				openrouter: "gateway: openrouter",
+			},
+			useOneOf:
+				"gateway: use one of direct, auto, openrouter-first, openrouter",
+			already: {
+				direct: "gateway unchanged: already direct",
+				auto: "gateway unchanged: already auto",
+				"openrouter-first": "gateway unchanged: already openrouter-first",
+				openrouter: "gateway unchanged: already openrouter",
+			},
+			unchanged: "gateway unchanged: ",
+			refused: "gateway unchanged: only a local session can change it",
+			command: {
+				name: "model-router-gateway",
+				description:
+					"Shows or changes how OpenRouter is used for the provider: direct, auto, openrouter-first, openrouter.",
+				argsHint: "<direct|auto|openrouter-first|openrouter>",
+			},
+		},
+	]);
+});
+
+test("the choices table holds the key holders and the lines of each provider and gateway", () => {
+	const leaf = (holders: string[], gateway: string) => ({
+		holders,
+		lines: ["provider: typesafe", gateway],
+	});
+	assert.deepEqual(constants.choices, {
+		typesafe: {
+			direct: leaf(["typesafe"], "gateway: direct (typesafe)"),
+			auto: leaf(
+				["typesafe", "openrouter"],
+				"gateway: auto (typesafe, then openrouter)",
+			),
+			"openrouter-first": leaf(
+				["openrouter", "typesafe"],
+				"gateway: openrouter-first (openrouter, then typesafe)",
+			),
+			openrouter: leaf(["openrouter"], "gateway: openrouter (openrouter)"),
+		},
+	});
 });
 
 test("the task parameters are the texts src/ gives, with the ladder and the levels as enums", () => {

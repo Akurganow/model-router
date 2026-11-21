@@ -1,6 +1,7 @@
 """model-router-hermes: a Hermes delegation provider that routes each delegated task."""
 
 import logging
+from functools import partial
 
 # What Python names when the core has no delegation provider support.
 OLD_CORE_MODULES = ("agent", "agent.delegation_provider")
@@ -33,10 +34,10 @@ def _register_tool(ctx):
     register_tool(ctx)
 
 
-def _register_command(ctx):
+def _register_command(ctx, index):
     from .config_command import register_command
 
-    register_command(ctx)
+    register_command(ctx, index)
 
 
 def _register_skills(ctx):
@@ -49,11 +50,14 @@ def _register_skills(ctx):
 
 def _register_setup(ctx):
     """Each step fails alone: the provider is already registered and keeps routing."""
-    for what, step in (
-        ("tool", _register_tool),
-        ("command", _register_command),
-        ("skill", _register_skills),
-    ):
+    from .constants import CONSTANTS
+
+    steps = [("tool", _register_tool)]
+    for index, spec in enumerate(CONSTANTS["settings"]):
+        what = f"command {spec['command']['name']}"
+        steps.append((what, partial(_register_command, index=index)))
+    steps.append(("skill", _register_skills))
+    for what, step in steps:
         try:
             step(ctx)
         except Exception as error:

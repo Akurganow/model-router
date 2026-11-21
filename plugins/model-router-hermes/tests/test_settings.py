@@ -3,24 +3,39 @@ import unittest
 from support import CONSTANTS, FakeCtx, submodule
 
 
-class ProviderSettingTest(unittest.TestCase):
-    def read(self, settings):
-        return submodule("settings").read_provider(FakeCtx(settings), CONSTANTS)
+def stored_texts(settings):
+    return submodule("settings").read_texts(FakeCtx(settings), CONSTANTS)
 
-    def test_every_listed_value_is_kept(self):
-        for value in CONSTANTS["providers"]["values"]:
-            self.assertEqual(self.read({"provider": value}), value)
 
-    def test_unset_is_the_default(self):
-        self.assertEqual(self.read({}), CONSTANTS["providers"]["default"])
+def not_valid(settings):
+    spec = submodule("settings").first_not_valid(CONSTANTS, stored_texts(settings))
+    return None if spec is None else spec["name"]
 
-    def test_unknown_or_wrong_type_is_the_default(self):
-        for value in ("bogus", "", None, 3, ["typesafe"], "TypeSafe"):
-            self.assertEqual(
-                self.read({"provider": value}), CONSTANTS["providers"]["default"], value
-            )
 
-    def test_the_default_is_passed_to_the_context(self):
+class SettingTextTest(unittest.TestCase):
+    def test_a_text_outside_the_values_is_not_valid(self):
+        for name, texts in (("provider", ("auto", "openrouter")), ("gateway", ("fast", " direct "))):
+            for text in texts:
+                with self.subTest(name=name, text=text):
+                    self.assertEqual(not_valid({name: text}), name)
+
+    def test_nothing_or_blank_or_not_text_reads_as_the_default(self):
+        for name in ("provider", "gateway"):
+            for value in (None, "", "   ", 3, ["typesafe"]):
+                with self.subTest(name=name, value=value):
+                    texts = stored_texts({} if value is None else {name: value})
+                    self.assertEqual(
+                        submodule("settings").setting_lines(CONSTANTS, texts),
+                        ["provider: typesafe", "gateway: direct (typesafe)"],
+                    )
+
+    def test_every_listed_value_reads_as_itself(self):
+        for value in ("direct", "auto", "openrouter-first", "openrouter"):
+            with self.subTest(value):
+                self.assertIsNone(not_valid({"gateway": value}))
+                self.assertEqual(stored_texts({"gateway": value})["gateway"], value)
+
+    def test_each_setting_is_read_once_and_with_no_default(self):
         seen = []
 
         class Ctx:
@@ -28,8 +43,8 @@ class ProviderSettingTest(unittest.TestCase):
                 seen.append((key, default))
                 return default
 
-        submodule("settings").read_provider(Ctx(), CONSTANTS)
-        self.assertEqual(seen, [("provider", CONSTANTS["providers"]["default"])])
+        submodule("settings").read_texts(Ctx(), CONSTANTS)
+        self.assertEqual(seen, [("provider", None), ("gateway", None)])
 
 
 class SlotSettingTest(unittest.TestCase):

@@ -56,7 +56,8 @@
 			"descriptions": {
 				"claude": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one call may reach both companies.",
 				"omp": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies.",
-				"openclaw": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies."
+				"openclaw": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies.",
+				"hermes": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies."
 			}
 		},
 		"scope": {

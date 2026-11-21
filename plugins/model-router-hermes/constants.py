@@ -1,6 +1,6 @@
 """The values the TypeScript bundle shares with this shim, read from constants.json.
 
-The shim copies none of them: limits, provider tables, effort lists and texts all
+The shim copies none of them: limits, setting tables, effort lists and texts all
 come from that generated file."""
 
 import json

@@ -1,9 +1,4 @@
-import { setupTexts } from "#adapters/hermes/setup.ts";
-import {
-	choiceOf,
-	STORED_DEFAULT,
-	STORED_VALUES,
-} from "#adapters/hermes/stored.ts";
+import { settingTexts, setupTexts } from "#adapters/hermes/setup.ts";
 import { HERMES_TEXTS, taskParameterTexts } from "#adapters/hermes/texts.ts";
 import { EFFORTS } from "#core/decision/ladder.ts";
 import {
@@ -14,7 +9,14 @@ import {
 	slotRecord,
 	slotSetting,
 } from "#core/decision/slots.ts";
+import {
+	type Stored,
+	settingsOf,
+	valueFor,
+	valueLine,
+} from "#core/options/settings.ts";
 import { LINE_PREFIX, pinnedLine, skippedLine } from "#core/output/line.ts";
+import { notValid } from "#core/output/reasons.ts";
 import { LEVELS, type Level } from "#core/parts/part.ts";
 import {
 	holders,
@@ -25,7 +27,19 @@ import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
 import { hermesKeySetting, type Source } from "./source.ts";
-import { TOOL_NAME } from "./values.ts";
+import {
+	SETTING_VALUES,
+	TOOL_NAME,
+	VALUE_SETTINGS,
+	type ValueSetting,
+} from "./values.ts";
+
+type HermesSetting = Exclude<ValueSetting, "scope">;
+
+// Hermes keeps no scope setting, so its list is the core's list without scope.
+const HERMES_SETTINGS = VALUE_SETTINGS.filter(
+	(setting): setting is HermesSetting => setting !== "scope",
+);
 
 // Hermes reads plugin.yaml with yaml.safe_load, which refuses a tab, and the version check reads it as JSON, so it is JSON text with space indentation.
 const yamlText = (value: JsonObject): string =>
@@ -50,13 +64,18 @@ const keySettings = (source: Source): JsonObject =>
 
 // config_schema follows the Hermes plugin manifest: a type per setting, choices on a str, and an env name on a secret.
 const configSchema = (source: Source): JsonObject => ({
-	provider: {
-		type: "str",
-		choices: [...STORED_VALUES],
-		default: source.options.provider.default,
-		label: source.options.provider.title,
-		description: source.options.provider.descriptions.hermes,
-	},
+	...Object.fromEntries(
+		HERMES_SETTINGS.map((setting) => [
+			setting,
+			{
+				type: "str",
+				choices: [...SETTING_VALUES[setting]],
+				default: source.options[setting].default,
+				label: source.options[setting].title,
+				description: source.options[setting].descriptions.hermes,
+			},
+		]),
+	),
 	...Object.fromEntries(
 		SLOT_SETTINGS.map((setting) => [
 			setting,
@@ -91,20 +110,43 @@ const pinnedLabel = (slot: Slot): string =>
 		pickModel(levelOf(slot), { state: "unset" }).target,
 	);
 
+// One entry per setting Hermes stores, in order: its values, its default and every text Python prints for it.
+const settingEntry = (setting: HermesSetting): JsonObject => ({
+	name: setting,
+	values: [...SETTING_VALUES[setting]],
+	default: valueFor(setting, undefined) ?? null,
+	skip: skipLine(notValid(setting)),
+	...settingTexts(setting, SETTING_VALUES[setting], HERMES_SETTINGS),
+});
+
+// The key holders and the lines of each combination of values, nested by the value of each setting in order.
+function choices(
+	remaining: readonly HermesSetting[],
+	stored: Stored,
+): JsonObject {
+	const [setting, ...rest] = remaining;
+	if (setting === undefined)
+		return {
+			holders: [...holders(settingsOf(stored))],
+			lines: HERMES_SETTINGS.map((each) => valueLine(each, stored)),
+		};
+	return Object.fromEntries(
+		SETTING_VALUES[setting].map((value) => [
+			value,
+			choices(rest, { ...stored, [setting]: value }),
+		]),
+	);
+}
+
 // What the Python shim needs and must not retype: the limits, the provider rules, the efforts, the finished skip lines and the pinned labels.
 const constants = (source: Source): JsonObject => {
 	const { graceMs, reasons } = HERMES_TEXTS;
 	return {
 		routingLimitMs: ROUTING_LIMIT_MS,
 		graceMs,
-		providers: {
-			values: [...STORED_VALUES],
-			default: STORED_DEFAULT,
-			order: Object.fromEntries(
-				STORED_VALUES.map((v) => [v, [...holders(choiceOf(v))]]),
-			),
-			keyVariables: { ...KEY_VARIABLES },
-		},
+		keyVariables: { ...KEY_VARIABLES },
+		settings: HERMES_SETTINGS.map(settingEntry),
+		choices: choices(HERMES_SETTINGS, {}),
 		efforts: [...EFFORTS],
 		skips: Object.fromEntries(
 			Object.entries(reasons).map(([key, reason]) => [key, skipLine(reason)]),

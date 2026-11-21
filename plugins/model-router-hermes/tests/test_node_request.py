@@ -3,7 +3,6 @@ import unittest
 from unittest import mock
 
 from support import (
-    CONSTANTS,
     PREFIX,
     FakeClock,
     RouterCase,
@@ -34,6 +33,7 @@ class NodeRequestTest(RouterCase):
                 "task": "the goal",
                 "context": "the context",
                 "provider": "typesafe",
+                "gateway": None,
                 "keys": {"typesafe": "typesafe-secret-one"},
                 "budgetMs": 1000,
                 "models": {"small": "small-model", "middle": None, "large": "large-model"},
@@ -46,32 +46,32 @@ class NodeRequestTest(RouterCase):
         request = self.request(goal=None, context=None)
         self.assertEqual((request["task"], request["context"]), ("", ""))
 
-    def test_keys_hold_only_allowed_and_set_providers(self):
+    def test_keys_hold_only_allowed_and_set_key_holders(self):
         both = {"TYPESAFE_API_KEY": "ts-secret-one", "OPENROUTER_API_KEY": "or-secret-one"}
         cases = {
-            "typesafe": {"typesafe": "ts-secret-one"},
+            "direct": {"typesafe": "ts-secret-one"},
             "openrouter": {"openrouter": "or-secret-one"},
             "auto": {"typesafe": "ts-secret-one", "openrouter": "or-secret-one"},
             "openrouter-first": {"typesafe": "ts-secret-one", "openrouter": "or-secret-one"},
         }
-        for provider, keys in cases.items():
-            with self.subTest(provider):
+        for gateway, keys in cases.items():
+            with self.subTest(gateway):
                 request = self.request(
-                    api=fake_api(secrets=both), settings=good_settings(provider=provider)
+                    api=fake_api(secrets=both), settings=good_settings(gateway=gateway)
                 )
                 self.assertEqual(request["keys"], keys)
-                self.assertEqual(request["provider"], provider)
+                self.assertEqual(request["gateway"], gateway)
 
-    def test_unset_key_of_an_allowed_provider_is_left_out(self):
+    def test_unset_key_of_an_allowed_holder_is_left_out(self):
         request = self.request(
             api=fake_api(secrets={"OPENROUTER_API_KEY": "or-secret-one"}),
-            settings=good_settings(provider="auto"),
+            settings=good_settings(gateway="auto"),
         )
         self.assertEqual(request["keys"], {"openrouter": "or-secret-one"})
 
-    def test_unknown_provider_setting_goes_as_the_default(self):
-        request = self.request(settings=good_settings(provider="bogus"))
-        self.assertEqual(request["provider"], CONSTANTS["providers"]["default"])
+    def test_both_stored_texts_go_to_node_as_read(self):
+        request = self.request(settings=good_settings(gateway="auto"))
+        self.assertEqual((request["provider"], request["gateway"]), ("typesafe", "auto"))
 
     def test_models(self):
         request = self.request(
