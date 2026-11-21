@@ -170,12 +170,11 @@ set the keys.
 
 2. Answer `y` to add the marketplace.
 3. Pick the user scope.
-4. Pick a `provider`, a `gateway` and a `scope` in the dialog.
+4. Pick a `gateway` and a `scope` in the dialog.
 5. Paste your TypeSafe key, your OpenRouter key or both into the dialog.
 6. Run `/reload-plugins`, or start a new session.
-7. Ask Claude to run the `model-router-setup` skill. It asks the provider,
-   the gateway and the scope with buttons, writes your choices itself and
-   checks the keys.
+7. Ask Claude to run the `model-router-setup` skill. It asks the gateway and
+   the scope with buttons, writes your choices itself and checks the keys.
 
 To reopen the dialog later, run
 `/plugin configure model-router@model-router`. `/config` also changes the
@@ -227,7 +226,7 @@ while it runs.
 1. Run `/plugins` to open **Manage plugins**.
 2. Add `Akurganow/model-router` on the **Marketplaces** tab.
 3. Install `model-router` on the **Plugins** tab.
-4. Pick a `provider`, a `gateway` and a `scope` in the form that opens.
+4. Pick a `gateway` and a `scope` in the form that opens.
 5. Enter your TypeSafe key, your OpenRouter key or both.
 6. Start a new session.
 
@@ -253,8 +252,8 @@ open, set the key as [Desktop app](#desktop-app) describes.
 3. Restart omp, because omp loads extension modules at startup.
 4. Run `/login typesafe`, `/login openrouter` or both in omp to store your
    keys.
-5. Ask omp to run the `model-router-setup` skill. It asks the provider, the
-   gateway and the scope with buttons and writes your choices itself. It also
+5. Ask omp to run the `model-router-setup` skill. It asks the gateway and
+   the scope with buttons and writes your choices itself. It also
    helps you set the `smol`, `midl` and `slow` roles.
 
 Instead of `/login`, you can run `omp login typesafe` or
