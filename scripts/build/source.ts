@@ -18,8 +18,10 @@ type Option<Descriptions> = {
 	readonly descriptions: Descriptions;
 };
 type Hint = { readonly label: string; readonly help: string };
-// One Hermes secret setting for each provider's key.
+// Hermes stores a secret under its variable, so the setting's own name is free: the provider's name and a fixed ending.
 export type HermesKeySetting = `${Provider}_api_key`;
+export const hermesKeySetting = (provider: Provider): HermesKeySetting =>
+	`${provider}_api_key`;
 type Secret = {
 	readonly type: string;
 	readonly title: string;
