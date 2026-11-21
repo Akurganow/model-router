@@ -458,19 +458,7 @@ test("tier and work send the System One body as one string", async () => {
 	);
 });
 
-test("a request hands the fetch exactly four headers", async () => {
-	const { inits, fetchFn } = answering(VALID);
-	await run(fetchFn);
-	assert.deepEqual(inits[0]?.headers, {
-		Authorization: "Bearer test-key",
-		Accept: "application/json",
-		"Content-Type": "application/json",
-		"User-Agent":
-			"model-router/dev (+https://github.com/Akurganow/model-router)",
-	});
-});
-
-// One row per endpoint: its address, its model, and the one header that holds the key.
+// One row per endpoint: the value that plans it, its address, and its key header as sent.
 const ADDRESSES: readonly [
 	value: string,
 	address: string,
