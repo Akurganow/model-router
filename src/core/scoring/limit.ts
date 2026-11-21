@@ -1,7 +1,7 @@
 import { CANCELLED, TIMEOUT } from "#core/output/reasons.ts";
 import type { Clock } from "#utils/clock.ts";
 
-export const ROUTING_LIMIT_MS = 8000;
+export const ROUTING_LIMIT_MS = 10000;
 // limitSignal aborts with this reason when the limit runs out, so a timeout differs from a cancel.
 export const LIMIT_REACHED = Symbol("routing limit reached");
 

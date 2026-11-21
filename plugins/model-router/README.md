@@ -71,7 +71,7 @@ This is the whole surface:
 | hook | `tool.call{tool=mcp__model-router__config}` | Answers the `config` tool: the settings and the dialogs. |
 | hook | `turn.step` | Sets the routed `effort` on the subagent's requests. |
 | hook | `turn.complete` | Forgets that a finished subagent's first request already waited for the spawns in flight. |
-| call | `$.clock.after` | The 8 s limit and the request's timers run on it, for example the retry wait. |
+| call | `$.clock.after` | The 10 s limit and the request's timers run on it, for example the retry wait. |
 | call | `$.clock.sleep` | Bounds the wait of a subagent's first request for the spawns in flight, 1 s at most. |
 | call | `$.config.set` | Writes the `provider`, `gateway` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. |
 | call | `$.env.get` | Reads `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY`, and whether `CLAUDE_CODE_EFFORT_LEVEL` is set, the only variables the mod reads. |
@@ -286,7 +286,7 @@ mod reads, stores and passes on.
 [Retries and the second attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-attempt)
 gives the requests of each attempt.
 
-One fixed 8 s limit covers the whole call, retries and the second attempt
+One fixed 10 s limit covers the whole call, retries and the second attempt
 included. A call that runs past it runs unchanged.
 [The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing) says what a
 request in flight can cost.
@@ -378,8 +378,8 @@ Claude Code then refuses adds a second line, `denied`.
     app](#keys-in-the-desktop-app) has the workaround.
   - `bad reply`: the company answered, but the answer lacks a valid score
     for one of the two questions.
-  - `timeout`: a first attempt got no answer in 2 s, or the call got no
-    decision in the 8 s limit. Check the network and try again.
+  - `timeout`: a first attempt got no answer in 5 s, or the call got no
+    decision in the 10 s limit. Check the network and try again.
   - `cancelled`: Claude Code abandoned the call before the answer came, for
     example because you interrupted it.
   - `network error`: every attempt failed before an answer came. An

@@ -142,7 +142,7 @@ Skip reasons, checked in this order, with the fix:
 - `<id> agent unknown`: under `extended`, the agent is not in `agents.entries`, or in `agents.list` when `entries` is absent.
 - `<id> sets its own model`: under `extended`, the agent's entry sets a `model`. OpenClaw's choice decides.
 - `settings unreadable`: the plugin cannot read OpenClaw's live config.
-- `timeout`: the 8 s routing limit expired. The limit shrinks to the hook timeout minus 2 s when that is smaller.
+- `timeout`: the 10 s routing limit expired. The limit shrinks to the hook timeout minus 2 s when that is smaller.
 - `cancelled`: OpenClaw cancelled the `sessions_spawn` call before routing finished.
 - `HTTP <status>`, `network error`, `bad reply` or `failed`: the company did not answer. Look at the company that failed, its key and the network.
 

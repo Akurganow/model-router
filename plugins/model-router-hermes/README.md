@@ -196,7 +196,7 @@ A scored task can still skip:
 
 Hermes routes the tasks of one `delegate_task` call one after another, before any child starts. The wait is the sum over the tasks.
 
-One routing limit of 8 s covers a whole call. It holds the scoring of every task, both attempts and all retries included. The first task of a call opens a budget, and each later task gets what is left. A task that starts with no time left runs unrouted and reports `skipped, timeout`. The plugin ends a Node run 1 s after its share, as a guard for a stuck process.
+One routing limit of 10 s covers a whole call. It holds the scoring of every task, both attempts and all retries included. The first task of a call opens a budget, and each later task gets what is left. A task that starts with no time left runs unrouted and reports `skipped, timeout`. The plugin ends a Node run 1 s after its share, as a guard for a stuck process.
 
 The budget record lives in the process that holds the plugin: the gateway, or the plugin host under `plugins.isolation: host`. It is not kept per call or per session. Concurrent sessions on one gateway share one record. Under host isolation the plugin host, one per profile, holds it. A call's first task, or a task that starts more than the limit after the last one ended, restarts it. Two calls that route at the same time can therefore shorten each other's share.
 

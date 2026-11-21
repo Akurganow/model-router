@@ -788,7 +788,7 @@ var GATEWAYS = [
   "openrouter-first",
   "openrouter"
 ];
-var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
+var FIRST_ATTEMPT_TIMEOUT_MS = 5e3;
 var GATEWAY_PATHS = {
   direct: ["direct"],
   auto: ["direct", "openrouter"],

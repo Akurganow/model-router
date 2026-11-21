@@ -101,7 +101,7 @@ One call sends at most four requests, as
 [Retries and the second attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-attempt)
 explains.
 
-One fixed 8 s limit covers the whole call, both attempts and all retries
+One fixed 10 s limit covers the whole call, both attempts and all retries
 included.
 [The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing)
 says what a request in flight can cost.

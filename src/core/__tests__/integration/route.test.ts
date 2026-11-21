@@ -108,8 +108,8 @@ test("route takes only a state that routingState built", () => {
 	assert.equal(state, raw);
 });
 
-test("the routing limit is 8000 ms", () => {
-	assert.equal(ROUTING_LIMIT_MS, 8000);
+test("the routing limit is 10000 ms", () => {
+	assert.equal(ROUTING_LIMIT_MS, 10000);
 });
 
 test("tier alone sends no work question", async () => {
@@ -543,13 +543,13 @@ test("a status that falls back gives the next provider's decision, any other end
 	}
 });
 
-test("the first of two attempts times out at 2000 ms and falls back", async (t) => {
+test("the first of two attempts times out at 5000 ms and falls back", async (t) => {
 	const time = fakeTime(t);
 	const { bodies, inits, fetchFn } = stub((init, count) =>
 		count === 1 ? hang(init, count) : Promise.resolve(scoringReply(200, VALID)),
 	);
 	const routed = run(fetchFn, { attempts: BOTH });
-	await time.pass(1999);
+	await time.pass(4999);
 	assert.equal(bodies.length, 1);
 	assert.equal(inits[0]?.signal?.aborted, false);
 	await time.pass(1);
@@ -611,7 +611,7 @@ test("a fetch that ignores its signal ends at the attempt timeout and falls back
 			: Promise.resolve(scoringReply(200, VALID)),
 	);
 	const routed = run(fetchFn, { attempts: BOTH });
-	await time.pass(2000);
+	await time.pass(5000);
 	assert.equal(bodies.length, 2);
 	assert.equal(
 		asDecision(await time.settled(routed)).firstFailed?.reason,
@@ -639,7 +639,7 @@ test("a reply whose text never arrives ends at the attempt timeout", async (t) =
 		count === 1 ? stalledReply() : scoringReply(200, VALID),
 	);
 	const routed = run(fetchFn, { attempts: BOTH });
-	await time.pass(1999);
+	await time.pass(4999);
 	assert.equal(bodies.length, 1);
 	await time.pass(1);
 	assert.equal(bodies.length, 2);
@@ -780,7 +780,7 @@ test("a 400 whose body never ends ends the call at the attempt timeout and does 
 	const time = fakeTime(t);
 	const { sent, fetchFn } = stub(async () => stalledReply(400));
 	const routed = run(fetchFn, { attempts: BOTH });
-	await time.pass(2000);
+	await time.pass(5000);
 	assert.deepEqual(await time.settled(routed), { skipped: "HTTP 400" });
 	assert.deepEqual(sent, [
 		`https://api.typesafe.ai/v1/systemone Bearer ${KEY}`,
@@ -851,7 +851,7 @@ const EXITS: readonly Exit[] = [
 			count === 1
 				? hang(init, count)
 				: Promise.resolve(scoringReply(200, VALID)),
-		passMs: 2000,
+		passMs: 5000,
 		expected: {
 			...DECISION,
 			holder: "openrouter",

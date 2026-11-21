@@ -103,7 +103,7 @@ More than one can hold. Report every one that holds.
 
 - `key unset`: no path the `gateway` value allows has a key. Add one as the Keys facts say.
 - `bad reply`: the company answered without a valid score for one of the two questions.
-- `timeout`: a first attempt got no answer in 2 s, or the call got no decision in the 8 s limit. The network or the company is slow.
+- `timeout`: a first attempt got no answer in 5 s, or the call got no decision in the 10 s limit. The network or the company is slow.
 - `cancelled`: Claude Code abandoned the call before the answer came, for example after an interrupt.
 - `network error`: every attempt failed before an answer came. An organization fetch policy that refuses openrouter.ai shows as this too.
 - `HTTP <status>`: the company answered with that status. `HTTP 401` means the company rejected the key. `HTTP 429` and `HTTP 503` mean the company refused or failed on every attempt.

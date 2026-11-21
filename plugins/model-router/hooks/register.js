@@ -23,7 +23,7 @@ var KEY_FIELDS = {
   typesafe: "api_key",
   openrouter: "openrouter_api_key"
 };
-var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
+var FIRST_ATTEMPT_TIMEOUT_MS = 5e3;
 var GATEWAY_PATHS = {
   direct: ["direct"],
   auto: ["direct", "openrouter"],
@@ -894,7 +894,7 @@ async function ask2(input, attempt) {
 }
 
 // src/core/scoring/limit.ts
-var ROUTING_LIMIT_MS = 8e3;
+var ROUTING_LIMIT_MS = 1e4;
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 function abortCategory(signal) {
   return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;

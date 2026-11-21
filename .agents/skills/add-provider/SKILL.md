@@ -26,7 +26,7 @@ Each such fact comes from the provider's documentation, or from a recorded reque
 
 1. Read the provider's documentation for the address, the key header, the request body and the reply.
 2. Find whether one request answers both questions, with a probability for each of the three levels.
-3. Find whether an answer comes within the 2 s that a first attempt gets.
+3. Find whether an answer comes within the 5 s that a first attempt gets.
 4. Find the models the endpoint takes, whether it serves Jev, and the model name and token counts a reply gives.
 5. Find whether OpenRouter serves the model, and its address and model name there.
 6. Find which statuses and headers ask for a retry or a wait.
@@ -49,7 +49,7 @@ Choose that name now, as the present rows are named: no README names one yet.
 
 The stop below holds with or without a request.
 
-17. Stop and report to the maintainer when one request cannot give both answers and their probabilities within 2 s.
+17. Stop and report to the maintainer when one request cannot give both answers and their probabilities within 5 s.
 
 ## Look up what the harnesses need
 

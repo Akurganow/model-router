@@ -153,7 +153,7 @@ test("a provider takes its key from omp's credential and the other from the vari
 			path: "direct",
 			holder: "typesafe",
 			key: KEY,
-			timeout: 2000,
+			timeout: 5000,
 			retries: 0,
 		},
 		{
@@ -182,7 +182,7 @@ test("a credential store that throws falls through to the variable and the next 
 			path: "direct",
 			holder: "typesafe",
 			key: "env-ts-key",
-			timeout: 2000,
+			timeout: 5000,
 			retries: 0,
 		},
 		{

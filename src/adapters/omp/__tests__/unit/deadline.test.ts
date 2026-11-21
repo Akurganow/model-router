@@ -18,7 +18,7 @@ describe("budgetFor", () => {
 		"5000",
 	])
 		it(`takes omp's default of 30000 for ${String(value)}`, () => {
-			assert.deepEqual(budgetFor(value), { deadline: 8000 });
+			assert.deepEqual(budgetFor(value), { deadline: 10000 });
 		});
 
 	for (const [timeout, deadline] of [
@@ -27,8 +27,8 @@ describe("budgetFor", () => {
 		[4000, 2000],
 		[9000, 7000],
 		[10000, 8000],
-		[30000, 8000],
-		[60000, 8000],
+		[30000, 10000],
+		[60000, 10000],
 	] as const)
 		it(`gives ${timeout} ms a ${deadline} ms deadline`, () => {
 			assert.deepEqual(budgetFor(timeout), { deadline });

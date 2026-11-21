@@ -32,7 +32,7 @@ export const KEY_FIELDS = {
 // The key each key holder has, as the harness read it.
 export type Keys = Partial<Record<KeyHolder, string>>;
 
-export const FIRST_ATTEMPT_TIMEOUT_MS = 2000;
+export const FIRST_ATTEMPT_TIMEOUT_MS = 5000;
 
 // The paths each gateway value allows, in the order they are asked.
 const GATEWAY_PATHS: Readonly<Record<Gateway, readonly Path[]>> = {

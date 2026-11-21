@@ -23,7 +23,7 @@ const O = {
 	holder: "openrouter",
 	key: "or-key",
 };
-const FIRST = { timeout: 2000, retries: 0 };
+const FIRST = { timeout: 5000, retries: 0 };
 
 const NONE = {};
 const TS = { typesafe: "ts-key" };
@@ -31,14 +31,14 @@ const OR = { openrouter: "or-key" };
 const BOTH = { typesafe: "ts-key", openrouter: "or-key" };
 const via = (gateway: Gateway): Choice => ({ provider: "typesafe", gateway });
 
-test("exports four gateway values and a 2000 ms first attempt", () => {
+test("exports four gateway values and a 5000 ms first attempt", () => {
 	assert.deepEqual(GATEWAYS, [
 		"direct",
 		"auto",
 		"openrouter-first",
 		"openrouter",
 	]);
-	assert.equal(FIRST_ATTEMPT_TIMEOUT_MS, 2000);
+	assert.equal(FIRST_ATTEMPT_TIMEOUT_MS, 5000);
 });
 
 test("plan orders the attempts for each gateway and set of keys", () => {

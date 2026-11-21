@@ -310,7 +310,7 @@ var KEY_VARIABLES = {
   typesafe: "TYPESAFE_API_KEY",
   openrouter: "OPENROUTER_API_KEY"
 };
-var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
+var FIRST_ATTEMPT_TIMEOUT_MS = 5e3;
 var GATEWAY_PATHS = {
   direct: ["direct"],
   auto: ["direct", "openrouter"],
@@ -677,7 +677,7 @@ function registerConfig(omp, pi) {
 }
 
 // src/core/scoring/limit.ts
-var ROUTING_LIMIT_MS = 8e3;
+var ROUTING_LIMIT_MS = 1e4;
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 function abortCategory(signal) {
   return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;

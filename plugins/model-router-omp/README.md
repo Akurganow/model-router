@@ -249,7 +249,7 @@ One reason appears only at spawn time:
 
 After the item check, a scored item can still skip:
 
-- `timeout`: the first of two attempts got no answer in 2 s, or the scoring limit ran out: 8 s, or less under a short tool call timeout. When the limit runs out, items still waiting skip too.
+- `timeout`: the first of two attempts got no answer in 5 s, or the scoring limit ran out: 10 s, or less under a short tool call timeout. When the limit runs out, items still waiting skip too.
 - `HTTP <status>`: the company returned an error status for the attempt, after any retries. For example, `HTTP 401` means that company refused the key.
 - `network error`: the request could not connect, after any retries.
 - `bad reply`: the reply holds no valid score for the question.
@@ -265,7 +265,7 @@ The plugin calls `pi.pi.discoverAgents`, a typed omp API at omp 18.12.6 and 18.1
 
 ## Limits and retries
 
-- One limit covers a batch from the moment omp calls the plugin: the reads before scoring, the scoring, retries and second attempts included. It is 8 s, or the tool call timeout less 2 s when that is shorter. At most four items are scored at once.
+- One limit covers a batch from the moment omp calls the plugin: the reads before scoring, the scoring, retries and second attempts included. It is 10 s, or the tool call timeout less 2 s when that is shorter. At most four items are scored at once.
 - [Retries and the second attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-attempt) gives the attempts on each path.
 - Inside one batch, a path whose first attempt for an item failed and fell back is passed over: items that start later in that batch go straight to the other path. The next batch tries both again.
 - omp blocks the whole `task` call when a `tool_call` handler passes `extensionHandlers.toolCallTimeoutMs`, 30 s by default. The plugin reads the setting on every batch and keeps 2 s of it back as a margin. Under 3 s nothing is left to score: every item skips with `tool call timeout <n> ms leaves <m> ms to route`. Set it to 3000 ms or more, or keep the default.

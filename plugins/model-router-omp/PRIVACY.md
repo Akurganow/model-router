@@ -124,7 +124,7 @@ later in the same batch skip the failed path.
 
 [The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing)
 says what a request in flight can cost. One limit covers the scoring of a
-whole batch, both attempts and all retries included: 8 s, or less under a
+whole batch, both attempts and all retries included: 10 s, or less under a
 short omp tool call timeout, as the
 [README](README.md#limits-and-retries) says. The plugin sends no
 other request.

@@ -215,20 +215,20 @@ With one attempt, a routed task sends one request and up to two retries, three r
 The plugin retries a connection error, a timeout and an HTTP status 408, 429 or 5xx.
 It retries no other status.
 The retries send the same body as the first request.
-The plugin times a request out after 10 s, but the routing limit is shorter, so the limit ends a call first.
-The only timeout a plugin meets is the 2 s one below, which has no retry.
+The plugin times a request out after 10 s, and the routing limit is 10 s too. The limit's clock starts first, so the limit ends a call.
+The only timeout a plugin meets is the 5 s one below, which has no retry.
 Before a retry the plugin waits as a `Retry-After` or `retry-after-ms` header says, up to 60 s.
 Without one it backs off for 0.5 s, doubling up to 5 s, with some jitter.
 The routing limit ends any wait, so a 429 with a long `Retry-After` can hold a task until the limit.
 
 With two attempts, the first gets one request and no retry.
-The plugin gives up on it after 2 s.
+The plugin gives up on it after 5 s.
 The second then gets up to three requests as above, within the rest of the routing limit.
 One task therefore sends at most four requests.
 
 ## The routing limit and billing
 
-The routing limit is at most 8 s.
+The routing limit is at most 10 s.
 It covers the scoring, both attempts and all retries included.
 Each plugin README says what its limit spans.
 The plugin stops waiting at the limit, but it cannot recall a request in flight.

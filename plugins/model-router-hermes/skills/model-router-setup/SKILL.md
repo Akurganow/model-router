@@ -122,7 +122,7 @@ Find out which of these already hold, with the `model_router_config` tool and He
 - `key unset`: no path the `gateway` setting allows has a key. A task with a `level` meets no key check. The person sets one, as the keys facts say.
 - `subagent model set`: the `delegation` section sets a model. The person decides whether to clear it.
 - `node not found`: Hermes has no Node of its own. The plugin runs scoring in that Node and never uses a Node on `PATH`. The person adds a Node for Hermes.
-- `timeout`: the routing limit of 8 s for a whole `delegate_task` call ran out. No setting fixes it.
+- `timeout`: the routing limit of 10 s for a whole `delegate_task` call ran out. No setting fixes it.
 - `HTTP <status>`, `network error`, `bad reply` or `failed`: the company did not answer, or the plugin failed. No setting fixes it. After both attempts the reason names each.
 - Check every reason that holds, not only the first.
 

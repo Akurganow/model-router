@@ -469,7 +469,7 @@ test("a skip after two attempts names both providers, a later one-attempt skip d
 	]);
 });
 
-test("one 8 s limit covers the batch: running and queued items are skipped as timeout", async () => {
+test("one 10 s limit covers the batch: running and queued items are skipped as timeout", async () => {
 	install();
 	mock.timers.enable({ apis: ["setTimeout", "Date"] });
 	world.answer = (_sent, _n, signal) =>
@@ -481,7 +481,7 @@ test("one 8 s limit covers the batch: running and queued items are skipped as ti
 	// The settings read is real file I/O, so the limit starts once the first requests are out.
 	while (world.sent.length < 4)
 		await new Promise((resolve) => setImmediate(resolve));
-	mock.timers.tick(7999);
+	mock.timers.tick(9999);
 	await new Promise((resolve) => setImmediate(resolve));
 	assert.equal(world.notes.length, 0);
 	mock.timers.tick(1);
@@ -573,8 +573,8 @@ test("a tool call timeout of 3 s still routes", async () => {
 for (const [timeout, limit] of [
 	[4000, 2000],
 	[9000, 7000],
-	[60000, 8000],
-	["x", 8000],
+	[60000, 10000],
+	["x", 10000],
 ] as const)
 	test(`a tool call timeout of ${timeout} gives the batch ${limit} ms`, async () => {
 		world.config[TIMEOUT] = timeout;

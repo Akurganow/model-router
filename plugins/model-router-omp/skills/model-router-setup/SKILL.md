@@ -159,7 +159,7 @@ An item check skips one item:
 
 A scored item can skip for these reasons:
 
-- `timeout`: the company gave no answer in time. Scoring has 8 s per batch.
+- `timeout`: the company gave no answer in time. Scoring has 10 s per batch.
 - `HTTP <status>`: the company returned an error. `HTTP 401` means it refused the key.
 - `network error`: the request could not connect.
 - `bad reply`: the reply held no valid score.

@@ -279,12 +279,12 @@ Four limits bound the time a spawn waits for routing:
 
 | Limit | Value | What it bounds |
 | --- | --- | --- |
-| Hook timeout | 10 s | The whole hook. The plugin registers it with this value. |
-| Routing limit | 8 s | The plugin's work in the hook: both attempts and all retries. |
+| Hook timeout | 12 s | The whole hook. The plugin registers it with this value. |
+| Routing limit | 10 s | The plugin's work in the hook: both attempts and all retries. |
 | Jev timeout | 10 s | One request in the last attempt the plugin makes. |
-| First-attempt wait | 2 s | The first of two attempts. It gets no retry. |
+| First-attempt wait | 5 s | The first of two attempts. It gets no retry. |
 
-The routing limit is shorter than the Jev timeout, so it ends a slow request first.
+The routing limit equals the Jev timeout. The limit's clock starts first, so the limit ends a slow request.
 
 An operator overrides the hook timeout with `plugins.entries.model-router-openclaw.hooks.timeouts.before_tool_call` or `hooks.timeoutMs`.
 
