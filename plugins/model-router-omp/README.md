@@ -225,7 +225,7 @@ A closed gate skips every item the scope covers with the same reason. The gates 
 
 1. `tool call timeout <n> ms leaves <m> ms to route`: omp's tool call timeout leaves less than 1 s to score, as [Limits and retries](#limits-and-retries) says. The plugin reads no key and sends nothing.
 2. `settings unreadable`: the `provider`, `gateway` and `scope` settings or the plugins lockfile cannot be read. The plugin then cannot read `scope`, so it reports `task` items only.
-3. `<setting> not valid: run setup`: a stored `provider`, `gateway` or `scope` holds a value outside its list. [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names.
+3. `<setting> not valid: run setup`: a stored `provider`, `gateway` or `scope` holds a value outside its list. The reason covers the items of the stored `scope`, or `task` items only when `scope` itself is not valid. [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names.
 4. `key unset`: no path the `gateway` setting allows has a key.
 5. `settings unreadable`: omp's model roles, task model overrides or disabled agents cannot be read.
 
