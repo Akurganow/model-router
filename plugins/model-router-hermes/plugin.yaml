@@ -35,41 +35,41 @@
     "small_model": {
       "type": "dict",
       "label": "Small model",
-      "description": "The model a delegated task gets when Jev rates its task small, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
+      "description": "The model a delegated task gets when the scoring model rates its task small, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
     },
     "middle_model": {
       "type": "dict",
       "label": "Middle model",
-      "description": "The model a delegated task gets when Jev rates its task middle, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
+      "description": "The model a delegated task gets when the scoring model rates its task middle, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
     },
     "large_model": {
       "type": "dict",
       "label": "Large model",
-      "description": "The model a delegated task gets when Jev rates its task large, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
+      "description": "The model a delegated task gets when the scoring model rates its task large, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
     },
     "typesafe_api_key": {
       "type": "secret",
       "env": "TYPESAFE_API_KEY",
       "label": "TypeSafe API key",
-      "description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the gateway setting allows TypeSafe's own API."
+      "description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider setting is typesafe and the gateway setting allows TypeSafe's own API."
     },
     "openai_api_key": {
       "type": "secret",
       "env": "OPENAI_API_KEY",
       "label": "OpenAI API key",
-      "description": "Your OpenAI API key. The plugin sends it to OpenAI only, as the bearer token of the scoring request, and only when the provider setting is openai and the gateway setting allows OpenAI's own API. A key saved here becomes the key of Hermes's own OpenAI provider. With neither model.provider nor a local model.base_url in config.yaml, Hermes takes the first provider in its own order whose key is set, ahead of an OAuth login, so it may use OpenAI for its own session. Set model.provider to keep another provider."
+      "description": "Your OpenAI API key. The plugin sends it to OpenAI only, as the bearer token of the scoring request, and only when the provider setting is openai and the gateway setting allows OpenAI's own API. Hermes's own OpenAI provider reads the same key and may use it for your own session. Set model.provider to keep another provider. The README, section Keys, says more."
     },
     "google_api_key": {
       "type": "secret",
       "env": "GEMINI_API_KEY",
       "label": "Google API key",
-      "description": "Your Google API key. The plugin sends it to Google only, in the x-goog-api-key header of the scoring request, and only when the provider setting is google and the gateway setting allows Google's own API. A key saved here is stored as GEMINI_API_KEY, which Hermes's own Gemini provider reads after GOOGLE_API_KEY unless model.key_env names a variable for it. So a key in GOOGLE_API_KEY is not used for scoring, and Hermes's own provider prefers it over the key saved here. With neither model.provider nor a local model.base_url in config.yaml, Hermes takes the first provider in its own order whose key is set, ahead of an OAuth login, so it may use Google for its own session. Set model.provider to keep another provider."
+      "description": "Your Google API key. The plugin sends it to Google only, in the x-goog-api-key header of the scoring request, and only when the provider setting is google and the gateway setting allows Google's own API. Hermes's own Gemini provider reads the same key, after GOOGLE_API_KEY, and may use it for your own session. Set model.provider to keep another provider. The README, section Keys, says more."
     },
     "openrouter_api_key": {
       "type": "secret",
       "env": "OPENROUTER_API_KEY",
       "label": "OpenRouter API key",
-      "description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the gateway setting allows OpenRouter. A key saved here becomes the key of Hermes's own OpenRouter provider. With neither model.provider nor a local model.base_url in config.yaml, Hermes then uses OpenRouter for its own session, so set model.provider to keep another provider."
+      "description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the gateway setting allows OpenRouter. Hermes's own OpenRouter provider reads the same key and may use it for your own session. Set model.provider to keep another provider. The README, section Keys, says more."
     }
   }
 }

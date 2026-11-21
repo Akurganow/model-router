@@ -40,7 +40,7 @@
 		"api_key": {
 			"type": "string",
 			"title": "TypeSafe API key",
-			"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the gateway option allows TypeSafe's own API. The README says where to get one.",
+			"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider option is typesafe and the gateway option allows TypeSafe's own API. The README says where to get one.",
 			"sensitive": true
 		},
 		"openai_api_key": {

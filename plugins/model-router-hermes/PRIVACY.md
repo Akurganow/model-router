@@ -159,16 +159,9 @@ changed when it routes. When the section sets no effort, every route carries
 the task's `reasoning_effort` parameter.
 
 The plugin reads no credential of a model's provider except the four keys above.
-A key saved in the form for OpenRouter or OpenAI is also the key of Hermes's own
-provider for that vendor. The plugin's Google secret writes `GEMINI_API_KEY`,
-which Hermes's own Gemini provider reads after `GOOGLE_API_KEY`, unless
-`model.key_env` names a variable for it. So that provider prefers a key set
-under `GOOGLE_API_KEY` over the key saved in the form, with the same limit.
-With neither `model.provider` nor a local `model.base_url` in `config.yaml`,
-Hermes takes the first provider in its own order whose key is set, ahead of an
-OAuth login. A key saved for OpenAI or Google can then become the provider of
-your own Hermes session, and `model.provider` keeps another. [Keys](README.md#keys)
-says the same for each key. It sets the model and provider you named in a slot on the task. Of the
+Hermes's own OpenRouter, OpenAI and Gemini providers read the same keys, and a
+key you save for the plugin may serve your own Hermes session too.
+[Keys](README.md#keys) says how, and how to keep another provider. The plugin sets the model and provider you named in a slot on the task. Of the
 settings, the task parameters and the `delegation` section, only the role text
 leaves your machine, in the request, as described above.
 

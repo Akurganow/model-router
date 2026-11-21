@@ -3,7 +3,7 @@
 	"version": "0.24.3",
 	"private": false,
 	"type": "module",
-	"description": "Routes subagents to a model and effort that fits the task, judged by Jev. One package for OpenClaw and Oh My Pi.",
+	"description": "Routes subagents to a model and effort that fits the task, judged by a decision model from TypeSafe, OpenAI or Google. One package for OpenClaw and Oh My Pi.",
 	"license": "MIT",
 	"homepage": "https://github.com/Akurganow/model-router",
 	"repository": {

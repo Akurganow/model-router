@@ -61,7 +61,18 @@ Some of Hermes's own providers read these variables too, so a key you save in th
 - Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY`. A key you save in the form becomes that provider's key: Hermes writes the variable and the copies of the old value in `config.yaml`. A key already in that variable scores tasks when the `gateway` setting allows OpenRouter.
 - A key you save in the form for OpenAI is also the key of Hermes's own OpenAI provider. A key already in `OPENAI_API_KEY` scores tasks when the plugin's settings allow OpenAI's own API.
 - The plugin's Google secret writes `GEMINI_API_KEY`. Hermes's own Gemini provider reads `GOOGLE_API_KEY` before `GEMINI_API_KEY`, unless `model.key_env` names a variable for it. So a Google key you set for Hermes under `GOOGLE_API_KEY` is not used for scoring. Hermes's own Gemini provider prefers it over the key saved in the form, with the same `model.key_env` limit.
-- With a key in `OPENROUTER_API_KEY` and neither `model.provider` nor a local `model.base_url` in `config.yaml`, Hermes uses OpenRouter for its own session. With neither of them set, Hermes takes the first provider in its own order whose key is set, ahead of an OAuth login. So a key saved for OpenAI or Google can become the provider of your own Hermes session. Set `model.provider` to keep another provider.
+
+Hermes picks the provider of your own session in this order, with the provider `auto` or none requested. The first rung that applies decides:
+
+1. A key or a base URL given on the command line.
+2. `model.provider` in `config.yaml`.
+3. A `model.base_url` on a loopback host, when `model` names no provider.
+4. A usable `OPENROUTER_API_KEY`.
+5. The OpenRouter credential pool.
+6. Another provider's key in the environment: the first provider in Hermes's own order whose variable holds a usable value. OpenAI's stands before Gemini's.
+7. An OAuth login.
+
+So Hermes's own OpenRouter, OpenAI or Gemini provider may become the provider of your own session. Set `model.provider` to keep another provider.
 
 No other credential of Hermes serves as a scoring key.
 
@@ -73,15 +84,11 @@ Hermes holds a key in the gateway's environment, so the programs Hermes starts c
 
 ## Provider and gateway
 
-The `provider` setting says whose model scores each task. Its values are `typesafe` (the default), `openai` and `google`:
-
-- `typesafe`: Jev from TypeSafe, the model the plugin's questions are fitted to.
-- `openai`: OpenAI's decision model; costs more than Jev and its answers are not fitted.
-- `google`: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.
+The `provider` setting says whose model scores each task. Its values are `typesafe` (the default), `openai` and `google`.
 
 The `gateway` setting says how OpenRouter is used to reach the provider. Its values are `direct` (the default), `auto`, `openrouter-first` and `openrouter`. It is not Hermes's gateway, the process that owns a session.
 
-[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which path each value takes first, and when the second one runs. Who receives a task under each value: [PRIVACY.md](PRIVACY.md).
+[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which model each `provider` value names, which path each `gateway` value takes first, and when the second one runs. Who receives a task under each value: [PRIVACY.md](PRIVACY.md).
 
 Switch them with `/model-router-provider <value>` and `/model-router-gateway <value>`. The plugin reads both settings at each task.
 
@@ -162,7 +169,7 @@ The plugin adds three parameters to each task of `delegate_task`. Hermes shows t
 | --- | --- | --- |
 | `description` | One line of text | Masks token-shaped strings as in the task text, turns each run of whitespace into one space, cuts it to 500 characters and sends it to the scoring model as the request's description. A missing, blank or non-text value sends an empty description. |
 | `reasoning_effort` | `low`, `medium`, `high`, `xhigh` | Keeps this effort, as rank 2 of [Precedence](#precedence) says. |
-| `level` | `0`, `1`, `2` | Asks Jev nothing. Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. [Precedence](#precedence) says what outranks it. |
+| `level` | `0`, `1`, `2` | Asks the scoring model nothing. Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. [Precedence](#precedence) says what outranks it. |
 
 Hermes refuses a task whose `reasoning_effort` or `level` is off these lists, before the plugin sees it. The plugin reads a `level` of `true` or `false` as unset.
 

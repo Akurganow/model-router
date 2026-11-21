@@ -47,19 +47,19 @@
 		},
 		"small_model": {
 			"label": "Small model",
-			"help": "The model a spawn gets when Jev rates its task small, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one."
+			"help": "The model a spawn gets when the scoring model rates its task small, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one."
 		},
 		"middle_model": {
 			"label": "Middle model",
-			"help": "The model a spawn gets when Jev rates its task middle, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one."
+			"help": "The model a spawn gets when the scoring model rates its task middle, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one."
 		},
 		"large_model": {
 			"label": "Large model",
-			"help": "The model a spawn gets when Jev rates its task large, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one."
+			"help": "The model a spawn gets when the scoring model rates its task large, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one."
 		},
 		"api_key": {
 			"label": "TypeSafe API key",
-			"help": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the gateway setting allows TypeSafe's own API. Unset: the plugin reads TYPESAFE_API_KEY from the environment.",
+			"help": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider setting is typesafe and the gateway setting allows TypeSafe's own API. Unset: the plugin reads TYPESAFE_API_KEY from the environment.",
 			"sensitive": true
 		},
 		"openai_api_key": {

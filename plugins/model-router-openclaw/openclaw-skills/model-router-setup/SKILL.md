@@ -105,7 +105,7 @@ openrouter key: unset
 - The key of the chosen provider serves the direct path, and the OpenRouter key serves the gateway path.
 - The person adds a key in the secret field of the plugin's page in the Control UI, or sets the variable in the Gateway's environment and restarts the Gateway.
 - A key counts as set when either place holds a non-blank value.
-- OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks when the `gateway` setting allows OpenRouter and the plugin's `openrouter_api_key` setting holds none.
+- OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in any of these variables scores tasks when the `provider` and `gateway` settings allow its holder and the plugin's setting for that holder holds none.
 - No other credential of OpenClaw serves as a scoring key.
 - A workspace `.env` is a lower-trust source: OpenClaw drops `OPENROUTER_API_KEY`, `OPENAI_API_KEY` and `GEMINI_API_KEY` from it, and not `TYPESAFE_API_KEY`. The global `~/.openclaw/.env` and the Gateway's environment stay trusted. Tell the person to keep a key in one of those two.
 - A key variable reaches every process the Gateway starts.

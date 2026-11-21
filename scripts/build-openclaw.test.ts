@@ -192,6 +192,6 @@ test("the manifest and the middle hint say the effort is set unless the user set
 	);
 	assert.equal(
 		manifest.uiHints.middle_model.help,
-		"The model a spawn gets when Jev rates its task middle, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one.",
+		"The model a spawn gets when the scoring model rates its task middle, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one.",
 	);
 });

@@ -259,8 +259,6 @@ With one attempt, a routed task sends one request and up to two retries, three r
 The plugin retries a connection error, a timeout and an HTTP status 408, 429 or 5xx.
 It retries no other status.
 The retries send the same body as the first request.
-The plugin times a request out after 10 s, and the routing limit is 10 s too. The limit's clock starts first, so the limit ends a call.
-The only timeout a plugin meets is the 5 s one below, which has no retry.
 Before a retry the plugin waits as a `Retry-After` or `retry-after-ms` header says, up to 60 s.
 Without one it backs off for 0.5 s, doubling up to 5 s, with some jitter.
 The routing limit ends any wait, so a 429 with a long `Retry-After` can hold a task until the limit.
@@ -289,18 +287,18 @@ Each company's own page sets what it does with the text:
 
 - TypeSafe: its handling of request data is set by its [privacy policy](https://typesafe.ai/legal/privacy-policy).
 - OpenAI: it does not train its models on API data unless the customer opts in.
-  It keeps abuse-monitoring logs for a limited time, unless it has approved zero data retention for the account.
+  It keeps abuse-monitoring logs for a limited time, and an account can ask OpenAI to approve less.
   Its page is [Data controls in the OpenAI platform](https://developers.openai.com/api/docs/guides/your-data).
 - Google: on the free tier, an unpaid service, Google may use the content to improve its products, and human reviewers may read it.
-  On the paid tier Google does not use it for that, and logs it for a limited time to detect abuse.
+  On the paid tier Google does not use it for that, and logs it for a limited time, to detect abuse and for disclosures the law requires.
   The plugin cannot tell the tier.
   A key from a project without billing is on the free tier.
   Its page is the [Gemini API terms](https://aistudio.google.com/docs/terms).
 - OpenRouter, the gateway for all three: the text reaches OpenRouter, which passes it to the provider.
-  OpenRouter stores no prompt unless you opt in.
+  OpenRouter says it stores a prompt only when you opt in, with the exceptions its page lists.
   Each provider behind it has its own data policy, and the plugin cannot see which endpoint answered.
   For TypeSafe's System One route, OpenRouter does not document retention or training.
-  Its pages are its [privacy policy](https://openrouter.ai/privacy) and [provider logging](https://openrouter.ai/docs/guides/privacy/provider-logging).
+  Its pages are its [privacy policy](https://openrouter.ai/privacy), [provider logging](https://openrouter.ai/docs/guides/privacy/provider-logging) and [data collection](https://openrouter.ai/docs/guides/privacy/data-collection).
 
 With `auto` or `openrouter-first` and both keys set, one task can reach the provider directly and through OpenRouter.
 

@@ -289,7 +289,7 @@ test("the task parameters are the texts src/ gives, with the ladder and the leve
 	assert.deepEqual(level, { ...level, type: "integer", enum: [0, 1, 2] });
 	assert.equal(
 		level.description,
-		"Leave it unset unless you re-dispatch a failed task. 0 runs the child on the user's small model, 1 on the user's middle model, 2 on the large model, and model-router asks Jev nothing. A level whose model is not set runs on the model Hermes gives it. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins.",
+		"Leave it unset unless you re-dispatch a failed task. 0 runs the child on the user's small model, 1 on the user's middle model, 2 on the large model, and model-router asks the scoring model nothing. A level whose model is not set runs on the model Hermes gives it. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins.",
 	);
 	assert.ok(
 		constants.delegationAddendum.includes(
@@ -403,6 +403,6 @@ test("the manifest and the middle setting say the effort is set unless the user 
 	);
 	assert.equal(
 		schema.middle_model.description,
-		"The model a delegated task gets when Jev rates its task middle, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one.",
+		"The model a delegated task gets when the scoring model rates its task middle, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one.",
 	);
 });

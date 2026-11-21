@@ -51,15 +51,11 @@ Add a key in one of two ways:
 
 ## Provider and gateway
 
-The `provider` setting says whose model scores each task. Its values are `typesafe` (the default), `openai` and `google`:
-
-- `typesafe`: Jev from TypeSafe, the model the plugin's questions are fitted to.
-- `openai`: OpenAI's decision model; costs more than Jev and its answers are not fitted.
-- `google`: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.
+The `provider` setting says whose model scores each task. Its values are `typesafe` (the default), `openai` and `google`.
 
 The `gateway` setting says how OpenRouter is used to reach the provider. Its values are `direct` (the default), `auto`, `openrouter-first` and `openrouter`.
 
-[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which path each value takes first, and when the second one runs. Who receives a batch item under each value: [PRIVACY.md](PRIVACY.md).
+[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which model each `provider` value names, which path each `gateway` value takes first, and when the second one runs. Who receives a batch item under each value: [PRIVACY.md](PRIVACY.md).
 
 Switch them with `/model-router:provider` or `/model-router:gateway`, or in omp's `/settings` → Plugins, under the name omp installed it with: `model-router-omp` from the git catalogue, `@akurganow/model-router` from npm. The plugin reads both settings on every batch, so a change reaches the next batch with no reload.
 

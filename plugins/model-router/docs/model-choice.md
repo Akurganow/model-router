@@ -9,7 +9,7 @@ See the effort ladder in [README](../README.md#effort).
 ## The axis
 
 Anthropic sorts work by how clear the brief is and how much judgment it needs.
-The router asks Jev the same question about each subagent's task.
+The router asks the scoring model the same question about each subagent's task.
 *Introducing Claude Sonnet 5.5* puts Sonnet on well-scoped everyday tasks and
 bug fixes, and finds Opus clearly stronger at complex, open-ended work.
 *Building with Claude Sonnet 5.5* says Sonnet fits best when the task has a
@@ -19,7 +19,7 @@ work.
 
 ## The three tiers
 
-Jev scores the task against the three tier texts in `TIER_TEXTS` in
+The scoring model scores the task against the three tier texts in `TIER_TEXTS` in
 `src/core/parts/tier.ts`:
 
 <table>
@@ -61,7 +61,7 @@ when unsure. Tier 2 takes the tasks whose brief leaves the approach open.
 ## The default level
 
 `fromMiddle`, in `src/core/parts/part.ts`, picks the level for both questions.
-Jev returns a probability for each of the three levels. The router stays at the
+The scoring model returns a probability for each of the three levels. The router stays at the
 middle level unless an end is more than a fixed factor times as likely as the
 middle. When both ends pass, the likelier end wins. Equal ends stay at the
 middle.
@@ -133,7 +133,7 @@ new Jev release.
 
 ## The role of the default agent
 
-Jev reads the agent's role with the task. Claude Code's `general-purpose` and
+The scoring model reads the agent's role with the task. Claude Code's `general-purpose` and
 `claude` agents and omp's bundled `task` agent send one fixed text instead of
 their harness's description. The text is `DEFAULT_ROLE` in `src/core/brief/brief.ts`.
 
@@ -181,7 +181,7 @@ current factors. Per-harness weights do not fix the shift. Fixing the input does
 
 ## The work question and the arch
 
-Jev answers a second question in the same request: how much work the task
+The scoring model answers a second question in the same request: how much work the task
 takes once the judgment is settled. It scores the three `WORK_TEXTS` texts
 in `src/core/parts/work.ts`:
 

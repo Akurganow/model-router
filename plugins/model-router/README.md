@@ -98,12 +98,6 @@ The plugin has seven options. Set them in the install dialog or in `/config`:
 
 - `provider`: whose model scores a call. Its values are `typesafe` (the
   default), `openai` and `google`.
-  - `typesafe`: Jev from TypeSafe, the model the plugin's questions are
-    fitted to.
-  - `openai`: OpenAI's decision model; costs more than Jev and its answers are
-    not fitted.
-  - `google`: Google's decision model; costs more than Jev and its answers are
-    not fitted; on a free-tier key Google may use the text.
 - `gateway`: how OpenRouter is used to reach the provider. Its values are
   `direct` (the default), `auto`, `openrouter-first` and `openrouter`.
 - `scope`: which Agent calls the mod routes.
@@ -121,8 +115,8 @@ says where to get each key, and which variable the mod reads when an option is
 empty.
 
 [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
-says which path each `gateway` value takes first, and when the second one
-runs.
+says which model each `provider` value names, which path each `gateway` value
+takes first, and when the second one runs.
 [PRIVACY.md](PRIVACY.md) says which company receives the task under each
 value.
 

@@ -46,7 +46,7 @@ export function taskParameterTexts(pluginName: string) {
 			description: {
 				type: "string",
 				description:
-					"One line that says what this task is. model-router sends it with the goal to Jev, which judges the model and effort the child needs.",
+					"One line that says what this task is. model-router sends it with the goal to the scoring model, which judges the model and effort the child needs.",
 			},
 			reasoning_effort: {
 				type: "string",
@@ -56,7 +56,7 @@ export function taskParameterTexts(pluginName: string) {
 			level: {
 				type: "integer",
 				enum: [...LEVELS],
-				description: `${ONLY_TO_ESCALATE} 0 runs the child on the user's small model, 1 on the user's middle model, 2 on the large model, and model-router asks Jev nothing. A level whose model is not set runs on the model Hermes gives it. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins.`,
+				description: `${ONLY_TO_ESCALATE} 0 runs the child on the user's small model, 1 on the user's middle model, 2 on the large model, and model-router asks the scoring model nothing. A level whose model is not set runs on the model Hermes gives it. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins.`,
 			},
 		},
 		delegationAddendum: `model-router picks each task's model and effort. Give every task a description. Leave reasoning_effort and level unset unless you re-dispatch a failed task; the ${pluginName}:${ESCALATION_SKILL} skill says how.`,

@@ -99,11 +99,7 @@ When the person wants to choose the provider, follow these steps in order:
   - Google: `GEMINI_API_KEY`, form secret `google_api_key`. Get a key at https://aistudio.google.com/docs/api-key. The plugin does not read `GOOGLE_API_KEY`.
   - OpenRouter: `OPENROUTER_API_KEY`, form secret `openrouter_api_key`. Get a key at https://openrouter.ai.
 - The plugin's settings form in Hermes Desktop also sets each key, and Hermes stores it under that variable.
-- Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks when the `gateway` setting allows OpenRouter. A key saved in the form becomes that provider's key, in the variable and in the copies of the old value in `config.yaml`.
-- A key saved in the form for OpenAI is also the key of Hermes's own OpenAI provider. A key already in `OPENAI_API_KEY` scores tasks when the plugin's settings allow OpenAI's own API.
-- The plugin's Google secret writes `GEMINI_API_KEY`. Hermes's own Gemini provider reads `GOOGLE_API_KEY` before `GEMINI_API_KEY`, unless `model.key_env` names a variable for it. So a Google key the person set under `GOOGLE_API_KEY` is not used for scoring, and Hermes's own Gemini provider prefers it over the key saved in the form, with the same `model.key_env` limit.
-- With a key in `OPENROUTER_API_KEY` and neither `model.provider` nor a local `model.base_url` in `config.yaml`, Hermes uses OpenRouter for its own session.
-- With neither `model.provider` nor a local `model.base_url`, Hermes takes the first provider in its own order whose key is set, ahead of an OAuth login. So a key saved for OpenAI or Google can become the provider of the person's own Hermes session. Setting `model.provider` keeps another provider.
+- Hermes's own OpenRouter, OpenAI and Gemini providers read the same keys, and a key saved for the plugin may serve the person's own Hermes session too. Setting `model.provider` keeps another provider. [Keys](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#keys) gives the facts, including the `GOOGLE_API_KEY` order and the `model.key_env` limit.
 - No other credential of Hermes serves as a scoring key.
 - A key in the environment is visible to every process Hermes starts.
 - With no key for any path the `gateway` setting allows, every task without a `level` skips with `key unset`.

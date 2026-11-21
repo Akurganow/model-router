@@ -204,8 +204,8 @@ claude plugin install model-router --marketplace Akurganow/model-router && read 
 
 To pick another `gateway` value, replace `auto` in the line. To use OpenAI or
 Google, add `"provider":"openai"` or `"provider":"google"` to the JSON, and
-replace `api_key` with `openai_api_key` or `google_api_key`. Paste that key at
-the first prompt. In bash, replace
+replace `api_key` with `openai_api_key` or `google_api_key`. The first prompt
+then takes that key, though it still reads `TypeSafe key:`. In bash, replace
 `read -rs 'TS_KEY?TypeSafe key: '` with `read -rsp 'TypeSafe key: ' TS_KEY`.
 Replace `read -rs 'OR_KEY?OpenRouter key: '` with
 `read -rsp 'OpenRouter key: ' OR_KEY`. Look for these two lines in the output:

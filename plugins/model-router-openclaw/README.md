@@ -64,7 +64,7 @@ For each key holder the [`provider` and `gateway` settings](#provider-and-gatewa
 | Google | `google_api_key` | `GEMINI_API_KEY` |
 | OpenRouter | `openrouter_api_key` | `OPENROUTER_API_KEY` |
 
-A key counts as set when either place holds a non-blank value. The plugin does not read `GOOGLE_API_KEY`. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get one and where a key goes. OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks when the `gateway` setting allows OpenRouter and the plugin's `openrouter_api_key` setting holds none. No other credential of OpenClaw serves as a scoring key.
+A key counts as set when either place holds a non-blank value. The plugin does not read `GOOGLE_API_KEY`. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get one and where a key goes. OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in any variable of the table scores tasks when the `provider` and `gateway` settings allow its holder and the plugin's setting for that holder holds none. No other credential of OpenClaw serves as a scoring key.
 
 Add a key in one of two ways:
 
@@ -77,15 +77,11 @@ Never type a key into the chat.
 
 ## Provider and gateway
 
-The `provider` setting says whose model scores each task. Its values are `typesafe` (the default), `openai` and `google`:
-
-- `typesafe`: Jev from TypeSafe, the model the plugin's questions are fitted to.
-- `openai`: OpenAI's decision model; costs more than Jev and its answers are not fitted.
-- `google`: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.
+The `provider` setting says whose model scores each task. Its values are `typesafe` (the default), `openai` and `google`.
 
 The `gateway` setting says how OpenRouter is used to reach the provider. Its values are `direct` (the default), `auto`, `openrouter-first` and `openrouter`. It is not OpenClaw's Gateway, the process that loads the plugin.
 
-[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which path each value takes first, and when the second one runs. Who receives a spawn's task under each value: [PRIVACY.md](PRIVACY.md).
+[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which model each `provider` value names, which path each `gateway` value takes first, and when the second one runs. Who receives a spawn's task under each value: [PRIVACY.md](PRIVACY.md).
 
 Switch them with `/model-router-provider <value>` and `/model-router-gateway <value>`. The plugin reads each setting at each spawn. A change applies once OpenClaw replaces the plugin, after running work drains, up to 60 s. A spawn in that window uses the old value. A spawn that overlaps the replacement can fail with `Gateway requester authority changed`, which is OpenClaw's own error. The same holds for `/model-router-scope` and for the model slots.
 
@@ -283,16 +279,13 @@ The plugin hooks the `sessions_spawn` tool. A spawn that does not call that tool
 
 ### Hook timeout
 
-Four limits bound the time a spawn waits for routing:
+Three limits bound the time a spawn waits for routing:
 
 | Limit | Value | What it bounds |
 | --- | --- | --- |
 | Hook timeout | 12 s | The whole hook. The plugin registers it with this value. |
 | Routing limit | 10 s | The plugin's work in the hook: both attempts and all retries. |
-| Request timeout | 10 s | One request in the last attempt the plugin makes. |
 | First-attempt wait | 5 s | The first of two attempts. It gets no retry. |
-
-The routing limit equals the request timeout. The limit's clock starts first, so the limit ends a slow request.
 
 An operator overrides the hook timeout with `plugins.entries.model-router-openclaw.hooks.timeouts.before_tool_call` or `hooks.timeoutMs`.
 
