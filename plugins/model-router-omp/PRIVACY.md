@@ -43,8 +43,11 @@ A project can set two plugin settings, `gateway` and `scope`. For `gateway`, its
 value may only narrow `auto` or `openrouter-first` to `direct` or `openrouter`.
 It cannot add a path, swap one or change the order. A project never changes the
 provider, as [What a project can change](README.md#what-a-project-can-change)
-says. For `scope`, its value overrides yours in both directions. A project
-can also supply a key through its `.env` file, as
+says. Earlier versions let a project's `provider: typesafe` keep OpenRouter out.
+It narrows nothing now. Set `gateway: direct` in that project to keep
+OpenRouter out when your global `gateway` is `auto` or `openrouter-first`. For
+`scope`, its value overrides yours in both directions. A project can also
+supply a key through its `.env` file, as
 [What the plugin stores](#what-the-plugin-stores) says.
 
 Each key goes only to the address above of the company that issued it, as
