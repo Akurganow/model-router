@@ -64,7 +64,7 @@ So the name must be the id that omp gives the provider.
 23. Take the omp id as the name, or with no such id the provider's own name in lower case.
 24. Choose the key's setting name, and its variable if not yet chosen, after `KEY_VARIABLES` and `KEY_FIELDS` in `src/core/providers/provider.ts`.
 
-The `provider` setting, the key lines and the routing line print the name as `PROVIDERS` spells it.
+The `provider` setting, the key lines and the routing line print the name as `KEY_HOLDERS` spells it.
 
 ## Ask the maintainer once
 
@@ -103,7 +103,7 @@ The next six steps hold only for another API.
 No check reports a provider that needs another request.
 The next four steps hold only for such a provider.
 
-32. For another key header, a model in the URL or a wait the body names, add a field to `Endpoint`.
+32. For another key header, give the row its own `keyHeader`. For a model in the URL or a wait the body names, add a field to `Endpoint`.
 33. Read the field in `ask`, or in `src/core/scoring/transport/` when it changes a retry or a wait.
 34. Change [The request](../../../docs/providers.md#the-request) when a header or the body changes for any provider.
 35. Change [Retries and the second provider](../../../docs/providers.md#retries-and-the-second-provider) when a retry or a wait changes.
@@ -115,16 +115,16 @@ The next step holds only when the maintainer sent a new status on to the next pr
 
 ## Let the type check lead
 
-`ORDER.auto` is `PROVIDERS` itself, so a provider joins `auto` at its place in that list.
+A provider with a model of its own is a maker, and `KEY_HOLDERS` holds every maker.
 
-37. Add the name to `PROVIDERS` in `src/core/providers/provider.ts`, at its place in `auto`, or last when `auto` leaves it out.
-38. When `auto` leaves the provider out, write the `auto` row of `ORDER` out as a list without it.
+37. Add the name to `MAKERS` in `src/core/providers/provider.ts`.
+38. Give it a row of `PATHS_OF` in the same file: `direct` for its own API, and `openrouter` when OpenRouter serves its model.
 39. Add each new value to `PROVIDER_VALUES` in the same file.
 
 No test reads the URL of a row of `ENDPOINTS`, and a wrong one sends the key and the task text to another host.
 So the provider's own rows fail first, as [Tests](../../../AGENTS.md#tests) asks.
 
-40. Add a row that pins the new key to its own address, in `src/core/__tests__/integration/route.test.ts` and in `plugins/model-router/tests/keys.test.ts`.
+40. Add a row that pins the new key to its own address, to `ADDRESSES` in `src/core/__tests__/integration/route.test.ts` and in `plugins/model-router/tests/keys.test.ts`.
 41. Add the new key to the hand-written lists of `plugins/model-router-hermes/tests/test_sentinel.py`, which passes without it.
 42. Run `npx tsc -p src` and `npx tsc -p scripts`.
 43. Fill each place an error names, and run both again until both pass.
@@ -134,9 +134,9 @@ The errors name each place. They do not say this:
 - In `keyVariable` in `src/adapters/claude/keys.ts`, the provider gets its own `$.env.get` call with the variable's name as a literal.
 - The key field of `Options` in `src/adapters/claude/host.ts` shows only after that `switch` is filled.
 - `LOOKED_UP` in `src/core/__tests__/unit/provider.test.ts` shows because `npx tsc -p src` reads the tests too.
-- The row of `MODELS` takes the model name the endpoint takes.
-- The row of `ENDPOINTS` takes the URL, the format and each field of the section before.
-- A value gets its row of `ORDER` from the type check, and the rest from the tests.
+- A row of `ENDPOINTS` takes the URL, the format, the model name the endpoint takes, the key header and each field of the section before.
+- A value gets its row of `VALUE_PATHS` from the type check, and the rest from the tests.
+- `steps` asks the one maker that `MAKER` names under every value, so a second maker gets no attempt until a value chooses it.
 
 ## The model behind the provider
 
@@ -241,7 +241,7 @@ The next step holds only for a key with a Hermes setting of its own.
 No eval sets a `provider` value today, so each client asks the default, `typesafe`.
 Claude Code keeps it under `pluginConfigs` in `settings.json`, as [Manifest](../../../docs/clients.md#manifest) says.
 omp keeps it in its lockfile, as [omp manifest and settings](../../../docs/clients.md#omp-manifest-and-settings) says, and a project may only narrow it.
-`MODEL_SEGMENT` in `scripts/evals/stream.ts` reads the decision line: it accepts any name of `PROVIDERS` and keeps only the model.
+`MODEL_SEGMENT` in `scripts/evals/stream.ts` reads the decision line: it accepts any name of `KEY_HOLDERS` and keeps only the model.
 So a case passes whichever provider answered.
 
 The next four steps hold only when the evals score through the new provider.
@@ -293,7 +293,7 @@ The rebuild holds for every change.
 ## Before the pull request
 
 83. For each file the change touched, name the check or the step of this skill that led you there.
-84. Key by `Provider` each place neither led to, or add it to this skill in the same pull request.
+84. Key by `KeyHolder` or `Maker` each place neither led to, or add it to this skill in the same pull request.
 85. Name the commit and the pull request `feat`, as [Commits and pull requests](../../../AGENTS.md#commits-and-pull-requests) says.
 86. Cite the page behind each API fact in the pull request text.
 87. List each harness whose path of the new key no test and no section of `docs/clients.md` proves.

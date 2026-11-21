@@ -79,16 +79,19 @@ every commit as a [conventional commit](#commits).
   - `brief/`: the task text that leaves the machine, condensed and masked.
   - `parts/`: the questions `tier` and `work`, their shared types and the
     pick rule. It imports only `parts/part.ts` and `utils/`.
-  - `providers/`: the provider list, the values of the `provider` setting,
-    their order, the key names, each provider's default model and the plan
-    of attempts. An attempt carries its provider's key. `collectKeys` and
+  - `providers/`: the makers, the key holders, the paths and which paths
+    each maker has, the values of the `provider` setting with the paths each
+    allows, the key names and the plan of attempts. An attempt names its
+    maker, its path and its key holder, and carries that holder's key.
+    `collectKeys` and
     `collectKeysSync` hold the one rule that collects the keys, for a lookup
     that waits and for one that answers at once; `found_keys` in the Hermes
     plugin's `settings.py` walks the same order in Python, over the generated
     constants. It imports nothing from `scoring/`.
   - `scoring/`: the call. `route` asks the attempts in order and picks each
     part's level, `ask` sends one request, `endpoints.ts` holds one table
-    with each provider's URL and wire format, `formats/` holds the wire
+    with a row for each maker and path: the URL, the wire format, the model
+    name and the key header. `formats/` holds the wire
     formats, `transport/` the request and its retries. `limit.ts` holds the
     routing limit: its duration, the signal that the clock aborts when it
     runs out, and the race of a handler's work against a deadline.
