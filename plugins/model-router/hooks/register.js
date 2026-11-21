@@ -619,53 +619,54 @@ function fallsBack(failure) {
 // src/utils/guards.ts
 var isRecord = (v) => typeof v === "object" && v !== null;
 
-// src/core/scoring/formats/system-one.ts
+// src/core/scoring/formats/shared.ts
+var questionMap = (parts) => Object.fromEntries(parts.map((p) => [p.key, p.question]));
+var count = (v) => typeof v === "number" ? v : null;
+var usageNamed = (input, output) => (usage) => {
+  if (!isRecord(usage)) return void 0;
+  return {
+    input_tokens: count(usage[input]),
+    output_tokens: count(usage[output])
+  };
+};
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
-function parseProbabilities(answers, key) {
+function levelProbabilities(p0, p1, p2) {
+  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+var mapAnswer = (answers, key) => {
   const a = isRecord(answers) ? answers[key] : void 0;
   if (!isRecord(a)) return void 0;
   const { type, probabilities } = a;
   if (type !== "score" || !isRecord(probabilities)) return void 0;
   if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
   const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
-    return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
-}
-function parse(text) {
+  return levelProbabilities(p0, p1, p2);
+};
+function parseJson(text) {
   try {
     return JSON.parse(text);
   } catch {
     return void 0;
   }
 }
-var count = (v) => typeof v === "number" ? v : null;
-function usageOf(usage) {
-  if (!isRecord(usage)) return void 0;
-  const { input_tokens, output_tokens } = usage;
-  return {
-    input_tokens: count(input_tokens),
-    output_tokens: count(output_tokens)
-  };
-}
-function read2(parts, text) {
-  const reply = parse(text);
+var replyReader = (probabilitiesOf, usageOf) => (parts, text) => {
+  const reply = parseJson(text);
   const { answers, model, usage } = isRecord(reply) ? reply : {};
   const pairs = [];
   for (const part of parts) {
-    const probabilities = parseProbabilities(answers, part.key);
+    const probabilities = probabilitiesOf(answers, part.key);
     if (!probabilities) return MALFORMED;
     pairs.push([part, probabilities]);
   }
   return { answers: pairs, model, usage: usageOf(usage) };
-}
+};
+
+// src/core/scoring/formats/system-one.ts
 var SYSTEM_ONE = {
-  body: (parts, state, model) => JSON.stringify({
-    state,
-    model,
-    questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
-  }),
-  read: read2
+  body: (parts, state, model) => JSON.stringify({ state, model, questions: questionMap(parts) }),
+  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
 };
 
 // src/core/scoring/endpoints.ts
@@ -827,12 +828,12 @@ async function askOnce(input, attempt) {
   if (isFailure(received)) return received;
   if (!isSuccess(received.status))
     return { failure: "status", status: received.status };
-  const read3 = format.read(parts, received.text);
-  if (isFailure(read3)) return read3;
+  const read2 = format.read(parts, received.text);
+  if (isFailure(read2)) return read2;
   return {
-    answers: read3.answers,
-    model: cleanModel(read3.model),
-    usage: read3.usage
+    answers: read2.answers,
+    model: cleanModel(read2.model),
+    usage: read2.usage
   };
 }
 async function ask2(input, attempt) {
