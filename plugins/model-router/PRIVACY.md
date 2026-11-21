@@ -137,6 +137,13 @@ pick a value in the dialog that the `config` tool opens. Or you type
 prompt. A command from any other origin writes nothing. The plugin writes no
 other option and no file. Claude Code ignores plugin options in project and
 local settings, so a project cannot change either option.
+
+After an update, a stored `openrouter` in `provider` reaches the plugin as
+`typesafe`. Beside a TypeSafe key, the plugin then sends the task text to
+TypeSafe's own API, as
+[A stored value outside an option's list](README.md#a-stored-value-outside-an-options-list)
+says.
+
 The lines the plugin prints per call go to your own transcript and, with
 `--debug`, to your debug log.
 
