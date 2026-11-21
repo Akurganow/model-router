@@ -36,7 +36,10 @@ This file adds what an agent gets wrong without being told.
 - They track no spend and no cost budget.
 - They never migrate a stored setting by code: one that a new version cannot
   take skips routing with
-  [the setup line](docs/providers.md#a-setting-that-is-not-valid).
+  [the setup line](docs/providers.md#a-setting-that-is-not-valid), except in
+  Claude Code, which
+  [hands the plugin the default](plugins/model-router/README.md#a-stored-value-outside-an-options-list)
+  in its place.
 - They hold no code for a job that a text instruction to an agent can do. A step in a skill replaces a tool that lists or sets what the harness owns.
 - The routing code is TypeScript in `src/`: the questions, the pick rule,
   the ladder, the slot choice and the line. The Python of the Hermes plugin
