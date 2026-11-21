@@ -7,7 +7,11 @@ import { errorText } from "#utils/error.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 
 // Written out apart from the plugin's settings list, so a renamed command fails this check.
-export const COMMANDS = ["model-router:provider", "model-router:scope"];
+export const COMMANDS = [
+	"model-router:provider",
+	"model-router:gateway",
+	"model-router:scope",
+];
 
 // omp refuses to start without a default model. No prompt is sent, so nothing calls this address.
 export const STUB_MODELS = `providers:

@@ -2,7 +2,7 @@ import { routingState } from "#core/brief/brief.ts";
 import { scoreWork } from "#core/decision/decide.ts";
 import { outcomeOf } from "#core/decision/outcome.ts";
 import { LINE_PREFIX, skippedLine } from "#core/output/line.ts";
-import { type Keys, plan } from "#core/providers/provider.ts";
+import { plan } from "#core/providers/provider.ts";
 import { MIN_DEADLINE_MS } from "#core/scoring/handler-deadline.ts";
 import { abortCategory, raceDeadline } from "#core/scoring/limit.ts";
 import type { Fetch } from "#core/scoring/transport/send.ts";
@@ -10,11 +10,7 @@ import { type Clock, realClock } from "#utils/clock.ts";
 import { nonEmpty } from "#utils/text.ts";
 import { type Gate, gateSpawn } from "./gates.ts";
 import { readSpawn, type SpawnRequest } from "./params.ts";
-import {
-	type Environment,
-	type OpenClawSettings,
-	readState,
-} from "./settings.ts";
+import { type Environment, readState, type State } from "./settings.ts";
 import type {
 	BeforeToolCallEvent,
 	BeforeToolCallHandler,
@@ -84,8 +80,7 @@ function spawnLine(api: OpenClawApi, signal: AbortSignal): SpawnLine {
 // Jev is asked once for both parts. The picked levels come back as a line and the slot to set.
 async function score(
 	{ deps, signal }: Spawn,
-	settings: OpenClawSettings,
-	keys: Keys,
+	{ chosen, keys }: State,
 	gate: Route,
 ) {
 	return scoreWork({
@@ -94,7 +89,7 @@ async function score(
 			description: gate.description,
 			task: gate.task,
 		}),
-		attempts: plan(settings.provider, keys),
+		attempts: plan(chosen, keys),
 		fetchFn: deps.fetchFn,
 		clock: realClock,
 		signal,
@@ -112,18 +107,18 @@ async function routeSpawn(
 	spawn: Spawn,
 ): Promise<BeforeToolCallResult | undefined> {
 	const { api, deps, signal, request, requester } = spawn;
-	const { config, settings, keys } = readState(api, deps.env);
+	const state = readState(api, deps.env);
 	const gate = gateSpawn({
 		spawn: request,
 		requester,
-		config,
-		settings,
-		hasKey: Object.keys(keys).length > 0,
+		config: state.config,
+		settings: state.chosen,
+		hasKey: Object.keys(state.keys).length > 0,
 	});
 	if (gate.outcome === "pass") return undefined;
 	const { log, close } = spawnLine(api, signal);
 	try {
-		return await routeGated(spawn, settings, keys, gate, log);
+		return await routeGated(spawn, state, gate, log);
 	} finally {
 		close();
 	}
@@ -132,17 +127,16 @@ async function routeSpawn(
 // Routes a spawn past the pass gate, writing its one line through `log`.
 async function routeGated(
 	spawn: Spawn,
-	settings: OpenClawSettings,
-	keys: Keys,
+	state: State,
 	gate: Exclude<Gate, { outcome: "pass" }>,
 	log: (message: string) => void,
 ): Promise<BeforeToolCallResult | undefined> {
 	if (gate.outcome === "skip") return void log(skippedLine(gate.reason));
-	const decided = await score(spawn, settings, keys, gate);
+	const decided = await score(spawn, state, gate);
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
 	const { model, effort, line } = outcomeOf(
 		decided,
-		settings.models,
+		state.settings.models,
 		gate.effort.kind === "keep" ? gate.effort.label : undefined,
 	);
 	log(line);

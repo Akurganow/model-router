@@ -15,6 +15,7 @@ import type { Skipped } from "#core/scoring/route.ts";
 import type { Fetch } from "#core/scoring/transport/send.ts";
 import { type Clock, realClock } from "#utils/clock.ts";
 import { type HermesRequest, type KeptEffort, readRequest } from "./request.ts";
+import { choiceOf } from "./stored.ts";
 
 type HermesDeps = {
 	readonly fetchFn: Fetch;
@@ -56,7 +57,7 @@ async function score(
 			task: request.task,
 			context: request.context,
 		}),
-		attempts: plan(request.provider, request.keys),
+		attempts: plan(choiceOf(request.provider), request.keys),
 		fetchFn,
 		clock: realClock,
 		signal,

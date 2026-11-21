@@ -63,7 +63,7 @@ export type Source = {
 		readonly openclaw: { readonly manifest: string };
 		readonly hermes: { readonly manifest: string };
 	};
-	// Hermes has the provider option and no scope option.
+	// Hermes has the provider option alone.
 	readonly options: Readonly<
 		Record<Exclude<ValueSetting, "provider">, Option<PerHarness>>
 	> & { readonly provider: Option<WithHermes> };

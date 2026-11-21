@@ -13,11 +13,11 @@ import {
 	skipped,
 	withParams,
 } from "#adapters/openclaw/__tests__/support/gate-fakes.ts";
-import type { OpenClawSettings } from "#adapters/openclaw/settings.ts";
+import type { Settings } from "#core/options/settings.ts";
 import { outsideCoreScope, setsOwnModel } from "#core/output/reasons.ts";
 
 // The sessions_spawn tool reads agentId, label, model and thinking with readToolStringParam: the own key, else the snake-case key, text only, trimmed, empty counted as absent.
-const SCOPES: [string, OpenClawSettings][] = [
+const SCOPES: [string, Settings][] = [
 	["core", SETTINGS],
 	["extended", extended],
 ];

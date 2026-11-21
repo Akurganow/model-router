@@ -18,8 +18,8 @@
         "openrouter"
       ],
       "default": "typesafe",
-      "label": "Jev provider",
-      "description": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe."
+      "label": "Scoring provider",
+      "description": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to."
     },
     "small_model": {
       "type": "dict",

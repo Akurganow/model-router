@@ -3,43 +3,52 @@ import { test } from "node:test";
 import {
 	KEY,
 	lockfileScoped,
+	lockfileWith,
 	setEnv,
 	unreadable,
 	useWorld,
 } from "#adapters/omp/__tests__/support/fakes.ts";
-import { findAttempts, narrow, readSettings } from "#adapters/omp/settings.ts";
+import { findAttempts, readSettings } from "#adapters/omp/settings.ts";
+import { settingsOf } from "#core/options/settings.ts";
 import { KEY_VARIABLES } from "#core/providers/provider.ts";
 
 const world = useWorld();
 
-test("one read gives the provider and the scope", async () => {
-	assert.deepEqual(await readSettings(world.imports, "/work"), {
-		provider: "typesafe",
-		scope: "core",
-	});
-	world.lockfile = {
-		plugins: {},
-		settings: { "model-router-omp": { provider: "auto", scope: "extended" } },
-	};
-	assert.deepEqual(await readSettings(world.imports, "/work"), {
-		provider: "auto",
-		scope: "extended",
-	});
+const gives = async () =>
+	settingsOf((await readSettings(world.imports, "/work")) ?? {});
+
+test("the adapter passes the stored text of both settings to the core", async () => {
+	world.lockfile = lockfileWith({ provider: "auto", gateway: "fast" });
+	const stored = await readSettings(world.imports, "/work");
+	assert.equal(stored?.provider, "auto");
+	assert.equal(stored?.gateway, "fast");
+	assert.deepEqual(await gives(), { skipped: "provider not valid: run setup" });
 });
 
-const scopes: [string, unknown, unknown, string][] = [
-	["no value", undefined, undefined, "core"],
+test("a global gateway of nothing reads as direct", async () => {
+	for (const gateway of ["", "   ", null]) {
+		world.lockfile = lockfileWith({ gateway });
+		assert.deepEqual(await gives(), {
+			provider: "typesafe",
+			gateway: "direct",
+			scope: "core",
+		});
+	}
+});
+
+const scopes: [string, unknown, unknown, unknown][] = [
+	["no value", undefined, undefined, undefined],
 	["a global extended", "extended", undefined, "extended"],
 	["a project extended over the global core", "core", "extended", "extended"],
 	["a project core over the global extended", "extended", "core", "core"],
-	["an unknown project value", "extended", "wide", "core"],
-	["an unknown global value", "wide", undefined, "core"],
+	["an unknown project value", "extended", "wide", "wide"],
+	["an unknown global value", "wide", undefined, "wide"],
 ];
-for (const [name, global, project, scope] of scopes)
-	test(`scope: ${name} gives ${scope}`, async () => {
+for (const [name, global, project, applied] of scopes)
+	test(`scope: ${name} applies ${String(applied)}`, async () => {
 		world.lockfile = lockfileScoped(global);
 		if (project !== undefined) world.project = { scope: project };
-		assert.equal((await readSettings(world.imports, "/work"))?.scope, scope);
+		assert.equal((await readSettings(world.imports, "/work"))?.scope, applied);
 	});
 
 test("an unreadable lockfile or settings read gives no settings", async () => {
@@ -49,39 +58,77 @@ test("an unreadable lockfile or settings read gives no settings", async () => {
 	assert.equal(await readSettings(world.imports, "/work"), undefined);
 });
 
-test("a project only narrows auto or openrouter-first to one provider", () => {
-	const projects = [
-		"auto",
-		"openrouter-first",
-		"typesafe",
-		"openrouter",
-		"unknown",
-		undefined,
-	];
-	const ORF = "openrouter-first";
-	const table: [unknown, string[]][] = [
-		["auto", ["auto", "auto", "typesafe", "openrouter", "auto", "auto"]],
-		[ORF, [ORF, ORF, "typesafe", "openrouter", ORF, ORF]],
-		["typesafe", Array(6).fill("typesafe")],
-		["openrouter", Array(6).fill("openrouter")],
-		["unknown", Array(6).fill("typesafe")],
-		[undefined, Array(6).fill("typesafe")],
-	];
-	for (const [global, expected] of table)
-		projects.forEach((project, i) => {
-			assert.equal(
-				narrow(global, project),
-				expected[i],
-				`${String(global)} narrowed by ${String(project)}`,
-			);
-		});
+const ok = (gateway: string) => ({
+	provider: "typesafe",
+	gateway,
+	scope: "core",
 });
+const provider = { skipped: "provider not valid: run setup" };
+const rules: [string, object, object, object][] = [
+	[
+		"drops auto to direct",
+		{ gateway: "auto" },
+		{ gateway: "direct" },
+		ok("direct"),
+	],
+	[
+		"drops openrouter-first to openrouter",
+		{ gateway: "openrouter-first" },
+		{ gateway: "openrouter" },
+		ok("openrouter"),
+	],
+	[
+		"never adds a path",
+		{ gateway: "direct" },
+		{ gateway: "auto" },
+		ok("direct"),
+	],
+	[
+		"never swaps a path",
+		{ gateway: "openrouter" },
+		{ gateway: "direct" },
+		ok("openrouter"),
+	],
+	[
+		"never reorders paths",
+		{ gateway: "auto" },
+		{ gateway: "openrouter-first" },
+		ok("auto"),
+	],
+	[
+		"never sets the provider",
+		{ provider: "auto" },
+		{ provider: "typesafe" },
+		provider,
+	],
+	[
+		"skips on a gateway that is not valid",
+		{ gateway: "auto" },
+		{ gateway: "fast" },
+		{ skipped: "gateway not valid: run setup" },
+	],
+	[
+		"skips on a provider that is not valid",
+		{ provider: "typesafe" },
+		{ provider: "openai" },
+		provider,
+	],
+];
+for (const [name, global, project, expected] of rules)
+	test(`a project ${name}`, async () => {
+		world.lockfile = lockfileWith(global as Record<string, unknown>);
+		world.project = project as Record<string, unknown>;
+		assert.deepEqual(await gives(), expected);
+	});
 
 test("a provider takes its key from omp's credential and the other from the variable", async () => {
 	setEnv(KEY_VARIABLES.openrouter, "env-or-key");
 	world.credential = async (provider) =>
 		provider === "typesafe" ? KEY : undefined;
-	const attempts = await findAttempts(world.ctx(), "auto");
+	const attempts = await findAttempts(world.ctx(), {
+		provider: "typesafe",
+		gateway: "auto",
+	});
 	assert.deepEqual(attempts, [
 		{
 			maker: "typesafe",
@@ -107,7 +154,10 @@ test("a credential store that throws falls through to the variable and the next 
 	world.credential = async () => {
 		throw new Error("store locked");
 	};
-	const attempts = await findAttempts(world.ctx(), "auto");
+	const attempts = await findAttempts(world.ctx(), {
+		provider: "typesafe",
+		gateway: "auto",
+	});
 	assert.deepEqual(attempts, [
 		{
 			maker: "typesafe",

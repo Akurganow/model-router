@@ -12,7 +12,7 @@ const OPENROUTER_VARIABLE_KEY = "openrouter-variable-key";
 const REFUSAL =
 	"Permission rules deny this tool, so nothing was read or changed.";
 const UNKNOWN_SETTING =
-	"Unknown setting. Pass no setting, or one of: provider, scope";
+	"Unknown setting. Pass no setting, or one of: provider, gateway, scope";
 
 // The label of one value in the dialog, whatever its consequence text says.
 const label = (labels: string[], value: string) =>
@@ -25,12 +25,12 @@ test("session start registers the config tool and passes the event on", async ($
 	const [spec] = h.registered;
 	expect(spec?.name).toBe("config");
 	expect(spec?.description).toContain("Never pass a value or a key");
-	expect(spec?.description).toContain("(provider, scope)");
+	expect(spec?.description).toContain("(provider, gateway, scope)");
 	expect(spec?.description).not.toContain("_key");
 	expect(spec?.inputSchema).toEqual({
 		type: "object",
 		properties: {
-			setting: { type: "string", enum: ["provider", "scope"] },
+			setting: { type: "string", enum: ["provider", "gateway", "scope"] },
 		},
 	});
 });
@@ -40,14 +40,15 @@ test("the tool name is the plugin's own", () => {
 });
 
 test(
-	"no setting returns both values and the key status of each allowed provider",
-	{ options: { provider: "auto", scope: "extended", api_key: TYPESAFE_KEY } },
+	"no setting returns the three values and the key status of each allowed key holder",
+	{ options: { gateway: "auto", scope: "extended", api_key: TYPESAFE_KEY } },
 	async ($, on) => {
 		harness(on, { env: { OPENROUTER_API_KEY: OPENROUTER_VARIABLE_KEY } });
 		const { result } = await configTool($);
 		expect(result).toBe(
 			[
-				"provider: auto (typesafe, then openrouter)",
+				"provider: typesafe",
+				"gateway: auto (typesafe, then openrouter)",
 				"scope: extended",
 				"typesafe key: set",
 				"openrouter key: set",
@@ -61,19 +62,19 @@ test(
 test("a key that is empty in both places reads as unset", async ($, on) => {
 	const h = harness(on, { env: { TYPESAFE_API_KEY: "" } });
 	expect((await configTool($)).result).toBe(
-		"provider: typesafe (typesafe)\nscope: core\ntypesafe key: unset",
+		"provider: typesafe\ngateway: direct (typesafe)\nscope: core\ntypesafe key: unset",
 	);
 	expect(h.envReads).toEqual(["TYPESAFE_API_KEY"]);
 });
 
 test(
-	"the status leaves out a provider the value does not allow",
-	{ options: { provider: "openrouter", openrouter_api_key: "" } },
+	"the status leaves out a key holder the gateway does not allow",
+	{ options: { gateway: "openrouter", openrouter_api_key: "" } },
 	async ($, on) => {
 		const h = harness(on, { env: { TYPESAFE_API_KEY: "never-read" } });
 		const { result } = await configTool($);
 		expect(result).toBe(
-			"provider: openrouter (openrouter)\nscope: core\nopenrouter key: unset",
+			"provider: typesafe\ngateway: openrouter (openrouter)\nscope: core\nopenrouter key: unset",
 		);
 		expect(h.envReads).toEqual(["OPENROUTER_API_KEY"]);
 	},
@@ -84,14 +85,14 @@ const choose = (value: string) => (labels: string[]) => label(labels, value);
 test("a write opens the dialog with the current value first", async ($, on) => {
 	const h = harness(on, { dialog: () => undefined });
 	config(on, (e) => ({ value: e.value }));
-	await configTool($, "provider");
+	await configTool($, "gateway");
 	expect(h.asked).toHaveLength(1);
-	expect(h.asked[0]?.header).toBe("provider");
+	expect(h.asked[0]?.header).toBe("gateway");
 	expect(h.asked[0]?.question).toBe(
-		"Which providers should score subagent calls?",
+		"How should OpenRouter be used for the provider?",
 	);
 	expect(h.asked[0]?.labels.map((text) => text.split(" - ")[0])).toEqual([
-		"typesafe",
+		"direct",
 		"auto",
 		"openrouter-first",
 		"openrouter",
@@ -100,10 +101,10 @@ test("a write opens the dialog with the current value first", async ($, on) => {
 
 for (const [setting, current, value, text] of [
 	[
-		"provider",
-		"typesafe",
+		"gateway",
+		"direct",
 		"openrouter-first",
-		"provider: openrouter-first (openrouter, then typesafe)",
+		"gateway: openrouter-first (openrouter, then typesafe)",
 	],
 	["scope", "core", "extended", "scope: extended"],
 ] as const)
@@ -204,7 +205,7 @@ for (const setting of ["mode", "", 3, null, ["scope"]])
 	});
 
 for (const setting of ["typesafe_key", "openrouter_key"])
-	test(`${setting} is refused with the provider and scope list`, async ($, on) => {
+	test(`${setting} is refused with the provider, gateway and scope list`, async ($, on) => {
 		const h = harness(on, { dialog: () => "sk-never-stored" });
 		const writes = config(on, (e) => ({ value: e.value }));
 		expect((await configTool($, setting)).result).toBe(UNKNOWN_SETTING);

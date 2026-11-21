@@ -36,25 +36,25 @@ for (const [name, options, env, key] of [
 	],
 	[
 		"a missing OpenRouter key passes through and says so",
-		{ provider: "openrouter", openrouter_api_key: "" },
+		{ gateway: "openrouter", openrouter_api_key: "" },
 		{ OPENROUTER_API_KEY: "" },
 		null,
 	],
 	[
 		"the OpenRouter option is the key when it is set",
-		{ provider: "openrouter", openrouter_api_key: "openrouter-option-key" },
+		{ gateway: "openrouter", openrouter_api_key: "openrouter-option-key" },
 		{},
 		"openrouter-option-key",
 	],
 	[
 		"OPENROUTER_API_KEY is the key when the OpenRouter option is empty",
-		{ provider: "openrouter", openrouter_api_key: "" },
+		{ gateway: "openrouter", openrouter_api_key: "" },
 		{ OPENROUTER_API_KEY: OPENROUTER_VARIABLE_KEY },
 		OPENROUTER_VARIABLE_KEY,
 	],
 	[
 		"the OpenRouter option wins over its variable",
-		{ provider: "openrouter", openrouter_api_key: "openrouter-option-key" },
+		{ gateway: "openrouter", openrouter_api_key: "openrouter-option-key" },
 		{ OPENROUTER_API_KEY: OPENROUTER_VARIABLE_KEY },
 		"openrouter-option-key",
 	],
@@ -68,7 +68,7 @@ for (const [name, options, env, key] of [
 			return;
 		}
 		expect(h.request.url).toBe(
-			"provider" in options ? OPENROUTER_URL : TYPESAFE_URL,
+			"gateway" in options ? OPENROUTER_URL : TYPESAFE_URL,
 		);
 		expect(h.auth).toBe(`Bearer ${key}`);
 		expect(h.received.model).toBe("haiku");
@@ -92,7 +92,7 @@ test(
 
 test(
 	"an openrouter value reads no TypeSafe key",
-	{ options: { provider: "openrouter", api_key: "", openrouter_api_key: "" } },
+	{ options: { gateway: "openrouter", api_key: "", openrouter_api_key: "" } },
 	async ($, on) => {
 		const env = {
 			TYPESAFE_API_KEY: VARIABLE_KEY,

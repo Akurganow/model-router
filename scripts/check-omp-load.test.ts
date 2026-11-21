@@ -44,10 +44,11 @@ test("a reply listing every command from the extension is clean", () => {
 });
 
 test("a reply that lacks a command or lists it from elsewhere names it", () => {
-	const [first = "", second = ""] = COMMANDS;
+	const [first = "", second = "", third = ""] = COMMANDS;
 	assert.deepEqual(replyProblems(reply([{ name: first, source: "prompt" }])), [
 		`${first} is listed from prompt, not from the extension`,
 		`${second} is not listed`,
+		`${third} is not listed`,
 	]);
 });
 

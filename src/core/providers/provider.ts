@@ -1,10 +1,3 @@
-export const PROVIDER_VALUES = [
-	"auto",
-	"openrouter-first",
-	"typesafe",
-	"openrouter",
-] as const;
-export type ProviderValue = (typeof PROVIDER_VALUES)[number];
 // Whose model scores. Every table keyed by maker follows this list.
 export const MAKERS = ["typesafe"] as const;
 export type Maker = (typeof MAKERS)[number];
@@ -15,6 +8,14 @@ export type KeyHolder = (typeof KEY_HOLDERS)[number];
 // How a maker is asked: its own API, or OpenRouter as the gateway.
 export const PATHS = ["direct", "openrouter"] as const;
 export type Path = (typeof PATHS)[number];
+// How OpenRouter is used for the maker, from its own API only to OpenRouter only. The first value is the default.
+export const GATEWAYS = [
+	"direct",
+	"auto",
+	"openrouter-first",
+	"openrouter",
+] as const;
+export type Gateway = (typeof GATEWAYS)[number];
 
 // Every harness reads a key holder's key from the same variable.
 export const KEY_VARIABLES: Readonly<Record<KeyHolder, string>> = {
@@ -32,17 +33,19 @@ export const KEY_FIELDS = {
 export type Keys = Partial<Record<KeyHolder, string>>;
 
 export const FIRST_ATTEMPT_TIMEOUT_MS = 2000;
-const DEFAULT_VALUE: ProviderValue = "typesafe";
-// The one maker, until a setting names another.
-const MAKER: Maker = "typesafe";
 
-// The paths each stored value allows, in the order they are asked.
-const VALUE_PATHS: Readonly<Record<ProviderValue, readonly Path[]>> = {
+// The paths each gateway value allows, in the order they are asked.
+const GATEWAY_PATHS: Readonly<Record<Gateway, readonly Path[]>> = {
+	direct: ["direct"],
 	auto: ["direct", "openrouter"],
 	"openrouter-first": ["openrouter", "direct"],
-	typesafe: ["direct"],
 	openrouter: ["openrouter"],
 };
+
+// The two settings that decide who is asked.
+export type Choice = { readonly provider: Maker; readonly gateway: Gateway };
+// Stands in for a choice when a stored setting is not valid. It carries the skip reason, and nobody is asked.
+export type NoChoice = { readonly skipped: string };
 
 export type Attempt = {
 	readonly maker: Maker;
@@ -65,46 +68,33 @@ type Step = Pick<Attempt, "maker" | "path" | "holder">;
 const holderOf = (maker: Maker, path: Path): KeyHolder =>
 	path === "direct" ? maker : path;
 
-// The paths the value allows, in order, each asked of the one maker.
-const steps = (value: unknown): Step[] =>
-	VALUE_PATHS[resolve(value)].map((path) => ({
-		maker: MAKER,
+// The paths of the gateway, in order, each asked of the choice's maker.
+const steps = (choice: Choice): Step[] =>
+	GATEWAY_PATHS[choice.gateway].map((path) => ({
+		maker: choice.provider,
 		path,
-		holder: holderOf(MAKER, path),
+		holder: holderOf(choice.provider, path),
 	}));
 
 /**
- * Returns the value as a provider value when it is a known name, and undefined
- * for anything else, including non-text and inherited property names. Never
- * throws.
+ * Returns the key holders the choice asks, in order. Returns none for a NoChoice,
+ * so nobody is asked and no key is looked up.
  */
-export const parseProvider = (value: unknown): ProviderValue | undefined =>
-	typeof value === "string" && Object.hasOwn(VALUE_PATHS, value)
-		? (value as ProviderValue)
-		: undefined;
+export const holders = (choice: Choice | NoChoice): readonly KeyHolder[] =>
+	"skipped" in choice ? [] : steps(choice).map((step) => step.holder);
 
 /**
- * Returns the value when it is a known provider value, and the default typesafe
- * otherwise. Never throws.
- */
-export const resolve = (value: unknown): ProviderValue =>
-	parseProvider(value) ?? DEFAULT_VALUE;
-
-export const order = (value: unknown): readonly KeyHolder[] =>
-	steps(value).map((step) => step.holder);
-
-/**
- * Returns the keys that lookup finds for the key holders the value allows. A
- * key holder the value leaves out is never looked up, and one whose lookup gives
+ * Returns the keys that lookup finds for the key holders the choice asks. A key
+ * holder the choice leaves out is never looked up, and one whose lookup gives
  * undefined has no entry. Each lookup finishes before the next starts, and a
  * rejection stops the rest and passes through.
  */
 export async function collectKeys(
-	value: unknown,
+	choice: Choice | NoChoice,
 	lookup: (holder: KeyHolder) => Promise<string | undefined>,
 ): Promise<Keys> {
 	const keys: Keys = {};
-	for (const holder of order(value)) {
+	for (const holder of holders(choice)) {
 		const key = await lookup(holder);
 		if (key !== undefined) keys[holder] = key;
 	}
@@ -113,11 +103,11 @@ export async function collectKeys(
 
 /** The same rule as collectKeys, for a lookup that answers at once. */
 export function collectKeysSync(
-	value: unknown,
+	choice: Choice | NoChoice,
 	lookup: (holder: KeyHolder) => string | undefined,
 ): Keys {
 	const keys: Keys = {};
-	for (const holder of order(value)) {
+	for (const holder of holders(choice)) {
 		const key = lookup(holder);
 		if (key !== undefined) keys[holder] = key;
 	}
@@ -125,14 +115,23 @@ export function collectKeysSync(
 }
 
 /**
- * Returns one attempt for each path the value allows whose key holder's key is a
+ * Returns one attempt for each path of the choice whose key holder's key is a
  * non-empty string, carrying that key. Every attempt but the last gives up
  * fast, so the next one gets most of the routing limit. Returns no attempts
- * when no key is set. Never throws.
+ * when no key is set. A NoChoice comes back as it is. Never throws.
  */
-export function plan(value: unknown, keys: Readonly<Keys>): Attempt[] {
+export function plan(choice: Choice, keys: Readonly<Keys>): Attempt[];
+export function plan(
+	choice: Choice | NoChoice,
+	keys: Readonly<Keys>,
+): Attempt[] | NoChoice;
+export function plan(
+	choice: Choice | NoChoice,
+	keys: Readonly<Keys>,
+): Attempt[] | NoChoice {
+	if ("skipped" in choice) return choice;
 	const attempts: Attempt[] = [];
-	for (const step of steps(value)) {
+	for (const step of steps(choice)) {
 		const key = keys[step.holder];
 		if (key) attempts.push({ ...step, key });
 	}

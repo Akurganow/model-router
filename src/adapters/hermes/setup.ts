@@ -1,21 +1,20 @@
 import { slotLine } from "#core/decision/slots.ts";
 import {
 	alreadyValue,
-	COMMAND_DESCRIPTIONS,
 	commandName,
 	keyLine,
 	readOnlyToolDescription,
 	TOOL_LABEL,
 	TOOL_NAME,
 	unchanged,
-	useOneOf,
-	valueLine,
 } from "#core/options/settings.ts";
+import { KEY_HOLDERS, type KeyHolder } from "#core/providers/provider.ts";
 import {
-	KEY_HOLDERS,
-	type KeyHolder,
-	PROVIDER_VALUES,
-} from "#core/providers/provider.ts";
+	PROVIDER_COMMAND_DESCRIPTION,
+	PROVIDER_USE_ONE_OF,
+	providerLine,
+	STORED_VALUES,
+} from "./stored.ts";
 
 // Hermes puts a plugin tool in a toolset of its own, and a plugin toolset is on in a default session.
 const TOOLSET = "model_router";
@@ -48,15 +47,15 @@ export function setupTexts() {
 		toolLabel: TOOL_LABEL,
 		toolDescription: toolDescription(),
 		commandName: commandName("provider"),
-		commandDescription: COMMAND_DESCRIPTIONS.provider,
-		argsHint: `<${PROVIDER_VALUES.join("|")}>`,
+		commandDescription: PROVIDER_COMMAND_DESCRIPTION,
+		argsHint: `<${STORED_VALUES.join("|")}>`,
 		providerLines: Object.fromEntries(
-			PROVIDER_VALUES.map((value) => [value, valueLine("provider", value)]),
+			STORED_VALUES.map((value) => [value, providerLine(value)]),
 		),
-		useOneOf: useOneOf("provider"),
+		useOneOf: PROVIDER_USE_ONE_OF,
 		unchangedPrefix: unchanged("provider", ""),
 		already: Object.fromEntries(
-			PROVIDER_VALUES.map((value) => [
+			STORED_VALUES.map((value) => [
 				value,
 				unchanged("provider", alreadyValue(value)),
 			]),

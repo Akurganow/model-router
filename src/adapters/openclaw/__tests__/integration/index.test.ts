@@ -82,6 +82,7 @@ describe("registration", () => {
 			s.commands.map((command) => [command.name, command.requiredScopes]),
 			[
 				["model-router-provider", ["operator.admin"]],
+				["model-router-gateway", ["operator.admin"]],
 				["model-router-scope", ["operator.admin"]],
 			],
 		);

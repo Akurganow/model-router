@@ -12,7 +12,11 @@ import type {
 } from "#adapters/openclaw/types.ts";
 
 const TOOL = ["model_router_config"];
-const COMMANDS = ["model-router-provider", "model-router-scope"];
+const COMMANDS = [
+	"model-router-provider",
+	"model-router-gateway",
+	"model-router-scope",
+];
 const NOTHING: string[] = [];
 
 // What register adds in each mode, and why. OpenClaw drops a tool, a command or a hook
@@ -94,17 +98,19 @@ describe("what register adds in each registration mode", () => {
 
 	it("answers from the live config in the discovery pass", async () => {
 		const fake = registerIn("discovery", {
-			plugins: { entries: { [PLUGIN_ID]: { config: { provider: "auto" } } } },
+			plugins: { entries: { [PLUGIN_ID]: { config: { gateway: "auto" } } } },
 		});
 		const text = await fake.tools[0]?.execute("call-1", {});
-		assert.match(text?.content[0]?.text ?? "", /provider: auto/);
-		const reply = await fake.commands[0]?.handler({
-			channel: "webchat",
-			isAuthorizedSender: true,
-			senderIsOwner: true,
-			commandBody: "",
-			config: {},
-		});
+		assert.match(text?.content[0]?.text ?? "", /gateway: auto/);
+		const reply = await fake.commands
+			.find((c) => c.name === "model-router-gateway")
+			?.handler({
+				channel: "webchat",
+				isAuthorizedSender: true,
+				senderIsOwner: true,
+				commandBody: "",
+				config: {},
+			});
 		assert.match(reply?.text ?? "", /auto/);
 	});
 });

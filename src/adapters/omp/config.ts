@@ -6,6 +6,8 @@ import {
 	isValue,
 	isValueSetting,
 	NO_ANSWER,
+	type Stored,
+	settingsOf,
 	settingsReport,
 	TOOL_LABEL,
 	TOOL_NAME,
@@ -21,7 +23,7 @@ import { UNREADABLE } from "#core/output/reasons.ts";
 import { collectKeys } from "#core/providers/provider.ts";
 import { isRecord } from "#utils/guards.ts";
 import { serializer } from "#utils/serializer.ts";
-import { findKey, readSettings, type Settings } from "./settings.ts";
+import { findKey, readSettings } from "./settings.ts";
 import type { Context, OmpImports, Pi, ToolReply } from "./types.ts";
 
 const COMMAND_PREFIX = "model-router:";
@@ -43,18 +45,21 @@ export function say(ctx: Context, text: string): void {
 async function withSettings(
 	omp: OmpImports,
 	ctx: Context,
-	show: (settings: Settings) => string | Promise<string>,
+	show: (stored: Stored) => string | Promise<string>,
 ): Promise<string> {
-	const settings = await readSettings(omp, ctx.cwd);
-	return settings === undefined ? UNREADABLE : show(settings);
+	const stored = await readSettings(omp, ctx.cwd);
+	return stored === undefined ? UNREADABLE : show(stored);
 }
 
 // A key is only checked for presence. Nothing about it leaves this function.
 const readAll = (omp: OmpImports, ctx: Context): Promise<string> =>
-	withSettings(omp, ctx, async ({ provider, scope }) => {
-		const keys = await collectKeys(provider, (name) => findKey(ctx, name));
-		return settingsReport(provider, scope, [], keys);
-	});
+	withSettings(omp, ctx, async (stored) =>
+		settingsReport(
+			stored,
+			[],
+			await collectKeys(settingsOf(stored), (holder) => findKey(ctx, holder)),
+		),
+	);
 
 /**
  * Sets a setting to a value and returns the line to show. Returns the allowed
@@ -81,9 +86,12 @@ async function apply(
 	} catch (err) {
 		return unchangedBy(setting, err);
 	}
-	const now = (await readSettings(omp, ctx.cwd))?.[setting] ?? value;
-	const line = valueLine(setting, now);
-	return now === value
+	const after = (await readSettings(omp, ctx.cwd)) ?? {
+		...before,
+		[setting]: value,
+	};
+	const line = valueLine(setting, after);
+	return after[setting] === value
 		? line
 		: [line, projectOverrides(setting)].join(LINE_BREAK);
 }
@@ -121,9 +129,7 @@ async function runCommand(
 ): Promise<string> {
 	const value = args.trim();
 	return value === ""
-		? withSettings(omp, ctx, (settings) =>
-				valueLine(setting, settings[setting]),
-			)
+		? withSettings(omp, ctx, (stored) => valueLine(setting, stored))
 		: apply(omp, ctx, setting, value);
 }
 

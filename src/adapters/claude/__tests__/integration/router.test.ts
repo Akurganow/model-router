@@ -11,6 +11,7 @@ import {
 	nextHook,
 	registered,
 	routed,
+	routedCall,
 	SPAWN,
 } from "#adapters/claude/__tests__/support/fakes.ts";
 
@@ -137,4 +138,31 @@ test("a host cancel while Jev is being asked skips the routing and starts the sp
 	cancel.abort();
 	await flush();
 	assert.deepEqual(started, [SPAWN]);
+});
+
+describe("the stored text of both settings reaches the core", () => {
+	for (const [setting, value] of [
+		["provider", "auto"],
+		["gateway", "fast"],
+	] as const)
+		test(`${setting} ${value} skips, reads no key and sends no request`, async () => {
+			const { logs, reads, requests } = await routedCall({
+				options: { api_key: "ts-key", [setting]: value },
+				env: { TYPESAFE_API_KEY: "ts-key" },
+			});
+			assert.deepEqual(logs, [`skipped, ${setting} not valid: run setup`]);
+			assert.deepEqual(reads, []);
+			assert.deepEqual(requests, []);
+		});
+
+	for (const gateway of ["", "   ", null])
+		test(`gateway ${JSON.stringify(gateway)} reads as direct`, async () => {
+			const { requests } = await routedCall({
+				options: { api_key: "ts-key", gateway },
+			});
+			assert.deepEqual(
+				requests.map((r) => r.url),
+				["https://api.typesafe.ai/v1/systemone"],
+			);
+		});
 });

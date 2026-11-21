@@ -42,12 +42,21 @@
 	"options": {
 		"provider": {
 			"default": "typesafe",
-			"title": "Jev provider",
+			"title": "Scoring provider",
 			"descriptions": {
-				"claude": "Which providers may score a subagent call, and in which order. typesafe: TypeSafe only. openrouter: OpenRouter only. auto: TypeSafe, then OpenRouter if TypeSafe fails. openrouter-first: OpenRouter, then TypeSafe. With auto or openrouter-first and both keys set, one call may reach both companies.",
-				"omp": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe.",
-				"openclaw": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe.",
-				"hermes": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe."
+				"claude": "Whose model scores a subagent call. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to.",
+				"omp": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to.",
+				"openclaw": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to.",
+				"hermes": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to."
+			}
+		},
+		"gateway": {
+			"default": "direct",
+			"title": "OpenRouter gateway",
+			"descriptions": {
+				"claude": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one call may reach both companies.",
+				"omp": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies.",
+				"openclaw": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies."
 			}
 		},
 		"scope": {
@@ -63,7 +72,8 @@
 	"claude": {
 		"skills": ["."],
 		"commandContents": {
-			"provider": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"provider\" it asks the person which providers should score subagent calls and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its provider option in the plugin's settings.",
+			"provider": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"provider\" it asks the person whose model should score subagent calls and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its provider option in the plugin's settings.",
+			"gateway": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"gateway\" it asks the person how OpenRouter should be used for the provider and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its gateway option in the plugin's settings.",
 			"scope": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"scope\" it asks the person which agent calls the router should route and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its scope option in the plugin's settings."
 		},
 		"userConfig": {

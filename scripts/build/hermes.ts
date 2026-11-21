@@ -1,4 +1,9 @@
 import { setupTexts } from "#adapters/hermes/setup.ts";
+import {
+	choiceOf,
+	STORED_DEFAULT,
+	STORED_VALUES,
+} from "#adapters/hermes/stored.ts";
 import { HERMES_TEXTS, taskParameterTexts } from "#adapters/hermes/texts.ts";
 import { EFFORTS } from "#core/decision/ladder.ts";
 import {
@@ -12,11 +17,9 @@ import {
 import { LINE_PREFIX, pinnedLine, skippedLine } from "#core/output/line.ts";
 import { LEVELS, type Level } from "#core/parts/part.ts";
 import {
+	holders,
 	KEY_HOLDERS,
 	KEY_VARIABLES,
-	order,
-	PROVIDER_VALUES,
-	resolve as resolveProvider,
 } from "#core/providers/provider.ts";
 import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
@@ -49,7 +52,7 @@ const keySettings = (source: Source): JsonObject =>
 const configSchema = (source: Source): JsonObject => ({
 	provider: {
 		type: "str",
-		choices: [...PROVIDER_VALUES],
+		choices: [...STORED_VALUES],
 		default: source.options.provider.default,
 		label: source.options.provider.title,
 		description: source.options.provider.descriptions.hermes,
@@ -95,9 +98,11 @@ const constants = (source: Source): JsonObject => {
 		routingLimitMs: ROUTING_LIMIT_MS,
 		graceMs,
 		providers: {
-			values: [...PROVIDER_VALUES],
-			default: resolveProvider(undefined),
-			order: Object.fromEntries(PROVIDER_VALUES.map((v) => [v, [...order(v)]])),
+			values: [...STORED_VALUES],
+			default: STORED_DEFAULT,
+			order: Object.fromEntries(
+				STORED_VALUES.map((v) => [v, [...holders(choiceOf(v))]]),
+			),
 			keyVariables: { ...KEY_VARIABLES },
 		},
 		efforts: [...EFFORTS],
