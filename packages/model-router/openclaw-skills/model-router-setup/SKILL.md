@@ -30,7 +30,8 @@ When the person wants to choose the provider, follow these steps in order:
 1. Call `model_router_config` with no input, and read the settings and the key lines.
 2. Ask which provider's model scores, and give the three labels from the Provider and gateway facts.
 3. Ask how OpenRouter is used, before any write.
-4. On the person's word, have the owner type `/model-router-gateway <value>` and `/model-router-provider <value>`. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
+4. On the person's word, have the owner type `/model-router-gateway <value>` and `/model-router-provider <value>`, one command at a time. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
+   - Ask for the second command only after OpenClaw has replaced the plugin and `model_router_config` shows the agreed value of the first setting. If it does not, stop and tell the person.
    - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. After OpenClaw replaces the plugin, call `model_router_config` again and confirm the lines.
@@ -87,8 +88,10 @@ openrouter key: unset
 - Take these steps in this order. Set `gateway` first. While `provider` is not valid, nothing routes, so no task takes an unchosen path.
   1. Read the stored `provider` and `gateway` with `model_router_config`.
   2. Propose the pair above that matches the stored value.
-  3. Once the person agrees, ask them to type `/model-router-gateway <value>` first and `/model-router-provider typesafe` second.
-  4. After OpenClaw has replaced the plugin, call `model_router_config` again and check the `provider` and `gateway` lines.
+  3. Once the person agrees, ask them to type `/model-router-gateway <value>`.
+  4. After OpenClaw has replaced the plugin, call `model_router_config` again. Go on only when the `gateway` line shows the agreed value.
+  5. Ask them to type `/model-router-provider typesafe`.
+  6. After OpenClaw has replaced the plugin, call `model_router_config` again and check the `provider` and `gateway` lines.
 - OpenClaw gives you no way to write a setting. Only the owner can change a setting with these commands.
 
 ### Scope

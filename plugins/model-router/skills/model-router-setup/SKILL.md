@@ -34,6 +34,7 @@ When the person wants to choose the provider, follow these steps in order:
 2. Ask which provider's model scores, and give the three labels from the Settings facts.
 3. Ask how OpenRouter is used, before any write.
 4. On the person's word, call the tool once with `setting` set to `gateway` and once with `provider`. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
+   - Make the second call only after the first setting's line shows the agreed value. If it does not, stop and tell the person.
    - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. Call the tool with no setting, and confirm the lines.

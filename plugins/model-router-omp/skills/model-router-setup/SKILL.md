@@ -35,6 +35,7 @@ When the person wants to choose the provider, follow these steps in order:
 2. Ask which provider's model scores, and give the three labels from the Provider and gateway facts.
 3. Ask how OpenRouter is used, before any write.
 4. On the person's word, call `model_router_config` once with `setting` set to `gateway` and once with `provider`. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
+   - Make the second call only after the first setting's line shows the agreed value. If it does not, stop and tell the person.
    - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. Call `model_router_config` with no setting, and confirm the lines.
@@ -112,7 +113,8 @@ To move a retired value, follow these steps in order:
 4. On the person's word, call `model_router_config` with `setting` set to `gateway`.
    - The person picks the value in the dialog. Where no dialog answers, the person types `/model-router:gateway <value>`.
    - Set `gateway` first and `provider` second. While `provider` is not valid, no task routes, so no task takes a path the person did not choose.
-5. Then call `model_router_config` with `setting` set to `provider`.
+5. When the `gateway` line shows the agreed value, call `model_router_config` with `setting` set to `provider`.
+   - If the `gateway` line shows another value, stop and tell the person.
    - The person picks `typesafe` in the dialog. Where no dialog answers, the person types `/model-router:provider typesafe`.
 6. Call `model_router_config` with no setting, and check the `provider` and `gateway` lines.
 
@@ -184,7 +186,7 @@ A scored item can skip for these reasons:
 - `bad reply`: the reply held no valid score.
 - `failed`: any other error.
 
-These last reasons point to the company, its key or the network, not to a setting of the plugin.
+These last reasons point to the company, its key or the network.
 
 ### Routing check
 

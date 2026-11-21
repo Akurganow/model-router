@@ -29,7 +29,8 @@ When the person wants to choose the provider, follow these steps in order:
 1. Call `model_router_config` with no input, and read the settings and the key lines.
 2. Ask which provider's model scores, and give the three labels from the provider and gateway facts.
 3. Ask how OpenRouter is used, before any write.
-4. On the person's word, ask them to type `/model-router-gateway <value>` and `/model-router-provider <value>` in a local session. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
+4. On the person's word, ask them to type `/model-router-gateway <value>` and `/model-router-provider <value>` in a local session, one command at a time. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
+   - Ask for the second command only after `model_router_config` shows the agreed value of the first setting. If it does not, stop and tell the person.
    - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
 5. Name the key the choice needs, and say where it comes from and what it changes in Hermes, as the keys facts say.
 6. Call `model_router_config` again, and confirm the lines.
@@ -89,8 +90,10 @@ When the person wants to choose the provider, follow these steps in order:
 
 1. Read the stored values with `model_router_config`.
 2. Propose the pair that matches the stored value.
-3. After the person agrees, ask them to type `/model-router-gateway <value>` first, then `/model-router-provider typesafe`, in a local session.
-4. Call the tool again and check both lines.
+3. After the person agrees, ask them to type `/model-router-gateway <value>` in a local session.
+4. Call the tool again. Go on only when the `gateway` line shows the agreed value.
+5. Ask them to type `/model-router-provider typesafe`.
+6. Call the tool again and check both lines.
 
 ### The keys
 
@@ -140,10 +143,10 @@ When the person wants to choose the provider, follow these steps in order:
 - `key unset`: no path the `provider` and `gateway` settings allow has a key. A task with a `level` meets no key check. The person sets one, as the keys facts say.
 - `subagent model set`: the `delegation` section sets a model. The person decides whether to clear it.
 - `node not found`: Hermes has no Node of its own. The plugin runs scoring in that Node and never uses a Node on `PATH`. The person adds a Node for Hermes.
-- `timeout`: the routing limit of 10 s for a whole `delegate_task` call ran out. No setting fixes it.
+- `timeout`: the routing limit of 10 s for a whole `delegate_task` call ran out.
 - `HTTP <status>`, `network error`, `bad reply` or `failed`: the company did not answer, or the plugin failed. After both attempts the reason names each.
   - With `HTTP 401` or `HTTP 403`, or `HTTP 400` from Google's own API, the person checks that holder's key first. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says.
-  - For another status, `network error`, `bad reply` or `failed`, no setting fixes it.
+  - For another status, `network error`, `bad reply` or `failed`, look at the company that failed and the network.
 - Check every reason that holds, not only the first.
 
 ### The routing check
