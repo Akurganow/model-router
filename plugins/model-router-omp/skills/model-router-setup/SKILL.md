@@ -89,7 +89,11 @@ To move a retired value, follow these steps in order:
    3. Tell the person to check the other projects' override files before setting the global pair.
       - The plugin reads none of them.
    4. Edit the file only when the person asks.
-3. Propose the pair above that matches the stored `provider`.
+3. Propose the pair above that matches the global `provider`.
+   - The `provider` line of step 1 shows the global text, unless the project's override file sets a `provider` outside the list. Then it shows the project's text.
+   - If step 2 found such a line, take no pair from the line of step 1. Call `model_router_config` again once the person has changed the file, and read the `provider` line.
+   - While the file keeps that line, propose no pair: this project does not show the global text.
+   - If the new line still shows the file's old text, ask the person for the global value before you propose a pair.
 4. On the person's word, call `model_router_config` with `setting` set to `gateway`.
    - The person picks the value in the dialog. Where no dialog answers, the person types `/model-router:gateway <value>`.
    - Set `gateway` first and `provider` second. While `provider` is not valid, no task routes, so no task takes a path the person did not choose.
