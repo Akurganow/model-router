@@ -40,13 +40,13 @@
       "type": "secret",
       "env": "TYPESAFE_API_KEY",
       "label": "TypeSafe API key",
-      "description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider setting allows TypeSafe. Hermes stores it as TYPESAFE_API_KEY."
+      "description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider setting allows TypeSafe."
     },
     "openrouter_api_key": {
       "type": "secret",
       "env": "OPENROUTER_API_KEY",
       "label": "OpenRouter API key",
-      "description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the provider setting allows OpenRouter. Hermes stores it as OPENROUTER_API_KEY, the variable its own OpenRouter provider reads too."
+      "description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the provider setting allows OpenRouter. A key saved here becomes the key of Hermes's own OpenRouter provider. With no model.provider in config.yaml, Hermes then uses OpenRouter for its own session, so set model.provider to keep another provider."
     }
   }
 }

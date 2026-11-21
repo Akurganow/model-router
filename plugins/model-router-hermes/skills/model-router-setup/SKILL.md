@@ -55,7 +55,8 @@ Find out which of these already hold, with the `model_router_config` tool and He
 - A key counts as set when its variable holds non-blank text. The plugin reads a key only for a provider the `provider` setting allows.
 - The TypeSafe key is the variable `TYPESAFE_API_KEY` in the `.env` file of the Hermes home, and the OpenRouter key is `OPENROUTER_API_KEY` there.
 - The plugin's settings form in Hermes Desktop also sets each key, and Hermes stores it under that variable.
-- Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks. A key saved in the form replaces that provider's key, in the variable and in each `api_key` of `config.yaml` that held the old value.
+- Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks. A key saved in the form becomes that provider's key, in the variable and in the copies of the old value in `config.yaml`.
+- With a key in that variable and no `model.provider` in `config.yaml`, Hermes uses OpenRouter for its own session. Setting `model.provider` keeps another provider.
 - No other credential of Hermes serves as a Jev key.
 - A key in the environment is visible to every process Hermes starts.
 - With no key for any allowed provider, every task skips with `key unset`.
