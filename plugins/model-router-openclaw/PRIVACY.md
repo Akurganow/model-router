@@ -146,9 +146,13 @@ At each spawn the plugin reads OpenClaw's live configuration: its own settings,
 `agents.defaults.subagents.model` and `.thinking`, and for the requesting agent
 and, under `extended`, the target agent, `description`, `model`,
 `subagents.model` and `subagents.thinking`. It finds an agent as
-[The agent roster](README.md#the-agent-roster) says. It reads no credential of a model's provider and sets the model
-you named in the slot. Nothing from these reads leaves your
-machine, except the role text the request carries as described above.
+[The agent roster](README.md#the-agent-roster) says. It sets the model you
+named in the slot. Nothing from these reads leaves your machine, except the
+role text the request carries as described above.
+
+The plugin reads no credential of a model's provider but one: the OpenRouter
+key, which OpenClaw's own OpenRouter provider shares, as [Keys](README.md#keys)
+says.
 
 The plugin writes one line per routed or skipped spawn to the Gateway log and
 nowhere else. [The log line](README.md#the-log-line) lists its fields. It holds
