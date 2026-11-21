@@ -128,6 +128,7 @@ So the provider's own rows fail first, as [Tests](../../../AGENTS.md#tests) asks
 
 41. Add a row that pins the new key to its own address, in `src/core/__tests__/integration/route.test.ts` and in `plugins/model-router/tests/keys.test.ts`.
 42. Add the new key to the hand-written lists of `plugins/model-router-hermes/tests/test_sentinel.py`, which passes without it.
+    A provider that `auto` leaves out gets its own run of that test under a value that allows it.
 43. Run `npx tsc -p src` and `npx tsc -p scripts`.
 44. Fill each place an error names, and run both again until both pass.
 
