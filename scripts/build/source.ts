@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Schema, validate } from "./schema.ts";
-import type { SlotSetting, ValueSetting } from "./values.ts";
+import type { Provider, SlotSetting, ValueSetting } from "./values.ts";
 
 export const SOURCE_PATH = "metadata/source.json";
 const SCHEMA_PATH = "metadata/source.schema.json";
@@ -18,6 +18,8 @@ type Option<Descriptions> = {
 	readonly descriptions: Descriptions;
 };
 type Hint = { readonly label: string; readonly help: string };
+// One Hermes secret setting for each provider's key.
+export type HermesKeySetting = `${Provider}_api_key`;
 type Secret = {
 	readonly type: string;
 	readonly title: string;
@@ -105,9 +107,7 @@ export type Source = {
 		readonly pluginName: string;
 		readonly backendName: string;
 		readonly requiresHermes: string;
-		readonly settings: Readonly<Record<SlotSetting, Hint>> & {
-			readonly typesafe_api_key: Hint;
-		};
+		readonly settings: Readonly<Record<SlotSetting | HermesKeySetting, Hint>>;
 		readonly install: Install;
 	};
 	readonly npm: {

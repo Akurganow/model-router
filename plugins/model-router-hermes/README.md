@@ -47,14 +47,16 @@ Routing needs the plugin enabled, the backend on and a key. The models in the sl
 
 The plugin reads a key only for a provider the [`provider` setting](#provider) allows. It reads each key through Hermes's own secret reader, from one variable. A key counts as set when the variable holds non-blank text.
 
-| Key | Environment variable | Settings secret | Where to set it |
-| --- | --- | --- | --- |
-| TypeSafe | `TYPESAFE_API_KEY` | `typesafe_api_key` | The `.env` file of the Hermes home, or the settings form in Hermes Desktop |
-| OpenRouter | `OPENROUTER_API_KEY` | none | The `.env` file only |
+| Key | Environment variable | Settings secret |
+| --- | --- | --- |
+| TypeSafe | `TYPESAFE_API_KEY` | `typesafe_api_key` |
+| OpenRouter | `OPENROUTER_API_KEY` | `openrouter_api_key` |
 
-Hermes stores a key from the settings form as `TYPESAFE_API_KEY` in that `.env` file.
+Set a key in the `.env` file of the Hermes home or in the plugin's settings form in Hermes Desktop. Hermes stores a key from the form under its variable in that `.env` file.
 
-[Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key, where it goes and when a task reports `key unset`. The plugin never uses Hermes's own provider credentials as a Jev key.
+Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. So a key you store there is also that provider's key, and a key already set for Hermes scores tasks when the `provider` setting allows OpenRouter.
+
+[Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key, where it goes and when a task reports `key unset`. No other credential of Hermes serves as a Jev key.
 
 Hermes holds a key in the gateway's environment, so the programs Hermes starts can read it. [What the plugin stores](PRIVACY.md#what-the-plugin-stores) says so. Never type a key into the chat.
 

@@ -126,8 +126,8 @@ key through Hermes's own secret reader, from the variable `TYPESAFE_API_KEY` or
 plugin holds a key in memory only while it routes a task, and it passes the key
 to the program above on standard input.
 
-`TYPESAFE_API_KEY` in Hermes's env file is a variable in the environment of
-the gateway and of the plugin host. Like any key in the environment, it is
+A key in Hermes's env file is a variable in the environment of the gateway
+and of the plugin host. Like any key in the environment, it is
 visible to the programs Hermes starts. Keep a key out of the environment of
 programs you do not trust.
 

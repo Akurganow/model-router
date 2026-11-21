@@ -57,7 +57,7 @@ So the name must be the id that omp gives the provider.
 
 17. Find that id in omp's source or documentation.
 18. Find whether OpenClaw's list of credential variables holds the provider's usual key variable.
-19. Read [Hermes registration and settings](../../../docs/clients.md#hermes-registration-and-settings) for how Hermes stores a secret setting.
+19. Find whether a provider of Hermes's own reads the key's variable. [Hermes registration and settings](../../../docs/clients.md#hermes-registration-and-settings) says how Hermes stores a secret setting.
 20. State the omp id, or that omp has none, as one plain sentence under [omp model roles](../../../docs/clients.md#omp-model-roles).
 21. State what OpenClaw's list holds under [OpenClaw runtime, logs and environment](../../../docs/clients.md#openclaw-runtime-logs-and-environment), which says what OpenClaw does with a listed one.
 22. Put the source of each new sentence on the client's evidence page of the wiki, as [Adding evidence](https://github.com/Akurganow/model-router/wiki#adding-evidence) says.
@@ -79,7 +79,6 @@ The questions:
 - Does `auto` take the provider, and at which place?
 - When that makes a fifth value: how does Claude Code offer it? The setting has four values, and [Hooks module](../../../docs/clients.md#hooks-module) states the limit of the dialog that `choose` in `src/adapters/claude/config.ts` opens.
 - Does a status of a failed key or a spent quota reach the next provider? `FALLBACK_STATUSES` in `src/core/scoring/failure.ts` holds the statuses that do.
-- Does the new key get a Hermes setting of its own? Quote what the section before found of Hermes.
 - Do the evals score through the new provider?
 - For a model other than Jev: may the calibration run against it? [Paid runs](../../../CONTRIBUTING.md#paid-runs) exempts Jev calls only.
 - When a value orders three providers: what does the routing line say after two failures? Today it names the first failed provider only, `firstFailed` in `src/core/scoring/route.ts`.
@@ -167,7 +166,8 @@ The next two steps hold only for another model, and only after the maintainer ag
 The failures name each place. They do not say this:
 
 - The key's places come one after another: `metadata/source.json`, then `metadata/source.schema.json`, then the `Source` type in `scripts/build/source.ts`, then `FIXTURE` in `scripts/build-shape.test.ts`.
-- In `metadata/source.json` the key is an option under `claude.userConfig.keys` and a hint under `openclaw.uiHints`.
+- In `metadata/source.json` the key is an option under `claude.userConfig.keys`, a hint under `openclaw.uiHints` and a hint under `hermes.settings`.
+- The Hermes setting is named `<provider>_api_key`. `scripts/build/hermes.ts` and the `Source` type build it from `PROVIDERS`, so neither needs an edit.
 - Most failing rows pin a literal, which stays a literal: write the new one out.
 - `plugins/model-router-hermes/tests/test_config_tool.py` holds `SECRETS` and, beside it, the expected key lines, both written by hand.
 - The option texts of omp, OpenClaw and Hermes leave the single-provider values out. Add such a value to `UNNAMED` in `scripts/build-texts.test.ts`, not to those texts.
@@ -222,11 +222,10 @@ Both literals change with any new provider or value.
 
 ### Hermes
 
-`scripts/build/hermes.ts` builds one secret setting, `typesafe_api_key`.
-The plugin reads every other key from its variable alone.
-The next step holds only for a key with a Hermes setting of its own.
+Hermes stores each key's secret setting under the key's variable.
+The next step holds only when a provider of Hermes's own reads that variable.
 
-63. Add the setting in `scripts/build/hermes.ts` and its texts under `hermes.settings` in `metadata/source.json`, and rebuild.
+63. Say so in the setting's help in `metadata/source.json` and under the table of [Keys](../../../plugins/model-router-hermes/README.md#keys), and rebuild.
 
 ### Claude Code
 

@@ -15,12 +15,13 @@ import {
 	KEY_VARIABLES,
 	order,
 	PROVIDER_VALUES,
+	PROVIDERS,
 	resolve as resolveProvider,
 } from "#core/providers/provider.ts";
 import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
-import type { Source } from "./source.ts";
+import type { HermesKeySetting, Source } from "./source.ts";
 import { TOOL_NAME } from "./values.ts";
 
 // Hermes reads plugin.yaml with yaml.safe_load, which refuses a tab, and the version check reads it as JSON, so it is JSON text with space indentation.
@@ -31,6 +32,22 @@ const describe = (hint: { label: string; help: string }) => ({
 	label: hint.label,
 	description: hint.help,
 });
+
+// Hermes stores a secret under its variable, so the setting's own name is free: the provider's name and a fixed ending.
+const keySettings = (source: Source): JsonObject =>
+	Object.fromEntries(
+		PROVIDERS.map((provider) => {
+			const setting: HermesKeySetting = `${provider}_api_key`;
+			return [
+				setting,
+				{
+					type: "secret",
+					env: KEY_VARIABLES[provider],
+					...describe(source.hermes.settings[setting]),
+				},
+			];
+		}),
+	);
 
 // config_schema follows the Hermes plugin manifest: a type per setting, choices on a str, and an env name on a secret.
 const configSchema = (source: Source): JsonObject => ({
@@ -47,11 +64,7 @@ const configSchema = (source: Source): JsonObject => ({
 			{ type: "dict", ...describe(source.hermes.settings[setting]) },
 		]),
 	),
-	typesafe_api_key: {
-		type: "secret",
-		env: KEY_VARIABLES.typesafe,
-		...describe(source.hermes.settings.typesafe_api_key),
-	},
+	...keySettings(source),
 });
 
 const manifest = (source: Source): JsonObject => ({

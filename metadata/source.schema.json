@@ -206,13 +206,15 @@
 						"small_model",
 						"middle_model",
 						"large_model",
-						"typesafe_api_key"
+						"typesafe_api_key",
+						"openrouter_api_key"
 					],
 					"properties": {
 						"small_model": { "$ref": "#/$defs/hint" },
 						"middle_model": { "$ref": "#/$defs/hint" },
 						"large_model": { "$ref": "#/$defs/hint" },
-						"typesafe_api_key": { "$ref": "#/$defs/hint" }
+						"typesafe_api_key": { "$ref": "#/$defs/hint" },
+						"openrouter_api_key": { "$ref": "#/$defs/hint" }
 					}
 				},
 				"install": { "$ref": "#/$defs/install" }
