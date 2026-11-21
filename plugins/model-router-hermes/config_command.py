@@ -1,13 +1,13 @@
 """One command per setting: it reads from any session and writes only from a local one."""
 
 from .constants import CONSTANTS
-from .settings import read_texts, setting_lines
+from .settings import read_texts, setting_lines, trim
 
 
 def _run(ctx, constants, index, raw_args, platform):
     spec = constants["settings"][index]
     texts = constants["texts"]
-    value = (raw_args or "").strip()
+    value = trim(raw_args or "")
     stored = read_texts(ctx, constants)
     line = setting_lines(constants, stored)[index]
     if value == "":

@@ -46,6 +46,63 @@ class SettingTextTest(unittest.TestCase):
         submodule("settings").read_texts(Ctx(), CONSTANTS)
         self.assertEqual(seen, [("provider", None), ("gateway", None)])
 
+    def test_a_byte_order_mark_alone_reads_as_the_default(self):
+        texts = stored_texts({"gateway": "\ufeff"})
+        self.assertEqual(
+            submodule("settings").setting_lines(CONSTANTS, texts),
+            ["provider: typesafe", "gateway: direct (typesafe)"],
+        )
+
+    def test_a_file_separator_alone_is_not_valid(self):
+        self.assertEqual(not_valid({"gateway": "\x1c"}), "gateway")
+
+
+def three_settings():
+    def spec(name, first, second):
+        return {
+            "name": name,
+            "default": first,
+            "values": [first, second],
+            "notValid": name + " bad: {stored}",
+            "valueLines": {first: name + "=" + first, second: name + "=" + second},
+        }
+
+    leaf = {"holders": ["h"], "lines": ["leaf"]}
+    default_leaf = {"holders": [], "lines": ["default leaf"]}
+    return {
+        "settings": [spec("s1", "x", "y"), spec("s2", "p", "q"), spec("s3", "m", "n")],
+        # Only the leaves the rows reach.
+        "choices": {"x": {"p": {"m": default_leaf}}, "y": {"q": {"n": leaf}}},
+    }
+
+
+class ThirdSettingTest(unittest.TestCase):
+    def read(self, **stored):
+        settings = submodule("settings")
+        table = three_settings()
+        texts = {"s1": None, "s2": None, "s3": None, **stored}
+        spec = settings.first_not_valid(table, texts)
+        leaf = settings.choice(table, texts)
+        return None if spec is None else spec["name"], leaf, settings.setting_lines(table, texts)
+
+    def test_a_valid_triple_reads_its_leaf(self):
+        self.assertEqual(
+            self.read(s1="y", s2="q", s3="n"),
+            (None, {"holders": ["h"], "lines": ["leaf"]}, ["leaf"]),
+        )
+
+    def test_a_not_valid_third_setting_speaks_for_itself(self):
+        self.assertEqual(
+            self.read(s1="y", s2="q", s3="z"),
+            ("s3", None, ["s1=y", "s2=q", "s3 bad: z"]),
+        )
+
+    def test_blank_texts_read_as_the_defaults(self):
+        self.assertEqual(
+            self.read(s1="  ", s3=""),
+            (None, {"holders": [], "lines": ["default leaf"]}, ["default leaf"]),
+        )
+
 
 class SlotSettingTest(unittest.TestCase):
     def read(self, value):

@@ -6,6 +6,11 @@ valid come from constants.json, and no setting, value or key holder is named her
 
 from dataclasses import dataclass
 
+from .constants import CONSTANTS
+
+# The characters the core reads as blank. str.strip() has its own set, which differs.
+BLANK = "".join(map(chr, CONSTANTS["blank"]))
+
 
 @dataclass(frozen=True)
 class Slot:
@@ -19,9 +24,14 @@ class Slot:
         return bool(self.model)
 
 
+def trim(text):
+    """The text without the blank characters at its ends."""
+    return text.strip(BLANK)
+
+
 def stripped(value):
     """The trimmed text of a string; None when the value is not text."""
-    return value.strip() if isinstance(value, str) else None
+    return trim(value) if isinstance(value, str) else None
 
 
 def _text(value):
@@ -30,46 +40,48 @@ def _text(value):
 
 def read_texts(ctx, constants):
     """Each setting's stored text, by setting name; None when nothing or a non-text value is stored."""
-    texts = {}
+    stored = {}
     for spec in constants["settings"]:
-        stored = ctx.get_config(spec["name"], None)
-        texts[spec["name"]] = stored if isinstance(stored, str) else None
-    return texts
+        value = ctx.get_config(spec["name"], None)
+        stored[spec["name"]] = value if isinstance(value, str) else None
+    return stored
 
 
 def _value(spec, text):
     """The value a stored text reads as, or None when the text is not valid."""
-    if text is None or text.strip() == "":
+    if not stripped(text):
         return spec["default"]
     return text if text in spec["values"] else None
 
 
-def first_not_valid(constants, texts):
+def first_not_valid(constants, stored):
     """The first setting, in table order, whose stored text is not valid; None when all are."""
     return next(
-        (spec for spec in constants["settings"] if _value(spec, texts[spec["name"]]) is None), None
+        (spec for spec in constants["settings"] if _value(spec, stored[spec["name"]]) is None), None
     )
 
 
-def choice(constants, texts):
+def choice(constants, stored):
     """The `choices` leaf of the stored values; None while a setting is not valid."""
     leaf = constants["choices"]
     for spec in constants["settings"]:
-        value = _value(spec, texts[spec["name"]])
+        value = _value(spec, stored[spec["name"]])
         if value is None:
             return None
         leaf = leaf[value]
     return leaf
 
 
-def setting_lines(constants, texts):
+def setting_lines(constants, stored):
     """One line per setting, in table order. While one is not valid, each setting speaks for itself."""
-    leaf = choice(constants, texts)
+    # The list `settings`, each leaf's `lines` and the command's index agree by position,
+    # because the build makes all three from one list.
+    leaf = choice(constants, stored)
     if leaf is not None:
         return list(leaf["lines"])
     lines = []
     for spec in constants["settings"]:
-        text = texts[spec["name"]]
+        text = stored[spec["name"]]
         value = _value(spec, text)
         lines.append(
             spec["notValid"].format(stored=text) if value is None else spec["valueLines"][value]

@@ -10,6 +10,7 @@ import {
 	slotSetting,
 } from "#core/decision/slots.ts";
 import {
+	isSilent,
 	type Stored,
 	settingsOf,
 	valueFor,
@@ -120,6 +121,7 @@ const settingEntry = (setting: HermesSetting): JsonObject => ({
 });
 
 // The key holders and the lines of each combination of values, nested by the value of each setting in order.
+// The list `settings`, each leaf's `lines` and the command's index agree by position, because all three come from HERMES_SETTINGS.
 function choices(
 	remaining: readonly HermesSetting[],
 	stored: Stored,
@@ -138,12 +140,24 @@ function choices(
 	);
 }
 
+const LAST_CODE_POINT = 0x10ffff;
+const SURROGATES = { first: 0xd800, last: 0xdfff };
+
+// The code points the core reads as blank, by asking isSilent. Numbers, so the generated file holds no invisible character.
+const blankCodePoints = (): number[] =>
+	Array.from({ length: LAST_CODE_POINT + 1 }, (_, code) => code).filter(
+		(code) =>
+			(code < SURROGATES.first || code > SURROGATES.last) &&
+			isSilent(String.fromCodePoint(code)),
+	);
+
 // What the Python shim needs and must not retype: the limits, the provider rules, the efforts, the finished skip lines and the pinned labels.
 const constants = (source: Source): JsonObject => {
 	const { graceMs, reasons } = HERMES_TEXTS;
 	return {
 		routingLimitMs: ROUTING_LIMIT_MS,
 		graceMs,
+		blank: blankCodePoints(),
 		keyVariables: { ...KEY_VARIABLES },
 		settings: HERMES_SETTINGS.map(settingEntry),
 		choices: choices(HERMES_SETTINGS, {}),

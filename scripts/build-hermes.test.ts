@@ -122,6 +122,7 @@ test("the constants hold only the keys the Python shim reads", () => {
 	assert.deepEqual(Object.keys(constants), [
 		"routingLimitMs",
 		"graceMs",
+		"blank",
 		"keyVariables",
 		"settings",
 		"choices",

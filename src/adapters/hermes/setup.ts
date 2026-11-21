@@ -40,6 +40,8 @@ const states = (holder: KeyHolder) => ({
  * Returns the texts of one value setting. `hermesSettings` is every setting
  * Hermes stores. The gateway line names the key holders only when every setting
  * is valid, so a value's line here is the one it prints when the others are not.
+ * The placeholder is not a value of any setting, so `valueLine` reads the other
+ * settings as not valid and the gateway line names no holder.
  */
 export function settingTexts(
 	setting: ValueSetting,
