@@ -60,7 +60,7 @@ For each provider the [`provider` setting](#provider) allows, the plugin checks 
 - TypeSafe: the plugin's `api_key` setting, then the `TYPESAFE_API_KEY` environment variable.
 - OpenRouter: the plugin's `openrouter_api_key` setting, then the `OPENROUTER_API_KEY` environment variable.
 
-A key counts as set when either place holds a non-empty value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get one and where a key goes. OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks when the `provider` setting allows OpenRouter. No other credential of OpenClaw serves as a Jev key.
+A key counts as set when either place holds a non-empty value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get one and where a key goes. OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks when the `provider` setting allows OpenRouter and the plugin's `openrouter_api_key` setting holds none. No other credential of OpenClaw serves as a Jev key.
 
 Add a key in one of two ways:
 

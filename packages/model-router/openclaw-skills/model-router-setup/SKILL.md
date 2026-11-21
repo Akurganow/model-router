@@ -63,7 +63,7 @@ openrouter key: unset
 - OpenRouter key: the plugin setting `openrouter_api_key`, else the environment variable `OPENROUTER_API_KEY`.
 - The person adds a key in the secret field of the plugin's page in the Control UI, or sets the variable in the Gateway's environment and restarts the Gateway.
 - A key counts as set when either place holds a non-empty value.
-- OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks.
+- OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks when the `provider` setting allows OpenRouter and the plugin's `openrouter_api_key` setting holds none.
 - No other credential of OpenClaw serves as a Jev key.
 - A key variable reaches every process the Gateway starts.
 - With `auto` or `openrouter-first` and one key, that key's provider scores alone.
