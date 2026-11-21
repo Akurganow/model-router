@@ -188,7 +188,7 @@
 			},
 			"typesafe_api_key": {
 				"label": "TypeSafe API key",
-				"help": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider setting allows TypeSafe. Unset: the plugin reads TYPESAFE_API_KEY from the environment."
+				"help": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider setting allows TypeSafe. Hermes stores it as TYPESAFE_API_KEY."
 			},
 			"openrouter_api_key": {
 				"label": "OpenRouter API key",

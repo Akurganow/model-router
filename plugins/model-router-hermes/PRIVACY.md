@@ -144,8 +144,9 @@ as Hermes's own default backend does, with a model, a provider and an effort
 changed when it routes. When the section sets no effort, every route carries
 the task's `reasoning_effort` parameter.
 
-The plugin reads no credential of a model's provider. It sets the model and
-provider you named in a slot on the task. Of its reads, only the role text
+The plugin reads no credential of a model's provider but one: the OpenRouter
+key, which Hermes's own OpenRouter provider shares, as [Keys](README.md#keys)
+says. It sets the model and provider you named in a slot on the task. Of its reads, only the role text
 leaves your machine, in the request, as described above.
 
 The `model_router_config` tool only reads.

@@ -54,9 +54,9 @@ The plugin reads a key only for a provider the [`provider` setting](#provider) a
 
 Set a key in the `.env` file of the Hermes home or in the plugin's settings form in Hermes Desktop. Hermes stores a key from the form under its variable in that `.env` file.
 
-Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. So a key you store there is also that provider's key, and a key already set for Hermes scores tasks when the `provider` setting allows OpenRouter.
+Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. So a key you save in the form replaces that provider's key: Hermes writes the variable and each `api_key` in `config.yaml` that held the old value. A key already in that variable scores tasks when the `provider` setting allows OpenRouter. No other credential of Hermes serves as a Jev key.
 
-[Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key, where it goes and when a task reports `key unset`. No other credential of Hermes serves as a Jev key.
+[Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key, where it goes and when a task reports `key unset`.
 
 Hermes holds a key in the gateway's environment, so the programs Hermes starts can read it. [What the plugin stores](PRIVACY.md#what-the-plugin-stores) says so. Never type a key into the chat.
 
