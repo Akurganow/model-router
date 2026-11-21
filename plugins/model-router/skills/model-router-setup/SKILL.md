@@ -20,7 +20,7 @@ Routing works when all of these hold:
 
 The person may also choose:
 
-- `provider`: whose model scores a call.
+- `provider`: whose model scores a call. Its one value is `typesafe`.
 - `gateway`: how OpenRouter is used to reach the provider.
 - `scope`: which Agent calls the plugin routes.
 
@@ -101,26 +101,30 @@ More than one can hold. Report every one that holds.
 
 ### Skip reasons
 
-- `<setting> not valid: run setup`: a stored setting holds text outside its list. Claude Code replaces such a value with the default before the plugin sees it, so the line is not expected here. If it shows, the person sets the setting with its command.
 - `key unset`: no path the `gateway` value allows has a key. Add one as the Keys facts say.
-- `bad reply`: the host answered without a valid score for one of the two questions.
-- `timeout`: a first attempt got no answer in 2 s, or the call got no decision in the 8 s limit. The network or host is slow.
+- `bad reply`: the company answered without a valid score for one of the two questions.
+- `timeout`: a first attempt got no answer in 2 s, or the call got no decision in the 8 s limit. The network or the company is slow.
 - `cancelled`: Claude Code abandoned the call before the answer came, for example after an interrupt.
 - `network error`: every attempt failed before an answer came. An organization fetch policy that refuses openrouter.ai shows as this too.
-- `HTTP <status>`: the host answered with that status. `HTTP 401` means the host rejected the key. `HTTP 429` and `HTTP 503` mean the host refused or failed on every attempt.
+- `HTTP <status>`: the company answered with that status. `HTTP 401` means the company rejected the key. `HTTP 429` and `HTTP 503` mean the company refused or failed on every attempt.
 - `failed`: any other error.
 
 ### A retired provider value
 
+Run these steps after an update when the tool prints `gateway: direct` and the person used OpenRouter before.
+
 Earlier versions took `auto`, `openrouter-first` and `openrouter` as values of `provider`. They are values of `gateway` now. Do these steps in this order:
 
-1. The tool cannot show a retired value, because Claude Code hands the plugin the default. The stored value sits under `pluginConfigs` in the user settings file. Read only that entry, because the `env` block of the same file can hold keys. If you cannot read the entry, ask the person which `provider` value they chose before the update.
-2. For a stored `auto`, `openrouter-first` or `openrouter`, tell the person the plugin now gets `typesafe` on the direct path. Propose the `gateway` of the same name:
+1. Ask the person which `provider` value they chose before the update.
+   The tool cannot show the stored value, as the Settings facts say.
+2. Propose the pair that gives the same requests as before:
    - `auto` becomes `provider` `typesafe` with `gateway` `auto`.
    - `openrouter-first` becomes `provider` `typesafe` with `gateway` `openrouter-first`.
    - `openrouter` becomes `provider` `typesafe` with `gateway` `openrouter`.
-3. On the person's word, call the tool with `setting` set to `gateway`. The person picks the value in the dialog. Where no dialog opens, the person types `/model-router:gateway <value>`.
-4. Then do the same for `provider`, where the person picks `typesafe`, so the retired value leaves the settings. A reply `provider unchanged: already typesafe` is fine, because the plugin already gets `typesafe`.
+3. On the person's word, call the tool with `setting` set to `gateway`.
+   The person picks the agreed value in the dialog. Where no dialog opens, the person types `/model-router:gateway <value>`.
+4. Ask the person to type `/model-router:provider typesafe` at their own prompt, so the retired value leaves the settings.
+   The dialog cannot make this change: it answers `<setting> unchanged: already <value>` for the value the plugin already gets.
 5. Call the tool with no setting and check the gateway line.
 
 ### The routing check

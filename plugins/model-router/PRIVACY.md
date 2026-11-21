@@ -2,7 +2,7 @@
 
 model-router is a Claude Code plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-12.
+2026-11-21.
 
 ## Where requests go
 
@@ -10,14 +10,14 @@ The plugin asks Jev to score each Agent tool call it routes. Under the default
 `core` scope, only the four built-in agents route. [The extended
 scope](#the-extended-scope) adds the others. Jev answers on one or two paths:
 
-- On the direct path, TypeSafe, at https://api.typesafe.ai/v1/systemone, with
-  your TypeSafe key
-- On the gateway path, OpenRouter, at https://openrouter.ai/api/v1/systemone,
-  with your OpenRouter key.
+- the direct path: TypeSafe, at https://api.typesafe.ai/v1/systemone, with your
+  TypeSafe key
+- the gateway path: OpenRouter, at https://openrouter.ai/api/v1/systemone, with
+  your OpenRouter key.
 
 The `provider` option says whose model scores, and its one value is
-`typesafe`. OpenRouter is a gateway that answers with that model. The plugin's
-`gateway` option decides which companies receive the task text and their keys:
+`typesafe`. OpenRouter is a gateway that answers with that model. The `gateway`
+option decides which companies receive the task text and their keys:
 
 | `gateway` | First request | Second request, after a failure |
 | :-- | :-- | :-- |
@@ -31,8 +31,9 @@ With both keys under `auto` or `openrouter-first`, one call may reach both compa
 [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
 gives the fallback rules.
 
-A setting that is not valid sends nothing, as
-[A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)
+Claude Code hands the plugin an option's default in place of a stored value
+outside the option's list. The plugin then sends by that default, as
+[A stored value outside an option's list](README.md#a-stored-value-outside-an-options-list)
 says.
 
 Each key goes only to the address above of the company that issued it, as

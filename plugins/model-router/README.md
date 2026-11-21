@@ -368,12 +368,6 @@ Claude Code then refuses adds a second line, `denied`.
 - A routed call logs `skipped, <cause>` and runs unchanged. After both
   attempts fail, the line names each attempt with its cause, as
   [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. The causes are:
-  - `<setting> not valid: run setup`: a stored setting holds text outside its
-    list, as
-    [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)
-    says. Claude Code does not show it for such a value, as
-    [A stored value outside an option's list](#a-stored-value-outside-an-options-list)
-    says.
   - `key unset`: no path the `gateway` option allows has a key. The
     TypeSafe key comes from `api_key` or `TYPESAFE_API_KEY`, the OpenRouter
     key from `openrouter_api_key` or `OPENROUTER_API_KEY`. Set one as
@@ -381,7 +375,7 @@ Claude Code then refuses adds a second line, `denied`.
     your app, then run `/reload-plugins`. In the desktop app a saved key can
     read back as empty after a restart. [Keys in the desktop
     app](#keys-in-the-desktop-app) has the workaround.
-  - `bad reply`: the host answered, but the answer lacks a valid score
+  - `bad reply`: the company answered, but the answer lacks a valid score
     for one of the two questions.
   - `timeout`: a first attempt got no answer in 2 s, or the call got no
     decision in the 8 s limit. Check the network and try again.
@@ -390,11 +384,11 @@ Claude Code then refuses adds a second line, `denied`.
   - `network error`: every attempt failed before an answer came. An
     organization fetch policy that refuses openrouter.ai shows as this too.
     Check the network and try again.
-  - `HTTP <status>`: the host answered with that status, after the
-    retries for a status that is retried. `HTTP 401` means the host
+  - `HTTP <status>`: the company answered with that status, after the
+    retries for a status that is retried. `HTTP 401` means the company
     rejected the key. Check a TypeSafe key at https://console.typesafe.ai/keys
     and an OpenRouter key in your OpenRouter account. `HTTP 429` and
-    `HTTP 503` mean the host refused or failed on every attempt. Try
+    `HTTP 503` mean the company refused or failed on every attempt. Try
     again later.
   - `failed`: any other error.
 - A subagent ran on a model you did not expect: the mod did not route the
