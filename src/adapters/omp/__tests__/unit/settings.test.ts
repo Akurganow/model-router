@@ -96,6 +96,24 @@ const rules: [string, object, object, object][] = [
 		ok("auto"),
 	],
 	[
+		"never narrows auto for a blank gateway",
+		{ gateway: "auto" },
+		{ gateway: "" },
+		ok("auto"),
+	],
+	[
+		"never narrows auto for a gateway of spaces",
+		{ gateway: "auto" },
+		{ gateway: "   " },
+		ok("auto"),
+	],
+	[
+		"never narrows auto for a null gateway",
+		{ gateway: "auto" },
+		{ gateway: null },
+		ok("auto"),
+	],
+	[
 		"never sets the provider",
 		{ provider: "auto" },
 		{ provider: "typesafe" },

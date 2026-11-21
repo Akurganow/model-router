@@ -133,8 +133,12 @@ export async function routeSpawn(
 ): Promise<Started> {
 	const callerSet = callerEffort.delete(spawn.tool_use_id);
 	const settings = settingsOf(options);
-	if (next.origin.plugin !== ENGINE || !routable(spawn, scopeOf(settings)))
+	if (next.origin.plugin !== ENGINE || !routable(spawn, scopeOf(options)))
 		return next(spawn);
+	if ("skipped" in settings) {
+		await $.ui.log(skippedLine(settings.skipped));
+		return next(spawn);
+	}
 	const state = routingState({
 		role: roleFor(spawn.subagentType),
 		description: spawn.description,

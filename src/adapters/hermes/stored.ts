@@ -7,7 +7,7 @@ import {
 	holders,
 } from "#core/providers/provider.ts";
 
-// The gateway each stored value means, in the order Hermes lists the values. The first key is the default.
+// The gateway each stored value means, in the order Hermes lists the values.
 const GATEWAY_OF = {
 	auto: "auto",
 	"openrouter-first": "openrouter-first",

@@ -74,7 +74,7 @@ test("something that is not a report is a problem", () => {
 	]);
 });
 
-test("the shipped bundle registers the hook, the tool and both commands", async () => {
+test("the shipped bundle registers the hook, the tool and every command", async () => {
 	const { default: plugin } = await import(join(TREE, "index.js"));
 	assert.deepEqual(registrationProblems(plugin), []);
 });

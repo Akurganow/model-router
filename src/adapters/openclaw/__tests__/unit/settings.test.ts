@@ -145,9 +145,6 @@ test("the first source that holds text decides, valid or not, and a silent one l
 		provider: "typesafe",
 	}).stored;
 	assert.equal(provider.provider, "auto");
-	assert.deepEqual(settingsOf(provider), {
-		skipped: "provider not valid: run setup",
-	});
 	const gateway = (liveValue: unknown) =>
 		readSettings(live({ gateway: liveValue }), { gateway: "auto" }).stored
 			.gateway;

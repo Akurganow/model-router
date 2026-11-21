@@ -673,7 +673,6 @@ async function raceDeadline(work2, deadlineMs, clock, parent) {
 // src/core/scoring/route.ts
 async function route(input) {
   const { attempts, signal } = input;
-  if ("skipped" in attempts) return attempts;
   if (attempts.length === 0) return { skipped: KEY_UNSET };
   const failed = [];
   for (const [i, attempt] of attempts.entries()) {
@@ -796,7 +795,6 @@ var steps = (choice) => GATEWAY_PATHS[choice.gateway].map((path) => ({
   holder: holderOf(choice.provider, path)
 }));
 function plan(choice, keys) {
-  if ("skipped" in choice) return choice;
   const attempts = [];
   for (const step of steps(choice)) {
     const key = keys[step.holder];

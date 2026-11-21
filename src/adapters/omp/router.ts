@@ -1,7 +1,7 @@
 import { contextText } from "#core/brief/brief.ts";
 import { pickModel, slotForLevel } from "#core/decision/slots.ts";
 import { DEFAULT_SCOPE } from "#core/options/scope.ts";
-import { scopeOf, settingsOf } from "#core/options/settings.ts";
+import { scopeOf } from "#core/options/settings.ts";
 import {
 	ENTRY_SEPARATOR,
 	LINE_PREFIX,
@@ -82,9 +82,10 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		const eligible = eligibleItems(tasks);
 		if (eligible.length === 0) return;
 		const stored = await readSettings(omp, ctx.cwd);
-		// Unreadable settings and settings that are not valid both leave the core scope's items to get the skip line.
-		const scope =
-			stored === undefined ? DEFAULT_SCOPE : scopeOf(settingsOf(stored));
+		// Unreadable settings leave the core scope's items to get the skip line.
+		// Readable settings use their stored scope, even when another setting is
+		// not valid. The default applies only when the scope itself is not valid.
+		const scope = stored === undefined ? DEFAULT_SCOPE : scopeOf(stored);
 		const items = eligible.filter(({ agent }) => inScope(agent, scope));
 		if (items.length === 0) return;
 		const skipAll = (reason: string) =>

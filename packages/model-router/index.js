@@ -172,7 +172,6 @@ function collectKeysSync(choice, lookup) {
   return keys;
 }
 function plan(choice, keys) {
-  if ("skipped" in choice) return choice;
   const attempts = [];
   for (const step of steps(choice)) {
     const key = keys[step.holder];
@@ -293,11 +292,10 @@ function withPluginSetting(draft, setting, value) {
 function sources(live, pluginConfig) {
   return [pluginEntry(live)?.config, pluginConfig].filter(isRecord);
 }
-var firstText = (from, field) => from.map((settings) => settings[field]).find((text) => !isSilent(text));
-function firstValid(from, field, parse) {
+function firstText(from, field) {
   for (const settings of from) {
-    const parsed = parse(settings[field]);
-    if (parsed !== void 0) return parsed;
+    const text = settings[field];
+    if (!isSilent(text)) return text;
   }
   return void 0;
 }
@@ -316,14 +314,14 @@ function readSettings(live, pluginConfig) {
       gateway: firstText(from, "gateway"),
       scope: firstText(from, "scope")
     },
-    models: slotRecord((slot) => firstValid(from, slotSetting(slot), nonEmpty))
+    models: slotRecord((slot) => nonEmpty(firstText(from, slotSetting(slot))))
   };
 }
 function readKeys(live, pluginConfig, choice, env) {
   const from = sources(live, pluginConfig);
   return collectKeysSync(
     choice,
-    (holder) => firstValid(from, KEY_FIELDS[holder], nonEmpty) ?? nonEmpty(env[KEY_VARIABLES[holder]])
+    (holder) => nonEmpty(firstText(from, KEY_FIELDS[holder])) ?? nonEmpty(env[KEY_VARIABLES[holder]])
   );
 }
 function readState(api, env) {
@@ -988,7 +986,6 @@ async function ask(input, attempt) {
 // src/core/scoring/route.ts
 async function route(input) {
   const { attempts, signal } = input;
-  if ("skipped" in attempts) return attempts;
   if (attempts.length === 0) return { skipped: KEY_UNSET };
   const failed = [];
   for (const [i, attempt] of attempts.entries()) {
@@ -1161,15 +1158,15 @@ function roleOf(input, target, blank) {
   return nonEmpty(description) === void 0 ? blank : roleText(description);
 }
 function gateSpawn(input) {
-  const { spawn, requester, settings, config } = input;
+  const { spawn, requester, chosen, config } = input;
   const { task } = spawn;
   if (task === void 0 || passesSilently(spawn)) return PASS;
   const named = spawn.agent.kind === "id" ? spawn.agent.id : void 0;
   const isRequesterSpawn = named === void 0 || requester !== void 0 && sameAgent(named, requester);
   const target = isRequesterSpawn ? requester : named;
-  if ("skipped" in settings) return skip2(settings.skipped);
+  if ("skipped" in chosen) return skip2(chosen.skipped);
   if (!input.hasKey) return skip2(KEY_UNSET);
-  if (!isRequesterSpawn && settings.scope === "core")
+  if (!isRequesterSpawn && chosen.scope === "core")
     return skip2(outsideCoreScope(named));
   if (subagentModelSet(input, target)) return skip2(SUBAGENT_MODEL_SET);
   if (!isRequesterSpawn) {
@@ -1185,7 +1182,8 @@ function gateSpawn(input) {
       target,
       isRequesterSpawn ? DEFAULT_ROLE : NO_DESCRIPTION
     ),
-    effort: effortRule(input, settings),
+    effort: effortRule(input, chosen),
+    chosen,
     task,
     description: spawn.description
   };
@@ -1255,14 +1253,14 @@ function spawnLine(api, signal) {
     }
   };
 }
-async function score({ deps, signal }, { chosen, keys }, gate) {
+async function score({ deps, signal }, { keys }, gate) {
   return scoreWork({
     state: routingState({
       role: gate.role,
       description: gate.description,
       task: gate.task
     }),
-    attempts: plan(chosen, keys),
+    attempts: plan(gate.chosen, keys),
     fetchFn: deps.fetchFn,
     clock: realClock,
     signal
@@ -1275,7 +1273,7 @@ async function routeSpawn(spawn) {
     spawn: request,
     requester,
     config: state.config,
-    settings: state.chosen,
+    chosen: state.chosen,
     hasKey: Object.keys(state.keys).length > 0
   });
   if (gate.outcome === "pass") return void 0;

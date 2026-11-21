@@ -78,18 +78,14 @@ function spawnLine(api: OpenClawApi, signal: AbortSignal): SpawnLine {
 }
 
 // Jev is asked once for both parts. The picked levels come back as a line and the slot to set.
-async function score(
-	{ deps, signal }: Spawn,
-	{ chosen, keys }: State,
-	gate: Route,
-) {
+async function score({ deps, signal }: Spawn, { keys }: State, gate: Route) {
 	return scoreWork({
 		state: routingState({
 			role: gate.role,
 			description: gate.description,
 			task: gate.task,
 		}),
-		attempts: plan(chosen, keys),
+		attempts: plan(gate.chosen, keys),
 		fetchFn: deps.fetchFn,
 		clock: realClock,
 		signal,
@@ -112,7 +108,7 @@ async function routeSpawn(
 		spawn: request,
 		requester,
 		config: state.config,
-		settings: state.chosen,
+		chosen: state.chosen,
 		hasKey: Object.keys(state.keys).length > 0,
 	});
 	if (gate.outcome === "pass") return undefined;

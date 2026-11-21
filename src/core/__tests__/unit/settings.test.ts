@@ -16,6 +16,8 @@ import {
 	NOT_OFFERED,
 	pick,
 	readOnlyToolDescription,
+	scopeOf,
+	settingsOf,
 	settingsReport,
 	TOOL_LABEL,
 	toolDescription,
@@ -26,7 +28,7 @@ import {
 	valueFor,
 	valueLine,
 } from "#core/options/settings.ts";
-import { GATEWAYS, MAKERS } from "#core/providers/provider.ts";
+import { collectKeys, GATEWAYS, MAKERS } from "#core/providers/provider.ts";
 
 test("lists the value settings", () => {
 	assert.deepEqual(VALUE_SETTINGS, ["provider", "gateway", "scope"]);
@@ -92,6 +94,30 @@ test("a stored text outside the values is not valid, and an absent, blank or non
 			{ toString: () => "auto" },
 		])
 			assert.equal(valueFor(setting, stored), DEFAULT[setting], setting);
+});
+
+test("the scope reads on its own: a valid stored scope holds when another setting is not valid, and the default stands in for a scope that is not", () => {
+	assert.equal(scopeOf({ provider: "auto", scope: "extended" }), "extended");
+	assert.equal(scopeOf({ scope: "wide" }), "core");
+});
+
+test("a setting that is not valid gives its setup reason, and no key is looked up", async () => {
+	for (const [stored, reason] of [
+		[{ provider: "auto" }, "provider not valid: run setup"],
+		[{ gateway: "fast", scope: "wide" }, "gateway not valid: run setup"],
+	] as const) {
+		const settings = settingsOf(stored);
+		assert.deepEqual(settings, { skipped: reason });
+		const looked: string[] = [];
+		assert.deepEqual(
+			await collectKeys(settings, async (holder) => {
+				looked.push(holder);
+				return "test-key";
+			}),
+			{},
+		);
+		assert.deepEqual(looked, []);
+	}
 });
 
 test("the gateway line names the holders its value allows, in order", () => {

@@ -118,18 +118,9 @@ export function collectKeysSync(
  * Returns one attempt for each path of the choice whose key holder's key is a
  * non-empty string, carrying that key. Every attempt but the last gives up
  * fast, so the next one gets most of the routing limit. Returns no attempts
- * when no key is set. A NoChoice comes back as it is. Never throws.
+ * when no key is set. Never throws.
  */
-export function plan(choice: Choice, keys: Readonly<Keys>): Attempt[];
-export function plan(
-	choice: Choice | NoChoice,
-	keys: Readonly<Keys>,
-): Attempt[] | NoChoice;
-export function plan(
-	choice: Choice | NoChoice,
-	keys: Readonly<Keys>,
-): Attempt[] | NoChoice {
-	if ("skipped" in choice) return choice;
+export function plan(choice: Choice, keys: Readonly<Keys>): Attempt[] {
 	const attempts: Attempt[] = [];
 	for (const step of steps(choice)) {
 		const key = keys[step.holder];

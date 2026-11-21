@@ -4,6 +4,7 @@ import {
 	type Attempt,
 	type Choice,
 	collectKeys,
+	type Gateway,
 	KEY_VARIABLES,
 	type KeyHolder,
 	plan,
@@ -15,11 +16,13 @@ import { FALLBACK_NAME } from "./name.ts";
 import type { Context, Lookup, OmpImports } from "./types.ts";
 
 // A gateway value a project may narrow, and the single-path values it narrows to.
-const NARROWABLE: readonly unknown[] = ["auto", "openrouter-first"];
-const SINGLE_PATH: readonly unknown[] = ["direct", "openrouter"];
+const NARROWABLE: readonly Gateway[] = ["auto", "openrouter-first"];
+const SINGLE_PATH: readonly Gateway[] = ["direct", "openrouter"];
 
-const notValid = (setting: "provider" | "gateway", text: unknown): boolean =>
-	valueFor(setting, text) === undefined;
+const namesNoValue = (
+	setting: "provider" | "gateway",
+	text: unknown,
+): boolean => valueFor(setting, text) === undefined;
 
 /**
  * Returns the stored text the plugin applies for each setting, from the global
@@ -36,18 +39,19 @@ function applied(
 	const { provider: fromGlobal, gateway: gatewayFromGlobal } = global;
 	const { provider, gateway, scope } = effective;
 	return {
-		provider: notValid("provider", provider) ? provider : fromGlobal,
+		provider: namesNoValue("provider", provider) ? provider : fromGlobal,
 		gateway: gatewayText(gatewayFromGlobal, gateway),
 		scope,
 	};
 }
 
 function gatewayText(global: unknown, effective: unknown): unknown {
-	if (notValid("gateway", effective)) return effective;
-	if (notValid("gateway", global)) return global;
+	if (namesNoValue("gateway", effective)) return effective;
+	if (namesNoValue("gateway", global)) return global;
+	// Compares the stored texts, not their values: a blank text reads as direct and would narrow auto.
 	const narrows =
-		NARROWABLE.includes(valueFor("gateway", global)) &&
-		SINGLE_PATH.includes(valueFor("gateway", effective));
+		NARROWABLE.some((value) => value === global) &&
+		SINGLE_PATH.some((value) => value === effective);
 	return narrows ? effective : global;
 }
 

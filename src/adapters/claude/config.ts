@@ -73,7 +73,7 @@ export async function registerConfigTool(
 	return next(e);
 }
 
-// The tool and both commands write through this one function, so equal outcomes read alike.
+// The tool and every command write through this one function, so equal outcomes read alike.
 async function write(
 	$: Engine,
 	options: Options,

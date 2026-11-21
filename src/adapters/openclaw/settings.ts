@@ -62,28 +62,17 @@ function sources(
 }
 
 /**
- * Returns the first text a source holds in the field, valid or not, or undefined
- * when every source is silent. A source whose text names no value must still
- * decide, so that the core can skip with the setup reason and a later source
- * cannot hide the mistake.
+ * Returns the first text a source holds in the field, or undefined when every
+ * source is silent. One rule for the value settings, the models and the keys:
+ * the first source that holds text decides, valid or not, and no later source
+ * is read. A source whose text names no value must still decide, so that the
+ * core can skip with the setup reason and a later source cannot hide the
+ * mistake.
  */
-const firstText = (from: readonly Settings[], field: string): unknown =>
-	from.map((settings) => settings[field]).find((text) => !isSilent(text));
-
-/**
- * Returns the first value that `parse` accepts from the field of each source, in
- * order, or undefined when none does. A source whose value does not parse counts
- * as silent, so a later source can still supply the setting. Throws only when
- * `parse` throws.
- */
-function firstValid<T>(
-	from: readonly Settings[],
-	field: string,
-	parse: (value: unknown) => T | undefined,
-): T | undefined {
+function firstText(from: readonly Settings[], field: string): unknown {
 	for (const settings of from) {
-		const parsed = parse(settings[field]);
-		if (parsed !== undefined) return parsed;
+		const text = settings[field];
+		if (!isSilent(text)) return text;
 	}
 	return undefined;
 }
@@ -111,7 +100,7 @@ export function readSettings(
 			gateway: firstText(from, "gateway"),
 			scope: firstText(from, "scope"),
 		},
-		models: slotRecord((slot) => firstValid(from, slotSetting(slot), nonEmpty)),
+		models: slotRecord((slot) => nonEmpty(firstText(from, slotSetting(slot)))),
 	};
 }
 
@@ -132,7 +121,7 @@ export function readKeys(
 	return collectKeysSync(
 		choice,
 		(holder) =>
-			firstValid(from, KEY_FIELDS[holder], nonEmpty) ??
+			nonEmpty(firstText(from, KEY_FIELDS[holder])) ??
 			nonEmpty(env[KEY_VARIABLES[holder]]),
 	);
 }

@@ -333,7 +333,6 @@ async function collectKeys(choice, lookup2) {
   return keys;
 }
 function plan(choice, keys) {
-  if ("skipped" in choice) return choice;
   const attempts = [];
   for (const step of steps(choice)) {
     const key = keys[step.holder];
@@ -397,7 +396,7 @@ function settingsOf(stored) {
   if (scope === void 0) return { skipped: notValid("scope") };
   return { provider, gateway, scope };
 }
-var scopeOf = (settings) => "skipped" in settings ? DEFAULT_SCOPE : settings.scope;
+var scopeOf = (stored) => readScope(stored.scope) ?? DEFAULT_SCOPE;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
@@ -505,20 +504,20 @@ function serializer() {
 import { readFile } from "node:fs/promises";
 var NARROWABLE = ["auto", "openrouter-first"];
 var SINGLE_PATH = ["direct", "openrouter"];
-var notValid2 = (setting, text) => valueFor(setting, text) === void 0;
+var namesNoValue = (setting, text) => valueFor(setting, text) === void 0;
 function applied(global, effective) {
   const { provider: fromGlobal, gateway: gatewayFromGlobal } = global;
   const { provider, gateway, scope } = effective;
   return {
-    provider: notValid2("provider", provider) ? provider : fromGlobal,
+    provider: namesNoValue("provider", provider) ? provider : fromGlobal,
     gateway: gatewayText(gatewayFromGlobal, gateway),
     scope
   };
 }
 function gatewayText(global, effective) {
-  if (notValid2("gateway", effective)) return effective;
-  if (notValid2("gateway", global)) return global;
-  const narrows = NARROWABLE.includes(valueFor("gateway", global)) && SINGLE_PATH.includes(valueFor("gateway", effective));
+  if (namesNoValue("gateway", effective)) return effective;
+  if (namesNoValue("gateway", global)) return global;
+  const narrows = NARROWABLE.some((value) => value === global) && SINGLE_PATH.some((value) => value === effective);
   return narrows ? effective : global;
 }
 async function readSettings(omp, cwd) {
@@ -1191,7 +1190,6 @@ async function ask2(input, attempt2) {
 // src/core/scoring/route.ts
 async function route(input) {
   const { attempts, signal } = input;
-  if ("skipped" in attempts) return attempts;
   if (attempts.length === 0) return { skipped: KEY_UNSET };
   const failed = [];
   for (const [i, attempt2] of attempts.entries()) {
@@ -1446,7 +1444,7 @@ function createRouter(omp, pi) {
     const eligible = eligibleItems(tasks);
     if (eligible.length === 0) return;
     const stored = await readSettings(omp, ctx.cwd);
-    const scope = stored === void 0 ? DEFAULT_SCOPE : scopeOf(settingsOf(stored));
+    const scope = stored === void 0 ? DEFAULT_SCOPE : scopeOf(stored);
     const items = eligible.filter(({ agent }) => inScope(agent, scope));
     if (items.length === 0) return;
     const skipAll = (reason) => report(

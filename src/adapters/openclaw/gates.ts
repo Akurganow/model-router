@@ -38,6 +38,8 @@ export type Gate =
 			readonly task: string;
 			// The spawn's label, else its task name, else empty.
 			readonly description: string;
+			// The checked settings, narrowed by the gate, for the scoring that follows.
+			readonly chosen: Settings;
 	  };
 
 export type GateInput = {
@@ -46,7 +48,7 @@ export type GateInput = {
 	// Undefined when the live config could not be read.
 	readonly config: OpenClawConfig | undefined;
 	// The checked settings: a NoChoice skips the spawn.
-	readonly settings: Settings | NoChoice;
+	readonly chosen: Settings | NoChoice;
 	// True when a key is set for any key holder the settings allow.
 	readonly hasKey: boolean;
 };
@@ -167,7 +169,7 @@ function roleOf(input: GateInput, target: string | undefined, blank: string) {
  * Change both.
  */
 export function gateSpawn(input: GateInput): Gate {
-	const { spawn, requester, settings, config } = input;
+	const { spawn, requester, chosen, config } = input;
 	const { task } = spawn;
 	if (task === undefined || passesSilently(spawn)) return PASS;
 	const named = spawn.agent.kind === "id" ? spawn.agent.id : undefined;
@@ -176,9 +178,9 @@ export function gateSpawn(input: GateInput): Gate {
 		named === undefined ||
 		(requester !== undefined && sameAgent(named, requester));
 	const target = isRequesterSpawn ? requester : named;
-	if ("skipped" in settings) return skip(settings.skipped);
+	if ("skipped" in chosen) return skip(chosen.skipped);
 	if (!input.hasKey) return skip(KEY_UNSET);
-	if (!isRequesterSpawn && settings.scope === "core")
+	if (!isRequesterSpawn && chosen.scope === "core")
 		return skip(outsideCoreScope(named));
 	if (subagentModelSet(input, target)) return skip(SUBAGENT_MODEL_SET);
 	if (!isRequesterSpawn) {
@@ -195,7 +197,8 @@ export function gateSpawn(input: GateInput): Gate {
 			target,
 			isRequesterSpawn ? DEFAULT_ROLE : NO_DESCRIPTION,
 		),
-		effort: effortRule(input, settings),
+		effort: effortRule(input, chosen),
+		chosen,
 		task,
 		description: spawn.description,
 	};

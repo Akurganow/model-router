@@ -10,16 +10,10 @@ import {
 } from "#core/__tests__/support/replies.ts";
 import { fakeTime } from "#core/__tests__/support/time.ts";
 import { routingState } from "#core/brief/brief.ts";
-import { settingsOf } from "#core/options/settings.ts";
 import { KEY_UNSET } from "#core/output/reasons.ts";
 import { tier } from "#core/parts/tier.ts";
 import { work } from "#core/parts/work.ts";
-import {
-	type Attempt,
-	collectKeys,
-	type Gateway,
-	plan,
-} from "#core/providers/provider.ts";
+import { type Attempt, type Gateway, plan } from "#core/providers/provider.ts";
 import { LIMIT_REACHED, ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type Decision, type RouteInput, route } from "#core/scoring/route.ts";
 import { realClock } from "#utils/clock.ts";
@@ -233,26 +227,6 @@ test("a part whose question cannot be serialised is failed and sends no request"
 	const routed = await run(fetchFn, { parts: [unserializable] });
 	assert.deepEqual(routed, { skipped: "failed" });
 	assert.equal(bodies.length, 0);
-});
-
-test("a setting that is not valid skips the task with its setup reason, and looks up no key or sends nothing", async () => {
-	for (const [stored, reason] of [
-		[{ provider: "auto" }, "provider not valid: run setup"],
-		[{ gateway: "fast", scope: "wide" }, "gateway not valid: run setup"],
-	] as const) {
-		const looked: string[] = [];
-		const { sent, fetchFn } = answering(VALID);
-		const settings = settingsOf(stored);
-		const keys = await collectKeys(settings, async (holder) => {
-			looked.push(holder);
-			return KEYS[holder];
-		});
-		assert.deepEqual(await run(fetchFn, { attempts: plan(settings, keys) }), {
-			skipped: reason,
-		});
-		assert.deepEqual(looked, []);
-		assert.deepEqual(sent, []);
-	}
 });
 
 test("a skip holds neither the response body, the task nor the key", async () => {

@@ -30,7 +30,7 @@ export const gate = ({
 		spawn: readSpawn(params),
 		requester: REQUESTER,
 		config: {},
-		settings: SETTINGS,
+		chosen: SETTINGS,
 		hasKey: true,
 		...overrides,
 	});

@@ -46,7 +46,6 @@ async function collectKeys(choice, lookup) {
   return keys;
 }
 function plan(choice, keys) {
-  if ("skipped" in choice) return choice;
   const attempts = [];
   for (const step of steps(choice)) {
     const key = keys[step.holder];
@@ -113,7 +112,7 @@ function settingsOf(stored) {
   if (scope === void 0) return { skipped: notValid("scope") };
   return { provider, gateway, scope };
 }
-var scopeOf = (settings) => "skipped" in settings ? DEFAULT_SCOPE : settings.scope;
+var scopeOf = (stored) => readScope(stored.scope) ?? DEFAULT_SCOPE;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
@@ -927,7 +926,6 @@ function limitSignal(ms, clock, parent) {
 // src/core/scoring/route.ts
 async function route(input) {
   const { attempts, signal } = input;
-  if ("skipped" in attempts) return attempts;
   if (attempts.length === 0) return { skipped: KEY_UNSET };
   const failed = [];
   for (const [i, attempt] of attempts.entries()) {
@@ -1097,8 +1095,12 @@ function roleFor(agent) {
 async function routeSpawn($, spawn, next, options) {
   const callerSet = callerEffort.delete(spawn.tool_use_id);
   const settings = settingsOf(options);
-  if (next.origin.plugin !== ENGINE || !routable(spawn, scopeOf(settings)))
+  if (next.origin.plugin !== ENGINE || !routable(spawn, scopeOf(options)))
     return next(spawn);
+  if ("skipped" in settings) {
+    await $.ui.log(skippedLine(settings.skipped));
+    return next(spawn);
+  }
   const state = routingState({
     role: roleFor(spawn.subagentType),
     description: spawn.description,

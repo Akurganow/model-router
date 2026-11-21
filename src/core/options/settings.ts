@@ -113,12 +113,13 @@ export function settingsOf(stored: Stored): Settings | NoChoice {
 }
 
 /**
- * Returns the scope, or the default scope when the settings are not valid.
- * Settings that are not valid route nothing, so the default scope decides which
- * calls get the skip reason.
+ * Returns the value the stored scope reads as: the default for a silent text,
+ * and the default scope only when the stored scope itself is not valid. The
+ * other settings play no part: a valid stored scope decides which calls get the
+ * skip line of another setting that is not valid.
  */
-export const scopeOf = (settings: Settings | NoChoice): Scope =>
-	"skipped" in settings ? DEFAULT_SCOPE : settings.scope;
+export const scopeOf = (stored: Stored): Scope =>
+	readScope(stored.scope) ?? DEFAULT_SCOPE;
 
 export const useOneOf = (setting: ValueSetting): string =>
 	`${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
