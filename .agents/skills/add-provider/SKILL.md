@@ -158,7 +158,8 @@ The errors name each place. They do not say this:
 The calibration asks one maker.
 `MAKER` in `scripts/calibrate.ts` names it, and the script derives from it the two key holders it takes: the maker's own and `openrouter`.
 The question texts and the factors of the pick rule in `src/core/parts/tier.ts` and `src/core/parts/work.ts` are fitted to the answers of that maker.
-One set serves every provider, so a new provider adds no row to the script and changes neither `MAKER` nor the factors.
+One set serves every provider, so a new provider adds no row to the script and changes neither `MAKER` nor the factors, unless a run against the new maker is agreed.
+The three steps below then change `MAKER` and nothing else.
 
 `fitWarnings` in `scripts/jev-fit.ts` drops the vendor prefix of a reply's model name, the text up to the last `/`.
 It compares the rest with `FITTED_ON` as text.
@@ -189,27 +190,28 @@ The failures name each place. They do not say this:
 - `plugins/model-router-hermes/tests/test_defaults_and_gates.py` holds the key holders of each gateway value as a table, written by hand.
 - The build writes the bundles, the npm tree, the manifests and `plugins/model-router-hermes/constants.json`. The Hermes Python source needs no edit.
 - A new maker reaches the choices of `provider` in `plugins/model-router-hermes/plugin.yaml`, and the `settings` and `choices` of `constants.json`. `scripts/build/hermes.ts` needs no edit.
-- The literal tables of `constants.json` and `plugin.yaml` in `scripts/build-hermes.test.ts` fail until you write the new value out.
+- The literal tables of `constants.json` and `plugin.yaml` in `scripts/build-hermes.test.ts` fail until you write the new value out in each list of makers. Its `choices` literal keeps the openai block only, so the new maker needs no block.
+- `src/adapters/claude/__tests__/unit/keys.test.ts` loops over `MAKERS` and fails until `keyVariable` reads the new variable.
 - Hermes asks a new maker like the other three harnesses, once a user stores it as `provider`.
 - Biome reports no place that lacks the provider. It checks the format, so run `npm run fix` after a hand edit.
 - A test that stands in for a value that is not valid with a company's name breaks when that company becomes a maker, as `src/adapters/omp/__tests__/unit/settings.test.ts` did with `"openai"`. Pick a stand-in that no maker will take.
 
-A choice asks the key holders of its maker and OpenRouter, so no one choice asks every key holder.
+Each test below holds a rule that every maker shares in one row, so a new maker adds no row to it:
 
-54. In `src/adapters/claude/__tests__/unit/keys.test.ts`, read the key variables under choices that together hold every key holder.
+- `src/core/__tests__/unit/provider.test.ts` holds that the maker's own key is the first holder of its direct path, in one `plan` row and one `collectKeysSync` row of openai.
+- `src/core/__tests__/integration/decide.test.ts` holds one row for each line shape: openai direct, openai through OpenRouter and google direct. A shape no row holds, such as a reply with no model name, adds one.
+- `src/core/__tests__/unit/settings.test.ts` holds one `settingsReport` row of openai, which `docs/providers.md` quotes.
+- The edge rows of a blank key, spaces and `null` stay with the typesafe rows of each harness's key test.
 
-Some tests loop over a list of makers, and none fails when a maker is missing from it.
-The next four steps add the new maker to them.
+54. Add `plugins/model-router-hermes/tests/fixtures/<provider>-direct.json` only when the provider's request differs in shape from `google-direct.json`.
 
-55. Give the `plan` and `collectKeysSync` tables in `src/core/__tests__/unit/provider.test.ts` the maker's rows for each gateway.
-56. In `src/core/__tests__/integration/decide.test.ts`, add a test for each path of the maker, with the line's key holder, model and token counts, and one that names a failed first attempt after a fallback.
-57. Add the maker to the test of a blank, spaces or null key in each harness: `src/adapters/claude/__tests__/unit/keys.test.ts`, `src/adapters/openclaw/__tests__/unit/settings.test.ts`, and `test_config_tool.py` and `test_defaults_and_gates.py` of Hermes.
-58. Add `plugins/model-router-hermes/tests/fixtures/<provider>-direct.json`: a request with the `provider` and its key, the reply of the host in the provider's own format, and the response and route that follow. Each provider has one.
+`google-direct.json` is the one fixture of a maker other than typesafe.
+Its replay in `src/adapters/hermes/__tests__/integration/index.test.ts` shows that `provider` passes through.
 
 The next step holds only when a setting gets a fifth value.
 Then only `claude plugin test` fails, at the dialog, and the adapter's unit test passes with its fake engine.
 
-59. Offer the values in the Claude Code dialog as the maintainer answered.
+55. Offer the values in the Claude Code dialog as the maintainer answered.
 
 ## What nothing reports
 
@@ -219,27 +221,32 @@ Each place below keeps its old text while every check passes.
 
 The type check does not read `consequences`, so a missing label prints as `undefined`.
 
-60. Add the value to `consequences` under `provider` in `TEXTS` in `src/core/options/settings.ts`.
-61. Write the same text after the value's name in each text under `options.provider.descriptions` in `metadata/source.json`, and rebuild.
+56. Add the value to `consequences` under `provider` in `TEXTS` in `src/core/options/settings.ts`.
+57. Write the same text after the value's name in each text under `options.provider.descriptions` in `metadata/source.json`, and rebuild.
 
 ### OpenClaw
 
-62. Correct what `plugins/model-router-openclaw/PRIVACY.md` says a `.env` file can supply, by what you stated under [OpenClaw runtime, logs and environment](../../../docs/clients.md#openclaw-runtime-logs-and-environment).
+58. Correct what `plugins/model-router-openclaw/PRIVACY.md` says a `.env` file can supply, by what you stated under [OpenClaw runtime, logs and environment](../../../docs/clients.md#openclaw-runtime-logs-and-environment).
 
 ### Hermes
 
 Hermes stores each key's secret setting under the key's variable.
-The next two steps hold only when a provider of Hermes's own reads that variable.
+The next four steps hold only when a provider of Hermes's own reads that variable.
 
-63. Say in the help of `hermes.keys.<holder>` in `metadata/source.json` what a key saved there changes in Hermes itself, not only the variable, and rebuild.
-64. Say the same under the table of [Keys](../../../plugins/model-router-hermes/README.md#keys) and in the keys list of `plugins/model-router-hermes/skills/model-router-setup/SKILL.md`.
-    Correct "but one" in `plugins/model-router-hermes/PRIVACY.md`, which a second shared variable makes false.
+59. Give the help of `hermes.keys.<holder>` in `metadata/source.json` the one shape of every holder, and rebuild:
+    - the send rule;
+    - "Hermes's own <name> provider reads the same key and may use it for your own session.";
+    - "Set model.provider to keep another provider.";
+    - a pointer to the README's Keys.
+60. State the full effect once, under the table of [Keys](../../../plugins/model-router-hermes/README.md#keys) in the Hermes README.
+61. In `plugins/model-router-hermes/PRIVACY.md`, say in one sentence what a key saved in the form changes in Hermes itself, and link that Keys section.
+62. In the keys list of `plugins/model-router-hermes/skills/model-router-setup/SKILL.md`, say the same one sentence and link that Keys section.
 
 ### Claude Code
 
-65. In [What this mod can reach](../../../plugins/model-router/README.md#what-this-mod-can-reach), add the variable and the provider to the rows of `$.env.get` and `$.http.fetch`.
-66. Name the key and the provider in the answers on secrets and on usage above the table.
-67. Run `claude plugin validate --strict plugins/model-router`, and compare the variables it prints with the row of `$.env.get`.
+63. In [What this mod can reach](../../../plugins/model-router/README.md#what-this-mod-can-reach), add the variable and the provider to the rows of `$.env.get` and `$.http.fetch`.
+64. Name the key and the provider in the answers on secrets and on usage above the table.
+65. Run `claude plugin validate --strict plugins/model-router`, and compare the variables it prints with the row of `$.env.get`.
 
 `node scripts/check-surface.ts` still passes: it compares engine calls, not variable names.
 
@@ -253,17 +260,17 @@ So a case passes whichever key holder answered.
 
 The next four steps hold only when the evals score through the new provider.
 
-68. Pass its key in `clientEnv` in `scripts/evals/scrub.ts`, and require it in `missingKeys` in `scripts/evals/run.ts`.
-69. Name its secret in `.github/workflows/evals.yml`.
-70. In each client's job of that workflow, set `provider` to the new maker in the client's own store after the plugin's install.
-71. Make the eval read the key holder from the decision line, and fail a case that another key holder answered.
+66. Pass its key in `clientEnv` in `scripts/evals/scrub.ts`, and require it in `missingKeys` in `scripts/evals/run.ts`.
+67. Name its secret in `.github/workflows/evals.yml`.
+68. In each client's job of that workflow, set `provider` to the new maker in the client's own store after the plugin's install.
+69. Make the eval read the key holder from the decision line, and fail a case that another key holder answered.
 
 ### Key shapes
 
 `scripts/scan-owner-setup.ts` knows some key shapes, and so does the masking in `src/core/brief/brief.ts`.
 [The task text](../../../docs/providers.md#the-task-text) lists the shapes of the masking and changes with it.
 
-72. Check that both know the shape of the new provider's keys, and add a missing shape to each.
+70. Check that both know the shape of the new provider's keys, and add a missing shape to each.
 
 ## The texts that name the provider
 
@@ -271,27 +278,30 @@ No test reads these texts for a provider's name.
 A new provider is a new company that receives the task text.
 Each search below reads every Markdown file and `metadata/source.json`.
 
-73. Run `git grep -n -i -E 'typesafe|openrouter' -- '*.md' metadata/source.json ':!CHANGELOG.md' ':!packages'`, and read each hit.
-74. In each of the four `PRIVACY.md` under `plugins/`, name the company, its host and its privacy policy.
-75. In each of the four READMEs under `plugins/`, add the key, its variable and the new value of `provider`.
-76. Name the key's setting in each README whose harness has one; the others say where the key comes from.
-77. In the root `README.md`, change the set-up steps and "What leaves the machine".
-78. In each of the four `model-router-setup/SKILL.md` under `plugins/`, add the key and the new value of `provider`.
-79. In `docs/providers.md`, change these sections:
+71. Run `git grep -n -i -E 'typesafe|openrouter' -- '*.md' metadata/source.json ':!CHANGELOG.md' ':!packages'`, and read each hit.
+72. In the company table of each of the four `PRIVACY.md` under `plugins/`, name the company, its host and its privacy policy.
+73. In each of the four READMEs under `plugins/`, add the key and its variable.
+74. In the same READMEs, add the new value to the values of `provider` they name. Add no label: the table in `docs/providers.md` holds it.
+75. Name the key's setting in each README whose harness has one; the others say where the key comes from.
+76. In the root `README.md`, change the set-up steps and "What leaves the machine".
+77. In the list of values of `provider` in each of the four `model-router-setup/SKILL.md` under `plugins/`, add the key, the new value and its label.
+78. In `docs/providers.md`, change these sections:
+    - the table of [The provider and the gateway](../../../docs/providers.md#the-provider-and-the-gateway), which holds each value's label;
     - [Keys](../../../docs/providers.md#keys);
     - [What each company does with the text](../../../docs/providers.md#what-each-company-does-with-the-text);
     - [Your choices](../../../docs/providers.md#your-choices);
     - the names and the examples of [The routing line](../../../docs/providers.md#the-routing-line);
     - the table of [The request](../../../docs/providers.md#the-request), with a row for each path, and its sentences on the key header and on who accepts an image reference.
-80. Change the plugin descriptions under `descriptions` in `metadata/source.json`: they name the hosts of the providers' own APIs.
+79. Change the plugin descriptions under `descriptions` in `metadata/source.json`: they name the hosts of the providers' own APIs.
+80. End each key text in `metadata/source.json` with the provider condition: "…and only when the provider option is <maker> and the gateway option allows <company>'s own API." Say "setting" where the harness does.
 
 A line that counts providers, keys or variables names none of them, so the first search misses it.
 
 81. Run `git grep -n -i -w -E 'both|either|two|second|other provider|four' -- '*.md' metadata/source.json ':!CHANGELOG.md' ':!packages'`, and correct each hit the change makes false.
 
-The next step holds only for a model other than Jev.
+A text says Jev only where it means Jev itself: the `typesafe` label, the calibration, the evals and the fit. Elsewhere it says "the scoring model".
 
-82. Run `git grep -n 'Jev' -- '*.md' metadata/source.json src/adapters/hermes/texts.ts ':!CHANGELOG.md' ':!packages'`, and correct each hit the new model makes false.
+82. Run `git grep -n 'Jev' -- '*.md' metadata/source.json src ':!CHANGELOG.md' ':!packages'`, and reword each hit that says Jev where the scoring model is meant.
 
 The rebuild holds for every change.
 
