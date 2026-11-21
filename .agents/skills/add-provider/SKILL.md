@@ -57,10 +57,11 @@ So the name must be the id that omp gives the provider.
 
 17. Find that id in omp's source or documentation.
 18. Find whether OpenClaw's list of credential variables holds the provider's usual key variable.
-19. Find whether a provider of Hermes's own reads the key's variable. [Hermes registration and settings](../../../docs/clients.md#hermes-registration-and-settings) says how Hermes stores a secret setting.
+19. Find whether a provider of Hermes's own reads the provider's usual key variable. Search Hermes's source for the variable's name: its provider registry does not list every reader, as OpenRouter shows.
+    [Hermes registration and settings](../../../docs/clients.md#hermes-registration-and-settings) says how Hermes stores a secret setting.
 20. State the omp id, or that omp has none, as one plain sentence under [omp model roles](../../../docs/clients.md#omp-model-roles).
 21. State what OpenClaw's list holds under [OpenClaw runtime, logs and environment](../../../docs/clients.md#openclaw-runtime-logs-and-environment), which says what OpenClaw does with a listed one.
-22. State whether a provider of Hermes's own reads the variable, under [Hermes registration and settings](../../../docs/clients.md#hermes-registration-and-settings).
+22. State whether a provider of Hermes's own reads the provider's usual key variable, under [Hermes registration and settings](../../../docs/clients.md#hermes-registration-and-settings).
 23. Put the source of each new sentence on the client's evidence page of the wiki, as [Adding evidence](https://github.com/Akurganow/model-router/wiki#adding-evidence) says.
 24. Take the omp id as the name, or with no such id the provider's own name in lower case.
 25. Choose the key's setting name, and its variable if not yet chosen, after `KEY_VARIABLES` and `KEY_FIELDS` in `src/core/providers/provider.ts`.
@@ -170,7 +171,7 @@ The next two steps hold only for another model, and only after the maintainer ag
 
 The failures name each place. They do not say this:
 
-- The key's places come one after another: `metadata/source.json`, then `metadata/source.schema.json`, then the `Source` type in `scripts/build/source.ts`, then `FIXTURE` in `scripts/build-shape.test.ts`.
+- The Claude Code and OpenClaw key's places come one after another: `metadata/source.json`, then `metadata/source.schema.json`, then the `Source` type in `scripts/build/source.ts`, then `FIXTURE` in `scripts/build-shape.test.ts`.
 - In `metadata/source.json` the key is an option under `claude.userConfig.keys` and a hint under `openclaw.uiHints`.
 - Most failing rows pin a literal, which stays a literal: write the new one out.
 - `plugins/model-router-hermes/tests/test_config_tool.py` holds `SECRETS` and, beside it, the expected key lines, both written by hand.
@@ -229,8 +230,9 @@ Both literals change with any new provider or value.
 Hermes stores each key's secret setting under the key's variable.
 The next two steps hold only when a provider of Hermes's own reads that variable.
 
-64. Say so in the setting's help in `metadata/source.json`, and rebuild.
-65. Say so under the table of [Keys](../../../plugins/model-router-hermes/README.md#keys) and in the keys list of `plugins/model-router-hermes/skills/model-router-setup/SKILL.md`.
+64. Say in the setting's help in `metadata/source.json` what a key saved there changes in Hermes itself, not only the variable, and rebuild.
+65. Say the same under the table of [Keys](../../../plugins/model-router-hermes/README.md#keys) and in the keys list of `plugins/model-router-hermes/skills/model-router-setup/SKILL.md`.
+    Correct "but one" in `plugins/model-router-hermes/PRIVACY.md`, which a second shared variable makes false.
 
 ### Claude Code
 
