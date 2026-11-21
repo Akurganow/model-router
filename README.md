@@ -381,8 +381,8 @@ openclaw plugins disable model-router-openclaw
 ```
 
 The plugin sends nothing while it is disabled. Removing the key of every
-path the `gateway` setting allows also stops routing, and every spawn then
-reports `key unset`.
+path the `gateway` setting allows also stops routing, and every spawn that does
+not pass through unchanged then reports `key unset`.
 
 **Hermes Agent.** To turn routing off, set the delegation backend back to
 `default`. Run this line in a shell:
@@ -403,7 +403,8 @@ hermes plugins remove model-router-hermes
 Never disable or remove the plugin while `delegation.backend` is still
 `model-router`. Hermes then fails delegation closed, and every `delegate_task`
 call returns an error. Removing the key of every path the `gateway`
-setting allows also stops routing, and every task then reports `key unset`.
+setting allows also stops routing, and every task without a `level` then
+reports `key unset`.
 
 ## What leaves the machine
 
@@ -417,8 +418,9 @@ setting allows also stops routing, and every task then reports `key unset`.
 >   `openrouter`, and first under `openrouter-first`.
 >
 > With both keys, `auto` and `openrouter-first` send the same text to the
-> second host when the first fails. The default, `direct`, never contacts
-> OpenRouter.
+> second host when the first fails in a way that
+> [The provider and the gateway](docs/providers.md#the-provider-and-the-gateway)
+> lists. The default, `direct`, never contacts OpenRouter.
 >
 > Each request also carries the agent text. The built-in `general-purpose` and
 > `claude` agents, omp's bundled `task` agent, and every Hermes Agent task send

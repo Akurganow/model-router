@@ -38,20 +38,22 @@ A 2xx reply whose body cannot be read is a `network error`.
 ## A setting that is not valid
 
 Each of `provider`, `gateway` and `scope` takes only the values of its own list.
-A stored setting that holds any other text is not valid.
-An absent or blank value reads as the default.
+A stored setting that holds any other text is not valid, a value with a space around it included.
+An absent value, a value that is not text and a blank text read as the default.
+Hermes Agent has no `scope` setting.
 
 While a setting is not valid, the plugin routes no task.
 Each task runs as it would without the plugin.
 The plugin then reads no key and sends no request.
 The skip line gives the reason `<setting> not valid: run setup`, for example `provider not valid: run setup`.
 Where more than one setting is not valid, the reason names the first of `provider`, `gateway` and `scope`.
+In Oh My Pi two gates stand before this check, as [Gate reasons](../plugins/model-router-omp/README.md#gate-reasons) lists.
 
 The skip line shows for these tasks:
 
 - In Claude Code and Oh My Pi, the calls the stored `scope` covers.
   When `scope` itself is not valid, they are the calls of the default scope.
-- In OpenClaw, every spawn that does not pass without a line.
+- In OpenClaw, every spawn that does not pass through unchanged.
 - In Hermes Agent, every task.
 
 Claude Code keeps such a value from the plugin.
@@ -91,7 +93,7 @@ Each key goes only to the address of the company that issued it.
 The plugin passes the address and the key with every request, so no environment variable moves a key to another host.
 An environment variable can supply a key, and with it the account that receives the task text.
 Each key identifies your account to the company that issued it.
-With no key for any allowed path, every task reports `key unset`.
+With no key for any allowed path, each task the plugin would score reports `key unset`.
 A key with no model still scores: [A slot with no model](#a-slot-with-no-model) says what the plugin does then.
 
 ## The config tool
@@ -115,7 +117,7 @@ typesafe key: set
 ```
 
 The tool never returns a key, its length or any part of it.
-In OpenClaw and Hermes Agent the tool also prints each model setting, as its README says: the configured value, or `unset`.
+In OpenClaw and Hermes Agent the tool also prints each model setting between the setting lines and the key lines, as its README says: the configured value, or `unset`.
 
 [A setting that is not valid](#a-setting-that-is-not-valid) prints its stored text and the values to use, as `<setting>: <stored text> (not valid: use one of <values>)`.
 Every valid setting then prints as `<setting>: <value>`.
@@ -126,6 +128,8 @@ provider: typesafe
 gateway: fast (not valid: use one of direct, auto, openrouter-first, openrouter)
 scope: core
 ```
+
+In Claude Code no setting prints as not valid, because [the plugin never gets such a value](../plugins/model-router/README.md#a-stored-value-outside-an-options-list).
 
 ## A slot with no model
 
@@ -253,9 +257,15 @@ The plugin masks token-shaped strings only, so a private name in a description l
 Each setting has a command, and each plugin README names it.
 A bare command prints the setting's line, as [the config tool](#the-config-tool) prints it.
 A command with a valid value writes it and prints the new line.
-A valid value replaces a stored value that is not valid.
+A value equal to the stored text is not written, and the command prints `<setting> unchanged: already <value>`.
+The stored text is compared as it is.
+So a valid value replaces a stored value that is not valid, and a default typed over nothing stored is written.
 An invalid value lists the allowed ones.
 A refused or failed write prints `<setting> unchanged: <reason>` and leaves the stored value as it was.
+OpenClaw and Hermes Agent add the setting's current line after a refusal.
+In Claude Code, a command typed at your own prompt always writes, and only the dialog of the config tool answers `already`.
+A Claude Code command from any other origin prints the setting's line and writes nothing.
+In Oh My Pi, a command writes your global setting, and a project value can change the reply, as [Change the options](../plugins/model-router-omp/README.md#change-the-options) says.
 
 ## Your choices
 
