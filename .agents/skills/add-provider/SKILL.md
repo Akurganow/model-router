@@ -127,8 +127,8 @@ No test reads the URL of a row of `ENDPOINTS`, and a wrong one sends the key and
 So the provider's own rows fail first, as [Tests](../../../AGENTS.md#tests) asks.
 
 41. Add a row that pins the new key to its own address, in `src/core/__tests__/integration/route.test.ts` and in `plugins/model-router/tests/keys.test.ts`.
-42. Add the new key to the hand-written lists of `plugins/model-router-hermes/tests/test_sentinel.py`, which passes without it.
-    A provider that `auto` leaves out gets its own run of that test under a value that allows it.
+42. Add the new key to `SECRETS` and to the tuple of sentinels in `plugins/model-router-hermes/tests/test_sentinel.py`, which passes without it.
+    Add it to the expected keys there only when `auto` holds the provider.
 43. Run `npx tsc -p src` and `npx tsc -p scripts`.
 44. Fill each place an error names, and run both again until both pass.
 
