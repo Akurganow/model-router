@@ -44,7 +44,7 @@ const KEPT_LABELS: Readonly<Record<KeptEffort, string>> = {
 	caller: CALLER_EFFORT,
 };
 
-// Jev is asked once for both parts, with the task, its context and its description under the default role.
+// The scoring model is asked once for both parts, with the task, its context and its description under the default role.
 async function score(
 	request: HermesRequest,
 	settings: Settings,

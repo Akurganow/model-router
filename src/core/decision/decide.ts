@@ -66,7 +66,7 @@ export function decide(
 }
 
 /**
- * Asks Jev once for the tier and work parts and reads both levels from the
+ * Asks the scoring model once for the tier and work parts and reads both levels from the
  * reply. Returns the skip when the call skips or the reply lacks a part.
  * Rejects as route does.
  */

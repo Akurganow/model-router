@@ -105,10 +105,10 @@ export function readSettings(
 }
 
 /**
- * Returns the Jev keys of the key holders the choice asks, each from a source
+ * Returns the scoring keys of the key holders the choice asks, each from a source
  * field or else from its environment variable. A key holder with no key is
  * absent, and a NoChoice looks up nothing. OpenClaw's own OpenRouter provider reads the OpenRouter variable
- * too; no other credential of OpenClaw is a Jev key. Throws only when a source
+ * too; no other credential of OpenClaw is a scoring key. Throws only when a source
  * getter throws.
  */
 export function readKeys(
