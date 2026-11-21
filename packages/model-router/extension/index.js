@@ -622,17 +622,15 @@ async function apply(omp, ctx, setting, value) {
     return unchanged(setting, UNREADABLE);
   if (global[setting] === value && before[setting] === value)
     return unchanged(setting, alreadyValue(value));
-  if (global[setting] !== value) {
+  const wrote = global[setting] !== value;
+  if (wrote) {
     try {
       await omp.writeSetting(ctx.cwd, plugin, setting, value);
     } catch (err) {
       return unchangedBy(setting, err);
     }
   }
-  const after = await readSettings(omp, ctx.cwd) ?? {
-    ...before,
-    [setting]: value
-  };
+  const after = wrote ? await readSettings(omp, ctx.cwd) ?? { ...before, [setting]: value } : before;
   const line = valueLine(setting, after);
   return after[setting] === value ? line : [line, projectOverrides(setting)].join(LINE_BREAK);
 }
