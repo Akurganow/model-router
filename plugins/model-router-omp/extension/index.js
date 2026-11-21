@@ -872,6 +872,7 @@ var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
 var SERVER_ERRORS = { min: 500, max: 599 };
 var OK = { min: 200, max: 299 };
 var isSuccess = (status) => status >= OK.min && status <= OK.max;
+var isServerError = (status) => status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
 var isFailure = (value) => Object.hasOwn(value, "failure");
 function skipText(failure, aborted) {
   switch (failure.failure) {
@@ -895,7 +896,7 @@ function fallsBack(failure) {
     case "network":
       return true;
     case "status":
-      return FALLBACK_STATUSES.has(failure.status) || failure.status >= SERVER_ERRORS.min && failure.status <= SERVER_ERRORS.max;
+      return FALLBACK_STATUSES.has(failure.status) || isServerError(failure.status);
     case "aborted":
     case "malformed":
     case "unknown":
@@ -978,7 +979,7 @@ var BACKOFF_JITTER = 0.25;
 var SERVER_DELAY_MAX_MS = 6e4;
 function isRetried(outcome) {
   if (!isFailure(outcome))
-    return outcome.status === 408 || outcome.status === 429 || outcome.status >= SERVER_ERRORS.min && outcome.status <= SERVER_ERRORS.max;
+    return outcome.status === 408 || outcome.status === 429 || isServerError(outcome.status);
   switch (outcome.failure) {
     case "timed out":
     case "network":
@@ -1000,6 +1001,7 @@ function serverDelayMs(headers) {
   if (Number.isFinite(seconds)) {
     return seconds >= 0 ? seconds * 1e3 : void 0;
   }
+  if (!raw.endsWith("GMT")) return void 0;
   const date = Date.parse(raw);
   return Number.isNaN(date) ? void 0 : Math.max(0, date - Date.now());
 }
