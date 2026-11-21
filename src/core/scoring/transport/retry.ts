@@ -52,7 +52,7 @@ function serverDelayMs(headers: HeaderReader): number | undefined {
 		return seconds >= 0 ? seconds * 1000 : undefined;
 	}
 	// `Date.parse` alone is lenient: it reads "2, 3", a header sent twice, as a date in 2001.
-	// An HTTP date ends in GMT, so no other text is taken as a date.
+	// Only a text that ends in GMT, as the date a server sends does, reaches it.
 	if (!raw.endsWith("GMT")) return undefined;
 	const date = Date.parse(raw);
 	return Number.isNaN(date) ? undefined : Math.max(0, date - Date.now());
