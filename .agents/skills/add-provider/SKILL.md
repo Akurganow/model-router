@@ -113,12 +113,12 @@ The next four steps hold only for such a provider.
 34. For another key header, give the row its own `keyHeader`. For a model in the URL or a wait the body names, add a field to `Endpoint`.
 35. Read the field in `ask`, or in `src/core/scoring/transport/` when it changes a retry or a wait.
 36. Change [The request](../../../docs/providers.md#the-request) when a header or the body changes for any provider.
-37. Change [Retries and the second provider](../../../docs/providers.md#retries-and-the-second-provider) when a retry or a wait changes.
+37. Change [Retries and the second attempt](../../../docs/providers.md#retries-and-the-second-attempt) when a retry or a wait changes.
 
 `FALLBACK_STATUSES` serves every provider.
 The next step holds only when the maintainer sent a new status on to the next attempt.
 
-38. Add the status to `FALLBACK_STATUSES`, with its failing row first, and to the statuses in [Which provider gets a task](../../../docs/providers.md#which-provider-gets-a-task).
+38. Add the status to `FALLBACK_STATUSES`, with its failing row first, and to the statuses in [The provider and the gateway](../../../docs/providers.md#the-provider-and-the-gateway).
 
 ## Let the type check lead
 
@@ -263,7 +263,7 @@ Each search below reads every Markdown file and `metadata/source.json`.
 73. In each of the four `model-router-setup/SKILL.md` under `plugins/`, add the key and the new value of `provider`.
 74. In `docs/providers.md`, change these sections:
     - [Keys](../../../docs/providers.md#keys);
-    - [What the providers do with it](../../../docs/providers.md#what-the-providers-do-with-it);
+    - [What each company does with the text](../../../docs/providers.md#what-each-company-does-with-the-text);
     - [Your choices](../../../docs/providers.md#your-choices);
     - the names and the examples of [The routing line](../../../docs/providers.md#the-routing-line);
     - the sentence of [The request](../../../docs/providers.md#the-request) on who accepts an image reference.
