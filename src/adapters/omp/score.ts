@@ -10,7 +10,7 @@ import { realClock } from "#utils/clock.ts";
 import { lineFor, planEffort, type Routed } from "./effort.ts";
 import type { Batch } from "./gates.ts";
 import { type Facts, itemCheck, roleOf } from "./items.ts";
-import type { Stored } from "./store.ts";
+import type { StoredItem } from "./store.ts";
 
 export type TaskItem = {
 	readonly task: string;
@@ -25,7 +25,7 @@ export type Pending = {
 	readonly item: TaskItem;
 	readonly agent: string;
 };
-type Scored = Pending & { readonly stored: Stored };
+type Scored = Pending & { readonly stored: StoredItem };
 
 const MAX_PARALLEL = 4;
 
@@ -85,7 +85,7 @@ function scoreItem(
 	});
 }
 
-const skipped = (reason: string): Stored => ({ line: skippedLine(reason) });
+const skipped = (reason: string): StoredItem => ({ line: skippedLine(reason) });
 
 /**
  * Returns the stored entry for the levels the scoring model decided: the level, the
@@ -101,7 +101,7 @@ function toStored(
 	decided: DecidedWithWork | Skipped,
 	item: TaskItem,
 	facts: Facts,
-): Stored {
+): StoredItem {
 	if ("skipped" in decided) return skipped(decided.skipped);
 	const routed: Routed = {
 		level: decided.tier,

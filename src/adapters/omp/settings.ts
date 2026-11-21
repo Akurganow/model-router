@@ -4,9 +4,11 @@ import {
 	type Attempt,
 	type Choice,
 	collectKeys,
+	GATEWAYS,
 	type Gateway,
 	KEY_VARIABLES,
 	type KeyHolder,
+	narrowsGateway,
 	plan,
 } from "#core/providers/provider.ts";
 import { isRecord } from "#utils/guards.ts";
@@ -15,9 +17,8 @@ import type { Facts } from "./items.ts";
 import { FALLBACK_NAME } from "./name.ts";
 import type { Context, Lookup, OmpImports } from "./types.ts";
 
-// A gateway value a project may narrow, and the single-path values it narrows to.
-const NARROWABLE: readonly Gateway[] = ["auto", "openrouter-first"];
-const SINGLE_PATH: readonly Gateway[] = ["direct", "openrouter"];
+const gatewayOf = (text: unknown): Gateway | undefined =>
+	GATEWAYS.find((gateway) => gateway === text);
 
 const namesNoValue = (
 	setting: "provider" | "gateway",
@@ -49,10 +50,11 @@ function gatewayText(global: unknown, effective: unknown): unknown {
 	if (namesNoValue("gateway", effective)) return effective;
 	if (namesNoValue("gateway", global)) return global;
 	// Compares the stored texts, not their values: a blank text reads as direct and would narrow auto.
-	const narrows =
-		NARROWABLE.some((value) => value === global) &&
-		SINGLE_PATH.some((value) => value === effective);
-	return narrows ? effective : global;
+	const wider = gatewayOf(global);
+	const narrowed = gatewayOf(effective);
+	return wider && narrowed && narrowsGateway(narrowed, wider)
+		? effective
+		: global;
 }
 
 /**
