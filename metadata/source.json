@@ -192,7 +192,7 @@
 			},
 			"openrouter_api_key": {
 				"label": "OpenRouter API key",
-				"help": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the provider setting allows OpenRouter. A key saved here becomes the key of Hermes's own OpenRouter provider. With no model.provider in config.yaml, Hermes then uses OpenRouter for its own session, so set model.provider to keep another provider."
+				"help": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the provider setting allows OpenRouter. A key saved here becomes the key of Hermes's own OpenRouter provider. With neither model.provider nor a local model.base_url in config.yaml, Hermes then uses OpenRouter for its own session, so set model.provider to keep another provider."
 			}
 		},
 		"install": {
