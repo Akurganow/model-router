@@ -2,25 +2,26 @@
 name: model-router-setup
 description: >
   Use when the user wants to set up or configure model-router in Claude Code,
-  to choose its provider or scope, to add a TypeSafe or OpenRouter key, to find
+  to choose its provider, gateway or scope, to add a TypeSafe or OpenRouter key, to find
   out why routing is off, or to check that routing works. It finds what already
   holds and does only what is missing.
 ---
 
 # model-router setup for Claude Code
 
-model-router scores each routed Agent call with Jev, on TypeSafe or OpenRouter. It sets the subagent's model, one of haiku, sonnet or opus, and its effort.
+model-router scores each routed Agent call with Jev, on TypeSafe's own API or through OpenRouter. It sets the subagent's model, one of haiku, sonnet or opus, and its effort.
 
 ## What set up means
 
 Routing works when all of these hold:
 
 - The plugin is enabled.
-- A scoring key exists for a provider the `provider` setting allows.
+- A scoring key exists for a path the `gateway` setting allows.
 
 The person may also choose:
 
-- `provider`: which providers score a call, and in which order.
+- `provider`: whose model scores a call.
+- `gateway`: how OpenRouter is used to reach the provider.
 - `scope`: which Agent calls the plugin routes.
 
 ## Your job
@@ -32,44 +33,47 @@ Find out which of these already hold, with the `mcp__model-router__config` tool 
 ### The config tool
 
 - The tool is `mcp__model-router__config`. It takes one optional input, `setting`.
-- With no input it prints a `provider` line, a `scope` line, and one `<provider> key: set` or `<provider> key: unset` line for each provider the `provider` value allows.
-- A provider line looks like `provider: auto (typesafe, then openrouter)`. A scope line looks like `scope: core`.
+- With no input it prints a `provider` line, a `gateway` line, a `scope` line, and one key line for each path the `gateway` value allows, in order, as in `typesafe key: set` or `openrouter key: unset`.
+- A provider line looks like `provider: typesafe`. A gateway line looks like `gateway: auto (typesafe, then openrouter)`. A scope line looks like `scope: core`.
 - A key counts as set when its plugin option or its environment variable holds a non-blank value.
 - The tool never returns a key, its length or any part of it.
-- With `setting` set to `provider` or `scope`, the plugin opens its own dialog. The person picks a value, and the plugin writes it. The reply is the new setting line.
+- With `setting` set to `provider`, `gateway` or `scope`, the plugin opens its own dialog. The person picks a value, and the plugin writes it. The reply is the new setting line.
 - Pass no value to the tool. The person chooses in the dialog.
 - The dialog writes nothing for the current value, a dismissed dialog or free text. It also writes nothing where no dialog can open, such as `claude -p`.
 - Reply `<setting> unchanged: already <value>` means the person kept the current value.
-- Reply `<setting> unchanged: no answer from the dialog` means no dialog answered. The person can type `/model-router:provider <value>` or `/model-router:scope <value>` at their own prompt. A command writes only when typed there.
+- Reply `<setting> unchanged: no answer from the dialog` means no dialog answered. The person can type `/model-router:provider <value>`, `/model-router:gateway <value>` or `/model-router:scope <value>` at their own prompt. A command writes only when typed there.
 - Reply `<setting> unchanged: the answer was not one of the offered values` means the dialog returned something else. Nothing was written.
 - Reply `Permission rules deny this tool, so nothing was read or changed.` means the person's permission rules deny the tool.
-- Both commands print the current value when run with no value. A value outside the list prints the allowed ones.
+- All three commands print the current value when run with no value. A value outside the list prints the allowed ones.
 
 ### Settings
 
-- `provider` takes `typesafe` (the default), `openrouter`, `auto` or `openrouter-first`.
-  - `typesafe` scores on TypeSafe only. `openrouter` scores on OpenRouter only.
-  - `auto` tries TypeSafe, then OpenRouter when TypeSafe fails.
-  - `openrouter-first` tries OpenRouter, then TypeSafe when OpenRouter fails.
-  - With `auto` or `openrouter-first` and only one key set, that key's provider scores alone.
+- `provider` takes one value, `typesafe` (the default): Jev from TypeSafe.
+- `gateway` takes `direct` (the default), `auto`, `openrouter-first` or `openrouter`.
+  - `direct` scores on TypeSafe's own API only.
+  - `auto` tries TypeSafe's own API, then OpenRouter when it fails.
+  - `openrouter-first` tries OpenRouter, then TypeSafe's own API when OpenRouter fails.
+  - `openrouter` scores on OpenRouter only.
+  - With `auto` or `openrouter-first` and only one key set, that key's path scores alone.
 - Claude Code hands the plugin an option's default in place of a stored value outside the option's list. So the tool then prints the default, and no setup line shows.
 - `scope` takes `core` (the default) or `extended`.
   - Under `core`, the plugin routes a call to the built-in agents `general-purpose`, `claude`, `Explore` and `Plan`. A call with no `subagent_type` counts as `general-purpose`.
   - Under `extended`, it routes every Agent call that passes no `model` and no `name`, a fork excepted. That includes user, project and plugin agents.
-  - Under `extended`, the routed model and effort replace the ones an agent's definition sets, and the agent's description and task text go to the provider.
+  - Under `extended`, the routed model and effort replace the ones an agent's definition sets, and the agent's description and task text go to the company that scores.
 - Claude Code has no per-level model setting. The plugin picks haiku for level 0, sonnet for level 1 and opus for level 2.
-- Claude Code ignores plugin options in project and local settings. Only the user's own settings and commands change `provider` and `scope`.
+- Claude Code ignores plugin options in project and local settings. Only the user's own settings and commands change `provider`, `gateway` and `scope`.
 
 ### Keys
 
 - The TypeSafe key is the plugin option `api_key` or the variable `TYPESAFE_API_KEY`. The OpenRouter key is the option `openrouter_api_key` or the variable `OPENROUTER_API_KEY`. The option wins when both exist.
-- The plugin reads a key only for a provider the `provider` value allows. Each key goes only to its own provider.
+- The TypeSafe key serves the direct path, and the OpenRouter key serves the gateway path.
+- The plugin reads a key only for a path the `gateway` value allows. Each key goes only to the company that issued it.
 - The desktop app cannot set a plugin's key yet, and a saved key can read back as empty after a restart. The workaround is the variable in the `env` block of the user settings file, `~/.claude/settings.json`.
 - A variable in that file reaches the environment of every process Claude Code starts, and the key sits there in plain text. Say so when the person chooses it.
 - The plugin reads a key when it loads, so a key change reaches it after the plugin reloads or in a new session.
 - The tool takes no key. The person adds it themselves.
-- With only an OpenRouter key and `provider` still `typesafe`, every call skips with `key unset`. The person sets `provider` to `openrouter`, `auto` or `openrouter-first`.
-- With no key for any allowed provider, every call skips with `key unset`.
+- With only an OpenRouter key and `gateway` still `direct`, every call skips with `key unset`. The person sets `gateway` to `openrouter`, `auto` or `openrouter-first`.
+- With no key for any allowed path, every call skips with `key unset`.
 
 ### Reasons routing is off
 
@@ -90,20 +94,20 @@ More than one can hold. Report every one that holds.
 - It holds the level (`L0`, `L1` or `L2`), the model, the effort and the probability of each chosen level.
 - `caller effort` or `env effort` takes the place of the effort when a kept effort applies.
 - A call that Claude Code then refuses adds a second line, `denied`.
-- The provider that answered follows, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them.
-- After a fallback, the line ends with the provider that failed and its reason, as in ` · openrouter typesafe/jev-1.14.0 · 812/9 tok · typesafe HTTP 503`.
-- After both providers fail, the line names each, for example `skipped, typesafe HTTP 503, openrouter timeout`.
+- Who answered follows, `typesafe` or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them.
+- After a fallback, the line ends with the attempt that failed and its reason, as in ` · openrouter typesafe/jev-1.14.0 · 812/9 tok · typesafe HTTP 503`.
+- After both attempts fail, the line names each, for example `skipped, typesafe HTTP 503, openrouter timeout`.
 - A skipped call runs unchanged.
 
 ### Skip reasons
 
 - `<setting> not valid: run setup`: a stored setting holds text outside its list. Claude Code replaces such a value with the default before the plugin sees it, so the line is not expected here. If it shows, the person sets the setting with its command.
-- `key unset`: no provider the `provider` value allows has a key. Add one as the Keys facts say.
-- `bad reply`: the provider answered without a valid score for one of the two questions.
-- `timeout`: a first attempt got no answer in 2 s, or the call got no decision in the 8 s limit. The network or provider is slow.
+- `key unset`: no path the `gateway` value allows has a key. Add one as the Keys facts say.
+- `bad reply`: the host answered without a valid score for one of the two questions.
+- `timeout`: a first attempt got no answer in 2 s, or the call got no decision in the 8 s limit. The network or host is slow.
 - `cancelled`: Claude Code abandoned the call before the answer came, for example after an interrupt.
 - `network error`: every attempt failed before an answer came. An organization fetch policy that refuses openrouter.ai shows as this too.
-- `HTTP <status>`: the provider answered with that status. `HTTP 401` means the provider rejected the key. `HTTP 429` and `HTTP 503` mean the provider refused or failed on every attempt.
+- `HTTP <status>`: the host answered with that status. `HTTP 401` means the host rejected the key. `HTTP 429` and `HTTP 503` mean the host refused or failed on every attempt.
 - `failed`: any other error.
 
 ### A retired provider value
