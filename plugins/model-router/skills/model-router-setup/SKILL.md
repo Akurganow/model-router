@@ -32,8 +32,9 @@ When the person wants to choose the provider, follow these steps in order:
 
 1. Call the tool with no setting, and read the settings and the key lines.
 2. Ask which provider's model scores, and give the three labels from the Settings facts.
-3. On the person's word, call the tool with `setting` set to `provider`.
-4. Ask how OpenRouter is used, and set `gateway` the same way.
+3. Ask how OpenRouter is used, before any write.
+4. On the person's word, call the tool once with `setting` set to `gateway` and once with `provider`. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
+   - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. Call the tool with no setting, and confirm the lines.
 
@@ -68,6 +69,7 @@ When the person wants to choose the provider, follow these steps in order:
   - `openrouter-first` tries OpenRouter, then the provider's own API when OpenRouter fails.
   - `openrouter` scores on OpenRouter only.
   - With `auto` or `openrouter-first` and only one key set, that key's path scores alone.
+  - Only some failures reach the second path: [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists them.
 - Claude Code hands the plugin an option's default in place of a stored value outside the option's list. So the tool then prints the default, and no setup line shows.
 - `scope` takes `core` (the default) or `extended`.
   - Under `core`, the plugin routes a call to the built-in agents `general-purpose`, `claude`, `Explore` and `Plan`. A call with no `subagent_type` counts as `general-purpose`.
@@ -90,8 +92,7 @@ When the person wants to choose the provider, follow these steps in order:
 - The plugin reads a key when it loads, so a key change reaches it after the plugin reloads or in a new session.
 - The tool takes no key. The person adds it themselves.
 - With only an OpenRouter key and `gateway` still `direct`, every call skips with `key unset`. The person sets `gateway` to `openrouter`, `auto` or `openrouter-first`.
-- With a key for another provider than the chosen one, every call skips with `key unset`. The person sets the provider that holds the key, or adds the chosen provider's key.
-- With no key for any allowed path, every call skips with `key unset`.
+- A key of a provider other than the chosen one opens no path. With no key for an allowed path, every call skips with `key unset`. The person then sets the provider that holds the key, or adds a key for an allowed path.
 
 ### Reasons routing is off
 

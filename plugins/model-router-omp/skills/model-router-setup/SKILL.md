@@ -33,8 +33,9 @@ When the person wants to choose the provider, follow these steps in order:
 
 1. Call `model_router_config` with no setting, and read the settings and the key lines.
 2. Ask which provider's model scores, and give the three labels from the Provider and gateway facts.
-3. On the person's word, call `model_router_config` with `setting` set to `provider`.
-4. Ask how OpenRouter is used, and set `gateway` the same way.
+3. Ask how OpenRouter is used, before any write.
+4. On the person's word, call `model_router_config` once with `setting` set to `gateway` and once with `provider`. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
+   - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. Call `model_router_config` with no setting, and confirm the lines.
 
@@ -77,6 +78,7 @@ When the person wants to choose the provider, follow these steps in order:
   - `openrouter-first` uses OpenRouter, then the provider's own API if that fails.
   - `openrouter` uses OpenRouter only.
 - With `auto` or `openrouter-first` and one key, the path with that key scores alone.
+- Only some failures reach the second path: [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists them.
 
 ### A retired provider value
 
@@ -182,7 +184,7 @@ A scored item can skip for these reasons:
 - `bad reply`: the reply held no valid score.
 - `failed`: any other error.
 
-These last reasons point to the company or the network, not to a setting.
+These last reasons point to the company, its key or the network, not to a setting of the plugin.
 
 ### Routing check
 

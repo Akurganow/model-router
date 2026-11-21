@@ -29,8 +29,9 @@ When the person wants to choose the provider, follow these steps in order:
 
 1. Call `model_router_config` with no input, and read the settings and the key lines.
 2. Ask which provider's model scores, and give the three labels from the Provider and gateway facts.
-3. On the person's word, ask the owner to type `/model-router-provider <value>`.
-4. Ask how OpenRouter is used, and have the owner type `/model-router-gateway <value>`.
+3. Ask how OpenRouter is used, before any write.
+4. On the person's word, have the owner type `/model-router-gateway <value>` and `/model-router-provider <value>`. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
+   - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. After OpenClaw replaces the plugin, call `model_router_config` again and confirm the lines.
 
@@ -68,6 +69,7 @@ openrouter key: unset
   - `auto`: the provider's own API, then OpenRouter.
   - `openrouter-first`: OpenRouter, then the provider's own API.
   - `openrouter`: OpenRouter only.
+- Only some failures reach the second path: [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists them.
 - The `gateway` setting is not OpenClaw's Gateway, the process that loads the plugin.
 - The person changes `provider` with the chat command `/model-router-provider <value>`, and `gateway` with `/model-router-gateway <value>`.
 - The `/model-router-provider` command replies with the new `provider` line. A value equal to the stored text gives `provider unchanged: already <value>`. A sender who is not the owner, with a valid value, gets `provider unchanged: only the owner can change it` and the current `provider` line.
