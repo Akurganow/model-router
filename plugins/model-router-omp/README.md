@@ -111,6 +111,8 @@ Three commands show or change an option:
 
 [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a command prints. A command with a valid value writes it to your global plugin settings. When a project value wins over the new global one, the output says `A project value for <setting> overrides it.` Without a UI, a command prints to standard error.
 
+omp keys the plugin's settings by the name in the installed `package.json`. When the plugin cannot read that name, a change prints `<setting> unchanged: settings unreadable` and writes nothing, while showing a value still works.
+
 The `model_router_config` tool takes one optional input, `setting`: `provider`, `gateway` or `scope`. The tool loads as essential and omp treats it as a write tool.
 
 - **No setting:** the tool returns the `provider` line, the `gateway` line, the `scope` line and the key lines. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid.
