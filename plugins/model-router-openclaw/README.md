@@ -92,7 +92,7 @@ The `scope` setting picks which spawns the plugin routes:
 | `core` (default) | The spawn of the requesting agent itself |
 | `extended` | That spawn, and the spawn of any other configured agent that does not set its own model |
 
-A value outside the two counts as unset, and the default `core` applies.
+A value outside the two is not valid, as [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says.
 
 Under `extended`, the plugin judges each spawn on its own. [PRIVACY.md](PRIVACY.md#the-extended-scope) says what `extended` sends.
 
@@ -199,7 +199,7 @@ These spawns pass through unchanged, and the plugin logs nothing:
 
 For every other spawn, the gates run in this order. The first that fails skips the spawn with its reason, and OpenClaw runs the spawn as it would without the plugin. A tag says which spawns the gate can stop: "(every spawn)" includes [the spawn of the requesting agent itself](#the-spawn-of-the-requesting-agent-itself), and "(another agent)" does not.
 
-1. (every spawn) `<setting> not valid: run setup`: a stored `provider`, `gateway` or `scope` holds a value outside its list. [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names.
+1. (every spawn) `<setting> not valid: run setup`: a stored `provider`, `gateway` or `scope` holds a value outside its list. [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names and how to set a valid value.
 2. (every spawn) `key unset`: no path the `gateway` setting allows has a key.
 3. (another agent) `<id> is outside the core scope`: under `core`, the spawn names another agent.
 4. (every spawn) `subagent model set`: `agents.defaults.subagents.model`, or the target agent's `subagents.model`, is set. OpenClaw's own choice decides.
