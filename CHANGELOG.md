@@ -3,6 +3,57 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.24.3 - 2026-11-21
+#### Bug Fixes
+- (**hermes**) name the local base URL in the help of the OpenRouter key (61fd498)
+- (**hermes**) say when a shared OpenRouter key scores and moves the session (e032fac)
+- (**hermes**) tell what a saved OpenRouter key changes in Hermes itself (e07595b)
+- (**hermes**) say what a key saved in the settings form replaces (c30bcaf)
+- (**hermes**) store every scoring key as a secret setting (5d0ad06)
+- (**openclaw**) say when the key in the shared variable scores (3a2dd15)
+- (**openclaw**) name the one credential the plugin shares with OpenClaw (45193d5)
+#### Documentation
+- say where a new key goes in the Hermes sentinel test (4bc46a5)
+- name every rung ahead of the OpenRouter key in Hermes's auto order (02d0f4a)
+- state the order of Hermes's auto provider and what a save rewrites (0dfeee8)
+- rewrap a paragraph of the Hermes privacy page (3cbcfb1)
+- record how Hermes saves a secret and lead add-provider by the type check (7cecb1e)
+#### Refactoring
+- write the name of a Hermes key setting once (de9b544)
+
+- - -
+
+
+## v0.24.2 - 2026-11-21
+#### Bug Fixes
+- read a Retry-After date only in its HTTP form (27de90d)
+#### Documentation
+- say what the GMT check does and which globals the core override lists (f662998)
+- name the Biome rule that bans a Node import without node: (d1d3a3c)
+- say what the alias rule leaves unchecked and whose alias a ban reads (6ce36dc)
+- say that fitWarnings reads a model name without its vendor prefix (c6bd0ba)
+- state the import alias rule for all of src (065b345)
+- put the alias rule before the bans and name what it leaves out (76972fa)
+- state the import alias rule and what the bans read (4e4b0b3)
+#### Tests
+- keep one global in the files the override must not reach (c538767)
+- plant one fault for the denied globals of the core (4106f16)
+- delete four tests that repeat a fact or restate a constant (5a50171)
+- pin the length of an sk- key and the characters of a Bearer token (3f18050)
+- drop the test that reads brief.ts as text (45ad38f)
+#### Refactoring
+- drop XMLHttpRequest from the denied globals of the core (2e5be36)
+- ban every adapter but its own in each adapter override (980c5b1)
+- hold the 5xx comparison once, in isServerError (21ad614)
+- ban a ../ in all of src and read aliases in the adapter bans (8def4f3)
+- import src/adapters through aliases (fc967d6)
+- ban a ../ anywhere in a specifier and scope the plugin in biome.json (04bbae2)
+- ban a parent import and read aliases in the import bans (b440c74)
+- import src/core, src/utils and scripts through aliases (69ace20)
+
+- - -
+
+
 ## v0.24.1 - 2026-11-20
 #### Bug Fixes
 - count a blank retry header as absent (0f13676)

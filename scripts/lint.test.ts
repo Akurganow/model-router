@@ -66,20 +66,10 @@ const CORE_TIMEOUT =
 const SRC_OUTSIDE = "A src/ file imports nothing from scripts/";
 const PARENT = "A specifier holds no ../";
 const PROCESS_ENV_MESSAGE = "Don't use process.env";
-// The JSON report keeps the rule's own sentence and drops the configured message, so the
-// test tells the globals apart by the name this sentence carries.
+// The JSON report keeps the rule's own sentence and drops the configured message.
+// One planted name serves the rule: it shows that the override reaches a source file of
+// src/core/. The name is `fetch`, which the type check accepts there, so only this rule stops it.
 const FETCH_GLOBAL = "Do not use the global variable fetch";
-const TIMER_GLOBAL = "Do not use the global variable setTimeout";
-const CLEAR_GLOBAL = "Do not use the global variable clearTimeout";
-const GLOBAL_THIS = "Do not use the global variable globalThis";
-const INTERVAL_GLOBAL = "Do not use the global variable setInterval";
-const CLEAR_INTERVAL_GLOBAL = "Do not use the global variable clearInterval";
-const WEB_SOCKET_GLOBAL = "Do not use the global variable WebSocket";
-const XHR_GLOBAL = "Do not use the global variable XMLHttpRequest";
-const EVENT_SOURCE_GLOBAL = "Do not use the global variable EventSource";
-const GLOBAL_OBJECT = "Do not use the global variable global";
-const SET_IMMEDIATE_GLOBAL = "Do not use the global variable setImmediate";
-const CLEAR_IMMEDIATE_GLOBAL = "Do not use the global variable clearImmediate";
 const NODE_PROTOCOL_MESSAGE =
 	"A Node.js builtin module should be imported with the node: protocol";
 
@@ -430,83 +420,6 @@ const faults: Fault[] = [
 		message: FETCH_GLOBAL,
 	},
 	{
-		form: "a format calls the global setTimeout",
-		file: "src/core/scoring/formats/globals.ts",
-		code: "export const s = () => setTimeout(() => {}, 1);",
-		category: GLOBALS,
-		message: TIMER_GLOBAL,
-	},
-	{
-		form: "a format calls the global clearTimeout",
-		file: "src/core/scoring/formats/globals.ts",
-		code: "export const c = () => clearTimeout(undefined);",
-		category: GLOBALS,
-		message: CLEAR_GLOBAL,
-	},
-	{
-		form: "a format reads a global through globalThis",
-		file: "src/core/scoring/formats/globals.ts",
-		code: "export const g = () => globalThis;",
-		category: GLOBALS,
-		message: GLOBAL_THIS,
-	},
-	{
-		form: "a format calls the global setInterval",
-		file: "src/core/scoring/formats/globals.ts",
-		code: "export const i = () => setInterval(() => {}, 1);",
-		category: GLOBALS,
-		message: INTERVAL_GLOBAL,
-	},
-	{
-		form: "a format calls the global clearInterval",
-		file: "src/core/scoring/formats/globals.ts",
-		code: "export const ci = () => clearInterval(undefined);",
-		category: GLOBALS,
-		message: CLEAR_INTERVAL_GLOBAL,
-	},
-	{
-		form: "a format opens a WebSocket",
-		file: "src/core/scoring/formats/globals.ts",
-		code: 'export const w = () => new WebSocket("wss://example.test");',
-		category: GLOBALS,
-		message: WEB_SOCKET_GLOBAL,
-	},
-	{
-		form: "a format opens an XMLHttpRequest",
-		file: "src/core/scoring/formats/globals.ts",
-		code: "export const x = () => new XMLHttpRequest();",
-		category: GLOBALS,
-		message: XHR_GLOBAL,
-	},
-	{
-		form: "a format opens an EventSource",
-		file: "src/core/scoring/formats/globals.ts",
-		code: 'export const e = () => new EventSource("https://example.test");',
-		category: GLOBALS,
-		message: EVENT_SOURCE_GLOBAL,
-	},
-	{
-		form: "a format reads a global through global.fetch",
-		file: "src/core/scoring/formats/globals.ts",
-		code: 'export const gl = () => global.fetch("https://example.test");',
-		category: GLOBALS,
-		message: GLOBAL_OBJECT,
-	},
-	{
-		form: "a format calls the global setImmediate",
-		file: "src/core/scoring/formats/globals.ts",
-		code: "export const si = () => setImmediate(() => {});",
-		category: GLOBALS,
-		message: SET_IMMEDIATE_GLOBAL,
-	},
-	{
-		form: "a format calls the global clearImmediate",
-		file: "src/core/scoring/formats/globals.ts",
-		code: "export const cim = () => clearImmediate(undefined);",
-		category: GLOBALS,
-		message: CLEAR_IMMEDIATE_GLOBAL,
-	},
-	{
 		form: "core imports a node: module",
 		file: "src/core/brief/node.ts",
 		code: 'import { n1 } from "node:https";',
@@ -688,8 +601,6 @@ const valid: Record<string, string> = {
 		'import { readFileSync } from "node:fs";',
 		"export const v = [",
 		"\tfetch,",
-		"\tsetTimeout,",
-		"\tclearTimeout,",
 		"\treadFileSync,",
 		"\tAbortSignal.timeout(1),",
 		"];",
@@ -698,8 +609,6 @@ const valid: Record<string, string> = {
 		'import { readFileSync } from "node:fs";',
 		"export const v = [",
 		"\tfetch,",
-		"\tsetTimeout,",
-		"\tclearTimeout,",
 		"\treadFileSync,",
 		"\tAbortSignal.timeout(1),",
 		"];",

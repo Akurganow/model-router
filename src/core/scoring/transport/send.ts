@@ -85,7 +85,8 @@ async function exchange(
 	}
 }
 
-// Waits `ms`, or until the caller aborts. The next `exchange` sees an abort and sends nothing.
+// Waits `ms`, or until the caller aborts. The next `exchange` sees an abort and sends nothing,
+// and `isRetried` does not retry an abort, so `send` returns it.
 function pause(ms: number, caller: AbortSignal, clock: Clock): Promise<void> {
 	if (caller.aborted) return Promise.resolve();
 	return new Promise((resolve) => {
