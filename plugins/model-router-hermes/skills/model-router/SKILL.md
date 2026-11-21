@@ -5,7 +5,7 @@ description: Use to pick a model or effort for a delegated task by hand, when a 
 
 # model-router for Hermes Agent
 
-model-router is the `delegate_task` backend. It scores each task through Jev, on TypeSafe or OpenRouter as the `provider` setting allows.
+model-router is the `delegate_task` backend. It scores each task through Jev, on TypeSafe's own API or through OpenRouter as the `gateway` setting allows.
 
 - Level 0 gives the task the person's `small_model`, level 1 their `middle_model` and level 2 their `large_model`. A level whose slot is unset keeps the model Hermes would give it. A slot that holds a model sets that `model` and its `provider` on the task.
 - It sets `reasoning_effort` from a fixed ladder: `low`, `medium`, `high` or `xhigh`.

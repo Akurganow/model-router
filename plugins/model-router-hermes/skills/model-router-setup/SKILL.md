@@ -1,22 +1,23 @@
 ---
 name: model-router-setup
-description: Use to set up model-router in Hermes Agent, to find why routing is off, to change the provider or a model, or to check routing. It states what must be true and the facts to reach it.
+description: Use to set up model-router in Hermes Agent, to find why routing is off, to change the provider, the gateway or a model, or to check routing. It states what must be true and the facts to reach it.
 ---
 
 # model-router setup for Hermes Agent
 
-model-router is the `delegate_task` backend of Hermes Agent. It scores each delegated task with Jev, on TypeSafe or OpenRouter. It sets the task's effort from a fixed ladder. It gives the task the person's `small_model` for lookup work, `middle_model` for bounded judgment or `large_model` for open judgment. It never routes the main turn.
+model-router is the `delegate_task` backend of Hermes Agent. It scores each delegated task with Jev, on TypeSafe's own API or through OpenRouter. It sets the task's effort from a fixed ladder. It gives the task the person's `small_model` for lookup work, `middle_model` for bounded judgment or `large_model` for open judgment. It never routes the main turn.
 
 ## What set up means
 
 Routing works when both of these hold:
 
 - The delegation backend is `model-router`: `delegation.backend` holds that value.
-- A scoring key exists for a provider the `provider` setting allows.
+- A scoring key exists for a path the `gateway` setting allows.
 
 The person's optional choices:
 
-- `provider`: which providers score tasks, and in which order.
+- `provider`: whose model scores tasks. It has one value, `typesafe`.
+- `gateway`: how OpenRouter is used to reach the provider.
 - `small_model`, `middle_model` and `large_model`: the model for each of the three levels. A level with no model keeps the model Hermes gives it. It still gets the effort for a task the plugin scores.
 
 ## Your job
@@ -28,9 +29,11 @@ Find out which of these already hold, with the `model_router_config` tool and He
 ### The tool
 
 - `model_router_config` only reads. It sits in the `model_router` toolset, which is on once the plugin is enabled.
-- With no input it returns the `provider` line, one line for each of the three models, and one key line for each provider the `provider` value allows.
-- A model line reads `<name>: <provider> <model>` or `<name>: unset`. The names are `small_model`, `middle_model` and `large_model`.
-- A key line reads `<provider> key: set` or `<provider> key: unset`. It never shows a key, its length or any part of it.
+- With no input it returns the `provider` line, the `gateway` line, one line for each of the three models, then one key line for each path the `gateway` value allows. Hermes has no `scope` setting, so no scope line prints.
+- The provider line reads `provider: typesafe`. The gateway line reads `gateway: <value> (<who the plugin asks>)`, such as `gateway: auto (typesafe, then openrouter)`.
+- A model line reads `<name>: <provider> <model>` or `<name>: unset`. The names are `small_model`, `middle_model` and `large_model`. Here `<provider>` is a Hermes provider id.
+- A key line reads `typesafe key: set` or `openrouter key: unset`. It never shows a key, its length or any part of it.
+- A setting that is not valid prints `<setting>: <stored text> (not valid: use one of <values>)`. Every valid setting then prints as `<setting>: <value>`, the gateway line names nobody, and no key line prints.
 - A failure returns `error: <message>`.
 
 ### The backend
@@ -38,28 +41,47 @@ Find out which of these already hold, with the `model_router_config` tool and He
 - The plugin never writes `delegation.backend`.
 - The new backend replaces `model_map` or any other backend that was set.
 
-### The provider
+### The provider and the gateway
 
-- `typesafe` is the default and scores with TypeSafe only. `openrouter` scores with OpenRouter only.
-- `auto` tries TypeSafe, then OpenRouter. `openrouter-first` tries OpenRouter, then TypeSafe.
-- With `auto` or `openrouter-first` and one key, the provider with that key scores alone.
-- The setting changes only with `/model-router-provider <value>`. The plugin reads it at each task.
-- With no value the command prints the current line, such as `provider: auto (typesafe, then openrouter)`.
-- With a value it writes the value and prints the new line. An invalid value prints `provider: use one of auto, openrouter-first, typesafe, openrouter`.
-- The same value prints `provider unchanged: already <value>`.
-- A session on a messaging platform prints `provider unchanged: only a local session can change it`, then the current line. Hermes CLI, TUI and Desktop sessions are local.
-- A failed write prints `provider unchanged: <reason>`.
+- `provider` has one value, `typesafe`, the default. It names whose model scores: Jev from TypeSafe.
+- `gateway` says how OpenRouter is used to reach the provider. OpenRouter is a gateway, never a provider. It has four values:
+  - `direct` is the default and asks TypeSafe's own API only.
+  - `auto` asks TypeSafe, then OpenRouter.
+  - `openrouter-first` asks OpenRouter, then TypeSafe.
+  - `openrouter` asks OpenRouter only.
+- With `auto` or `openrouter-first` and one key, the path with that key scores alone.
+- Each setting changes only with its command: `/model-router-provider typesafe` and `/model-router-gateway <value>`. The plugin reads both at each task.
+- With no value a command prints the current line, such as `gateway: auto (typesafe, then openrouter)`.
+- With a valid value it writes the value and prints the new line. It replaces a stored value that is not valid.
+- An invalid value prints `provider: use one of typesafe` or `gateway: use one of direct, auto, openrouter-first, openrouter`.
+- The same value prints `<setting> unchanged: already <value>`.
+- A session on a messaging platform prints `<setting> unchanged: only a local session can change it`, then the current line. Hermes CLI, TUI and Desktop sessions are local.
+- A failed write prints `<setting> unchanged: <reason>`.
+- A stored value outside a setting's values is not valid. Routing then skips every task with `<setting> not valid: run setup`, and the plugin sends no request.
+- Hermes passes such a stored value on as stored. The Desktop settings form refuses to save a value outside the choices, and it leaves such a stored value alone when it saves another field. [Hermes registration and settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#hermes-registration-and-settings) holds both facts.
+
+### A retired provider value
+
+- Earlier versions took `auto`, `openrouter-first` and `openrouter` as values of `provider`. A stored one is not valid. A stored `typesafe` needs no change.
+- Read the stored values with `model_router_config`. A retired value shows as `provider: <stored text> (not valid: use one of typesafe)`.
+- Propose the pair that gives the same requests as before:
+  - stored `auto`: `gateway` `auto` and `provider` `typesafe`.
+  - stored `openrouter-first`: `gateway` `openrouter-first` and `provider` `typesafe`.
+  - stored `openrouter`: `gateway` `openrouter` and `provider` `typesafe`.
+- Hermes gives you no way to write a setting. Once the person agrees, ask them to type `/model-router-gateway <value>` first and `/model-router-provider typesafe` second, in a local session. In that order no task takes a path they did not choose.
+- The settings form cannot do it: it refuses a value outside the choices and leaves the stored one alone.
+- Call the tool again and check both lines.
 
 ### The keys
 
-- A key counts as set when its variable holds non-blank text. The plugin reads a key only for a provider the `provider` setting allows.
+- A key counts as set when its variable holds non-blank text. The plugin reads a key only for a path the `gateway` setting allows. The TypeSafe key serves the direct path, and the OpenRouter key serves the gateway path.
 - The TypeSafe key is the variable `TYPESAFE_API_KEY` in the `.env` file of the Hermes home, and the OpenRouter key is `OPENROUTER_API_KEY` there.
 - The plugin's settings form in Hermes Desktop also sets each key, and Hermes stores it under that variable.
-- Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks when the `provider` setting allows OpenRouter. A key saved in the form becomes that provider's key, in the variable and in the copies of the old value in `config.yaml`.
+- Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks when the `gateway` setting allows OpenRouter. A key saved in the form becomes that provider's key, in the variable and in the copies of the old value in `config.yaml`.
 - With a key in that variable and neither `model.provider` nor a local `model.base_url` in `config.yaml`, Hermes uses OpenRouter for its own session. Setting `model.provider` keeps another provider.
 - No other credential of Hermes serves as a Jev key.
 - A key in the environment is visible to every process Hermes starts.
-- With no key for any allowed provider, every task skips with `key unset`.
+- With no key for any path the `gateway` setting allows, every task skips with `key unset`.
 
 ### The models
 
@@ -85,17 +107,18 @@ Find out which of these already hold, with the `model_router_config` tool and He
 - Hermes also logs the line at INFO in `agent.log`, once for each distinct line. Under `plugins.isolation: host` that log drops INFO lines, so only `route.label` shows it.
 - A routed line reads `model-router L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`.
 - The slot state is `<slot> model unset`. The kept label is `config effort` or `caller effort`.
-- The provider that answered follows, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them.
-- After a fallback, the line ends with the provider that failed and its reason, as in ` · openrouter typesafe/jev-1.14.0 · 812/9 tok · typesafe HTTP 503`.
+- Who answered follows, `typesafe` or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them.
+- After a fallback, the line ends with the attempt that failed and its reason, as in ` · openrouter typesafe/jev-1.14.0 · 812/9 tok · typesafe HTTP 503`.
 - A skipped line reads `model-router skipped, <reason>`. The task then runs on Hermes's own route.
 
 ### The skip reasons
 
-- `key unset`: no allowed provider has a key. The person sets one, as the keys facts say.
+- `<setting> not valid: run setup`: a stored `provider` or `gateway` holds text outside its values. The person sets valid values with the commands, as the provider and gateway facts say.
+- `key unset`: no path the `gateway` setting allows has a key. The person sets one, as the keys facts say.
 - `subagent model set`: the `delegation` section sets a model. The person decides whether to clear it.
 - `node not found`: Hermes has no Node of its own. The plugin runs scoring in that Node and never uses a Node on `PATH`. The person adds a Node for Hermes.
 - `timeout`: the routing limit of 8 s for a whole `delegate_task` call ran out. No setting fixes it.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: the provider gave no answer, or the plugin failed. No setting fixes it. After two providers the reason names each.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt got no answer, or the plugin failed. No setting fixes it. After both attempts the reason names each.
 - Check every reason that holds, not only the first.
 
 ### The routing check
@@ -111,7 +134,7 @@ For the person: the plugin's README in the model-router repository holds the ful
 - Never take, show or repeat a key. If a key arrives in chat, do not store it, and tell the person to rotate it.
 - Change a setting only when the person asked for it or agreed.
 - A routing check spawns one small task and spends a little usage, so ask before it.
-- Only a local Hermes session can run `/model-router-provider` to change the provider.
+- Only a local Hermes session can run `/model-router-provider` and `/model-router-gateway` to change a setting.
 
 ## When you finish
 

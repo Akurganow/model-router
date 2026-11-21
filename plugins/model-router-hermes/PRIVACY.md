@@ -7,32 +7,38 @@ says what the plugin sends, where it goes, and what the plugin keeps. Effective
 ## Where requests go
 
 The plugin asks Jev to score each `delegate_task` task it routes. It never
-scores the main turn. Jev answers on one or two providers:
+scores the main turn. Jev answers on one of two paths:
 
-- TypeSafe, at https://api.typesafe.ai/v1/systemone, with your TypeSafe key
-- OpenRouter, at https://openrouter.ai/api/v1/systemone, with your OpenRouter
-  key.
+- the direct path: TypeSafe, at https://api.typesafe.ai/v1/systemone, with your
+  TypeSafe key
+- the gateway path: OpenRouter, at https://openrouter.ai/api/v1/systemone, with
+  your OpenRouter key.
 
-The plugin's `provider` setting decides which providers receive the task text
-and their keys:
+The plugin's `provider` setting says whose model scores and has one value,
+`typesafe`. OpenRouter is a gateway that answers with that model. The
+`gateway` setting decides which companies receive the task text and their
+keys:
 
-| `provider` | First request | Second request, after a failure |
+| `gateway` | First request | Second request, after a failure |
 | :-- | :-- | :-- |
-| `typesafe`, the default | TypeSafe, with the TypeSafe key | none |
-| `openrouter` | OpenRouter, with the OpenRouter key | none |
+| `direct`, the default | TypeSafe, with the TypeSafe key | none |
 | `auto` | TypeSafe, with the TypeSafe key | OpenRouter, with the OpenRouter key |
 | `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
+| `openrouter` | OpenRouter, with the OpenRouter key | none |
 
 With both keys under `auto` or `openrouter-first`, one task may reach both companies.
+A setting that is not valid sends nothing, as
+[A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)
+says.
 
 A model setting does not decide whether a request leaves: with a key set and
 no model set, each routed task is still sent for scoring, as
 [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) says.
 
-[Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
+[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
 gives the fallback rules.
 
-Each key goes only to its own provider's address above, as
+Each key goes only to the address above of the company that issued it, as
 [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
 explains.
 
@@ -41,7 +47,7 @@ stores](#what-the-plugin-stores) says.
 
 ## What the plugin sends
 
-Each routed task sends an HTTPS POST to the provider the table above names. The
+Each routed task sends an HTTPS POST to the company the table above names. The
 JSON body holds:
 
 - the task's `goal` text, prepared as
@@ -98,10 +104,10 @@ requests above.
 ## Requests and billing
 
 One task sends at most four requests, as
-[Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider)
+[Retries and the second attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-attempt)
 explains.
 
-One routing limit covers all tasks of a `delegate_task` call, both providers and
+One routing limit covers all tasks of a `delegate_task` call, both attempts and
 all retries included.
 [Sequential routing and the shared budget](README.md#sequential-routing-and-the-shared-budget)
 gives the limit. A task that starts after the limit has passed sends nothing, so
@@ -109,10 +115,10 @@ a call can send fewer requests than it has tasks.
 [The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing)
 says what a request in flight can cost. The plugin sends no other request.
 
-## What the providers do with it
+## What each company does with the text
 
-The providers' privacy policies are linked at
-[What the providers do with it](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-the-providers-do-with-it).
+The companies' privacy policies are linked at
+[What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text).
 
 ## What the plugin stores
 
@@ -120,7 +126,7 @@ The plugin keeps no file of its own. In memory it holds the routing-budget
 record, which has the start and end times of the current call, and the last 128
 distinct log lines. Both leave when the gateway or the plugin host stops.
 
-It reads a key only for a provider the `provider` setting allows. It reads the
+It reads a key only for a path the `gateway` setting allows. It reads the
 key through Hermes's own secret reader, from the variable `TYPESAFE_API_KEY` or
 `OPENROUTER_API_KEY`. [Keys](README.md#keys) says where Hermes holds them. The
 plugin holds a key in memory only while it routes a task, and it passes the key
@@ -131,8 +137,8 @@ and of the plugin host. Like any key in the environment, it is
 visible to the programs Hermes starts. Keep a key out of the environment of
 programs you do not trust.
 
-At each task the plugin reads four of its own settings through Hermes:
-`provider`, `small_model`, `middle_model` and `large_model`. It reads the task's
+At each task the plugin reads five of its own settings through Hermes:
+`provider`, `gateway`, `small_model`, `middle_model` and `large_model`. It reads the task's
 `description`, `reasoning_effort` and `level` parameters. Of those, only the
 description leaves your machine, in the request. It also reads the `delegation`
 section of Hermes's configuration, which Hermes passes with the task. It uses
@@ -154,9 +160,9 @@ The `model_router_config` tool only reads.
 [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool)
 says what it reports.
 
-The command `/model-router-provider` writes the plugin's `provider` setting
-into Hermes's configuration. It writes only from a local session, which is a
-Hermes CLI, TUI or Desktop session. The plugin writes no other setting, no
+The commands `/model-router-provider` and `/model-router-gateway` write the
+plugin's `provider` and `gateway` settings into Hermes's configuration. They
+write only from a local session, which is a Hermes CLI, TUI or Desktop session. The plugin writes no other setting, no
 file, and never `delegation.backend`. You assign `small_model`,
 `middle_model` and `large_model` yourself, in Hermes's configuration.
 
