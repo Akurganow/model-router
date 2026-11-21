@@ -1,6 +1,6 @@
 # model-router for Hermes Agent
 
-A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks a model and an effort for each `delegate_task` task. It asks [Jev](https://docs.typesafe.ai), on TypeSafe or OpenRouter, how much judgment the task needs and how much work it takes. It then gives the task's child that model and effort.
+A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks a model and an effort for each `delegate_task` task. It asks [Jev](https://docs.typesafe.ai), on TypeSafe's own API or through OpenRouter, how much judgment the task needs and how much work it takes. It then gives the task's child that model and effort.
 
 ## What it does
 
@@ -13,7 +13,7 @@ A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks
 - The delegating model can describe each task, and can set a task's effort or level to escalate it. [Parameters of `delegate_task`](#parameters-of-delegate_task) lists them.
 - It starts Hermes's own Node once per task to run the scoring step. [Node](#node) says how.
 - It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what Hermes can still do.
-- The plugin changes a setting only when you type `/model-router-provider`. It never writes `delegation.backend`.
+- The plugin changes a setting only when you type `/model-router-provider` or `/model-router-gateway`. It never writes `delegation.backend`.
 
 ## Install
 
@@ -38,14 +38,14 @@ Routing needs the plugin enabled, the backend on and a key. The models in the sl
 1. A backend change applies from the next session. In a running session, type `/delegation model-router --now`.
 2. Add a [key](#keys).
 3. Assign any of `small_model`, `middle_model` and `large_model`, as [Models](#models) says. Each slot is optional: a slot you leave unset runs its level on Hermes's model.
-4. Pick the [provider](#provider) if the default does not fit.
+4. Pick the [provider and the gateway](#provider-and-gateway) if the defaults do not fit.
 5. Delegate one small task, and read its [label](#the-label-and-the-log).
 
 [Facts behind this section](../../docs/clients.md#hermes-registration-and-settings)
 
 ## Keys
 
-The plugin reads a key only for a provider the [`provider` setting](#provider) allows. It reads each key through Hermes's own secret reader, from one variable. A key counts as set when the variable holds non-blank text.
+The plugin reads a key only for a path the [`gateway` setting](#provider-and-gateway) allows. It reads each key through Hermes's own secret reader, from one variable. A key counts as set when the variable holds non-blank text.
 
 | Key | Environment variable | Settings secret |
 | --- | --- | --- |
@@ -54,7 +54,7 @@ The plugin reads a key only for a provider the [`provider` setting](#provider) a
 
 Set a key in the `.env` file of the Hermes home or in the plugin's settings form in Hermes Desktop. Hermes stores a key from the form under its variable in that `.env` file.
 
-Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. So a key you save in the form becomes that provider's key: Hermes writes the variable and the copies of the old value in `config.yaml`. With a key in that variable and neither `model.provider` nor a local `model.base_url` in `config.yaml`, Hermes uses OpenRouter for its own session, so set `model.provider` to keep another provider. A key already in that variable scores tasks when the `provider` setting allows OpenRouter. No other credential of Hermes serves as a Jev key.
+Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. So a key you save in the form becomes that provider's key: Hermes writes the variable and the copies of the old value in `config.yaml`. With a key in that variable and neither `model.provider` nor a local `model.base_url` in `config.yaml`, Hermes uses OpenRouter for its own session, so set `model.provider` to keep another provider. A key already in that variable scores tasks when the `gateway` setting allows OpenRouter. No other credential of Hermes serves as a Jev key.
 
 [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key, where it goes and when a task reports `key unset`.
 
@@ -62,29 +62,29 @@ Hermes holds a key in the gateway's environment, so the programs Hermes starts c
 
 [Facts behind this section](../../docs/clients.md#hermes-registration-and-settings)
 
-## Provider
+## Provider and gateway
 
-The `provider` setting picks which providers judge each task, and in which order:
+The `provider` setting says whose model scores each task. Its one value is `typesafe`, the default: Jev from TypeSafe.
 
-| Value | Providers |
-| --- | --- |
-| `typesafe` (default) | TypeSafe only |
-| `openrouter` | OpenRouter only |
-| `auto` | TypeSafe, then OpenRouter |
-| `openrouter-first` | OpenRouter, then TypeSafe |
+The `gateway` setting says how OpenRouter is used to reach the provider. Its values are `direct` (the default), `auto`, `openrouter-first` and `openrouter`. It is not Hermes's gateway, the process that owns a session.
 
-Fallback rules: [Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task). Who receives a task under each value: [PRIVACY.md](PRIVACY.md).
+[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which path each value takes first, and when the second one runs. Who receives a task under each value: [PRIVACY.md](PRIVACY.md).
 
-Switch it with `/model-router-provider <value>`. The plugin reads the setting at each task.
+Switch them with `/model-router-provider <value>` and `/model-router-gateway <value>`. The plugin reads both settings at each task.
+
+A setting that holds a value outside its list is not valid, and the plugin routes no task. The retired values of `provider` and the pair that replaces each one are listed in [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid). Hermes passes such a stored value on as stored. The Desktop settings form refuses to save a value outside the choices, and it leaves such a stored value alone when it saves another field.
+
+[Facts behind this section](../../docs/clients.md#hermes-registration-and-settings)
 
 ## Change the options
 
-`/model-router-provider [auto|openrouter-first|typesafe|openrouter]` shows or changes the provider. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. The command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, it prints `provider unchanged: only a local session can change it` and the current value.
+`/model-router-provider [typesafe]` shows or changes the provider, and `/model-router-gateway [direct|auto|openrouter-first|openrouter]` shows or changes the gateway. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. Each command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, a valid value prints `<setting> unchanged: only a local session can change it` and the current line.
 
-The read-only `model_router_config` tool returns the `provider` line, the three model lines and the key lines. A model line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
+The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the three model lines and the key lines. A model line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
 
 ```text
-provider: auto (typesafe, then openrouter)
+provider: typesafe
+gateway: auto (typesafe, then openrouter)
 small_model: openrouter <model>
 middle_model: unset
 large_model: unset
@@ -155,9 +155,9 @@ Hermes refuses a task whose `reasoning_effort` or `level` is off these lists, be
 
 A task that sets `level`:
 
-- Meets one gate, `subagent model set`. It needs no key and no Node.
+- Meets two gates: `<setting> not valid: run setup` first, then `subagent model set`. It needs no key and no Node.
 - Gets its slot's model, as [Models](#models) says. An unset slot runs the task on Hermes's own route, with the label `model-router L<level> <slot> model unset`.
-- Carries no `route.label` and writes no log line when its model is set. The other plugins print no line for a call that names a model either. The task's result still names the model and provider it ran on.
+- Carries no `route.label` and writes no log line when it passes both gates and its model is set. The other plugins print no line for a call that names a model either. The task's result still names the model and provider it ran on.
 
 The delegating model should leave `reasoning_effort` and `level` unset on a first dispatch. The escalation skill, `model-router-hermes:model-router`, says when to set them. [The skill](skills/model-router/SKILL.md) follows the escalation steps of the other plugins.
 
@@ -175,19 +175,20 @@ Hermes passes this backend a task's `goal`, `context` and index, and the paramet
 
 ### The gates
 
-Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets only the second.
+Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets the first gate and the third.
 
-1. `key unset`: no provider the `provider` setting allows has a key.
-2. `subagent model set`: the `delegation` section sets `model`, `provider`, `base_url` or `api_key`. Hermes's own choice decides.
-3. `node not found`: Hermes has no Node. [Node](#node) says why.
-4. `timeout`: the routing limit was used up before this task started. [Sequential routing and the shared budget](#sequential-routing-and-the-shared-budget) says when.
+1. `<setting> not valid: run setup`: a stored `provider` or `gateway` holds a value outside its list. [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names.
+2. `key unset`: no path the `gateway` setting allows has a key.
+3. `subagent model set`: the `delegation` section sets `model`, `provider`, `base_url` or `api_key`. Hermes's own choice decides.
+4. `node not found`: Hermes has no Node. [Node](#node) says why.
+5. `timeout`: the routing limit was used up before this task started. [Sequential routing and the shared budget](#sequential-routing-and-the-shared-budget) says when.
 
 ### After the gates
 
 A scored task can still skip:
 
-- `timeout`: Jev did not answer within the budget.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: Jev did not answer at all, or the Node step failed. `failed` also covers any error in the plugin. After two providers, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
+- `timeout`: the company did not answer within the budget.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the company did not answer at all, or the Node step failed. `failed` also covers any error in the plugin. After both attempts fail, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 [Facts behind this section](../../docs/clients.md#hermes-routing-and-refusals)
 
@@ -195,7 +196,7 @@ A scored task can still skip:
 
 Hermes routes the tasks of one `delegate_task` call one after another, before any child starts. The wait is the sum over the tasks.
 
-One routing limit of 8 s covers a whole call. It holds the scoring of every task, both providers and all retries included. The first task of a call opens a budget, and each later task gets what is left. A task that starts with no time left runs unrouted and reports `skipped, timeout`. The plugin ends a Node run 1 s after its share, as a guard for a stuck process.
+One routing limit of 8 s covers a whole call. It holds the scoring of every task, both attempts and all retries included. The first task of a call opens a budget, and each later task gets what is left. A task that starts with no time left runs unrouted and reports `skipped, timeout`. The plugin ends a Node run 1 s after its share, as a guard for a stuck process.
 
 The budget record lives in the process that holds the plugin: the gateway, or the plugin host under `plugins.isolation: host`. It is not kept per call or per session. Concurrent sessions on one gateway share one record. Under host isolation the plugin host, one per profile, holds it. A call's first task, or a task that starts more than the limit after the last one ended, restarts it. Two calls that route at the same time can therefore shorten each other's share.
 
@@ -237,7 +238,7 @@ Under `plugins.isolation: host`, the plugin host drops INFO lines by default, so
 
 ## What leaves the machine
 
-[PRIVACY.md](PRIVACY.md) lists the request, the providers, the retries and the Node program.
+[PRIVACY.md](PRIVACY.md) lists the request, the companies that receive it, the retries and the Node program.
 
 [How the plugins use the providers](https://github.com/Akurganow/model-router/blob/main/docs/providers.md) holds what the four plugins share.
 

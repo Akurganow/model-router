@@ -261,12 +261,13 @@ node scripts/calibrate.ts <typesafe|openrouter> [model]
 ```
 
 `scripts/calibrate.ts` is a developer tool, and Claude Code never runs it. It
-needs Node 22.18 or 23.6 or later. Its first argument names the provider. It
-reads that provider's key from a masked prompt or from stdin. The prompt names
+needs Node 22.18 or 23.6 or later. Its first argument names the key holder:
+`typesafe` for TypeSafe's own API, `openrouter` for the gateway. It
+reads that holder's key from a masked prompt or from stdin. The prompt names
 the URL that gets the key, for example
 `OpenRouter API key for https://openrouter.ai/api/v1/systemone:`. The script sends
 `calibration.jsonl`, 172 labelled cases, to the endpoint that the
-plugins use for that provider. Its optional second argument names the Jev
+plugins use for that holder. Its optional second argument names the Jev
 model and defaults to `jev-latest`. It exits 1 when tier or work
 agreement falls below 85%. This script, `scripts/compare-rules.ts` and
 `scripts/evals.ts` warn on stderr when Jev answers as another model than
