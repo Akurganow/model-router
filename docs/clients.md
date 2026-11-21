@@ -718,7 +718,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 - A plugin slash command's handler runs in the gateway process that owns the session. It can declare `session_id`, `session_key`, `platform` or `source` as keyword arguments, and Hermes passes them.
   The handler returns its text.
 - Hermes names `api_server`, `cli`, `codex`, `desktop`, `gateway`, `kanban`, `local`, `msgraph_webhook`, `tool`, `tui` and `webhook` as surfaces that are not a human messaging channel.
-  The plugin's `/model-router-provider` writes only for `local`, `cli`, `tui` and `desktop`, four of those names. `localPlatforms` in `constants.json` lists them.
+  The plugin's `/model-router-provider` and `/model-router-gateway` write only for `local`, `cli`, `tui` and `desktop`, four of those names. `localPlatforms` in `constants.json` lists them.
 - With no saved tool selection, a plugin's toolset is on by default. Enabling a plugin puts its toolset back into a saved selection.
 
 ### Hermes routing and refusals
