@@ -55,8 +55,8 @@ Find out which of these already hold, with the `model_router_config` tool and He
 - With no value a command prints the current line, such as `gateway: auto (typesafe, then openrouter)`.
 - With a valid value it writes the value and prints the new line. It replaces a stored value that is not valid.
 - An invalid value prints `provider: use one of typesafe` or `gateway: use one of direct, auto, openrouter-first, openrouter`.
-- The same value prints `<setting> unchanged: already <value>`.
-- A session on a messaging platform prints `<setting> unchanged: only a local session can change it`, then the current line. Hermes CLI, TUI and Desktop sessions are local.
+- The value already stored prints `<setting> unchanged: already <value>`. A value over nothing stored is written, even when it is the default.
+- A valid value from a session on a messaging platform prints `<setting> unchanged: only a local session can change it`, then the current line. Hermes CLI, TUI and Desktop sessions are local.
 - A failed write prints `<setting> unchanged: <reason>`.
 - A stored value outside a setting's values is not valid. Routing then skips every task with `<setting> not valid: run setup`, and the plugin sends no request.
 - Hermes passes such a stored value on as stored. The Desktop settings form refuses to save a value outside the choices, and it leaves such a stored value alone when it saves another field. [Hermes registration and settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#hermes-registration-and-settings) holds both facts.
@@ -86,7 +86,7 @@ Find out which of these already hold, with the `model_router_config` tool and He
 - With a key in that variable and neither `model.provider` nor a local `model.base_url` in `config.yaml`, Hermes uses OpenRouter for its own session. Setting `model.provider` keeps another provider.
 - No other credential of Hermes serves as a Jev key.
 - A key in the environment is visible to every process Hermes starts.
-- With no key for any path the `gateway` setting allows, every task skips with `key unset`.
+- With no key for any path the `gateway` setting allows, every task without a `level` skips with `key unset`.
 
 ### The models
 
@@ -119,7 +119,7 @@ Find out which of these already hold, with the `model_router_config` tool and He
 ### The skip reasons
 
 - `<setting> not valid: run setup`: a stored `provider` or `gateway` holds text outside its values. The person sets valid values with the commands, as the provider and gateway facts say.
-- `key unset`: no path the `gateway` setting allows has a key. The person sets one, as the keys facts say.
+- `key unset`: no path the `gateway` setting allows has a key. A task with a `level` meets no key check. The person sets one, as the keys facts say.
 - `subagent model set`: the `delegation` section sets a model. The person decides whether to clear it.
 - `node not found`: Hermes has no Node of its own. The plugin runs scoring in that Node and never uses a Node on `PATH`. The person adds a Node for Hermes.
 - `timeout`: the routing limit of 8 s for a whole `delegate_task` call ran out. No setting fixes it.

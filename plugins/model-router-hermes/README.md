@@ -78,9 +78,9 @@ A setting that holds a value outside its list is not valid, and the plugin route
 
 ## Change the options
 
-`/model-router-provider [typesafe]` shows or changes the provider, and `/model-router-gateway [direct|auto|openrouter-first|openrouter]` shows or changes the gateway. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. Each command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, it prints `<setting> unchanged: only a local session can change it` and the current line.
+`/model-router-provider [typesafe]` shows or changes the provider, and `/model-router-gateway [direct|auto|openrouter-first|openrouter]` shows or changes the gateway. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. Each command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, a valid value prints `<setting> unchanged: only a local session can change it` and the current line.
 
-The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the three model lines and the key lines. A model line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
+The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the three model lines and the key lines. A model line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
 
 ```text
 provider: typesafe
@@ -155,9 +155,9 @@ Hermes refuses a task whose `reasoning_effort` or `level` is off these lists, be
 
 A task that sets `level`:
 
-- Meets one gate, `subagent model set`. It needs no key and no Node.
+- Meets two gates: `<setting> not valid: run setup` first, then `subagent model set`. It needs no key and no Node.
 - Gets its slot's model, as [Models](#models) says. An unset slot runs the task on Hermes's own route, with the label `model-router L<level> <slot> model unset`.
-- Carries no `route.label` and writes no log line when its model is set. The other plugins print no line for a call that names a model either. The task's result still names the model and provider it ran on.
+- Carries no `route.label` and writes no log line when it passes both gates and its model is set. The other plugins print no line for a call that names a model either. The task's result still names the model and provider it ran on.
 
 The delegating model should leave `reasoning_effort` and `level` unset on a first dispatch. The escalation skill, `model-router-hermes:model-router`, says when to set them. [The skill](skills/model-router/SKILL.md) follows the escalation steps of the other plugins.
 
