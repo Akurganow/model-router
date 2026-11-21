@@ -2,12 +2,12 @@ import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { OPENCLAW_OUTPUTS } from "./outputs.ts";
 import { optionText, type Source } from "./source.ts";
 import {
+	defaultOf,
 	KEY_FIELDS,
-	KEY_HOLDERS,
+	keyEntries,
 	SLOT_SETTINGS,
 	TOOL_NAME,
 	VALUE_SETTINGS,
-	valueFor,
 } from "./values.ts";
 
 // The fields below follow docs/plugins/manifest.md of OpenClaw 2026.10.10 and the pages it links.
@@ -25,7 +25,7 @@ const configSchema = (source: Source): JsonObject => ({
 				setting,
 				{
 					type: source.openclaw.settingType,
-					default: valueFor(setting, undefined) ?? null,
+					default: defaultOf(setting),
 				},
 			]),
 		),
@@ -50,12 +50,7 @@ const uiHints = (source: Source): JsonObject => ({
 		]),
 	),
 	...source.openclaw.uiHints,
-	...Object.fromEntries(
-		KEY_HOLDERS.map((holder) => [
-			KEY_FIELDS[holder],
-			source.openclaw.keys[holder],
-		]),
-	),
+	...keyEntries(source.openclaw.keys),
 });
 
 // manifest/config-and-secrets.md, "secretInputs paths": the only accepted `expected` is "string".

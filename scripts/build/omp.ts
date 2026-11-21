@@ -1,7 +1,7 @@
 import { type JsonObject, oneLine, type Rendered, serialize } from "./json.ts";
 import { OMP_OUTPUTS } from "./outputs.ts";
 import { optionText, type Source } from "./source.ts";
-import { SETTING_VALUES, VALUE_SETTINGS, valueFor } from "./values.ts";
+import { defaultOf, SETTING_VALUES, VALUE_SETTINGS } from "./values.ts";
 
 export const ompSettings = (source: Source): JsonObject =>
 	Object.fromEntries(
@@ -11,7 +11,7 @@ export const ompSettings = (source: Source): JsonObject =>
 				type: source.omp.settingType,
 				description: optionText(source, "omp", setting),
 				values: [...SETTING_VALUES[setting]],
-				default: valueFor(setting, undefined) ?? null,
+				default: defaultOf(setting),
 			},
 		]),
 	);

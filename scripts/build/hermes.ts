@@ -28,10 +28,10 @@ import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
 import { hermesKeySetting, optionText, type Source } from "./source.ts";
 import {
+	defaultOf,
 	HARNESS_SETTINGS,
 	SETTING_VALUES,
 	TOOL_NAME,
-	valueFor,
 } from "./values.ts";
 
 type HermesSetting = (typeof HARNESS_SETTINGS.hermes)[number];
@@ -64,7 +64,7 @@ const configSchema = (source: Source): JsonObject => ({
 			{
 				type: "str",
 				choices: [...SETTING_VALUES[setting]],
-				default: valueFor(setting, undefined) ?? null,
+				default: defaultOf(setting),
 				label: source.options[setting].title,
 				description: optionText(source, "hermes", setting),
 			},
@@ -108,7 +108,7 @@ const pinnedLabel = (slot: Slot): string =>
 const settingEntry = (setting: HermesSetting): JsonObject => ({
 	name: setting,
 	values: [...SETTING_VALUES[setting]],
-	default: valueFor(setting, undefined) ?? null,
+	default: defaultOf(setting),
 	skip: skipLine(notValid(setting)),
 	...settingTexts(setting, SETTING_VALUES[setting], HARNESS_SETTINGS.hermes),
 });

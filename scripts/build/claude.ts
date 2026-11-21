@@ -3,11 +3,10 @@ import { CLAUDE_OUTPUTS } from "./outputs.ts";
 import { optionText, type Source } from "./source.ts";
 import {
 	COMMAND_DESCRIPTIONS,
-	KEY_FIELDS,
-	KEY_HOLDERS,
+	defaultOf,
+	keyEntries,
 	SETTING_VALUES,
 	VALUE_SETTINGS,
-	valueFor,
 } from "./values.ts";
 
 const commands = (source: Source): JsonObject =>
@@ -23,12 +22,7 @@ const commands = (source: Source): JsonObject =>
 	);
 
 const userConfig = (source: Source): JsonObject => ({
-	...Object.fromEntries(
-		KEY_HOLDERS.map((holder) => [
-			KEY_FIELDS[holder],
-			source.claude.userConfig.keys[holder],
-		]),
-	),
+	...keyEntries(source.claude.userConfig.keys),
 	...Object.fromEntries(
 		VALUE_SETTINGS.map((setting) => {
 			const option = source.options[setting];
@@ -39,7 +33,7 @@ const userConfig = (source: Source): JsonObject => ({
 					title: option.title,
 					description: optionText(source, "claude", setting),
 					options: [...SETTING_VALUES[setting]],
-					default: valueFor(setting, undefined) ?? null,
+					default: defaultOf(setting),
 				},
 			];
 		}),

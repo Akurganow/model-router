@@ -3,10 +3,12 @@ import { join } from "node:path";
 import { type Schema, validate } from "./schema.ts";
 import {
 	HARNESS_SETTINGS,
+	HARNESSES,
 	type Harness,
 	KEY_HOLDERS,
 	type KeyHolder,
 	type SlotSetting,
+	storesSetting,
 	VALUE_SETTINGS,
 	type ValueSetting,
 } from "./values.ts";
@@ -123,10 +125,6 @@ const readJson = (root: string, path: string): unknown =>
 export const loadSchema = (root: string): Schema =>
 	readJson(root, SCHEMA_PATH) as Schema;
 
-// Widened from the literal tuples, so each harness's list can be asked includes(setting) for any setting.
-const STORED: Readonly<Record<Harness, readonly ValueSetting[]>> =
-	HARNESS_SETTINGS;
-
 /**
  * Lists each option text that does not match the settings its harness stores:
  * a stored setting with no text, and a text for a setting the harness does not
@@ -134,17 +132,18 @@ const STORED: Readonly<Record<Harness, readonly ValueSetting[]>> =
  */
 export function optionTextProblems(source: Source): string[] {
 	const problems: string[] = [];
-	for (const harness of Object.keys(STORED) as Harness[])
-		for (const setting of STORED[harness])
+	for (const harness of HARNESSES)
+		for (const setting of HARNESS_SETTINGS[harness])
 			if (source.options[setting].descriptions[harness] === undefined)
 				problems.push(
 					`$.options.${setting}.descriptions.${harness}: ${harness} stores ${setting}, so the text is required`,
 				);
 	for (const setting of VALUE_SETTINGS)
-		for (const harness of Object.keys(
-			source.options[setting].descriptions,
-		) as Harness[])
-			if (!STORED[harness].includes(setting))
+		for (const harness of HARNESSES)
+			if (
+				source.options[setting].descriptions[harness] !== undefined &&
+				!storesSetting(harness, setting)
+			)
 				problems.push(
 					`$.options.${setting}.descriptions.${harness}: ${harness} does not store ${setting}, so the text is not allowed`,
 				);
