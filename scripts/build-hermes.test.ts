@@ -68,13 +68,14 @@ test("the manifest names the plugin, its version and its backend kind", () => {
 	assert.deepEqual(manifest.provides_tools, [TOOL_NAME]);
 });
 
-test("the manifest holds five settings and no scope", () => {
+test("the manifest holds six settings and no scope", () => {
 	assert.deepEqual(Object.keys(schema), [
 		"provider",
 		"small_model",
 		"middle_model",
 		"large_model",
 		"typesafe_api_key",
+		"openrouter_api_key",
 	]);
 	assert.equal(JSON.stringify(manifest).includes("scope"), false);
 });
@@ -90,7 +91,7 @@ test("the provider setting offers the values the code accepts, with its default"
 	);
 });
 
-test("the models are dict settings and the key is a secret read from its variable", () => {
+test("the models are dict settings and each key is a secret stored under its variable", () => {
 	for (const name of ["small_model", "middle_model", "large_model"]) {
 		assert.equal(schema[name].type, "dict", name);
 		assert.equal(
@@ -100,8 +101,12 @@ test("the models are dict settings and the key is a secret read from its variabl
 		assert.match(schema[name].description, /provider/);
 		assert.match(schema[name].description, /model/);
 	}
-	assert.equal(schema.typesafe_api_key.type, "secret");
-	assert.equal(schema.typesafe_api_key.env, KEY_VARIABLES.typesafe);
+	const secret = (name: string) => [schema[name]?.type, schema[name]?.env];
+	assert.deepEqual(secret("typesafe_api_key"), ["secret", "TYPESAFE_API_KEY"]);
+	assert.deepEqual(secret("openrouter_api_key"), [
+		"secret",
+		"OPENROUTER_API_KEY",
+	]);
 });
 
 test("the constants hold only the keys the Python shim reads", () => {
