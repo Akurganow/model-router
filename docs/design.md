@@ -23,7 +23,7 @@ So `metadata/source.json` is the only hand-written source of the facts those fil
 The source holds no value list.
 The value lists in the manifests come from `src/`, so a manifest cannot offer a value the code does not know.
 The option texts are prose, so a test holds them to `src/` instead.
-Each names every provider or scope value, except omp's provider text, which names `auto` and `openrouter-first` only.
+Each names every value of its setting.
 Each character limit in the source states the number `src/core/brief/brief.ts` enforces.
 
 `scripts/build.ts` reads the source, and the renderers in `scripts/build/` write each copy.

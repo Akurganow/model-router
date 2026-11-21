@@ -4,6 +4,7 @@ import {
 	slotRecord,
 	slotState,
 } from "#core/decision/slots.ts";
+import { type Stored, settingsOf } from "#core/options/settings.ts";
 import { KEY_UNSET, UNREADABLE } from "#core/output/reasons.ts";
 import type { Attempt } from "#core/providers/provider.ts";
 import {
@@ -13,12 +14,7 @@ import {
 	spawnCheck,
 	TASK,
 } from "./items.ts";
-import {
-	findAttempts,
-	readConfig,
-	readSettings,
-	type Settings,
-} from "./settings.ts";
+import { findAttempts, readConfig, readSettings } from "./settings.ts";
 import type { Context, OmpImports, Pi } from "./types.ts";
 
 // The omp model role that holds each slot's model.
@@ -45,18 +41,20 @@ export async function checkGates(
 
 /**
  * Returns the attempts and the facts for the whole batch, or a closed reason
- * when a gate shuts it: unreadable settings, an unset key or an unreadable
- * config. Each gate fails closed, and the keys are the cheapest check. What
+ * when a gate shuts it: unreadable settings, a setting that is not valid, an
+ * unset key or an unreadable config. Each gate fails closed, and the keys are the cheapest check. What
  * each item needs to be judged comes back as facts, read once. Never throws.
  */
 export async function openBatch(
 	omp: OmpImports,
 	pi: Pi,
 	ctx: Context,
-	settings: Settings | undefined,
+	stored: Stored | undefined,
 ): Promise<Batch | Closed> {
-	if (settings === undefined) return { closed: UNREADABLE };
-	const attempts = await findAttempts(ctx, settings.provider);
+	if (stored === undefined) return { closed: UNREADABLE };
+	const settings = settingsOf(stored);
+	if ("skipped" in settings) return { closed: settings.skipped };
+	const attempts = await findAttempts(ctx, settings);
 	if (attempts.length === 0) return { closed: KEY_UNSET };
 	const config = readConfig(omp.lookup, pi.pi.settings);
 	if (config === undefined) return { closed: UNREADABLE };

@@ -12,7 +12,12 @@ import { checkGates } from "#adapters/omp/gates.ts";
 import { readInstalledName } from "#adapters/omp/name.ts";
 import { createExtension } from "#adapters/omp/router.ts";
 import { readSettings } from "#adapters/omp/settings.ts";
-import { ask, TOOL_NAME, unchanged } from "#core/options/settings.ts";
+import {
+	ask,
+	settingsOf,
+	TOOL_NAME,
+	unchanged,
+} from "#core/options/settings.ts";
 import { UNREADABLE } from "#core/output/reasons.ts";
 
 const CATALOGUE = "model-router-omp";
@@ -20,6 +25,8 @@ const SCOPED = "@akurganow/model-router";
 const NAMES = [CATALOGUE, SCOPED];
 
 const world = useWorld();
+const applied = async () =>
+	settingsOf((await readSettings(world.imports, "/work")) ?? {});
 const install = () => createExtension(world.imports)(world.pi);
 
 let root = "";
@@ -65,10 +72,11 @@ for (const name of NAMES) {
 		world.plugin = name;
 		world.lockfile = {
 			plugins: {},
-			settings: { [name]: { provider: "auto", scope: "extended" } },
+			settings: { [name]: { gateway: "auto", scope: "extended" } },
 		};
-		assert.deepEqual(await readSettings(world.imports, "/work"), {
-			provider: "auto",
+		assert.deepEqual(await applied(), {
+			provider: "typesafe",
+			gateway: "auto",
 			scope: "extended",
 		});
 	});
@@ -76,17 +84,18 @@ for (const name of NAMES) {
 	test(`a value stored under the other name is ignored under ${name}`, async () => {
 		world.plugin = name;
 		const other = NAMES.find((candidate) => candidate !== name) as string;
-		world.lockfile = lockfileWith("auto", other);
-		assert.deepEqual(await readSettings(world.imports, "/work"), {
+		world.lockfile = lockfileWith({ gateway: "auto" }, other);
+		assert.deepEqual(await applied(), {
 			provider: "typesafe",
+			gateway: "direct",
 			scope: "core",
 		});
 	});
 
 	test(`a project narrowing of auto holds under ${name}`, async () => {
 		world.plugin = name;
-		world.lockfile = lockfileWith("auto", name);
-		world.project = { provider: "openrouter" };
+		world.lockfile = lockfileWith({ gateway: "auto" }, name);
+		world.project = { gateway: "openrouter" };
 		const result = await checkGates(world.imports, world.pi, world.ctx());
 		assert.ok("attempts" in result);
 		assert.deepEqual(
@@ -95,18 +104,18 @@ for (const name of NAMES) {
 		);
 	});
 
-	test(`a provider write lands under ${name}`, async () => {
+	test(`a gateway write lands under ${name}`, async () => {
 		install();
 		world.plugin = name;
-		world.lockfile = lockfileWith("typesafe", name);
-		const { options } = ask("provider", "typesafe");
+		world.lockfile = lockfileWith({ gateway: "direct" }, name);
+		const { options } = ask("gateway", "direct");
 		world.select = async () => options[1];
-		await world.callTool({ setting: "provider" });
+		await world.callTool({ setting: "gateway" });
 		await world.runCommand("model-router:scope", "extended");
 		assert.deepEqual(
 			world.writes.map(({ plugin, key }) => [plugin, key]),
 			[
-				[name, "provider"],
+				[name, "gateway"],
 				[name, "scope"],
 			],
 		);
@@ -115,18 +124,20 @@ for (const name of NAMES) {
 
 test("a name that cannot be read falls back to the catalogue name for reads", async () => {
 	world.plugin = undefined;
-	world.lockfile = lockfileWith("openrouter", CATALOGUE);
-	assert.deepEqual(await readSettings(world.imports, "/work"), {
-		provider: "openrouter",
+	world.lockfile = lockfileWith({ gateway: "openrouter" }, CATALOGUE);
+	assert.deepEqual(await applied(), {
+		provider: "typesafe",
+		gateway: "openrouter",
 		scope: "core",
 	});
 });
 
 test("a value stored under the scoped name is ignored when the name cannot be read", async () => {
 	world.plugin = undefined;
-	world.lockfile = lockfileWith("openrouter", SCOPED);
-	assert.deepEqual(await readSettings(world.imports, "/work"), {
+	world.lockfile = lockfileWith({ gateway: "openrouter" }, SCOPED);
+	assert.deepEqual(await applied(), {
 		provider: "typesafe",
+		gateway: "direct",
 		scope: "core",
 	});
 });
@@ -134,7 +145,7 @@ test("a value stored under the scoped name is ignored when the name cannot be re
 test("routing reads the catalogue settings when the name cannot be read", async () => {
 	install();
 	world.plugin = undefined;
-	world.lockfile = lockfileWith("typesafe", CATALOGUE);
+	world.lockfile = lockfileWith({ gateway: "direct" }, CATALOGUE);
 	await world.toolCall("c", { tasks: [{ task: "level0 a" }] });
 	assert.equal(world.sent.length, 1);
 });
@@ -142,7 +153,7 @@ test("routing reads the catalogue settings when the name cannot be read", async 
 test("the tool shows the catalogue settings when the name cannot be read", async () => {
 	install();
 	world.plugin = undefined;
-	world.lockfile = lockfileWith("openrouter", CATALOGUE);
+	world.lockfile = lockfileWith({ gateway: "openrouter" }, CATALOGUE);
 	const shown = await world.callTool({});
 	assert.match(String(shown), /provider/);
 	assert.notEqual(shown, UNREADABLE);

@@ -67,7 +67,7 @@
 		"toolName": "model_router_config",
 		"toolset": "model_router",
 		"toolLabel": "Model Router settings",
-		"toolDescription": "Reads the router's settings. It returns the provider, the three models, and whether each key the provider allows is set. It changes nothing and never returns a key.",
+		"toolDescription": "Reads the router's settings. It returns the provider, the three models, and whether each key the settings allow is set. It changes nothing and never returns a key.",
 		"commandName": "model-router-provider",
 		"commandDescription": "Shows or changes which providers score subagent calls: auto, openrouter-first, typesafe, openrouter.",
 		"argsHint": "<auto|openrouter-first|typesafe|openrouter>",

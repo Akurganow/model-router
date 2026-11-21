@@ -138,8 +138,8 @@ test("the environment cannot move the request", async () => {
 
 test("a project narrowing auto sends the request to its provider with that provider's key", async () => {
 	install();
-	world.lockfile = lockfileWith("auto");
-	world.project = { provider: "openrouter" };
+	world.lockfile = lockfileWith({ gateway: "auto" });
+	world.project = { gateway: "openrouter" };
 	await world.toolCall("c", { tasks: [{ task: "level0 a" }] });
 	assert.deepEqual(
 		world.sent.map((s) => [s.url, s.authorization]),
@@ -154,7 +154,7 @@ test("a project narrowing auto sends the request to its provider with that provi
 test("the setting is read for each batch, so a change needs no reload", async () => {
 	install();
 	await world.toolCall("c", { tasks: [{ task: "a" }] });
-	world.lockfile = lockfileWith("openrouter");
+	world.lockfile = lockfileWith({ gateway: "openrouter" });
 	await world.toolCall("d", { tasks: [{ task: "a" }] });
 	assert.deepEqual(
 		world.sent.map((s) => s.url),
@@ -399,7 +399,7 @@ const count = (url: string) => world.sent.filter((s) => s.url === url).length;
 
 test("in an outage, items that start later in the batch pass over the failed provider", async () => {
 	install();
-	world.lockfile = lockfileWith("auto");
+	world.lockfile = lockfileWith({ gateway: "auto" });
 	world.answer = async ({ url }) =>
 		url === ENDPOINT
 			? scoringReply(503, { error: "down" })
@@ -422,7 +422,7 @@ test("in an outage, items that start later in the batch pass over the failed pro
 
 test("an item that starts while another waits on its fallback already passes over the failed provider", async () => {
 	install();
-	world.lockfile = lockfileWith("auto");
+	world.lockfile = lockfileWith({ gateway: "auto" });
 	let fellBack = () => {};
 	const fallbackSent = new Promise<void>((resolve) => {
 		fellBack = resolve;
@@ -456,7 +456,7 @@ test("an item that starts while another waits on its fallback already passes ove
 
 test("a skip after two attempts names both providers, a later one-attempt skip does not", async () => {
 	install();
-	world.lockfile = lockfileWith("auto");
+	world.lockfile = lockfileWith({ gateway: "auto" });
 	world.answer = async ({ url }) =>
 		scoringReply(url === ENDPOINT ? 503 : 401, { error: "no" });
 	const tasks = Array.from({ length: 5 }, (_, i) => ({ task: `task ${i}` }));

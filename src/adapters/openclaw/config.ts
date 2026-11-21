@@ -5,6 +5,7 @@ import {
 	commandName,
 	isValue,
 	readOnlyToolDescription,
+	type Stored,
 	settingsReport,
 	TOOL_LABEL,
 	TOOL_NAME,
@@ -36,19 +37,19 @@ const LINE_BREAK = "\n";
 export const NOT_OWNER = "only the owner can change it";
 const TOOL_DESCRIPTION = readOnlyToolDescription([
 	"the provider",
+	"the gateway",
 	"the scope",
 	"the three models",
 ]);
 
 /**
- * Returns the report: the provider, the scope, the three models as configured,
- * and one line per provider that says whether its key is set or unset. A key
+ * Returns the report: the three value settings, the three models as configured,
+ * and one line per key holder that says whether its key is set or unset. A key
  * is only checked for presence. Nothing about it leaves this function.
  */
 function readAll({ settings, keys }: State): string {
 	return settingsReport(
-		settings.provider,
-		settings.scope,
+		settings.stored,
 		SLOTS.map((slot) => slotLine(slotSetting(slot), settings.models[slot])),
 		keys,
 	);
@@ -72,6 +73,7 @@ async function write(
 	ctx: CommandContext,
 	setting: ValueSetting,
 	value: string,
+	stored: Stored,
 ): Promise<string> {
 	try {
 		await api.runtime.config.mutateConfigFile({
@@ -81,7 +83,7 @@ async function write(
 				: {}),
 			mutate: (draft) => withPluginSetting(draft, setting, value),
 		});
-		return valueLine(setting, value);
+		return valueLine(setting, { ...stored, [setting]: value });
 	} catch (err) {
 		return unchangedBy(setting, err);
 	}
@@ -100,15 +102,16 @@ async function runCommand(
 	setting: ValueSetting,
 ): Promise<string> {
 	const value = (ctx.args ?? "").trim();
-	const current = readState(api, env).settings[setting];
-	if (value === "") return valueLine(setting, current);
+	const { stored } = readState(api, env).settings;
+	if (value === "") return valueLine(setting, stored);
 	if (!isValue(setting, value)) return useOneOf(setting);
 	if (!isOwner(ctx))
-		return [unchanged(setting, NOT_OWNER), valueLine(setting, current)].join(
+		return [unchanged(setting, NOT_OWNER), valueLine(setting, stored)].join(
 			LINE_BREAK,
 		);
-	if (current === value) return unchanged(setting, alreadyValue(value));
-	return write(api, ctx, setting, value);
+	// The stored text is compared as it is: a text that is not valid, or none, is never "already".
+	if (stored[setting] === value) return unchanged(setting, alreadyValue(value));
+	return write(api, ctx, setting, value, stored);
 }
 
 const textOf = (text: string): ToolResult => ({

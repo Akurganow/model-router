@@ -5,10 +5,11 @@ import { tier } from "#core/parts/tier.ts";
 import { work } from "#core/parts/work.ts";
 import {
 	type Attempt,
+	type Choice,
 	type KeyHolder,
 	plan,
 } from "#core/providers/provider.ts";
-import { ENDPOINTS } from "#core/scoring/endpoints.ts";
+import { endpointOf } from "#core/scoring/endpoints.ts";
 import { limitSignal, ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type Decision, route, type Skipped } from "#core/scoring/route.ts";
 import type { Fetch } from "#core/scoring/transport/send.ts";
@@ -24,11 +25,19 @@ const HOLDER_NAMES: Readonly<Record<KeyHolder, string>> = {
 	openrouter: "OpenRouter",
 };
 // The key holder the user names picks the endpoint: a maker's own API, or the gateway.
-const ROWS = {
-	typesafe: ENDPOINTS.typesafe.direct,
-	openrouter: ENDPOINTS.typesafe.openrouter,
-} as const satisfies Readonly<Record<KeyHolder, unknown>>;
-const USAGE = `usage: node scripts/calibrate.ts <typesafe|openrouter> [model] [--record <file>]  (typesafe sends the cases to ${ROWS.typesafe.url}, openrouter to ${ROWS.openrouter.url}; enter that provider's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
+const CHOICES: Readonly<Record<KeyHolder, Choice>> = {
+	typesafe: { provider: "typesafe", gateway: "direct" },
+	openrouter: { provider: "typesafe", gateway: "openrouter" },
+};
+
+// The endpoint row of the step a key holder's choice asks. The prompt needs it before a key is typed, so the key is a stand-in that only the plan reads.
+function rowOf(holder: KeyHolder) {
+	const [step] = plan(CHOICES[holder], { [holder]: "-" });
+	const row = step && endpointOf(step);
+	if (!row) throw new Error(`no endpoint row for ${holder}`);
+	return row;
+}
+const USAGE = `usage: node scripts/calibrate.ts <typesafe|openrouter> [model] [--record <file>]  (typesafe sends the cases to ${rowOf("typesafe").url}, openrouter to ${rowOf("openrouter").url}; enter that provider's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
 
 export type Case = {
 	role: string;
@@ -80,7 +89,7 @@ function keystroke(typed: string, ch: string): Keystroke {
 
 function typeKey(stdin: NodeJS.ReadStream, holder: KeyHolder): Promise<string> {
 	process.stderr.write(
-		`${HOLDER_NAMES[holder]} API key for ${ROWS[holder].url}: `,
+		`${HOLDER_NAMES[holder]} API key for ${rowOf(holder).url}: `,
 	);
 	stdin.setRawMode(true);
 	stdin.resume();
@@ -169,7 +178,7 @@ export async function main(
 		console.error(USAGE);
 		return EXIT_USAGE;
 	}
-	const attempts = plan(holder, { [holder]: key }).map((a) =>
+	const attempts = plan(CHOICES[holder], { [holder]: key }).map((a) =>
 		model === undefined ? a : { ...a, model },
 	);
 	const cases: Case[] = readFileSync(
@@ -218,7 +227,7 @@ export async function main(
 		return a;
 	};
 	console.log(
-		`${model ?? ROWS[holder].model} answered as ${[...answeredBy].join(", ") || "unknown"}`,
+		`${model ?? rowOf(holder).model} answered as ${[...answeredBy].join(", ") || "unknown"}`,
 	);
 	// A warning, not a failure: the agreement alone decides the exit code.
 	for (const warning of fitWarnings(answeredBy)) console.error(warning);

@@ -4,47 +4,35 @@ import { fileURLToPath } from "node:url";
 import { BUDGET_CHARS, ROLE_CAP } from "#core/brief/brief.ts";
 import { SCOPE_VALUES } from "#core/options/scope.ts";
 import { VALUE_SETTINGS, type ValueSetting } from "#core/options/settings.ts";
-import { PROVIDER_VALUES } from "#core/providers/provider.ts";
+import { GATEWAYS, MAKERS } from "#core/providers/provider.ts";
 import { loadSource } from "./build/source.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const source = loadSource(ROOT);
 
 const VALUES: Readonly<Record<ValueSetting, readonly string[]>> = {
-	provider: PROVIDER_VALUES,
+	provider: MAKERS,
+	gateway: GATEWAYS,
 	scope: SCOPE_VALUES,
 };
-// The omp provider text explains only the two values that narrow the order.
-const UNNAMED: Readonly<
-	Partial<Record<ValueSetting, Partial<Record<Harness, string[]>>>>
-> = {
-	provider: {
-		omp: ["typesafe", "openrouter"],
-		openclaw: ["typesafe", "openrouter"],
-		hermes: ["typesafe", "openrouter"],
-	},
-};
 const HARNESSES = ["claude", "omp", "openclaw"] as const;
-type Harness = (typeof HARNESSES)[number] | "hermes";
 
 // The texts name a value as a lowercase label before a colon: "auto: TypeSafe, then ...".
 const labelsOf = (text: string) =>
 	[...text.matchAll(/(?:^|\. )([a-z][a-z-]*): /g)].map(([, label]) => label);
 
-test("each option text names the values of its setting, bar the exceptions listed here", () => {
+test("each option text names every value of its setting", () => {
 	for (const setting of VALUE_SETTINGS)
 		for (const harness of [
 			...HARNESSES,
 			...(setting === "provider" ? (["hermes"] as const) : []),
 		]) {
-			const unnamed = UNNAMED[setting]?.[harness] ?? [];
-			const expected = VALUES[setting].filter((v) => !unnamed.includes(v));
 			const descriptions: Record<string, string> =
 				source.options[setting].descriptions;
 			const labels = labelsOf(descriptions[harness] ?? "");
 			assert.deepEqual(
 				labels.sort(),
-				[...expected].sort(),
+				[...VALUES[setting]].sort(),
 				`${setting} option text for ${harness}`,
 			);
 		}

@@ -117,7 +117,7 @@ test("a hook failure lets the call run unchanged", KEYED, async ($, on) => {
 const BOTH_KEYS = {
 	api_key: "typesafe-key",
 	openrouter_api_key: "openrouter-key",
-	provider: "auto",
+	gateway: "auto",
 };
 const SLOW_FALLBACK = {
 	replies: [{ status: 503, text: "down" }, { delayMs: 60000 }],

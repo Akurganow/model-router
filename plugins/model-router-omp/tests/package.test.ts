@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { SCOPE_VALUES } from "../../../src/core/options/scope.ts";
-import { PROVIDER_VALUES } from "../../../src/core/providers/provider.ts";
+import { MAKERS } from "../../../src/core/providers/provider.ts";
 
 const PLUGIN = join(import.meta.dirname, "..");
 const ENTRY = "./extension/index.js";
@@ -25,10 +25,10 @@ test("omp loads the built bundle and nothing else", () => {
 	assert.deepEqual(readdirSync(join(PLUGIN, "extension")), ["index.js"]);
 });
 
-test("the provider setting is an enum of the four values, typesafe by default", () => {
+test("the provider setting is an enum of the one value, typesafe by default", () => {
 	const { type, values, default: initial } = manifest.omp.settings.provider;
 	assert.equal(type, "enum");
-	assert.deepEqual(values, PROVIDER_VALUES);
+	assert.deepEqual(values, MAKERS);
 	assert.equal(initial, "typesafe");
 });
 

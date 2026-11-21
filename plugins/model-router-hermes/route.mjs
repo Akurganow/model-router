@@ -546,11 +546,11 @@ async function exchange(fetchFn, url, request, caller, timeout, clock) {
 }
 function pause(ms, caller, clock) {
   if (caller.aborted) return Promise.resolve();
-  return new Promise((resolve2) => {
+  return new Promise((resolve) => {
     const done = () => {
       timer.cancel();
       caller.removeEventListener("abort", done);
-      resolve2();
+      resolve();
     };
     const timer = clock.after(ms, done);
     caller.addEventListener("abort", done, { once: true });
@@ -782,25 +782,21 @@ function outcomeOf(decided, models, kept) {
 var MAKERS = ["typesafe"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var DEFAULT_VALUE = "typesafe";
-var MAKER = "typesafe";
-var VALUE_PATHS = {
+var GATEWAY_PATHS = {
+  direct: ["direct"],
   auto: ["direct", "openrouter"],
   "openrouter-first": ["openrouter", "direct"],
-  typesafe: ["direct"],
   openrouter: ["openrouter"]
 };
 var holderOf = (maker, path) => path === "direct" ? maker : path;
-var steps = (value) => VALUE_PATHS[resolve(value)].map((path) => ({
-  maker: MAKER,
+var steps = (choice) => GATEWAY_PATHS[choice.gateway].map((path) => ({
+  maker: choice.provider,
   path,
-  holder: holderOf(MAKER, path)
+  holder: holderOf(choice.provider, path)
 }));
-var parseProvider = (value) => typeof value === "string" && Object.hasOwn(VALUE_PATHS, value) ? value : void 0;
-var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
-function plan(value, keys) {
+function plan(choice, keys) {
   const attempts = [];
-  for (const step of steps(value)) {
+  for (const step of steps(choice)) {
     const key = keys[step.holder];
     if (key) attempts.push({ ...step, key });
   }
@@ -843,6 +839,22 @@ function readRequest(raw) {
   };
 }
 
+// src/adapters/hermes/stored.ts
+var GATEWAY_OF = {
+  auto: "auto",
+  "openrouter-first": "openrouter-first",
+  typesafe: "direct",
+  openrouter: "openrouter"
+};
+var STORED_VALUES = Object.keys(GATEWAY_OF);
+var STORED_DEFAULT = "typesafe";
+var choiceOf = (value) => ({
+  provider: "typesafe",
+  gateway: typeof value === "string" && Object.hasOwn(GATEWAY_OF, value) ? GATEWAY_OF[value] : GATEWAY_OF[STORED_DEFAULT]
+});
+var PROVIDER_USE_ONE_OF = `provider: use one of ${STORED_VALUES.join(", ")}`;
+var PROVIDER_COMMAND_DESCRIPTION = `Shows or changes which providers score subagent calls: ${STORED_VALUES.join(", ")}.`;
+
 // src/adapters/hermes/route.ts
 var skippedBy = (reason) => ({ skipped: reason });
 var skip2 = (reason) => ({
@@ -861,7 +873,7 @@ async function score(request, { fetchFn }, signal) {
       task: request.task,
       context: request.context
     }),
-    attempts: plan(request.provider, request.keys),
+    attempts: plan(choiceOf(request.provider), request.keys),
     fetchFn,
     clock: realClock,
     signal

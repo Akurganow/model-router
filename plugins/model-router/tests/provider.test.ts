@@ -21,17 +21,21 @@ const BOTH_VARIABLES = {
 	OPENROUTER_API_KEY: "openrouter-var-key",
 };
 
-// With both keys present, each value asks its first provider, and a healthy one answers alone.
-for (const [provider, url] of [
+// With both keys present, each value asks its first key holder, and a healthy one answers alone.
+for (const [gateway, url] of [
 	["auto", TYPESAFE_URL],
 	["openrouter-first", OPENROUTER_URL],
-	["typesafe", TYPESAFE_URL],
+	["direct", TYPESAFE_URL],
 	["openrouter", OPENROUTER_URL],
+	// Claude Code hands the plugin the option's default for a stored value
+	// outside the option's list, as docs/clients.md, "Hooks module", says. So
+	// an unknown value never reaches the plugin here, and the call routes as
+	// the default.
 	["unknown", TYPESAFE_URL],
 ] as const)
 	test(
-		`${provider} asks its first provider`,
-		{ options: { ...BOTH_KEYS, provider } },
+		`${gateway} asks its first key holder`,
+		{ options: { ...BOTH_KEYS, gateway } },
 		async ($, on) => {
 			const { h } = await callOnce($, on);
 			expect(h.requests.map((r) => r.url)).toEqual([url]);
@@ -39,6 +43,7 @@ for (const [provider, url] of [
 		},
 	);
 
+// As at the "unknown" table row above, this value routes as the default.
 test(
 	"an unknown value reads no OpenRouter key",
 	{ options: { provider: "unknown", api_key: "", openrouter_api_key: "" } },
@@ -51,7 +56,7 @@ test(
 
 test(
 	"after a 503 the call falls back, each request with its own host, key and jev-latest",
-	{ options: { ...BOTH_KEYS, provider: "auto" } },
+	{ options: { ...BOTH_KEYS, gateway: "auto" } },
 	async ($, on) => {
 		const { h } = await callOnce(
 			$,
@@ -79,7 +84,7 @@ test(
 
 test(
 	"when both providers fail the skip line names each in order",
-	{ options: { ...BOTH_KEYS, provider: "openrouter-first" } },
+	{ options: { ...BOTH_KEYS, gateway: "openrouter-first" } },
 	async ($, on) => {
 		const h = await retried($, on, {
 			replies: [
@@ -105,14 +110,12 @@ const SETTING = "model-router.provider";
 const provider = ($: Engine, args = "") => runCommand($, COMMAND, args);
 
 test(
-	"the bare command prints the value and its order, reading no key",
-	{ options: { ...BOTH_KEYS, provider: "auto" } },
+	"the bare command prints the value, reading no key",
+	{ options: { ...BOTH_KEYS, provider: "typesafe" } },
 	async ($, on) => {
 		const h = harness(on, { env: BOTH_VARIABLES });
 		const writes = config(on, (e) => ({ value: e.value }));
-		expect(await provider($)).toBe(
-			"provider: auto (typesafe, then openrouter)",
-		);
+		expect(await provider($)).toBe("provider: typesafe");
 		expect(h.envReads).toEqual([]);
 		expect(h.fetched).toBe(0);
 		expect(writes).toEqual([]);
@@ -121,52 +124,44 @@ test(
 
 test("the bare command prints the default", async ($, on) => {
 	harness(on);
-	expect(await provider($)).toBe("provider: typesafe (typesafe)");
+	expect(await provider($)).toBe("provider: typesafe");
 });
 
 test("a value changes the plugin's provider row", async ($, on) => {
 	harness(on);
 	const writes = config(on, (e) => ({ value: e.value }));
-	expect(await provider($, "openrouter-first")).toBe(
-		"provider: openrouter-first (openrouter, then typesafe)",
-	);
-	expect(writes.map((e) => [e.key, e.value])).toEqual([
-		[SETTING, "openrouter-first"],
-	]);
+	expect(await provider($, "typesafe")).toBe("provider: typesafe");
+	expect(writes.map((e) => [e.key, e.value])).toEqual([[SETTING, "typesafe"]]);
 });
 
 test("a refused change prints the reason", async ($, on) => {
 	refusedWrites(on);
-	expect(await provider($, "openrouter")).toBe(
-		`provider unchanged: ${REFUSAL}`,
-	);
+	expect(await provider($, "typesafe")).toBe(`provider unchanged: ${REFUSAL}`);
 });
 
 // The engine skips a config.set hook that throws, so the test leaves config.set unanswered: the test kit then throws.
 test("a change that throws prints the error", async ($, on) => {
 	harness(on);
-	const text = await provider($, "auto");
+	const text = await provider($, "typesafe");
 	expect(text?.startsWith("provider unchanged: ")).toBe(true);
 	expect(text).toContain("config.set");
 });
 
-test("any other argument lists the four values", async ($, on) => {
+test("any other argument lists the one value", async ($, on) => {
 	harness(on);
 	const writes = config(on, (e) => ({ value: e.value }));
-	expect(await provider($, "anthropic")).toBe(
-		"provider: use one of auto, openrouter-first, typesafe, openrouter",
-	);
+	expect(await provider($, "anthropic")).toBe("provider: use one of typesafe");
 	expect(writes).toEqual([]);
 });
 
 test(
 	"a command from a model or a plugin prints the value and writes nothing",
-	{ options: { provider: "auto" } },
+	{ options: { provider: "typesafe" } },
 	async ($, on) => {
 		harness(on);
 		const writes = config(on, (e) => ({ value: e.value }));
-		expect(await fromOutside($, COMMAND, "openrouter")).toEqual(
-			Array(3).fill("provider: auto (typesafe, then openrouter)"),
+		expect(await fromOutside($, COMMAND, "typesafe")).toEqual(
+			Array(3).fill("provider: typesafe"),
 		);
 		expect(writes).toEqual([]);
 	},
@@ -175,6 +170,17 @@ test(
 test("a bad value is refused before the origin is read", async ($, on) => {
 	harness(on);
 	expect(await runCommand($, COMMAND, "anthropic", { kind: "sdk" })).toBe(
-		"provider: use one of auto, openrouter-first, typesafe, openrouter",
+		"provider: use one of typesafe",
 	);
+});
+
+test("the gateway command writes the plugin's gateway row", async ($, on) => {
+	harness(on);
+	const writes = config(on, (e) => ({ value: e.value }));
+	expect(await runCommand($, "model-router:gateway", "auto")).toBe(
+		"gateway: auto (typesafe, then openrouter)",
+	);
+	expect(writes.map((e) => [e.key, e.value])).toEqual([
+		["model-router.gateway", "auto"],
+	]);
 });

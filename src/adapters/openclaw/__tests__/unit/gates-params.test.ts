@@ -13,11 +13,11 @@ import {
 	skipped,
 	withParams,
 } from "#adapters/openclaw/__tests__/support/gate-fakes.ts";
-import type { OpenClawSettings } from "#adapters/openclaw/settings.ts";
+import type { Settings } from "#core/options/settings.ts";
 import { outsideCoreScope, setsOwnModel } from "#core/output/reasons.ts";
 
 // The sessions_spawn tool reads agentId, label, model and thinking with readToolStringParam: the own key, else the snake-case key, text only, trimmed, empty counted as absent.
-const SCOPES: [string, OpenClawSettings][] = [
+const SCOPES: [string, Settings][] = [
 	["core", SETTINGS],
 	["extended", extended],
 ];
@@ -30,7 +30,7 @@ for (const [scope, settings] of SCOPES) {
 		if (scope === "core")
 			return assert.equal(skipped(spawnWith(params)), outsideCoreScope(OTHER));
 		assert.equal(
-			routed(spawnWith(params, { config: known({}), settings })).target,
+			routed(spawnWith(params, { config: known({}), chosen: settings })).target,
 			OTHER,
 		);
 	});
@@ -39,7 +39,7 @@ for (const [scope, settings] of SCOPES) {
 		const reason = skipped(
 			spawnWith(
 				{ agent_id: OTHER },
-				{ config: known({ model: "x/y" }), settings },
+				{ config: known({ model: "x/y" }), chosen: settings },
 			),
 		);
 		assert.equal(
@@ -57,7 +57,10 @@ for (const [scope, settings] of SCOPES) {
 			{ agentId: "", agent_id: OTHER },
 			{ agentId: null, agent_id: OTHER },
 		])
-			assert.equal(routed(spawnWith(params, { settings })).target, REQUESTER);
+			assert.equal(
+				routed(spawnWith(params, { chosen: settings })).target,
+				REQUESTER,
+			);
 	});
 
 	test(`under ${scope} the own agentId key wins over agent_id`, () => {
@@ -66,14 +69,14 @@ for (const [scope, settings] of SCOPES) {
 			routed(
 				spawnWith(
 					{ agentId: REQUESTER, agent_id: OTHER },
-					{ config, settings },
+					{ config, chosen: settings },
 				),
 			).target,
 			REQUESTER,
 		);
 		const winner = spawnWith(
 			{ agentId: OTHER, agent_id: REQUESTER },
-			{ config, settings },
+			{ config, chosen: settings },
 		);
 		if (scope === "core")
 			assert.equal(skipped(winner), outsideCoreScope(OTHER));
@@ -82,7 +85,10 @@ for (const [scope, settings] of SCOPES) {
 
 	test(`under ${scope} an agent_id is trimmed and matched after normalising`, () => {
 		const params = { agent_id: ` ${REQUESTER.toUpperCase()} ` };
-		assert.equal(routed(spawnWith(params, { settings })).target, REQUESTER);
+		assert.equal(
+			routed(spawnWith(params, { chosen: settings })).target,
+			REQUESTER,
+		);
 	});
 }
 

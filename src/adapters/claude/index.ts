@@ -35,6 +35,9 @@ export function register(on: On, options: Options): void {
 	on("tool.call", { tool: "mcp__model-router__config" }, ($, e) =>
 		configCall($, e, options),
 	);
+	on("command.run", { command: "model-router:gateway" }, ($, e) =>
+		configCommand($, e, "gateway", options),
+	);
 	on("command.run", { command: "model-router:provider" }, ($, e) =>
 		configCommand($, e, "provider", options),
 	);

@@ -1,6 +1,7 @@
 import { contextText } from "#core/brief/brief.ts";
 import { pickModel, slotForLevel } from "#core/decision/slots.ts";
 import { DEFAULT_SCOPE } from "#core/options/scope.ts";
+import { scopeOf } from "#core/options/settings.ts";
 import {
 	ENTRY_SEPARATOR,
 	LINE_PREFIX,
@@ -80,9 +81,11 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		if (!Array.isArray(tasks)) return;
 		const eligible = eligibleItems(tasks);
 		if (eligible.length === 0) return;
-		const settings = await readSettings(omp, ctx.cwd);
-		// Unreadable settings leave only the core scope's items to close the batch.
-		const scope = settings?.scope ?? DEFAULT_SCOPE;
+		const stored = await readSettings(omp, ctx.cwd);
+		// Unreadable settings leave the core scope's items to get the skip line.
+		// Readable settings use their stored scope, even when another setting is
+		// not valid. The default applies only when the scope itself is not valid.
+		const scope = stored === undefined ? DEFAULT_SCOPE : scopeOf(stored);
 		const items = eligible.filter(({ agent }) => inScope(agent, scope));
 		if (items.length === 0) return;
 		const skipAll = (reason: string) =>
@@ -93,7 +96,7 @@ function createRouter(omp: OmpImports, pi: Pi) {
 		// A timeout too short to score closes the batch before any key or agent is read.
 		const budget = budgetFor(readTimeoutSetting(omp.lookup, pi.pi.settings));
 		if ("closed" in budget) return skipAll(budget.closed);
-		const gates = await openBatch(omp, pi, ctx, settings);
+		const gates = await openBatch(omp, pi, ctx, stored);
 		if ("closed" in gates) return skipAll(gates.closed);
 		const scored = await scoreItems(
 			items,

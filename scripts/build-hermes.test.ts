@@ -11,12 +11,7 @@ import {
 } from "#adapters/hermes/texts.ts";
 import { EFFORTS, effortFor } from "#core/decision/ladder.ts";
 import { LEVELS } from "#core/parts/part.ts";
-import {
-	KEY_VARIABLES,
-	order,
-	PROVIDER_VALUES,
-	resolve as resolveProvider,
-} from "#core/providers/provider.ts";
+import { KEY_VARIABLES } from "#core/providers/provider.ts";
 import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { formatJson } from "./build/json.ts";
@@ -27,6 +22,7 @@ import { buildBundle, MAX_BUNDLE_BYTES } from "./build.ts";
 import { useTempRoot } from "./temp-root.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
+const STORED_VALUES = ["auto", "openrouter-first", "typesafe", "openrouter"];
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const source = loadSource(ROOT);
 const files = renderHermes(source);
@@ -82,8 +78,8 @@ test("the manifest holds six settings and no scope", () => {
 
 test("the provider setting offers the values the code accepts, with its default", () => {
 	assert.equal(schema.provider.type, "str");
-	assert.deepEqual(schema.provider.choices, [...PROVIDER_VALUES]);
-	assert.equal(schema.provider.default, resolveProvider(undefined));
+	assert.deepEqual(schema.provider.choices, STORED_VALUES);
+	assert.equal(schema.provider.default, "typesafe");
 	assert.equal(schema.provider.label, source.options.provider.title);
 	assert.equal(
 		schema.provider.description,
@@ -132,9 +128,14 @@ test("the constants hold the values src/ gives", () => {
 	assert.equal(constants.graceMs, HERMES_TEXTS.graceMs);
 	assert.equal(constants.backend, source.hermes.backendName);
 	assert.deepEqual(constants.providers, {
-		values: [...PROVIDER_VALUES],
-		default: resolveProvider(undefined),
-		order: Object.fromEntries(PROVIDER_VALUES.map((v) => [v, order(v)])),
+		values: STORED_VALUES,
+		default: "typesafe",
+		order: {
+			auto: ["typesafe", "openrouter"],
+			"openrouter-first": ["openrouter", "typesafe"],
+			typesafe: ["typesafe"],
+			openrouter: ["openrouter"],
+		},
 		keyVariables: KEY_VARIABLES,
 	});
 	assert.deepEqual(constants.skips, {

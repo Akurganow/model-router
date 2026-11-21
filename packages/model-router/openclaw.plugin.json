@@ -26,8 +26,12 @@
 	},
 	"uiHints": {
 		"provider": {
-			"label": "Jev provider",
-			"help": "Which providers judge each task, in order. auto: TypeSafe, then OpenRouter. openrouter-first: OpenRouter, then TypeSafe."
+			"label": "Scoring provider",
+			"help": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to."
+		},
+		"gateway": {
+			"label": "OpenRouter gateway",
+			"help": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies."
 		},
 		"scope": {
 			"label": "Routing scope",
@@ -63,6 +67,10 @@
 			"provider": {
 				"type": "string",
 				"default": "typesafe"
+			},
+			"gateway": {
+				"type": "string",
+				"default": "direct"
 			},
 			"scope": {
 				"type": "string",

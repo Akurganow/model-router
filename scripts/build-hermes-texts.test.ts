@@ -4,16 +4,13 @@ import { fileURLToPath } from "node:url";
 import { setupTexts } from "#adapters/hermes/setup.ts";
 import {
 	alreadyValue,
-	COMMAND_DESCRIPTIONS,
 	commandName,
 	keyLine,
 	TOOL_LABEL,
 	TOOL_NAME,
 	unchanged,
-	useOneOf,
-	valueLine,
 } from "#core/options/settings.ts";
-import { KEY_HOLDERS, PROVIDER_VALUES } from "#core/providers/provider.ts";
+import { KEY_HOLDERS } from "#core/providers/provider.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { HERMES_OUTPUTS } from "./build/outputs.ts";
 import { loadSource } from "./build/source.ts";
@@ -30,21 +27,34 @@ test("the tool and command names and texts equal the src/ values", () => {
 	assert.equal(texts.toolLabel, TOOL_LABEL);
 	assert.equal(texts.toolset, "model_router");
 	assert.equal(texts.commandName, commandName("provider"));
-	assert.equal(texts.commandDescription, COMMAND_DESCRIPTIONS.provider);
+	assert.equal(
+		texts.commandDescription,
+		"Shows or changes which providers score subagent calls: auto, openrouter-first, typesafe, openrouter.",
+	);
 });
 
 test("the tool description says what it reads, changes nothing and returns no key", () => {
 	assert.equal(
 		texts.toolDescription,
-		"Reads the router's settings. It returns the provider, the three models, and whether each key the provider allows is set. It changes nothing and never returns a key.",
+		"Reads the router's settings. It returns the provider, the three models, and whether each key the settings allow is set. It changes nothing and never returns a key.",
 	);
 });
 
-test("the provider texts equal the shared builders", () => {
-	assert.equal(texts.useOneOf, useOneOf("provider"));
+const STORED_LINES = {
+	auto: "provider: auto (typesafe, then openrouter)",
+	"openrouter-first": "provider: openrouter-first (openrouter, then typesafe)",
+	typesafe: "provider: typesafe (typesafe)",
+	openrouter: "provider: openrouter (openrouter)",
+};
+
+test("the provider texts are the lines Hermes prints", () => {
+	assert.equal(
+		texts.useOneOf,
+		"provider: use one of auto, openrouter-first, typesafe, openrouter",
+	);
 	assert.equal(texts.unchangedPrefix, unchanged("provider", ""));
-	for (const value of PROVIDER_VALUES) {
-		assert.equal(texts.providerLines[value], valueLine("provider", value));
+	for (const [value, line] of Object.entries(STORED_LINES)) {
+		assert.equal(texts.providerLines[value], line);
 		assert.equal(
 			texts.already[value],
 			unchanged("provider", alreadyValue(value)),
