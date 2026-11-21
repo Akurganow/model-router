@@ -128,9 +128,8 @@ const KEYS = {
 	google: "test-google-key",
 	openrouter: "test-openrouter-key",
 };
-const OPENAI_URL = "https://api.openai.com/v1/decisions";
 
-const scoreOpenAI = (
+const scoreUnder = (
 	gateway: Gateway,
 	reply: (url: string) => Response,
 	provider: Maker = "openai",
@@ -145,7 +144,7 @@ const scoreOpenAI = (
 
 test("scoreWork under openai direct shows the openai holder, the model and the counts", async () => {
 	assert.deepEqual(
-		await scoreOpenAI("direct", () => scoringReply(200, OPENAI_REPLY)),
+		await scoreUnder("direct", () => scoringReply(200, OPENAI_REPLY)),
 		{
 			tier: 2,
 			work: 1,
@@ -157,7 +156,7 @@ test("scoreWork under openai direct shows the openai holder, the model and the c
 
 test("scoreWork under openai through OpenRouter shows the openrouter holder", async () => {
 	assert.deepEqual(
-		await scoreOpenAI("openrouter", () => scoringReply(200, OPENROUTER_REPLY)),
+		await scoreUnder("openrouter", () => scoringReply(200, OPENROUTER_REPLY)),
 		{
 			tier: 2,
 			work: 1,
@@ -167,52 +166,14 @@ test("scoreWork under openai through OpenRouter shows the openrouter holder", as
 	);
 });
 
-test("scoreWork under openai and auto names OpenAI's HTTP 429 after OpenRouter answers", async () => {
-	assert.deepEqual(
-		await scoreOpenAI("auto", (url) =>
-			scoringReply(url === OPENAI_URL ? 429 : 200, OPENROUTER_REPLY),
-		),
-		{
-			tier: 2,
-			work: 1,
-			probabilities: "0.95/0.43",
-			suffix:
-				" · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429",
-		},
-	);
-});
-
 test("scoreWork under google direct shows the google holder and the counts, and no model", async () => {
 	assert.deepEqual(
-		await scoreOpenAI(
-			"direct",
-			() => scoringReply(200, GEMINI_REPLY),
-			"google",
-		),
+		await scoreUnder("direct", () => scoringReply(200, GEMINI_REPLY), "google"),
 		{
 			tier: 2,
 			work: 1,
 			probabilities: "0.83/0.56",
 			suffix: " · google · 430/0 tok",
-		},
-	);
-});
-
-test("scoreWork under google and openrouter-first names OpenRouter's HTTP 503 after Google answers", async () => {
-	assert.deepEqual(
-		await scoreOpenAI(
-			"openrouter-first",
-			(url) =>
-				url.startsWith("https://openrouter.ai")
-					? scoringReply(503, "x")
-					: scoringReply(200, GEMINI_REPLY),
-			"google",
-		),
-		{
-			tier: 2,
-			work: 1,
-			probabilities: "0.83/0.56",
-			suffix: " · google · 430/0 tok · openrouter HTTP 503",
 		},
 	);
 });

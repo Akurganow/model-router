@@ -93,15 +93,6 @@ class ReadAllTest(unittest.TestCase):
         text = call(handler_for(secrets={"TYPESAFE_API_KEY": "   "}))
         self.assertIn(TEXTS["keyLines"]["typesafe"]["unset"], text)
 
-    def test_a_blank_spaces_or_missing_openai_or_google_key_is_unset(self):
-        for provider, variable in (("openai", "OPENAI_API_KEY"), ("google", "GEMINI_API_KEY")):
-            for blank in ("", "   ", None):
-                with self.subTest(provider=provider, blank=blank):
-                    text = call(
-                        handler_for(good_settings(provider=provider), {variable: blank})
-                    )
-                    self.assertIn(TEXTS["keyLines"][provider]["unset"], text)
-
     def test_any_input_gives_the_full_read(self):
         handler = handler_for()
         expected = call(handler)

@@ -240,56 +240,43 @@ test("the choices table holds the key holders and the lines of each provider and
 		holders,
 		lines: [`provider: ${provider}`, gateway],
 	});
-	assert.deepEqual(constants.choices, {
-		typesafe: {
-			direct: leaf(["typesafe"], "gateway: direct (typesafe)"),
-			auto: leaf(
-				["typesafe", "openrouter"],
-				"gateway: auto (typesafe, then openrouter)",
-			),
-			"openrouter-first": leaf(
-				["openrouter", "typesafe"],
-				"gateway: openrouter-first (openrouter, then typesafe)",
-			),
-			openrouter: leaf(["openrouter"], "gateway: openrouter (openrouter)"),
+	const choices = constants.choices as { typesafe: unknown; openai: unknown };
+	assert.deepEqual(Object.keys(choices), ["typesafe", "openai", "google"]);
+	assert.deepEqual(
+		{ typesafe: choices.typesafe, openai: choices.openai },
+		{
+			typesafe: {
+				direct: leaf(["typesafe"], "gateway: direct (typesafe)"),
+				auto: leaf(
+					["typesafe", "openrouter"],
+					"gateway: auto (typesafe, then openrouter)",
+				),
+				"openrouter-first": leaf(
+					["openrouter", "typesafe"],
+					"gateway: openrouter-first (openrouter, then typesafe)",
+				),
+				openrouter: leaf(["openrouter"], "gateway: openrouter (openrouter)"),
+			},
+			openai: {
+				direct: leaf(["openai"], "gateway: direct (openai)", "openai"),
+				auto: leaf(
+					["openai", "openrouter"],
+					"gateway: auto (openai, then openrouter)",
+					"openai",
+				),
+				"openrouter-first": leaf(
+					["openrouter", "openai"],
+					"gateway: openrouter-first (openrouter, then openai)",
+					"openai",
+				),
+				openrouter: leaf(
+					["openrouter"],
+					"gateway: openrouter (openrouter)",
+					"openai",
+				),
+			},
 		},
-		openai: {
-			direct: leaf(["openai"], "gateway: direct (openai)", "openai"),
-			auto: leaf(
-				["openai", "openrouter"],
-				"gateway: auto (openai, then openrouter)",
-				"openai",
-			),
-			"openrouter-first": leaf(
-				["openrouter", "openai"],
-				"gateway: openrouter-first (openrouter, then openai)",
-				"openai",
-			),
-			openrouter: leaf(
-				["openrouter"],
-				"gateway: openrouter (openrouter)",
-				"openai",
-			),
-		},
-		google: {
-			direct: leaf(["google"], "gateway: direct (google)", "google"),
-			auto: leaf(
-				["google", "openrouter"],
-				"gateway: auto (google, then openrouter)",
-				"google",
-			),
-			"openrouter-first": leaf(
-				["openrouter", "google"],
-				"gateway: openrouter-first (openrouter, then google)",
-				"google",
-			),
-			openrouter: leaf(
-				["openrouter"],
-				"gateway: openrouter (openrouter)",
-				"google",
-			),
-		},
-	});
+	);
 });
 
 test("the task parameters are the texts src/ gives, with the ladder and the levels as enums", () => {

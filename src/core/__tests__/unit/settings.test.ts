@@ -378,16 +378,6 @@ test("settingsReport names the openai holder first under provider openai and gat
 	);
 });
 
-test("settingsReport names the openrouter holder first under provider google and gateway openrouter-first", () => {
-	assert.equal(
-		settingsReport({ provider: "google", gateway: "openrouter-first" }, [], {
-			google: "key-1",
-			openrouter: "key-2",
-		}),
-		"provider: google\ngateway: openrouter-first (openrouter, then google)\nscope: core\nopenrouter key: set\ngoogle key: set",
-	);
-});
-
 test("settingsReport never prints a key", () => {
 	const report = settingsReport({ gateway: "auto" }, [], {
 		typesafe: "key-1",

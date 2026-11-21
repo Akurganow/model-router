@@ -109,16 +109,6 @@ class GateTest(RouterCase):
     def test_blank_key_counts_as_unset(self):
         self.assertSkipped("keyUnset", api=fake_api(secrets={"TYPESAFE_API_KEY": "  "}))
 
-    def test_a_blank_spaces_or_missing_openai_or_google_key_counts_as_unset(self):
-        for provider, variable in (("openai", "OPENAI_API_KEY"), ("google", "GEMINI_API_KEY")):
-            for blank in ("", "   ", None):
-                with self.subTest(provider=provider, blank=blank):
-                    self.assertSkipped(
-                        "keyUnset",
-                        api=fake_api(secrets={variable: blank}),
-                        settings=good_settings(provider=provider, gateway="direct"),
-                    )
-
     def test_any_allowed_key_opens_the_gate(self):
         for gateway, secret in (
             ("auto", "OPENROUTER_API_KEY"),

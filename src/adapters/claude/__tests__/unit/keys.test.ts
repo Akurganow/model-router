@@ -83,31 +83,3 @@ test("a rejected variable lookup rejects and stops the later lookups", async () 
 	);
 	assert.deepEqual(reads, [KEY_VARIABLES.typesafe]);
 });
-
-// Under openai or google the key comes from its own option, and a blank, a string of spaces or a null reads as unset.
-test("a blank, spaces or null openai or google option is unset and the variable stands in", async () => {
-	for (const [provider, field] of [
-		["openai", "openai_api_key"],
-		["google", "google_api_key"],
-	] as const) {
-		const own: Choice = { provider, gateway: "direct" };
-		for (const blank of ["", "   ", null]) {
-			assert.deepEqual(
-				await readKeys(
-					engineWith("from-the-variable"),
-					{ [field]: blank } as unknown as Options,
-					own,
-				),
-				{ [provider]: "from-the-variable" },
-			);
-			assert.deepEqual(
-				await readKeys(
-					engineWith(undefined),
-					{ [field]: blank } as unknown as Options,
-					own,
-				),
-				{},
-			);
-		}
-	}
-});

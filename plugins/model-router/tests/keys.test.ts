@@ -29,15 +29,22 @@ const OPENAI_ANSWER = JSON.stringify({
 	usage: { input_tokens: 1, output_tokens: 1 },
 });
 
-// The last column is the key the request carries, or null when the call passes through unrouted.
-// The address and the reply follow the provider and the gateway the options set.
-for (const [name, options, env, key] of [
-	["a missing key passes through and says so", {}, {}, null],
-	["an empty key passes through like a missing one", { api_key: "" }, {}, null],
+// The last two columns are the key the request carries and the address it goes to, both null when the call passes through unrouted.
+// The OpenAI row gets OpenAI's list-shaped reply. The Google row gets the harness's default reply, a map, which the Gemini format reads.
+for (const [name, options, env, key, address] of [
+	["a missing key passes through and says so", {}, {}, null, null],
+	[
+		"an empty key passes through like a missing one",
+		{ api_key: "" },
+		{},
+		null,
+		null,
+	],
 	[
 		"an empty option and an empty variable pass through as unset",
 		{ api_key: "" },
 		{ TYPESAFE_API_KEY: "" },
+		null,
 		null,
 	],
 	[
@@ -45,23 +52,27 @@ for (const [name, options, env, key] of [
 		{ api_key: "option-key" },
 		{},
 		"option-key",
+		TYPESAFE_URL,
 	],
 	[
 		"TYPESAFE_API_KEY is the key when the option is empty",
 		{ api_key: "" },
 		{ TYPESAFE_API_KEY: VARIABLE_KEY },
 		VARIABLE_KEY,
+		TYPESAFE_URL,
 	],
 	[
 		"the option wins over the variable",
 		{ api_key: "option-key" },
 		{ TYPESAFE_API_KEY: VARIABLE_KEY },
 		"option-key",
+		TYPESAFE_URL,
 	],
 	[
 		"a missing OpenRouter key passes through and says so",
 		{ gateway: "openrouter", openrouter_api_key: "" },
 		{ OPENROUTER_API_KEY: "" },
+		null,
 		null,
 	],
 	[
@@ -69,42 +80,49 @@ for (const [name, options, env, key] of [
 		{ gateway: "openrouter", openrouter_api_key: "openrouter-option-key" },
 		{},
 		"openrouter-option-key",
+		OPENROUTER_URL,
 	],
 	[
 		"OPENROUTER_API_KEY is the key when the OpenRouter option is empty",
 		{ gateway: "openrouter", openrouter_api_key: "" },
 		{ OPENROUTER_API_KEY: OPENROUTER_VARIABLE_KEY },
 		OPENROUTER_VARIABLE_KEY,
+		OPENROUTER_URL,
 	],
 	[
 		"the OpenRouter option wins over its variable",
 		{ gateway: "openrouter", openrouter_api_key: "openrouter-option-key" },
 		{ OPENROUTER_API_KEY: OPENROUTER_VARIABLE_KEY },
 		"openrouter-option-key",
+		OPENROUTER_URL,
 	],
 	[
 		"the OpenAI option is the key under provider openai",
 		{ provider: "openai", openai_api_key: "openai-option-key" },
 		{},
 		"openai-option-key",
+		OPENAI_URL,
 	],
 	[
 		"OPENAI_API_KEY is the key under provider openai when the option is empty",
 		{ provider: "openai", openai_api_key: "" },
 		{ OPENAI_API_KEY: OPENAI_VARIABLE_KEY },
 		OPENAI_VARIABLE_KEY,
+		OPENAI_URL,
 	],
 	[
 		"the Google option is the key under provider google, in the x-goog-api-key header",
 		{ provider: "google", google_api_key: "google-option-key" },
 		{},
 		"google-option-key",
+		GOOGLE_URL,
 	],
 	[
 		"GEMINI_API_KEY is the key under provider google when the option is empty",
 		{ provider: "google", google_api_key: "" },
 		{ GEMINI_API_KEY: GOOGLE_VARIABLE_KEY },
 		GOOGLE_VARIABLE_KEY,
+		GOOGLE_URL,
 	],
 ] as const)
 	test(name, { options }, async ($, on) => {
@@ -121,15 +139,7 @@ for (const [name, options, env, key] of [
 			expect(h.logs).toEqual(["skipped, key unset"]);
 			return;
 		}
-		expect(h.request.url).toBe(
-			own === "openai"
-				? OPENAI_URL
-				: own === "google"
-					? GOOGLE_URL
-					: "gateway" in options
-						? OPENROUTER_URL
-						: TYPESAFE_URL,
-		);
+		expect(h.request.url).toBe(address);
 		if (own === "google") {
 			expect(h.request.init?.headers?.["x-goog-api-key"]).toBe(key);
 			expect(h.auth).toBeUndefined();

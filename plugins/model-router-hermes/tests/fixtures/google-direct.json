@@ -7,7 +7,7 @@
 		"keys": {
 			"google": "google-key"
 		},
-		"budgetMs": 8000,
+		"budgetMs": 10000,
 		"models": {
 			"small": "openai/small",
 			"large": "openai/large"

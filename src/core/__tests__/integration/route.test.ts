@@ -564,6 +564,7 @@ for (const [
 		const decision = asDecision(
 			await run(fetchFn, { attempts: plan({ provider, gateway }, KEYS) }),
 		);
+		assert.equal(sent.length, 1);
 		assert.equal(sent[0]?.split(" ")[0], address);
 		assert.equal(JSON.parse(bodies[0] ?? "").model, sentModel);
 		assert.deepEqual(inits[0]?.headers, {
