@@ -164,9 +164,10 @@ Run it with a value, for example `/model-router:scope extended`, to write the
 option and print the new value.
 [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands)
 says what a bad value or a refused write prints. A command writes only when
-you type it at your own prompt. From any other origin the command prints the
-value and writes nothing. When Claude runs a command itself, the command's text
-tells Claude to call the tool below. `/config` changes the same options.
+you type it at your own prompt. From any other origin a valid value writes
+nothing, and the command prints the current value. When Claude runs a command
+itself, the command's text tells Claude to call the tool below. `/config`
+changes the same options.
 
 The tool `mcp__model-router__config` takes one optional input, `setting`:
 
@@ -174,14 +175,14 @@ The tool `mcp__model-router__config` takes one optional input, `setting`:
   line and the key lines, as
   [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool)
   gives them. A key counts as set when its option or its variable
-  holds a non-empty value. The tool never returns a key, its length or any
+  holds a non-blank value. The tool never returns a key, its length or any
   part of it.
 - With `provider`, `gateway` or `scope`, the mod opens its own dialog. The current value
   comes first, and each label says what the value does. The mod writes only
   the value you pick. It writes nothing for free text, for the current value
   or for a dismissed or interrupted dialog. It writes nothing where no dialog
-  can open, such as `claude -p`. The reply equals the command's text for the
-  same outcome.
+  can open, such as `claude -p`. A written value, a refused write and a failed
+  write get the reply the command gives.
 
 The tool takes no key. Add a key in the plugin's settings: `/plugin` in the
 terminal, or the plugin's gear icon in VS Code. The model never passes a
@@ -252,7 +253,7 @@ another model.
 ## What leaves the machine
 
 On each routed call the mod sends an HTTPS POST through Claude Code's own
-`$.http.fetch` to the first path of the `gateway` value:
+`$.http.fetch` to the first path of the `gateway` value that has a key:
 
 - The direct path, TypeSafe: https://api.typesafe.ai/v1/systemone, with your
   TypeSafe key as the bearer token.

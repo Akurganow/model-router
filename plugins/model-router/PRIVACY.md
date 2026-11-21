@@ -26,7 +26,7 @@ option decides which companies receive the task text and their keys:
 | `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
 
-With both keys under `auto` or `openrouter-first`, one call may reach both companies.
+A path with no key is left out. With both keys under `auto` or `openrouter-first`, one call may reach both companies.
 
 [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
 gives the fallback rules.
