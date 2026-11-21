@@ -79,11 +79,10 @@ every commit as a [conventional commit](#commits).
   - `brief/`: the task text that leaves the machine, condensed and masked.
   - `parts/`: the questions `tier` and `work`, their shared types and the
     pick rule. It imports only `parts/part.ts` and `utils/`.
-  - `providers/`: the makers, the key holders, the paths and which paths
-    each maker has, the values of the `provider` setting with the paths each
-    allows, the key names and the plan of attempts. An attempt names its
-    maker, its path and its key holder, and carries that holder's key.
-    `collectKeys` and
+  - `providers/`: the makers, the key holders, the paths, the values of the
+    `provider` setting with the paths each allows, the key names and the plan
+    of attempts. An attempt names its maker, its path and its key holder, and
+    carries that holder's key. `collectKeys` and
     `collectKeysSync` hold the one rule that collects the keys, for a lookup
     that waits and for one that answers at once; `found_keys` in the Hermes
     plugin's `settings.py` walks the same order in Python, over the generated
