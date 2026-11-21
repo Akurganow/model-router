@@ -1,22 +1,24 @@
-import { LEVELS, type Part, type Probabilities } from "#core/parts/part.ts";
-import { type Failure, MALFORMED } from "#core/scoring/failure.ts";
+import { LEVELS, type Probabilities } from "#core/parts/part.ts";
 import { isRecord } from "#utils/guards.ts";
-import type { Answers, Format } from "./format.ts";
-import { isProbability, parseJson, stateText, usageNamed } from "./shared.ts";
+import type { Format } from "./format.ts";
+import {
+	levelProbabilities,
+	replyReader,
+	stateText,
+	usageNamed,
+} from "./shared.ts";
 
-const usageOf = usageNamed("input_tokens", "output_tokens");
-
+// The answers as a list: the one item with the part's name holds its probabilities.
 // The value, not the position or the label, says which level a probability belongs to.
-function probabilitiesOf(
-	answers: readonly unknown[],
-	key: string,
-): Probabilities | undefined {
+function listAnswer(answers: unknown, key: string): Probabilities | undefined {
+	if (!Array.isArray(answers)) return undefined;
 	const [item, ...others] = answers
 		.filter(isRecord)
 		.filter(({ name }) => name === key);
 	if (!item || others.length > 0) return undefined;
 	const { type, probabilities } = item;
 	if (type !== "score" || !Array.isArray(probabilities)) return undefined;
+	// Three entries that hold 0, 1 and 2 leave no repeated and no fourth level.
 	if (probabilities.length !== LEVELS.length) return undefined;
 	const byValue = new Map<unknown, unknown>();
 	for (const entry of probabilities) {
@@ -24,27 +26,7 @@ function probabilitiesOf(
 		const { value, probability } = entry;
 		byValue.set(value, probability);
 	}
-	const p0 = byValue.get(0);
-	const p1 = byValue.get(1);
-	const p2 = byValue.get(2);
-	if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
-		return undefined;
-	return { 0: p0, 1: p1, 2: p2 };
-}
-
-function read(parts: readonly Part[], text: string): Answers | Failure {
-	const reply = parseJson(text);
-	const { answers, model, usage }: Record<string, unknown> = isRecord(reply)
-		? reply
-		: {};
-	if (!Array.isArray(answers)) return MALFORMED;
-	const pairs: (readonly [Part, Probabilities])[] = [];
-	for (const part of parts) {
-		const probabilities = probabilitiesOf(answers, part.key);
-		if (!probabilities) return MALFORMED;
-		pairs.push([part, probabilities]);
-	}
-	return { answers: pairs, model, usage: usageOf(usage) };
+	return levelProbabilities(byValue.get(0), byValue.get(1), byValue.get(2));
 }
 
 export const OPENAI_DECISIONS: Format = {
@@ -53,7 +35,7 @@ export const OPENAI_DECISIONS: Format = {
 			model,
 			input: stateText(state),
 			questions: parts.map(({ key, question }) => ({
-				type: question.type,
+				type: "score",
 				name: key,
 				instructions: question.instructions,
 				levels: question.criteria.map((description, index) => ({
@@ -62,5 +44,5 @@ export const OPENAI_DECISIONS: Format = {
 				})),
 			})),
 		}),
-	read,
+	read: replyReader(listAnswer, usageNamed("input_tokens", "output_tokens")),
 };

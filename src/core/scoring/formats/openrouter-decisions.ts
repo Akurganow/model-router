@@ -1,8 +1,13 @@
 import type { Format } from "./format.ts";
-import { questionMap, stateText } from "./shared.ts";
-import { SYSTEM_ONE } from "./system-one.ts";
+import {
+	mapAnswer,
+	questionMap,
+	replyReader,
+	stateText,
+	usageNamed,
+} from "./shared.ts";
 
-// The System One body with the state as text.
+// The gateway takes the same text the maker's own API takes, so the state goes as text.
 export const OPENROUTER_DECISIONS: Format = {
 	body: (parts, state, model) =>
 		JSON.stringify({
@@ -10,5 +15,5 @@ export const OPENROUTER_DECISIONS: Format = {
 			model,
 			questions: questionMap(parts),
 		}),
-	read: SYSTEM_ONE.read,
+	read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens")),
 };

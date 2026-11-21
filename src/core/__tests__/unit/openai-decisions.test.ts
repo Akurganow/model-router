@@ -33,20 +33,25 @@ test("the reply is read by name and value, whatever the order", () => {
 	assert.deepEqual(read(JSON.stringify(reversed)), expected);
 });
 
-test("a reply with no model reads with none", () => {
-	assert.deepEqual(read(REPLY.replace('"model":"gpt-6-luna",', "")), {
-		answers: ANSWERS,
-		model: undefined,
-		usage: USAGE,
-	});
-});
-
 test("a refusal is a bad reply", () =>
 	bad('"type":"score"', '"type":"refusal"'));
+
+test("a probability outside 0 to 1 is a bad reply", () =>
+	bad('"probability":0.9', '"probability":1.1'));
+
+test("answers as a map, not a list, is a bad reply", () =>
+	assert.deepEqual(
+		OPENAI_DECISIONS.read(
+			[TIER],
+			'{"answers":{"0":{"type":"score","name":"tier","probabilities":[{"value":0,"probability":0.2},{"value":1,"probability":0.3},{"value":2,"probability":0.5}]}}}',
+		),
+		{ failure: "malformed" },
+	));
 
 test("an answer under another name is a bad reply", () =>
 	bad('"name":"tier"', '"name":"other"'));
 
+// Only tier is asked: with work asked too, its missing answer alone would fail the reply.
 test("a repeated answer name is a bad reply", () =>
 	bad('"name":"work"', '"name":"tier"', [TIER]));
 

@@ -711,14 +711,6 @@ function fallsBack(failure2) {
 }
 
 // src/core/scoring/formats/shared.ts
-var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
-function parseJson(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return void 0;
-  }
-}
 var questionMap = (parts) => Object.fromEntries(parts.map((p) => [p.key, p.question]));
 var count = (v) => typeof v === "number" ? v : null;
 var usageNamed = (input, output) => (usage) => {
@@ -728,34 +720,44 @@ var usageNamed = (input, output) => (usage) => {
     output_tokens: count(usage[output])
   };
 };
-function parseProbabilities(answers, key) {
+var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
+function levelProbabilities(p0, p1, p2) {
+  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+var mapAnswer = (answers, key) => {
   const a = isRecord(answers) ? answers[key] : void 0;
   if (!isRecord(a)) return void 0;
   const { type, probabilities } = a;
   if (type !== "score" || !isRecord(probabilities)) return void 0;
   if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
   const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
+  return levelProbabilities(p0, p1, p2);
+};
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
     return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
+  }
 }
-function readScoreMap(parts, text, usageOf2) {
+var replyReader = (probabilitiesOf, usageOf) => (parts, text) => {
   const reply = parseJson(text);
   const { answers, model, usage } = isRecord(reply) ? reply : {};
   const pairs = [];
   for (const part of parts) {
-    const probabilities = parseProbabilities(answers, part.key);
+    const probabilities = probabilitiesOf(answers, part.key);
     if (!probabilities) return MALFORMED;
     pairs.push([part, probabilities]);
   }
-  return { answers: pairs, model, usage: usageOf2(usage) };
-}
+  return { answers: pairs, model, usage: usageOf(usage) };
+};
 
 // src/core/scoring/formats/system-one.ts
-var usageOf = usageNamed("input_tokens", "output_tokens");
 var SYSTEM_ONE = {
   body: (parts, state, model) => JSON.stringify({ state, model, questions: questionMap(parts) }),
-  read: (parts, text) => readScoreMap(parts, text, usageOf)
+  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
 };
 
 // src/core/scoring/endpoints.ts
