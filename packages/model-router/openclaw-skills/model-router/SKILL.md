@@ -5,7 +5,7 @@ description: Use to pick a model or effort for a subagent by hand, when one repo
 
 # model-router
 
-model-router scores each routed `sessions_spawn` call through Jev, on TypeSafe's own API or through OpenRouter as the `gateway` setting allows. At spawn, it sets `model` to the person's `small_model` for level 0, their `middle_model` for level 1 or their `large_model` for level 2. A slot that holds a model sets `model` to it. A level whose slot is unset keeps OpenClaw's own model. The line then names the slot, such as `L1 middle model unset`. It also sets `thinking` to an effort of the ladder: `low`, `medium`, `high` or `xhigh`.
+model-router scores each routed `sessions_spawn` call through the decision model of the `provider` setting, on the provider's own API or through OpenRouter as the `gateway` setting allows. At spawn, it sets `model` to the person's `small_model` for level 0, their `middle_model` for level 1 or their `large_model` for level 2. A slot that holds a model sets `model` to it. A level whose slot is unset keeps OpenClaw's own model. The line then names the slot, such as `L1 middle model unset`. It also sets `thinking` to an effort of the ladder: `low`, `medium`, `high` or `xhigh`.
 
 - The plugin writes a `model-router` line to the Gateway log. It shows each decision, or the reason a spawn ran unrouted.
 - The `scope` setting decides which spawns the plugin routes. Under `core`, the default, it routes the spawn of the requesting agent itself: a spawn with no `agentId`, or the requester's own id, and a `runtime` that is absent or `subagent`. Under `extended`, it also routes the spawn of any other configured agent that sets no model.

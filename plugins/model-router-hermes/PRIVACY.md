@@ -6,26 +6,33 @@ says what the plugin sends, where it goes, and what the plugin keeps. Effective
 
 ## Where requests go
 
-The plugin asks Jev to score each `delegate_task` task it routes. It never
-scores the main turn. Jev answers on one or two paths:
+The plugin asks a decision model to score each `delegate_task` task it routes.
+It never scores the main turn. The model answers on one or two paths:
 
-- the direct path: TypeSafe, at https://api.typesafe.ai/v1/systemone, with your
-  TypeSafe key
-- the gateway path: OpenRouter, at https://openrouter.ai/api/v1/systemone, with
-  your OpenRouter key.
+- the direct path: the provider's own API, with the provider's key
+- the gateway path: OpenRouter, with your OpenRouter key.
 
-The `provider` setting says whose model scores, and its one value is
-`typesafe`. OpenRouter is a gateway that answers with that model. The `gateway`
-setting decides which companies receive the task text and their keys:
+The `provider` setting says whose model scores: `typesafe`, `openai` or
+`google`. OpenRouter is a gateway that passes the request to that provider's
+model. These companies can receive the task text:
+
+| Company | Host | It receives the text when | Key it takes |
+| :-- | :-- | :-- | :-- |
+| TypeSafe | `api.typesafe.ai` | `provider` is `typesafe` and `gateway` allows the direct path | the TypeSafe key, as a bearer token |
+| OpenAI | `api.openai.com` | `provider` is `openai` and `gateway` allows the direct path | the OpenAI key, as a bearer token |
+| Google | `generativelanguage.googleapis.com` | `provider` is `google` and `gateway` allows the direct path | the Google key, in the `x-goog-api-key` header |
+| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each of the three | the OpenRouter key, as a bearer token |
+
+The `gateway` setting decides which paths are open:
 
 | `gateway` | First request | Second request, after a failure |
 | :-- | :-- | :-- |
-| `direct`, the default | TypeSafe, with the TypeSafe key | none |
-| `auto` | TypeSafe, with the TypeSafe key | OpenRouter, with the OpenRouter key |
-| `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
+| `direct`, the default | the provider, with its key | none |
+| `auto` | the provider, with its key | OpenRouter, with the OpenRouter key |
+| `openrouter-first` | OpenRouter, with the OpenRouter key | the provider, with its key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
 
-A path with no key is left out. With both keys under `auto` or `openrouter-first`, one task may reach both companies.
+A path with no key is left out. With both keys under `auto` or `openrouter-first`, one task may reach both the provider and OpenRouter.
 A setting that is not valid sends nothing, as
 [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)
 says.
@@ -37,7 +44,7 @@ no model set, each routed task is still sent for scoring, as
 [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
 gives the fallback rules.
 
-Each key goes only to the address above of the company that issued it, as
+Each key goes only to the host above of the company that issued it, as
 [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
 explains.
 
@@ -69,7 +76,7 @@ JSON body holds:
   machine, as
   [Descriptions and private names](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#descriptions-and-private-names)
   says
-- the Jev alias and the two scoring questions, as
+- the model of the endpoint and the two scoring questions, as
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them
 
@@ -116,7 +123,7 @@ says what a request in flight can cost. The plugin sends no other request.
 
 ## What each company does with the text
 
-The companies' privacy policies are linked at
+The companies' own pages are linked at
 [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text).
 
 ## What the plugin stores
@@ -125,9 +132,11 @@ The plugin keeps no file of its own. In memory it holds the routing-budget
 record, which has the start and end times of the current call, and the last 128
 distinct log lines. Both leave when the gateway or the plugin host stops.
 
-It reads a key only for a path the `gateway` setting allows. It reads the
-key through Hermes's own secret reader, from the variable `TYPESAFE_API_KEY` or
-`OPENROUTER_API_KEY`. [Keys](README.md#keys) says where Hermes holds them. The
+It reads a key only for a company that the `provider` and `gateway` settings
+allow. It reads the key through Hermes's own secret reader, from the variable
+`TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or `OPENROUTER_API_KEY`.
+It does not read `GOOGLE_API_KEY`. [Keys](README.md#keys) says where Hermes
+holds them. The
 plugin holds a key in memory only while it routes a task, and it passes the key
 to the program above on standard input.
 
@@ -149,9 +158,17 @@ as Hermes's own default backend does, with a model, a provider and an effort
 changed when it routes. When the section sets no effort, every route carries
 the task's `reasoning_effort` parameter.
 
-The plugin reads no credential of a model's provider but one: the OpenRouter
-key, which Hermes's own OpenRouter provider shares, as [Keys](README.md#keys)
-says. It sets the model and provider you named in a slot on the task. Of the
+The plugin reads no credential of a model's provider except the four keys above.
+A key saved in the form for OpenRouter or OpenAI is also the key of Hermes's own
+provider for that vendor. The plugin's Google secret writes `GEMINI_API_KEY`,
+which Hermes's own Gemini provider reads after `GOOGLE_API_KEY`, unless
+`model.key_env` names a variable for it. So that provider prefers a key set
+under `GOOGLE_API_KEY` over the key saved in the form, with the same limit.
+With neither `model.provider` nor a local `model.base_url` in `config.yaml`,
+Hermes takes the first provider in its own order whose key is set, ahead of an
+OAuth login. A key saved for OpenAI or Google can then become the provider of
+your own Hermes session, and `model.provider` keeps another. [Keys](README.md#keys)
+says the same for each key. It sets the model and provider you named in a slot on the task. Of the
 settings, the task parameters and the `delegation` section, only the role text
 leaves your machine, in the request, as described above.
 

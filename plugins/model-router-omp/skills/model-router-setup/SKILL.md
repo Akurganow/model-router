@@ -2,13 +2,13 @@
 name: model-router-setup
 description: >
   Use when the user wants to set up or check model-router in Oh My Pi (omp): to
-  choose its provider, gateway, scope or level models, to add a TypeSafe or
-  OpenRouter key, to find out why routing is off, or to check that routing works.
+  choose its provider, gateway, scope or level models, to add a TypeSafe,
+  OpenAI, Google or OpenRouter key, to find out why routing is off, or to check that routing works.
 ---
 
 # model-router setup for Oh My Pi
 
-model-router scores each routed `task` spawn with Jev, on TypeSafe's own API or through OpenRouter. It gives the spawn the `smol` role for lookup work, the `midl` role for bounded judgment, or the `slow` role for open judgment. It also sets the effort.
+model-router scores each routed `task` spawn with the decision model of the chosen provider, on the provider's own API or through OpenRouter. It gives the spawn the `smol` role for lookup work, the `midl` role for bounded judgment, or the `slow` role for open judgment. It also sets the effort.
 
 ## What set up means
 
@@ -16,11 +16,11 @@ Routing works when all of these hold:
 
 - The plugin is enabled in omp.
 - The omp setting `task.batch` is on, so each `task` call carries a `tasks` list.
-- A scoring key exists for a path that the `gateway` setting allows.
+- A scoring key exists for a path that the `provider` and `gateway` settings allow.
 
 The person may also choose:
 
-- The `provider` setting, which says whose model scores. Its one value is `typesafe`.
+- The `provider` setting, which says whose model scores. It takes `typesafe`, `openai` or `google`.
 - The `gateway` setting, which says how OpenRouter is used to reach the provider.
 - The `scope` setting, which picks the routed agents.
 - A model for each of the three levels, as an omp model role. A level with no model keeps the agent's model. It still gets the effort for a task the plugin scores.
@@ -28,6 +28,15 @@ The person may also choose:
 ## Your job
 
 Find out which of these already hold, with the `model_router_config` tool and omp's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool omp gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
+
+When the person wants to choose the provider, follow these steps in order:
+
+1. Call `model_router_config` with no setting, and read the settings and the key lines.
+2. Ask which provider's model scores, and give the three labels from the Provider and gateway facts.
+3. On the person's word, call `model_router_config` with `setting` set to `provider`.
+4. Ask how OpenRouter is used, and set `gateway` the same way.
+5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
+6. Call `model_router_config` with no setting, and confirm the lines.
 
 ## Facts
 
@@ -42,8 +51,8 @@ Find out which of these already hold, with the `model_router_config` tool and om
   typesafe key: set
   openrouter key: unset
   ```
-- A key line reads `typesafe key: set` or `typesafe key: unset` for the direct path, and `openrouter key: set` or `openrouter key: unset` for the gateway path.
-- The `gateway` line names the paths of its value: `gateway: direct (typesafe)`, `gateway: auto (typesafe, then openrouter)`, `gateway: openrouter-first (openrouter, then typesafe)` or `gateway: openrouter (openrouter)`.
+- A key line reads `<holder> key: set` or `<holder> key: unset`. For the direct path the holder is the provider's name, `typesafe`, `openai` or `google`, and for the gateway path it is `openrouter`.
+- The `gateway` line names the paths of its value, with the provider's name for the direct path: `gateway: direct (openai)`, `gateway: auto (openai, then openrouter)`, `gateway: openrouter-first (openrouter, then openai)` or `gateway: openrouter (openrouter)`.
 - A stored value outside its setting's list is not valid. The plugin then routes no task, and each task skips with `<setting> not valid: run setup`.
 - The tool prints `<setting>: <stored text> (not valid: use one of <values>)` for that setting, and each valid setting as `<setting>: <value>`, in the usual order. The gateway line names nobody, and no key line prints.
 - omp passes a stored value on as stored, so the skip line shows in omp, as [omp manifest and settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#omp-manifest-and-settings) says.
@@ -57,11 +66,15 @@ Find out which of these already hold, with the `model_router_config` tool and om
 
 ### Provider and gateway
 
-- `provider` has one value, `typesafe`, the default: Jev from TypeSafe.
+- `provider` has three values. `typesafe` is the default.
+  - `typesafe`: Jev from TypeSafe, the model the plugin's questions are fitted to.
+  - `openai`: OpenAI's decision model; costs more than Jev and its answers are not fitted.
+  - `google`: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.
+  - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
 - `gateway` has four values. `direct` is the default.
-  - `direct` uses TypeSafe's own API only.
-  - `auto` uses TypeSafe's own API, then OpenRouter if that fails.
-  - `openrouter-first` uses OpenRouter, then TypeSafe's own API if that fails.
+  - `direct` uses the provider's own API only.
+  - `auto` uses the provider's own API, then OpenRouter if that fails.
+  - `openrouter-first` uses OpenRouter, then the provider's own API if that fails.
   - `openrouter` uses OpenRouter only.
 - With `auto` or `openrouter-first` and one key, the path with that key scores alone.
 
@@ -108,12 +121,16 @@ To move a retired value, follow these steps in order:
 
 ### Keys
 
-- The direct path, TypeSafe: omp's stored `typesafe` credential, which `/login typesafe` stores, then the `TYPESAFE_API_KEY` environment variable.
-- The gateway path, OpenRouter: omp's stored `openrouter` credential, which `/login openrouter` stores, then the `OPENROUTER_API_KEY` environment variable.
+- omp has no setting for a key. The plugin asks omp's credential lookup by an id, sends the credential omp returns, and then tries the variable.
+  - TypeSafe: the id `typesafe`, which `/login typesafe` stores, then `TYPESAFE_API_KEY`. Get a key at https://console.typesafe.ai/keys.
+  - OpenAI: the id `openai`, then `OPENAI_API_KEY`. Get a key at https://platform.openai.com/api-keys.
+  - Google: the id `google`, then `GEMINI_API_KEY`. Get a key at https://aistudio.google.com/docs/api-key. The plugin does not read `GOOGLE_API_KEY`.
+  - OpenRouter: the id `openrouter`, which `/login openrouter` stores, then `OPENROUTER_API_KEY`. Get a key at https://openrouter.ai.
+- The key of the chosen provider serves the direct path, and the OpenRouter key serves the gateway path.
 - A key counts as set when either place holds a non-blank value.
 - A key variable reaches the environment of every process omp starts.
-- The person adds a key with `/login typesafe` or `/login openrouter`, or with `omp login <provider>` outside a session. The plugin never asks for a key.
-- With no key for any path the `gateway` setting allows, every call skips with `key unset`.
+- The person adds a key with `/login typesafe` or `/login openrouter`, or with `omp login <provider>` outside a session. For OpenAI or Google, the person stores the credential the way omp stores one for that provider, or sets the variable. The plugin never asks for a key.
+- With no key for any path the `provider` and `gateway` settings allow, every call skips with `key unset`.
 
 ### Models
 
@@ -130,9 +147,9 @@ To move a retired value, follow these steps in order:
 - A routed entry reads `L<level> <role or slot state> · <effort or kept label> · p=<tier>/<work>`, such as `L1 @midl · medium · p=0.66/0.72`.
 - A level with no model shows the slot, as `L0 small model unset`, `L1 middle model unset` or `L2 large model unset`.
 - A kept label replaces the effort: `caller effort` when the item's own `effort` applies, `config effort` when a thinking level comes from omp's settings or the role, and `no model patterns` when the spawn has none.
-- Who answered follows: `typesafe` on the direct path, or `openrouter` on the gateway path. Then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them.
-- After a fallback, the entry ends with the attempt that failed and its reason, as in ` · openrouter typesafe/jev-1.14.0 · 812/9 tok · typesafe HTTP 503`.
-- A skipped entry reads `task <n>: skipped, <reason>`. After both attempts fail, the reason names each one with its own reason, as in `skipped, typesafe HTTP 503, openrouter timeout`.
+- Who answered follows: `typesafe`, `openai` or `google` on the direct path, or `openrouter` on the gateway path. Then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its entry reads ` · google · 430/0 tok`.
+- After a fallback, the entry ends with the attempt that failed and its reason, as in ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429`.
+- A skipped entry reads `task <n>: skipped, <reason>`. After both attempts fail, the reason names each one with its own reason, as in `skipped, openai HTTP 503, openrouter timeout`.
 - A spawn can print a second line for the same item. That later line holds.
 - With `task.batch` off, or with the plugin disabled, no line appears.
 
@@ -143,7 +160,7 @@ A closed gate skips every item the scope covers with the same reason:
 - `tool call timeout <n> ms leaves <m> ms to route`: omp's tool call timeout leaves under 1 s to score. Set `extensionHandlers.toolCallTimeoutMs` to 3000 or more.
 - `settings unreadable`: the plugin cannot read its settings, omp's model roles, task model overrides or disabled agents.
 - `<setting> not valid: run setup`: a stored `provider`, `gateway` or `scope` holds a value outside its list. Set it again with the tool or its command.
-- `key unset`: no path the `gateway` setting allows has a key.
+- `key unset`: no path the `provider` and `gateway` settings allow has a key.
 
 An item check skips one item:
 
@@ -160,7 +177,7 @@ An item check skips one item:
 A scored item can skip for these reasons:
 
 - `timeout`: the company gave no answer in time. Scoring has 10 s per batch.
-- `HTTP <status>`: the company returned an error. `HTTP 401` means it refused the key.
+- `HTTP <status>`: the company returned an error. `HTTP 401` means it refused the key. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says.
 - `network error`: the request could not connect.
 - `bad reply`: the reply held no valid score.
 - `failed`: any other error.

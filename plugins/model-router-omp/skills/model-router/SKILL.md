@@ -9,7 +9,7 @@ description: >
 
 # model-router
 
-model-router scores each eligible batch item through Jev, on TypeSafe's own API or through OpenRouter as the `gateway` setting allows. At spawn, it gives the agent the `smol` role for level 0, the `midl` role for level 1 or the `slow` role for level 2. The thinking level comes from the work question. The plugin gives a role only when omp has a model for it. A level whose role omp has no model for keeps the agent's model and sets the thinking level alone. The line then names the slot, such as `L1 middle model unset`.
+model-router scores each eligible batch item through the decision model of the `provider` setting, on the provider's own API or through OpenRouter as the `gateway` setting allows. At spawn, it gives the agent the `smol` role for level 0, the `midl` role for level 1 or the `slow` role for level 2. The thinking level comes from the work question. The plugin gives a role only when omp has a model for it. A level whose role omp has no model for keeps the agent's model and sets the thinking level alone. The line then names the slot, such as `L1 middle model unset`.
 
 - The batch line starts with `model-router`. It shows each decision, or the reason an item ran unrouted.
 - The plugin keeps an effort the user set: an item's `effort` while `task.enableEffort` is on, or a thinking level on the role or on the spawn's model patterns. It caps its own effort at `task.maxEffort`. The line shows `caller effort` or `config effort`.

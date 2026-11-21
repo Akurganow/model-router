@@ -2,25 +2,25 @@
 name: model-router-setup
 description: >
   Use when the user wants to set up or configure model-router in Claude Code,
-  to choose its provider, gateway or scope, to add a TypeSafe or OpenRouter key, to find
+  to choose its provider, gateway or scope, to add a TypeSafe, OpenAI, Google or OpenRouter key, to find
   out why routing is off, or to check that routing works. It finds what already
   holds and does only what is missing.
 ---
 
 # model-router setup for Claude Code
 
-model-router scores each routed Agent call with Jev, on TypeSafe's own API or through OpenRouter. It sets the subagent's model, one of haiku, sonnet or opus, and its effort.
+model-router scores each routed Agent call with the decision model of the chosen provider, on the provider's own API or through OpenRouter. It sets the subagent's model, one of haiku, sonnet or opus, and its effort.
 
 ## What set up means
 
 Routing works when all of these hold:
 
 - The plugin is enabled.
-- A scoring key exists for a path the `gateway` setting allows.
+- A scoring key exists for a path the `provider` and `gateway` settings allow.
 
 The person may also choose:
 
-- `provider`: whose model scores a call. Its one value is `typesafe`.
+- `provider`: whose model scores a call. It takes `typesafe`, `openai` or `google`.
 - `gateway`: how OpenRouter is used to reach the provider.
 - `scope`: which Agent calls the plugin routes.
 
@@ -28,12 +28,21 @@ The person may also choose:
 
 Find out which of these already hold, with the `mcp__model-router__config` tool and Claude Code's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool Claude Code gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
 
+When the person wants to choose the provider, follow these steps in order:
+
+1. Call the tool with no setting, and read the settings and the key lines.
+2. Ask which provider's model scores, and give the three labels from the Settings facts.
+3. On the person's word, call the tool with `setting` set to `provider`.
+4. Ask how OpenRouter is used, and set `gateway` the same way.
+5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
+6. Call the tool with no setting, and confirm the lines.
+
 ## Facts
 
 ### The config tool
 
 - The tool is `mcp__model-router__config`. It takes one optional input, `setting`.
-- With no input it prints a `provider` line, a `gateway` line, a `scope` line, and one key line for each path the `gateway` value allows, in order, as in `typesafe key: set` or `openrouter key: unset`.
+- With no input it prints a `provider` line, a `gateway` line, a `scope` line, and one key line for each path the `gateway` value allows, in order, as in `typesafe key: set`, `openai key: unset` or `openrouter key: unset`.
 - A provider line looks like `provider: typesafe`. A gateway line looks like `gateway: auto (typesafe, then openrouter)`. A scope line looks like `scope: core`.
 - A key counts as set when its plugin option or its environment variable holds a non-blank value.
 - The tool never returns a key, its length or any part of it.
@@ -48,11 +57,15 @@ Find out which of these already hold, with the `mcp__model-router__config` tool 
 
 ### Settings
 
-- `provider` takes one value, `typesafe` (the default): Jev from TypeSafe.
+- `provider` takes `typesafe` (the default), `openai` or `google`.
+  - `typesafe`: Jev from TypeSafe, the model the plugin's questions are fitted to.
+  - `openai`: OpenAI's decision model; costs more than Jev and its answers are not fitted.
+  - `google`: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.
+  - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
 - `gateway` takes `direct` (the default), `auto`, `openrouter-first` or `openrouter`.
-  - `direct` scores on TypeSafe's own API only.
-  - `auto` tries TypeSafe's own API, then OpenRouter when it fails.
-  - `openrouter-first` tries OpenRouter, then TypeSafe's own API when OpenRouter fails.
+  - `direct` scores on the provider's own API only.
+  - `auto` tries the provider's own API, then OpenRouter when it fails.
+  - `openrouter-first` tries OpenRouter, then the provider's own API when OpenRouter fails.
   - `openrouter` scores on OpenRouter only.
   - With `auto` or `openrouter-first` and only one key set, that key's path scores alone.
 - Claude Code hands the plugin an option's default in place of a stored value outside the option's list. So the tool then prints the default, and no setup line shows.
@@ -65,14 +78,19 @@ Find out which of these already hold, with the `mcp__model-router__config` tool 
 
 ### Keys
 
-- The TypeSafe key is the plugin option `api_key` or the variable `TYPESAFE_API_KEY`. The OpenRouter key is the option `openrouter_api_key` or the variable `OPENROUTER_API_KEY`. The option wins when both exist.
-- The TypeSafe key serves the direct path, and the OpenRouter key serves the gateway path.
-- The plugin reads a key only for a path the `gateway` value allows. Each key goes only to the company that issued it.
+- Each key is a plugin option or a variable. The option wins when both exist.
+  - The TypeSafe key: the option `api_key` or the variable `TYPESAFE_API_KEY`. Get it at https://console.typesafe.ai/keys.
+  - The OpenAI key: the option `openai_api_key` or the variable `OPENAI_API_KEY`. Get it at https://platform.openai.com/api-keys.
+  - The Google key: the option `google_api_key` or the variable `GEMINI_API_KEY`. Get it at https://aistudio.google.com/docs/api-key. The plugin does not read `GOOGLE_API_KEY`.
+  - The OpenRouter key: the option `openrouter_api_key` or the variable `OPENROUTER_API_KEY`. Get it at https://openrouter.ai.
+- The key of the chosen provider serves the direct path, and the OpenRouter key serves the gateway path.
+- The plugin reads a key only for a holder the `provider` and `gateway` values allow. Each key goes only to the company that issued it.
 - The desktop app cannot set a plugin's key yet, and a saved key can read back as empty after a restart. The workaround is the variable in the `env` block of the user settings file, `~/.claude/settings.json`.
 - A variable in that file reaches the environment of every process Claude Code starts, and the key sits there in plain text. Say so when the person chooses it.
 - The plugin reads a key when it loads, so a key change reaches it after the plugin reloads or in a new session.
 - The tool takes no key. The person adds it themselves.
 - With only an OpenRouter key and `gateway` still `direct`, every call skips with `key unset`. The person sets `gateway` to `openrouter`, `auto` or `openrouter-first`.
+- With a key for another provider than the chosen one, every call skips with `key unset`. The person sets the provider that holds the key, or adds the chosen provider's key.
 - With no key for any allowed path, every call skips with `key unset`.
 
 ### Reasons routing is off
@@ -94,9 +112,9 @@ More than one can hold. Report every one that holds.
 - It holds the level (`L0`, `L1` or `L2`), the model, the effort and the probability of each chosen level.
 - `caller effort` or `env effort` takes the place of the effort when a kept effort applies.
 - A call that Claude Code then refuses adds a second line, `denied`.
-- Who answered follows, `typesafe` or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them.
-- After a fallback, the line ends with the attempt that failed and its reason, as in ` · openrouter typesafe/jev-1.14.0 · 812/9 tok · typesafe HTTP 503`.
-- After both attempts fail, the line names each, for example `skipped, typesafe HTTP 503, openrouter timeout`.
+- Who answered follows, `typesafe`, `openai`, `google` or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
+- After a fallback, the line ends with the attempt that failed and its reason, as in ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429`.
+- After both attempts fail, the line names each, for example `skipped, openai HTTP 503, openrouter timeout`.
 - A skipped call runs unchanged.
 
 ### Skip reasons
@@ -106,7 +124,7 @@ More than one can hold. Report every one that holds.
 - `timeout`: a first attempt got no answer in 5 s, or the call got no decision in the 10 s limit. The network or the company is slow.
 - `cancelled`: Claude Code abandoned the call before the answer came, for example after an interrupt.
 - `network error`: every attempt failed before an answer came. An organization fetch policy that refuses openrouter.ai shows as this too.
-- `HTTP <status>`: the company answered with that status. `HTTP 401` means the company rejected the key. `HTTP 429` and `HTTP 503` mean the company refused or failed on every attempt.
+- `HTTP <status>`: the company answered with that status. `HTTP 401` means the company rejected the key. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says. `HTTP 429` and `HTTP 503` mean the company refused or failed on every attempt.
 - `failed`: any other error.
 
 ### A retired provider value

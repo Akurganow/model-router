@@ -19,11 +19,13 @@ asks six questions. The answers for this mod:
 
 - **Acts on your machine as you?** No. It reads no files, writes no files of
   its own and starts no program.
-- **Reads your secrets?** Only its own TypeSafe and OpenRouter keys. Claude
-  Code hands it the plugin's sensitive `api_key` and `openrouter_api_key`
-  options from secure storage. When an option is empty, the mod reads the key
-  from `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY`. It reads a key only for a
-  path the `gateway` option allows. It reads one more environment
+- **Reads your secrets?** Only its own keys: TypeSafe, OpenAI, Google and
+  OpenRouter. Claude Code hands it the plugin's sensitive `api_key`,
+  `openai_api_key`, `google_api_key` and `openrouter_api_key` options from
+  secure storage. When an option is empty, the mod reads the key from
+  `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or
+  `OPENROUTER_API_KEY`. It reads a key only for a holder the `provider` and
+  `gateway` options allow. It reads one more environment
   variable, `CLAUDE_CODE_EFFORT_LEVEL`, and only to see whether it is set. It
   never sends its value anywhere. It reads no file.
 - **Sees your session?** The arguments of each Agent tool call. It sends the
@@ -51,7 +53,7 @@ asks six questions. The answers for this mod:
   and prompts decide every call. Every setting change waits for your choice in
   the mod's dialog or your own command.
 - **Spends your usage?** No model calls on your plan. Up to four requests per
-  routed call go to TypeSafe or OpenRouter, each on its own key, as
+  routed call go to the provider you chose or to OpenRouter, each on its own key, as
   [What leaves the machine](#what-leaves-the-machine) counts them. An
   OpenRouter key may also pay for your chat models, and the scoring requests
   spend the same credit.
@@ -74,8 +76,8 @@ This is the whole surface:
 | call | `$.clock.after` | The 10 s limit and the request's timers run on it, for example the retry wait. |
 | call | `$.clock.sleep` | Bounds the wait of a subagent's first request for the spawns in flight, 1 s at most. |
 | call | `$.config.set` | Writes the `provider`, `gateway` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. |
-| call | `$.env.get` | Reads `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY`, and whether `CLAUDE_CODE_EFFORT_LEVEL` is set, the only variables the mod reads. |
-| call | `$.http.fetch` | Sends the request to TypeSafe or OpenRouter. |
+| call | `$.env.get` | Reads `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and `OPENROUTER_API_KEY`, and whether `CLAUDE_CODE_EFFORT_LEVEL` is set, the only variables the mod reads. |
+| call | `$.http.fetch` | Sends the request to `api.typesafe.ai`, `api.openai.com`, `generativelanguage.googleapis.com` or `openrouter.ai`. |
 | call | `$.tool.check` | Asks for the permission verdict of a call to the `config` tool. |
 | call | `$.tool.register` | Registers the `config` tool. |
 | call | `$.ui.ask` | Opens the mod's dialog for a setting. |
@@ -92,10 +94,16 @@ disable the plugin in `/plugin`.
 
 ### Options
 
-The plugin has five options. Set them in the install dialog or in `/config`:
+The plugin has seven options. Set them in the install dialog or in `/config`:
 
-- `provider`: whose model scores a call. Its one value is `typesafe`, the
-  default: Jev from TypeSafe.
+- `provider`: whose model scores a call. Its values are `typesafe` (the
+  default), `openai` and `google`.
+  - `typesafe`: Jev from TypeSafe, the model the plugin's questions are
+    fitted to.
+  - `openai`: OpenAI's decision model; costs more than Jev and its answers are
+    not fitted.
+  - `google`: Google's decision model; costs more than Jev and its answers are
+    not fitted; on a free-tier key Google may use the text.
 - `gateway`: how OpenRouter is used to reach the provider. Its values are
   `direct` (the default), `auto`, `openrouter-first` and `openrouter`.
 - `scope`: which Agent calls the mod routes.
@@ -104,7 +112,13 @@ The plugin has five options. Set them in the install dialog or in `/config`:
     forks excepted. [Which calls are routed](#which-calls-are-routed) lists
     the cases.
 - `api_key`: your TypeSafe key, a sensitive value.
+- `openai_api_key`: your OpenAI key, a sensitive value.
+- `google_api_key`: your Google key, a sensitive value.
 - `openrouter_api_key`: your OpenRouter key, a sensitive value.
+
+[Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
+says where to get each key, and which variable the mod reads when an option is
+empty.
 
 [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
 says which path each `gateway` value takes first, and when the second one
@@ -112,12 +126,15 @@ runs.
 [PRIVACY.md](PRIVACY.md) says which company receives the task under each
 value.
 
-Every request names the alias `jev-latest`. TypeSafe points it at the most
+Under `typesafe`, every request names the alias `jev-latest`. TypeSafe points it at the most
 recent official Jev release. OpenRouter routes it to its own alias for the
 newest Jev release. The alias moves when a release ships, so the picks can
 shift with no change to the plugin. TypeSafe's
 [Models](https://docs.typesafe.ai/models) page says which version it points
 to, and the log line names the model that answered.
+Under `openai` and `google`, the request names the model of that endpoint, as
+[The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
+lists.
 
 Claude Code ignores plugin options in project and local settings. No project
 can set `provider`, `gateway` or `scope`.
@@ -146,15 +163,15 @@ An install updated from an earlier version follows these rules:
 - To get the earlier requests back, set `gateway` to the value `provider`
   held. [Retired values of `provider`](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retired-values-of-provider)
   gives the pairs.
-- The removed `model` option is ignored, a stored `jev-preview` included. The
-  mod sends `jev-latest`.
+- The removed `model` option is ignored, a stored `jev-preview` included.
+  Under `typesafe`, the mod sends `jev-latest`.
 - A missing `scope` counts as `core`, so an update changes no routing.
 
 ### Change the options
 
 Three commands show or change an option:
 
-- `/model-router:provider [typesafe]`
+- `/model-router:provider [typesafe|openai|google]`
 - `/model-router:gateway [direct|auto|openrouter-first|openrouter]`
 - `/model-router:scope [core|extended]`
 
@@ -255,10 +272,14 @@ another model.
 On each routed call the mod sends an HTTPS POST through Claude Code's own
 `$.http.fetch` to the first path of the `gateway` value that has a key:
 
-- The direct path, TypeSafe: https://api.typesafe.ai/v1/systemone, with your
-  TypeSafe key as the bearer token.
-- The gateway path, OpenRouter: https://openrouter.ai/api/v1/systemone, with
-  your OpenRouter key as the bearer token.
+- The direct path, the provider's own API: `api.typesafe.ai`, `api.openai.com`
+  or `generativelanguage.googleapis.com`, with the key of the provider you
+  chose.
+- The gateway path, OpenRouter: `openrouter.ai`, with your OpenRouter key.
+
+[The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
+lists the address and the model of each path and the header that carries the
+key.
 
 The second attempt runs only after the first fails, as below. Each key goes
 only to the company that issued it. The body holds:
@@ -269,7 +290,7 @@ only to the company that issued it. The body holds:
   500 characters. [model-choice.md](docs/model-choice.md#the-role-of-the-default-agent)
   says why
 - the caller's one-line description, masked like the task text
-- the Jev alias `jev-latest` and two scoring questions with their
+- the model of the endpoint and two scoring questions with their
   three texts each, which ship with the plugin
 
 Two steps run on the task text before it leaves. Fenced code blocks become a
@@ -307,10 +328,11 @@ log line then says `skipped` and names the cause, as
 
 ## Effort
 
-Jev answers a second question: how much work the task takes once the
+The scoring model answers a second question: how much work the task takes once the
 judgment is settled, as an index from 0 to 2. The index rests on the middle
-and moves to an end only when Jev gives that end more than a fitted factor
-times the middle's probability: 2.38 for index 0 and 1.41 for index 2. The index then maps to an effort per model:
+and moves to an end only when the model gives that end more than a fitted factor
+times the middle's probability: 2.38 for index 0 and 1.41 for index 2. The
+factors are fitted to Jev, and `openai` and `google` use them unfitted. The index then maps to an effort per model:
 
 | index | haiku | sonnet | opus |
 | --- | --- | --- | --- |
@@ -337,7 +359,7 @@ The mod needs no prompt of its own. It acts whenever Claude calls the Agent
 tool. Three dispatches and what the mod does with them:
 
 1. "Copy this function into `utils.ts` exactly as given and run the tests."
-   The task holds the exact code, so Jev scores it level 0. The subagent runs
+   The task holds the exact code, so the model scores it level 0. The subagent runs
    on `haiku`.
 2. "Check this diff against the five requirements in the spec and list what
    is missing." Bounded judgment over given material scores level 1,
@@ -370,7 +392,9 @@ Claude Code then refuses adds a second line, `denied`.
   attempts fail, the line names each attempt with its cause, as
   [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. The causes are:
   - `key unset`: no path the `gateway` option allows has a key. The
-    TypeSafe key comes from `api_key` or `TYPESAFE_API_KEY`, the OpenRouter
+    TypeSafe key comes from `api_key` or `TYPESAFE_API_KEY`, the OpenAI key
+    from `openai_api_key` or `OPENAI_API_KEY`, the Google key from
+    `google_api_key` or `GEMINI_API_KEY`, and the OpenRouter
     key from `openrouter_api_key` or `OPENROUTER_API_KEY`. Set one as
     [Install](https://github.com/Akurganow/model-router#install) says for
     your app, then run `/reload-plugins`. In the desktop app a saved key can
@@ -387,8 +411,10 @@ Claude Code then refuses adds a second line, `denied`.
     Check the network and try again.
   - `HTTP <status>`: the company answered with that status, after the
     retries for a status that is retried. `HTTP 401` means the company
-    rejected the key. Check a TypeSafe key at https://console.typesafe.ai/keys
-    and an OpenRouter key in your OpenRouter account. `HTTP 429` and
+    rejected the key. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
+    says where each key comes from. Google's own API answers a bad key with `HTTP 400`, as
+    [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
+    says. `HTTP 429` and
     `HTTP 503` mean the company refused or failed on every attempt. Try
     again later.
   - `failed`: any other error.
@@ -419,8 +445,10 @@ variable and the user settings file, and you add the variable to its `env`
 block. Until the bug is fixed:
 
 1. Open `~/.claude/settings.json`.
-2. Add `TYPESAFE_API_KEY`, `OPENROUTER_API_KEY` or both to the `env` block,
-   with your keys in place of `YOUR_KEY` and `YOUR_OPENROUTER_KEY`:
+2. Add the variable of each key you use to the `env` block:
+   `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or
+   `OPENROUTER_API_KEY`. This example sets a TypeSafe key and an OpenRouter
+   key, with your keys in place of `YOUR_KEY` and `YOUR_OPENROUTER_KEY`:
 
    ```json
    {
