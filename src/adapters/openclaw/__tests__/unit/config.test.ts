@@ -386,7 +386,7 @@ describe("the commands", () => {
 		assert.match(await runTool(fake), /gateway: auto/);
 	});
 
-	it("reload the gateway's plugins so the next spawn reads the value", async () => {
+	it("ask OpenClaw to replace the plugin so the new instance reads the value", async () => {
 		const fake = setup();
 		await runCommand("model-router-scope", ownerContext("extended"), fake);
 		const [call] = fake.runtime.calls.mutate;
