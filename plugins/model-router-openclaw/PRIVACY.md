@@ -28,7 +28,7 @@ setting decides which companies receive the task text and their keys:
 | `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
 
-With both keys under `auto` or `openrouter-first`, one spawn may reach both companies.
+A path with no key is left out. With both keys under `auto` or `openrouter-first`, one spawn may reach both companies.
 
 A model setting does not decide whether a request leaves: with a key set and
 no model set, each routed spawn is still sent for scoring, as
@@ -145,7 +145,7 @@ says what it reports.
 The commands `/model-router-provider`, `/model-router-gateway` and
 `/model-router-scope` write the plugin's `provider`, `gateway` or `scope`
 setting into OpenClaw's configuration. They
-refuse unless the sender is the owner. The plugin writes no other setting and no
+write only when the sender is the owner. The plugin writes no other setting and no
 file. You assign `small_model`, `middle_model` and `large_model` yourself, in
 OpenClaw's configuration.
 

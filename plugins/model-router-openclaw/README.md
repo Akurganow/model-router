@@ -60,7 +60,7 @@ For each path the [`gateway` setting](#provider-and-gateway) allows, the plugin 
 - TypeSafe, on the direct path: the plugin's `api_key` setting, then the `TYPESAFE_API_KEY` environment variable.
 - OpenRouter, on the gateway path: the plugin's `openrouter_api_key` setting, then the `OPENROUTER_API_KEY` environment variable.
 
-A key counts as set when either place holds a non-empty value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get one and where a key goes. OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks when the `gateway` setting allows OpenRouter and the plugin's `openrouter_api_key` setting holds none. No other credential of OpenClaw serves as a Jev key.
+A key counts as set when either place holds a non-blank value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get one and where a key goes. OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks when the `gateway` setting allows OpenRouter and the plugin's `openrouter_api_key` setting holds none. No other credential of OpenClaw serves as a Jev key.
 
 Add a key in one of two ways:
 
@@ -111,13 +111,13 @@ Three commands show or change an option:
 - `/model-router-gateway [direct|auto|openrouter-first|openrouter]`
 - `/model-router-scope [core|extended]`
 
-[The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a command prints. A command with a valid value writes it to your OpenClaw config.
+[The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a command prints. A command from the owner with a valid value that differs from the stored text writes it to your OpenClaw config.
 
 A Gateway client without `operator.admin` gets OpenClaw's own `This command requires gateway scope: operator.admin.` before the plugin runs, even for a bare read. The [`requiredScopes` check](../../docs/clients.md#openclaw-commands-and-owner-check) has the source.
 
-Only the owner can write. For anyone else the command prints `<setting> unchanged: only the owner can change it` and the current value.
+Only the owner can write. For anyone else, a command with a valid value prints `<setting> unchanged: only the owner can change it` and the setting's current line.
 
-The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `scope` line, the three model lines and the key lines. A model line shows the slot string as you wrote it, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show.
+The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `scope` line, the three model lines and the key lines. A model line shows the slot string as you wrote it, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid.
 
 ```text
 provider: typesafe
@@ -191,9 +191,9 @@ These spawns pass through unchanged, and the plugin logs nothing:
 
 - The spawn sets a text `model` that is not empty and not `default`, in any case.
 - The spawn sets a `runtime` other than `subagent`, such as `acp`.
-- The spawn sets an `agentId`, or an `agent_id` when `agentId` is absent, that is present but not text.
+- The spawn sets an `agentId`, or an `agent_id` when `agentId` is absent, that is not text and not `null`.
 - The spawn sets `visible: true`, `context: "fork"`, `mode: "session"` or `thread: true`.
-- The spawn has no `task` text.
+- The spawn sets no `task`, or a `task` that is not text.
 
 ### The gates
 
@@ -206,7 +206,7 @@ For every other spawn, the gates run in this order. The first that fails skips t
 5. (another agent) `<id> agent discovery failed`: under `extended`, the plugin cannot read OpenClaw's config.
 6. (another agent) `<id> agent unknown`: under `extended`, the agent is not in [the roster](#the-agent-roster).
 7. (another agent) `<id> sets its own model`: under `extended`, the agent's entry sets a `model`.
-8. (every spawn) `settings unreadable`: the plugin cannot read OpenClaw's live config.
+8. (every spawn) `settings unreadable`: the plugin cannot read OpenClaw's live config. A spawn of another agent stops at gate 3 or gate 5 first.
 
 ### The agent roster
 

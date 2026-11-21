@@ -9,8 +9,8 @@ model-router scores each routed `sessions_spawn` call through Jev, on TypeSafe's
 
 - The plugin writes a `model-router` line to the Gateway log. It shows each decision, or the reason a spawn ran unrouted.
 - The `scope` setting decides which spawns the plugin routes. Under `core`, the default, it routes the spawn of the requesting agent itself: a spawn with no `agentId`, or the requester's own id, and a `runtime` that is absent or `subagent`. Under `extended`, it also routes the spawn of any other configured agent that sets no model.
-- A spawn that sets `model` is never overridden. A spawn that sets `thinking` keeps it.
-- A model set in `agents.defaults.subagents.model` or in an agent's `subagents.model` wins over the plugin. The plugin also passes a spawn with a `runtime` other than `subagent`, with `visible: true`, `context: "fork"`, `mode: "session"` or `thread: true`, or with no `task` text.
+- A spawn that sets a `model` other than `default` is never overridden. A spawn that sets `thinking` keeps it.
+- A model set in `agents.defaults.subagents.model` or in an agent's `subagents.model` wins over the plugin. The plugin also passes a spawn with a `runtime` other than `subagent`, with `visible: true`, `context: "fork"`, `mode: "session"` or `thread: true`, or with no `task` or a `task` that is not text.
 
 ## Escalation
 

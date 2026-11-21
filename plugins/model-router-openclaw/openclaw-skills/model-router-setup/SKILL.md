@@ -57,7 +57,7 @@ openrouter key: unset
   - `openrouter`: OpenRouter only.
 - The `gateway` setting is not OpenClaw's Gateway, the process that loads the plugin.
 - The person changes `provider` with the chat command `/model-router-provider <value>`, and `gateway` with `/model-router-gateway <value>`.
-- The `/model-router-provider` command replies with the new `provider` line. A value already set gives `provider unchanged: already <value>`. A sender who is not the owner gets `provider unchanged: only the owner can change it`.
+- The `/model-router-provider` command replies with the new `provider` line. A value equal to the stored text gives `provider unchanged: already <value>`. A sender who is not the owner, with a valid value, gets `provider unchanged: only the owner can change it` and the current `provider` line.
 - The `/model-router-gateway` command replies the same way, with `gateway` in place of `provider`.
 - A change to either setting applies once OpenClaw replaces the plugin, after running work drains, up to 60 s. The tool can show the old value until then. A spawn in that window uses the old value.
 
@@ -74,7 +74,7 @@ openrouter key: unset
   2. Propose the pair above that matches the stored value.
   3. Once the person agrees, ask them to type `/model-router-gateway <value>` first and `/model-router-provider typesafe` second.
   4. After OpenClaw has replaced the plugin, call `model_router_config` again and check the `provider` and `gateway` lines.
-- OpenClaw gives you no way to write a setting. Only the owner can run these commands.
+- OpenClaw gives you no way to write a setting. Only the owner can change a setting with these commands.
 
 ### Scope
 
@@ -87,7 +87,7 @@ openrouter key: unset
 - TypeSafe key, on the direct path: the plugin setting `api_key`, else the environment variable `TYPESAFE_API_KEY`.
 - OpenRouter key, on the gateway path: the plugin setting `openrouter_api_key`, else the environment variable `OPENROUTER_API_KEY`.
 - The person adds a key in the secret field of the plugin's page in the Control UI, or sets the variable in the Gateway's environment and restarts the Gateway.
-- A key counts as set when either place holds a non-empty value.
+- A key counts as set when either place holds a non-blank value.
 - OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks when the `gateway` setting allows OpenRouter and the plugin's `openrouter_api_key` setting holds none.
 - No other credential of OpenClaw serves as a Jev key.
 - A key variable reaches every process the Gateway starts.
@@ -128,7 +128,7 @@ model-router skipped, key unset
 A spawn with no `model-router` line at all has one of these causes:
 
 - The Gateway has not loaded the plugin, or the plugin is not enabled.
-- The spawn passes without a line. It sets a `model` other than `default`, a `runtime` other than `subagent`, an `agentId` that is not text, `visible: true`, `context: "fork"`, `mode: "session"` or `thread: true`, or it has no `task`.
+- The spawn passes without a line. It sets a `model` other than `default`, a `runtime` other than `subagent`, an `agentId` that is not text and not `null`, `visible: true`, `context: "fork"`, `mode: "session"` or `thread: true`, or it sets no `task` or a `task` that is not text.
 - The spawn takes a path that never calls `sessions_spawn`: `/acp spawn`, the gateway method `sessions.create`, the Control UI's new session, `api.runtime.subagent.run` from another plugin, or Codex's own `spawn_agent`.
 - The hook timeout is below 3000 ms, so the plugin routes nothing. The plugin logs one warning at start-up. The operator sets `plugins.entries.model-router-openclaw.hooks.timeouts.before_tool_call` or `hooks.timeoutMs` to 3000 or more.
 
@@ -157,7 +157,7 @@ For the person: the plugin's README, `plugins/model-router-openclaw/README.md` i
 
 - Never take, show or repeat a key. If a key arrives in chat, do not repeat or store it, and tell the person to rotate it.
 - Change a setting only when the person asked for it or agreed.
-- Only the owner can run `/model-router-provider`, `/model-router-gateway` and `/model-router-scope`.
+- Only the owner can change a setting with `/model-router-provider`, `/model-router-gateway` and `/model-router-scope`.
 - A routing check spawns one small task and spends a little usage, so ask before it.
 
 ## When you finish
