@@ -50,7 +50,7 @@ Find out which of these already hold, with the `model_router_config` tool and He
   - `openrouter-first` asks OpenRouter, then TypeSafe.
   - `openrouter` asks OpenRouter only.
 - With `auto` or `openrouter-first` and one key, the path with that key scores alone.
-- Each setting changes only with its command: `/model-router-provider typesafe` and `/model-router-gateway <value>`. The plugin reads both at each task.
+- Each setting changes only with its command: `/model-router-provider <value>` and `/model-router-gateway <value>`. The plugin reads both at each task.
 - With no value a command prints the current line, such as `gateway: auto (typesafe, then openrouter)`.
 - With a valid value it writes the value and prints the new line. It replaces a stored value that is not valid.
 - An invalid value prints `provider: use one of typesafe` or `gateway: use one of direct, auto, openrouter-first, openrouter`.
