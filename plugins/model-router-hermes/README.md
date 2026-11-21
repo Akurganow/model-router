@@ -54,7 +54,7 @@ The plugin reads a key only for a provider the [`provider` setting](#provider) a
 
 Set a key in the `.env` file of the Hermes home or in the plugin's settings form in Hermes Desktop. Hermes stores a key from the form under its variable in that `.env` file.
 
-Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. So a key you save in the form becomes that provider's key: Hermes writes the variable and the copies of the old value in `config.yaml`. With a key in that variable and no `model.provider` in `config.yaml`, Hermes uses OpenRouter for its own session, so set `model.provider` to keep another provider. A key already in that variable scores tasks when the `provider` setting allows OpenRouter. No other credential of Hermes serves as a Jev key.
+Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. So a key you save in the form becomes that provider's key: Hermes writes the variable and the copies of the old value in `config.yaml`. With a key in that variable and neither `model.provider` nor a local `model.base_url` in `config.yaml`, Hermes uses OpenRouter for its own session, so set `model.provider` to keep another provider. A key already in that variable scores tasks when the `provider` setting allows OpenRouter. No other credential of Hermes serves as a Jev key.
 
 [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key, where it goes and when a task reports `key unset`.
 
