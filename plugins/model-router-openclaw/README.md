@@ -205,7 +205,7 @@ These spawns pass through unchanged, and the plugin logs nothing:
 
 ### The gates
 
-For every other spawn, the gates run in this order. The first that fails skips the spawn with its reason, and OpenClaw runs the spawn as it would without the plugin. A tag says which spawns the gate can stop: "(every spawn)" includes [the spawn of the requesting agent itself](#the-spawn-of-the-requesting-agent-itself), and "(another agent)" does not.
+For every other spawn, the gates run in this order. The first that fails skips the spawn with its reason, and OpenClaw runs the spawn as it would without the plugin. A tag says which spawns the gate can stop: "(every spawn)" includes [the spawn of the requesting agent itself](#the-spawn-of-the-requesting-agent-itself), "(another agent)" does not, and "(requesting agent)" stops only that spawn.
 
 1. (every spawn) `<setting> not valid: run setup`: a stored `provider`, `gateway` or `scope` holds a value outside its list. [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names and how to set a valid value.
 2. (every spawn) `key unset`: no path the `gateway` setting allows has a key.
@@ -214,7 +214,7 @@ For every other spawn, the gates run in this order. The first that fails skips t
 5. (another agent) `<id> agent discovery failed`: under `extended`, the plugin cannot read OpenClaw's config.
 6. (another agent) `<id> agent unknown`: under `extended`, the agent is not in [the roster](#the-agent-roster).
 7. (another agent) `<id> sets its own model`: under `extended`, the agent's entry sets a `model`.
-8. (every spawn) `settings unreadable`: the plugin cannot read OpenClaw's live config. A spawn of another agent stops at gate 3 or gate 5 first.
+8. (requesting agent) `settings unreadable`: the plugin cannot read OpenClaw's live config. A spawn of another agent stops at gate 3 or gate 5 first.
 
 ### The agent roster
 
