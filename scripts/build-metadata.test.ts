@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { VALUE_SETTINGS, valueFor } from "#core/options/settings.ts";
+import { VALUE_SETTINGS } from "#core/options/settings.ts";
 import { formatRendered } from "./build/json.ts";
 import { renderReadme } from "./build/readme.ts";
 import { loadSource } from "./build/source.ts";
@@ -49,15 +49,6 @@ test("the bundles equal the committed bundles byte for byte", async () => {
 		assert.deepEqual(await buildBundle(harness, entry, built), []);
 		assert.equal(readFileSync(built, "utf8"), read(out), out);
 	}
-});
-
-test("the source defaults are the defaults the code applies", () => {
-	for (const setting of VALUE_SETTINGS)
-		assert.equal(
-			source.options[setting].default,
-			valueFor(setting, undefined),
-			setting,
-		);
 });
 
 test("the source holds one entry for each value setting", () => {

@@ -59,8 +59,8 @@
 			"additionalProperties": false,
 			"required": ["provider", "gateway", "scope"],
 			"properties": {
-				"provider": { "$ref": "#/$defs/hermesOption" },
-				"gateway": { "$ref": "#/$defs/hermesOption" },
+				"provider": { "$ref": "#/$defs/option" },
+				"gateway": { "$ref": "#/$defs/option" },
 				"scope": { "$ref": "#/$defs/option" }
 			}
 		},
@@ -188,7 +188,7 @@
 		},
 		"hermes": {
 			"type": "object",
-			"description": "What only the Hermes plugin manifest and the README install region need. Hermes has no scope setting.",
+			"description": "What only the Hermes plugin manifest and the README install region need.",
 			"additionalProperties": false,
 			"required": [
 				"pluginName",
@@ -306,34 +306,13 @@
 		"option": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["default", "title", "descriptions"],
+			"required": ["title", "descriptions"],
 			"properties": {
-				"default": { "$ref": "#/$defs/text" },
 				"title": { "$ref": "#/$defs/text" },
 				"descriptions": {
 					"type": "object",
+					"description": "One text for each harness that stores the setting. A harness that lacks the setting has no text.",
 					"additionalProperties": false,
-					"required": ["claude", "omp", "openclaw"],
-					"properties": {
-						"claude": { "$ref": "#/$defs/text" },
-						"omp": { "$ref": "#/$defs/text" },
-						"openclaw": { "$ref": "#/$defs/text" }
-					}
-				}
-			}
-		},
-		"hermesOption": {
-			"type": "object",
-			"description": "An option that Hermes also offers. Hermes has no scope option.",
-			"additionalProperties": false,
-			"required": ["default", "title", "descriptions"],
-			"properties": {
-				"default": { "$ref": "#/$defs/text" },
-				"title": { "$ref": "#/$defs/text" },
-				"descriptions": {
-					"type": "object",
-					"additionalProperties": false,
-					"required": ["claude", "omp", "openclaw", "hermes"],
 					"properties": {
 						"claude": { "$ref": "#/$defs/text" },
 						"omp": { "$ref": "#/$defs/text" },

@@ -41,7 +41,6 @@
 	},
 	"options": {
 		"provider": {
-			"default": "typesafe",
 			"title": "Scoring provider",
 			"descriptions": {
 				"claude": "Whose model scores a subagent call. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to.",
@@ -51,7 +50,6 @@
 			}
 		},
 		"gateway": {
-			"default": "direct",
 			"title": "OpenRouter gateway",
 			"descriptions": {
 				"claude": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one call may reach both companies.",
@@ -61,7 +59,6 @@
 			}
 		},
 		"scope": {
-			"default": "core",
 			"title": "Routing scope",
 			"descriptions": {
 				"claude": "Which Agent calls the plugin routes. core: the built-in agents general-purpose, claude, Explore and Plan only. extended: also any Agent call that passes no model, including plugin and user agents, replacing the model and effort their definition sets. Forks and named calls stay unrouted.",

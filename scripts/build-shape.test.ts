@@ -15,13 +15,8 @@ const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const schema = loadSchema(ROOT);
 
 const OPTION: Source["options"]["scope"] = {
-	default: "d",
 	title: "t",
 	descriptions: { claude: "c", omp: "o", openclaw: "w" },
-};
-const HERMES_OPTION: Source["options"]["provider"] = {
-	...OPTION,
-	descriptions: { claude: "c", omp: "o", openclaw: "w", hermes: "h" },
 };
 const SECRET: Source["claude"]["userConfig"]["keys"]["api_key"] = {
 	type: "t",
@@ -62,7 +57,7 @@ const FIXTURE: Source = {
 		openclaw: { manifest: "m" },
 		hermes: { manifest: "m" },
 	},
-	options: { provider: HERMES_OPTION, gateway: HERMES_OPTION, scope: OPTION },
+	options: { provider: OPTION, gateway: OPTION, scope: OPTION },
 	claude: {
 		skills: ["s"],
 		commandContents: { provider: "p", gateway: "g", scope: "s" },
@@ -157,8 +152,14 @@ function keyPaths(value: unknown, prefix = ""): string[] {
 
 const unique = (paths: string[]) => [...new Set(paths)].sort();
 
+// A harness's option text is optional in the schema, so the comparison leaves those keys out. loadSource checks them against HARNESS_SETTINGS.
+const OPTIONAL_TEXT = /^\.options\.\w+\.descriptions\./;
+
 test("the schema requires exactly the keys of the Source type", () => {
-	assert.deepEqual(unique(requiredPaths(schema)), unique(keyPaths(FIXTURE)));
+	assert.deepEqual(
+		unique(requiredPaths(schema)),
+		unique(keyPaths(FIXTURE).filter((path) => !OPTIONAL_TEXT.test(path))),
+	);
 });
 
 /**

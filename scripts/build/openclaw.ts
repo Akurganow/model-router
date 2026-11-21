@@ -1,11 +1,12 @@
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { OPENCLAW_OUTPUTS } from "./outputs.ts";
-import type { Source } from "./source.ts";
+import { optionText, type Source } from "./source.ts";
 import {
 	KEY_FIELDS,
 	SLOT_SETTINGS,
 	TOOL_NAME,
 	VALUE_SETTINGS,
+	valueFor,
 } from "./values.ts";
 
 // The fields below follow docs/plugins/manifest.md of OpenClaw 2026.10.10 and the pages it links.
@@ -23,7 +24,7 @@ const configSchema = (source: Source): JsonObject => ({
 				setting,
 				{
 					type: source.openclaw.settingType,
-					default: source.options[setting].default,
+					default: valueFor(setting, undefined) ?? null,
 				},
 			]),
 		),
@@ -43,7 +44,7 @@ const uiHints = (source: Source): JsonObject => ({
 			setting,
 			{
 				label: source.options[setting].title,
-				help: source.options[setting].descriptions.openclaw,
+				help: optionText(source, "openclaw", setting),
 			},
 		]),
 	),

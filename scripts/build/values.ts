@@ -5,6 +5,7 @@ import {
 	TOOL_NAME,
 	VALUE_SETTINGS,
 	type ValueSetting,
+	valueFor,
 } from "#core/options/settings.ts";
 import {
 	GATEWAYS,
@@ -24,7 +25,18 @@ export {
 	TOOL_NAME,
 	VALUE_SETTINGS,
 	type ValueSetting,
+	valueFor,
 };
 
 export const SETTING_VALUES: Readonly<Record<ValueSetting, readonly string[]>> =
 	{ provider: MAKERS, gateway: GATEWAYS, scope: SCOPE_VALUES };
+
+export type Harness = "claude" | "omp" | "openclaw" | "hermes";
+
+// The value settings each harness stores. Hermes has no scope setting, and this table is the one place that says so.
+export const HARNESS_SETTINGS = {
+	claude: VALUE_SETTINGS,
+	omp: VALUE_SETTINGS,
+	openclaw: VALUE_SETTINGS,
+	hermes: ["provider", "gateway"],
+} as const satisfies Readonly<Record<Harness, readonly ValueSetting[]>>;

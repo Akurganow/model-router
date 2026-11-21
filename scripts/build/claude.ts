@@ -1,10 +1,11 @@
 import { type JsonObject, oneLine, type Rendered, serialize } from "./json.ts";
 import { CLAUDE_OUTPUTS } from "./outputs.ts";
-import type { Source } from "./source.ts";
+import { optionText, type Source } from "./source.ts";
 import {
 	COMMAND_DESCRIPTIONS,
 	SETTING_VALUES,
 	VALUE_SETTINGS,
+	valueFor,
 } from "./values.ts";
 
 const commands = (source: Source): JsonObject =>
@@ -29,9 +30,9 @@ const userConfig = (source: Source): JsonObject => ({
 				{
 					type: source.claude.userConfig.optionType,
 					title: option.title,
-					description: option.descriptions.claude,
+					description: optionText(source, "claude", setting),
 					options: [...SETTING_VALUES[setting]],
-					default: option.default,
+					default: valueFor(setting, undefined) ?? null,
 				},
 			];
 		}),

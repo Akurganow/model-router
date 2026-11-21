@@ -1,21 +1,21 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Schema, validate } from "./schema.ts";
-import type { KeyHolder, SlotSetting, ValueSetting } from "./values.ts";
+import {
+	HARNESS_SETTINGS,
+	type Harness,
+	type KeyHolder,
+	type SlotSetting,
+	VALUE_SETTINGS,
+	type ValueSetting,
+} from "./values.ts";
 
 export const SOURCE_PATH = "metadata/source.json";
 const SCHEMA_PATH = "metadata/source.schema.json";
 
-type PerHarness = {
-	readonly claude: string;
-	readonly omp: string;
-	readonly openclaw: string;
-};
-type WithHermes = PerHarness & { readonly hermes: string };
-type Option<Descriptions> = {
-	readonly default: string;
+type Option = {
 	readonly title: string;
-	readonly descriptions: Descriptions;
+	readonly descriptions: Readonly<Partial<Record<Harness, string>>>;
 };
 type Hint = { readonly label: string; readonly help: string };
 // Hermes stores a secret under its variable, so the setting's own name is free: the key holder's name and a fixed ending.
@@ -53,7 +53,7 @@ export type Source = {
 	readonly repository: string;
 	readonly author: { readonly name: string; readonly url: string };
 	readonly keywords: readonly string[];
-	readonly privacyPolicyUrls: WithHermes;
+	readonly privacyPolicyUrls: Readonly<Record<Harness, string>>;
 	readonly descriptions: Readonly<
 		Record<
 			"claude" | "omp",
@@ -63,10 +63,7 @@ export type Source = {
 		readonly openclaw: { readonly manifest: string };
 		readonly hermes: { readonly manifest: string };
 	};
-	// Hermes has every option but scope.
-	readonly options: Readonly<
-		Record<Exclude<ValueSetting, "scope">, Option<WithHermes>>
-	> & { readonly scope: Option<PerHarness> };
+	readonly options: Readonly<Record<ValueSetting, Option>>;
 	readonly claude: {
 		readonly skills: readonly string[];
 		readonly commandContents: Readonly<Record<ValueSetting, string>>;
@@ -128,9 +125,38 @@ const readJson = (root: string, path: string): unknown =>
 export const loadSchema = (root: string): Schema =>
 	readJson(root, SCHEMA_PATH) as Schema;
 
+// Widened from the literal tuples, so each harness's list can be asked includes(setting) for any setting.
+const STORED: Readonly<Record<Harness, readonly ValueSetting[]>> =
+	HARNESS_SETTINGS;
+
+/**
+ * Lists each option text that does not match the settings its harness stores:
+ * a stored setting with no text, and a text for a setting the harness does not
+ * store.
+ */
+function optionTextProblems(source: Source): string[] {
+	const problems: string[] = [];
+	for (const harness of Object.keys(STORED) as Harness[])
+		for (const setting of STORED[harness])
+			if (source.options[setting].descriptions[harness] === undefined)
+				problems.push(
+					`$.options.${setting}.descriptions.${harness}: ${harness} stores ${setting}, so the text is required`,
+				);
+	for (const setting of VALUE_SETTINGS)
+		for (const harness of Object.keys(
+			source.options[setting].descriptions,
+		) as Harness[])
+			if (!STORED[harness].includes(setting))
+				problems.push(
+					`$.options.${setting}.descriptions.${harness}: ${harness} does not store ${setting}, so the text is not allowed`,
+				);
+	return problems;
+}
+
 /**
  * Reads metadata/source.json and returns it typed as Source. It throws with
  * every schema problem first, so the cast only names a shape already proven.
+ * Then it throws with every option text that does not match its harness.
  */
 export function loadSource(root: string): Source {
 	const data = readJson(root, SOURCE_PATH);
@@ -139,5 +165,27 @@ export function loadSource(root: string): Source {
 		throw new Error(
 			`${SOURCE_PATH} does not match ${SCHEMA_PATH}:\n${problems.join("\n")}`,
 		);
-	return data as Source;
+	const source = data as Source;
+	const textProblems = optionTextProblems(source);
+	if (textProblems.length > 0)
+		throw new Error(
+			`${SOURCE_PATH} does not match the settings each harness stores:\n${textProblems.join("\n")}`,
+		);
+	return source;
+}
+
+/**
+ * Returns the text of one option for one harness. loadSource has checked every
+ * text against HARNESS_SETTINGS, so this throws only for a pair the source does
+ * not hold.
+ */
+export function optionText(
+	source: Source,
+	harness: Harness,
+	setting: ValueSetting,
+): string {
+	const text = source.options[setting].descriptions[harness];
+	if (text === undefined)
+		throw new Error(`${SOURCE_PATH} has no ${harness} text for ${setting}`);
+	return text;
 }
