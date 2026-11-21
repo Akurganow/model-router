@@ -62,7 +62,9 @@ For each, one pair of settings gives the same requests as before:
 | `openrouter-first` | `typesafe` | `openrouter-first` |
 | `openrouter` | `typesafe` | `openrouter` |
 
-The setup skill proposes the pair and sets it on your word.
+The setup skill proposes the pair, and nothing is set before you agree.
+Set `gateway` first and `provider` second.
+While `provider` is not valid nothing is routed, so in that order no task takes a path you did not choose.
 A stored `typesafe` needs no change: with no `gateway` stored it asks TypeSafe's own API only, as before.
 Claude Code never shows the setup line for a retired value.
 [A stored value outside an option's list](../plugins/model-router/README.md#a-stored-value-outside-an-options-list) says what it does in its place.
