@@ -1,7 +1,7 @@
 {
 	"name": "model-router",
 	"version": "0.24.3",
-	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev. For each routed Agent call it sends the task text, condensed to at most 12,000 characters, the agent's description, cut to 500 characters, and the call's one-line description, all with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider option allows, each with its own key. The built-in general-purpose and claude agents send a fixed text in place of their description. The scope option picks the calls: core routes the four built-in agents, extended also routes user, project and plugin agents and sends their text. A config tool opens the plugin's own dialog to change both options. A key set as an environment variable is visible to every process Claude Code starts.",
+	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev. For each routed Agent call it sends the task text, condensed to at most 12,000 characters, the agent's description, cut to 500 characters, and the call's one-line description, all with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its gateway option allows, each with its own key. The built-in general-purpose and claude agents send a fixed text in place of their description. The scope option picks the calls: core routes the four built-in agents, extended also routes user, project and plugin agents and sends their text. A config tool opens the plugin's own dialog to change the provider, gateway and scope options. A key set as an environment variable is visible to every process Claude Code starts.",
 	"author": {
 		"name": "Akurganow",
 		"url": "https://github.com/Akurganow"
@@ -35,13 +35,13 @@
 		"api_key": {
 			"type": "string",
 			"title": "TypeSafe API key",
-			"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider option allows TypeSafe. The README says where to get one.",
+			"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the gateway option allows TypeSafe's own API. The README says where to get one.",
 			"sensitive": true
 		},
 		"openrouter_api_key": {
 			"type": "string",
 			"title": "OpenRouter API key",
-			"description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the provider option allows OpenRouter.",
+			"description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the gateway option allows OpenRouter.",
 			"sensitive": true
 		},
 		"provider": {
