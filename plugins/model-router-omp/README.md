@@ -59,7 +59,7 @@ A setting that holds a value outside its list is not valid, and the plugin route
 
 A project's plugin settings never change the provider: the plugin applies no project `provider` value. A project may only narrow `gateway`, from a global `auto` or `openrouter-first` to `direct` or `openrouter`. It drops one path and never adds one. The plugin ignores any other valid project `gateway` and uses the global one.
 
-omp merges a project's override file, `<project>/.omp/plugin-overrides.json`, into the settings it hands the plugin. The plugin never opens that file. A project value outside its setting's list is not valid. So a project file that still sets `provider` to `auto`, `openrouter-first` or `openrouter` skips every task of that project with `provider not valid: run setup`.
+omp merges a project's override file, `<project>/.omp/plugin-overrides.json`, into the settings it hands the plugin. The plugin never opens that file. A project value outside its setting's list is not valid. So a project file that still sets `provider` to `auto`, `openrouter-first` or `openrouter` skips every task of that project with `provider not valid: run setup`. Delete a `provider` of `auto` or `openrouter-first`. Replace `provider: openrouter` with `gateway: openrouter`, which narrows only a global `auto` or `openrouter-first`.
 
 Earlier versions let a project narrow with `provider`. A project's `provider: typesafe` kept OpenRouter out. It narrows nothing now, and the plugin prints no line about it. State it as `gateway: direct`. Check every project that has an override file.
 
