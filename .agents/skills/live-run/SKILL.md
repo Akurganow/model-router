@@ -116,7 +116,7 @@ Never print or log a key, and never put one into a brief, a commit or a wiki ent
 A script may run the harness's commands and read what they print, with or without a model turn.
 These steps add to the recipe of the script's harness.
 
-30. Name the script's option for a file of keys anything but `--env-file`: Node reads that option even after the script's name, and exits when the file is missing, as measured on Node v26.10.0.
+30. Name the script's option for a file of keys anything but `--env-file`: Node reads that option even after the script's name, and exits when the file is missing.
 31. Make the script's pass or fail line name each known harmless diagnostic it passes over, so that an expected warning prints no `FAIL`.
 32. In OpenClaw, when the script puts the plugin into `plugins.load.paths` with no install, pass over the trust warning and fail on any other diagnostic, as [OpenClaw entry and registration](../../../docs/clients.md#openclaw-entry-and-registration) says.
 33. In OpenClaw, run a control that writes an undeclared key into the config file only after the Gateway has stopped, because such a file stops the Gateway from starting, as [OpenClaw package files](../../../docs/clients.md#openclaw-package-files) says.
