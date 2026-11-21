@@ -8,38 +8,46 @@ what the plugin sends, where it goes, and what the plugin keeps. Effective
 
 The plugin asks Jev to score each routed batch item. Only `task` items route
 under the default `core` scope, and [the extended scope](#the-extended-scope)
-adds the others. Jev answers on one or two providers:
+adds the others. Jev answers on one or two paths:
 
-- TypeSafe, at https://api.typesafe.ai/v1/systemone, with your TypeSafe key
-- OpenRouter, at https://openrouter.ai/api/v1/systemone, with your OpenRouter
-  key.
+- TypeSafe, on the direct path, at https://api.typesafe.ai/v1/systemone, with
+  your TypeSafe key
+- OpenRouter, on the gateway path, at https://openrouter.ai/api/v1/systemone,
+  with your OpenRouter key.
 
-The plugin's `provider` setting decides which providers receive the task text
-and their keys:
+The `provider` setting says whose model scores, and its one value is
+`typesafe`. OpenRouter is a gateway that answers with that model. The `gateway`
+setting decides which companies receive the task text and their keys:
 
-| `provider` | First request | Second request, after a failure |
+| `gateway` | First request | Second request, after a failure |
 | :-- | :-- | :-- |
-| `typesafe`, the default | TypeSafe, with the TypeSafe key | none |
-| `openrouter` | OpenRouter, with the OpenRouter key | none |
+| `direct`, the default | TypeSafe, with the TypeSafe key | none |
 | `auto` | TypeSafe, with the TypeSafe key | OpenRouter, with the OpenRouter key |
 | `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
+| `openrouter` | OpenRouter, with the OpenRouter key | none |
 
 With both keys under `auto` or `openrouter-first`, one item may reach both companies.
+
+A setting that is not valid sends nothing, as
+[A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)
+explains.
 
 A model role does not decide whether a request leaves: with a key set and no
 role set, each routed item is still sent for scoring, as
 [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) says.
 
-[Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
+[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
 gives the fallback rules.
 
-A project can set two plugin settings. For `provider`, its value may only
-narrow `auto` or `openrouter-first` to one of the two providers. It cannot add
-a provider, swap one or change the order. For `scope`, its value overrides yours
-in both directions. A project can also supply a key through its `.env` file, as
+A project can set two plugin settings, `gateway` and `scope`. For `gateway`, its
+value may only narrow `auto` or `openrouter-first` to `direct` or `openrouter`.
+It cannot add a path, swap one or change the order. A project never changes the
+provider, as [What a project can change](README.md#what-a-project-can-change)
+says. For `scope`, its value overrides yours in both directions. A project
+can also supply a key through its `.env` file, as
 [What the plugin stores](#what-the-plugin-stores) says.
 
-Each key goes only to its own provider's address above, as
+Each key goes only to the address above of the company that issued it, as
 [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
 explains.
 
@@ -48,8 +56,8 @@ plugin stores](#what-the-plugin-stores) says.
 
 ## What the plugin sends
 
-Each routed batch item sends an HTTPS POST to the provider the table above
-names. The JSON body holds:
+Each routed batch item sends an HTTPS POST to the company the table above
+names for each request. The JSON body holds:
 
 - the item's task text, prepared as
   [The task text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-task-text)
@@ -94,7 +102,8 @@ that declare no model.
   Read them before you set `extended`.
 - A project can set `scope` in its plugin settings, and its value overrides
   yours. A project that sets `extended` sends the descriptions and task text of
-  your agents to your provider without your choice, and it can raise spend,
+  your agents to TypeSafe or OpenRouter, as your `gateway` setting allows,
+  without your choice, and it can raise spend,
   because routed agents may run on the `smol`, `midl` and `slow` model roles
   you set.
 
@@ -106,21 +115,21 @@ limit has passed sends nothing either, so a batch can send fewer requests than i
 has routed items.
 
 One item sends at most four requests.
-[Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider)
-gives the attempts at each provider. Once an item falls back, items that start
-later in the same batch skip the failed provider.
+[Retries and the second attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-attempt)
+gives the attempts on each path. Once an item falls back, items that start
+later in the same batch skip the failed path.
 
 [The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing)
 says what a request in flight can cost. One limit covers the scoring of a
-whole batch, both providers and all retries included: 8 s, or less under a
+whole batch, both attempts and all retries included: 8 s, or less under a
 short omp tool call timeout, as the
 [README](README.md#limits-and-retries) says. The plugin sends no
 other request.
 
-## What the providers do with it
+## What each company does with the text
 
-The providers' privacy policies are linked at
-[What the providers do with it](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-the-providers-do-with-it).
+The companies' privacy policies are linked at
+[What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text).
 
 ## What the plugin stores
 
@@ -130,27 +139,27 @@ subagent spawns, when its task call ends before omp reports the subagent's id,
 or when newer decisions push it out.
 
 It holds a key in memory only while it checks whether to route and while it
-sends a request. It reads a key only for a provider the `provider` setting
-allows. It reads omp's own credential for that provider, `typesafe` or
+sends a request. It reads a key only for a path the `gateway` setting
+allows. It reads omp's own credential for that company, `typesafe` or
 `openrouter`, and when that is empty, the environment variable
 `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY`. It sends each key only to its own
-provider's endpoint above, as the bearer token. It reads no other environment
+company's endpoint above, as the bearer token. It reads no other environment
 variable, and it runs no program.
 
 When you choose a value in the plugin's dialog or give a command, the plugin
-writes your global `provider` or `scope` plugin setting through omp. It
+writes your global `provider`, `gateway` or `scope` plugin setting through omp. It
 writes no project setting.
 
 A key you set as an environment variable is visible to every process omp
 starts.
 
 A project can set either variable in its `.env` file. When omp's credential
-for that provider is empty, the plugin then sends the task text to the account
+for that company is empty, the plugin then sends the task text to the account
 that project key belongs to. With the narrowing above, a project can also pick
-which of your allowed providers receives it.
+which of your allowed paths receives it.
 
 When a batch arrives, and again as each routed subagent starts, the plugin
-reads its `provider` and `scope` settings through omp's plugin settings, which
+reads its `provider`, `gateway` and `scope` settings through omp's plugin settings, which
 include the project's value. It also reads omp's plugins lockfile for your
 global values of them, and reads a missing lockfile as empty. The lockfile is the only
 file the plugin reads itself. When either read fails, the plugin skips routing
@@ -170,13 +179,13 @@ agent text of each routed agent, which the request carries as described above.
 
 The lines the plugin prints per batch go to your omp notifications, or to
 standard error when omp has no UI. The setup skill changes only what you
-choose in the plugin's dialogs: the global `provider` and `scope` settings.
+choose in the plugin's dialogs: the global `provider`, `gateway` and `scope` settings.
 
 ## Your choices
 
 Every plugin offers the choices in
 [Your choices](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#your-choices).
-Here, set `provider` in `/settings`, under Plugins. To route the `task` agent
+Here, set `provider`, `gateway` or `scope` in `/settings`, under Plugins. To route the `task` agent
 only, the effective `scope` must stay `core`. A project's `scope` overrides
 yours, as [The extended scope](#the-extended-scope) says. Remove the keys from
 omp's credential store and from both variables. Disable the plugin and nothing
