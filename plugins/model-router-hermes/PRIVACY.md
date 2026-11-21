@@ -2,22 +2,21 @@
 
 model-router for Hermes Agent is a plugin published by Akurganow. This policy
 says what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-14.
+2026-11-21.
 
 ## Where requests go
 
 The plugin asks Jev to score each `delegate_task` task it routes. It never
-scores the main turn. Jev answers on one of two paths:
+scores the main turn. Jev answers on one or two paths:
 
 - the direct path: TypeSafe, at https://api.typesafe.ai/v1/systemone, with your
   TypeSafe key
 - the gateway path: OpenRouter, at https://openrouter.ai/api/v1/systemone, with
   your OpenRouter key.
 
-The plugin's `provider` setting says whose model scores and has one value,
-`typesafe`. OpenRouter is a gateway that answers with that model. The
-`gateway` setting decides which companies receive the task text and their
-keys:
+The `provider` setting says whose model scores, and its one value is
+`typesafe`. OpenRouter is a gateway that answers with that model. The `gateway`
+setting decides which companies receive the task text and their keys:
 
 | `gateway` | First request | Second request, after a failure |
 | :-- | :-- | :-- |

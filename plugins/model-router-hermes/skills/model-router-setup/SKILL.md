@@ -49,6 +49,7 @@ Find out which of these already hold, with the `model_router_config` tool and He
   - `auto` asks TypeSafe, then OpenRouter.
   - `openrouter-first` asks OpenRouter, then TypeSafe.
   - `openrouter` asks OpenRouter only.
+- The `gateway` setting is not Hermes's gateway, the process that owns a session.
 - With `auto` or `openrouter-first` and one key, the path with that key scores alone.
 - Each setting changes only with its command: `/model-router-provider <value>` and `/model-router-gateway <value>`. The plugin reads both at each task.
 - With no value a command prints the current line, such as `gateway: auto (typesafe, then openrouter)`.
@@ -63,14 +64,18 @@ Find out which of these already hold, with the `model_router_config` tool and He
 ### A retired provider value
 
 - Earlier versions took `auto`, `openrouter-first` and `openrouter` as values of `provider`. A stored one is not valid. A stored `typesafe` needs no change.
-- Read the stored values with `model_router_config`. A retired value shows as `provider: <stored text> (not valid: use one of typesafe)`.
-- Propose the pair that gives the same requests as before:
+- The tool shows a retired value as `provider: <stored text> (not valid: use one of typesafe)`.
+- The pairs that give the same requests as before:
   - stored `auto`: `gateway` `auto` and `provider` `typesafe`.
   - stored `openrouter-first`: `gateway` `openrouter-first` and `provider` `typesafe`.
   - stored `openrouter`: `gateway` `openrouter` and `provider` `typesafe`.
-- Hermes gives you no way to write a setting. Once the person agrees, ask them to type `/model-router-gateway <value>` first and `/model-router-provider typesafe` second, in a local session. In that order no task takes a path they did not choose.
-- The settings form cannot do it: it refuses a value outside the choices and leaves the stored one alone.
-- Call the tool again and check both lines.
+- Hermes gives you no way to write a setting. The person types the commands.
+- The order is `gateway` first, then `provider`. In that order no task takes a path they did not choose.
+
+1. Read the stored values with `model_router_config`.
+2. Propose the pair that matches the stored value.
+3. After the person agrees, ask them to type `/model-router-gateway <value>` first, then `/model-router-provider typesafe`, in a local session.
+4. Call the tool again and check both lines.
 
 ### The keys
 
@@ -118,7 +123,7 @@ Find out which of these already hold, with the `model_router_config` tool and He
 - `subagent model set`: the `delegation` section sets a model. The person decides whether to clear it.
 - `node not found`: Hermes has no Node of its own. The plugin runs scoring in that Node and never uses a Node on `PATH`. The person adds a Node for Hermes.
 - `timeout`: the routing limit of 8 s for a whole `delegate_task` call ran out. No setting fixes it.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt got no answer, or the plugin failed. No setting fixes it. After both attempts the reason names each.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the company did not answer, or the plugin failed. No setting fixes it. After both attempts the reason names each.
 - Check every reason that holds, not only the first.
 
 ### The routing check

@@ -66,7 +66,7 @@ Hermes holds a key in the gateway's environment, so the programs Hermes starts c
 
 The `provider` setting says whose model scores each task. Its one value is `typesafe`, the default: Jev from TypeSafe.
 
-The `gateway` setting says how OpenRouter is used to reach the provider. Its values are `direct` (the default), `auto`, `openrouter-first` and `openrouter`.
+The `gateway` setting says how OpenRouter is used to reach the provider. Its values are `direct` (the default), `auto`, `openrouter-first` and `openrouter`. It is not Hermes's gateway, the process that owns a session.
 
 [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which path each value takes first, and when the second one runs. Who receives a task under each value: [PRIVACY.md](PRIVACY.md).
 
@@ -175,7 +175,7 @@ Hermes passes this backend a task's `goal`, `context` and index, and the paramet
 
 ### The gates
 
-Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets only the third.
+Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets the first gate and the third.
 
 1. `<setting> not valid: run setup`: a stored `provider` or `gateway` holds a value outside its list. [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names.
 2. `key unset`: no path the `gateway` setting allows has a key.
@@ -187,8 +187,8 @@ Every task without a `level` meets these gates in order. The first that fails sk
 
 A scored task can still skip:
 
-- `timeout`: Jev did not answer within the budget.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: Jev did not answer at all, or the Node step failed. `failed` also covers any error in the plugin. After both attempts fail, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
+- `timeout`: the company did not answer within the budget.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the company did not answer at all, or the Node step failed. `failed` also covers any error in the plugin. After both attempts fail, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 [Facts behind this section](../../docs/clients.md#hermes-routing-and-refusals)
 
