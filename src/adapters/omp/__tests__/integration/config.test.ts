@@ -321,6 +321,44 @@ test("a project narrowing is named after a gateway write", async () => {
 	);
 });
 
+test("a command writes a value that only the project's value already holds", async () => {
+	install();
+	world.lockfile = lockfileWith({ gateway: "auto" });
+	world.project = { gateway: "direct" };
+	await world.runCommand(GATEWAY_COMMAND, "direct");
+	assert.deepEqual(world.writes, [
+		{ plugin: "model-router-omp", key: "gateway", value: "direct" },
+	]);
+	assert.deepEqual(world.notes, ["gateway: direct (typesafe)"]);
+});
+
+test("a command that meets a project value over an equal global text writes nothing and names the override", async () => {
+	install();
+	world.lockfile = lockfileWith({ gateway: "auto" });
+	world.project = { gateway: "direct" };
+	await world.runCommand(GATEWAY_COMMAND, "auto");
+	assert.equal(world.writes.length, 0);
+	assert.deepEqual(world.notes, [
+		lines(
+			"gateway: direct (typesafe)",
+			"A project value for gateway overrides it.",
+		),
+	]);
+});
+
+test("a command answers unreadable and writes nothing when only the applied settings cannot be read", async () => {
+	install({
+		...world.imports,
+		getPluginSettings: async () => {
+			throw new Error("no settings");
+		},
+	});
+	world.lockfile = lockfileWith({ gateway: "auto" });
+	await world.runCommand(GATEWAY_COMMAND, "direct");
+	assert.equal(world.writes.length, 0);
+	assert.deepEqual(world.notes, ["gateway unchanged: settings unreadable"]);
+});
+
 test("the pick stands in when the settings cannot be read after the write", async () => {
 	install({
 		...world.imports,

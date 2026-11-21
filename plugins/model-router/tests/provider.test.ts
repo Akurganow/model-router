@@ -27,6 +27,10 @@ for (const [gateway, url] of [
 	["openrouter-first", OPENROUTER_URL],
 	["direct", TYPESAFE_URL],
 	["openrouter", OPENROUTER_URL],
+	// Claude Code hands the plugin the option's default for a stored value
+	// outside the option's list, as docs/clients.md, "Hooks module", says. So
+	// an unknown value never reaches the plugin here, and the call routes as
+	// the default.
 	["unknown", TYPESAFE_URL],
 ] as const)
 	test(
@@ -39,6 +43,7 @@ for (const [gateway, url] of [
 		},
 	);
 
+// As at the "unknown" table row above, this value routes as the default.
 test(
 	"an unknown value reads no OpenRouter key",
 	{ options: { provider: "unknown", api_key: "", openrouter_api_key: "" } },

@@ -78,6 +78,27 @@ export async function readSettings(
 }
 
 /**
+ * Returns the stored text of each setting in the global settings alone, without
+ * a project's value. A write replaces the global text, so the test for "already"
+ * needs that text. Returns undefined when it cannot be read. When omp gave no
+ * installed name, reads use the catalogue name. Never throws.
+ */
+export async function readGlobalSettings(
+	omp: OmpImports,
+): Promise<Stored | undefined> {
+	const plugin = omp.plugin ?? FALLBACK_NAME;
+	try {
+		const { provider, gateway, scope } = await readGlobal(
+			omp.getPluginsLockfile(),
+			plugin,
+		);
+		return { provider, gateway, scope };
+	} catch {
+		return undefined;
+	}
+}
+
+/**
  * Returns the plugin's entry in the lockfile at path. Returns an empty record
  * when the lockfile is missing, because omp reads a missing lockfile as empty,
  * and when the file holds no entry for the plugin. Throws on any other read

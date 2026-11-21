@@ -532,6 +532,18 @@ async function readSettings(omp, cwd) {
     return void 0;
   }
 }
+async function readGlobalSettings(omp) {
+  const plugin = omp.plugin ?? FALLBACK_NAME;
+  try {
+    const { provider, gateway, scope } = await readGlobal(
+      omp.getPluginsLockfile(),
+      plugin
+    );
+    return { provider, gateway, scope };
+  } catch {
+    return void 0;
+  }
+}
 async function readGlobal(path, plugin) {
   let text;
   try {
@@ -605,13 +617,17 @@ async function apply(omp, ctx, setting, value) {
   if (!isValue(setting, value)) return useOneOf(setting);
   const { plugin } = omp;
   const before = await readSettings(omp, ctx.cwd);
-  if (before === void 0 || plugin === void 0)
+  const global = await readGlobalSettings(omp);
+  if (before === void 0 || global === void 0 || plugin === void 0)
     return unchanged(setting, UNREADABLE);
-  if (before[setting] === value) return unchanged(setting, alreadyValue(value));
-  try {
-    await omp.writeSetting(ctx.cwd, plugin, setting, value);
-  } catch (err) {
-    return unchangedBy(setting, err);
+  if (global[setting] === value && before[setting] === value)
+    return unchanged(setting, alreadyValue(value));
+  if (global[setting] !== value) {
+    try {
+      await omp.writeSetting(ctx.cwd, plugin, setting, value);
+    } catch (err) {
+      return unchangedBy(setting, err);
+    }
   }
   const after = await readSettings(omp, ctx.cwd) ?? {
     ...before,
