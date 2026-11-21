@@ -75,7 +75,7 @@ Never type a key into the chat.
 
 The `provider` setting says whose model scores each task. Its one value is `typesafe`, the default: Jev from TypeSafe.
 
-The `gateway` setting says how OpenRouter is used to reach the provider. Its values are `direct` (the default), `auto`, `openrouter-first` and `openrouter`.
+The `gateway` setting says how OpenRouter is used to reach the provider. Its values are `direct` (the default), `auto`, `openrouter-first` and `openrouter`. It is not OpenClaw's Gateway, the process that loads the plugin.
 
 [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which path each value takes first, and when the second one runs. Who receives a spawn's task under each value: [PRIVACY.md](PRIVACY.md).
 
@@ -218,7 +218,7 @@ A scored spawn can still skip:
 
 - `timeout`: the routing limit expired before the plugin finished routing. The line reads `timeout` alone, even after the first attempt failed. [Hook timeout](#hook-timeout) gives the limit.
 - `cancelled`: OpenClaw cancelled the `sessions_spawn` call before the plugin finished routing.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: Jev did not answer. After both attempts fail, the reason names each attempt and its reason, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the company did not answer. After both attempts fail, the reason names each attempt and its reason, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 ### How the plugin reads a spawn
 

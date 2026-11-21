@@ -2,26 +2,24 @@
 
 model-router for OpenClaw is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-14.
+2026-11-21.
 
 ## Where requests go
 
 Each `sessions_spawn` call the plugin routes goes to Jev for scoring. Under the
 default `core` scope, only [the spawn of the requesting agent
 itself](README.md#the-spawn-of-the-requesting-agent-itself) routes, and [the
-extended scope](#the-extended-scope) adds the other configured agents.
+extended scope](#the-extended-scope) adds the other configured agents. Jev
+answers on one or two paths:
 
-The `provider` setting says whose model scores. Its one value is `typesafe`,
-the default. OpenRouter is a gateway: it passes the request on and answers with
-that same model. The plugin sends the request to:
+- the direct path: TypeSafe, at https://api.typesafe.ai/v1/systemone, with your
+  TypeSafe key
+- the gateway path: OpenRouter, at https://openrouter.ai/api/v1/systemone, with
+  your OpenRouter key.
 
-- TypeSafe, at https://api.typesafe.ai/v1/systemone, on the direct path, with
-  your TypeSafe key
-- OpenRouter, at https://openrouter.ai/api/v1/systemone, on the gateway path,
-  with your OpenRouter key.
-
-The `gateway` setting decides which path a task takes, and so which company
-receives the task text and with which key:
+The `provider` setting says whose model scores, and its one value is
+`typesafe`. OpenRouter is a gateway that answers with that model. The `gateway`
+setting decides which companies receive the task text and their keys:
 
 | `gateway` | First request | Second request, after a failure |
 | :-- | :-- | :-- |

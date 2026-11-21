@@ -9,10 +9,9 @@ model-router scores each routed `sessions_spawn` call with Jev, on TypeSafe's ow
 
 ## What set up means
 
-Routing works when all of these hold:
+Routing works when both of these hold:
 
 - The Gateway has loaded the plugin and it is enabled.
-- `provider`, `gateway` and `scope` hold no value outside their lists.
 - A scoring key exists for a path the `gateway` setting allows.
 
 The person may also choose these, and each has a default:
@@ -56,6 +55,7 @@ openrouter key: unset
   - `auto`: TypeSafe's own API, then OpenRouter.
   - `openrouter-first`: OpenRouter, then TypeSafe's own API.
   - `openrouter`: OpenRouter only.
+- The `gateway` setting is not OpenClaw's Gateway, the process that loads the plugin.
 - The person changes `provider` with the chat command `/model-router-provider <value>`, and `gateway` with `/model-router-gateway <value>`.
 - The `/model-router-provider` command replies with the new `provider` line. A value already set gives `provider unchanged: already <value>`. A sender who is not the owner gets `provider unchanged: only the owner can change it`.
 - The `/model-router-gateway` command replies the same way, with `gateway` in place of `provider`.
@@ -144,7 +144,7 @@ Skip reasons, checked in this order, with the fix:
 - `settings unreadable`: the plugin cannot read OpenClaw's live config.
 - `timeout`: the 8 s routing limit expired. The limit shrinks to the hook timeout minus 2 s when that is smaller.
 - `cancelled`: OpenClaw cancelled the `sessions_spawn` call before routing finished.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: Jev did not answer. Look at the path that failed, its key and the network.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the company did not answer. Look at the company that failed, its key and the network.
 
 ### Checking routing
 
