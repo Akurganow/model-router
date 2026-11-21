@@ -135,6 +135,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
   It also notes that its checks apply none of the plugin directory's own rules for hooks modules.
 - `claude plugin test [directory]` runs every file under the directory whose name ends in `.test.ts` or `.test.tsx`.
   It needs no session, sign-in or network, and exits `1` when a test fails.
+- Under `claude plugin test`, a `$.ui.ask` dialog given one option holds that option followed by `Yes`.
+  Two or more options arrive as given. The type declarations Claude Code writes for a plugin say of `$.ui.ask` that fewer than two options are padded with Yes/No.
 
 ### Package files
 
