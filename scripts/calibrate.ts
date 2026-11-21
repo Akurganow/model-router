@@ -6,7 +6,9 @@ import { work } from "#core/parts/work.ts";
 import {
 	type Attempt,
 	type Choice,
+	holders,
 	type KeyHolder,
+	type Maker,
 	plan,
 } from "#core/providers/provider.ts";
 import { endpointOf } from "#core/scoring/endpoints.ts";
@@ -20,24 +22,29 @@ import { fitWarnings } from "./jev-fit.ts";
 const AGREEMENT_BAR = 0.85;
 const CASE_HEAD_CHARS = 60;
 const PERCENT = 100;
-const HOLDER_NAMES: Readonly<Record<KeyHolder, string>> = {
-	typesafe: "TypeSafe",
-	openrouter: "OpenRouter",
-};
-// The key holder the user names picks the endpoint: a maker's own API, or the gateway.
-const CHOICES: Readonly<Record<KeyHolder, Choice>> = {
-	typesafe: { provider: "typesafe", gateway: "direct" },
-	openrouter: { provider: "typesafe", gateway: "openrouter" },
-};
+// The factors of the pick rule and the question texts are fitted to this maker's answers.
+const MAKER: Maker = "typesafe";
+// The key holders the script asks, each with the choice that reaches its endpoint and the name its prompt shows.
+const ASKED = new Map(
+	(
+		[
+			["direct", "TypeSafe"],
+			["openrouter", "OpenRouter"],
+		] as const
+	).flatMap(([gateway, name]) => {
+		const choice: Choice = { provider: MAKER, gateway };
+		return holders(choice).map((holder) => [holder, { choice, name }] as const);
+	}),
+);
 
 // The endpoint row of the step a key holder's choice asks. The prompt needs it before a key is typed, so the key is a stand-in that only the plan reads.
-function rowOf(holder: KeyHolder) {
-	const [step] = plan(CHOICES[holder], { [holder]: "-" });
+function rowOf(holder: KeyHolder, choice: Choice) {
+	const [step] = plan(choice, { [holder]: "-" });
 	const row = step && endpointOf(step);
 	if (!row) throw new Error(`no endpoint row for ${holder}`);
 	return row;
 }
-const USAGE = `usage: node scripts/calibrate.ts <typesafe|openrouter> [model] [--record <file>]  (typesafe sends the cases to ${rowOf("typesafe").url}, openrouter to ${rowOf("openrouter").url}; enter that provider's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
+const USAGE = `usage: node scripts/calibrate.ts <${[...ASKED.keys()].join("|")}> [model] [--record <file>]  (the cases go to: ${[...ASKED].map(([holder, { choice }]) => `${holder} ${rowOf(holder, choice).url}`).join(", ")}; enter that provider's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
 
 export type Case = {
 	role: string;
@@ -88,8 +95,10 @@ function keystroke(typed: string, ch: string): Keystroke {
 }
 
 function typeKey(stdin: NodeJS.ReadStream, holder: KeyHolder): Promise<string> {
+	const asked = ASKED.get(holder);
+	if (!asked) throw new Error(`${holder} is not asked`);
 	process.stderr.write(
-		`${HOLDER_NAMES[holder]} API key for ${rowOf(holder).url}: `,
+		`${asked.name} API key for ${rowOf(holder, asked.choice).url}: `,
 	);
 	stdin.setRawMode(true);
 	stdin.resume();
@@ -155,12 +164,9 @@ export async function main(
 	const at = args.indexOf("--record");
 	const record = at === -1 ? undefined : args[at + 1];
 	const positional = at === -1 ? args : args.toSpliced(at, 2);
-	const [holder, model, ...surplus] = positional;
-	if (
-		(holder !== "typesafe" && holder !== "openrouter") ||
-		surplus.length > 0 ||
-		(at !== -1 && !record)
-	) {
+	const [name, model, ...surplus] = positional;
+	const asked = [...ASKED].find(([holder]) => holder === name);
+	if (!asked || surplus.length > 0 || (at !== -1 && !record)) {
 		console.error(USAGE);
 		return EXIT_USAGE;
 	}
@@ -173,12 +179,13 @@ export async function main(
 			return EXIT_USAGE;
 		}
 	}
+	const [holder, { choice }] = asked;
 	const key = await readKey(stdin, holder);
 	if (!key) {
 		console.error(USAGE);
 		return EXIT_USAGE;
 	}
-	const attempts = plan(CHOICES[holder], { [holder]: key }).map((a) =>
+	const attempts = plan(choice, { [holder]: key }).map((a) =>
 		model === undefined ? a : { ...a, model },
 	);
 	const cases: Case[] = readFileSync(
@@ -227,7 +234,7 @@ export async function main(
 		return a;
 	};
 	console.log(
-		`${model ?? rowOf(holder).model} answered as ${[...answeredBy].join(", ") || "unknown"}`,
+		`${model ?? rowOf(holder, choice).model} answered as ${[...answeredBy].join(", ") || "unknown"}`,
 	);
 	// A warning, not a failure: the agreement alone decides the exit code.
 	for (const warning of fitWarnings(answeredBy)) console.error(warning);
