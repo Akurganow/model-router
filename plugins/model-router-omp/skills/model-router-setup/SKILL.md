@@ -74,27 +74,28 @@ Find out which of these already hold, with the `model_router_config` tool and om
   - `provider: openrouter` is `provider: typesafe` with `gateway: openrouter`.
 - A stored `provider: typesafe` needs no change.
 
-To move a retired value:
+To move a retired value, follow these steps in order:
 
 1. Call `model_router_config` with no setting, and read the `provider` and `gateway` lines.
    - A retired value shows as `provider: <stored text> (not valid: use one of <values>)`.
-2. Propose the pair above that matches the stored `provider`.
-3. On the person's word, call `model_router_config` with `setting` set to `gateway`.
+2. Check the current project's override file before any write.
+   - A project's override file can hold a `provider` value too. omp merges that file into the settings it hands the plugin, and the plugin never opens it.
+   - The check comes first, because after the global pair is set, a project's `provider: typesafe` no longer keeps OpenRouter out.
+   1. Look for `<project>/.omp/plugin-overrides.json` in the current project, and read it if it exists.
+   2. If it sets `provider`, tell the person that this `provider` narrows nothing, and what to do with that line:
+      - `typesafe`: replace the line with `gateway: direct`. It kept OpenRouter out, and no line shows that it stopped.
+      - `openrouter`: replace the line with `gateway: openrouter`.
+      - `auto` or `openrouter-first`: delete the line. It changed nothing before, and now it skips every task of that project with `provider not valid: run setup`.
+   3. Tell the person to check the other projects' override files before setting the global pair.
+      - The plugin reads none of them.
+   4. Edit the file only when the person asks.
+3. Propose the pair above that matches the stored `provider`.
+4. On the person's word, call `model_router_config` with `setting` set to `gateway`.
    - The person picks the value in the dialog. Where no dialog answers, the person types `/model-router:gateway <value>`.
-   - Set `gateway` first. While `provider` is not valid, no task routes, so no task takes a path the person did not choose.
-4. Then call `model_router_config` with `setting` set to `provider`.
+   - Set `gateway` first and `provider` second. While `provider` is not valid, no task routes, so no task takes a path the person did not choose.
+5. Then call `model_router_config` with `setting` set to `provider`.
    - The person picks `typesafe` in the dialog. Where no dialog answers, the person types `/model-router:provider typesafe`.
-5. Call `model_router_config` with no setting, and check the `provider` and `gateway` lines.
-
-A project's override file can hold a `provider` value too. omp merges that file into the settings it hands the plugin, and the plugin never opens it. To check it:
-
-1. Look for `<project>/.omp/plugin-overrides.json` in the current project, and read it if it exists.
-2. If it sets `provider`, tell the person that a project's `provider` narrows nothing now.
-   - `provider: typesafe` kept OpenRouter out. Tell the person to state it as `gateway: direct`. No line shows this case.
-   - `provider: openrouter` is stated as `gateway: openrouter`.
-   - A `provider` of `auto`, `openrouter-first` or `openrouter` skips every task of that project with `provider not valid: run setup`.
-3. Tell the person to check every other project that has an override file, because the plugin reads none of them.
-4. Edit the file only when the person asks.
+6. Call `model_router_config` with no setting, and check the `provider` and `gateway` lines.
 
 ### Scope
 
@@ -154,7 +155,7 @@ An item check skips one item:
 
 A scored item can skip for these reasons:
 
-- `timeout`: the attempt got no answer in time. Scoring has 8 s per batch.
+- `timeout`: the company gave no answer in time. Scoring has 8 s per batch.
 - `HTTP <status>`: the company returned an error. `HTTP 401` means it refused the key.
 - `network error`: the request could not connect.
 - `bad reply`: the reply held no valid score.

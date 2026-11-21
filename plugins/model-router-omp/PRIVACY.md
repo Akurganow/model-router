@@ -2,7 +2,7 @@
 
 model-router for Oh My Pi is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-14.
+2026-11-21.
 
 ## Where requests go
 
@@ -10,10 +10,10 @@ The plugin asks Jev to score each routed batch item. Only `task` items route
 under the default `core` scope, and [the extended scope](#the-extended-scope)
 adds the others. Jev answers on one or two paths:
 
-- TypeSafe, on the direct path, at https://api.typesafe.ai/v1/systemone, with
-  your TypeSafe key
-- OpenRouter, on the gateway path, at https://openrouter.ai/api/v1/systemone,
-  with your OpenRouter key.
+- the direct path: TypeSafe, at https://api.typesafe.ai/v1/systemone, with your
+  TypeSafe key
+- the gateway path: OpenRouter, at https://openrouter.ai/api/v1/systemone, with
+  your OpenRouter key.
 
 The `provider` setting says whose model scores, and its one value is
 `typesafe`. OpenRouter is a gateway that answers with that model. The `gateway`
