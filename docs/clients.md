@@ -670,7 +670,10 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
   `ctx.set_config(key, value)` writes one value in that subtree.
 - `hermes config set` on a key under `plugins.entries.<plugin id>.settings` takes a JSON object and stores it as a mapping. `hermes config get` prints its fields on separate lines.
 - A `secret` entry never reaches `config.yaml`. The Desktop settings form stores it in `.env` under the entry's `env:` name, and the plugin reads it with `get_secret(NAME)` from `agent.secret_scope`.
-- A `secret` entry whose `env:` is `OPENROUTER_API_KEY` stores the value under that name, which Hermes's own OpenRouter provider and `get_secret` both read.
+- Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY`, so a `secret` entry with that `env:` name sets that provider's key too.
+- The settings form saves a secret as it saves a provider key. Hermes writes `.env`, replaces each `api_key` in `config.yaml` that held the previous value, and loads the credential pool of each provider its registry lists for the variable.
+  The registry lists no OpenRouter provider. Hermes seeds the OpenRouter pool in `auth.json` from `OPENROUTER_API_KEY` when it loads that pool.
+- `get_secret` reads no credential pool, so it never returns a key that sits only in `auth.json`.
 - `get_secret(NAME)` returns the value of a `config_schema` secret's variable from the Hermes home's `.env`, in process and in the plugin host. The variable is also in the environment of the host and of the gateway.
 - `ctx.get_config(key)` returns the value from `plugins.entries.<plugin id>.settings`, in process and in the plugin host.
 - A plugin slash command's handler runs in the gateway process that owns the session. It can declare `session_id`, `session_key`, `platform` or `source` as keyword arguments, and Hermes passes them.
