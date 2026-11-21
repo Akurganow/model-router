@@ -18,7 +18,7 @@ const part = (level: 0 | 1 | 2, p: number) => ({
 });
 const decision = (parts: Decision["parts"], model = "m"): Decision => ({
 	parts,
-	provider: "typesafe",
+	holder: "typesafe",
 	model,
 	usage: { input_tokens: 1, output_tokens: 2 },
 });
@@ -43,8 +43,8 @@ test("a decision after a fallback ends its suffix with the failed provider and i
 	const decided = decide(
 		{
 			...decision({ tier: part(0, 0.9), work: part(1, 0.7) }),
-			provider: "openrouter",
-			firstFailed: { provider: "typesafe", reason: "HTTP 503" },
+			holder: "openrouter",
+			firstFailed: { holder: "typesafe", reason: "HTTP 503" },
 		},
 		"tier",
 		"work",

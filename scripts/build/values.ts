@@ -8,8 +8,8 @@ import {
 } from "#core/options/settings.ts";
 import {
 	KEY_FIELDS,
+	type KeyHolder,
 	PROVIDER_VALUES,
-	type Provider,
 } from "#core/providers/provider.ts";
 
 // Every fact the renderers take from src/ comes through this module, so a
@@ -17,7 +17,7 @@ import {
 export {
 	COMMAND_DESCRIPTIONS,
 	KEY_FIELDS,
-	type Provider,
+	type KeyHolder,
 	SLOT_SETTINGS,
 	type SlotSetting,
 	TOOL_NAME,

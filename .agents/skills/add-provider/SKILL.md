@@ -67,14 +67,23 @@ So the name must be the id that omp gives the provider.
 25. Choose the key's setting name, and its variable if not yet chosen, after `KEY_VARIABLES` and `KEY_FIELDS` in `src/core/providers/provider.ts`.
     That name serves Claude Code and OpenClaw. Hermes builds its own, `<provider>_api_key`.
 
-The `provider` setting, the key lines and the routing line print the name as `PROVIDERS` spells it.
+The `provider` setting, the key lines and the routing line print the name as `KEY_HOLDERS` spells it.
 
 ## Ask the maintainer once
+
+A provider with a model of its own is a maker.
+`steps` in `src/core/providers/provider.ts` asks only the maker that `MAKER` names, under every value of `provider`.
+So a second maker gets no attempt until a setting names the maker, and no value of `provider` does.
+The next step holds only for a provider with a model of its own.
+
+26. Stop and report to the maintainer when `steps` still takes its maker from `MAKER`.
+
+A second gateway, a provider with a key and no model of its own, has no step in this skill: stop and report it too.
 
 No question below needs code first, and a late answer throws edits away.
 With the provider in `auto`, the tests ask for every `auto` literal anew.
 
-26. Send the maintainer one message with every question below that applies, and wait before the first edit of the code.
+27. Send the maintainer one message with every question below that applies, and wait before the first edit of the code.
 
 The questions:
 
@@ -92,12 +101,12 @@ A provider that speaks System One reuses `SYSTEM_ONE` and adds no format.
 
 The next six steps hold only for another API.
 
-27. Add a file in `src/core/scoring/formats/` that exports a `Format`.
-28. Write its unit test first, with literal bodies and replies, as `src/core/__tests__/unit/system-one.test.ts` does.
-29. Write `body` and `read` as the comment on `Format` in `src/core/scoring/formats/format.ts` says.
-30. Return `MALFORMED` from `read` for a reply it cannot read.
-31. Map the API's question, answer and token shapes inside the format, and leave `Part` as it is.
-32. Import only what [Repository layout](../../../CONTRIBUTING.md#repository-layout) allows `formats/`; Biome reports any other import.
+28. Add a file in `src/core/scoring/formats/` that exports a `Format`.
+29. Write its unit test first, with literal bodies and replies, as `src/core/__tests__/unit/system-one.test.ts` does.
+30. Write `body` and `read` as the comment on `Format` in `src/core/scoring/formats/format.ts` says.
+31. Return `MALFORMED` from `read` for a reply it cannot read.
+32. Map the API's question, answer and token shapes inside the format, and leave `Part` as it is.
+33. Import only what [Repository layout](../../../CONTRIBUTING.md#repository-layout) allows `formats/`; Biome reports any other import.
 
 `type: "score"` in `Part` is System One's wire literal, which another format translates.
 
@@ -105,28 +114,27 @@ The next six steps hold only for another API.
 No check reports a provider that needs another request.
 The next four steps hold only for such a provider.
 
-33. For another key header, a model in the URL or a wait the body names, add a field to `Endpoint`.
-34. Read the field in `ask`, or in `src/core/scoring/transport/` when it changes a retry or a wait.
-35. Change [The request](../../../docs/providers.md#the-request) when a header or the body changes for any provider.
-36. Change [Retries and the second provider](../../../docs/providers.md#retries-and-the-second-provider) when a retry or a wait changes.
+34. For another key header, give the row its own `keyHeader`. For a model in the URL or a wait the body names, add a field to `Endpoint`.
+35. Read the field in `ask`, or in `src/core/scoring/transport/` when it changes a retry or a wait.
+36. Change [The request](../../../docs/providers.md#the-request) when a header or the body changes for any provider.
+37. Change [Retries and the second provider](../../../docs/providers.md#retries-and-the-second-provider) when a retry or a wait changes.
 
 `FALLBACK_STATUSES` serves every provider.
 The next step holds only when the maintainer sent a new status on to the next provider.
 
-37. Add the status to `FALLBACK_STATUSES`, with its failing row first, and to the statuses in [Which provider gets a task](../../../docs/providers.md#which-provider-gets-a-task).
+38. Add the status to `FALLBACK_STATUSES`, with its failing row first, and to the statuses in [Which provider gets a task](../../../docs/providers.md#which-provider-gets-a-task).
 
 ## Let the type check lead
 
-`ORDER.auto` is `PROVIDERS` itself, so a provider joins `auto` at its place in that list.
+`KEY_HOLDERS` holds every maker.
 
-38. Add the name to `PROVIDERS` in `src/core/providers/provider.ts`, at its place in `auto`, or last when `auto` leaves it out.
-39. When `auto` leaves the provider out, write the `auto` row of `ORDER` out as a list without it.
+39. Add the name to `MAKERS` in `src/core/providers/provider.ts`.
 40. Add each new value to `PROVIDER_VALUES` in the same file.
 
 No test reads the URL of a row of `ENDPOINTS`, and a wrong one sends the key and the task text to another host.
 So the provider's own rows fail first, as [Tests](../../../AGENTS.md#tests) asks.
 
-41. Add a row that pins the new key to its own address, in `src/core/__tests__/integration/route.test.ts` and in `plugins/model-router/tests/keys.test.ts`.
+41. Pin the new key to its own address: a row of `ADDRESSES` in `src/core/__tests__/integration/route.test.ts`, and a test with a URL constant like `TYPESAFE_URL` in `plugins/model-router/tests/keys.test.ts`.
 42. Add the new key to `SECRETS` and to the tuple of sentinels in `plugins/model-router-hermes/tests/test_sentinel.py`, which passes without it.
     Add it to the expected keys there only when `auto` holds the provider.
 43. Run `npx tsc -p src` and `npx tsc -p scripts`.
@@ -137,19 +145,19 @@ The errors name each place. They do not say this:
 - In `keyVariable` in `src/adapters/claude/keys.ts`, the provider gets its own `$.env.get` call with the variable's name as a literal.
 - The key field of `Options` in `src/adapters/claude/host.ts` shows only after that `switch` is filled.
 - `LOOKED_UP` in `src/core/__tests__/unit/provider.test.ts` shows because `npx tsc -p src` reads the tests too.
-- The row of `MODELS` takes the model name the endpoint takes.
-- The row of `ENDPOINTS` takes the URL, the format and each field of the section before.
-- A value gets its row of `ORDER` from the type check, and the rest from the tests.
-- `FIXTURE` in `scripts/build-shape.test.ts` shows first under `scripts/`, for the Hermes setting `<provider>_api_key`. `scripts/build/hermes.ts` and the `Source` type build that name from `PROVIDERS`, so neither needs an edit.
+- A row of `ENDPOINTS` takes the URL, the format, the model name the endpoint takes, the key header and each field of the section before.
+- A value gets its row of `VALUE_PATHS` from the type check, and the rest from the tests.
+- `FIXTURE` in `scripts/build-shape.test.ts` shows first under `scripts/`, for the Hermes setting `<provider>_api_key`. `scripts/build/hermes.ts` and the `Source` type build that name from `KEY_HOLDERS`, so neither needs an edit.
 - The Hermes hint goes under `hermes.settings` in `metadata/source.json` and into `metadata/source.schema.json` in the same edit as the row of `FIXTURE`. Without the hint the build stops in `scripts/build/hermes.ts` and names no setting.
 
 ## The model behind the provider
 
-`main` in `scripts/calibrate.ts` takes two provider names and passes the name to `plan` as a value of the setting.
-So a provider with no value of its own name gets no attempt, and every case reads `key unset`.
+`main` in `scripts/calibrate.ts` takes the name of a key holder and passes it to `plan` as a value of the setting.
+`plan` asks only the maker that `MAKER` names, whatever the value.
+So `plan` gives a new maker no attempt, and every case reads `key unset`.
 
 45. Let the guard of `main` take the new name, and name the provider and its URL in `USAGE`.
-46. Unless the provider has a value of its own name, make `main` build the provider's attempt itself.
+46. Make `main` build the provider's attempt itself.
 47. Change the command line under [Calibration](../../../CONTRIBUTING.md#calibration).
 
 `fitWarnings` in `scripts/jev-fit.ts` drops the vendor prefix of a reply's model name, the text up to the last `/`.
@@ -180,7 +188,7 @@ The failures name each place. They do not say this:
 - The build writes the bundles, the npm tree, the manifests and `plugins/model-router-hermes/constants.json`. The Hermes Python source needs no edit.
 - Biome reports no place that lacks the provider. It checks the format, so run `npm run fix` after a hand edit.
 
-The next step holds only when `auto` is written out without the provider.
+The next step holds only when no single value allows every key holder.
 
 54. In `src/adapters/claude/__tests__/unit/keys.test.ts`, read the key variables under values that together hold every provider, not under `auto` alone.
 
@@ -248,7 +256,7 @@ The next two steps hold only when a provider of Hermes's own reads that variable
 No eval sets a `provider` value today, so each client asks the default, `typesafe`.
 Claude Code keeps it under `pluginConfigs` in `settings.json`, as [Manifest](../../../docs/clients.md#manifest) says.
 omp keeps it in its lockfile, as [omp manifest and settings](../../../docs/clients.md#omp-manifest-and-settings) says, and a project may only narrow it.
-`MODEL_SEGMENT` in `scripts/evals/stream.ts` reads the decision line: it accepts any name of `PROVIDERS` and keeps only the model.
+`MODEL_SEGMENT` in `scripts/evals/stream.ts` reads the decision line: it accepts any name of `KEY_HOLDERS` and keeps only the model.
 So a case passes whichever provider answered.
 
 The next four steps hold only when the evals score through the new provider.
@@ -300,7 +308,7 @@ The rebuild holds for every change.
 ## Before the pull request
 
 85. For each file the change touched, name the check or the step of this skill that led you there.
-86. Key by `Provider` each place neither led to, or add it to this skill in the same pull request.
+86. Key by `KeyHolder` or `Maker` each place neither led to, or add it to this skill in the same pull request.
 87. Name the commit and the pull request `feat`, as [Commits and pull requests](../../../AGENTS.md#commits-and-pull-requests) says.
 88. Cite the page behind each API fact in the pull request text.
 89. List each harness whose path of the new key no test and no section of `docs/clients.md` proves.

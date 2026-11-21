@@ -12,10 +12,10 @@ import {
 import { LINE_PREFIX, pinnedLine, skippedLine } from "#core/output/line.ts";
 import { LEVELS, type Level } from "#core/parts/part.ts";
 import {
+	KEY_HOLDERS,
 	KEY_VARIABLES,
 	order,
 	PROVIDER_VALUES,
-	PROVIDERS,
 	resolve as resolveProvider,
 } from "#core/providers/provider.ts";
 import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
@@ -35,12 +35,12 @@ const describe = (hint: { label: string; help: string }) => ({
 
 const keySettings = (source: Source): JsonObject =>
 	Object.fromEntries(
-		PROVIDERS.map((provider) => [
-			hermesKeySetting(provider),
+		KEY_HOLDERS.map((holder) => [
+			hermesKeySetting(holder),
 			{
 				type: "secret",
-				env: KEY_VARIABLES[provider],
-				...describe(source.hermes.settings[hermesKeySetting(provider)]),
+				env: KEY_VARIABLES[holder],
+				...describe(source.hermes.settings[hermesKeySetting(holder)]),
 			},
 		]),
 	);

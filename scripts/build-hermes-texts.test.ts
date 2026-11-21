@@ -13,7 +13,7 @@ import {
 	useOneOf,
 	valueLine,
 } from "#core/options/settings.ts";
-import { PROVIDER_VALUES, PROVIDERS } from "#core/providers/provider.ts";
+import { KEY_HOLDERS, PROVIDER_VALUES } from "#core/providers/provider.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { HERMES_OUTPUTS } from "./build/outputs.ts";
 import { loadSource } from "./build/source.ts";
@@ -53,7 +53,7 @@ test("the provider texts equal the shared builders", () => {
 });
 
 test("the key lines cover each provider in both states", () => {
-	for (const name of PROVIDERS) {
+	for (const name of KEY_HOLDERS) {
 		assert.equal(texts.keyLines[name].set, keyLine(name, "set"));
 		assert.equal(texts.keyLines[name].unset, keyLine(name, "unset"));
 	}

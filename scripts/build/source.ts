@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Schema, validate } from "./schema.ts";
-import type { Provider, SlotSetting, ValueSetting } from "./values.ts";
+import type { KeyHolder, SlotSetting, ValueSetting } from "./values.ts";
 
 export const SOURCE_PATH = "metadata/source.json";
 const SCHEMA_PATH = "metadata/source.schema.json";
@@ -18,10 +18,10 @@ type Option<Descriptions> = {
 	readonly descriptions: Descriptions;
 };
 type Hint = { readonly label: string; readonly help: string };
-// Hermes stores a secret under its variable, so the setting's own name is free: the provider's name and a fixed ending.
-export type HermesKeySetting = `${Provider}_api_key`;
-export const hermesKeySetting = (provider: Provider): HermesKeySetting =>
-	`${provider}_api_key`;
+// Hermes stores a secret under its variable, so the setting's own name is free: the key holder's name and a fixed ending.
+export type HermesKeySetting = `${KeyHolder}_api_key`;
+export const hermesKeySetting = (holder: KeyHolder): HermesKeySetting =>
+	`${holder}_api_key`;
 type Secret = {
 	readonly type: string;
 	readonly title: string;

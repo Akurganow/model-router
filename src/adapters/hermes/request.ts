@@ -1,6 +1,6 @@
 import { contextText } from "#core/brief/brief.ts";
 import { type Slot, slotRecord } from "#core/decision/slots.ts";
-import { type Keys, PROVIDERS } from "#core/providers/provider.ts";
+import { KEY_HOLDERS, type Keys } from "#core/providers/provider.ts";
 import { isPositiveNumber, isRecord } from "#utils/guards.ts";
 import { nonEmpty } from "#utils/text.ts";
 
@@ -26,9 +26,9 @@ export type HermesRequest = {
 
 const readKeys = (value: unknown): Keys =>
 	Object.fromEntries(
-		PROVIDERS.flatMap((provider) => {
-			const key = isRecord(value) ? nonEmpty(value[provider]) : undefined;
-			return key === undefined ? [] : [[provider, key]];
+		KEY_HOLDERS.flatMap((holder) => {
+			const key = isRecord(value) ? nonEmpty(value[holder]) : undefined;
+			return key === undefined ? [] : [[holder, key]];
 		}),
 	);
 

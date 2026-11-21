@@ -26,10 +26,12 @@ const world = useWorld();
 const ENV_KEY = "env-key-0002";
 const OR_ENV_KEY = "env-or-key-0004";
 const open = (key = KEY) => ({
-	attempts: [{ provider: "typesafe", model: "jev-latest", key }],
+	attempts: [{ maker: "typesafe", path: "direct", holder: "typesafe", key }],
 });
 const openOr = (key = OR_KEY) => ({
-	attempts: [{ provider: "openrouter", model: "jev-latest", key }],
+	attempts: [
+		{ maker: "typesafe", path: "openrouter", holder: "openrouter", key },
+	],
 });
 
 const ctx = world.ctx;
@@ -122,13 +124,14 @@ test("both providers in order, each with its own key", async () => {
 	assert.deepEqual(await gates(), {
 		attempts: [
 			{
-				provider: "openrouter",
-				model: "jev-latest",
+				maker: "typesafe",
+				path: "openrouter",
+				holder: "openrouter",
 				key: OR_KEY,
 				timeout: 2000,
 				retries: 0,
 			},
-			{ provider: "typesafe", model: "jev-latest", key: KEY },
+			{ maker: "typesafe", path: "direct", holder: "typesafe", key: KEY },
 		],
 	});
 	assert.deepEqual(world.asked, ["openrouter", "typesafe"]);
@@ -168,7 +171,7 @@ for (const [name, global, project, providers] of narrowing)
 		const result = await gates();
 		assert.ok("attempts" in result);
 		assert.deepEqual(
-			result.attempts.map((a) => a.provider),
+			result.attempts.map((a) => a.holder),
 			providers,
 		);
 		assert.deepEqual(world.asked, providers);

@@ -4,7 +4,7 @@ import {
 	type Attempt,
 	collectKeys,
 	KEY_VARIABLES,
-	type Provider,
+	type KeyHolder,
 	type ProviderValue,
 	plan,
 	resolve as resolveProvider,
@@ -84,35 +84,35 @@ async function readGlobal(
 }
 
 /**
- * Returns the attempts, each with its key, for the providers the value allows. Reads
- * only those providers. omp's own credential comes first, then the variable.
+ * Returns the attempts, each with its key, for the key holders the value allows. Reads
+ * only those key holders. omp's own credential comes first, then the variable.
  * Returns no attempts when no key is set. Never throws.
  */
 export async function findAttempts(
 	ctx: Context,
 	value: string,
 ): Promise<Attempt[]> {
-	const keys = await collectKeys(value, (provider) => findKey(ctx, provider));
+	const keys = await collectKeys(value, (holder) => findKey(ctx, holder));
 	return plan(value, keys);
 }
 
 /**
- * Returns the trimmed key of a provider: omp's own credential first, then the
- * provider's variable. Returns undefined when neither holds a non-blank value.
+ * Returns the trimmed key of a key holder: omp's own credential first, then the
+ * key holder's variable. Returns undefined when neither holds a non-blank value.
  * Never throws.
  */
 export async function findKey(
 	ctx: Context,
-	provider: Provider,
+	holder: KeyHolder,
 ): Promise<string | undefined> {
 	try {
-		const key = await ctx.modelRegistry.getApiKeyForProvider(provider);
+		const key = await ctx.modelRegistry.getApiKeyForProvider(holder);
 		const trimmed = nonEmpty(key);
 		if (trimmed !== undefined) return trimmed;
 	} catch {
 		// A broken credential store falls through to the variable.
 	}
-	return nonEmpty(process.env[KEY_VARIABLES[provider]]);
+	return nonEmpty(process.env[KEY_VARIABLES[holder]]);
 }
 
 // A read that throws gives the fallback.

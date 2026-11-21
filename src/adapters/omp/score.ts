@@ -3,7 +3,7 @@ import { type DecidedWithWork, scoreWork } from "#core/decision/decide.ts";
 import { effortFor } from "#core/decision/ladder.ts";
 import { pickModel, slotForLevel } from "#core/decision/slots.ts";
 import { skippedLine } from "#core/output/line.ts";
-import type { Provider } from "#core/providers/provider.ts";
+import type { KeyHolder } from "#core/providers/provider.ts";
 import { limitSignal } from "#core/scoring/limit.ts";
 import type { RouteInput, Skipped } from "#core/scoring/route.ts";
 import { realClock } from "#utils/clock.ts";
@@ -30,7 +30,7 @@ type Scored = Pending & { readonly stored: Stored };
 const MAX_PARALLEL = 4;
 
 // One deadline covers the batch. Aborting also ends the retry wait, so no request follows a skip.
-// A provider passed over once is dropped for items that start later, and only within this batch.
+// A key holder passed over once is dropped for items that start later, and only within this batch.
 // An item the check skips sends nothing, and its reason is its line.
 export async function scoreItems(
 	items: readonly Pending[],
@@ -40,15 +40,15 @@ export async function scoreItems(
 ): Promise<Scored[]> {
 	// A deadline the gates used up leaves no time to send anything.
 	const limit = limitSignal(deadline, realClock);
-	const passedOver = new Set<Provider>();
+	const passedOver = new Set<KeyHolder>();
 	try {
 		return await mapLimit(items, MAX_PARALLEL, async (pending) => {
 			const { item, agent } = pending;
 			const reason = itemCheck(agent, facts, item.model);
 			if (reason !== undefined) return { ...pending, stored: skipped(reason) };
 			const routing = {
-				attempts: attempts.filter((a) => !passedOver.has(a.provider)),
-				onFallback: (p: Provider) => void passedOver.add(p),
+				attempts: attempts.filter((a) => !passedOver.has(a.holder)),
+				onFallback: (holder: KeyHolder) => void passedOver.add(holder),
 			};
 			const decided = await scoreItem(
 				item,

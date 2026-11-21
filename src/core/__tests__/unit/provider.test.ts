@@ -11,8 +11,18 @@ import {
 	plan,
 } from "#core/providers/provider.ts";
 
-const T = { provider: "typesafe", model: "jev-latest", key: "ts-key" };
-const O = { provider: "openrouter", model: "jev-latest", key: "or-key" };
+const T = {
+	maker: "typesafe",
+	path: "direct",
+	holder: "typesafe",
+	key: "ts-key",
+};
+const O = {
+	maker: "typesafe",
+	path: "openrouter",
+	holder: "openrouter",
+	key: "or-key",
+};
 const FIRST = { timeout: 2000, retries: 0 };
 
 const NONE = {};
@@ -67,11 +77,11 @@ const LOOKED_UP = { typesafe: "ts-key", openrouter: "or-key" };
 
 test("collectKeys awaits each lookup before it starts the next", async () => {
 	const trace: string[] = [];
-	const keys = await collectKeys("openrouter-first", async (provider) => {
-		trace.push(`start ${provider}`);
+	const keys = await collectKeys("openrouter-first", async (holder) => {
+		trace.push(`start ${holder}`);
 		await new Promise((resolve) => setTimeout(resolve, 5));
-		trace.push(`end ${provider}`);
-		return provider === "typesafe" ? undefined : LOOKED_UP[provider];
+		trace.push(`end ${holder}`);
+		return holder === "typesafe" ? undefined : LOOKED_UP[holder];
 	});
 	assert.deepEqual(keys, { openrouter: "or-key" });
 	assert.deepEqual(trace, [
@@ -84,9 +94,9 @@ test("collectKeys awaits each lookup before it starts the next", async () => {
 
 test("collectKeys never looks up a provider the value leaves out", async () => {
 	const asked: string[] = [];
-	const keys = await collectKeys("typesafe", async (provider) => {
-		asked.push(provider);
-		return LOOKED_UP[provider];
+	const keys = await collectKeys("typesafe", async (holder) => {
+		asked.push(holder);
+		return LOOKED_UP[holder];
 	});
 	assert.deepEqual(keys, { typesafe: "ts-key" });
 	assert.deepEqual(asked, ["typesafe"]);
@@ -95,8 +105,8 @@ test("collectKeys never looks up a provider the value leaves out", async () => {
 test("collectKeys stops at a rejection and passes it through", async () => {
 	const asked: string[] = [];
 	await assert.rejects(
-		collectKeys("auto", async (provider) => {
-			asked.push(provider);
+		collectKeys("auto", async (holder) => {
+			asked.push(holder);
 			throw new Error("lookup failed");
 		}),
 		/lookup failed/,
@@ -111,9 +121,9 @@ test("collectKeys keeps an empty key", async () => {
 
 test("collectKeysSync looks up the allowed providers in order and leaves out an undefined", () => {
 	const trace: string[] = [];
-	const keys = collectKeysSync("openrouter-first", (provider) => {
-		trace.push(provider);
-		return provider === "typesafe" ? undefined : LOOKED_UP[provider];
+	const keys = collectKeysSync("openrouter-first", (holder) => {
+		trace.push(holder);
+		return holder === "typesafe" ? undefined : LOOKED_UP[holder];
 	});
 	assert.deepEqual(keys, { openrouter: "or-key" });
 	assert.deepEqual(trace, ["openrouter", "typesafe"]);
@@ -121,9 +131,9 @@ test("collectKeysSync looks up the allowed providers in order and leaves out an 
 
 test("collectKeysSync never looks up a provider the value leaves out", () => {
 	const asked: string[] = [];
-	const keys = collectKeysSync("typesafe", (provider) => {
-		asked.push(provider);
-		return LOOKED_UP[provider];
+	const keys = collectKeysSync("typesafe", (holder) => {
+		asked.push(holder);
+		return LOOKED_UP[holder];
 	});
 	assert.deepEqual(keys, { typesafe: "ts-key" });
 	assert.deepEqual(asked, ["typesafe"]);
@@ -133,8 +143,8 @@ test("collectKeysSync stops at a throw and passes it through", () => {
 	const asked: string[] = [];
 	assert.throws(
 		() =>
-			collectKeysSync("auto", (provider) => {
-				asked.push(provider);
+			collectKeysSync("auto", (holder) => {
+				asked.push(holder);
 				throw new Error("lookup failed");
 			}),
 		/lookup failed/,

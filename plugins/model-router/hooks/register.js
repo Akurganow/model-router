@@ -5,39 +5,43 @@ var PROVIDER_VALUES = [
   "typesafe",
   "openrouter"
 ];
-var PROVIDERS = ["typesafe", "openrouter"];
+var MAKERS = ["typesafe"];
+var KEY_HOLDERS = [...MAKERS, "openrouter"];
 var KEY_FIELDS = {
   typesafe: "api_key",
   openrouter: "openrouter_api_key"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var MODELS = {
-  typesafe: "jev-latest",
-  openrouter: "jev-latest"
-};
 var DEFAULT_VALUE = "typesafe";
-var ORDER = {
-  auto: PROVIDERS,
-  "openrouter-first": ["openrouter", "typesafe"],
-  typesafe: ["typesafe"],
+var MAKER = "typesafe";
+var VALUE_PATHS = {
+  auto: ["direct", "openrouter"],
+  "openrouter-first": ["openrouter", "direct"],
+  typesafe: ["direct"],
   openrouter: ["openrouter"]
 };
-var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
+var holderOf = (maker, path) => path === "direct" ? maker : path;
+var steps = (value) => VALUE_PATHS[resolve(value)].map((path) => ({
+  maker: MAKER,
+  path,
+  holder: holderOf(MAKER, path)
+}));
+var parseProvider = (value) => typeof value === "string" && Object.hasOwn(VALUE_PATHS, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
-var order = (value) => ORDER[resolve(value)];
+var order = (value) => steps(value).map((step) => step.holder);
 async function collectKeys(value, lookup) {
   const keys = {};
-  for (const provider of order(value)) {
-    const key = await lookup(provider);
-    if (key !== void 0) keys[provider] = key;
+  for (const holder of order(value)) {
+    const key = await lookup(holder);
+    if (key !== void 0) keys[holder] = key;
   }
   return keys;
 }
 function plan(value, keys) {
   const attempts = [];
-  for (const provider of order(value)) {
-    const key = keys[provider];
-    if (key) attempts.push({ provider, model: MODELS[provider], key });
+  for (const step of steps(value)) {
+    const key = keys[step.holder];
+    if (key) attempts.push({ ...step, key });
   }
   return attempts.map(
     (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt
@@ -89,7 +93,7 @@ var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var NO_ANSWER = "no answer from the dialog";
 var NOT_OFFERED = "the answer was not one of the offered values";
-var keyLine = (provider, state) => `${provider} key: ${state}`;
+var keyLine = (holder, state) => `${holder} key: ${state}`;
 var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
 function ask(setting, current2) {
   const { values, resolve: resolve2, question } = TEXTS[setting];
@@ -172,11 +176,11 @@ var nonEmpty = (value) => {
 async function readKeys($, options, provider) {
   return collectKeys(
     provider,
-    async (name) => nonEmpty(options[KEY_FIELDS[name]]) ?? nonEmpty(await keyVariable($, name))
+    async (holder) => nonEmpty(options[KEY_FIELDS[holder]]) ?? nonEmpty(await keyVariable($, holder))
   );
 }
-function keyVariable($, provider) {
-  switch (provider) {
+function keyVariable($, holder) {
+  switch (holder) {
     case "typesafe":
       return $.env.get("TYPESAFE_API_KEY");
     case "openrouter":
@@ -491,7 +495,7 @@ var FAILED = "failed";
 var NETWORK_ERROR = "network error";
 var httpStatus = (status) => `HTTP ${status}`;
 var CANCELLED = "cancelled";
-var failedAttemptText = (f) => `${f.provider} ${f.reason}`;
+var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
 
 // src/core/output/line.ts
 var pinnedLine = (level, target) => `L${level} ${target}`;
@@ -511,13 +515,13 @@ var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 function decisionSuffix({
-  provider,
+  holder,
   model,
   inputTokens,
   outputTokens,
   failed
 }) {
-  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
+  return ` \xB7 ${holder}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
 }
 
 // src/core/parts/part.ts
@@ -670,17 +674,29 @@ var SYSTEM_ONE = {
 };
 
 // src/core/scoring/endpoints.ts
+var BEARER = { name: "Authorization", prefix: "Bearer " };
+var JEV = "jev-latest";
 var ENDPOINTS = {
   typesafe: {
-    url: "https://api.typesafe.ai/v1/systemone",
-    format: SYSTEM_ONE
-  },
-  openrouter: {
-    url: "https://openrouter.ai/api/v1/systemone",
-    format: SYSTEM_ONE
+    direct: {
+      url: "https://api.typesafe.ai/v1/systemone",
+      format: SYSTEM_ONE,
+      model: JEV,
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/v1/systemone",
+      format: SYSTEM_ONE,
+      model: JEV,
+      keyHeader: BEARER
+    }
   }
 };
-var endpointOf = (attempt) => Object.hasOwn(ENDPOINTS, attempt.provider) ? ENDPOINTS[attempt.provider] : void 0;
+function endpointOf(attempt) {
+  if (!Object.hasOwn(ENDPOINTS, attempt.maker)) return void 0;
+  const rows = ENDPOINTS[attempt.maker];
+  return Object.hasOwn(rows, attempt.path) ? rows[attempt.path] : void 0;
+}
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
@@ -804,14 +820,14 @@ async function askOnce(input, attempt) {
   const { parts, state, fetchFn, clock, signal } = input;
   const endpoint = endpointOf(attempt);
   if (!endpoint) return UNKNOWN;
-  const { url, format } = endpoint;
-  const body = format.body(parts, state, attempt.model);
+  const { url, format, model, keyHeader } = endpoint;
+  const body = format.body(parts, state, attempt.model ?? model);
   const received = await send(
     fetchFn,
     url,
     {
       headers: {
-        Authorization: `Bearer ${attempt.key}`,
+        [keyHeader.name]: `${keyHeader.prefix}${attempt.key}`,
         Accept: "application/json",
         "Content-Type": "application/json",
         "User-Agent": USER_AGENT
@@ -883,14 +899,14 @@ async function route(input) {
     const result = await ask2(input, attempt);
     if (isFailure(result)) {
       failed.push({
-        provider: attempt.provider,
+        holder: attempt.holder,
         reason: skipText(result, abortCategory(signal))
       });
       if (!fallsBack(result)) break;
-      if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
+      if (i < attempts.length - 1) input.onFallback?.(attempt.holder);
       continue;
     }
-    const decision = toDecision(result, attempt.provider);
+    const decision = toDecision(result, attempt.holder);
     const [first] = failed;
     return first ? { ...decision, firstFailed: first } : decision;
   }
@@ -901,11 +917,11 @@ function skip(failed) {
   if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
   return { skipped: failed.map(failedAttemptText).join(", ") };
 }
-function toDecision({ answers, model, usage }, provider) {
+function toDecision({ answers, model, usage }, holder) {
   const parts = {};
   for (const [part, probabilities] of answers)
     parts[part.key] = { level: part.pick(probabilities), probabilities };
-  return { parts, provider, model, usage };
+  return { parts, holder, model, usage };
 }
 
 // src/core/decision/decide.ts
@@ -928,7 +944,7 @@ function decide(decision, tierKey, workKey) {
     work: work2.level,
     probabilities: `${tier2.probability}/${work2.probability}`,
     suffix: decisionSuffix({
-      provider: decision.provider,
+      holder: decision.holder,
       model: decision.model,
       inputTokens: decision.usage?.input_tokens,
       outputTokens: decision.usage?.output_tokens,
@@ -982,7 +998,7 @@ function outcomeOf(decided, models, kept) {
 }
 
 // src/adapters/claude/router.ts
-var MODELS2 = { small: "haiku", middle: "sonnet", large: "opus" };
+var MODELS = { small: "haiku", middle: "sonnet", large: "opus" };
 var BUILT_IN = "built-in";
 var ENGINE = "engine";
 var GENERAL_PURPOSE = "general-purpose";
@@ -1062,7 +1078,7 @@ async function routeSpawn($, spawn, next, options) {
     return next(spawn);
   }
   const kept = callerSet ? CALLER_EFFORT : await $.env.get("CLAUDE_CODE_EFFORT_LEVEL") ? "env effort" : void 0;
-  const { model, effort, line } = outcomeOf(decided, MODELS2, kept);
+  const { model, effort, line } = outcomeOf(decided, MODELS, kept);
   await $.ui.log(line);
   const started = next(model === void 0 ? spawn : { ...spawn, model });
   if (effort !== void 0) track(started, effort);

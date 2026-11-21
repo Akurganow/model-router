@@ -12,9 +12,9 @@ import {
 	valueLine,
 } from "#core/options/settings.ts";
 import {
+	KEY_HOLDERS,
+	type KeyHolder,
 	PROVIDER_VALUES,
-	PROVIDERS,
-	type Provider,
 } from "#core/providers/provider.ts";
 
 // Hermes puts a plugin tool in a toolset of its own, and a plugin toolset is on in a default session.
@@ -31,9 +31,9 @@ const MODEL_SHOWN = "{provider} {model}";
 const toolDescription = (): string =>
 	readOnlyToolDescription(["the provider", "the three models"]);
 
-const states = (provider: Provider) => ({
-	set: keyLine(provider, "set"),
-	unset: keyLine(provider, "unset"),
+const states = (holder: KeyHolder) => ({
+	set: keyLine(holder, "set"),
+	unset: keyLine(holder, "unset"),
 });
 
 /**
@@ -63,7 +63,9 @@ export function setupTexts() {
 		),
 		refused: unchanged("provider", NOT_LOCAL),
 		localPlatforms: [...LOCAL_PLATFORMS],
-		keyLines: Object.fromEntries(PROVIDERS.map((name) => [name, states(name)])),
+		keyLines: Object.fromEntries(
+			KEY_HOLDERS.map((name) => [name, states(name)]),
+		),
 		unset: UNSET,
 		modelLine: slotLine("{name}", MODEL_SHOWN),
 		modelUnset: slotLine("{name}"),

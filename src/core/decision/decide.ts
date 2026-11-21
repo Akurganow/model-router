@@ -56,7 +56,7 @@ export function decide(
 		work: work.level,
 		probabilities: `${tier.probability}/${work.probability}`,
 		suffix: decisionSuffix({
-			provider: decision.provider,
+			holder: decision.holder,
 			model: decision.model,
 			inputTokens: decision.usage?.input_tokens,
 			outputTokens: decision.usage?.output_tokens,

@@ -80,7 +80,15 @@ function run(
 	return route({
 		parts: [tier, work],
 		state: STATE,
-		attempts: [{ provider: "typesafe", model: MODEL, key: KEY }],
+		attempts: [
+			{
+				maker: "typesafe",
+				path: "direct",
+				holder: "typesafe",
+				key: KEY,
+				model: MODEL,
+			},
+		],
 		fetchFn,
 		clock: realClock,
 		signal: new AbortController().signal,
@@ -127,7 +135,7 @@ test("a valid reply gives each part its level, probabilities, provider, model an
 		1: 0.8,
 		2: 0.1,
 	});
-	assert.equal(decision.provider, "typesafe");
+	assert.equal(decision.holder, "typesafe");
 	assert.equal(decision.model, "jev-1.14.0");
 	assert.deepEqual(decision.usage, { input_tokens: 120, output_tokens: 8 });
 });
@@ -250,9 +258,9 @@ test("a 503 falls back once to the next provider with its own host and key", asy
 		`https://api.typesafe.ai/v1/systemone Bearer ${KEY}`,
 		`https://openrouter.ai/api/v1/systemone Bearer ${OR_KEY}`,
 	]);
-	assert.equal(decision.provider, "openrouter");
+	assert.equal(decision.holder, "openrouter");
 	assert.deepEqual(decision.firstFailed, {
-		provider: "typesafe",
+		holder: "typesafe",
 		reason: "HTTP 503",
 	});
 });
@@ -265,14 +273,14 @@ test("a fallback reports the failed provider before the next attempt's request",
 			? scoringReply(503, "down", NO_WAIT)
 			: scoringReply(200, VALID);
 	});
-	const onFallback = (provider: string) => void log.push(provider);
+	const onFallback = (holder: string) => void log.push(holder);
 	asDecision(await run(fetchFn, { attempts: BOTH, onFallback }));
 	assert.deepEqual(log, ["request 1", "typesafe", "request 2"]);
 });
 
 test("no fallback, no report: a 400, or a 503 with no attempt left", async () => {
 	const fallbacks: string[] = [];
-	const onFallback = (provider: string) => void fallbacks.push(provider);
+	const onFallback = (holder: string) => void fallbacks.push(holder);
 	const bad = stub(async () => scoringReply(400, "bad"));
 	await run(bad.fetchFn, { attempts: BOTH, onFallback });
 	const down = stub(async () => scoringReply(503, "down", NO_WAIT));
@@ -289,9 +297,9 @@ test("openrouter-first asks OpenRouter first and falls back after a network erro
 	const decision = asDecision(await run(fetchFn, { attempts }));
 	assert.equal(sent.length, 2);
 	assert.match(sent[0] ?? "", /^https:\/\/openrouter\.ai\//);
-	assert.equal(decision.provider, "typesafe");
+	assert.equal(decision.holder, "typesafe");
 	assert.deepEqual(decision.firstFailed, {
-		provider: "openrouter",
+		holder: "openrouter",
 		reason: "network error",
 	});
 });
@@ -299,7 +307,7 @@ test("openrouter-first asks OpenRouter first and falls back after a network erro
 test("an attempt whose provider has no endpoint is skipped as failed and sends nothing", async () => {
 	const { sent, fetchFn } = answering(VALID);
 	const attempts = [
-		{ provider: "toString", model: MODEL, key: KEY },
+		{ maker: "toString", path: "direct", holder: "typesafe", key: KEY },
 	] as unknown as Attempt[];
 	assert.deepEqual(await run(fetchFn, { attempts }), { skipped: "failed" });
 	assert.equal(sent.length, 0);
@@ -309,13 +317,19 @@ test("a per-attempt timeout falls back and reports timeout", async (t) => {
 	const time = fakeTime(t);
 	const attempts: Attempt[] = [
 		{
-			provider: "typesafe",
-			model: MODEL,
+			maker: "typesafe",
+			path: "direct",
+			holder: "typesafe",
 			key: KEY,
 			timeout: 20,
 			retries: 0,
 		},
-		{ provider: "openrouter", model: MODEL, key: OR_KEY },
+		{
+			maker: "typesafe",
+			path: "openrouter",
+			holder: "openrouter",
+			key: OR_KEY,
+		},
 	];
 	const { bodies, fetchFn } = stub((init, count) =>
 		count === 1 ? hang(init, count) : Promise.resolve(scoringReply(200, VALID)),
@@ -418,7 +432,7 @@ const DECISION = {
 		tier: { level: 2, probabilities: { 0: 0.1, 1: 0.2, 2: 0.7 } },
 		work: { level: 1, probabilities: { 0: 0.1, 1: 0.8, 2: 0.1 } },
 	},
-	provider: "typesafe",
+	holder: "typesafe",
 	model: "jev-1.14.0",
 	usage: { input_tokens: 120, output_tokens: 8 },
 };
@@ -444,17 +458,34 @@ test("tier and work send the System One body as one string", async () => {
 	);
 });
 
-test("a request hands the fetch exactly four headers", async () => {
-	const { inits, fetchFn } = answering(VALID);
-	await run(fetchFn);
-	assert.deepEqual(inits[0]?.headers, {
-		Authorization: "Bearer test-key",
-		Accept: "application/json",
-		"Content-Type": "application/json",
-		"User-Agent":
-			"model-router/dev (+https://github.com/Akurganow/model-router)",
+// One row per endpoint: the value that plans it, its address, and its key header as sent.
+const ADDRESSES: readonly [
+	value: string,
+	address: string,
+	authorization: string,
+][] = [
+	["typesafe", "https://api.typesafe.ai/v1/systemone", "Bearer test-key"],
+	[
+		"openrouter",
+		"https://openrouter.ai/api/v1/systemone",
+		"Bearer test-openrouter-key",
+	],
+];
+
+for (const [value, address, authorization] of ADDRESSES)
+	test(`${value} sends its key to its own address in one header`, async () => {
+		const { sent, bodies, inits, fetchFn } = answering(VALID);
+		await run(fetchFn, { attempts: plan(value, KEYS) });
+		assert.deepEqual(sent, [`${address} ${authorization}`]);
+		assert.equal(JSON.parse(bodies[0] ?? "").model, "jev-latest");
+		assert.deepEqual(inits[0]?.headers, {
+			Authorization: authorization,
+			Accept: "application/json",
+			"Content-Type": "application/json",
+			"User-Agent":
+				"model-router/dev (+https://github.com/Akurganow/model-router)",
+		});
 	});
-});
 
 test("a status gives HTTP n after one request, or after three when it is retried", async (t) => {
 	const time = fakeTime(t);
@@ -483,8 +514,8 @@ test("a status that falls back gives the next provider's decision, any other end
 	const time = fakeTime(t);
 	const fellBack = (reason: string) => ({
 		...DECISION,
-		provider: "openrouter",
-		firstFailed: { provider: "typesafe", reason },
+		holder: "openrouter",
+		firstFailed: { holder: "typesafe", reason },
 	});
 	const cases: [number, unknown, number][] = [
 		[401, fellBack("HTTP 401"), 2],
@@ -818,8 +849,8 @@ const EXITS: readonly Exit[] = [
 		passMs: 2000,
 		expected: {
 			...DECISION,
-			provider: "openrouter",
-			firstFailed: { provider: "typesafe", reason: "timeout" },
+			holder: "openrouter",
+			firstFailed: { holder: "typesafe", reason: "timeout" },
 		},
 	},
 	{

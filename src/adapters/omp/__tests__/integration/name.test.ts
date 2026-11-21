@@ -90,7 +90,7 @@ for (const name of NAMES) {
 		const result = await checkGates(world.imports, world.pi, world.ctx());
 		assert.ok("attempts" in result);
 		assert.deepEqual(
-			result.attempts.map((attempt) => attempt.provider),
+			result.attempts.map((attempt) => attempt.holder),
 			["openrouter"],
 		);
 	});
