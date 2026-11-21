@@ -15,11 +15,6 @@ export type KeyHolder = (typeof KEY_HOLDERS)[number];
 // How a maker is asked: its own API, or OpenRouter as the gateway.
 export const PATHS = ["direct", "openrouter"] as const;
 export type Path = (typeof PATHS)[number];
-// The paths each maker has. This folder may not import scoring/, so scoring/endpoints.ts is typed
-// from this table instead: a path with no endpoint row, or a row with no path here, fails the type check.
-export const PATHS_OF = {
-	typesafe: ["direct", "openrouter"],
-} as const satisfies Readonly<Record<Maker, readonly Path[]>>;
 
 // Every harness reads a key holder's key from the same variable.
 export const KEY_VARIABLES: Readonly<Record<KeyHolder, string>> = {
@@ -27,7 +22,7 @@ export const KEY_VARIABLES: Readonly<Record<KeyHolder, string>> = {
 	openrouter: "OPENROUTER_API_KEY",
 };
 
-// The setting name that holds each key holder's key, in the harnesses that name one.
+// The setting name that holds each key holder's key in Claude Code and OpenClaw.
 export const KEY_FIELDS = {
 	typesafe: "api_key",
 	openrouter: "openrouter_api_key",
