@@ -778,9 +778,6 @@ function outcomeOf(decided, models, kept) {
 // src/core/providers/provider.ts
 var MAKERS = ["typesafe"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
-var PATHS_OF = {
-  typesafe: ["direct", "openrouter"]
-};
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
 var DEFAULT_VALUE = "typesafe";
 var MAKER = "typesafe";
@@ -790,11 +787,12 @@ var VALUE_PATHS = {
   typesafe: ["direct"],
   openrouter: ["openrouter"]
 };
-var holderOf = (maker, path) => path === "direct" ? maker : "openrouter";
-function steps(value) {
-  const paths = PATHS_OF[MAKER];
-  return VALUE_PATHS[resolve(value)].filter((path) => paths.includes(path)).map((path) => ({ maker: MAKER, path, holder: holderOf(MAKER, path) }));
-}
+var holderOf = (maker, path) => path === "direct" ? maker : path;
+var steps = (value) => VALUE_PATHS[resolve(value)].map((path) => ({
+  maker: MAKER,
+  path,
+  holder: holderOf(MAKER, path)
+}));
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(VALUE_PATHS, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 function plan(value, keys) {

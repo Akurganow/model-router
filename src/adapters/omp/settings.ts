@@ -84,8 +84,8 @@ async function readGlobal(
 }
 
 /**
- * Returns the attempts, each with its key, for the providers the value allows. Reads
- * only those providers. omp's own credential comes first, then the variable.
+ * Returns the attempts, each with its key, for the key holders the value allows. Reads
+ * only those key holders. omp's own credential comes first, then the variable.
  * Returns no attempts when no key is set. Never throws.
  */
 export async function findAttempts(

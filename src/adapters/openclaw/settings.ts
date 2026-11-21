@@ -100,8 +100,8 @@ export function readSettings(
 }
 
 /**
- * Returns the Jev keys of the providers the value allows, each from a source
- * field or else from its environment variable. A provider with no key is
+ * Returns the Jev keys of the key holders the value allows, each from a source
+ * field or else from its environment variable. A key holder with no key is
  * absent. OpenClaw's own provider credentials are never Jev keys. Throws only
  * when a source getter throws.
  */
@@ -114,9 +114,9 @@ export function readKeys(
 	const from = sources(live, pluginConfig);
 	return collectKeysSync(
 		providerValue,
-		(provider) =>
-			firstValid(from, KEY_FIELDS[provider], nonEmpty) ??
-			nonEmpty(env[KEY_VARIABLES[provider]]),
+		(holder) =>
+			firstValid(from, KEY_FIELDS[holder], nonEmpty) ??
+			nonEmpty(env[KEY_VARIABLES[holder]]),
 	);
 }
 

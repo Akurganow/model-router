@@ -7,9 +7,6 @@ var PROVIDER_VALUES = [
 ];
 var MAKERS = ["typesafe"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
-var PATHS_OF = {
-  typesafe: ["direct", "openrouter"]
-};
 var KEY_FIELDS = {
   typesafe: "api_key",
   openrouter: "openrouter_api_key"
@@ -23,11 +20,12 @@ var VALUE_PATHS = {
   typesafe: ["direct"],
   openrouter: ["openrouter"]
 };
-var holderOf = (maker, path) => path === "direct" ? maker : "openrouter";
-function steps(value) {
-  const paths = PATHS_OF[MAKER];
-  return VALUE_PATHS[resolve(value)].filter((path) => paths.includes(path)).map((path) => ({ maker: MAKER, path, holder: holderOf(MAKER, path) }));
-}
+var holderOf = (maker, path) => path === "direct" ? maker : path;
+var steps = (value) => VALUE_PATHS[resolve(value)].map((path) => ({
+  maker: MAKER,
+  path,
+  holder: holderOf(MAKER, path)
+}));
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(VALUE_PATHS, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => steps(value).map((step) => step.holder);
@@ -178,7 +176,7 @@ var nonEmpty = (value) => {
 async function readKeys($, options, provider) {
   return collectKeys(
     provider,
-    async (name) => nonEmpty(options[KEY_FIELDS[name]]) ?? nonEmpty(await keyVariable($, name))
+    async (holder) => nonEmpty(options[KEY_FIELDS[holder]]) ?? nonEmpty(await keyVariable($, holder))
   );
 }
 function keyVariable($, holder) {

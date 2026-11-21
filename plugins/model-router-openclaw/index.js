@@ -140,9 +140,6 @@ var PROVIDER_VALUES = [
 ];
 var MAKERS = ["typesafe"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
-var PATHS_OF = {
-  typesafe: ["direct", "openrouter"]
-};
 var KEY_VARIABLES = {
   typesafe: "TYPESAFE_API_KEY",
   openrouter: "OPENROUTER_API_KEY"
@@ -160,11 +157,12 @@ var VALUE_PATHS = {
   typesafe: ["direct"],
   openrouter: ["openrouter"]
 };
-var holderOf = (maker, path) => path === "direct" ? maker : "openrouter";
-function steps(value) {
-  const paths = PATHS_OF[MAKER];
-  return VALUE_PATHS[resolve(value)].filter((path) => paths.includes(path)).map((path) => ({ maker: MAKER, path, holder: holderOf(MAKER, path) }));
-}
+var holderOf = (maker, path) => path === "direct" ? maker : path;
+var steps = (value) => VALUE_PATHS[resolve(value)].map((path) => ({
+  maker: MAKER,
+  path,
+  holder: holderOf(MAKER, path)
+}));
 var parseProvider = (value) => typeof value === "string" && Object.hasOwn(VALUE_PATHS, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
 var order = (value) => steps(value).map((step) => step.holder);
@@ -294,7 +292,7 @@ function readKeys(live, pluginConfig, providerValue, env) {
   const from = sources(live, pluginConfig);
   return collectKeysSync(
     providerValue,
-    (provider) => firstValid(from, KEY_FIELDS[provider], nonEmpty) ?? nonEmpty(env[KEY_VARIABLES[provider]])
+    (holder) => firstValid(from, KEY_FIELDS[holder], nonEmpty) ?? nonEmpty(env[KEY_VARIABLES[holder]])
   );
 }
 function readState(api, env) {

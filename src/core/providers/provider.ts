@@ -57,7 +57,7 @@ export type Attempt = {
 	readonly holder: KeyHolder;
 	// Reaches only the request's key header; never print it.
 	readonly key: string;
-	// Replaces the model of the endpoint row. Only scripts/calibrate.ts sets it.
+	// Replaces the model of the endpoint row. `plan` never sets it.
 	readonly model?: string;
 	readonly timeout?: number;
 	readonly retries?: number;
@@ -65,17 +65,18 @@ export type Attempt = {
 
 type Step = Pick<Attempt, "maker" | "path" | "holder">;
 
-// A maker holds the key of its own API, and OpenRouter the key of the gateway path.
+// A maker holds the key of its own API. Any other path is named after the holder of its key,
+// so a path with no key holder of its name fails the type check.
 const holderOf = (maker: Maker, path: Path): KeyHolder =>
-	path === "direct" ? maker : "openrouter";
+	path === "direct" ? maker : path;
 
-// The paths the value allows that the maker has, in order.
-function steps(value: unknown): Step[] {
-	const paths: readonly Path[] = PATHS_OF[MAKER];
-	return VALUE_PATHS[resolve(value)]
-		.filter((path) => paths.includes(path))
-		.map((path) => ({ maker: MAKER, path, holder: holderOf(MAKER, path) }));
-}
+// The paths the value allows, in order, each asked of the one maker.
+const steps = (value: unknown): Step[] =>
+	VALUE_PATHS[resolve(value)].map((path) => ({
+		maker: MAKER,
+		path,
+		holder: holderOf(MAKER, path),
+	}));
 
 /**
  * Returns the value as a provider value when it is a known name, and undefined
