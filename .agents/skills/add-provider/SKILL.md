@@ -67,7 +67,7 @@ So the maker's name must be the id that omp gives the provider.
 24. Put the source of each new sentence on the client's evidence page of the wiki, as [Adding evidence](https://github.com/Akurganow/model-router/wiki#adding-evidence) says.
 25. Take the omp id as the name, or with no such id the provider's own name in lower case.
 26. Choose the key's setting name, and its variable if not yet chosen, after `KEY_VARIABLES` and `KEY_FIELDS` in `src/core/providers/provider.ts`.
-    That name serves Claude Code and OpenClaw. Hermes builds its own, `<provider>_api_key`.
+    That name serves Claude Code, OpenClaw and Hermes.
 
 The value of `provider` is the name in `MAKERS`. The key lines and the routing line print the key holder's name as `KEY_HOLDERS` spells it.
 
@@ -151,7 +151,7 @@ The errors name each place. They do not say this:
 - The maker's row of `ENDPOINTS` holds one endpoint for each path, `direct` and `openrouter`. Each takes the URL, the format, the model name it takes, the key header and each field of the section before.
 - `scripts/calibrate.ts` shows nothing and gains no row. It asks one maker by design, and [The model behind the provider](#the-model-behind-the-provider) says when that changes.
 - `FIXTURE` in `scripts/build-shape.test.ts` shows first under `scripts/`: its three key records, `claude.userConfig.keys`, `openclaw.keys` and `hermes.keys`, each take a row for the key holder.
-  `scripts/build/` maps a key holder to its setting through `KEY_FIELDS` and `hermesKeySetting`, which builds the Hermes name from `KEY_HOLDERS`, so no builder and no type needs an edit.
+  `scripts/build/` maps a key holder to its setting through `KEY_FIELDS` for all three harnesses, so no builder and no type needs an edit.
 
 ## The model behind the provider
 

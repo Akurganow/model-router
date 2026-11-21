@@ -22,10 +22,6 @@ type Option = {
 };
 type Hint = { readonly label: string; readonly help: string };
 type SecretHint = Hint & { readonly sensitive: boolean };
-// Hermes stores a secret under its variable, so the setting's own name is free: the key holder's name and a fixed ending.
-export type HermesKeySetting = `${KeyHolder}_api_key`;
-export const hermesKeySetting = (holder: KeyHolder): HermesKeySetting =>
-	`${holder}_api_key`;
 type Secret = {
 	readonly type: string;
 	readonly title: string;

@@ -49,7 +49,7 @@ The plugin reads a key only for a key holder that the [`provider` and `gateway` 
 
 | Key | Environment variable | Settings secret |
 | --- | --- | --- |
-| TypeSafe | `TYPESAFE_API_KEY` | `typesafe_api_key` |
+| TypeSafe | `TYPESAFE_API_KEY` | `api_key` |
 | OpenAI | `OPENAI_API_KEY` | `openai_api_key` |
 | Google | `GEMINI_API_KEY` | `google_api_key` |
 | OpenRouter | `OPENROUTER_API_KEY` | `openrouter_api_key` |

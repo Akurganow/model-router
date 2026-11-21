@@ -70,7 +70,7 @@ test("the manifest holds nine settings and no scope", () => {
 		"small_model",
 		"middle_model",
 		"large_model",
-		"typesafe_api_key",
+		"api_key",
 		"openai_api_key",
 		"google_api_key",
 		"openrouter_api_key",
@@ -113,7 +113,7 @@ test("the models are dict settings and each key is a secret stored under its var
 		assert.match(schema[name].description, /model/);
 	}
 	const secret = (name: string) => [schema[name]?.type, schema[name]?.env];
-	assert.deepEqual(secret("typesafe_api_key"), ["secret", "TYPESAFE_API_KEY"]);
+	assert.deepEqual(secret("api_key"), ["secret", "TYPESAFE_API_KEY"]);
 	assert.deepEqual(secret("openai_api_key"), ["secret", "OPENAI_API_KEY"]);
 	assert.deepEqual(secret("google_api_key"), ["secret", "GEMINI_API_KEY"]);
 	assert.deepEqual(secret("openrouter_api_key"), [

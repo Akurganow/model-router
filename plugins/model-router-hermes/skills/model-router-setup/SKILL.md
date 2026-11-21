@@ -99,7 +99,7 @@ When the person wants to choose the provider, follow these steps in order:
 
 - A key counts as set when its variable holds non-blank text. The plugin reads a key only for a key holder that the `provider` and `gateway` settings allow. The key of the chosen provider serves the direct path, and the OpenRouter key serves the gateway path.
 - Each key is a variable in the `.env` file of the Hermes home:
-  - TypeSafe: `TYPESAFE_API_KEY`, form secret `typesafe_api_key`. Get a key at https://console.typesafe.ai/keys.
+  - TypeSafe: `TYPESAFE_API_KEY`, form secret `api_key`. Get a key at https://console.typesafe.ai/keys.
   - OpenAI: `OPENAI_API_KEY`, form secret `openai_api_key`. Get a key at https://platform.openai.com/api-keys.
   - Google: `GEMINI_API_KEY`, form secret `google_api_key`. Get a key at https://aistudio.google.com/docs/api-key. The plugin does not read `GOOGLE_API_KEY`.
   - OpenRouter: `OPENROUTER_API_KEY`, form secret `openrouter_api_key`. Get a key at https://openrouter.ai.

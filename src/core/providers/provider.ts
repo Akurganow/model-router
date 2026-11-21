@@ -25,7 +25,7 @@ export const KEY_VARIABLES: Readonly<Record<KeyHolder, string>> = {
 	openrouter: "OPENROUTER_API_KEY",
 };
 
-// The setting name that holds each key holder's key in Claude Code and OpenClaw.
+// The setting name that holds each key holder's key in Claude Code, OpenClaw and Hermes.
 export const KEY_FIELDS = {
 	typesafe: "api_key",
 	openai: "openai_api_key",

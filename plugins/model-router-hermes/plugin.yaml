@@ -47,7 +47,7 @@
       "label": "Large model",
       "description": "The model a delegated task gets when the scoring model rates its task large, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
     },
-    "typesafe_api_key": {
+    "api_key": {
       "type": "secret",
       "env": "TYPESAFE_API_KEY",
       "label": "TypeSafe API key",
