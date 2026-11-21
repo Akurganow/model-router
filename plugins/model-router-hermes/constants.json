@@ -1,5 +1,5 @@
 {
-	"routingLimitMs": 8000,
+	"routingLimitMs": 10000,
 	"graceMs": 1000,
 	"blank": [
 		9, 10, 11, 12, 13, 32, 160, 5760, 8192, 8193, 8194, 8195, 8196, 8197, 8198,
@@ -7,28 +7,34 @@
 	],
 	"keyVariables": {
 		"typesafe": "TYPESAFE_API_KEY",
+		"openai": "OPENAI_API_KEY",
+		"google": "GEMINI_API_KEY",
 		"openrouter": "OPENROUTER_API_KEY"
 	},
 	"settings": [
 		{
 			"name": "provider",
-			"values": ["typesafe"],
+			"values": ["typesafe", "openai", "google"],
 			"default": "typesafe",
 			"skip": "model-router skipped, provider not valid: run setup",
-			"notValid": "provider: {stored} (not valid: use one of typesafe)",
+			"notValid": "provider: {stored} (not valid: use one of typesafe, openai, google)",
 			"valueLines": {
-				"typesafe": "provider: typesafe"
+				"typesafe": "provider: typesafe",
+				"openai": "provider: openai",
+				"google": "provider: google"
 			},
-			"useOneOf": "provider: use one of typesafe",
+			"useOneOf": "provider: use one of typesafe, openai, google",
 			"already": {
-				"typesafe": "provider unchanged: already typesafe"
+				"typesafe": "provider unchanged: already typesafe",
+				"openai": "provider unchanged: already openai",
+				"google": "provider unchanged: already google"
 			},
 			"unchanged": "provider unchanged: ",
 			"refused": "provider unchanged: only a local session can change it",
 			"command": {
 				"name": "model-router-provider",
-				"description": "Shows or changes whose model scores subagent calls: typesafe.",
-				"argsHint": "<typesafe>"
+				"description": "Shows or changes whose model scores subagent calls: typesafe, openai, google.",
+				"argsHint": "<typesafe|openai|google>"
 			}
 		},
 		{
@@ -83,6 +89,48 @@
 				"holders": ["openrouter"],
 				"lines": ["provider: typesafe", "gateway: openrouter (openrouter)"]
 			}
+		},
+		"openai": {
+			"direct": {
+				"holders": ["openai"],
+				"lines": ["provider: openai", "gateway: direct (openai)"]
+			},
+			"auto": {
+				"holders": ["openai", "openrouter"],
+				"lines": ["provider: openai", "gateway: auto (openai, then openrouter)"]
+			},
+			"openrouter-first": {
+				"holders": ["openrouter", "openai"],
+				"lines": [
+					"provider: openai",
+					"gateway: openrouter-first (openrouter, then openai)"
+				]
+			},
+			"openrouter": {
+				"holders": ["openrouter"],
+				"lines": ["provider: openai", "gateway: openrouter (openrouter)"]
+			}
+		},
+		"google": {
+			"direct": {
+				"holders": ["google"],
+				"lines": ["provider: google", "gateway: direct (google)"]
+			},
+			"auto": {
+				"holders": ["google", "openrouter"],
+				"lines": ["provider: google", "gateway: auto (google, then openrouter)"]
+			},
+			"openrouter-first": {
+				"holders": ["openrouter", "google"],
+				"lines": [
+					"provider: google",
+					"gateway: openrouter-first (openrouter, then google)"
+				]
+			},
+			"openrouter": {
+				"holders": ["openrouter"],
+				"lines": ["provider: google", "gateway: openrouter (openrouter)"]
+			}
 		}
 	},
 	"efforts": ["low", "medium", "high", "xhigh"],
@@ -118,7 +166,7 @@
 	"taskParameters": {
 		"description": {
 			"type": "string",
-			"description": "One line that says what this task is. model-router sends it with the goal to Jev, which judges the model and effort the child needs."
+			"description": "One line that says what this task is. model-router sends it with the goal to the scoring model, which judges the model and effort the child needs."
 		},
 		"reasoning_effort": {
 			"type": "string",
@@ -128,7 +176,7 @@
 		"level": {
 			"type": "integer",
 			"enum": [0, 1, 2],
-			"description": "Leave it unset unless you re-dispatch a failed task. 0 runs the child on the user's small model, 1 on the user's middle model, 2 on the large model, and model-router asks Jev nothing. A level whose model is not set runs on the model Hermes gives it. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins."
+			"description": "Leave it unset unless you re-dispatch a failed task. 0 runs the child on the user's small model, 1 on the user's middle model, 2 on the large model, and model-router asks the scoring model nothing. A level whose model is not set runs on the model Hermes gives it. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins."
 		}
 	},
 	"delegationAddendum": "model-router picks each task's model and effort. Give every task a description. Leave reasoning_effort and level unset unless you re-dispatch a failed task; the model-router-hermes:model-router skill says how.",
@@ -143,6 +191,14 @@
 			"typesafe": {
 				"set": "typesafe key: set",
 				"unset": "typesafe key: unset"
+			},
+			"openai": {
+				"set": "openai key: set",
+				"unset": "openai key: unset"
+			},
+			"google": {
+				"set": "google key: set",
+				"unset": "google key: unset"
 			},
 			"openrouter": {
 				"set": "openrouter key: set",

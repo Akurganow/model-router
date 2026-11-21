@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+	GEMINI_REPLY,
+	OPENAI_REPLY,
+	OPENROUTER_REPLY,
 	scoringReply,
 	systemOneAnswer,
 } from "#core/__tests__/support/replies.ts";
@@ -8,7 +11,7 @@ import { routingState } from "#core/brief/brief.ts";
 import { decide, scoreWork } from "#core/decision/decide.ts";
 import { tier } from "#core/parts/tier.ts";
 import { work } from "#core/parts/work.ts";
-import { plan } from "#core/providers/provider.ts";
+import { type Gateway, type Maker, plan } from "#core/providers/provider.ts";
 import type { Decision } from "#core/scoring/route.ts";
 import { realClock } from "#utils/clock.ts";
 
@@ -118,4 +121,59 @@ test("scoreWork asks for the tier and work questions and reads both levels", asy
 test("scoreWork returns a bad reply for a reply without the work part", async () => {
 	const { result } = await scoreAgainst(systemOneAnswer(2));
 	assert.deepEqual(result, { skipped: "bad reply" });
+});
+
+const KEYS = {
+	openai: "test-openai-key",
+	google: "test-google-key",
+	openrouter: "test-openrouter-key",
+};
+
+const scoreUnder = (
+	gateway: Gateway,
+	reply: (url: string) => Response,
+	provider: Maker = "openai",
+) =>
+	scoreWork({
+		state: STATE,
+		attempts: plan({ provider, gateway }, KEYS),
+		fetchFn: async (url) => reply(url),
+		clock: realClock,
+		signal: new AbortController().signal,
+	});
+
+test("scoreWork under openai direct shows the openai holder, the model and the counts", async () => {
+	assert.deepEqual(
+		await scoreUnder("direct", () => scoringReply(200, OPENAI_REPLY)),
+		{
+			tier: 2,
+			work: 1,
+			probabilities: "0.90/0.40",
+			suffix: " · openai gpt-6-luna · 506/0 tok",
+		},
+	);
+});
+
+test("scoreWork under openai through OpenRouter shows the openrouter holder", async () => {
+	assert.deepEqual(
+		await scoreUnder("openrouter", () => scoringReply(200, OPENROUTER_REPLY)),
+		{
+			tier: 2,
+			work: 1,
+			probabilities: "0.95/0.43",
+			suffix: " · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok",
+		},
+	);
+});
+
+test("scoreWork under google direct shows the google holder and the counts, and no model", async () => {
+	assert.deepEqual(
+		await scoreUnder("direct", () => scoringReply(200, GEMINI_REPLY), "google"),
+		{
+			tier: 2,
+			work: 1,
+			probabilities: "0.83/0.56",
+			suffix: " · google · 430/0 tok",
+		},
+	);
 });

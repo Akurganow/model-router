@@ -99,6 +99,17 @@ test("a write opens the dialog with the current value first", async ($, on) => {
 	]);
 });
 
+test("the provider dialog offers the three makers", async ($, on) => {
+	const h = harness(on, { dialog: () => undefined });
+	config(on, (e) => ({ value: e.value }));
+	await configTool($, "provider");
+	expect(h.asked[0]?.labels.map((text) => text.split(" - ")[0])).toEqual([
+		"typesafe",
+		"openai",
+		"google",
+	]);
+});
+
 for (const [setting, current, value, text] of [
 	[
 		"gateway",

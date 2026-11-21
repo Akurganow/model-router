@@ -1,6 +1,6 @@
 # How the plugins use the providers
 
-This page holds what the four plugins do the same way when they ask Jev to score a task.
+This page holds what the four plugins do the same way when they ask a decision model to score a task.
 Each plugin's privacy policy and README keep what is specific to the plugin, and link here for the rest.
 The word task stands for one routed unit of work.
 It is an Agent tool call in Claude Code, a batch item in Oh My Pi, a `sessions_spawn` call in OpenClaw and a `delegate_task` task in Hermes Agent.
@@ -14,7 +14,15 @@ A path is one way to the provider: the direct path is the provider's own API, an
 Two settings decide who receives a task.
 
 The `provider` setting says whose model scores.
-It has one value, `typesafe`, the default: Jev from TypeSafe, the model the plugin's questions are fitted to.
+It has three values, and `typesafe` is the default:
+
+| `provider` | The model that scores |
+| :-- | :-- |
+| `typesafe`, the default | Jev from TypeSafe, the model the plugin's questions are fitted to |
+| `openai` | OpenAI's decision model; costs more than Jev and its answers are not fitted |
+| `google` | Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text |
+
+Each provider is reached on its own API or through OpenRouter.
 
 The `gateway` setting says how OpenRouter is used to reach the provider:
 
@@ -25,15 +33,19 @@ The `gateway` setting says how OpenRouter is used to reach the provider:
 | `openrouter-first` | OpenRouter | the provider's own API |
 | `openrouter` | OpenRouter | none |
 
-The direct path takes the provider's key, and the gateway path takes the OpenRouter key.
+The direct path takes the key of the provider you chose, and the gateway path takes the OpenRouter key.
 A path whose key is not set is left out.
 So with `auto` or `openrouter-first` and one key set, the plugin uses that key's path alone.
-With both keys set, one task may reach both companies.
+With both keys set, one task may reach both the provider and OpenRouter.
 The second path gets the task only when the first fails.
 The failures that count are a `network error`, a timeout of the request (it prints `timeout`), and HTTP status 401, 402, 403, 404, 408, 429 or 5xx.
 It never gets the task after 400, 422, `cancelled`, the routing limit (which also prints `timeout`), a bad reply or `failed`.
 An error status counts as that status even when its body cannot be read.
 A 2xx reply whose body cannot be read is a `network error`.
+
+A bad key gets HTTP 401 from OpenAI and from OpenRouter, and HTTP 400 from Google's own API.
+400 is no fallback status.
+So under `auto`, a bad Google key does not reach OpenRouter, and the task skips with `HTTP 400`.
 
 ## A setting that is not valid
 
@@ -84,12 +96,21 @@ In Claude Code a retired value reaches the plugin as the default, as the section
 
 ## Keys
 
-Get a key from [TypeSafe](https://console.typesafe.ai/keys) or from [OpenRouter](https://openrouter.ai).
-The TypeSafe key serves the direct path, and the OpenRouter key serves the gateway path.
-In every harness the variable of the TypeSafe key is `TYPESAFE_API_KEY`, and the variable of the OpenRouter key is `OPENROUTER_API_KEY`.
-Each plugin README names where else a key can sit.
-A plugin reads a key only for a path its `gateway` setting allows.
-Each key goes only to the address of the company that issued it.
+Each provider has its own key, and OpenRouter has one for the gateway to all of them.
+The plugin reads four keys, each from one variable:
+
+| Key holder | Variable | Get a key from |
+| :-- | :-- | :-- |
+| `typesafe` | `TYPESAFE_API_KEY` | [TypeSafe](https://console.typesafe.ai/keys) |
+| `openai` | `OPENAI_API_KEY` | [OpenAI](https://platform.openai.com/api-keys) |
+| `google` | `GEMINI_API_KEY` | [Google](https://aistudio.google.com/docs/api-key) |
+| `openrouter` | `OPENROUTER_API_KEY` | [OpenRouter](https://openrouter.ai) |
+
+The plugin does not read `GOOGLE_API_KEY`.
+The key of the provider you chose serves the direct path, and the OpenRouter key serves the gateway path.
+Each plugin README names where else a key can sit and, in a harness that has one, the setting that holds it.
+A plugin reads a key only for a holder that the `provider` and `gateway` settings allow.
+Each key goes only to the host of its holder, at the address that [The request](#the-request) lists for it.
 The plugin passes the address and the key with every request, so no environment variable moves a key to another host.
 An environment variable can supply a key, and with it the account that receives the task text.
 Each key identifies your account to the company that issued it.
@@ -100,11 +121,11 @@ A key with no model still scores: [A slot with no model](#a-slot-with-no-model) 
 
 The config tool prints one line for each setting, then one line for each key:
 
-- The provider line reads `provider: typesafe`.
+- The provider line reads `provider: typesafe`, `provider: openai` or `provider: google`.
 - The gateway line holds the value and, in order, who the plugin asks, as in `gateway: auto (typesafe, then openrouter)`.
-  The name is `typesafe` on the direct path and `openrouter` on the gateway path.
+  The name is the provider's own on the direct path and `openrouter` on the gateway path.
 - The scope line reads `scope: core`, in a harness that has the setting.
-- A key line reads `typesafe key: set` or `openrouter key: unset`.
+- A key line reads `typesafe key: set`, `openai key: unset` or `openrouter key: unset`, after the key's holder.
   The tool prints one for each path the `gateway` value allows, in the same order.
 
 With the defaults and a TypeSafe key set, the tool prints:
@@ -116,7 +137,18 @@ scope: core
 typesafe key: set
 ```
 
+With `provider` set to `openai`, `gateway` set to `auto`, and an OpenAI key set and no OpenRouter key, it prints:
+
+```text
+provider: openai
+gateway: auto (openai, then openrouter)
+scope: core
+openai key: set
+openrouter key: unset
+```
+
 The tool never returns a key, its length or any part of it.
+When a harness cannot read its settings, Oh My Pi prints `settings unreadable`, and OpenClaw and Hermes Agent print `error: <message>`.
 In OpenClaw and Hermes Agent the tool also prints each model setting between the setting lines and the key lines, as its README says: the configured value, or `unset`.
 
 [A setting that is not valid](#a-setting-that-is-not-valid) prints its stored text and the values to use, as `<setting>: <stored text> (not valid: use one of <values>)`.
@@ -152,24 +184,36 @@ So with a key set and no model set, the plugin still sends each task it scores t
 ## The request
 
 The request is an HTTPS POST.
-Its JSON body names the Jev alias `jev-latest` and the scoring questions, with three descriptions each.
+Its JSON body names the model of its endpoint and the scoring questions, with three descriptions each.
+The Decisions endpoints in the table below carry the routing state as JSON text, where the System One endpoints take an object.
 These texts ship with the plugin.
 The question `tier` asks how much judgment the task needs.
 The question `work` asks how much work the task takes.
 Each plugin's README lists the questions it asks.
 
+Each provider and path has its own address and model:
+
+| `provider` | Path | Address | Model |
+| :-- | :-- | :-- | :-- |
+| `typesafe` | direct | `https://api.typesafe.ai/v1/systemone` | `jev-latest` |
+| `typesafe` | OpenRouter | `https://openrouter.ai/api/v1/systemone` | `jev-latest` |
+| `openai` | direct | `https://api.openai.com/v1/decisions` | `gpt-6-luna` |
+| `openai` | OpenRouter | `https://openrouter.ai/api/alpha/decisions` | `openai/gpt-6-luna-decisions` |
+| `google` | direct | `https://generativelanguage.googleapis.com/v1beta/decisions` | `gemini-decision-1` |
+| `google` | OpenRouter | `https://openrouter.ai/api/alpha/decisions` | `google/gemini-decision-1` |
+
 The plugin sets exactly four request headers:
 
-- `Authorization: Bearer <key>`, with the TypeSafe key on the direct path and the OpenRouter key on the gateway path
+- `Authorization: Bearer <key>`, with the key of the provider's holder on the direct path and the OpenRouter key on the gateway path; Google's own API takes `x-goog-api-key: <key>` in its place
 - `Accept: application/json`
 - `Content-Type: application/json`
 - `User-Agent: model-router/<version> (+https://github.com/Akurganow/model-router)`, where `<version>` is the plugin version.
 
-OpenRouter receives the same headers.
+OpenRouter receives the same headers, with `Authorization: Bearer <key>`.
 No header names the runtime, the operating system or the architecture.
 
 A task whose text quotes an image reference, `<image:` and 32 lowercase hexadecimal digits and `>`, goes out as text like any other text.
-TypeSafe and OpenRouter both accept such a request.
+Every endpoint in the table above accepts such a request.
 
 ## No telemetry
 
@@ -215,20 +259,18 @@ With one attempt, a routed task sends one request and up to two retries, three r
 The plugin retries a connection error, a timeout and an HTTP status 408, 429 or 5xx.
 It retries no other status.
 The retries send the same body as the first request.
-The plugin times a request out after 10 s, but the routing limit is shorter, so the limit ends a call first.
-The only timeout a plugin meets is the 2 s one below, which has no retry.
 Before a retry the plugin waits as a `Retry-After` or `retry-after-ms` header says, up to 60 s.
 Without one it backs off for 0.5 s, doubling up to 5 s, with some jitter.
 The routing limit ends any wait, so a 429 with a long `Retry-After` can hold a task until the limit.
 
 With two attempts, the first gets one request and no retry.
-The plugin gives up on it after 2 s.
+The plugin gives up on it after 5 s.
 The second then gets up to three requests as above, within the rest of the routing limit.
 One task therefore sends at most four requests.
 
 ## The routing limit and billing
 
-The routing limit is at most 8 s.
+The routing limit is at most 10 s.
 It covers the scoring, both attempts and all retries included.
 Each plugin README says what its limit spans.
 The plugin stops waiting at the limit, but it cannot recall a request in flight.
@@ -238,14 +280,27 @@ A first request the plugin gave up on may still be billed, on top of the second 
 
 ## What each company does with the text
 
-On the direct path the text goes to TypeSafe.
-On the gateway path it goes to OpenRouter, which answers with the provider's model.
+The `provider` and `gateway` settings pick the company that receives the text, as [The provider and the gateway](#the-provider-and-the-gateway) says.
 Each company processes the request to answer the scoring questions.
-TypeSafe's handling of request data is set by its privacy policy at https://typesafe.ai/legal/privacy-policy.
-OpenRouter's privacy policy is at https://openrouter.ai/privacy.
-OpenRouter does not document retention or training for the System One endpoint.
-OpenRouter names the answering model `typesafe/jev-…`, and the plugin cannot see where OpenRouter passes the request on.
 The plugin author has no access to those requests.
+Each company's own page sets what it does with the text:
+
+- TypeSafe: its handling of request data is set by its [privacy policy](https://typesafe.ai/legal/privacy-policy).
+- OpenAI: it does not train its models on API data unless the customer opts in.
+  It keeps abuse-monitoring logs for a limited time, and an account can ask OpenAI to approve less.
+  Its page is [Data controls in the OpenAI platform](https://developers.openai.com/api/docs/guides/your-data).
+- Google: on the free tier, an unpaid service, Google may use the content to improve its products, and human reviewers may read it.
+  On the paid tier Google does not use it for that, and logs it for a limited time, to detect abuse and for disclosures the law requires.
+  The plugin cannot tell the tier.
+  A key from a project without billing is on the free tier.
+  Its page is the [Gemini API terms](https://aistudio.google.com/docs/terms).
+- OpenRouter, the gateway for all three: the text reaches OpenRouter, which passes it to the provider.
+  OpenRouter says it stores a prompt only when you opt in, with the exceptions its page lists.
+  Each provider behind it has its own data policy, and the plugin cannot see which endpoint answered.
+  For TypeSafe's System One route, OpenRouter does not document retention or training.
+  Its pages are its [privacy policy](https://openrouter.ai/privacy), [provider logging](https://openrouter.ai/docs/guides/privacy/provider-logging) and [data collection](https://openrouter.ai/docs/guides/privacy/data-collection).
+
+With `auto` or `openrouter-first` and both keys set, one task can reach the provider directly and through OpenRouter.
 
 ## Descriptions and private names
 
@@ -269,8 +324,9 @@ In Oh My Pi, a command writes your global setting, and a project value can chang
 
 ## Your choices
 
+Set `provider` to the company you accept: it decides whose model receives each task, directly or through OpenRouter.
 Set `gateway` to `direct` or `openrouter` to send each task on one path only.
-Under `direct`, the default, no task reaches OpenRouter.
+Under `direct`, the default, no task reaches OpenRouter, and each task reaches only the provider you chose.
 Remove the key of every path the `gateway` setting allows, and the plugin skips routing.
 
 ## Fails open
@@ -285,9 +341,11 @@ A routed line holds the chosen level as `L<level>`, then the model or role it se
 It then holds `p=` with the probability of each chosen level, one for each question the plugin asks.
 Each plugin's README gives the exact shape.
 
-The line then names who answered: `typesafe` on the direct path, `openrouter` on the gateway path.
-The model the reply names follows, and then the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`.
+The line then names who answered: `typesafe`, `openai` or `google` on the direct path, and `openrouter` on the gateway path.
+The model the reply names follows, and then the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok` or ` · openai gpt-6-luna · 506/0 tok`.
 A reply with no model name or no token counts leaves that part out, and the name stays.
+Google's reply names no model, so its line shows none, as in ` · google · 430/0 tok`.
+OpenRouter's reply names the model with a date suffix, as in ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok`.
 
-After a fallback, a routed line ends with the attempt that failed and its reason, for example ` · openrouter typesafe/jev-1.14.0 · 812/9 tok · typesafe HTTP 503`.
-After both attempts fail, a skip reason names each with its own reason, in the order they were tried, for example `skipped, typesafe HTTP 503, openrouter timeout`.
+After a fallback, a routed line ends with the attempt that failed and its reason, for example ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429`.
+After both attempts fail, a skip reason names each with its own reason, in the order they were tried, for example `skipped, openai HTTP 503, openrouter timeout`.

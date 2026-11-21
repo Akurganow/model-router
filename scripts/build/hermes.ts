@@ -13,7 +13,6 @@ import {
 	isSilent,
 	type Stored,
 	settingsOf,
-	valueFor,
 	valueLine,
 } from "#core/options/settings.ts";
 import { LINE_PREFIX, pinnedLine, skippedLine } from "#core/output/line.ts";
@@ -27,22 +26,16 @@ import {
 import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
-import { hermesKeySetting, type Source } from "./source.ts";
+import { hermesKeySetting, optionText, type Source } from "./source.ts";
 import {
+	defaultOf,
+	HARNESS_SETTINGS,
 	SETTING_VALUES,
 	TOOL_NAME,
-	VALUE_SETTINGS,
-	type ValueSetting,
 } from "./values.ts";
 
-type HermesSetting = Exclude<ValueSetting, "scope">;
+type HermesSetting = (typeof HARNESS_SETTINGS.hermes)[number];
 
-// Hermes keeps no scope setting, so its list is the core's list without scope.
-const HERMES_SETTINGS = VALUE_SETTINGS.filter(
-	(setting): setting is HermesSetting => setting !== "scope",
-);
-
-// Hermes reads plugin.yaml with yaml.safe_load, which refuses a tab, and the version check reads it as JSON, so it is JSON text with space indentation.
 const yamlText = (value: JsonObject): string =>
 	`${JSON.stringify(value, null, 2)}\n`;
 
@@ -58,7 +51,7 @@ const keySettings = (source: Source): JsonObject =>
 			{
 				type: "secret",
 				env: KEY_VARIABLES[holder],
-				...describe(source.hermes.settings[hermesKeySetting(holder)]),
+				...describe(source.hermes.keys[holder]),
 			},
 		]),
 	);
@@ -66,14 +59,14 @@ const keySettings = (source: Source): JsonObject =>
 // config_schema follows the Hermes plugin manifest: a type per setting, choices on a str, and an env name on a secret.
 const configSchema = (source: Source): JsonObject => ({
 	...Object.fromEntries(
-		HERMES_SETTINGS.map((setting) => [
+		HARNESS_SETTINGS.hermes.map((setting) => [
 			setting,
 			{
 				type: "str",
 				choices: [...SETTING_VALUES[setting]],
-				default: source.options[setting].default,
+				default: defaultOf(setting),
 				label: source.options[setting].title,
-				description: source.options[setting].descriptions.hermes,
+				description: optionText(source, "hermes", setting),
 			},
 		]),
 	),
@@ -115,13 +108,13 @@ const pinnedLabel = (slot: Slot): string =>
 const settingEntry = (setting: HermesSetting): JsonObject => ({
 	name: setting,
 	values: [...SETTING_VALUES[setting]],
-	default: valueFor(setting, undefined) ?? null,
+	default: defaultOf(setting),
 	skip: skipLine(notValid(setting)),
-	...settingTexts(setting, SETTING_VALUES[setting], HERMES_SETTINGS),
+	...settingTexts(setting, SETTING_VALUES[setting], HARNESS_SETTINGS.hermes),
 });
 
 // The key holders and the lines of each combination of values, nested by the value of each setting in order.
-// The list `settings`, each leaf's `lines` and the command's index agree by position, because all three come from HERMES_SETTINGS.
+// The list `settings`, each leaf's `lines` and the command's index agree by position, because all three come from HARNESS_SETTINGS.hermes.
 function choices(
 	remaining: readonly HermesSetting[],
 	stored: Stored,
@@ -130,7 +123,7 @@ function choices(
 	if (setting === undefined)
 		return {
 			holders: [...holders(settingsOf(stored))],
-			lines: HERMES_SETTINGS.map((each) => valueLine(each, stored)),
+			lines: HARNESS_SETTINGS.hermes.map((each) => valueLine(each, stored)),
 		};
 	return Object.fromEntries(
 		SETTING_VALUES[setting].map((value) => [
@@ -159,8 +152,8 @@ const constants = (source: Source): JsonObject => {
 		graceMs,
 		blank: blankCodePoints(),
 		keyVariables: { ...KEY_VARIABLES },
-		settings: HERMES_SETTINGS.map(settingEntry),
-		choices: choices(HERMES_SETTINGS, {}),
+		settings: HARNESS_SETTINGS.hermes.map(settingEntry),
+		choices: choices(HARNESS_SETTINGS.hermes, {}),
 		efforts: [...EFFORTS],
 		skips: Object.fromEntries(
 			Object.entries(reasons).map(([key, reason]) => [key, skipLine(reason)]),

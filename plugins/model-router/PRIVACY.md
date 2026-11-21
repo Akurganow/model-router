@@ -6,27 +6,35 @@ what the plugin sends, where it goes, and what the plugin keeps. Effective
 
 ## Where requests go
 
-The plugin asks Jev to score each Agent tool call it routes. Under the default
-`core` scope, only the four built-in agents route. [The extended
-scope](#the-extended-scope) adds the others. Jev answers on one or two paths:
+The plugin asks a decision model to score each Agent tool call it routes. Under
+the default `core` scope, only the four built-in agents route. [The extended
+scope](#the-extended-scope) adds the others. The model answers on one or two
+paths:
 
-- the direct path: TypeSafe, at https://api.typesafe.ai/v1/systemone, with your
-  TypeSafe key
-- the gateway path: OpenRouter, at https://openrouter.ai/api/v1/systemone, with
-  your OpenRouter key.
+- the direct path: the provider's own API, with the provider's key
+- the gateway path: OpenRouter, with your OpenRouter key.
 
-The `provider` option says whose model scores, and its one value is
-`typesafe`. OpenRouter is a gateway that answers with that model. The `gateway`
-option decides which companies receive the task text and their keys:
+The `provider` option says whose model scores: `typesafe`, `openai` or
+`google`. OpenRouter is a gateway that passes the request to that provider's
+model. These companies can receive the task text:
+
+| Company | Host | It receives the text when | Key it takes |
+| :-- | :-- | :-- | :-- |
+| TypeSafe | `api.typesafe.ai` | `provider` is `typesafe` and `gateway` allows the direct path | the TypeSafe key, as a bearer token |
+| OpenAI | `api.openai.com` | `provider` is `openai` and `gateway` allows the direct path | the OpenAI key, as a bearer token |
+| Google | `generativelanguage.googleapis.com` | `provider` is `google` and `gateway` allows the direct path | the Google key, in the `x-goog-api-key` header |
+| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each of the three | the OpenRouter key, as a bearer token |
+
+The `gateway` option decides which paths are open:
 
 | `gateway` | First request | Second request, after a failure |
 | :-- | :-- | :-- |
-| `direct`, the default | TypeSafe, with the TypeSafe key | none |
-| `auto` | TypeSafe, with the TypeSafe key | OpenRouter, with the OpenRouter key |
-| `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
+| `direct`, the default | the provider, with its key | none |
+| `auto` | the provider, with its key | OpenRouter, with the OpenRouter key |
+| `openrouter-first` | OpenRouter, with the OpenRouter key | the provider, with its key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
 
-A path with no key is left out. With both keys under `auto` or `openrouter-first`, one call may reach both companies.
+A path with no key is left out. With both keys under `auto` or `openrouter-first`, one call may reach both the provider and OpenRouter.
 
 [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
 gives the fallback rules.
@@ -36,7 +44,7 @@ outside the option's list. The plugin then sends by that default, as
 [A stored value outside an option's list](README.md#a-stored-value-outside-an-options-list)
 says.
 
-Each key goes only to the address above of the company that issued it, as
+Each key goes only to the host above of the company that issued it, as
 [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
 explains.
 
@@ -67,7 +75,7 @@ call the plugin routes. The JSON body holds:
     says why the text is fixed
 - the caller's one-line description of the task, masked, collapsed and cut
   the same way
-- the Jev alias and the two scoring questions, as
+- the model of the endpoint and the two scoring questions, as
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them
 
@@ -101,14 +109,14 @@ One call sends at most four requests, as
 [Retries and the second attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-attempt)
 explains.
 
-One fixed 8 s limit covers the whole call, both attempts and all retries
+One fixed 10 s limit covers the whole call, both attempts and all retries
 included.
 [The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing)
 says what a request in flight can cost.
 
 ## What each company does with the text
 
-The companies' privacy policies are linked at
+The companies' own pages are linked at
 [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text).
 
 ## What the plugin stores
@@ -118,11 +126,11 @@ each request body to its debug log file. In memory the plugin holds the
 configured keys while the hook is registered. It also holds the latest source
 and description of each agent name Claude Code offers, such as `built-in`.
 Claude Code keeps your API keys in your system's secure storage as sensitive
-plugin options. The plugin reads a key only for a path the `gateway`
-option allows, and only to send it as the bearer token of a request to the
-company that issued it. When the TypeSafe key option is empty, the plugin reads that key
-from the environment variable `TYPESAFE_API_KEY`. When the OpenRouter key
-option is empty, it reads `OPENROUTER_API_KEY`. A key in either variable stays
+plugin options. The plugin reads a key only for a company that the `provider`
+and `gateway` options allow, and only to send it to the company that issued
+it. When a key option is empty, the plugin reads that key from its variable:
+`TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or `OPENROUTER_API_KEY`.
+It does not read `GOOGLE_API_KEY`. A key in a variable stays
 wherever you set it, for example in plaintext in a settings file. It is
 visible to every process Claude Code starts.
 
@@ -132,7 +140,7 @@ environment variable.
 [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool)
 says what the `config` tool reports.
 
-A project can set either variable in the `env` block of its Claude Code
+A project can set any of these variables in the `env` block of its Claude Code
 project settings. When the matching key option is empty, the plugin then sends
 the task text to the account that project key belongs to.
 
@@ -159,7 +167,7 @@ The lines the plugin prints per call go to your own transcript and, with
 Every plugin offers the choices in
 [Your choices](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#your-choices).
 Here, keep `scope` at `core` to route the four built-in agents only. Remove the
-keys from the plugin's configuration and from both variables. Disable the plugin
+keys from the plugin's configuration and from the four variables. Disable the plugin
 and nothing is sent.
 
 ## Children

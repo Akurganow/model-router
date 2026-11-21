@@ -5,6 +5,9 @@ import { getEventListeners } from "node:events";
 import { test } from "node:test";
 import {
 	brokenReply,
+	GEMINI_REPLY,
+	OPENAI_REPLY,
+	OPENROUTER_REPLY,
 	scoringReply,
 	stalledReply,
 } from "#core/__tests__/support/replies.ts";
@@ -13,14 +16,24 @@ import { routingState } from "#core/brief/brief.ts";
 import { KEY_UNSET } from "#core/output/reasons.ts";
 import { tier } from "#core/parts/tier.ts";
 import { work } from "#core/parts/work.ts";
-import { type Attempt, type Gateway, plan } from "#core/providers/provider.ts";
+import {
+	type Attempt,
+	type Gateway,
+	type Maker,
+	plan,
+} from "#core/providers/provider.ts";
 import { LIMIT_REACHED, ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type Decision, type RouteInput, route } from "#core/scoring/route.ts";
 import { realClock } from "#utils/clock.ts";
 
 const KEY = "test-key";
 const OR_KEY = "test-openrouter-key";
-const KEYS = { typesafe: KEY, openrouter: OR_KEY };
+const KEYS = {
+	typesafe: KEY,
+	openrouter: OR_KEY,
+	openai: "test-openai-key",
+	google: "test-google-key",
+};
 const BOTH = plan({ provider: "typesafe", gateway: "auto" }, KEYS);
 const MODEL = "jev-test";
 const STATE = routingState({
@@ -108,8 +121,8 @@ test("route takes only a state that routingState built", () => {
 	assert.equal(state, raw);
 });
 
-test("the routing limit is 8000 ms", () => {
-	assert.equal(ROUTING_LIMIT_MS, 8000);
+test("the routing limit is 10000 ms", () => {
+	assert.equal(ROUTING_LIMIT_MS, 10000);
 });
 
 test("tier alone sends no work question", async () => {
@@ -461,35 +474,108 @@ test("tier and work send the System One body as one string", async () => {
 	);
 });
 
-// One row per endpoint: the gateway that plans it, its address, and its key header as sent.
+// One row per endpoint: who is asked and through which gateway, the address, the model name the
+// request carries, the key header as sent, a reply in the endpoint's own format, and the
+// model and token counts the decision then holds.
 const ADDRESSES: readonly [
+	provider: Maker,
 	gateway: Gateway,
 	address: string,
-	authorization: string,
+	sentModel: string,
+	keyHeader: [name: string, value: string],
+	reply: unknown,
+	model: string,
+	usage: { input_tokens: number; output_tokens: number },
 ][] = [
-	["direct", "https://api.typesafe.ai/v1/systemone", "Bearer test-key"],
 	[
+		"typesafe",
+		"direct",
+		"https://api.typesafe.ai/v1/systemone",
+		"jev-latest",
+		["Authorization", "Bearer test-key"],
+		VALID,
+		"jev-1.14.0",
+		{ input_tokens: 120, output_tokens: 8 },
+	],
+	[
+		"typesafe",
 		"openrouter",
 		"https://openrouter.ai/api/v1/systemone",
-		"Bearer test-openrouter-key",
+		"jev-latest",
+		["Authorization", "Bearer test-openrouter-key"],
+		VALID,
+		"jev-1.14.0",
+		{ input_tokens: 120, output_tokens: 8 },
+	],
+	[
+		"openai",
+		"direct",
+		"https://api.openai.com/v1/decisions",
+		"gpt-6-luna",
+		["Authorization", "Bearer test-openai-key"],
+		JSON.parse(OPENAI_REPLY),
+		"gpt-6-luna",
+		{ input_tokens: 506, output_tokens: 0 },
+	],
+	[
+		"openai",
+		"openrouter",
+		"https://openrouter.ai/api/alpha/decisions",
+		"openai/gpt-6-luna-decisions",
+		["Authorization", "Bearer test-openrouter-key"],
+		JSON.parse(OPENROUTER_REPLY),
+		"openai/gpt-6-luna-decisions-20261006",
+		{ input_tokens: 488, output_tokens: 0 },
+	],
+	[
+		"google",
+		"direct",
+		"https://generativelanguage.googleapis.com/v1beta/decisions",
+		"gemini-decision-1",
+		["x-goog-api-key", "test-google-key"],
+		JSON.parse(GEMINI_REPLY),
+		"",
+		{ input_tokens: 430, output_tokens: 0 },
+	],
+	[
+		"google",
+		"openrouter",
+		"https://openrouter.ai/api/alpha/decisions",
+		"google/gemini-decision-1",
+		["Authorization", "Bearer test-openrouter-key"],
+		{ ...JSON.parse(OPENROUTER_REPLY), model: "google/gemini-decision-1" },
+		"google/gemini-decision-1",
+		{ input_tokens: 488, output_tokens: 0 },
 	],
 ];
 
-for (const [gateway, address, authorization] of ADDRESSES)
-	test(`${gateway} sends its key to its own address in one header`, async () => {
-		const { sent, bodies, inits, fetchFn } = answering(VALID);
-		await run(fetchFn, {
-			attempts: plan({ provider: "typesafe", gateway }, KEYS),
-		});
-		assert.deepEqual(sent, [`${address} ${authorization}`]);
-		assert.equal(JSON.parse(bodies[0] ?? "").model, "jev-latest");
+for (const [
+	provider,
+	gateway,
+	address,
+	sentModel,
+	[headerName, headerValue],
+	reply,
+	model,
+	usage,
+] of ADDRESSES)
+	test(`${provider} through ${gateway} sends its key to ${address} in one header`, async () => {
+		const { sent, bodies, inits, fetchFn } = answering(reply);
+		const decision = asDecision(
+			await run(fetchFn, { attempts: plan({ provider, gateway }, KEYS) }),
+		);
+		assert.equal(sent.length, 1);
+		assert.equal(sent[0]?.split(" ")[0], address);
+		assert.equal(JSON.parse(bodies[0] ?? "").model, sentModel);
 		assert.deepEqual(inits[0]?.headers, {
-			Authorization: authorization,
+			[headerName]: headerValue,
 			Accept: "application/json",
 			"Content-Type": "application/json",
 			"User-Agent":
 				"model-router/dev (+https://github.com/Akurganow/model-router)",
 		});
+		assert.equal(decision.model, model);
+		assert.deepEqual(decision.usage, usage);
 	});
 
 test("a status gives HTTP n after one request, or after three when it is retried", async (t) => {
@@ -543,13 +629,13 @@ test("a status that falls back gives the next provider's decision, any other end
 	}
 });
 
-test("the first of two attempts times out at 2000 ms and falls back", async (t) => {
+test("the first of two attempts times out at 5000 ms and falls back", async (t) => {
 	const time = fakeTime(t);
 	const { bodies, inits, fetchFn } = stub((init, count) =>
 		count === 1 ? hang(init, count) : Promise.resolve(scoringReply(200, VALID)),
 	);
 	const routed = run(fetchFn, { attempts: BOTH });
-	await time.pass(1999);
+	await time.pass(4999);
 	assert.equal(bodies.length, 1);
 	assert.equal(inits[0]?.signal?.aborted, false);
 	await time.pass(1);
@@ -611,7 +697,7 @@ test("a fetch that ignores its signal ends at the attempt timeout and falls back
 			: Promise.resolve(scoringReply(200, VALID)),
 	);
 	const routed = run(fetchFn, { attempts: BOTH });
-	await time.pass(2000);
+	await time.pass(5000);
 	assert.equal(bodies.length, 2);
 	assert.equal(
 		asDecision(await time.settled(routed)).firstFailed?.reason,
@@ -639,7 +725,7 @@ test("a reply whose text never arrives ends at the attempt timeout", async (t) =
 		count === 1 ? stalledReply() : scoringReply(200, VALID),
 	);
 	const routed = run(fetchFn, { attempts: BOTH });
-	await time.pass(1999);
+	await time.pass(4999);
 	assert.equal(bodies.length, 1);
 	await time.pass(1);
 	assert.equal(bodies.length, 2);
@@ -780,7 +866,7 @@ test("a 400 whose body never ends ends the call at the attempt timeout and does 
 	const time = fakeTime(t);
 	const { sent, fetchFn } = stub(async () => stalledReply(400));
 	const routed = run(fetchFn, { attempts: BOTH });
-	await time.pass(2000);
+	await time.pass(5000);
 	assert.deepEqual(await time.settled(routed), { skipped: "HTTP 400" });
 	assert.deepEqual(sent, [
 		`https://api.typesafe.ai/v1/systemone Bearer ${KEY}`,
@@ -851,7 +937,7 @@ const EXITS: readonly Exit[] = [
 			count === 1
 				? hang(init, count)
 				: Promise.resolve(scoringReply(200, VALID)),
-		passMs: 2000,
+		passMs: 5000,
 		expected: {
 			...DECISION,
 			holder: "openrouter",

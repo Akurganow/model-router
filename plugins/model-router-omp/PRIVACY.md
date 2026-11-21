@@ -6,27 +6,35 @@ what the plugin sends, where it goes, and what the plugin keeps. Effective
 
 ## Where requests go
 
-The plugin asks Jev to score each routed batch item. Only `task` items route
-under the default `core` scope, and [the extended scope](#the-extended-scope)
-adds the others. Jev answers on one or two paths:
+The plugin asks a decision model to score each routed batch item. Only `task`
+items route under the default `core` scope, and [the extended
+scope](#the-extended-scope) adds the others. The model answers on one or two
+paths:
 
-- the direct path: TypeSafe, at https://api.typesafe.ai/v1/systemone, with your
-  TypeSafe key
-- the gateway path: OpenRouter, at https://openrouter.ai/api/v1/systemone, with
-  your OpenRouter key.
+- the direct path: the provider's own API, with the provider's key
+- the gateway path: OpenRouter, with your OpenRouter key.
 
-The `provider` setting says whose model scores, and its one value is
-`typesafe`. OpenRouter is a gateway that answers with that model. The `gateway`
-setting decides which companies receive the task text and their keys:
+The `provider` setting says whose model scores: `typesafe`, `openai` or
+`google`. OpenRouter is a gateway that passes the request to that provider's
+model. These companies can receive the task text:
+
+| Company | Host | It receives the text when | Key it takes |
+| :-- | :-- | :-- | :-- |
+| TypeSafe | `api.typesafe.ai` | `provider` is `typesafe` and `gateway` allows the direct path | the credential omp holds for `typesafe`, as a bearer token |
+| OpenAI | `api.openai.com` | `provider` is `openai` and `gateway` allows the direct path | the credential omp holds for `openai`, as a bearer token |
+| Google | `generativelanguage.googleapis.com` | `provider` is `google` and `gateway` allows the direct path | the credential omp holds for `google`, in the `x-goog-api-key` header |
+| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each of the three | the credential omp holds for `openrouter`, as a bearer token |
+
+The `gateway` setting decides which paths are open:
 
 | `gateway` | First request | Second request, after a failure |
 | :-- | :-- | :-- |
-| `direct`, the default | TypeSafe, with the TypeSafe key | none |
-| `auto` | TypeSafe, with the TypeSafe key | OpenRouter, with the OpenRouter key |
-| `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
+| `direct`, the default | the provider, with its key | none |
+| `auto` | the provider, with its key | OpenRouter, with the OpenRouter key |
+| `openrouter-first` | OpenRouter, with the OpenRouter key | the provider, with its key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
 
-A path with no key is left out. With both keys under `auto` or `openrouter-first`, one item may reach both companies.
+A path with no key is left out. With both keys under `auto` or `openrouter-first`, one item may reach both the provider and OpenRouter.
 
 A setting that is not valid sends nothing, as
 [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)
@@ -50,7 +58,7 @@ OpenRouter out when your global `gateway` is `auto` or `openrouter-first`. For
 supply a key through its `.env` file, as
 [What the plugin stores](#what-the-plugin-stores) says.
 
-Each key goes only to the address above of the company that issued it, as
+Each key goes only to the host above of the company that issued it, as
 [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
 explains.
 
@@ -81,7 +89,7 @@ names for each request. The JSON body holds:
     says why the text is fixed
 - the item's `name` as the description, masked, collapsed and cut like the
   agent's description, or an empty description when it has none
-- the Jev alias and two scoring questions, `tier` and `work`, as
+- the model of the endpoint and two scoring questions, `tier` and `work`, as
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them
 
@@ -105,7 +113,7 @@ that declare no model.
   Read them before you set `extended`.
 - A project can set `scope` in its plugin settings, and its value overrides
   yours. A project that sets `extended` sends the descriptions and task text of
-  your agents to TypeSafe or OpenRouter, as your `gateway` setting allows,
+  your agents to the provider you chose or to OpenRouter, as your `gateway` setting allows,
   without your choice, and it can raise spend,
   because routed agents may run on the `smol`, `midl` and `slow` model roles
   you set.
@@ -124,14 +132,14 @@ later in the same batch skip the failed path.
 
 [The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing)
 says what a request in flight can cost. One limit covers the scoring of a
-whole batch, both attempts and all retries included: 8 s, or less under a
+whole batch, both attempts and all retries included: 10 s, or less under a
 short omp tool call timeout, as the
 [README](README.md#limits-and-retries) says. The plugin sends no
 other request.
 
 ## What each company does with the text
 
-The companies' privacy policies are linked at
+The companies' own pages are linked at
 [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text).
 
 ## What the plugin stores
@@ -142,12 +150,13 @@ subagent spawns, when its task call ends before omp reports the subagent's id,
 or when newer decisions push it out.
 
 It holds a key in memory only while it checks whether to route and while it
-sends a request. It reads a key only for a path the `gateway` setting
-allows. It reads omp's own credential for that company, `typesafe` or
-`openrouter`, and when that is empty, the environment variable
-`TYPESAFE_API_KEY` or `OPENROUTER_API_KEY`. It sends each key only to its own
-company's endpoint above, as the bearer token. It reads no other environment
-variable, and it runs no program.
+sends a request. It reads a key only for a company that the `provider` and
+`gateway` settings allow. It reads the credential omp holds for that company's
+id, `typesafe`, `openai`, `google` or `openrouter`, and when that is empty, the
+environment variable `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or
+`OPENROUTER_API_KEY`. It sends each key only to its own company's host above.
+It does not read `GOOGLE_API_KEY`. It reads no other environment variable, and
+it runs no program.
 
 When you choose a value in the plugin's dialog or give a command, the plugin
 writes your global `provider`, `gateway` or `scope` plugin setting through omp. It
@@ -156,10 +165,10 @@ writes no project setting.
 A key you set as an environment variable is visible to every process omp
 starts.
 
-A project can set either variable in its `.env` file. When omp's credential
-for that company is empty, the plugin then sends the task text to the account
-that project key belongs to. With the narrowing above, a project can also pick
-which of your allowed paths receives it.
+A project can set any of these four variables in its `.env` file. When omp's
+credential for that company is empty, the plugin then sends the task text to
+the account that project key belongs to. With the narrowing above, a project
+can also pick which of your allowed paths receives it.
 
 When a batch arrives, and again as each routed subagent starts, the plugin
 reads its `provider`, `gateway` and `scope` settings through omp's plugin settings, which
@@ -191,7 +200,7 @@ Every plugin offers the choices in
 Here, set `provider`, `gateway` or `scope` in `/settings`, under Plugins. To route the `task` agent
 only, the effective `scope` must stay `core`. A project's `scope` overrides
 yours, as [The extended scope](#the-extended-scope) says. Remove the keys from
-omp's credential store and from both variables. Disable the plugin and nothing
+omp's credential store and from the four variables. Disable the plugin and nothing
 is sent.
 
 ## Children

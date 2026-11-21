@@ -3,9 +3,10 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { BUDGET_CHARS, ROLE_CAP } from "#core/brief/brief.ts";
 import { SCOPE_VALUES } from "#core/options/scope.ts";
-import { VALUE_SETTINGS, type ValueSetting } from "#core/options/settings.ts";
+import type { ValueSetting } from "#core/options/settings.ts";
 import { GATEWAYS, MAKERS } from "#core/providers/provider.ts";
 import { loadSource } from "./build/source.ts";
+import { HARNESS_SETTINGS } from "./build/values.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const source = loadSource(ROOT);
@@ -15,19 +16,15 @@ const VALUES: Readonly<Record<ValueSetting, readonly string[]>> = {
 	gateway: GATEWAYS,
 	scope: SCOPE_VALUES,
 };
-const HARNESSES = ["claude", "omp", "openclaw"] as const;
 
 // The texts name a value as a lowercase label before a colon: "auto: TypeSafe, then ...".
 const labelsOf = (text: string) =>
 	[...text.matchAll(/(?:^|\. )([a-z][a-z-]*): /g)].map(([, label]) => label);
 
 test("each option text names every value of its setting", () => {
-	for (const setting of VALUE_SETTINGS)
-		for (const harness of [
-			...HARNESSES,
-			...(setting === "scope" ? [] : (["hermes"] as const)),
-		]) {
-			const descriptions: Record<string, string> =
+	for (const [harness, settings] of Object.entries(HARNESS_SETTINGS))
+		for (const setting of settings) {
+			const descriptions: Record<string, string | undefined> =
 				source.options[setting].descriptions;
 			const labels = labelsOf(descriptions[harness] ?? "");
 			assert.deepEqual(

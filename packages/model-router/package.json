@@ -3,7 +3,7 @@
 	"version": "0.24.3",
 	"private": false,
 	"type": "module",
-	"description": "Routes subagents to a model and effort that fits the task, judged by Jev. One package for OpenClaw and Oh My Pi.",
+	"description": "Routes subagents to a model and effort that fits the task, judged by a decision model from TypeSafe, OpenAI or Google. One package for OpenClaw and Oh My Pi.",
 	"license": "MIT",
 	"homepage": "https://github.com/Akurganow/model-router",
 	"repository": {
@@ -37,9 +37,11 @@
 		"settings": {
 			"provider": {
 				"type": "enum",
-				"description": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to.",
+				"description": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to. openai: OpenAI's decision model; costs more than Jev and its answers are not fitted. google: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.",
 				"values": [
-					"typesafe"
+					"typesafe",
+					"openai",
+					"google"
 				],
 				"default": "typesafe"
 			},

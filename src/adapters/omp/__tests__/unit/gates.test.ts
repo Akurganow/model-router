@@ -128,7 +128,7 @@ test("both providers in order, each with its own key", async () => {
 				path: "openrouter",
 				holder: "openrouter",
 				key: OR_KEY,
-				timeout: 2000,
+				timeout: 5000,
 				retries: 0,
 			},
 			{ maker: "typesafe", path: "direct", holder: "typesafe", key: KEY },

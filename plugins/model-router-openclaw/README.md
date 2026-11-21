@@ -1,10 +1,10 @@
 # model-router for OpenClaw
 
-An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model and an effort for each subagent. It asks [Jev](https://docs.typesafe.ai), on TypeSafe's own API or through OpenRouter, how much judgment the task needs and how much work it takes. It then sets the `model` and `thinking` of that `sessions_spawn` call.
+An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model and an effort for each subagent. It asks a decision model, on the provider's own API or through OpenRouter, how much judgment the task needs and how much work it takes. It then sets the `model` and `thinking` of that `sessions_spawn` call.
 
 ## What it does
 
-- It scores each routed `sessions_spawn` call through Jev, using the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
+- It scores each routed `sessions_spawn` call through the decision model of the `provider` setting: [Jev](https://docs.typesafe.ai) from TypeSafe, OpenAI's or Google's. Under `typesafe` the request names the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A slot you leave unset keeps OpenClaw's model for its level, which then gets the effort alone, as [Routing](#routing) says.
 - It sets `thinking` from a fixed ladder of efforts, as [Routing](#routing) says.
 - It sets only a model you assigned.
@@ -55,12 +55,16 @@ Routing needs a key. The models in the slots decide what each level runs on. The
 
 ## Keys
 
-For each path the [`gateway` setting](#provider-and-gateway) allows, the plugin checks two places for that path's key, in this order:
+For each key holder the [`provider` and `gateway` settings](#provider-and-gateway) allow, the plugin checks two places for that holder's key, in this order: the plugin's setting, then the environment variable.
 
-- TypeSafe, on the direct path: the plugin's `api_key` setting, then the `TYPESAFE_API_KEY` environment variable.
-- OpenRouter, on the gateway path: the plugin's `openrouter_api_key` setting, then the `OPENROUTER_API_KEY` environment variable.
+| Key holder | Setting | Variable |
+| --- | --- | --- |
+| TypeSafe | `api_key` | `TYPESAFE_API_KEY` |
+| OpenAI | `openai_api_key` | `OPENAI_API_KEY` |
+| Google | `google_api_key` | `GEMINI_API_KEY` |
+| OpenRouter | `openrouter_api_key` | `OPENROUTER_API_KEY` |
 
-A key counts as set when either place holds a non-blank value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get one and where a key goes. OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in that variable scores tasks when the `gateway` setting allows OpenRouter and the plugin's `openrouter_api_key` setting holds none. No other credential of OpenClaw serves as a Jev key.
+A key counts as set when either place holds a non-blank value. The plugin does not read `GOOGLE_API_KEY`. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get one and where a key goes. OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in any variable of the table scores tasks when the `provider` and `gateway` settings allow its holder and the plugin's setting for that holder holds none. No other credential of OpenClaw serves as a scoring key.
 
 Add a key in one of two ways:
 
@@ -73,11 +77,11 @@ Never type a key into the chat.
 
 ## Provider and gateway
 
-The `provider` setting says whose model scores each task. Its one value is `typesafe`, the default: Jev from TypeSafe.
+The `provider` setting says whose model scores each task. Its values are `typesafe` (the default), `openai` and `google`.
 
 The `gateway` setting says how OpenRouter is used to reach the provider. Its values are `direct` (the default), `auto`, `openrouter-first` and `openrouter`. It is not OpenClaw's Gateway, the process that loads the plugin.
 
-[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which path each value takes first, and when the second one runs. Who receives a spawn's task under each value: [PRIVACY.md](PRIVACY.md).
+[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which model each `provider` value names, which path each `gateway` value takes first, and when the second one runs. Who receives a spawn's task under each value: [PRIVACY.md](PRIVACY.md).
 
 Switch them with `/model-router-provider <value>` and `/model-router-gateway <value>`. The plugin reads each setting at each spawn. A change applies once OpenClaw replaces the plugin, after running work drains, up to 60 s. A spawn in that window uses the old value. A spawn that overlaps the replacement can fail with `Gateway requester authority changed`, which is OpenClaw's own error. The same holds for `/model-router-scope` and for the model slots.
 
@@ -107,7 +111,7 @@ The requester is the agent that makes the `sessions_spawn` call. The target agen
 
 Three commands show or change an option:
 
-- `/model-router-provider [typesafe]`
+- `/model-router-provider [typesafe|openai|google]`
 - `/model-router-gateway [direct|auto|openrouter-first|openrouter]`
 - `/model-router-scope [core|extended]`
 
@@ -197,7 +201,7 @@ These spawns pass through unchanged, and the plugin logs nothing:
 
 ### The gates
 
-For every other spawn, the gates run in this order. The first that fails skips the spawn with its reason, and OpenClaw runs the spawn as it would without the plugin. A tag says which spawns the gate can stop: "(every spawn)" includes [the spawn of the requesting agent itself](#the-spawn-of-the-requesting-agent-itself), and "(another agent)" does not.
+For every other spawn, the gates run in this order. The first that fails skips the spawn with its reason, and OpenClaw runs the spawn as it would without the plugin. A tag says which spawns the gate can stop: "(every spawn)" includes [the spawn of the requesting agent itself](#the-spawn-of-the-requesting-agent-itself), "(another agent)" does not, and "(requesting agent)" stops only that spawn.
 
 1. (every spawn) `<setting> not valid: run setup`: a stored `provider`, `gateway` or `scope` holds a value outside its list. [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names and how to set a valid value.
 2. (every spawn) `key unset`: no path the `gateway` setting allows has a key.
@@ -206,7 +210,7 @@ For every other spawn, the gates run in this order. The first that fails skips t
 5. (another agent) `<id> agent discovery failed`: under `extended`, the plugin cannot read OpenClaw's config.
 6. (another agent) `<id> agent unknown`: under `extended`, the agent is not in [the roster](#the-agent-roster).
 7. (another agent) `<id> sets its own model`: under `extended`, the agent's entry sets a `model`.
-8. (every spawn) `settings unreadable`: the plugin cannot read OpenClaw's live config. A spawn of another agent stops at gate 3 or gate 5 first.
+8. (requesting agent) `settings unreadable`: the plugin cannot read OpenClaw's live config. A spawn of another agent stops at gate 3 or gate 5 first.
 
 ### The agent roster
 
@@ -228,9 +232,9 @@ The plugin reads the parameters of a `sessions_spawn` call as OpenClaw's tool do
 - The plugin counts the value only when it is a string, except `agentId`. [Spawns that pass without a line](#spawns-that-pass-without-a-line) says what a non-text `agentId` does. It trims the value, and an empty value counts as absent.
 - The plugin reads `runtime` and `taskName` as written.
 
-### The role Jev reads
+### The role the scoring model reads
 
-[What the plugin sends](PRIVACY.md#what-the-plugin-sends) says which role text Jev reads with the task. [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent) says why this plugin differs from the others.
+[What the plugin sends](PRIVACY.md#what-the-plugin-sends) says which role text the scoring model reads with the task. [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent) says why this plugin differs from the others.
 
 [Facts behind this section](../../docs/clients.md#openclaw-hook-and-spawn)
 
@@ -275,16 +279,13 @@ The plugin hooks the `sessions_spawn` tool. A spawn that does not call that tool
 
 ### Hook timeout
 
-Four limits bound the time a spawn waits for routing:
+Three limits bound the time a spawn waits for routing:
 
 | Limit | Value | What it bounds |
 | --- | --- | --- |
-| Hook timeout | 10 s | The whole hook. The plugin registers it with this value. |
-| Routing limit | 8 s | The plugin's work in the hook: both attempts and all retries. |
-| Jev timeout | 10 s | One request in the last attempt the plugin makes. |
-| First-attempt wait | 2 s | The first of two attempts. It gets no retry. |
-
-The routing limit is shorter than the Jev timeout, so it ends a slow request first.
+| Hook timeout | 12 s | The whole hook. The plugin registers it with this value. |
+| Routing limit | 10 s | The plugin's work in the hook: both attempts and all retries. |
+| First-attempt wait | 5 s | The first of two attempts. It gets no retry. |
 
 An operator overrides the hook timeout with `plugins.entries.model-router-openclaw.hooks.timeouts.before_tool_call` or `hooks.timeoutMs`.
 

@@ -19,12 +19,11 @@ import {
 } from "./build/outputs.ts";
 import { renderReadme } from "./build/readme.ts";
 import { loadSource, type Source } from "./build/source.ts";
+import type { Harness } from "./build/values.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 export const MAX_BUNDLE_BYTES = 1048576;
 const TIMER_NAMES = ["setTimeout", "clearTimeout"];
-
-type Harness = "claude" | "omp" | "openclaw" | "hermes";
 
 // The OpenClaw and Hermes bundles keep no module external except the node: built-ins, which esbuild leaves alone on the node platform.
 const HOST_OPTIONS: Readonly<Record<Harness, BuildOptions>> = {

@@ -147,10 +147,12 @@ test("a change that throws prints the error", async ($, on) => {
 	expect(text).toContain("config.set");
 });
 
-test("any other argument lists the one value", async ($, on) => {
+test("any other argument lists the three values", async ($, on) => {
 	harness(on);
 	const writes = config(on, (e) => ({ value: e.value }));
-	expect(await provider($, "anthropic")).toBe("provider: use one of typesafe");
+	expect(await provider($, "anthropic")).toBe(
+		"provider: use one of typesafe, openai, google",
+	);
 	expect(writes).toEqual([]);
 });
 
@@ -170,7 +172,7 @@ test(
 test("a bad value is refused before the origin is read", async ($, on) => {
 	harness(on);
 	expect(await runCommand($, COMMAND, "anthropic", { kind: "sdk" })).toBe(
-		"provider: use one of typesafe",
+		"provider: use one of typesafe, openai, google",
 	);
 });
 

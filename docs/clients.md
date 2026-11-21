@@ -313,6 +313,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 - A `smol` or `slow` role that `modelRoles` does not name resolves through an explicitly configured `default` model before omp's built-in priority list.
 - A child's retry fallback chain is `retry.fallbackChains` at the spawn's own model role, kept from before the role's expansion, and otherwise at `default`.
   A role that a spawn hook returns does not change the spawn's role, so `retry.fallbackChains` at that role does not reach the spawn.
+- omp's provider ids for OpenAI and Google are `openai` and `google`.
+  `getApiKeyForProvider` hands the id it is given to omp's credential lookup unchanged.
+  The environment variable of `openai` is `OPENAI_API_KEY`. That of `google` is `GEMINI_API_KEY`, and `GOOGLE_API_KEY` is not read for it.
 
 ### omp thinking levels
 
@@ -596,11 +599,11 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   `OPENCLAW_SKIP_CHANNELS` skips the start of the channels, `OPENCLAW_SKIP_CRON` disables cron, and `OPENCLAW_NO_AUTO_UPDATE` skips the update check at start.
   `OPENCLAW_SKIP_CRON` takes `1` alone, and the other four take `true`, `yes` and `on` too.
 - A workspace `.env` is a lower-trust source.
-  OpenClaw drops known provider credential variables from it, and `OPENROUTER_API_KEY` is on that list.
+  OpenClaw drops known provider credential variables from it. `OPENROUTER_API_KEY`, `OPENAI_API_KEY` and `GEMINI_API_KEY` are on that list.
   `TYPESAFE_API_KEY` is not on the static list.
   The global `~/.openclaw/.env` and the Gateway's process environment are trusted sources.
 - Plugins receive resolved values, with defaults selected from the source config, for the `secretInputs` paths a manifest declares.
-  This plugin declares `api_key` and `openrouter_api_key`.
+  This plugin declares `api_key`, `openai_api_key`, `google_api_key` and `openrouter_api_key`.
   It reads the live config first, where it skips a value that is not text, such as an unresolved SecretRef object, and then `api.pluginConfig`.
 
 ### OpenClaw question tool
@@ -705,6 +708,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 - Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY`, so a `secret` entry with that `env:` name sets that provider's key too.
 - With the provider `auto`, or with none requested, Hermes takes its own session's provider in this order: a key or a base URL given on the command line, `model.provider` of `config.yaml`, a `model.base_url` on a loopback host when `model` names no provider, a usable `OPENROUTER_API_KEY`, the OpenRouter pool, another provider's key in the environment, an OAuth login.
   `model.provider` may name a registry provider, `openrouter`, `custom` or a named custom provider.
+  Among other providers' keys Hermes takes the first API-key provider in its registry's declared order whose variable holds a usable value, and logs a warning when that passes over an OAuth login.
+  `openai-api`, with `OPENAI_API_KEY`, stands before `gemini`. `gemini` reads `GOOGLE_API_KEY` before `GEMINI_API_KEY`, for this pick and for the key it sends, unless `model.key_env` names a variable for it.
 - The settings form saves a secret as it saves a provider key. Hermes writes `.env`, replaces the previous value in the `api_key` of `model`, `auxiliary.<task>`, `custom_providers.<name>` and `providers.<id>` in `config.yaml`, and loads the credential pool of each provider its registry lists for the variable.
   It replaces the legacy `api` field of the first three too. `delegation.api_key` keeps its value.
   The registry lists no OpenRouter provider. Hermes seeds the OpenRouter pool in `auth.json` from `OPENROUTER_API_KEY` when it loads that pool.

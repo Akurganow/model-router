@@ -9,7 +9,6 @@ type Manifest = {
 
 // The generated manifests that carry a version; the builder writes each from the source.
 // The omp catalog entry declares a version so omp offers upgrades.
-// Hermes's plugin.yaml holds JSON text, so the same reader parses it.
 // The tree's OpenClaw manifest is a copy; listing it catches a stale copy.
 export const MANIFESTS: readonly Manifest[] = [
 	{

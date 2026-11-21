@@ -6,9 +6,9 @@
 
 ![Gamayun, the prophetic bird of Slavic folklore](docs/banner.jpg)
 
-Picks a model for each subagent, judged by Jev on TypeSafe or OpenRouter. For the harnesses in the table.
+Picks a model for each subagent, judged by a decision model from TypeSafe, OpenAI or Google, on its own API or through OpenRouter. For the harnesses in the table.
 
-| Harness | The plugin sets | Questions to Jev | Starts a program | Minimum version | Reference |
+| Harness | The plugin sets | Questions to the model | Starts a program | Minimum version | Reference |
 | --- | --- | --- | --- | --- | --- |
 | Claude Code | `model` and `effort` | 2 | no | v2.1.308 | [plugin README](plugins/model-router/README.md) |
 | Oh My Pi | the `smol`, `midl` or `slow` role and the thinking level | 2 | no | v18.12.6 | [plugin README](plugins/model-router-omp/README.md) |
@@ -21,9 +21,14 @@ Claude Code, Oh My Pi and OpenClaw each have a `scope` setting. It takes `core` 
 
 ## How it works
 
-**Claude Code.** On each Agent tool call it routes, the plugin asks
-[Jev](https://docs.typesafe.ai) two questions: how much judgment and how much
-work the task needs. Jev reads the task and the agent text (the request's
+The scoring model is [Jev](https://docs.typesafe.ai) from TypeSafe by default.
+The `provider` option can name OpenAI's or Google's decision model instead.
+[The provider and the gateway](docs/providers.md#the-provider-and-the-gateway)
+says what each value means.
+
+**Claude Code.** On each Agent tool call it routes, the plugin asks the
+scoring model two questions: how much judgment and how much
+work the task needs. The model reads the task and the agent text (the request's
 `role` field). Then the plugin sets the call's `model` and `effort`. The model
 is `haiku` for lookup or transcription, `sonnet` for bounded judgment and `opus`
 for open judgment.
@@ -34,9 +39,9 @@ tiers and the ladder are what they are, with Anthropic's sources.
 The `scope` option picks the calls. [Which calls are routed](plugins/model-router/README.md#which-calls-are-routed)
 holds the rules.
 
-**Oh My Pi.** The plugin scores each batch item with Jev, which answers two
-questions: how much judgment the task needs and how much work it takes. Jev
-reads the task and the agent text. For lookup work the plugin gives the spawn
+**Oh My Pi.** The plugin scores each batch item with the scoring model, which
+answers two questions: how much judgment the task needs and how much work it
+takes. The model reads the task and the agent text. For lookup work the plugin gives the spawn
 the `smol` role. For bounded judgment it gives the `midl` role, and for open
 judgment the `slow` role. Each spawn also gets a thinking level from a fixed
 ladder. The plugin never changes the tool input. The roles run on the models
@@ -47,14 +52,14 @@ efforts the plugin keeps.
 The `scope` setting picks the agents. [Scope](plugins/model-router-omp/README.md#scope)
 holds the rules.
 
-**OpenClaw.** The plugin scores each routed `sessions_spawn` call with Jev, then
+**OpenClaw.** The plugin scores each routed `sessions_spawn` call with the scoring model, then
 sets `model` from your `small_model`, `middle_model` or `large_model` and
 `thinking` from a fixed ladder. [Routing](plugins/model-router-openclaw/README.md#routing) has the
 levels, and [Which spawns are routed](plugins/model-router-openclaw/README.md#which-spawns-are-routed)
 has the rules.
 
 **Hermes Agent.** The plugin is a delegation backend. It scores each `delegate_task`
-task with Jev, then gives the task's child your `small_model`, `middle_model`
+task with the scoring model, then gives the task's child your `small_model`, `middle_model`
 or `large_model` and a `reasoning_effort` from a fixed ladder. Hermes has no
 `scope`, so the plugin routes every task of the tool and never the main turn. A Python shim
 starts Hermes's own Node once per task to run the scoring step.
@@ -77,14 +82,18 @@ says.
 You need:
 
 - A harness at or above the minimum version in the table.
-- A TypeSafe API key from https://console.typesafe.ai/keys, an OpenRouter API
-  key from https://openrouter.ai/settings/keys, or both.
+- An API key for the provider you choose: TypeSafe from
+  https://console.typesafe.ai/keys, OpenAI from
+  https://platform.openai.com/api-keys or Google from
+  https://aistudio.google.com/docs/api-key. An OpenRouter API key from
+  https://openrouter.ai/settings/keys serves the gateway to any of them.
+  [Keys](docs/providers.md#keys) lists the variable of each.
 - For Claude Code, the `claude` command-line tool. Every `claude plugin` line
   on this page runs in a shell, whichever app you use.
 
 Two options decide who receives each task. `provider` says whose model
-scores, and its one value is `typesafe`. `gateway` says how OpenRouter is used
-to reach it: `direct` (the default), `auto`, `openrouter-first` or
+scores: `typesafe` (the default), `openai` or `google`. `gateway` says how
+OpenRouter is used to reach it: `direct` (the default), `auto`, `openrouter-first` or
 `openrouter`.
 [The provider and the gateway](docs/providers.md#the-provider-and-the-gateway)
 says what each value does, what one key does and when the second attempt runs.
@@ -170,11 +179,12 @@ set the keys.
 
 2. Answer `y` to add the marketplace.
 3. Pick the user scope.
-4. Pick a `gateway` and a `scope` in the dialog.
-5. Paste your TypeSafe key, your OpenRouter key or both into the dialog.
+4. Pick a `provider`, a `gateway` and a `scope` in the dialog.
+5. Paste the key of your provider, your OpenRouter key or both into the dialog.
 6. Run `/reload-plugins`, or start a new session.
-7. Ask Claude to run the `model-router-setup` skill. It asks the gateway and
-   the scope with buttons, writes your choices itself and checks the keys.
+7. Ask Claude to run the `model-router-setup` skill. It asks the provider, the
+   gateway and the scope with buttons, writes your choices itself and checks
+   the keys.
 
 To reopen the dialog later, run
 `/plugin configure model-router@model-router`. `/config` also changes the
@@ -192,7 +202,10 @@ key. The line is for zsh, the default shell on macOS.
 claude plugin install model-router --marketplace Akurganow/model-router && read -rs 'TS_KEY?TypeSafe key: ' && echo && read -rs 'OR_KEY?OpenRouter key: ' && echo && printf '{"gateway":"auto","api_key":"%s","openrouter_api_key":"%s"}' "$TS_KEY" "$OR_KEY" | claude plugin configure model-router@model-router --values-stdin
 ```
 
-To pick another `gateway` value, replace `auto` in the line. In bash, replace
+To pick another `gateway` value, replace `auto` in the line. To use OpenAI or
+Google, add `"provider":"openai"` or `"provider":"google"` to the JSON, and
+replace `api_key` with `openai_api_key` or `google_api_key`. The first prompt
+then takes that key, though it still reads `TypeSafe key:`. In bash, replace
 `read -rs 'TS_KEY?TypeSafe key: '` with `read -rsp 'TypeSafe key: ' TS_KEY`.
 Replace `read -rs 'OR_KEY?OpenRouter key: '` with
 `read -rsp 'OpenRouter key: ' OR_KEY`. Look for these two lines in the output:
@@ -215,7 +228,9 @@ claude plugin install model-router --marketplace Akurganow/model-router --config
 ```
 
 `YOUR_KEY` stands for your TypeSafe key and `YOUR_OPENROUTER_KEY` for your
-OpenRouter key. Drop the `--config` pair of a key you do not have. The line
+OpenRouter key. To use OpenAI or Google, add `--config provider=openai` or
+`--config provider=google`, and replace `api_key` with `openai_api_key` or
+`google_api_key`. Drop the `--config` pair of a key you do not have. The line
 leaves the keys in your shell history and shows them in the process list
 while it runs.
 
@@ -226,8 +241,8 @@ while it runs.
 1. Run `/plugins` to open **Manage plugins**.
 2. Add `Akurganow/model-router` on the **Marketplaces** tab.
 3. Install `model-router` on the **Plugins** tab.
-4. Pick a `gateway` and a `scope` in the form that opens.
-5. Enter your TypeSafe key, your OpenRouter key or both.
+4. Pick a `provider`, a `gateway` and a `scope` in the form that opens.
+5. Enter the key of your provider, your OpenRouter key or both.
 6. Start a new session.
 
 The gear icon on the plugin's row opens the form again. If the form does not
@@ -251,14 +266,14 @@ open, set the key as [Desktop app](#desktop-app) describes.
 2. Run the two install commands under [Oh My Pi](#oh-my-pi).
 3. Restart omp, because omp loads extension modules at startup.
 4. Run `/login typesafe`, `/login openrouter` or both in omp to store your
-   keys.
-5. Ask omp to run the `model-router-setup` skill. It asks the gateway and
-   the scope with buttons and writes your choices itself. It also
+   keys. For OpenAI or Google, set the variable named below.
+5. Ask omp to run the `model-router-setup` skill. It asks the provider, the
+   gateway and the scope with buttons and writes your choices itself. It also
    helps you set the `smol`, `midl` and `slow` roles.
 
 Instead of `/login`, you can run `omp login typesafe` or
-`omp login openrouter` outside a session. You can also set `TYPESAFE_API_KEY`
-or `OPENROUTER_API_KEY`. To change the provider, the gateway or the scope
+`omp login openrouter` outside a session. You can also set `TYPESAFE_API_KEY`,
+`OPENAI_API_KEY`, `GEMINI_API_KEY` or `OPENROUTER_API_KEY`. To change the provider, the gateway or the scope
 later, open `/settings` → Plugins, or run `/model-router:provider`,
 `/model-router:gateway` or `/model-router:scope`.
 [Set up](plugins/model-router-omp/README.md#set-up) says what the skill checks.
@@ -358,8 +373,9 @@ shell:
 claude plugin uninstall model-router@model-router
 ```
 
-If you added `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY` to the `env` block of
-`~/.claude/settings.json`, delete those lines too.
+If you added `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or
+`OPENROUTER_API_KEY` to the `env` block of `~/.claude/settings.json`, delete
+those lines too.
 
 **Oh My Pi.** To turn routing off, run this line in a shell:
 
@@ -412,13 +428,15 @@ reports `key unset`.
 > Each call, batch item or task the plugin scores sends the condensed, redacted
 > task text to the host that `gateway` picks, with that host's key:
 >
-> - `https://api.typesafe.ai/v1/systemone` gets your TypeSafe key under
->   `direct`, and first under `auto`.
-> - `https://openrouter.ai/api/v1/systemone` gets your OpenRouter key under
->   `openrouter`, and first under `openrouter-first`.
+> - The provider's own API gets that provider's key under `direct`, and first
+>   under `auto`. `provider` picks the host: `api.typesafe.ai`,
+>   `api.openai.com` or `generativelanguage.googleapis.com`.
+> - `openrouter.ai` gets your OpenRouter key under `openrouter`, and first
+>   under `openrouter-first`.
 >
-> With both keys, `auto` and `openrouter-first` send the same text to the
-> second host when the first fails in a way that
+> [The request](docs/providers.md#the-request) lists the address and the
+> model of each. With both keys, `auto` and `openrouter-first` send the same
+> text to the second host when the first fails in a way that
 > [The provider and the gateway](docs/providers.md#the-provider-and-the-gateway)
 > lists. The default, `direct`, never contacts OpenRouter.
 >
@@ -452,8 +470,8 @@ privacy policy holds the request:
   [The program the plugin starts](plugins/model-router-hermes/PRIVACY.md#the-program-the-plugin-starts),
   [PRIVACY.md](plugins/model-router-hermes/PRIVACY.md)
 - All four: [How the plugins use the providers](docs/providers.md) holds the
-  rules they share: the two settings, the fallback, the request, the retries
-  and what each company does with the text.
+  rules they share: the two settings, the keys, the fallback, the request, the
+  retries and what each company does with the text.
 
 [Turn off and uninstall](#turn-off-and-uninstall) says how to stop the
 requests.

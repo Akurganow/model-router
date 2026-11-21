@@ -8,6 +8,7 @@ import {
 	FIRST_ATTEMPT_TIMEOUT_MS,
 	GATEWAYS,
 	type Gateway,
+	type Maker,
 	plan,
 } from "#core/providers/provider.ts";
 
@@ -23,22 +24,37 @@ const O = {
 	holder: "openrouter",
 	key: "or-key",
 };
-const FIRST = { timeout: 2000, retries: 0 };
+const A = {
+	maker: "openai",
+	path: "direct",
+	holder: "openai",
+	key: "oa-key",
+};
+const AO = {
+	maker: "openai",
+	path: "openrouter",
+	holder: "openrouter",
+	key: "or-key",
+};
+const FIRST = { timeout: 5000, retries: 0 };
 
 const NONE = {};
 const TS = { typesafe: "ts-key" };
 const OR = { openrouter: "or-key" };
 const BOTH = { typesafe: "ts-key", openrouter: "or-key" };
-const via = (gateway: Gateway): Choice => ({ provider: "typesafe", gateway });
+const via = (gateway: Gateway, provider: Maker = "typesafe"): Choice => ({
+	provider,
+	gateway,
+});
 
-test("exports four gateway values and a 2000 ms first attempt", () => {
+test("exports four gateway values and a 5000 ms first attempt", () => {
 	assert.deepEqual(GATEWAYS, [
 		"direct",
 		"auto",
 		"openrouter-first",
 		"openrouter",
 	]);
-	assert.equal(FIRST_ATTEMPT_TIMEOUT_MS, 2000);
+	assert.equal(FIRST_ATTEMPT_TIMEOUT_MS, 5000);
 });
 
 test("plan orders the attempts for each gateway and set of keys", () => {
@@ -61,13 +77,26 @@ test("plan orders the attempts for each gateway and set of keys", () => {
 			);
 });
 
+test("plan puts the maker's own key on the direct path, and a typesafe key plans nothing for it", () => {
+	assert.deepEqual(
+		plan(via("auto", "openai"), { openai: "oa-key", openrouter: "or-key" }),
+		[{ ...A, ...FIRST }, AO],
+	);
+	assert.deepEqual(plan(via("auto", "openai"), { typesafe: "ts-key" }), []);
+});
+
 test("plan attempts only the providers whose key is set", () => {
 	assert.deepEqual(plan(via("auto"), { typesafe: "", openrouter: "or-key" }), [
 		O,
 	]);
 });
 
-const LOOKED_UP = { typesafe: "ts-key", openrouter: "or-key" };
+const LOOKED_UP = {
+	typesafe: "ts-key",
+	openai: "oa-key",
+	google: "g-key",
+	openrouter: "or-key",
+};
 
 test("collectKeys awaits each lookup before it starts the next", async () => {
 	const trace: string[] = [];
@@ -124,9 +153,9 @@ test("collectKeysSync looks up the allowed providers in order and leaves out an 
 });
 
 test("collectKeysSync looks up only the holders of each gateway, in order", () => {
-	const looked = (gateway: Gateway): string[] => {
+	const looked = (gateway: Gateway, provider: Maker = "typesafe"): string[] => {
 		const trace: string[] = [];
-		collectKeysSync(via(gateway), (holder) => {
+		collectKeysSync(via(gateway, provider), (holder) => {
 			trace.push(holder);
 			return LOOKED_UP[holder];
 		});
@@ -136,6 +165,7 @@ test("collectKeysSync looks up only the holders of each gateway, in order", () =
 	assert.deepEqual(looked("auto"), ["typesafe", "openrouter"]);
 	assert.deepEqual(looked("openrouter-first"), ["openrouter", "typesafe"]);
 	assert.deepEqual(looked("openrouter"), ["openrouter"]);
+	assert.deepEqual(looked("auto", "openai"), ["openai", "openrouter"]);
 });
 
 test("collectKeysSync never looks up a provider the value leaves out", () => {

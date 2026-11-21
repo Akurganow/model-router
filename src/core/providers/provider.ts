@@ -1,5 +1,5 @@
 // Whose model scores. Every table keyed by maker follows this list.
-export const MAKERS = ["typesafe"] as const;
+export const MAKERS = ["typesafe", "openai", "google"] as const;
 export type Maker = (typeof MAKERS)[number];
 // Who holds a key: each maker for its own API, and OpenRouter for the gateway to every maker.
 // An attempt shows this name in every line.
@@ -20,19 +20,23 @@ export type Gateway = (typeof GATEWAYS)[number];
 // Every harness reads a key holder's key from the same variable.
 export const KEY_VARIABLES: Readonly<Record<KeyHolder, string>> = {
 	typesafe: "TYPESAFE_API_KEY",
+	openai: "OPENAI_API_KEY",
+	google: "GEMINI_API_KEY",
 	openrouter: "OPENROUTER_API_KEY",
 };
 
 // The setting name that holds each key holder's key in Claude Code and OpenClaw.
 export const KEY_FIELDS = {
 	typesafe: "api_key",
+	openai: "openai_api_key",
+	google: "google_api_key",
 	openrouter: "openrouter_api_key",
 } as const satisfies Readonly<Record<KeyHolder, string>>;
 
 // The key each key holder has, as the harness read it.
 export type Keys = Partial<Record<KeyHolder, string>>;
 
-export const FIRST_ATTEMPT_TIMEOUT_MS = 2000;
+export const FIRST_ATTEMPT_TIMEOUT_MS = 5000;
 
 // The paths each gateway value allows, in the order they are asked.
 const GATEWAY_PATHS: Readonly<Record<Gateway, readonly Path[]>> = {
@@ -117,7 +121,7 @@ export function collectKeysSync(
 /**
  * Returns one attempt for each path of the choice whose key holder's key is a
  * non-empty string, carrying that key. Every attempt but the last gives up
- * fast, so the next one gets most of the routing limit. Returns no attempts
+ * fast, so the next one gets the rest of the routing limit. Returns no attempts
  * when no key is set. Never throws.
  */
 export function plan(choice: Choice, keys: Readonly<Keys>): Attempt[] {

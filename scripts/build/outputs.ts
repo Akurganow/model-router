@@ -24,7 +24,7 @@ export const OPENCLAW_OUTPUTS = {
 
 const HERMES_DIR = "plugins/model-router-hermes";
 
-// plugin.yaml holds JSON text, which is valid YAML, so Hermes's YAML reader and the version check both read it.
+// plugin.yaml holds JSON text with space indentation, which is valid YAML. Hermes reads it with yaml.safe_load, which refuses a tab, and the version check reads it as JSON.
 export const HERMES_OUTPUTS = {
 	manifest: `${HERMES_DIR}/plugin.yaml`,
 	constants: `${HERMES_DIR}/constants.json`,

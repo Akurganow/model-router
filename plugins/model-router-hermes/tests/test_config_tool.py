@@ -5,7 +5,12 @@ from support import CONSTANTS, FakeCtx, UnreadableCtx, fake_api, good_settings, 
 
 TEXTS = CONSTANTS["texts"]
 LINES = TEXTS["lineBreak"]
-SECRETS = {"TYPESAFE_API_KEY": "typesafe-secret-one", "OPENROUTER_API_KEY": "openrouter-secret-2"}
+SECRETS = {
+    "TYPESAFE_API_KEY": "typesafe-secret-one",
+    "OPENAI_API_KEY": "openai-secret-three",
+    "GEMINI_API_KEY": "google-secret-four",
+    "OPENROUTER_API_KEY": "openrouter-secret-2",
+}
 
 
 def handler_for(settings=None, secrets=None, **api_overrides):
@@ -43,7 +48,7 @@ class ReadAllTest(unittest.TestCase):
         models = "\nsmall_model: unset\nmiddle_model: unset\nlarge_model: unset"
         gateways = "direct, auto, openrouter-first, openrouter"
         for stored, expected in (
-            ({"provider": "auto"}, "provider: auto (not valid: use one of typesafe)\ngateway: direct"),
+            ({"provider": "auto"}, "provider: auto (not valid: use one of typesafe, openai, google)\ngateway: direct"),
             ({"gateway": "fast"}, f"provider: typesafe\ngateway: fast (not valid: use one of {gateways})"),
         ):
             with self.subTest(stored):

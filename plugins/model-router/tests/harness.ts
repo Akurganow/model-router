@@ -79,6 +79,7 @@ type Request = {
 		method?: string;
 		headers?: {
 			Authorization?: string;
+			"x-goog-api-key"?: string;
 			"Content-Type"?: string;
 		};
 		body?: string;

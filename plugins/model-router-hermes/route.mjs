@@ -386,6 +386,7 @@ var isRecord = (v) => typeof v === "object" && v !== null;
 var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
 
 // src/core/scoring/formats/shared.ts
+var stateText = (state) => JSON.stringify(state);
 var questionMap = (parts) => Object.fromEntries(parts.map((p) => [p.key, p.question]));
 var count = (v) => typeof v === "number" ? v : null;
 var usageNamed = (input, output) => (usage) => {
@@ -429,6 +430,62 @@ var replyReader = (probabilitiesOf, usageOf) => (parts, text) => {
   return { answers: pairs, model, usage: usageOf(usage) };
 };
 
+// src/core/scoring/formats/gemini-decisions.ts
+var GEMINI_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    model,
+    input: stateText(state),
+    questions: questionMap(parts)
+  }),
+  read: replyReader(
+    mapAnswer,
+    usageNamed("total_input_tokens", "total_output_tokens")
+  )
+};
+
+// src/core/scoring/formats/openai-decisions.ts
+function listAnswer(answers, key) {
+  if (!Array.isArray(answers)) return void 0;
+  const [item, ...others] = answers.filter(isRecord).filter(({ name }) => name === key);
+  if (!item || others.length > 0) return void 0;
+  const { type, probabilities } = item;
+  if (type !== "score" || !Array.isArray(probabilities)) return void 0;
+  if (probabilities.length !== LEVELS.length) return void 0;
+  const byValue = /* @__PURE__ */ new Map();
+  for (const entry of probabilities) {
+    if (!isRecord(entry)) return void 0;
+    const { value, probability } = entry;
+    byValue.set(value, probability);
+  }
+  return levelProbabilities(byValue.get(0), byValue.get(1), byValue.get(2));
+}
+var OPENAI_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    model,
+    input: stateText(state),
+    questions: parts.map(({ key, question }) => ({
+      type: "score",
+      name: key,
+      instructions: question.instructions,
+      levels: question.criteria.map((description, index) => ({
+        label: String(index),
+        description
+      }))
+    }))
+  }),
+  read: replyReader(listAnswer, usageNamed("input_tokens", "output_tokens"))
+};
+
+// src/core/scoring/formats/openrouter-decisions.ts
+var OPENROUTER_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    state: stateText(state),
+    model,
+    questions: questionMap(parts)
+  }),
+  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
+};
+
 // src/core/scoring/formats/system-one.ts
 var SYSTEM_ONE = {
   body: (parts, state, model) => JSON.stringify({ state, model, questions: questionMap(parts) }),
@@ -437,6 +494,7 @@ var SYSTEM_ONE = {
 
 // src/core/scoring/endpoints.ts
 var BEARER = { name: "Authorization", prefix: "Bearer " };
+var GOOGLE_KEY = { name: "x-goog-api-key", prefix: "" };
 var JEV = "jev-latest";
 var ENDPOINTS = {
   typesafe: {
@@ -450,6 +508,34 @@ var ENDPOINTS = {
       url: "https://openrouter.ai/api/v1/systemone",
       format: SYSTEM_ONE,
       model: JEV,
+      keyHeader: BEARER
+    }
+  },
+  openai: {
+    direct: {
+      url: "https://api.openai.com/v1/decisions",
+      format: OPENAI_DECISIONS,
+      model: "gpt-6-luna",
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "openai/gpt-6-luna-decisions",
+      keyHeader: BEARER
+    }
+  },
+  google: {
+    direct: {
+      url: "https://generativelanguage.googleapis.com/v1beta/decisions",
+      format: GEMINI_DECISIONS,
+      model: "gemini-decision-1",
+      keyHeader: GOOGLE_KEY
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "google/gemini-decision-1",
       keyHeader: BEARER
     }
   }
@@ -780,7 +866,7 @@ function outcomeOf(decided, models, kept) {
 }
 
 // src/core/providers/provider.ts
-var MAKERS = ["typesafe"];
+var MAKERS = ["typesafe", "openai", "google"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
 var GATEWAYS = [
   "direct",
@@ -788,7 +874,7 @@ var GATEWAYS = [
   "openrouter-first",
   "openrouter"
 ];
-var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
+var FIRST_ATTEMPT_TIMEOUT_MS = 5e3;
 var GATEWAY_PATHS = {
   direct: ["direct"],
   auto: ["direct", "openrouter"],
@@ -823,7 +909,9 @@ var TEXTS = {
     about: "whose model scores subagent calls",
     question: "Which provider's model should score subagent calls?",
     consequences: {
-      typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to"
+      typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to",
+      openai: "OpenAI's decision model; costs more than Jev and its answers are not fitted",
+      google: "Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text"
     }
   },
   gateway: {

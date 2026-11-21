@@ -1,3 +1,5 @@
+import type { KEY_FIELDS, KeyHolder } from "#core/providers/provider.ts";
+
 // The mods API and hook types this adapter uses. The bundle must not depend on the generated declarations.
 type Timer = { cancel(): void };
 // The most routed efforts the adapter keeps for finished subagents. The least recently used goes first.
@@ -132,8 +134,8 @@ export type On = {
 	): { catch(handler: Hook<unknown>): unknown };
 };
 export type Options = {
-	readonly api_key?: unknown;
-	readonly openrouter_api_key?: unknown;
+	readonly [Field in (typeof KEY_FIELDS)[KeyHolder]]?: unknown;
+} & {
 	readonly provider?: unknown;
 	readonly gateway?: unknown;
 	readonly scope?: unknown;

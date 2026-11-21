@@ -151,7 +151,7 @@ every commit as a [conventional commit](#commits).
 - `docs/clients.md` states how each client loads a package, and the wiki's evidence pages hold the evidence.
   `docs/design.md` gives the reasons for the generated copies, the single
   version and the CI checks.
-  `docs/providers.md` holds what the four plugins do the same way when they ask Jev.
+  `docs/providers.md` holds what the four plugins do the same way when they ask the scoring model.
 - `evals/` and `scripts/evals.ts` run real clients against the plugins.
 - `.agents/skills/` holds the project skills of the agents that work in this
   repository, and `.claude/skills` is a symbolic link to it.

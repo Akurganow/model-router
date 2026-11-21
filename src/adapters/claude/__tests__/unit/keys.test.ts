@@ -3,7 +3,11 @@ import { test } from "node:test";
 import { recordingEngine } from "#adapters/claude/__tests__/support/fakes.ts";
 import type { Engine, Options } from "#adapters/claude/host.ts";
 import { readKeys } from "#adapters/claude/keys.ts";
-import { type Choice, KEY_VARIABLES } from "#core/providers/provider.ts";
+import {
+	type Choice,
+	KEY_VARIABLES,
+	MAKERS,
+} from "#core/providers/provider.ts";
 
 const choice = (gateway: Choice["gateway"]): Choice => ({
 	provider: "typesafe",
@@ -11,10 +15,15 @@ const choice = (gateway: Choice["gateway"]): Choice => ({
 });
 
 // The host needs a literal name in each $.env.get call, so claude/keys.ts cannot read the table.
+// One choice asks the key holders of its maker and OpenRouter, so the choices of every maker together hold them all.
 test("the key variables read by name are the ones in the provider table", async () => {
 	const { engine, reads } = recordingEngine(() => undefined);
-	await readKeys(engine, {} as Options, choice("auto"));
-	assert.deepEqual(reads.sort(), Object.values(KEY_VARIABLES).sort());
+	for (const provider of MAKERS)
+		await readKeys(engine, {} as Options, { provider, gateway: "auto" });
+	assert.deepEqual(
+		[...new Set(reads)].sort(),
+		Object.values(KEY_VARIABLES).sort(),
+	);
 });
 
 const engineWith = (variable: unknown) =>

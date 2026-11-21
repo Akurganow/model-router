@@ -77,7 +77,7 @@ function spawnLine(api: OpenClawApi, signal: AbortSignal): SpawnLine {
 	};
 }
 
-// Jev is asked once for both parts. The picked levels come back as a line and the slot to set.
+// The scoring model is asked once for both parts. The picked levels come back as a line and the slot to set.
 async function score({ deps, signal }: Spawn, { keys }: State, gate: Route) {
 	return scoreWork({
 		state: routingState({

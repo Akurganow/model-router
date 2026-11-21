@@ -88,7 +88,7 @@ function scoreItem(
 const skipped = (reason: string): Stored => ({ line: skippedLine(reason) });
 
 /**
- * Returns the stored entry for the levels Jev decided: the level, the
+ * Returns the stored entry for the levels the scoring model decided: the level, the
  * ladder's effort and the routing line, which names the picked slot's role or
  * the slot's state when it has none. The line shows
  * the effort the batch's facts allow, before the spawn's patterns are known.

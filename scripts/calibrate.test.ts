@@ -110,7 +110,11 @@ function typing(...chunks: string[]) {
 		resume() {},
 		pause() {},
 	});
-	const key = readKey(stdin as unknown as NodeJS.ReadStream, "openrouter");
+	const key = readKey(
+		stdin as unknown as NodeJS.ReadStream,
+		"openrouter",
+		"https://openrouter.ai/api/v1/systemone",
+	);
 	for (const chunk of chunks) stdin.emit("data", chunk);
 	return { key, stdin };
 }
@@ -128,7 +132,7 @@ afterEach(() => mock.restoreAll());
 
 test("a key piped on stdin is read and trimmed", async () => {
 	assert.equal(
-		await readKey(piped("  secret-key\n"), "typesafe"),
+		await readKey(piped("  secret-key\n"), "typesafe", "https://example.test"),
 		"secret-key",
 	);
 });
@@ -140,7 +144,7 @@ test("a typed key ends at enter, and backspace removes a character", async () =>
 	assert.deepEqual(stdin.raw, [true, false]);
 	assert.match(
 		out.join(""),
-		/OpenRouter API key for https:\/\/openrouter\.ai\/api\/v1\/systemone: /,
+		/openrouter API key for https:\/\/openrouter\.ai\/api\/v1\/systemone: /,
 	);
 });
 

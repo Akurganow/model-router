@@ -64,9 +64,11 @@ const isOwner = (ctx: CommandContext): boolean => ctx.senderIsOwner === true;
  * Writes one setting to the live config and returns its value line, or the
  * unchanged line with the error message when the write fails. Never rejects. The
  * write asserts that the owner is still current when the context offers the
- * check. "auto" is the only policy that publishes the write to the runtime
- * snapshot `config.current()` returns, so the next spawn sees the value. "none"
- * skips that, and "restart" would drop the gateway for a setting.
+ * check. The write makes OpenClaw replace the plugin's runtime instance. The old
+ * instance serves every call until the replacement applies, and its
+ * `config.current()` returns the old config. "auto" is the only policy that
+ * publishes the write to the replacement. "none" skips that, and "restart" would
+ * drop the gateway for a setting.
  */
 async function write(
 	api: OpenClawApi,

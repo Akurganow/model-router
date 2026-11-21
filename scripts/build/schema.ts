@@ -28,7 +28,7 @@ export type Schema = {
 	readonly type?: string;
 	readonly properties?: Readonly<Record<string, Schema>>;
 	readonly required?: readonly string[];
-	readonly additionalProperties?: boolean;
+	readonly additionalProperties?: boolean | Schema;
 	readonly items?: Schema;
 	readonly minItems?: number;
 	readonly minLength?: number;
@@ -56,9 +56,9 @@ export function validate(schema: Schema, value: unknown): string[] {
 }
 
 /**
- * Throws on a keyword next to $ref and on an additionalProperties that is not a
- * boolean. A malformed schema is the author's error, so it is not listed as a
- * data problem.
+ * Throws on a keyword next to $ref and on an additionalProperties that is
+ * neither a boolean nor a schema. A malformed schema is the author's error, so
+ * it is not listed as a data problem.
  */
 function refuseMalformed(schema: Schema, path: string): void {
 	if (schema.$ref !== undefined)
@@ -69,10 +69,11 @@ function refuseMalformed(schema: Schema, path: string): void {
 				);
 	if (
 		schema.additionalProperties !== undefined &&
-		typeof schema.additionalProperties !== "boolean"
+		typeof schema.additionalProperties !== "boolean" &&
+		kindOf(schema.additionalProperties) !== "object"
 	)
 		throw new Error(
-			`${path}: schema keyword additionalProperties must be a boolean`,
+			`${path}: schema keyword additionalProperties must be a boolean or a schema`,
 		);
 }
 
@@ -154,8 +155,9 @@ function checkArray(
 }
 
 /**
- * Lists each missing required key, checks each known key, and lists an unknown
- * key when additionalProperties is false.
+ * Lists each missing required key and checks each known key. An unknown key is
+ * listed when additionalProperties is false, and checked against it when it is
+ * a schema.
  */
 function checkObject(
 	walk: Walk,
@@ -171,5 +173,7 @@ function checkObject(
 		if (known !== undefined) check(walk, known, `${path}.${key}`, member);
 		else if (additionalProperties === false)
 			walk.problems.push(`${path}.${key}: unknown key`);
+		else if (typeof additionalProperties === "object")
+			check(walk, additionalProperties, `${path}.${key}`, member);
 	}
 }
