@@ -36,7 +36,7 @@ For each path the [`gateway` setting](#provider-and-gateway) allows, the plugin 
 - The direct path, TypeSafe: omp's stored `typesafe` credential, which `/login typesafe` stores, then the `TYPESAFE_API_KEY` environment variable.
 - The gateway path, OpenRouter: omp's stored `openrouter` credential, then the `OPENROUTER_API_KEY` environment variable.
 
-A key counts as set when either place holds a non-empty value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key.
+A key counts as set when either place holds a non-blank value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key.
 
 Add a key in one of two ways:
 
@@ -57,7 +57,7 @@ A setting that holds a value outside its list is not valid, and the plugin route
 
 ### What a project can change
 
-A project's plugin settings never change the provider: the plugin applies no project `provider` value. A project may only narrow `gateway`, from a global `auto` or `openrouter-first` to `direct` or `openrouter`. It drops one path and never adds one. The plugin ignores any other valid project `gateway` and uses the global one.
+A project's plugin settings never change the provider: the plugin ignores a valid project `provider` value. A project may only narrow `gateway`, from a global `auto` or `openrouter-first` to `direct` or `openrouter`. It drops one path and never adds one. The plugin ignores any other valid project `gateway` and uses the global one.
 
 omp merges a project's override file, `<project>/.omp/plugin-overrides.json`, into the settings it hands the plugin. The plugin never opens that file. A project value outside its setting's list is not valid. So a project file that still sets `provider` to `auto`, `openrouter-first` or `openrouter` skips every task of that project with `provider not valid: run setup`. Delete a `provider` of `auto` or `openrouter-first`. Replace `provider: openrouter` with `gateway: openrouter`, which narrows only a global `auto` or `openrouter-first`.
 
@@ -103,7 +103,7 @@ Three commands show or change an option:
 
 The `model_router_config` tool takes one optional input, `setting`: `provider`, `gateway` or `scope`. The tool loads as essential and omp treats it as a write tool.
 
-- **No setting:** the tool returns the `provider` line, the `gateway` line, the `scope` line and the key lines. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show.
+- **No setting:** the tool returns the `provider` line, the `gateway` line, the `scope` line and the key lines. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid.
 
   ```text
   provider: typesafe
@@ -113,12 +113,12 @@ The `model_router_config` tool takes one optional input, `setting`: `provider`, 
   openrouter key: unset
   ```
 
-- **`provider`, `gateway` or `scope`:** the plugin asks you in its own dialog. The current value comes first, and each choice carries a one-line consequence. The plugin writes only the value you pick.
+- **`provider`, `gateway` or `scope`:** the plugin asks you in its own dialog. The current value comes first while it is valid, and each choice carries a one-line consequence. The plugin writes only the value you pick.
 
 The tool asks the person. It never takes a value from the model. Nothing is written when:
 
 - the dialog is dismissed or you answer with free text;
-- the value is unchanged;
+- your global setting already holds the value;
 - omp has no UI.
 
 The tool writes the global plugin settings only. It checks the value first, because omp does not. Its result text equals the commands' text for the same outcome.
@@ -293,7 +293,7 @@ The plugin writes nothing else and starts no program.
 
 ## What leaves the machine
 
-For each routed item, the plugin sends an HTTPS POST to the first path of the `gateway` setting:
+For each routed item, the plugin sends an HTTPS POST to the first path of the `gateway` setting that has a key:
 
 - TypeSafe, on the direct path: `https://api.typesafe.ai/v1/systemone`, with your TypeSafe key as a bearer token.
 - OpenRouter, on the gateway path: `https://openrouter.ai/api/v1/systemone`, with your OpenRouter key as a bearer token.

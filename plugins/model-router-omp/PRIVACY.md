@@ -26,7 +26,7 @@ setting decides which companies receive the task text and their keys:
 | `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
 
-With both keys under `auto` or `openrouter-first`, one item may reach both companies.
+A path with no key is left out. With both keys under `auto` or `openrouter-first`, one item may reach both companies.
 
 A setting that is not valid sends nothing, as
 [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)

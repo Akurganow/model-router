@@ -45,14 +45,14 @@ Find out which of these already hold, with the `model_router_config` tool and om
 - A key line reads `typesafe key: set` or `typesafe key: unset` for the direct path, and `openrouter key: set` or `openrouter key: unset` for the gateway path.
 - The `gateway` line names the paths of its value: `gateway: direct (typesafe)`, `gateway: auto (typesafe, then openrouter)`, `gateway: openrouter-first (openrouter, then typesafe)` or `gateway: openrouter (openrouter)`.
 - A stored value outside its setting's list is not valid. The plugin then routes no task, and each task skips with `<setting> not valid: run setup`.
-- The tool prints `<setting>: <stored text> (not valid: use one of <values>)` for that setting, then each valid setting as `<setting>: <value>`. The gateway line names nobody, and no key line prints.
+- The tool prints `<setting>: <stored text> (not valid: use one of <values>)` for that setting, and each valid setting as `<setting>: <value>`, in the usual order. The gateway line names nobody, and no key line prints.
 - omp passes a stored value on as stored, so the skip line shows in omp, as [omp manifest and settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#omp-manifest-and-settings) says.
 - The tool takes one optional input, `setting`: `provider`, `gateway` or `scope`.
 - With `provider`, `gateway` or `scope`, the plugin asks the person in its own dialog and writes the value the person picks. The tool takes no value from the agent.
-- A call that picks the current value returns `<setting> unchanged: already <value>`.
+- A call that picks a value the global setting already holds, with no project value in the way, returns `<setting> unchanged: already <value>`.
 - A call with no dialog answer returns `<setting> unchanged: no answer from the dialog`. It appears when omp has no UI too. The person can type `/model-router:provider <value>`, `/model-router:gateway <value>` or `/model-router:scope <value>` instead.
 - The tool writes the global plugin settings only. When a project value wins, the output adds `A project value for <setting> overrides it.`
-- A project never changes `provider`. A project may only narrow `gateway`, from `auto` or `openrouter-first` to `direct` or `openrouter`. A project may set `scope` to either value, and it overrides the global one. A project value outside its list is not valid, and its tasks skip with `<setting> not valid: run setup`.
+- A project never changes `provider`: the plugin ignores a valid project value. A project may only narrow `gateway`, from `auto` or `openrouter-first` to `direct` or `openrouter`. A project may set `scope` to either value, and it overrides the global one. A project value outside its list is not valid, and its tasks skip with `<setting> not valid: run setup`.
 - The plugin reads the settings on every batch, so a change reaches the next batch with no reload.
 
 ### Provider and gateway
@@ -83,8 +83,8 @@ To move a retired value, follow these steps in order:
    - The check comes first, because after the global pair is set, a project's `provider: typesafe` no longer keeps OpenRouter out.
    1. Look for `<project>/.omp/plugin-overrides.json` in the current project, and read it if it exists.
    2. If it sets `provider`, tell the person that this `provider` narrows nothing, and what to do with that line:
-      - `typesafe`: replace the line with `gateway: direct`. It kept OpenRouter out, and no line shows that it stopped.
-      - `openrouter`: replace the line with `gateway: openrouter`.
+      - `typesafe`: replace the line with `gateway: direct`. It kept OpenRouter out, and no line shows that it stopped. The new line narrows only a global `auto` or `openrouter-first`.
+      - `openrouter`: replace the line with `gateway: openrouter`. It narrows only a global `auto` or `openrouter-first`.
       - `auto` or `openrouter-first`: delete the line. It changed nothing before, and now it skips every task of that project with `provider not valid: run setup`.
    3. Tell the person to check the other projects' override files before setting the global pair.
       - The plugin reads none of them.
@@ -106,7 +106,7 @@ To move a retired value, follow these steps in order:
 
 - The direct path, TypeSafe: omp's stored `typesafe` credential, which `/login typesafe` stores, then the `TYPESAFE_API_KEY` environment variable.
 - The gateway path, OpenRouter: omp's stored `openrouter` credential, which `/login openrouter` stores, then the `OPENROUTER_API_KEY` environment variable.
-- A key counts as set when either place holds a non-empty value.
+- A key counts as set when either place holds a non-blank value.
 - A key variable reaches the environment of every process omp starts.
 - The person adds a key with `/login typesafe` or `/login openrouter`, or with `omp login <provider>` outside a session. The plugin never asks for a key.
 - With no key for any path the `gateway` setting allows, every call skips with `key unset`.
@@ -134,7 +134,7 @@ To move a retired value, follow these steps in order:
 
 ### Reasons routing is off
 
-A closed gate skips every item with the same reason:
+A closed gate skips every item the scope covers with the same reason:
 
 - `tool call timeout <n> ms leaves <m> ms to route`: omp's tool call timeout leaves under 1 s to score. Set `extensionHandlers.toolCallTimeoutMs` to 3000 or more.
 - `settings unreadable`: the plugin cannot read its settings, omp's model roles, task model overrides or disabled agents.
