@@ -262,9 +262,9 @@ function withPluginSetting(draft, setting, value) {
 function sources(live, pluginConfig) {
   return [pluginEntry(live)?.config, pluginConfig].filter(isRecord);
 }
-function firstValid(from, field, parse2) {
+function firstValid(from, field, parse) {
   for (const settings of from) {
-    const parsed = parse2(settings[field]);
+    const parsed = parse(settings[field]);
     if (parsed !== void 0) return parsed;
   }
   return void 0;
@@ -710,8 +710,24 @@ function fallsBack(failure2) {
   }
 }
 
-// src/core/scoring/formats/system-one.ts
+// src/core/scoring/formats/shared.ts
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return void 0;
+  }
+}
+var questionMap = (parts) => Object.fromEntries(parts.map((p) => [p.key, p.question]));
+var count = (v) => typeof v === "number" ? v : null;
+var usageNamed = (input, output) => (usage) => {
+  if (!isRecord(usage)) return void 0;
+  return {
+    input_tokens: count(usage[input]),
+    output_tokens: count(usage[output])
+  };
+};
 function parseProbabilities(answers, key) {
   const a = isRecord(answers) ? answers[key] : void 0;
   if (!isRecord(a)) return void 0;
@@ -723,24 +739,8 @@ function parseProbabilities(answers, key) {
     return void 0;
   return { 0: p0, 1: p1, 2: p2 };
 }
-function parse(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return void 0;
-  }
-}
-var count = (v) => typeof v === "number" ? v : null;
-function usageOf(usage) {
-  if (!isRecord(usage)) return void 0;
-  const { input_tokens, output_tokens } = usage;
-  return {
-    input_tokens: count(input_tokens),
-    output_tokens: count(output_tokens)
-  };
-}
-function read(parts, text) {
-  const reply = parse(text);
+function readScoreMap(parts, text, usageOf2) {
+  const reply = parseJson(text);
   const { answers, model, usage } = isRecord(reply) ? reply : {};
   const pairs = [];
   for (const part of parts) {
@@ -748,15 +748,14 @@ function read(parts, text) {
     if (!probabilities) return MALFORMED;
     pairs.push([part, probabilities]);
   }
-  return { answers: pairs, model, usage: usageOf(usage) };
+  return { answers: pairs, model, usage: usageOf2(usage) };
 }
+
+// src/core/scoring/formats/system-one.ts
+var usageOf = usageNamed("input_tokens", "output_tokens");
 var SYSTEM_ONE = {
-  body: (parts, state, model) => JSON.stringify({
-    state,
-    model,
-    questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
-  }),
-  read
+  body: (parts, state, model) => JSON.stringify({ state, model, questions: questionMap(parts) }),
+  read: (parts, text) => readScoreMap(parts, text, usageOf)
 };
 
 // src/core/scoring/endpoints.ts
@@ -917,12 +916,12 @@ async function askOnce(input, attempt) {
   if (isFailure(received)) return received;
   if (!isSuccess(received.status))
     return { failure: "status", status: received.status };
-  const read2 = format.read(parts, received.text);
-  if (isFailure(read2)) return read2;
+  const read = format.read(parts, received.text);
+  if (isFailure(read)) return read;
   return {
-    answers: read2.answers,
-    model: cleanModel(read2.model),
-    usage: read2.usage
+    answers: read.answers,
+    model: cleanModel(read.model),
+    usage: read.usage
   };
 }
 async function ask(input, attempt) {
