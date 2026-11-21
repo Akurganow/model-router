@@ -51,7 +51,7 @@ class ReadTest(unittest.TestCase):
     def test_a_command_prints_its_own_line_while_a_setting_is_not_valid(self):
         _, handler = command(good_settings(provider="auto"), name=PROVIDER)
         self.assertEqual(
-            handler("", platform="local"), "provider: auto (not valid: use one of typesafe)"
+            handler("", platform="local"), "provider: auto (not valid: use one of typesafe, openai)"
         )
 
 
@@ -148,12 +148,12 @@ class RegistrationTest(unittest.TestCase):
         ctx = FakeCtx(good_settings())
         for index in (0, 1):
             submodule("config_command").register_command(ctx, index)
-        provider = "Shows or changes whose model scores subagent calls: typesafe."
+        provider = "Shows or changes whose model scores subagent calls: typesafe, openai."
         gateway = "Shows or changes how OpenRouter is used for the provider: "
         self.assertEqual(
             [(e["name"], e["description"], e["args_hint"]) for e in ctx.commands],
             [
-                ("model-router-provider", provider, "<typesafe>"),
+                ("model-router-provider", provider, "<typesafe|openai>"),
                 (
                     "model-router-gateway",
                     gateway + "direct, auto, openrouter-first, openrouter.",

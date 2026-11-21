@@ -1,5 +1,7 @@
 import type { Attempt, Maker, Path } from "#core/providers/provider.ts";
 import type { Format } from "./formats/format.ts";
+import { OPENAI_DECISIONS } from "./formats/openai-decisions.ts";
+import { OPENROUTER_DECISIONS } from "./formats/openrouter-decisions.ts";
 import { SYSTEM_ONE } from "./formats/system-one.ts";
 
 type KeyHeader = { readonly name: string; readonly prefix: string };
@@ -31,6 +33,20 @@ export const ENDPOINTS: Readonly<
 			url: "https://openrouter.ai/api/v1/systemone",
 			format: SYSTEM_ONE,
 			model: JEV,
+			keyHeader: BEARER,
+		},
+	},
+	openai: {
+		direct: {
+			url: "https://api.openai.com/v1/decisions",
+			format: OPENAI_DECISIONS,
+			model: "gpt-6-luna",
+			keyHeader: BEARER,
+		},
+		openrouter: {
+			url: "https://openrouter.ai/api/alpha/decisions",
+			format: OPENROUTER_DECISIONS,
+			model: "openai/gpt-6-luna-decisions",
 			keyHeader: BEARER,
 		},
 	},

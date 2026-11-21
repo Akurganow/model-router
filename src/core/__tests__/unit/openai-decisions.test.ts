@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { STATE, TIER, WORK } from "#core/__tests__/support/format-inputs.ts";
+import { OPENAI_REPLY as REPLY } from "#core/__tests__/support/replies.ts";
 import { OPENAI_DECISIONS } from "#core/scoring/formats/openai-decisions.ts";
 
-const REPLY = `{"model":"gpt-6-luna","answers":[{"type":"score","name":"tier","score":1.88,"probabilities":[{"value":0,"label":"0","probability":0.02},{"value":1,"label":"1","probability":0.08},{"value":2,"label":"2","probability":0.9}],"confidence":0.82},{"type":"score","name":"work","score":0.48,"probabilities":[{"value":0,"label":"0","probability":0.56},{"value":1,"label":"1","probability":0.4},{"value":2,"label":"2","probability":0.04}],"confidence":0.28}],"usage":{"input_tokens":506,"input_tokens_details":{"cached_tokens":0,"cache_write_tokens":0},"output_tokens":0,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":506}}`;
 const ANSWERS = [
 	[TIER, { 0: 0.02, 1: 0.08, 2: 0.9 }],
 	[WORK, { 0: 0.56, 1: 0.4, 2: 0.04 }],

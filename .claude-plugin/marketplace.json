@@ -1,6 +1,6 @@
 {
 	"name": "model-router",
 	"owner": { "name": "Akurganow" },
-	"description": "Routes each Claude Code subagent to a Claude model and effort that fits its task, judged by Jev. On every Agent call it sends the subagent's task text, condensed to at most 12,000 characters, the agent's description and the call's one-line description, all with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its gateway option allows, each with its own key. The built-in general-purpose and claude agents send a fixed text in place of their description.",
+	"description": "Routes each Claude Code subagent to a Claude model and effort that fits its task, judged by Jev or the decision model the provider option names. On every Agent call it sends the subagent's task text, condensed to at most 12,000 characters, the agent's description and the call's one-line description, all with token-shaped strings such as keys masked, to the provider's own API (api.typesafe.ai or api.openai.com), to openrouter.ai or to both, as its provider and gateway options allow, each with its own key. The built-in general-purpose and claude agents send a fixed text in place of their description.",
 	"plugins": [{ "name": "model-router", "source": "./plugins/model-router" }]
 }

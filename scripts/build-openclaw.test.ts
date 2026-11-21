@@ -44,7 +44,7 @@ test("the manifest names the plugin, its version, its tool and its skills", () =
 	assert.deepEqual(manifest.skills, source.openclaw.skills);
 });
 
-test("the config schema holds the eight settings and refuses any other key", () => {
+test("the config schema holds the nine settings and refuses any other key", () => {
 	assert.equal(schema.additionalProperties, false);
 	assert.deepEqual(Object.keys(schema.properties ?? {}), [
 		"provider",
@@ -54,6 +54,7 @@ test("the config schema holds the eight settings and refuses any other key", () 
 		"middle_model",
 		"large_model",
 		"api_key",
+		"openai_api_key",
 		"openrouter_api_key",
 	]);
 });

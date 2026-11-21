@@ -43,6 +43,8 @@ const TEXTS: Readonly<Record<ValueSetting, ValueText>> = {
 		consequences: {
 			typesafe:
 				"Jev from TypeSafe, the model the plugin's questions are fitted to",
+			openai:
+				"OpenAI's decision model; costs more than Jev and its answers are not fitted",
 		},
 	},
 	gateway: {

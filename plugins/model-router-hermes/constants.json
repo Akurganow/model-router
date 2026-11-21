@@ -7,28 +7,31 @@
 	],
 	"keyVariables": {
 		"typesafe": "TYPESAFE_API_KEY",
+		"openai": "OPENAI_API_KEY",
 		"openrouter": "OPENROUTER_API_KEY"
 	},
 	"settings": [
 		{
 			"name": "provider",
-			"values": ["typesafe"],
+			"values": ["typesafe", "openai"],
 			"default": "typesafe",
 			"skip": "model-router skipped, provider not valid: run setup",
-			"notValid": "provider: {stored} (not valid: use one of typesafe)",
+			"notValid": "provider: {stored} (not valid: use one of typesafe, openai)",
 			"valueLines": {
-				"typesafe": "provider: typesafe"
+				"typesafe": "provider: typesafe",
+				"openai": "provider: openai"
 			},
-			"useOneOf": "provider: use one of typesafe",
+			"useOneOf": "provider: use one of typesafe, openai",
 			"already": {
-				"typesafe": "provider unchanged: already typesafe"
+				"typesafe": "provider unchanged: already typesafe",
+				"openai": "provider unchanged: already openai"
 			},
 			"unchanged": "provider unchanged: ",
 			"refused": "provider unchanged: only a local session can change it",
 			"command": {
 				"name": "model-router-provider",
-				"description": "Shows or changes whose model scores subagent calls: typesafe.",
-				"argsHint": "<typesafe>"
+				"description": "Shows or changes whose model scores subagent calls: typesafe, openai.",
+				"argsHint": "<typesafe|openai>"
 			}
 		},
 		{
@@ -82,6 +85,27 @@
 			"openrouter": {
 				"holders": ["openrouter"],
 				"lines": ["provider: typesafe", "gateway: openrouter (openrouter)"]
+			}
+		},
+		"openai": {
+			"direct": {
+				"holders": ["openai"],
+				"lines": ["provider: openai", "gateway: direct (openai)"]
+			},
+			"auto": {
+				"holders": ["openai", "openrouter"],
+				"lines": ["provider: openai", "gateway: auto (openai, then openrouter)"]
+			},
+			"openrouter-first": {
+				"holders": ["openrouter", "openai"],
+				"lines": [
+					"provider: openai",
+					"gateway: openrouter-first (openrouter, then openai)"
+				]
+			},
+			"openrouter": {
+				"holders": ["openrouter"],
+				"lines": ["provider: openai", "gateway: openrouter (openrouter)"]
 			}
 		}
 	},
@@ -143,6 +167,10 @@
 			"typesafe": {
 				"set": "typesafe key: set",
 				"unset": "typesafe key: unset"
+			},
+			"openai": {
+				"set": "openai key: set",
+				"unset": "openai key: unset"
 			},
 			"openrouter": {
 				"set": "openrouter key: set",

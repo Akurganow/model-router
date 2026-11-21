@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+	OPENAI_REPLY,
+	OPENROUTER_REPLY,
 	scoringReply,
 	systemOneAnswer,
 } from "#core/__tests__/support/replies.ts";
@@ -118,4 +120,58 @@ test("scoreWork asks for the tier and work questions and reads both levels", asy
 test("scoreWork returns a bad reply for a reply without the work part", async () => {
 	const { result } = await scoreAgainst(systemOneAnswer(2));
 	assert.deepEqual(result, { skipped: "bad reply" });
+});
+
+const KEYS = { openai: "test-openai-key", openrouter: "test-openrouter-key" };
+const OPENAI_URL = "https://api.openai.com/v1/decisions";
+
+const scoreOpenAI = (
+	gateway: "direct" | "auto" | "openrouter",
+	reply: (url: string) => Response,
+) =>
+	scoreWork({
+		state: STATE,
+		attempts: plan({ provider: "openai", gateway }, KEYS),
+		fetchFn: async (url) => reply(url),
+		clock: realClock,
+		signal: new AbortController().signal,
+	});
+
+test("scoreWork under openai direct shows the openai holder, the model and the counts", async () => {
+	assert.deepEqual(
+		await scoreOpenAI("direct", () => scoringReply(200, OPENAI_REPLY)),
+		{
+			tier: 2,
+			work: 1,
+			probabilities: "0.90/0.40",
+			suffix: " · openai gpt-6-luna · 506/0 tok",
+		},
+	);
+});
+
+test("scoreWork under openai through OpenRouter shows the openrouter holder", async () => {
+	assert.deepEqual(
+		await scoreOpenAI("openrouter", () => scoringReply(200, OPENROUTER_REPLY)),
+		{
+			tier: 2,
+			work: 1,
+			probabilities: "0.95/0.43",
+			suffix: " · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok",
+		},
+	);
+});
+
+test("scoreWork under openai and auto names OpenAI's HTTP 429 after OpenRouter answers", async () => {
+	assert.deepEqual(
+		await scoreOpenAI("auto", (url) =>
+			scoringReply(url === OPENAI_URL ? 429 : 200, OPENROUTER_REPLY),
+		),
+		{
+			tier: 2,
+			work: 1,
+			probabilities: "0.95/0.43",
+			suffix:
+				" · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429",
+		},
+	);
 });

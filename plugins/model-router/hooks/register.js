@@ -11,7 +11,7 @@ var notValid = (setting) => `${setting} not valid: run setup`;
 var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
 
 // src/core/providers/provider.ts
-var MAKERS = ["typesafe"];
+var MAKERS = ["typesafe", "openai"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
 var GATEWAYS = [
   "direct",
@@ -21,6 +21,7 @@ var GATEWAYS = [
 ];
 var KEY_FIELDS = {
   typesafe: "api_key",
+  openai: "openai_api_key",
   openrouter: "openrouter_api_key"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 5e3;
@@ -72,7 +73,8 @@ var TEXTS = {
     about: "whose model scores subagent calls",
     question: "Which provider's model should score subagent calls?",
     consequences: {
-      typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to"
+      typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to",
+      openai: "OpenAI's decision model; costs more than Jev and its answers are not fitted"
     }
   },
   gateway: {
@@ -222,6 +224,8 @@ function keyVariable($, holder) {
   switch (holder) {
     case "typesafe":
       return $.env.get("TYPESAFE_API_KEY");
+    case "openai":
+      return $.env.get("OPENAI_API_KEY");
     case "openrouter":
       return $.env.get("OPENROUTER_API_KEY");
   }
@@ -604,6 +608,9 @@ var work = {
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
 
+// src/utils/guards.ts
+var isRecord = (v) => typeof v === "object" && v !== null;
+
 // src/core/scoring/failure.ts
 var ABORTED = { failure: "aborted" };
 var TIMED_OUT = { failure: "timed out" };
@@ -653,10 +660,8 @@ function fallsBack(failure) {
   }
 }
 
-// src/utils/guards.ts
-var isRecord = (v) => typeof v === "object" && v !== null;
-
 // src/core/scoring/formats/shared.ts
+var stateText = (state) => JSON.stringify(state);
 var questionMap = (parts) => Object.fromEntries(parts.map((p) => [p.key, p.question]));
 var count = (v) => typeof v === "number" ? v : null;
 var usageNamed = (input, output) => (usage) => {
@@ -700,6 +705,49 @@ var replyReader = (probabilitiesOf, usageOf) => (parts, text) => {
   return { answers: pairs, model, usage: usageOf(usage) };
 };
 
+// src/core/scoring/formats/openai-decisions.ts
+function listAnswer(answers, key) {
+  if (!Array.isArray(answers)) return void 0;
+  const [item, ...others] = answers.filter(isRecord).filter(({ name }) => name === key);
+  if (!item || others.length > 0) return void 0;
+  const { type, probabilities } = item;
+  if (type !== "score" || !Array.isArray(probabilities)) return void 0;
+  if (probabilities.length !== LEVELS.length) return void 0;
+  const byValue = /* @__PURE__ */ new Map();
+  for (const entry of probabilities) {
+    if (!isRecord(entry)) return void 0;
+    const { value, probability } = entry;
+    byValue.set(value, probability);
+  }
+  return levelProbabilities(byValue.get(0), byValue.get(1), byValue.get(2));
+}
+var OPENAI_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    model,
+    input: stateText(state),
+    questions: parts.map(({ key, question }) => ({
+      type: "score",
+      name: key,
+      instructions: question.instructions,
+      levels: question.criteria.map((description, index) => ({
+        label: String(index),
+        description
+      }))
+    }))
+  }),
+  read: replyReader(listAnswer, usageNamed("input_tokens", "output_tokens"))
+};
+
+// src/core/scoring/formats/openrouter-decisions.ts
+var OPENROUTER_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    state: stateText(state),
+    model,
+    questions: questionMap(parts)
+  }),
+  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
+};
+
 // src/core/scoring/formats/system-one.ts
 var SYSTEM_ONE = {
   body: (parts, state, model) => JSON.stringify({ state, model, questions: questionMap(parts) }),
@@ -721,6 +769,20 @@ var ENDPOINTS = {
       url: "https://openrouter.ai/api/v1/systemone",
       format: SYSTEM_ONE,
       model: JEV,
+      keyHeader: BEARER
+    }
+  },
+  openai: {
+    direct: {
+      url: "https://api.openai.com/v1/decisions",
+      format: OPENAI_DECISIONS,
+      model: "gpt-6-luna",
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "openai/gpt-6-luna-decisions",
       keyHeader: BEARER
     }
   }

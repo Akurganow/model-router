@@ -237,6 +237,22 @@ test("an empty or non-string key is ignored and the variable applies", () => {
 		);
 });
 
+test("a blank, spaces or null openai key is unset and the variable stands in", () => {
+	const openai: Choice = { provider: "openai", gateway: "direct" };
+	for (const bad of ["", "   ", null]) {
+		assert.deepEqual(
+			readKeys(live({ openai_api_key: bad }), undefined, openai, {
+				OPENAI_API_KEY: "env-oa-key",
+			}),
+			{ openai: "env-oa-key" },
+		);
+		assert.deepEqual(
+			readKeys(live({ openai_api_key: bad }), undefined, openai, {}),
+			{},
+		);
+	}
+});
+
 test("a SecretRef in the live config yields to the resolved key in the plugin config", () => {
 	const ref = { source: "env", provider: "default", id: "TYPESAFE_API_KEY" };
 	assert.deepEqual(

@@ -3,10 +3,32 @@ import { callOnce } from "./harness.ts";
 
 const VARIABLE_KEY = "typesafe-var-key";
 const OPENROUTER_VARIABLE_KEY = "openrouter-var-key";
+const OPENAI_VARIABLE_KEY = "openai-var-key";
 const TYPESAFE_URL = "https://api.typesafe.ai/v1/systemone";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/systemone";
+const OPENAI_URL = "https://api.openai.com/v1/decisions";
+
+// OpenAI's own API answers a list of answers; the harness's default reply is System One's map.
+const level = (value: number, probability: number) => ({ value, probability });
+const OPENAI_ANSWER = JSON.stringify({
+	model: "gpt-6-luna",
+	answers: [
+		{
+			type: "score",
+			name: "tier",
+			probabilities: [level(0, 0.9), level(1, 0.1), level(2, 0)],
+		},
+		{
+			type: "score",
+			name: "work",
+			probabilities: [level(0, 0.2), level(1, 0.6), level(2, 0.2)],
+		},
+	],
+	usage: { input_tokens: 1, output_tokens: 1 },
+});
 
 // The last column is the key the request carries, or null when the call passes through unrouted.
+// The address and the reply follow the provider and the gateway the options set.
 for (const [name, options, env, key] of [
 	["a missing key passes through and says so", {}, {}, null],
 	["an empty key passes through like a missing one", { api_key: "" }, {}, null],
@@ -58,9 +80,27 @@ for (const [name, options, env, key] of [
 		{ OPENROUTER_API_KEY: OPENROUTER_VARIABLE_KEY },
 		"openrouter-option-key",
 	],
+	[
+		"the OpenAI option is the key under provider openai",
+		{ provider: "openai", openai_api_key: "openai-option-key" },
+		{},
+		"openai-option-key",
+	],
+	[
+		"OPENAI_API_KEY is the key under provider openai when the option is empty",
+		{ provider: "openai", openai_api_key: "" },
+		{ OPENAI_API_KEY: OPENAI_VARIABLE_KEY },
+		OPENAI_VARIABLE_KEY,
+	],
 ] as const)
 	test(name, { options }, async ($, on) => {
-		const { h } = await callOnce($, on, {}, { env });
+		const openai = "provider" in options;
+		const { h } = await callOnce(
+			$,
+			on,
+			{},
+			openai ? { env, text: OPENAI_ANSWER } : { env },
+		);
 		if (key === null) {
 			expect(h.received.model).toBeUndefined();
 			expect(h.fetched).toBe(0);
@@ -68,7 +108,11 @@ for (const [name, options, env, key] of [
 			return;
 		}
 		expect(h.request.url).toBe(
-			"gateway" in options ? OPENROUTER_URL : TYPESAFE_URL,
+			openai
+				? OPENAI_URL
+				: "gateway" in options
+					? OPENROUTER_URL
+					: TYPESAFE_URL,
 		);
 		expect(h.auth).toBe(`Bearer ${key}`);
 		expect(h.received.model).toBe("haiku");

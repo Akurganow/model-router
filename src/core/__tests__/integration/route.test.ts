@@ -5,6 +5,8 @@ import { getEventListeners } from "node:events";
 import { test } from "node:test";
 import {
 	brokenReply,
+	OPENAI_REPLY,
+	OPENROUTER_REPLY,
 	scoringReply,
 	stalledReply,
 } from "#core/__tests__/support/replies.ts";
@@ -13,14 +15,19 @@ import { routingState } from "#core/brief/brief.ts";
 import { KEY_UNSET } from "#core/output/reasons.ts";
 import { tier } from "#core/parts/tier.ts";
 import { work } from "#core/parts/work.ts";
-import { type Attempt, type Gateway, plan } from "#core/providers/provider.ts";
+import {
+	type Attempt,
+	type Gateway,
+	type Maker,
+	plan,
+} from "#core/providers/provider.ts";
 import { LIMIT_REACHED, ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type Decision, type RouteInput, route } from "#core/scoring/route.ts";
 import { realClock } from "#utils/clock.ts";
 
 const KEY = "test-key";
 const OR_KEY = "test-openrouter-key";
-const KEYS = { typesafe: KEY, openrouter: OR_KEY };
+const KEYS = { typesafe: KEY, openrouter: OR_KEY, openai: "test-openai-key" };
 const BOTH = plan({ provider: "typesafe", gateway: "auto" }, KEYS);
 const MODEL = "jev-test";
 const STATE = routingState({
@@ -461,28 +468,78 @@ test("tier and work send the System One body as one string", async () => {
 	);
 });
 
-// One row per endpoint: the gateway that plans it, its address, and its key header as sent.
+// One row per endpoint: who is asked and through which gateway, the address, the model name the
+// request carries, the key header value as sent, a reply in the endpoint's own format, and the
+// model and token counts the decision then holds.
 const ADDRESSES: readonly [
+	provider: Maker,
 	gateway: Gateway,
 	address: string,
+	sentModel: string,
 	authorization: string,
+	reply: unknown,
+	model: string,
+	usage: { input_tokens: number; output_tokens: number },
 ][] = [
-	["direct", "https://api.typesafe.ai/v1/systemone", "Bearer test-key"],
 	[
+		"typesafe",
+		"direct",
+		"https://api.typesafe.ai/v1/systemone",
+		"jev-latest",
+		"Bearer test-key",
+		VALID,
+		"jev-1.14.0",
+		{ input_tokens: 120, output_tokens: 8 },
+	],
+	[
+		"typesafe",
 		"openrouter",
 		"https://openrouter.ai/api/v1/systemone",
+		"jev-latest",
 		"Bearer test-openrouter-key",
+		VALID,
+		"jev-1.14.0",
+		{ input_tokens: 120, output_tokens: 8 },
+	],
+	[
+		"openai",
+		"direct",
+		"https://api.openai.com/v1/decisions",
+		"gpt-6-luna",
+		"Bearer test-openai-key",
+		JSON.parse(OPENAI_REPLY),
+		"gpt-6-luna",
+		{ input_tokens: 506, output_tokens: 0 },
+	],
+	[
+		"openai",
+		"openrouter",
+		"https://openrouter.ai/api/alpha/decisions",
+		"openai/gpt-6-luna-decisions",
+		"Bearer test-openrouter-key",
+		JSON.parse(OPENROUTER_REPLY),
+		"openai/gpt-6-luna-decisions-20261006",
+		{ input_tokens: 488, output_tokens: 0 },
 	],
 ];
 
-for (const [gateway, address, authorization] of ADDRESSES)
-	test(`${gateway} sends its key to its own address in one header`, async () => {
-		const { sent, bodies, inits, fetchFn } = answering(VALID);
-		await run(fetchFn, {
-			attempts: plan({ provider: "typesafe", gateway }, KEYS),
-		});
+for (const [
+	provider,
+	gateway,
+	address,
+	sentModel,
+	authorization,
+	reply,
+	model,
+	usage,
+] of ADDRESSES)
+	test(`${provider} through ${gateway} sends its key to ${address} in one header`, async () => {
+		const { sent, bodies, inits, fetchFn } = answering(reply);
+		const decision = asDecision(
+			await run(fetchFn, { attempts: plan({ provider, gateway }, KEYS) }),
+		);
 		assert.deepEqual(sent, [`${address} ${authorization}`]);
-		assert.equal(JSON.parse(bodies[0] ?? "").model, "jev-latest");
+		assert.equal(JSON.parse(bodies[0] ?? "").model, sentModel);
 		assert.deepEqual(inits[0]?.headers, {
 			Authorization: authorization,
 			Accept: "application/json",
@@ -490,6 +547,8 @@ for (const [gateway, address, authorization] of ADDRESSES)
 			"User-Agent":
 				"model-router/dev (+https://github.com/Akurganow/model-router)",
 		});
+		assert.equal(decision.model, model);
+		assert.deepEqual(decision.usage, usage);
 	});
 
 test("a status gives HTTP n after one request, or after three when it is retried", async (t) => {

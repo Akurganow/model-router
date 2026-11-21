@@ -3,7 +3,11 @@ import { test } from "node:test";
 import { recordingEngine } from "#adapters/claude/__tests__/support/fakes.ts";
 import type { Engine, Options } from "#adapters/claude/host.ts";
 import { readKeys } from "#adapters/claude/keys.ts";
-import { type Choice, KEY_VARIABLES } from "#core/providers/provider.ts";
+import {
+	type Choice,
+	KEY_VARIABLES,
+	MAKERS,
+} from "#core/providers/provider.ts";
 
 const choice = (gateway: Choice["gateway"]): Choice => ({
 	provider: "typesafe",
@@ -11,10 +15,15 @@ const choice = (gateway: Choice["gateway"]): Choice => ({
 });
 
 // The host needs a literal name in each $.env.get call, so claude/keys.ts cannot read the table.
+// One choice asks the key holders of its maker and OpenRouter, so the choices of every maker together hold them all.
 test("the key variables read by name are the ones in the provider table", async () => {
 	const { engine, reads } = recordingEngine(() => undefined);
-	await readKeys(engine, {} as Options, choice("auto"));
-	assert.deepEqual(reads.sort(), Object.values(KEY_VARIABLES).sort());
+	for (const provider of MAKERS)
+		await readKeys(engine, {} as Options, { provider, gateway: "auto" });
+	assert.deepEqual(
+		[...new Set(reads)].sort(),
+		Object.values(KEY_VARIABLES).sort(),
+	);
 });
 
 const engineWith = (variable: unknown) =>
@@ -73,4 +82,27 @@ test("a rejected variable lookup rejects and stops the later lookups", async () 
 		/engine gone/,
 	);
 	assert.deepEqual(reads, [KEY_VARIABLES.typesafe]);
+});
+
+// Under openai the key comes from its own option, and a blank, a string of spaces or a null reads as unset.
+test("a blank, spaces or null openai option is unset and the variable stands in", async () => {
+	const openai: Choice = { provider: "openai", gateway: "direct" };
+	for (const blank of ["", "   ", null]) {
+		assert.deepEqual(
+			await readKeys(
+				engineWith("from-the-variable"),
+				{ openai_api_key: blank } as unknown as Options,
+				openai,
+			),
+			{ openai: "from-the-variable" },
+		);
+		assert.deepEqual(
+			await readKeys(
+				engineWith(undefined),
+				{ openai_api_key: blank } as unknown as Options,
+				openai,
+			),
+			{},
+		);
+	}
 });

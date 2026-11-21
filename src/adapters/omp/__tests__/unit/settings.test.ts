@@ -128,7 +128,7 @@ const rules: [string, object, object, object][] = [
 	[
 		"skips on a provider that is not valid",
 		{ provider: "typesafe" },
-		{ provider: "openai" },
+		{ provider: "mistral" },
 		provider,
 	],
 ];

@@ -1,0 +1,59 @@
+{
+	"description": "Under openai, the decision model of api.openai.com answers a list and the line names openai, its model and the token counts.",
+	"request": {
+		"task": "Rename the helper in util.ts and run the tests.",
+		"context": "",
+		"provider": "openai",
+		"keys": {
+			"openai": "openai-key"
+		},
+		"budgetMs": 8000,
+		"models": {
+			"small": "openai/small",
+			"large": "openai/large"
+		},
+		"keptEffort": null
+	},
+	"jev": [
+		{
+			"host": "api.openai.com",
+			"reply": {
+				"body": {
+					"model": "gpt-6-luna",
+					"answers": [
+						{
+							"type": "score",
+							"name": "tier",
+							"probabilities": [
+								{ "value": 0, "probability": 0.05 },
+								{ "value": 1, "probability": 0.9 },
+								{ "value": 2, "probability": 0.05 }
+							]
+						},
+						{
+							"type": "score",
+							"name": "work",
+							"probabilities": [
+								{ "value": 0, "probability": 0.05 },
+								{ "value": 1, "probability": 0.9 },
+								{ "value": 2, "probability": 0.05 }
+							]
+						}
+					],
+					"usage": { "input_tokens": 812, "output_tokens": 0 }
+				}
+			}
+		}
+	],
+	"response": {
+		"outcome": "route",
+		"slot": "middle",
+		"effort": "medium",
+		"line": "model-router L1 middle model unset · medium · p=0.90/0.90 · openai gpt-6-luna · 812/0 tok"
+	},
+	"route": {
+		"api_mode": "chat_completions",
+		"reasoning_effort": "medium",
+		"label": "model-router L1 middle model unset · medium · p=0.90/0.90 · openai gpt-6-luna · 812/0 tok"
+	}
+}

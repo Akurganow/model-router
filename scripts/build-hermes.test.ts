@@ -63,7 +63,7 @@ test("the manifest names the plugin, its version and its backend kind", () => {
 	assert.deepEqual(manifest.provides_tools, [TOOL_NAME]);
 });
 
-test("the manifest holds seven settings and no scope", () => {
+test("the manifest holds eight settings and no scope", () => {
 	assert.deepEqual(Object.keys(schema), [
 		"provider",
 		"gateway",
@@ -71,6 +71,7 @@ test("the manifest holds seven settings and no scope", () => {
 		"middle_model",
 		"large_model",
 		"typesafe_api_key",
+		"openai_api_key",
 		"openrouter_api_key",
 	]);
 	assert.equal(JSON.stringify(manifest).includes("scope"), false);
@@ -86,7 +87,7 @@ test("the provider and gateway settings offer the values the code accepts, with 
 	});
 	assert.deepEqual(shown("provider"), {
 		type: "str",
-		choices: ["typesafe"],
+		choices: ["typesafe", "openai"],
 		default: "typesafe",
 		label: source.options.provider.title,
 		description: source.options.provider.descriptions.hermes,
@@ -112,6 +113,7 @@ test("the models are dict settings and each key is a secret stored under its var
 	}
 	const secret = (name: string) => [schema[name]?.type, schema[name]?.env];
 	assert.deepEqual(secret("typesafe_api_key"), ["secret", "TYPESAFE_API_KEY"]);
+	assert.deepEqual(secret("openai_api_key"), ["secret", "OPENAI_API_KEY"]);
 	assert.deepEqual(secret("openrouter_api_key"), [
 		"secret",
 		"OPENROUTER_API_KEY",
@@ -173,20 +175,26 @@ test("the settings table lists provider then gateway, each with its texts", () =
 	assert.deepEqual(constants.settings, [
 		{
 			name: "provider",
-			values: ["typesafe"],
+			values: ["typesafe", "openai"],
 			default: "typesafe",
 			skip: "model-router skipped, provider not valid: run setup",
-			notValid: "provider: {stored} (not valid: use one of typesafe)",
-			valueLines: { typesafe: "provider: typesafe" },
-			useOneOf: "provider: use one of typesafe",
-			already: { typesafe: "provider unchanged: already typesafe" },
+			notValid: "provider: {stored} (not valid: use one of typesafe, openai)",
+			valueLines: {
+				typesafe: "provider: typesafe",
+				openai: "provider: openai",
+			},
+			useOneOf: "provider: use one of typesafe, openai",
+			already: {
+				typesafe: "provider unchanged: already typesafe",
+				openai: "provider unchanged: already openai",
+			},
 			unchanged: "provider unchanged: ",
 			refused: "provider unchanged: only a local session can change it",
 			command: {
 				name: "model-router-provider",
 				description:
-					"Shows or changes whose model scores subagent calls: typesafe.",
-				argsHint: "<typesafe>",
+					"Shows or changes whose model scores subagent calls: typesafe, openai.",
+				argsHint: "<typesafe|openai>",
 			},
 		},
 		{
@@ -223,9 +231,9 @@ test("the settings table lists provider then gateway, each with its texts", () =
 });
 
 test("the choices table holds the key holders and the lines of each provider and gateway", () => {
-	const leaf = (holders: string[], gateway: string) => ({
+	const leaf = (holders: string[], gateway: string, provider = "typesafe") => ({
 		holders,
-		lines: ["provider: typesafe", gateway],
+		lines: [`provider: ${provider}`, gateway],
 	});
 	assert.deepEqual(constants.choices, {
 		typesafe: {
@@ -239,6 +247,24 @@ test("the choices table holds the key holders and the lines of each provider and
 				"gateway: openrouter-first (openrouter, then typesafe)",
 			),
 			openrouter: leaf(["openrouter"], "gateway: openrouter (openrouter)"),
+		},
+		openai: {
+			direct: leaf(["openai"], "gateway: direct (openai)", "openai"),
+			auto: leaf(
+				["openai", "openrouter"],
+				"gateway: auto (openai, then openrouter)",
+				"openai",
+			),
+			"openrouter-first": leaf(
+				["openrouter", "openai"],
+				"gateway: openrouter-first (openrouter, then openai)",
+				"openai",
+			),
+			openrouter: leaf(
+				["openrouter"],
+				"gateway: openrouter (openrouter)",
+				"openai",
+			),
 		},
 	});
 });

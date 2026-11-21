@@ -34,6 +34,8 @@ function keyVariable($: Engine, holder: KeyHolder): Promise<unknown> {
 	switch (holder) {
 		case "typesafe":
 			return $.env.get("TYPESAFE_API_KEY");
+		case "openai":
+			return $.env.get("OPENAI_API_KEY");
 		case "openrouter":
 			return $.env.get("OPENROUTER_API_KEY");
 	}

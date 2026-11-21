@@ -1,5 +1,5 @@
 // Whose model scores. Every table keyed by maker follows this list.
-export const MAKERS = ["typesafe"] as const;
+export const MAKERS = ["typesafe", "openai"] as const;
 export type Maker = (typeof MAKERS)[number];
 // Who holds a key: each maker for its own API, and OpenRouter for the gateway to every maker.
 // An attempt shows this name in every line.
@@ -20,12 +20,14 @@ export type Gateway = (typeof GATEWAYS)[number];
 // Every harness reads a key holder's key from the same variable.
 export const KEY_VARIABLES: Readonly<Record<KeyHolder, string>> = {
 	typesafe: "TYPESAFE_API_KEY",
+	openai: "OPENAI_API_KEY",
 	openrouter: "OPENROUTER_API_KEY",
 };
 
 // The setting name that holds each key holder's key in Claude Code and OpenClaw.
 export const KEY_FIELDS = {
 	typesafe: "api_key",
+	openai: "openai_api_key",
 	openrouter: "openrouter_api_key",
 } as const satisfies Readonly<Record<KeyHolder, string>>;
 

@@ -37,9 +37,10 @@
 		"settings": {
 			"provider": {
 				"type": "enum",
-				"description": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to.",
+				"description": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to. openai: OpenAI's decision model; costs more than Jev and its answers are not fitted.",
 				"values": [
-					"typesafe"
+					"typesafe",
+					"openai"
 				],
 				"default": "typesafe"
 			},
