@@ -47,6 +47,18 @@ The plugin then reads no key and sends no request.
 The skip line gives the reason `<setting> not valid: run setup`, for example `provider not valid: run setup`.
 Where more than one setting is not valid, the reason names the first of `provider`, `gateway` and `scope`.
 
+The skip line shows for these tasks:
+
+- In Claude Code and Oh My Pi, the calls the stored `scope` covers.
+  When `scope` itself is not valid, they are the calls of the default scope.
+- In OpenClaw, every spawn that does not pass without a line.
+- In Hermes Agent, every task.
+
+Claude Code keeps such a value from the plugin.
+It hands the plugin an option's default in place of any stored value that the option's list does not hold, for each of the three options.
+So in Claude Code the plugin routes by the default, and no setup line shows.
+[A stored value outside an option's list](../plugins/model-router/README.md#a-stored-value-outside-an-options-list) says what that changes after an update.
+
 The plugin never rewrites a stored value on its own.
 To set a valid value, run the `model-router-setup` skill of your plugin, or give the setting's command a value.
 
@@ -66,8 +78,7 @@ The setup skill proposes the pair, and nothing is set before you agree.
 Set `gateway` first and `provider` second.
 While `provider` is not valid nothing is routed, so in that order no task takes a path you did not choose.
 A stored `typesafe` needs no change: with no `gateway` stored it asks TypeSafe's own API only, as before.
-Claude Code never shows the setup line for a retired value.
-[A stored value outside an option's list](../plugins/model-router/README.md#a-stored-value-outside-an-options-list) says what it does in its place.
+In Claude Code a retired value reaches the plugin as the default, as the section above says.
 
 ## Keys
 
