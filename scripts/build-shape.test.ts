@@ -6,8 +6,10 @@ import { VALUE_SETTINGS } from "#core/options/settings.ts";
 import type { Schema } from "./build/schema.ts";
 import {
 	type Install,
+	keyHolderProblems,
 	loadSchema,
 	loadSource,
+	optionTextProblems,
 	type Source,
 } from "./build/source.ts";
 
@@ -194,4 +196,41 @@ test("the source names a hint for each slot setting of OpenClaw and Hermes", () 
 	assert.deepEqual(Object.keys(source.openclaw.uiHints), EXPECTED);
 	assert.deepEqual(Object.keys(source.hermes.settings), EXPECTED);
 	assert.deepEqual(SLOT_SETTINGS, EXPECTED);
+});
+
+test("optionTextProblems names a missing text and a text for a setting the harness does not store", () => {
+	const source = loadSource(ROOT);
+	const { hermes: _dropped, ...gateway } = source.options.gateway.descriptions;
+	const broken: Source = {
+		...source,
+		options: {
+			...source.options,
+			gateway: { ...source.options.gateway, descriptions: gateway },
+			scope: {
+				...source.options.scope,
+				descriptions: { ...source.options.scope.descriptions, hermes: "h" },
+			},
+		},
+	};
+	assert.deepEqual(optionTextProblems(broken), [
+		"$.options.gateway.descriptions.hermes: hermes stores gateway, so the text is required",
+		"$.options.scope.descriptions.hermes: hermes does not store scope, so the text is not allowed",
+	]);
+});
+
+test("keyHolderProblems names a missing key holder and a member that names none", () => {
+	const source = loadSource(ROOT);
+	const { openrouter: _dropped, ...hermesKeys } = source.hermes.keys;
+	const broken = {
+		...source,
+		openclaw: {
+			...source.openclaw,
+			keys: { ...source.openclaw.keys, nobody: SECRET_HINT },
+		},
+		hermes: { ...source.hermes, keys: hermesKeys },
+	} as unknown as Source;
+	assert.deepEqual(keyHolderProblems(broken), [
+		"$.openclaw.keys.nobody: nobody is not a key holder, so the text is not allowed",
+		"$.hermes.keys.openrouter: openrouter is a key holder, so the text is required",
+	]);
 });

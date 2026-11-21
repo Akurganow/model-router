@@ -132,7 +132,7 @@ const STORED: Readonly<Record<Harness, readonly ValueSetting[]>> =
  * a stored setting with no text, and a text for a setting the harness does not
  * store.
  */
-function optionTextProblems(source: Source): string[] {
+export function optionTextProblems(source: Source): string[] {
 	const problems: string[] = [];
 	for (const harness of Object.keys(STORED) as Harness[])
 		for (const setting of STORED[harness])
@@ -156,7 +156,7 @@ function optionTextProblems(source: Source): string[] {
  * a key holder with no text, and a member that names no key holder. The schema
  * names no holder, so this check is the only one.
  */
-function keyHolderProblems(source: Source): string[] {
+export function keyHolderProblems(source: Source): string[] {
 	const records: Readonly<Record<string, object>> = {
 		"$.claude.userConfig.keys": source.claude.userConfig.keys,
 		"$.openclaw.keys": source.openclaw.keys,
