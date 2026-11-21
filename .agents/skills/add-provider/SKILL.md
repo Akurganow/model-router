@@ -183,7 +183,7 @@ The failures name each place. They do not say this:
 - The build writes the bundles, the npm tree, the manifests and `plugins/model-router-hermes/constants.json`. The Hermes Python source needs no edit.
 - A new maker reaches the choices of `provider` in `plugins/model-router-hermes/plugin.yaml`, and the `settings` and `choices` of `constants.json`. `scripts/build/hermes.ts` needs no edit.
 - The literal tables of `constants.json` and `plugin.yaml` in `scripts/build-hermes.test.ts` fail until you write the new value out.
-- Hermes asks a new maker like the other three, once a user stores it as `provider`.
+- Hermes asks a new maker like the other three harnesses, once a user stores it as `provider`.
 - Biome reports no place that lacks the provider. It checks the format, so run `npm run fix` after a hand edit.
 
 A choice asks the key holders of its maker and OpenRouter, so no one choice asks every key holder.
