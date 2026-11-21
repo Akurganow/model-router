@@ -1,4 +1,4 @@
-"""The read-only config tool: the provider, the three models and which keys are set.
+"""The read-only config tool: the settings, the three models and which keys are set.
 
 It changes nothing and returns presence only, never a key or its length."""
 
@@ -6,7 +6,7 @@ import json
 
 from .constants import CONSTANTS
 from .hermes_api import live_api
-from .settings import found_keys, read_provider, read_slot
+from .settings import choice, found_keys, read_slot, read_texts, setting_lines
 
 
 def _slot_line(texts, name, slot):
@@ -20,14 +20,14 @@ def _slot_line(texts, name, slot):
 def _read_all(ctx, api, constants):
     texts = constants["texts"]
     settings = [spec["setting"] for spec in constants["slots"].values()]
-    provider = read_provider(ctx, constants)
-    keys = found_keys(api, constants, provider)
-    lines = [texts["providerLines"][provider]]
+    stored = read_texts(ctx, constants)
+    leaf = choice(constants, stored)
+    lines = setting_lines(constants, stored)
     lines += [_slot_line(texts, name, read_slot(ctx, name)) for name in settings]
-    lines += [
-        texts["keyLines"][name]["set" if name in keys else "unset"]
-        for name in constants["providers"]["order"][provider]
-    ]
+    # While a setting is not valid, no holder is known, so no key is looked up or listed.
+    holders = leaf["holders"] if leaf is not None else []
+    keys = found_keys(api, constants, holders)
+    lines += [texts["keyLines"][name]["set" if name in keys else "unset"] for name in holders]
     return texts["lineBreak"].join(lines)
 
 

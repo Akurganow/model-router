@@ -3,7 +3,8 @@
 	"request": {
 		"task": "Rename the helper in util.ts and run the tests.",
 		"context": "",
-		"provider": "auto",
+		"provider": "typesafe",
+		"gateway": "auto",
 		"keys": {
 			"typesafe": "typesafe-key",
 			"openrouter": "openrouter-key"

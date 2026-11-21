@@ -1,5 +1,6 @@
 import { contextText } from "#core/brief/brief.ts";
 import { type Slot, slotRecord } from "#core/decision/slots.ts";
+import { type Stored, VALUE_SETTINGS } from "#core/options/settings.ts";
 import { KEY_HOLDERS, type Keys } from "#core/providers/provider.ts";
 import { isPositiveNumber, isRecord } from "#utils/guards.ts";
 import { nonEmpty } from "#utils/text.ts";
@@ -12,7 +13,8 @@ export type KeptEffort = (typeof KEPT_EFFORTS)[number];
 export type HermesRequest = {
 	readonly task: string;
 	readonly context: string;
-	readonly provider: unknown;
+	// What the shim read for each setting Hermes stores, unchecked: `settingsOf` checks it.
+	readonly stored: Stored;
 	readonly keys: Keys;
 	// Undefined unless the budget is a positive finite number.
 	readonly budgetMs: number | undefined;
@@ -45,20 +47,14 @@ const readBudget = (value: unknown): number | undefined =>
  */
 export function readRequest(raw: unknown): HermesRequest | undefined {
 	if (!isRecord(raw) || Array.isArray(raw)) return undefined;
-	const {
-		task,
-		context,
-		provider,
-		keys,
-		budgetMs,
-		models,
-		keptEffort,
-		description,
-	} = raw;
+	const { task, context, keys, budgetMs, models, keptEffort, description } =
+		raw;
 	return {
 		task: typeof task === "string" ? task : "",
 		context: contextText(context),
-		provider,
+		stored: Object.fromEntries(
+			VALUE_SETTINGS.map((setting) => [setting, raw[setting]]),
+		),
 		keys: readKeys(keys),
 		budgetMs: readBudget(budgetMs),
 		models: readModels(models),

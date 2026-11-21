@@ -1,5 +1,5 @@
 {
-	"description": "An unknown provider value counts as the default.",
+	"description": "A provider value that is not valid is skipped with the setup line, before any request.",
 	"request": {
 		"task": "Rename the helper in util.ts and run the tests.",
 		"context": "",
@@ -14,28 +14,13 @@
 		},
 		"keptEffort": null
 	},
-	"jev": [
-		{
-			"host": "api.typesafe.ai",
-			"reply": {
-				"levels": {
-					"tier": 0,
-					"work": 1
-				}
-			}
-		}
-	],
+	"jev": [],
 	"response": {
-		"outcome": "route",
-		"slot": "small",
-		"effort": "high",
-		"line": "model-router L0 openai/small · high · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok"
+		"outcome": "skip",
+		"line": "model-router skipped, provider not valid: run setup"
 	},
 	"route": {
 		"api_mode": "chat_completions",
-		"model": "small-model",
-		"provider": "openrouter",
-		"reasoning_effort": "high",
-		"label": "model-router L0 openai/small · high · p=0.90/0.90 · typesafe jev-1.14.0 · 812/9 tok"
+		"label": "model-router skipped, provider not valid: run setup"
 	}
 }

@@ -8,6 +8,7 @@ var FAILED = "failed";
 var NETWORK_ERROR = "network error";
 var httpStatus = (status) => `HTTP ${status}`;
 var CANCELLED = "cancelled";
+var notValid = (setting) => `${setting} not valid: run setup`;
 var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
 
 // src/utils/clock.ts
@@ -781,6 +782,12 @@ function outcomeOf(decided, models, kept) {
 // src/core/providers/provider.ts
 var MAKERS = ["typesafe"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
+var GATEWAYS = [
+  "direct",
+  "auto",
+  "openrouter-first",
+  "openrouter"
+];
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
 var GATEWAY_PATHS = {
   direct: ["direct"],
@@ -805,6 +812,65 @@ function plan(choice, keys) {
   );
 }
 
+// src/core/options/scope.ts
+var SCOPE_VALUES = ["core", "extended"];
+
+// src/core/options/settings.ts
+var VALUE_SETTINGS = ["provider", "gateway", "scope"];
+var TEXTS = {
+  provider: {
+    values: MAKERS,
+    about: "whose model scores subagent calls",
+    question: "Which provider's model should score subagent calls?",
+    consequences: {
+      typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to"
+    }
+  },
+  gateway: {
+    values: GATEWAYS,
+    about: "how OpenRouter is used for the provider",
+    question: "How should OpenRouter be used for the provider?",
+    consequences: {
+      direct: "the provider's own API only",
+      auto: "the provider's own API, then OpenRouter if it fails",
+      "openrouter-first": "OpenRouter, then the provider's own API if it fails",
+      openrouter: "OpenRouter only"
+    }
+  },
+  scope: {
+    values: SCOPE_VALUES,
+    about: "which agent calls the router routes",
+    question: "Which agent calls should the router route?",
+    consequences: {
+      core: "built-in general agents only",
+      extended: "also routes other agents that pass no model"
+    }
+  }
+};
+var isSilent = (stored) => typeof stored !== "string" || stored.trim() === "";
+var valueFor = (setting, stored) => isSilent(stored) ? TEXTS[setting].values[0] : TEXTS[setting].values.find((value) => value === stored);
+var readProvider = (stored) => MAKERS.find((maker) => maker === valueFor("provider", stored));
+var readGateway = (stored) => GATEWAYS.find((gateway) => gateway === valueFor("gateway", stored));
+var readScope = (stored) => SCOPE_VALUES.find((scope) => scope === valueFor("scope", stored));
+function settingsOf(stored) {
+  const provider = readProvider(stored.provider);
+  if (provider === void 0) return { skipped: notValid("provider") };
+  const gateway = readGateway(stored.gateway);
+  if (gateway === void 0) return { skipped: notValid("gateway") };
+  const scope = readScope(stored.scope);
+  if (scope === void 0) return { skipped: notValid("scope") };
+  return { provider, gateway, scope };
+}
+function describeCommand(setting) {
+  const { about, values } = TEXTS[setting];
+  return `Shows or changes ${about}: ${values.join(", ")}.`;
+}
+var COMMAND_DESCRIPTIONS = {
+  provider: describeCommand("provider"),
+  gateway: describeCommand("gateway"),
+  scope: describeCommand("scope")
+};
+
 // src/adapters/hermes/request.ts
 var KEPT_EFFORTS = ["config", "caller"];
 var readKeys = (value) => Object.fromEntries(
@@ -817,20 +883,13 @@ var readModels = (value) => slotRecord((slot) => isRecord(value) ? nonEmpty(valu
 var readBudget = (value) => isPositiveNumber(value) ? value : void 0;
 function readRequest(raw) {
   if (!isRecord(raw) || Array.isArray(raw)) return void 0;
-  const {
-    task,
-    context,
-    provider,
-    keys,
-    budgetMs,
-    models,
-    keptEffort,
-    description
-  } = raw;
+  const { task, context, keys, budgetMs, models, keptEffort, description } = raw;
   return {
     task: typeof task === "string" ? task : "",
     context: contextText(context),
-    provider,
+    stored: Object.fromEntries(
+      VALUE_SETTINGS.map((setting) => [setting, raw[setting]])
+    ),
     keys: readKeys(keys),
     budgetMs: readBudget(budgetMs),
     models: readModels(models),
@@ -838,22 +897,6 @@ function readRequest(raw) {
     description: typeof description === "string" ? description : ""
   };
 }
-
-// src/adapters/hermes/stored.ts
-var GATEWAY_OF = {
-  auto: "auto",
-  "openrouter-first": "openrouter-first",
-  typesafe: "direct",
-  openrouter: "openrouter"
-};
-var STORED_VALUES = Object.keys(GATEWAY_OF);
-var STORED_DEFAULT = "typesafe";
-var choiceOf = (value) => ({
-  provider: "typesafe",
-  gateway: typeof value === "string" && Object.hasOwn(GATEWAY_OF, value) ? GATEWAY_OF[value] : GATEWAY_OF[STORED_DEFAULT]
-});
-var PROVIDER_USE_ONE_OF = `provider: use one of ${STORED_VALUES.join(", ")}`;
-var PROVIDER_COMMAND_DESCRIPTION = `Shows or changes which providers score subagent calls: ${STORED_VALUES.join(", ")}.`;
 
 // src/adapters/hermes/route.ts
 var skippedBy = (reason) => ({ skipped: reason });
@@ -865,7 +908,7 @@ var KEPT_LABELS = {
   config: CONFIG_EFFORT,
   caller: CALLER_EFFORT
 };
-async function score(request, { fetchFn }, signal) {
+async function score(request, settings, { fetchFn }, signal) {
   return scoreWork({
     state: routingState({
       role: DEFAULT_ROLE,
@@ -873,15 +916,15 @@ async function score(request, { fetchFn }, signal) {
       task: request.task,
       context: request.context
     }),
-    attempts: plan(choiceOf(request.provider), request.keys),
+    attempts: plan(settings, request.keys),
     fetchFn,
     clock: realClock,
     signal
   });
 }
-async function scored(request, deps, signal) {
+async function scored(request, settings, deps, signal) {
   try {
-    return await score(request, deps, signal);
+    return await score(request, settings, deps, signal);
   } catch {
     return skippedBy(FAILED);
   }
@@ -903,9 +946,11 @@ async function routeRequest(raw, deps) {
   try {
     const request = readRequest(raw);
     if (request === void 0) return skip2(FAILED);
+    const settings = settingsOf(request.stored);
+    if ("skipped" in settings) return skip2(settings.skipped);
     if (request.budgetMs === void 0) return skip2(FAILED);
     const decided = await raceDeadline(
-      (signal) => scored(request, deps, signal),
+      (signal) => scored(request, settings, deps, signal),
       request.budgetMs,
       deps.clock,
       void 0

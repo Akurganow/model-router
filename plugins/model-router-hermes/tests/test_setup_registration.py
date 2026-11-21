@@ -6,7 +6,8 @@ SKILLS_DIR = PLUGIN_DIR / "skills"
 TEXTS = CONSTANTS["texts"]
 SKILL_COUNT = sum(1 for path in SKILLS_DIR.iterdir() if path.is_dir())
 # Each skill folder registers once, so a failing registrar stops at its first skill.
-STEPS = ["provider", "tool", "command", *["skill"] * SKILL_COUNT]
+COMMANDS = [spec["command"]["name"] for spec in CONSTANTS["settings"]]
+STEPS = ["provider", "tool", *["command"] * len(COMMANDS), *["skill"] * SKILL_COUNT]
 
 
 def register(**fail):
@@ -25,32 +26,36 @@ class OrderTest(unittest.TestCase):
         ctx, plugin = register()
         plugin.register(ctx)
         self.assertEqual(ctx.tools[0]["name"], TEXTS["toolName"])
-        self.assertEqual(ctx.commands[0]["name"], TEXTS["commandName"])
+        self.assertEqual([entry["name"] for entry in ctx.commands], COMMANDS)
 
 
 class IsolationTest(unittest.TestCase):
-    def assertOneWarningAndRest(self, failed):
+    def assertOneWarningAndRest(self, failed, rest):
         ctx, plugin = register(**{failed: True})
         with self.assertLogs(level="WARNING") as logs:
             plugin.register(ctx)
         self.assertEqual(len(logs.records), 1)
         self.assertIn(f"no {failed}", logs.records[0].getMessage())
-        self.assertEqual(ctx.order, [name for name in STEPS if name != failed])
+        self.assertEqual(ctx.order, rest)
 
     def test_a_failing_tool_registration_stops_nothing_else(self):
-        self.assertOneWarningAndRest("tool")
+        self.assertOneWarningAndRest("tool", [n for n in STEPS if n != "tool"])
 
     def test_a_failing_command_registration_stops_nothing_else(self):
-        self.assertOneWarningAndRest("command")
+        for name in COMMANDS:
+            with self.subTest(name):
+                self.assertOneWarningAndRest(
+                    name, ["provider", "tool", "command", *["skill"] * SKILL_COUNT]
+                )
 
     def test_a_failing_skill_registration_stops_nothing_else(self):
-        self.assertOneWarningAndRest("skill")
+        self.assertOneWarningAndRest("skill", [n for n in STEPS if n != "skill"])
 
-    def test_all_three_failing_leave_the_provider_and_log_three_warnings(self):
-        ctx, plugin = register(tool=True, command=True, skill=True)
+    def test_every_registration_failing_leaves_the_provider_and_logs_one_warning_each(self):
+        ctx, plugin = register(**{name: True for name in ("tool", "skill", *COMMANDS)})
         with self.assertLogs(level="WARNING") as logs:
             plugin.register(ctx)
-        self.assertEqual(len(logs.records), 3)
+        self.assertEqual(len(logs.records), 4)
         self.assertEqual(ctx.order, ["provider"])
 
     def test_an_old_core_registers_no_setup_surface(self):
@@ -89,7 +94,7 @@ class SkillTest(unittest.TestCase):
     def test_the_skill_names_the_tool_and_the_command_the_plugin_registers(self):
         text = (SKILLS_DIR / "model-router-setup" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn(f"`{TEXTS['toolName']}`", text)
-        self.assertIn(f"/{TEXTS['commandName']} <value>", text)
+        self.assertIn(f"/{COMMANDS[0]} <value>", text)
         self.assertIn("delegation.backend", text)
 
     def test_the_skill_holds_no_key_shaped_text(self):

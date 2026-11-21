@@ -25,7 +25,7 @@ test("each option text names every value of its setting", () => {
 	for (const setting of VALUE_SETTINGS)
 		for (const harness of [
 			...HARNESSES,
-			...(setting === "provider" ? (["hermes"] as const) : []),
+			...(setting === "scope" ? [] : (["hermes"] as const)),
 		]) {
 			const descriptions: Record<string, string> =
 				source.options[setting].descriptions;

@@ -44,6 +44,9 @@ const fixtures = readdirSync(FIXTURES)
 		fixture: JSON.parse(readFileSync(join(FIXTURES, name), "utf8")) as Fixture,
 	}));
 
+// A setting that is not valid shuts the request before the deadline starts, so no timer runs.
+const BEFORE_DEADLINE = ["unknown-provider.json"];
+
 function run(request: unknown, steps: readonly Step[]) {
 	const time = createFakeClock();
 	const scoring = createScriptedScoring(steps, time.fire);
@@ -84,7 +87,10 @@ describe("protocol fixtures", () => {
 				fixture.jev.map((step) => step.host),
 			);
 			const { budgetMs } = fixture.request as { budgetMs?: number };
-			const timed = typeof budgetMs === "number" && budgetMs > 0;
+			const timed =
+				typeof budgetMs === "number" &&
+				budgetMs > 0 &&
+				!BEFORE_DEADLINE.includes(name);
 			assert.deepEqual(time.delays(), timed ? [budgetMs] : []);
 			assert.equal(time.live(), 0);
 		});
@@ -187,11 +193,11 @@ describe("the provider of a request", () => {
 	}
 
 	// A 401 falls back and is not retried, so a one-provider plan sends it once and a two-provider plan sends a second request.
-	it("asks only OpenRouter, with its key, when the request names openrouter and holds both keys", async () => {
+	it("asks only OpenRouter, with its key, when the request names the openrouter gateway and holds both keys", async () => {
 		const { sent, fetchFn } = recordingFetch({ "openrouter.ai": 401 });
 		const time = createFakeClock();
 		const response = await routeRequest(
-			{ ...REQUEST, provider: "openrouter", keys: KEYS },
+			{ ...REQUEST, provider: "typesafe", gateway: "openrouter", keys: KEYS },
 			{ fetchFn, clock: time.clock },
 		);
 		assert.deepEqual(sent, [
