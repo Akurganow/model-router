@@ -27,15 +27,16 @@ export const commandName = (setting: ValueSetting): string =>
 
 const LABEL_SEPARATOR = " - ";
 
-type ValueText = {
-	readonly values: readonly string[];
+type ValueText<V extends string> = {
+	readonly values: readonly V[];
 	readonly about: string;
 	readonly question: string;
-	readonly consequences: Readonly<Record<string, string>>;
+	readonly consequences: Readonly<Record<V, string>>;
 };
 
 // The first value of each list is the default of its setting.
-const TEXTS: Readonly<Record<ValueSetting, ValueText>> = {
+// Each entry is checked against its own values, so a value with no label fails the type check.
+const TEXTS: Readonly<Record<ValueSetting, ValueText<string>>> = {
 	provider: {
 		values: MAKERS,
 		about: "whose model scores subagent calls",
@@ -48,7 +49,7 @@ const TEXTS: Readonly<Record<ValueSetting, ValueText>> = {
 			google:
 				"Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text",
 		},
-	},
+	} satisfies ValueText<Maker>,
 	gateway: {
 		values: GATEWAYS,
 		about: "how OpenRouter is used for the provider",
@@ -59,7 +60,7 @@ const TEXTS: Readonly<Record<ValueSetting, ValueText>> = {
 			"openrouter-first": "OpenRouter, then the provider's own API if it fails",
 			openrouter: "OpenRouter only",
 		},
-	},
+	} satisfies ValueText<Gateway>,
 	scope: {
 		values: SCOPE_VALUES,
 		about: "which agent calls the router routes",
@@ -68,7 +69,7 @@ const TEXTS: Readonly<Record<ValueSetting, ValueText>> = {
 			core: "built-in general agents only",
 			extended: "also routes other agents that pass no model",
 		},
-	},
+	} satisfies ValueText<Scope>,
 };
 
 export const isValueSetting = (name: unknown): name is ValueSetting =>

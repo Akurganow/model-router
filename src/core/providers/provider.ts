@@ -121,7 +121,7 @@ export function collectKeysSync(
 /**
  * Returns one attempt for each path of the choice whose key holder's key is a
  * non-empty string, carrying that key. Every attempt but the last gives up
- * fast, so the next one gets most of the routing limit. Returns no attempts
+ * fast, so the next one gets the rest of the routing limit. Returns no attempts
  * when no key is set. Never throws.
  */
 export function plan(choice: Choice, keys: Readonly<Keys>): Attempt[] {
