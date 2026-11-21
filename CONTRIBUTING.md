@@ -81,7 +81,7 @@ every commit as a [conventional commit](#commits).
   - `parts/`: the questions `tier` and `work`, their shared types and the
     pick rule. It imports only `parts/part.ts` and `utils/`.
   - `providers/`: the makers, the key holders, the paths, the values of the
-    `provider` setting with the paths each allows, the key names and the plan
+    `gateway` setting with the paths each allows, the key names and the plan
     of attempts. An attempt names its maker, its path and its key holder, and
     carries that holder's key. `collectKeys` and
     `collectKeysSync` hold the one rule that collects the keys, for a lookup

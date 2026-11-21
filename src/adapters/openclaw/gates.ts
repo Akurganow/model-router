@@ -1,4 +1,5 @@
 import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "#core/brief/brief.ts";
+import type { Settings } from "#core/options/settings.ts";
 import {
 	agentDiscoveryFailed,
 	agentUnknown,
@@ -10,11 +11,11 @@ import {
 	setsOwnModel,
 	UNREADABLE,
 } from "#core/output/reasons.ts";
+import type { NoChoice } from "#core/providers/provider.ts";
 import { isRecord, isSet } from "#utils/guards.ts";
 import { nonEmpty } from "#utils/text.ts";
 import { findAgent, sameAgent } from "./agents.ts";
 import type { SpawnRequest } from "./params.ts";
-import type { OpenClawSettings } from "./settings.ts";
 import type { OpenClawConfig } from "./types.ts";
 
 type EffortRule =
@@ -37,6 +38,8 @@ export type Gate =
 			readonly task: string;
 			// The spawn's label, else its task name, else empty.
 			readonly description: string;
+			// The checked settings, narrowed by the gate, for the scoring that follows.
+			readonly chosen: Settings;
 	  };
 
 export type GateInput = {
@@ -44,8 +47,9 @@ export type GateInput = {
 	readonly requester: string | undefined;
 	// Undefined when the live config could not be read.
 	readonly config: OpenClawConfig | undefined;
-	readonly settings: OpenClawSettings;
-	// True when a key is set for any provider the settings allow.
+	// The checked settings: a NoChoice skips the spawn.
+	readonly chosen: Settings | NoChoice;
+	// True when a key is set for any key holder the settings allow.
 	readonly hasKey: boolean;
 };
 
@@ -129,8 +133,8 @@ function subagentModelSet(input: GateInput, target: string | undefined) {
  * or target's own value is replaced, which is the ladder effort too. Never
  * throws.
  */
-function effortRule(input: GateInput): EffortRule {
-	const { spawn, config, requester, settings } = input;
+function effortRule(input: GateInput, { scope }: Settings): EffortRule {
+	const { spawn, config, requester } = input;
 	if (spawn.thinking !== undefined)
 		return { kind: "keep", label: CALLER_EFFORT };
 	const global = at(config, "agents", "defaults", "subagents", "thinking");
@@ -140,8 +144,7 @@ function effortRule(input: GateInput): EffortRule {
 		"subagents",
 		"thinking",
 	);
-	const kept =
-		isSet(global) || (settings.scope === "core" && isSet(requesterThinking));
+	const kept = isSet(global) || (scope === "core" && isSet(requesterThinking));
 	return kept ? { kind: "keep", label: CONFIG_EFFORT } : { kind: "set" };
 }
 
@@ -159,12 +162,14 @@ function roleOf(input: GateInput, target: string | undefined, blank: string) {
 /**
  * Returns the gate outcome of a spawn: pass for a spawn without a task or one
  * that passes silently, skip with a reason, or route with its target, role,
- * effort rule, task and description. The first failing check decides.
+ * effort rule, task and description. The first failing check decides. A setting
+ * that is not valid skips before the key check, because no key is looked up
+ * for it.
  * Never throws. Order: plugins/model-router-openclaw/README.md#which-spawns-are-routed.
  * Change both.
  */
 export function gateSpawn(input: GateInput): Gate {
-	const { spawn, requester, settings, config } = input;
+	const { spawn, requester, chosen, config } = input;
 	const { task } = spawn;
 	if (task === undefined || passesSilently(spawn)) return PASS;
 	const named = spawn.agent.kind === "id" ? spawn.agent.id : undefined;
@@ -173,8 +178,9 @@ export function gateSpawn(input: GateInput): Gate {
 		named === undefined ||
 		(requester !== undefined && sameAgent(named, requester));
 	const target = isRequesterSpawn ? requester : named;
+	if ("skipped" in chosen) return skip(chosen.skipped);
 	if (!input.hasKey) return skip(KEY_UNSET);
-	if (!isRequesterSpawn && settings.scope === "core")
+	if (!isRequesterSpawn && chosen.scope === "core")
 		return skip(outsideCoreScope(named));
 	if (subagentModelSet(input, target)) return skip(SUBAGENT_MODEL_SET);
 	if (!isRequesterSpawn) {
@@ -191,7 +197,8 @@ export function gateSpawn(input: GateInput): Gate {
 			target,
 			isRequesterSpawn ? DEFAULT_ROLE : NO_DESCRIPTION,
 		),
-		effort: effortRule(input),
+		effort: effortRule(input, chosen),
+		chosen,
 		task,
 		description: spawn.description,
 	};

@@ -14,7 +14,12 @@ import {
 	withPluginSetting,
 } from "#adapters/openclaw/settings.ts";
 import type { OpenClawConfig } from "#adapters/openclaw/types.ts";
-import { KEY_VARIABLES } from "#core/providers/provider.ts";
+import { settingsOf } from "#core/options/settings.ts";
+import {
+	type Choice,
+	type Gateway,
+	KEY_VARIABLES,
+} from "#core/providers/provider.ts";
 
 const live = (config: Record<string, unknown>): OpenClawConfig => ({
 	plugins: { entries: { [PLUGIN_ID]: { config } } },
@@ -26,23 +31,22 @@ test("the plugin id is the manifest id", () => {
 
 test("without any config the defaults hold and no model is set", () => {
 	assert.deepEqual(readSettings(undefined, undefined), {
-		provider: "typesafe",
-		scope: "core",
+		stored: { provider: undefined, gateway: undefined, scope: undefined },
 		models: { small: undefined, middle: undefined, large: undefined },
 	});
 });
 
 test("the live config supplies every setting", () => {
 	const config = live({
-		provider: "auto",
+		provider: "typesafe",
+		gateway: "auto",
 		scope: "extended",
 		small_model: "openai/gpt-5-mini",
 		middle_model: "openai/gpt-5",
 		large_model: "anthropic/claude-opus-5-5",
 	});
 	assert.deepEqual(readSettings(config, undefined), {
-		provider: "auto",
-		scope: "extended",
+		stored: { provider: "typesafe", gateway: "auto", scope: "extended" },
 		models: {
 			small: "openai/gpt-5-mini",
 			middle: "openai/gpt-5",
@@ -53,73 +57,52 @@ test("the live config supplies every setting", () => {
 
 test("an unreadable live config falls back to the plugin config", () => {
 	assert.equal(
-		readSettings(undefined, { provider: "openrouter" }).provider,
+		readSettings(undefined, { gateway: "openrouter" }).stored.gateway,
 		"openrouter",
 	);
 });
 
 test("the live value wins over the plugin config", () => {
 	const settings = readSettings(live({ scope: "core" }), { scope: "extended" });
-	assert.equal(settings.scope, "core");
+	assert.equal(settings.stored.scope, "core");
 });
 
 test("a setting the live config lacks comes from the plugin config", () => {
-	const settings = readSettings(live({ provider: "auto" }), {
+	const settings = readSettings(live({ gateway: "auto" }), {
 		scope: "extended",
 		small_model: "a/b",
 	});
 	assert.deepEqual(
-		[settings.provider, settings.scope, settings.models.small],
+		[settings.stored.gateway, settings.stored.scope, settings.models.small],
 		["auto", "extended", "a/b"],
 	);
 });
 
-test("a provider outside the enumeration counts as the default", () => {
-	for (const bad of ["Auto", "both", "", 3, null, {}])
-		assert.equal(
-			readSettings(live({ provider: bad }), undefined).provider,
-			"typesafe",
-		);
-});
-
-test("a scope outside the enumeration counts as the default", () => {
-	for (const bad of ["all", "Extended", "", 1, null])
-		assert.equal(readSettings(live({ scope: bad }), undefined).scope, "core");
-});
-
-test("an invalid live value falls through to the valid plugin config value", () => {
+test("an unusable live model falls through to the plugin config value", () => {
 	const settings = readSettings(
 		live({
-			provider: "both",
-			scope: "all",
 			small_model: "  ",
 			middle_model: "",
 			large_model: 5,
 		}),
 		{
-			provider: "openrouter",
-			scope: "extended",
 			small_model: "a/b",
 			middle_model: "e/f",
 			large_model: "c/d",
 		},
 	);
-	assert.deepEqual(settings, {
-		provider: "openrouter",
-		scope: "extended",
-		models: { small: "a/b", middle: "e/f", large: "c/d" },
+	assert.deepEqual(settings.models, {
+		small: "a/b",
+		middle: "e/f",
+		large: "c/d",
 	});
 });
 
-test("when no source holds a valid value the default or unset applies", () => {
-	const settings = readSettings(live({ provider: "both", small_model: "" }), {
-		provider: 3,
+test("when no source holds a usable model it is unset", () => {
+	const settings = readSettings(live({ small_model: "" }), {
 		small_model: null,
 	});
-	assert.deepEqual(
-		[settings.provider, settings.models.small],
-		["typesafe", undefined],
-	);
+	assert.equal(settings.models.small, undefined);
 });
 
 test("a model slot is trimmed, for every slot", () => {
@@ -152,9 +135,41 @@ test("a live config whose plugin entry is not a record falls back", () => {
 	const config = { plugins: { entries: { [PLUGIN_ID]: { config: "x" } } } };
 	assert.equal(
 		readSettings(config as unknown as OpenClawConfig, { scope: "extended" })
-			.scope,
+			.stored.scope,
 		"extended",
 	);
+});
+
+test("the first source that holds text decides, valid or not, and a silent one lets the next decide", () => {
+	const provider = readSettings(live({ provider: "auto" }), {
+		provider: "typesafe",
+	}).stored;
+	assert.equal(provider.provider, "auto");
+	const gateway = (liveValue: unknown) =>
+		readSettings(live({ gateway: liveValue }), { gateway: "auto" }).stored
+			.gateway;
+	assert.equal(gateway("fast"), "fast");
+	assert.equal(gateway(undefined), "auto");
+});
+
+test("a blank or missing gateway is silent: the next source is read, else it reads as direct", () => {
+	for (const silent of ["", "   ", null]) {
+		const from = readSettings(live({ gateway: silent }), { gateway: "auto" });
+		assert.equal(from.stored.gateway, "auto");
+		assert.deepEqual(
+			settingsOf(readSettings(live({ gateway: silent }), {}).stored),
+			{
+				provider: "typesafe",
+				gateway: "direct",
+				scope: "core",
+			},
+		);
+	}
+});
+
+const choice = (gateway: Gateway): Choice => ({
+	provider: "typesafe",
+	gateway,
 });
 
 const ENV = {
@@ -164,33 +179,39 @@ const ENV = {
 
 test("keys are read for the allowed providers only", () => {
 	const config = live({ api_key: "plug-ts", openrouter_api_key: "plug-or" });
-	assert.deepEqual(readKeys(config, undefined, "typesafe", ENV), {
+	assert.deepEqual(readKeys(config, undefined, choice("direct"), ENV), {
 		typesafe: "plug-ts",
 	});
-	assert.deepEqual(readKeys(config, undefined, "openrouter", ENV), {
+	assert.deepEqual(readKeys(config, undefined, choice("openrouter"), ENV), {
 		openrouter: "plug-or",
 	});
-	assert.deepEqual(readKeys(config, undefined, "auto", ENV), {
+	assert.deepEqual(readKeys(config, undefined, choice("auto"), ENV), {
 		typesafe: "plug-ts",
 		openrouter: "plug-or",
 	});
 });
 
-test("a provider value outside the enumeration reads the default provider's key", () => {
-	assert.deepEqual(readKeys(undefined, undefined, "bogus", ENV), {
-		typesafe: "env-ts-key",
-	});
+test("a NoChoice looks up no key", () => {
+	assert.deepEqual(
+		readKeys(
+			undefined,
+			undefined,
+			{ skipped: "gateway not valid: run setup" },
+			ENV,
+		),
+		{},
+	);
 });
 
 test("the plugin key comes before the variable", () => {
 	assert.deepEqual(
-		readKeys(live({ api_key: "plug-ts" }), undefined, "typesafe", ENV),
+		readKeys(live({ api_key: "plug-ts" }), undefined, choice("direct"), ENV),
 		{ typesafe: "plug-ts" },
 	);
 });
 
 test("the variable supplies a key the plugin lacks", () => {
-	assert.deepEqual(readKeys(undefined, undefined, "auto", ENV), {
+	assert.deepEqual(readKeys(undefined, undefined, choice("auto"), ENV), {
 		typesafe: "env-ts-key",
 		openrouter: "env-or-key",
 	});
@@ -198,7 +219,12 @@ test("the variable supplies a key the plugin lacks", () => {
 
 test("the plugin config key is used when the live config has none", () => {
 	assert.deepEqual(
-		readKeys(undefined, { openrouter_api_key: "fallback" }, "openrouter", ENV),
+		readKeys(
+			undefined,
+			{ openrouter_api_key: "fallback" },
+			choice("openrouter"),
+			ENV,
+		),
 		{ openrouter: "fallback" },
 	);
 });
@@ -206,7 +232,7 @@ test("the plugin config key is used when the live config has none", () => {
 test("an empty or non-string key is ignored and the variable applies", () => {
 	for (const bad of ["", 7, null, { source: "env" }, ["k"]])
 		assert.deepEqual(
-			readKeys(live({ api_key: bad }), undefined, "typesafe", ENV),
+			readKeys(live({ api_key: bad }), undefined, choice("direct"), ENV),
 			{ typesafe: "env-ts-key" },
 		);
 });
@@ -217,7 +243,7 @@ test("a SecretRef in the live config yields to the resolved key in the plugin co
 		readKeys(
 			live({ api_key: ref }),
 			{ api_key: "resolved-key" },
-			"typesafe",
+			choice("direct"),
 			{},
 		),
 		{ typesafe: "resolved-key" },
@@ -226,31 +252,35 @@ test("a SecretRef in the live config yields to the resolved key in the plugin co
 
 test("an empty variable is no key", () => {
 	assert.deepEqual(
-		readKeys(undefined, undefined, "auto", { TYPESAFE_API_KEY: "" }),
+		readKeys(undefined, undefined, choice("auto"), { TYPESAFE_API_KEY: "" }),
 		{},
 	);
 });
 
 test("a disallowed provider's key is never read from the environment", () => {
 	assert.deepEqual(
-		readKeys(undefined, undefined, "typesafe", { OPENROUTER_API_KEY: "x" }),
+		readKeys(undefined, undefined, choice("direct"), {
+			OPENROUTER_API_KEY: "x",
+		}),
 		{},
 	);
 });
 
 test("a blank key or variable is no key, and a padded one is trimmed", () => {
 	assert.deepEqual(
-		readKeys(live({ api_key: "  " }), undefined, "typesafe", {
+		readKeys(live({ api_key: "  " }), undefined, choice("direct"), {
 			TYPESAFE_API_KEY: " \t",
 		}),
 		{},
 	);
 	assert.deepEqual(
-		readKeys(live({ api_key: " plug-ts " }), undefined, "typesafe", ENV),
+		readKeys(live({ api_key: " plug-ts " }), undefined, choice("direct"), ENV),
 		{ typesafe: "plug-ts" },
 	);
 	assert.deepEqual(
-		readKeys(undefined, undefined, "typesafe", { TYPESAFE_API_KEY: " k\n" }),
+		readKeys(undefined, undefined, choice("direct"), {
+			TYPESAFE_API_KEY: " k\n",
+		}),
 		{ typesafe: "k" },
 	);
 });
@@ -260,7 +290,7 @@ test("the live config is read before the plugin config, and the variable last", 
 	const keys = readKeys(
 		live(traced(trace, {})),
 		traced(trace, {}),
-		"typesafe",
+		choice("direct"),
 		tracedEnv(trace, ENV),
 	);
 	assert.deepEqual(keys, { typesafe: "env-ts-key" });
@@ -276,7 +306,7 @@ test("openrouter-first looks up the OpenRouter key before the TypeSafe key", () 
 	const keys = readKeys(
 		live(traced(trace, {})),
 		undefined,
-		"openrouter-first",
+		choice("openrouter-first"),
 		tracedEnv(trace, ENV),
 	);
 	assert.deepEqual(keys, { openrouter: "env-or-key", typesafe: "env-ts-key" });
@@ -293,7 +323,7 @@ test("a key in the live config stops the lookup before the plugin config", () =>
 	const keys = readKeys(
 		live(traced(trace, { typesafe: "live-ts" })),
 		traced(trace, { typesafe: "plugin-ts" }),
-		"typesafe",
+		choice("direct"),
 		tracedEnv(trace, ENV),
 	);
 	assert.deepEqual(keys, { typesafe: "live-ts" });
@@ -305,7 +335,7 @@ test("a provider takes its key from the live config and the other from the varia
 	const keys = readKeys(
 		live(traced(trace, { typesafe: "live-ts" })),
 		undefined,
-		"auto",
+		choice("auto"),
 		tracedEnv(trace, ENV),
 	);
 	assert.deepEqual(keys, { typesafe: "live-ts", openrouter: "env-or-key" });
@@ -317,21 +347,29 @@ test("a provider takes its key from the live config and the other from the varia
 });
 
 test("readState reads the live config once and draws the settings and the keys from it", () => {
-	const config = live({ provider: "openrouter", openrouter_api_key: "k" });
+	const config = live({ gateway: "openrouter", openrouter_api_key: "k" });
 	const fake = createFakeApi({ config, pluginConfig: { api_key: "plug" } });
 	const state = readState(fake.api, { TYPESAFE_API_KEY: "env" });
 	assert.equal(state.config, config);
-	assert.equal(state.settings.provider, "openrouter");
+	assert.deepEqual(state.chosen, {
+		provider: "typesafe",
+		gateway: "openrouter",
+		scope: "core",
+	});
 	assert.deepEqual(state.keys, { openrouter: "k" });
 	assert.equal(fake.runtime.calls.config.length, 1);
 });
 
 test("readState falls back to the plugin config and the environment when the live config cannot be read", () => {
-	const fake = createFakeApi({ pluginConfig: { provider: "auto" } });
+	const fake = createFakeApi({ pluginConfig: { gateway: "auto" } });
 	fake.runtime.throwOn.add("config");
 	const state = readState(fake.api, { OPENROUTER_API_KEY: "env" });
 	assert.equal(state.config, undefined);
-	assert.equal(state.settings.provider, "auto");
+	assert.deepEqual(state.chosen, {
+		provider: "typesafe",
+		gateway: "auto",
+		scope: "core",
+	});
 	assert.deepEqual(state.keys, { openrouter: "env" });
 });
 

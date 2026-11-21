@@ -1,18 +1,88 @@
 {
 	"routingLimitMs": 8000,
 	"graceMs": 1000,
-	"providers": {
-		"values": ["auto", "openrouter-first", "typesafe", "openrouter"],
-		"default": "typesafe",
-		"order": {
-			"auto": ["typesafe", "openrouter"],
-			"openrouter-first": ["openrouter", "typesafe"],
-			"typesafe": ["typesafe"],
-			"openrouter": ["openrouter"]
+	"blank": [
+		9, 10, 11, 12, 13, 32, 160, 5760, 8192, 8193, 8194, 8195, 8196, 8197, 8198,
+		8199, 8200, 8201, 8202, 8232, 8233, 8239, 8287, 12288, 65279
+	],
+	"keyVariables": {
+		"typesafe": "TYPESAFE_API_KEY",
+		"openrouter": "OPENROUTER_API_KEY"
+	},
+	"settings": [
+		{
+			"name": "provider",
+			"values": ["typesafe"],
+			"default": "typesafe",
+			"skip": "model-router skipped, provider not valid: run setup",
+			"notValid": "provider: {stored} (not valid: use one of typesafe)",
+			"valueLines": {
+				"typesafe": "provider: typesafe"
+			},
+			"useOneOf": "provider: use one of typesafe",
+			"already": {
+				"typesafe": "provider unchanged: already typesafe"
+			},
+			"unchanged": "provider unchanged: ",
+			"refused": "provider unchanged: only a local session can change it",
+			"command": {
+				"name": "model-router-provider",
+				"description": "Shows or changes whose model scores subagent calls: typesafe.",
+				"argsHint": "<typesafe>"
+			}
 		},
-		"keyVariables": {
-			"typesafe": "TYPESAFE_API_KEY",
-			"openrouter": "OPENROUTER_API_KEY"
+		{
+			"name": "gateway",
+			"values": ["direct", "auto", "openrouter-first", "openrouter"],
+			"default": "direct",
+			"skip": "model-router skipped, gateway not valid: run setup",
+			"notValid": "gateway: {stored} (not valid: use one of direct, auto, openrouter-first, openrouter)",
+			"valueLines": {
+				"direct": "gateway: direct",
+				"auto": "gateway: auto",
+				"openrouter-first": "gateway: openrouter-first",
+				"openrouter": "gateway: openrouter"
+			},
+			"useOneOf": "gateway: use one of direct, auto, openrouter-first, openrouter",
+			"already": {
+				"direct": "gateway unchanged: already direct",
+				"auto": "gateway unchanged: already auto",
+				"openrouter-first": "gateway unchanged: already openrouter-first",
+				"openrouter": "gateway unchanged: already openrouter"
+			},
+			"unchanged": "gateway unchanged: ",
+			"refused": "gateway unchanged: only a local session can change it",
+			"command": {
+				"name": "model-router-gateway",
+				"description": "Shows or changes how OpenRouter is used for the provider: direct, auto, openrouter-first, openrouter.",
+				"argsHint": "<direct|auto|openrouter-first|openrouter>"
+			}
+		}
+	],
+	"choices": {
+		"typesafe": {
+			"direct": {
+				"holders": ["typesafe"],
+				"lines": ["provider: typesafe", "gateway: direct (typesafe)"]
+			},
+			"auto": {
+				"holders": ["typesafe", "openrouter"],
+				"lines": [
+					"provider: typesafe",
+					"gateway: auto (typesafe, then openrouter)"
+				]
+			},
+			"openrouter-first": {
+				"holders": ["openrouter", "typesafe"],
+				"lines": [
+					"provider: typesafe",
+					"gateway: openrouter-first (openrouter, then typesafe)"
+				]
+			},
+			"openrouter": {
+				"holders": ["openrouter"],
+				"lines": ["provider: typesafe", "gateway: openrouter (openrouter)"]
+			}
 		}
 	},
 	"efforts": ["low", "medium", "high", "xhigh"],
@@ -67,25 +137,7 @@
 		"toolName": "model_router_config",
 		"toolset": "model_router",
 		"toolLabel": "Model Router settings",
-		"toolDescription": "Reads the router's settings. It returns the provider, the three models, and whether each key the provider allows is set. It changes nothing and never returns a key.",
-		"commandName": "model-router-provider",
-		"commandDescription": "Shows or changes which providers score subagent calls: auto, openrouter-first, typesafe, openrouter.",
-		"argsHint": "<auto|openrouter-first|typesafe|openrouter>",
-		"providerLines": {
-			"auto": "provider: auto (typesafe, then openrouter)",
-			"openrouter-first": "provider: openrouter-first (openrouter, then typesafe)",
-			"typesafe": "provider: typesafe (typesafe)",
-			"openrouter": "provider: openrouter (openrouter)"
-		},
-		"useOneOf": "provider: use one of auto, openrouter-first, typesafe, openrouter",
-		"unchangedPrefix": "provider unchanged: ",
-		"already": {
-			"auto": "provider unchanged: already auto",
-			"openrouter-first": "provider unchanged: already openrouter-first",
-			"typesafe": "provider unchanged: already typesafe",
-			"openrouter": "provider unchanged: already openrouter"
-		},
-		"refused": "provider unchanged: only a local session can change it",
+		"toolDescription": "Reads the router's settings. It returns the provider, the gateway, the three models, and whether each key the settings allow is set. It changes nothing and never returns a key.",
 		"localPlatforms": ["local", "cli", "tui", "desktop"],
 		"keyLines": {
 			"typesafe": {

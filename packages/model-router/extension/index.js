@@ -278,8 +278,6 @@ function pickModel(level, state) {
 // src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
-var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
-var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/core/output/reasons.ts
 var CALLER_EFFORT = "caller effort";
@@ -296,7 +294,172 @@ var outsideCoreScope = (id) => `${id} is outside the core scope`;
 var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
 var agentUnknown = (id) => `${id} agent unknown`;
 var setsOwnModel = (id) => `${id} sets its own model`;
+var notValid = (setting) => `${setting} not valid: run setup`;
 var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
+
+// src/core/providers/provider.ts
+var MAKERS = ["typesafe"];
+var KEY_HOLDERS = [...MAKERS, "openrouter"];
+var GATEWAYS = [
+  "direct",
+  "auto",
+  "openrouter-first",
+  "openrouter"
+];
+var KEY_VARIABLES = {
+  typesafe: "TYPESAFE_API_KEY",
+  openrouter: "OPENROUTER_API_KEY"
+};
+var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
+var GATEWAY_PATHS = {
+  direct: ["direct"],
+  auto: ["direct", "openrouter"],
+  "openrouter-first": ["openrouter", "direct"],
+  openrouter: ["openrouter"]
+};
+var holderOf = (maker, path) => path === "direct" ? maker : path;
+var steps = (choice) => GATEWAY_PATHS[choice.gateway].map((path) => ({
+  maker: choice.provider,
+  path,
+  holder: holderOf(choice.provider, path)
+}));
+var holders = (choice) => "skipped" in choice ? [] : steps(choice).map((step) => step.holder);
+async function collectKeys(choice, lookup2) {
+  const keys = {};
+  for (const holder of holders(choice)) {
+    const key = await lookup2(holder);
+    if (key !== void 0) keys[holder] = key;
+  }
+  return keys;
+}
+function plan(choice, keys) {
+  const attempts = [];
+  for (const step of steps(choice)) {
+    const key = keys[step.holder];
+    if (key) attempts.push({ ...step, key });
+  }
+  return attempts.map(
+    (attempt2, i) => i < attempts.length - 1 ? { ...attempt2, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt2
+  );
+}
+
+// src/utils/error.ts
+var errorText = (err) => err instanceof Error ? err.message : String(err);
+
+// src/core/options/settings.ts
+var VALUE_SETTINGS = ["provider", "gateway", "scope"];
+var TOOL_NAME = "model_router_config";
+var LABEL_SEPARATOR = " - ";
+var TEXTS = {
+  provider: {
+    values: MAKERS,
+    about: "whose model scores subagent calls",
+    question: "Which provider's model should score subagent calls?",
+    consequences: {
+      typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to"
+    }
+  },
+  gateway: {
+    values: GATEWAYS,
+    about: "how OpenRouter is used for the provider",
+    question: "How should OpenRouter be used for the provider?",
+    consequences: {
+      direct: "the provider's own API only",
+      auto: "the provider's own API, then OpenRouter if it fails",
+      "openrouter-first": "OpenRouter, then the provider's own API if it fails",
+      openrouter: "OpenRouter only"
+    }
+  },
+  scope: {
+    values: SCOPE_VALUES,
+    about: "which agent calls the router routes",
+    question: "Which agent calls should the router route?",
+    consequences: {
+      core: "built-in general agents only",
+      extended: "also routes other agents that pass no model"
+    }
+  }
+};
+var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
+var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
+var isSilent = (stored) => typeof stored !== "string" || stored.trim() === "";
+var valueFor = (setting, stored) => isSilent(stored) ? TEXTS[setting].values[0] : TEXTS[setting].values.find((value) => value === stored);
+var readProvider = (stored) => MAKERS.find((maker) => maker === valueFor("provider", stored));
+var readGateway = (stored) => GATEWAYS.find((gateway) => gateway === valueFor("gateway", stored));
+var readScope = (stored) => SCOPE_VALUES.find((scope) => scope === valueFor("scope", stored));
+function settingsOf(stored) {
+  const provider = readProvider(stored.provider);
+  if (provider === void 0) return { skipped: notValid("provider") };
+  const gateway = readGateway(stored.gateway);
+  if (gateway === void 0) return { skipped: notValid("gateway") };
+  const scope = readScope(stored.scope);
+  if (scope === void 0) return { skipped: notValid("scope") };
+  return { provider, gateway, scope };
+}
+var scopeOf = (stored) => readScope(stored.scope) ?? DEFAULT_SCOPE;
+var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
+var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
+var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
+var alreadyValue = (value) => `already ${value}`;
+var NO_ANSWER = "no answer from the dialog";
+var NOT_OFFERED = "the answer was not one of the offered values";
+var keyLine = (holder, state) => `${holder} key: ${state}`;
+var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
+function ask(setting, current) {
+  const { values, question } = TEXTS[setting];
+  const first = valueFor(setting, current);
+  const sorted = first === void 0 ? values : [first, ...values.filter((value) => value !== first)];
+  return { question, options: sorted.map((value) => label(setting, value)) };
+}
+function pick(setting, answer) {
+  return TEXTS[setting].values.find(
+    (value) => label(setting, value) === answer
+  );
+}
+async function chooseValue(setting, current, select, apply2) {
+  const { question, options } = ask(setting, current);
+  let answer;
+  try {
+    answer = await select(question, options);
+  } catch {
+    answer = void 0;
+  }
+  if (answer === void 0) return unchanged(setting, NO_ANSWER);
+  const value = pick(setting, answer);
+  return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply2(value);
+}
+var valueLine = (setting, stored) => {
+  const value = valueFor(setting, stored[setting]);
+  if (value === void 0)
+    return `${setting}: ${String(stored[setting])} (not valid: use one of ${TEXTS[setting].values.join(", ")})`;
+  const settings = settingsOf(stored);
+  if (setting === "gateway" && !("skipped" in settings))
+    return `gateway: ${value} (${holders(settings).join(", then ")})`;
+  return `${setting}: ${value}`;
+};
+var settingsReport = (stored, extra, keys) => {
+  const settings = settingsOf(stored);
+  const keyLines = "skipped" in settings ? [] : holders(settings).map(
+    (holder) => keyLine(holder, keys[holder] === void 0 ? "unset" : "set")
+  );
+  return [
+    ...VALUE_SETTINGS.map((setting) => valueLine(setting, stored)),
+    ...extra,
+    ...keyLines
+  ].join("\n");
+};
+var toolDescription = () => `Reads the router's settings. With no input it returns the provider, gateway and scope, and whether each key the settings allow is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
+var TOOL_LABEL = "Model Router settings";
+var badCall = () => `Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
+function describeCommand(setting) {
+  const { about, values } = TEXTS[setting];
+  return `Shows or changes ${about}: ${values.join(", ")}.`;
+}
+var COMMAND_DESCRIPTIONS = {
+  provider: describeCommand("provider"),
+  gateway: describeCommand("gateway"),
+  scope: describeCommand("scope")
+};
 
 // src/core/output/line.ts
 var LINE_PREFIX = "model-router ";
@@ -327,141 +490,6 @@ function decisionSuffix({
   return ` \xB7 ${holder}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
 }
 
-// src/core/providers/provider.ts
-var PROVIDER_VALUES = [
-  "auto",
-  "openrouter-first",
-  "typesafe",
-  "openrouter"
-];
-var MAKERS = ["typesafe"];
-var KEY_HOLDERS = [...MAKERS, "openrouter"];
-var KEY_VARIABLES = {
-  typesafe: "TYPESAFE_API_KEY",
-  openrouter: "OPENROUTER_API_KEY"
-};
-var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var DEFAULT_VALUE = "typesafe";
-var MAKER = "typesafe";
-var VALUE_PATHS = {
-  auto: ["direct", "openrouter"],
-  "openrouter-first": ["openrouter", "direct"],
-  typesafe: ["direct"],
-  openrouter: ["openrouter"]
-};
-var holderOf = (maker, path) => path === "direct" ? maker : path;
-var steps = (value) => VALUE_PATHS[resolve(value)].map((path) => ({
-  maker: MAKER,
-  path,
-  holder: holderOf(MAKER, path)
-}));
-var parseProvider = (value) => typeof value === "string" && Object.hasOwn(VALUE_PATHS, value) ? value : void 0;
-var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
-var order = (value) => steps(value).map((step) => step.holder);
-async function collectKeys(value, lookup2) {
-  const keys = {};
-  for (const holder of order(value)) {
-    const key = await lookup2(holder);
-    if (key !== void 0) keys[holder] = key;
-  }
-  return keys;
-}
-function plan(value, keys) {
-  const attempts = [];
-  for (const step of steps(value)) {
-    const key = keys[step.holder];
-    if (key) attempts.push({ ...step, key });
-  }
-  return attempts.map(
-    (attempt2, i) => i < attempts.length - 1 ? { ...attempt2, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt2
-  );
-}
-
-// src/utils/error.ts
-var errorText = (err) => err instanceof Error ? err.message : String(err);
-
-// src/core/options/settings.ts
-var VALUE_SETTINGS = ["provider", "scope"];
-var TOOL_NAME = "model_router_config";
-var LABEL_SEPARATOR = " - ";
-var TEXTS = {
-  provider: {
-    values: PROVIDER_VALUES,
-    resolve,
-    about: "which providers score subagent calls",
-    question: "Which providers should score subagent calls?",
-    consequences: {
-      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
-      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
-      typesafe: "TypeSafe only",
-      openrouter: "OpenRouter only"
-    }
-  },
-  scope: {
-    values: SCOPE_VALUES,
-    resolve: resolveScope,
-    about: "which agent calls the router routes",
-    question: "Which agent calls should the router route?",
-    consequences: {
-      core: "built-in general agents only",
-      extended: "also routes other agents that pass no model"
-    }
-  }
-};
-var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
-var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
-var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
-var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
-var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
-var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
-var alreadyValue = (value) => `already ${value}`;
-var NO_ANSWER = "no answer from the dialog";
-var NOT_OFFERED = "the answer was not one of the offered values";
-var keyLine = (holder, state) => `${holder} key: ${state}`;
-var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
-function ask(setting, current) {
-  const { values, resolve: resolve2, question } = TEXTS[setting];
-  const first = resolve2(current);
-  const sorted = [first, ...values.filter((value) => value !== first)];
-  return { question, options: sorted.map((value) => label(setting, value)) };
-}
-function pick(setting, answer) {
-  return TEXTS[setting].values.find(
-    (value) => label(setting, value) === answer
-  );
-}
-async function chooseValue(setting, current, select, apply2) {
-  const { question, options } = ask(setting, current);
-  let answer;
-  try {
-    answer = await select(question, options);
-  } catch {
-    answer = void 0;
-  }
-  if (answer === void 0) return unchanged(setting, NO_ANSWER);
-  const value = pick(setting, answer);
-  return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply2(value);
-}
-var settingsReport = (provider, scope, extra, keys) => [
-  valueLine("provider", provider),
-  valueLine("scope", scope),
-  ...extra,
-  ...order(provider).map(
-    (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
-  )
-].join("\n");
-var toolDescription = () => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
-var TOOL_LABEL = "Model Router settings";
-var badCall = () => `Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
-function describeCommand(setting) {
-  const { about, values } = TEXTS[setting];
-  return `Shows or changes ${about}: ${values.join(", ")}.`;
-}
-var COMMAND_DESCRIPTIONS = {
-  provider: describeCommand("provider"),
-  scope: describeCommand("scope")
-};
-
 // src/utils/serializer.ts
 function serializer() {
   let tail = Promise.resolve();
@@ -475,9 +503,22 @@ function serializer() {
 // src/adapters/omp/settings.ts
 import { readFile } from "node:fs/promises";
 var NARROWABLE = ["auto", "openrouter-first"];
-function narrow(global, project) {
-  const value = resolve(global);
-  return NARROWABLE.includes(value) && (project === "typesafe" || project === "openrouter") ? project : value;
+var SINGLE_PATH = ["direct", "openrouter"];
+var namesNoValue = (setting, text) => valueFor(setting, text) === void 0;
+function applied(global, effective) {
+  const { provider: fromGlobal, gateway: gatewayFromGlobal } = global;
+  const { provider, gateway, scope } = effective;
+  return {
+    provider: namesNoValue("provider", provider) ? provider : fromGlobal,
+    gateway: gatewayText(gatewayFromGlobal, gateway),
+    scope
+  };
+}
+function gatewayText(global, effective) {
+  if (namesNoValue("gateway", effective)) return effective;
+  if (namesNoValue("gateway", global)) return global;
+  const narrows = NARROWABLE.some((value) => value === global) && SINGLE_PATH.some((value) => value === effective);
+  return narrows ? effective : global;
 }
 async function readSettings(omp, cwd) {
   const plugin = omp.plugin ?? FALLBACK_NAME;
@@ -486,12 +527,19 @@ async function readSettings(omp, cwd) {
       readGlobal(omp.getPluginsLockfile(), plugin),
       omp.getPluginSettings(plugin, cwd)
     ]);
-    const { provider: fromGlobal } = global;
-    const { provider: fromProject, scope } = effective;
-    return {
-      provider: narrow(fromGlobal, fromProject),
-      scope: resolveScope(scope)
-    };
+    return applied(global, effective);
+  } catch {
+    return void 0;
+  }
+}
+async function readGlobalSettings(omp) {
+  const plugin = omp.plugin ?? FALLBACK_NAME;
+  try {
+    const { provider, gateway, scope } = await readGlobal(
+      omp.getPluginsLockfile(),
+      plugin
+    );
+    return { provider, gateway, scope };
   } catch {
     return void 0;
   }
@@ -510,9 +558,9 @@ async function readGlobal(path, plugin) {
   const mine = isRecord(settings) ? settings[plugin] : void 0;
   return isRecord(mine) ? mine : {};
 }
-async function findAttempts(ctx, value) {
-  const keys = await collectKeys(value, (holder) => findKey(ctx, holder));
-  return plan(value, keys);
+async function findAttempts(ctx, choice) {
+  const keys = await collectKeys(choice, (holder) => findKey(ctx, holder));
+  return plan(choice, keys);
 }
 async function findKey(ctx, holder) {
   try {
@@ -553,28 +601,38 @@ function say(ctx, text) {
   }
 }
 async function withSettings(omp, ctx, show) {
-  const settings = await readSettings(omp, ctx.cwd);
-  return settings === void 0 ? UNREADABLE : show(settings);
+  const stored = await readSettings(omp, ctx.cwd);
+  return stored === void 0 ? UNREADABLE : show(stored);
 }
-var readAll = (omp, ctx) => withSettings(omp, ctx, async ({ provider, scope }) => {
-  const keys = await collectKeys(provider, (name) => findKey(ctx, name));
-  return settingsReport(provider, scope, [], keys);
-});
+var readAll = (omp, ctx) => withSettings(
+  omp,
+  ctx,
+  async (stored) => settingsReport(
+    stored,
+    [],
+    await collectKeys(settingsOf(stored), (holder) => findKey(ctx, holder))
+  )
+);
 async function apply(omp, ctx, setting, value) {
   if (!isValue(setting, value)) return useOneOf(setting);
   const { plugin } = omp;
   const before = await readSettings(omp, ctx.cwd);
-  if (before === void 0 || plugin === void 0)
+  const global = await readGlobalSettings(omp);
+  if (before === void 0 || global === void 0 || plugin === void 0)
     return unchanged(setting, UNREADABLE);
-  if (before[setting] === value) return unchanged(setting, alreadyValue(value));
-  try {
-    await omp.writeSetting(ctx.cwd, plugin, setting, value);
-  } catch (err) {
-    return unchangedBy(setting, err);
+  if (global[setting] === value && before[setting] === value)
+    return unchanged(setting, alreadyValue(value));
+  const wrote = global[setting] !== value;
+  if (wrote) {
+    try {
+      await omp.writeSetting(ctx.cwd, plugin, setting, value);
+    } catch (err) {
+      return unchangedBy(setting, err);
+    }
   }
-  const now = (await readSettings(omp, ctx.cwd))?.[setting] ?? value;
-  const line = valueLine(setting, now);
-  return now === value ? line : [line, projectOverrides(setting)].join(LINE_BREAK);
+  const after = wrote ? await readSettings(omp, ctx.cwd) ?? { ...before, [setting]: value } : before;
+  const line = valueLine(setting, after);
+  return after[setting] === value ? line : [line, projectOverrides(setting)].join(LINE_BREAK);
 }
 async function dialog(omp, ctx, setting) {
   if (!ctx.hasUI) return unchanged(setting, NO_ANSWER);
@@ -593,11 +651,7 @@ async function runTool(omp, ctx, params) {
 }
 async function runCommand(omp, ctx, setting, args) {
   const value = args.trim();
-  return value === "" ? withSettings(
-    omp,
-    ctx,
-    (settings) => valueLine(setting, settings[setting])
-  ) : apply(omp, ctx, setting, value);
+  return value === "" ? withSettings(omp, ctx, (stored) => valueLine(setting, stored)) : apply(omp, ctx, setting, value);
 }
 var reply = (text) => ({
   content: [{ type: "text", text }]
@@ -780,9 +834,11 @@ async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
   const reason = spawnCheck(spawning, batch.facts);
   return reason === void 0 ? batch : { closed: reason };
 }
-async function openBatch(omp, pi, ctx, settings) {
-  if (settings === void 0) return { closed: UNREADABLE };
-  const attempts = await findAttempts(ctx, settings.provider);
+async function openBatch(omp, pi, ctx, stored) {
+  if (stored === void 0) return { closed: UNREADABLE };
+  const settings = settingsOf(stored);
+  if ("skipped" in settings) return { closed: settings.skipped };
+  const attempts = await findAttempts(ctx, settings);
   if (attempts.length === 0) return { closed: KEY_UNSET };
   const config = readConfig(omp.lookup, pi.pi.settings);
   if (config === void 0) return { closed: UNREADABLE };
@@ -1070,11 +1126,11 @@ async function exchange(fetchFn, url, request, caller, timeout, clock) {
 }
 function pause(ms, caller, clock) {
   if (caller.aborted) return Promise.resolve();
-  return new Promise((resolve2) => {
+  return new Promise((resolve) => {
     const done = () => {
       timer.cancel();
       caller.removeEventListener("abort", done);
-      resolve2();
+      resolve();
     };
     const timer = clock.after(ms, done);
     caller.addEventListener("abort", done, { once: true });
@@ -1306,9 +1362,9 @@ function link({ byKey }, entry2, key) {
 }
 function unlink({ byKey }, entry2) {
   for (const key of entry2.keys) {
-    const holders = byKey.get(key);
-    holders?.delete(entry2);
-    if (holders?.size === 0) byKey.delete(key);
+    const holders2 = byKey.get(key);
+    holders2?.delete(entry2);
+    if (holders2?.size === 0) byKey.delete(key);
   }
   entry2.keys.clear();
 }
@@ -1362,8 +1418,8 @@ function createStore() {
     // More than one match is ambiguous, and an ambiguous key takes nothing.
     // A decision binds to its agent: another agent takes nothing and leaves it stored.
     take(key, agent) {
-      const holders = key === void 0 ? void 0 : c.byKey.get(key);
-      const [entry2] = holders?.size === 1 ? holders : [];
+      const holders2 = key === void 0 ? void 0 : c.byKey.get(key);
+      const [entry2] = holders2?.size === 1 ? holders2 : [];
       if (entry2?.agent !== agent) return void 0;
       remove(c, entry2);
       return { stored: entry2.stored, index: entry2.index };
@@ -1401,8 +1457,8 @@ function createRouter(omp, pi) {
     if (!Array.isArray(tasks)) return;
     const eligible = eligibleItems(tasks);
     if (eligible.length === 0) return;
-    const settings = await readSettings(omp, ctx.cwd);
-    const scope = settings?.scope ?? DEFAULT_SCOPE;
+    const stored = await readSettings(omp, ctx.cwd);
+    const scope = stored === void 0 ? DEFAULT_SCOPE : scopeOf(stored);
     const items = eligible.filter(({ agent }) => inScope(agent, scope));
     if (items.length === 0) return;
     const skipAll = (reason) => report(
@@ -1411,7 +1467,7 @@ function createRouter(omp, pi) {
     );
     const budget = budgetFor(readTimeoutSetting(omp.lookup, pi.pi.settings));
     if ("closed" in budget) return skipAll(budget.closed);
-    const gates = await openBatch(omp, pi, ctx, settings);
+    const gates = await openBatch(omp, pi, ctx, stored);
     if ("closed" in gates) return skipAll(gates.closed);
     const scored = await scoreItems(
       items,
@@ -1419,11 +1475,11 @@ function createRouter(omp, pi) {
       gates,
       budget.deadline - (Date.now() - started)
     );
-    for (const { index, item, agent, stored } of scored)
-      store.add(event.toolCallId, index, item.name, agent, stored);
+    for (const { index, item, agent, stored: stored2 } of scored)
+      store.add(event.toolCallId, index, item.name, agent, stored2);
     report(
       ctx,
-      scored.map(({ index, stored }) => entry(index, stored.line))
+      scored.map(({ index, stored: stored2 }) => entry(index, stored2.line))
     );
   }
   async function onSpawn(event, ctx) {

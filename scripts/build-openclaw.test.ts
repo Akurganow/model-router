@@ -9,7 +9,7 @@ import {
 	readSettings,
 } from "#adapters/openclaw/settings.ts";
 import { SCOPE_VALUES } from "#core/options/scope.ts";
-import { TOOL_NAME } from "#core/options/settings.ts";
+import { settingsOf, TOOL_NAME } from "#core/options/settings.ts";
 import { KEY_FIELDS } from "#core/providers/provider.ts";
 import { formatJson } from "./build/json.ts";
 import { renderOpenclaw } from "./build/openclaw.ts";
@@ -44,10 +44,11 @@ test("the manifest names the plugin, its version, its tool and its skills", () =
 	assert.deepEqual(manifest.skills, source.openclaw.skills);
 });
 
-test("the config schema holds the seven settings and refuses any other key", () => {
+test("the config schema holds the eight settings and refuses any other key", () => {
 	assert.equal(schema.additionalProperties, false);
 	assert.deepEqual(Object.keys(schema.properties ?? {}), [
 		"provider",
+		"gateway",
 		"scope",
 		"small_model",
 		"middle_model",
@@ -59,8 +60,11 @@ test("the config schema holds the seven settings and refuses any other key", () 
 
 test("each default in the manifest is the value the code applies to an empty config", () => {
 	const settings = readSettings(undefined, {});
-	assert.equal(property("provider")?.default, settings.provider);
-	assert.equal(property("scope")?.default, settings.scope);
+	const chosen = settingsOf(settings.stored);
+	assert.ok(!("skipped" in chosen));
+	assert.equal(property("provider")?.default, chosen.provider);
+	assert.equal(property("gateway")?.default, chosen.gateway);
+	assert.equal(property("scope")?.default, chosen.scope);
 	for (const slot of ["small_model", "middle_model", "large_model"])
 		assert.equal(property(slot)?.default, undefined, slot);
 	assert.deepEqual(settings.models, {
@@ -68,15 +72,18 @@ test("each default in the manifest is the value the code applies to an empty con
 		middle: undefined,
 		large: undefined,
 	});
-	assert.deepEqual(readKeys(undefined, {}, settings.provider, {}), {});
+	assert.deepEqual(readKeys(undefined, {}, chosen, {}), {});
 });
 
 test("the settings carry no enumeration, so any string is accepted and counts as the default", () => {
-	for (const name of ["provider", "scope"]) {
+	for (const name of ["provider", "gateway", "scope"]) {
 		assert.equal(property(name)?.enum, undefined, name);
 		assert.equal(property(name)?.type, "string", name);
 	}
-	assert.deepEqual(validate(schema, { provider: "nope", scope: "nope" }), []);
+	assert.deepEqual(
+		validate(schema, { provider: "nope", gateway: "nope", scope: "nope" }),
+		[],
+	);
 });
 
 test("the options text names each value", () => {
@@ -88,11 +95,13 @@ test("the options text names each value", () => {
 		assert.ok(manifest.uiHints.scope.help.includes(`${value}: `), value);
 });
 
-test("a value outside the lists reads as the default", () => {
-	const settings = readSettings(undefined, {});
+test("a value outside the lists is kept as stored and skips the routing", () => {
 	const bad = readSettings(undefined, { provider: "nope", scope: "nope" });
-	assert.equal(bad.provider, settings.provider);
-	assert.equal(bad.scope, settings.scope);
+	assert.equal(bad.stored.provider, "nope");
+	assert.equal(bad.stored.scope, "nope");
+	assert.deepEqual(settingsOf(bad.stored), {
+		skipped: "provider not valid: run setup",
+	});
 });
 
 test("the key names in the source are the setting names the code reads", () => {

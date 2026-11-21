@@ -2,6 +2,7 @@ import { DEFAULT_ROLE, routingState } from "#core/brief/brief.ts";
 import { type DecidedWithWork, scoreWork } from "#core/decision/decide.ts";
 import { outcomeOf } from "#core/decision/outcome.ts";
 import type { Slot } from "#core/decision/slots.ts";
+import { type Settings, settingsOf } from "#core/options/settings.ts";
 import { LINE_PREFIX, skippedLine } from "#core/output/line.ts";
 import {
 	CALLER_EFFORT,
@@ -46,6 +47,7 @@ const KEPT_LABELS: Readonly<Record<KeptEffort, string>> = {
 // Jev is asked once for both parts, with the task, its context and its description under the default role.
 async function score(
 	request: HermesRequest,
+	settings: Settings,
 	{ fetchFn }: HermesDeps,
 	signal: AbortSignal,
 ) {
@@ -56,7 +58,7 @@ async function score(
 			task: request.task,
 			context: request.context,
 		}),
-		attempts: plan(request.provider, request.keys),
+		attempts: plan(settings, request.keys),
 		fetchFn,
 		clock: realClock,
 		signal,
@@ -66,11 +68,12 @@ async function score(
 // A rejected score is a failure of no known kind, not a run past the budget.
 async function scored(
 	request: HermesRequest,
+	settings: Settings,
 	deps: HermesDeps,
 	signal: AbortSignal,
 ): Promise<Awaited<ReturnType<typeof score>>> {
 	try {
-		return await score(request, deps, signal);
+		return await score(request, settings, deps, signal);
 	} catch {
 		return skippedBy(FAILED);
 	}
@@ -116,9 +119,11 @@ export async function routeRequest(
 	try {
 		const request = readRequest(raw);
 		if (request === undefined) return skip(FAILED);
+		const settings = settingsOf(request.stored);
+		if ("skipped" in settings) return skip(settings.skipped);
 		if (request.budgetMs === undefined) return skip(FAILED);
 		const decided = await raceDeadline(
-			(signal) => scored(request, deps, signal),
+			(signal) => scored(request, settings, deps, signal),
 			request.budgetMs,
 			deps.clock,
 			undefined,

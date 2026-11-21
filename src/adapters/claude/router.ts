@@ -1,7 +1,8 @@
 import { DEFAULT_ROLE, roleText, routingState } from "#core/brief/brief.ts";
 import { scoreWork } from "#core/decision/decide.ts";
 import { outcomeOf } from "#core/decision/outcome.ts";
-import { resolveScope, type Scope } from "#core/options/scope.ts";
+import type { Scope } from "#core/options/scope.ts";
+import { scopeOf, settingsOf } from "#core/options/settings.ts";
 import { skippedLine } from "#core/output/line.ts";
 import { CALLER_EFFORT } from "#core/output/reasons.ts";
 import { plan } from "#core/providers/provider.ts";
@@ -131,20 +132,22 @@ export async function routeSpawn(
 	options: Options,
 ): Promise<Started> {
 	const callerSet = callerEffort.delete(spawn.tool_use_id);
-	if (
-		next.origin.plugin !== ENGINE ||
-		!routable(spawn, resolveScope(options.scope))
-	)
+	const settings = settingsOf(options);
+	if (next.origin.plugin !== ENGINE || !routable(spawn, scopeOf(options)))
 		return next(spawn);
+	if ("skipped" in settings) {
+		await $.ui.log(skippedLine(settings.skipped));
+		return next(spawn);
+	}
 	const state = routingState({
 		role: roleFor(spawn.subagentType),
 		description: spawn.description,
 		task: spawn.prompt,
 	});
-	const keys = await readKeys($, options, options.provider);
+	const keys = await readKeys($, options, settings);
 	const decided = await scored($, next.signal, {
 		state,
-		attempts: plan(options.provider, keys),
+		attempts: plan(settings, keys),
 	});
 	if ("skipped" in decided) {
 		await $.ui.log(skippedLine(decided.skipped));

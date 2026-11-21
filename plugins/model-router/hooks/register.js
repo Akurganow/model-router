@@ -1,45 +1,53 @@
+// src/core/output/reasons.ts
+var CALLER_EFFORT = "caller effort";
+var KEY_UNSET = "key unset";
+var BAD_REPLY = "bad reply";
+var TIMEOUT = "timeout";
+var FAILED = "failed";
+var NETWORK_ERROR = "network error";
+var httpStatus = (status) => `HTTP ${status}`;
+var CANCELLED = "cancelled";
+var notValid = (setting) => `${setting} not valid: run setup`;
+var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
+
 // src/core/providers/provider.ts
-var PROVIDER_VALUES = [
-  "auto",
-  "openrouter-first",
-  "typesafe",
-  "openrouter"
-];
 var MAKERS = ["typesafe"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
+var GATEWAYS = [
+  "direct",
+  "auto",
+  "openrouter-first",
+  "openrouter"
+];
 var KEY_FIELDS = {
   typesafe: "api_key",
   openrouter: "openrouter_api_key"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var DEFAULT_VALUE = "typesafe";
-var MAKER = "typesafe";
-var VALUE_PATHS = {
+var GATEWAY_PATHS = {
+  direct: ["direct"],
   auto: ["direct", "openrouter"],
   "openrouter-first": ["openrouter", "direct"],
-  typesafe: ["direct"],
   openrouter: ["openrouter"]
 };
 var holderOf = (maker, path) => path === "direct" ? maker : path;
-var steps = (value) => VALUE_PATHS[resolve(value)].map((path) => ({
-  maker: MAKER,
+var steps = (choice) => GATEWAY_PATHS[choice.gateway].map((path) => ({
+  maker: choice.provider,
   path,
-  holder: holderOf(MAKER, path)
+  holder: holderOf(choice.provider, path)
 }));
-var parseProvider = (value) => typeof value === "string" && Object.hasOwn(VALUE_PATHS, value) ? value : void 0;
-var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
-var order = (value) => steps(value).map((step) => step.holder);
-async function collectKeys(value, lookup) {
+var holders = (choice) => "skipped" in choice ? [] : steps(choice).map((step) => step.holder);
+async function collectKeys(choice, lookup) {
   const keys = {};
-  for (const holder of order(value)) {
+  for (const holder of holders(choice)) {
     const key = await lookup(holder);
     if (key !== void 0) keys[holder] = key;
   }
   return keys;
 }
-function plan(value, keys) {
+function plan(choice, keys) {
   const attempts = [];
-  for (const step of steps(value)) {
+  for (const step of steps(choice)) {
     const key = keys[step.holder];
     if (key) attempts.push({ ...step, key });
   }
@@ -54,28 +62,32 @@ var errorText = (err) => err instanceof Error ? err.message : String(err);
 // src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
 var DEFAULT_SCOPE = "core";
-var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
-var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
 
 // src/core/options/settings.ts
-var VALUE_SETTINGS = ["provider", "scope"];
+var VALUE_SETTINGS = ["provider", "gateway", "scope"];
 var LABEL_SEPARATOR = " - ";
 var TEXTS = {
   provider: {
-    values: PROVIDER_VALUES,
-    resolve,
-    about: "which providers score subagent calls",
-    question: "Which providers should score subagent calls?",
+    values: MAKERS,
+    about: "whose model scores subagent calls",
+    question: "Which provider's model should score subagent calls?",
     consequences: {
-      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
-      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
-      typesafe: "TypeSafe only",
+      typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to"
+    }
+  },
+  gateway: {
+    values: GATEWAYS,
+    about: "how OpenRouter is used for the provider",
+    question: "How should OpenRouter be used for the provider?",
+    consequences: {
+      direct: "the provider's own API only",
+      auto: "the provider's own API, then OpenRouter if it fails",
+      "openrouter-first": "OpenRouter, then the provider's own API if it fails",
       openrouter: "OpenRouter only"
     }
   },
   scope: {
     values: SCOPE_VALUES,
-    resolve: resolveScope,
     about: "which agent calls the router routes",
     question: "Which agent calls should the router route?",
     consequences: {
@@ -86,7 +98,21 @@ var TEXTS = {
 };
 var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
 var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
-var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
+var isSilent = (stored) => typeof stored !== "string" || stored.trim() === "";
+var valueFor = (setting, stored) => isSilent(stored) ? TEXTS[setting].values[0] : TEXTS[setting].values.find((value) => value === stored);
+var readProvider = (stored) => MAKERS.find((maker) => maker === valueFor("provider", stored));
+var readGateway = (stored) => GATEWAYS.find((gateway) => gateway === valueFor("gateway", stored));
+var readScope = (stored) => SCOPE_VALUES.find((scope) => scope === valueFor("scope", stored));
+function settingsOf(stored) {
+  const provider = readProvider(stored.provider);
+  if (provider === void 0) return { skipped: notValid("provider") };
+  const gateway = readGateway(stored.gateway);
+  if (gateway === void 0) return { skipped: notValid("gateway") };
+  const scope = readScope(stored.scope);
+  if (scope === void 0) return { skipped: notValid("scope") };
+  return { provider, gateway, scope };
+}
+var scopeOf = (stored) => readScope(stored.scope) ?? DEFAULT_SCOPE;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
@@ -96,9 +122,9 @@ var NOT_OFFERED = "the answer was not one of the offered values";
 var keyLine = (holder, state) => `${holder} key: ${state}`;
 var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
 function ask(setting, current2) {
-  const { values, resolve: resolve2, question } = TEXTS[setting];
-  const first = resolve2(current2);
-  const sorted = [first, ...values.filter((value) => value !== first)];
+  const { values, question } = TEXTS[setting];
+  const first = valueFor(setting, current2);
+  const sorted = first === void 0 ? values : [first, ...values.filter((value) => value !== first)];
   return { question, options: sorted.map((value) => label(setting, value)) };
 }
 function pick(setting, answer2) {
@@ -118,15 +144,27 @@ async function chooseValue(setting, current2, select, apply) {
   const value = pick(setting, answer2);
   return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply(value);
 }
-var settingsReport = (provider, scope, extra, keys) => [
-  valueLine("provider", provider),
-  valueLine("scope", scope),
-  ...extra,
-  ...order(provider).map(
-    (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
-  )
-].join("\n");
-var toolDescription = () => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
+var valueLine = (setting, stored) => {
+  const value = valueFor(setting, stored[setting]);
+  if (value === void 0)
+    return `${setting}: ${String(stored[setting])} (not valid: use one of ${TEXTS[setting].values.join(", ")})`;
+  const settings = settingsOf(stored);
+  if (setting === "gateway" && !("skipped" in settings))
+    return `gateway: ${value} (${holders(settings).join(", then ")})`;
+  return `${setting}: ${value}`;
+};
+var settingsReport = (stored, extra, keys) => {
+  const settings = settingsOf(stored);
+  const keyLines = "skipped" in settings ? [] : holders(settings).map(
+    (holder) => keyLine(holder, keys[holder] === void 0 ? "unset" : "set")
+  );
+  return [
+    ...VALUE_SETTINGS.map((setting) => valueLine(setting, stored)),
+    ...extra,
+    ...keyLines
+  ].join("\n");
+};
+var toolDescription = () => `Reads the router's settings. With no input it returns the provider, gateway and scope, and whether each key the settings allow is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
 var badCall = () => `Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
 function describeCommand(setting) {
   const { about, values } = TEXTS[setting];
@@ -134,6 +172,7 @@ function describeCommand(setting) {
 }
 var COMMAND_DESCRIPTIONS = {
   provider: describeCommand("provider"),
+  gateway: describeCommand("gateway"),
   scope: describeCommand("scope")
 };
 
@@ -173,9 +212,9 @@ var nonEmpty = (value) => {
 };
 
 // src/adapters/claude/keys.ts
-async function readKeys($, options, provider) {
+async function readKeys($, options, choice) {
   return collectKeys(
-    provider,
+    choice,
     async (holder) => nonEmpty(options[KEY_FIELDS[holder]]) ?? nonEmpty(await keyVariable($, holder))
   );
 }
@@ -207,11 +246,16 @@ function resetConfig() {
   serial = serializer();
 }
 var current = (options, setting) => written[setting] ?? options[setting];
+var storedOf = (options) => ({
+  provider: current(options, "provider"),
+  gateway: current(options, "gateway"),
+  scope: current(options, "scope")
+});
 async function registerConfigTool($, e, next) {
   await $.tool.register(TOOL_SPEC);
   return next(e);
 }
-async function write($, setting, value) {
+async function write($, options, setting, value) {
   try {
     const { deny } = await $.config.set({
       key: `${ROW_PREFIX}${setting}`,
@@ -219,7 +263,7 @@ async function write($, setting, value) {
     });
     if (deny !== void 0) return unchanged(setting, deny);
     written[setting] = value;
-    return valueLine(setting, value);
+    return valueLine(setting, storedOf(options));
   } catch (err) {
     return unchangedBy(setting, err);
   }
@@ -229,13 +273,13 @@ async function choose($, setting, options) {
     setting,
     current(options, setting),
     (question, labels) => $.ui.ask(question, { options: labels, header: setting }),
-    async (value) => value === current(options, setting) ? unchanged(setting, alreadyValue(value)) : write($, setting, value)
+    async (value) => value === current(options, setting) ? unchanged(setting, alreadyValue(value)) : write($, options, setting, value)
   );
 }
 async function read($, options) {
-  const provider = current(options, "provider");
-  const keys = await readKeys($, options, provider);
-  return settingsReport(provider, current(options, "scope"), [], keys);
+  const stored = storedOf(options);
+  const keys = await readKeys($, options, settingsOf(stored));
+  return settingsReport(stored, [], keys);
 }
 async function answer($, call, options) {
   if (await denied($, call)) return { deny: REFUSED };
@@ -253,8 +297,8 @@ async function configCommand($, e, setting, options) {
   if (args !== "" && !isValue(setting, args))
     return { text: useOneOf(setting) };
   if (args === "" || e.origin.kind !== PERSON)
-    return { text: valueLine(setting, current(options, setting)) };
-  return { text: await write($, setting, args) };
+    return { text: valueLine(setting, storedOf(options)) };
+  return { text: await write($, options, setting, args) };
 }
 
 // src/core/brief/brief.ts
@@ -485,17 +529,6 @@ function routingState(raw) {
     task: buildPrompt(raw.task, raw.context ?? "")
   };
 }
-
-// src/core/output/reasons.ts
-var CALLER_EFFORT = "caller effort";
-var KEY_UNSET = "key unset";
-var BAD_REPLY = "bad reply";
-var TIMEOUT = "timeout";
-var FAILED = "failed";
-var NETWORK_ERROR = "network error";
-var httpStatus = (status) => `HTTP ${status}`;
-var CANCELLED = "cancelled";
-var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
 
 // src/core/output/line.ts
 var pinnedLine = (level, target) => `L${level} ${target}`;
@@ -785,11 +818,11 @@ async function exchange(fetchFn, url, request, caller, timeout, clock) {
 }
 function pause(ms, caller, clock) {
   if (caller.aborted) return Promise.resolve();
-  return new Promise((resolve2) => {
+  return new Promise((resolve) => {
     const done = () => {
       timer.cancel();
       caller.removeEventListener("abort", done);
-      resolve2();
+      resolve();
     };
     const timer = clock.after(ms, done);
     caller.addEventListener("abort", done, { once: true });
@@ -1061,17 +1094,22 @@ function roleFor(agent) {
 }
 async function routeSpawn($, spawn, next, options) {
   const callerSet = callerEffort.delete(spawn.tool_use_id);
-  if (next.origin.plugin !== ENGINE || !routable(spawn, resolveScope(options.scope)))
+  const settings = settingsOf(options);
+  if (next.origin.plugin !== ENGINE || !routable(spawn, scopeOf(options)))
     return next(spawn);
+  if ("skipped" in settings) {
+    await $.ui.log(skippedLine(settings.skipped));
+    return next(spawn);
+  }
   const state = routingState({
     role: roleFor(spawn.subagentType),
     description: spawn.description,
     task: spawn.prompt
   });
-  const keys = await readKeys($, options, options.provider);
+  const keys = await readKeys($, options, settings);
   const decided = await scored($, next.signal, {
     state,
-    attempts: plan(options.provider, keys)
+    attempts: plan(settings, keys)
   });
   if ("skipped" in decided) {
     await $.ui.log(skippedLine(decided.skipped));
@@ -1200,6 +1238,11 @@ function register(on, options) {
     "tool.call",
     { tool: "mcp__model-router__config" },
     ($, e) => configCall($, e, options)
+  );
+  on(
+    "command.run",
+    { command: "model-router:gateway" },
+    ($, e) => configCommand($, e, "gateway", options)
   );
   on(
     "command.run",

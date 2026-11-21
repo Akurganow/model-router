@@ -32,7 +32,7 @@ const DECISION_LINE =
 describe("provider", () => {
 	it("asks the provider the setting names", async () => {
 		const s = setup({
-			settings: { provider: "openrouter", openrouter_api_key: "or-key" },
+			settings: { gateway: "openrouter", openrouter_api_key: "or-key" },
 		});
 		await s.call();
 		assert.deepEqual(
@@ -42,10 +42,10 @@ describe("provider", () => {
 	});
 
 	// The first of two attempts is sent once, so a 503 falls back at once with no wait.
-	const fallbackHosts = async (provider: string, failing: string) => {
+	const fallbackHosts = async (gateway: string, failing: string) => {
 		const s = setup({
 			settings: {
-				provider,
+				gateway,
 				api_key: "typesafe-test-key",
 				openrouter_api_key: "openrouter-test-key",
 			},

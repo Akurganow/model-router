@@ -13,7 +13,7 @@ const SECRET_KEYS = Object.values(KEY_FIELDS);
 const SECRET_EXPECTED = "string";
 
 // manifest.md, "JSON Schema requirements": the config is validated against this schema before the plugin loads.
-// The two value settings carry no enumeration: OpenClaw then accepts any string, and the code counts an invalid value as the default.
+// The value settings carry no enumeration: OpenClaw then accepts any string, and the code skips the routing for a text that names no value.
 const configSchema = (source: Source): JsonObject => ({
 	type: "object",
 	additionalProperties: false,

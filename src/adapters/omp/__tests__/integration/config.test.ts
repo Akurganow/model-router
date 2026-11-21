@@ -23,7 +23,6 @@ import {
 	unchanged,
 	useOneOf,
 	type ValueSetting,
-	valueLine,
 } from "#core/options/settings.ts";
 import { UNREADABLE } from "#core/output/reasons.ts";
 
@@ -36,6 +35,7 @@ test("the project-override note names the setting", () => {
 
 const world = useWorld();
 const PROVIDER_COMMAND = "model-router:provider";
+const GATEWAY_COMMAND = "model-router:gateway";
 const SCOPE_COMMAND = "model-router:scope";
 const install = (imports: OmpImports = world.imports) =>
 	createExtension(imports)(world.pi);
@@ -65,6 +65,7 @@ const settle = async (dialogs: number) => {
 test("the commands and the tool register under their names", () => {
 	install();
 	assert.deepEqual(Object.keys(world.commands).sort(), [
+		GATEWAY_COMMAND,
 		PROVIDER_COMMAND,
 		SCOPE_COMMAND,
 	]);
@@ -84,24 +85,27 @@ test("the tool is essential, needs the write tier and takes an optional setting 
 	const tool = world.tools[TOOL_NAME];
 	assert.equal(
 		tool?.description,
-		"Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (provider, scope) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.",
+		"Reads the router's settings. With no input it returns the provider, gateway and scope, and whether each key the settings allow is set. With a setting name (provider, gateway, scope) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.",
 	);
 	assert.equal(tool?.loadMode, "essential");
 	assert.equal(tool?.approval, "write");
 	assert.equal(typeof tool?.label, "string");
 	assert.deepEqual(tool?.parameters, {
-		shape: { setting: { values: ["provider", "scope"], optional: true } },
+		shape: {
+			setting: { values: ["provider", "gateway", "scope"], optional: true },
+		},
 	});
 });
 
 test("with no setting the tool reads both values and the key state of each allowed provider", async () => {
 	install();
-	world.lockfile = lockfileWith("auto");
+	world.lockfile = lockfileWith({ gateway: "auto" });
 	assert.equal(
 		await world.callTool({}),
 		lines(
-			valueLine("provider", "auto"),
-			valueLine("scope", "core"),
+			"provider: typesafe",
+			"gateway: auto (typesafe, then openrouter)",
+			"scope: core",
 			"typesafe key: set",
 			"openrouter key: set",
 		),
@@ -110,7 +114,7 @@ test("with no setting the tool reads both values and the key state of each allow
 
 test("a key counts as set from omp's credential or from its variable, and unset otherwise", async () => {
 	install();
-	world.lockfile = lockfileWith("auto");
+	world.lockfile = lockfileWith({ gateway: "auto" });
 	world.credential = async (provider) =>
 		provider === "typesafe" ? KEY : undefined;
 	const bare = await world.callTool(undefined);
@@ -126,7 +130,7 @@ test("a key counts as set from omp's credential or from its variable, and unset 
 
 test("the read never returns any part of a key", async () => {
 	install();
-	world.lockfile = lockfileWith("auto");
+	world.lockfile = lockfileWith({ gateway: "auto" });
 	setEnv(KEY_VARIABLE, "variable-secret");
 	const text = await world.callTool({});
 	for (const secret of [KEY, "variable-secret", "omp-or-key"])
@@ -135,7 +139,7 @@ test("the read never returns any part of a key", async () => {
 
 test("only the providers the value allows are listed", async () => {
 	install();
-	world.lockfile = lockfileWith("openrouter");
+	world.lockfile = lockfileWith({ gateway: "openrouter" });
 	assert.doesNotMatch(await world.callTool({}), /typesafe key/);
 });
 
@@ -153,30 +157,30 @@ test("unreadable settings are reported once and nothing is written", async () =>
 	assert.equal(world.writes.length, 0);
 });
 
-test("the provider dialog opens with the current value first and writes the pick", async () => {
+test("the gateway dialog opens with the current value first and writes the pick", async () => {
 	install();
-	world.lockfile = lockfileWith("typesafe");
-	choose("provider", "openrouter-first");
-	const text = await world.callTool({ setting: "provider" });
-	const { question, options } = ask("provider", "typesafe");
+	world.lockfile = lockfileWith({ gateway: "direct" });
+	choose("gateway", "openrouter-first");
+	const text = await world.callTool({ setting: "gateway" });
+	const { question, options } = ask("gateway", "direct");
 	assert.deepEqual(world.dialogs, [{ title: question, options }]);
 	assert.deepEqual(world.writes, [
-		{ plugin: "model-router-omp", key: "provider", value: "openrouter-first" },
+		{ plugin: "model-router-omp", key: "gateway", value: "openrouter-first" },
 	]);
-	assert.equal(text, valueLine("provider", "openrouter-first"));
+	assert.equal(text, "gateway: openrouter-first (openrouter, then typesafe)");
 });
 
-test("the provider dialog lists a stored openrouter-first first, then the rest", async () => {
+test("the gateway dialog lists a stored openrouter-first first, then the rest", async () => {
 	install();
-	world.lockfile = lockfileWith("openrouter-first");
-	await world.callTool({ setting: "provider" });
+	world.lockfile = lockfileWith({ gateway: "openrouter-first" });
+	await world.callTool({ setting: "gateway" });
 	assert.deepEqual(world.dialogs, [
 		{
-			title: "Which providers should score subagent calls?",
+			title: "How should OpenRouter be used for the provider?",
 			options: [
-				"openrouter-first - OpenRouter, then TypeSafe if OpenRouter fails",
-				"auto - TypeSafe, then OpenRouter if TypeSafe fails",
-				"typesafe - TypeSafe only",
+				"openrouter-first - OpenRouter, then the provider's own API if it fails",
+				"direct - the provider's own API only",
+				"auto - the provider's own API, then OpenRouter if it fails",
 				"openrouter - OpenRouter only",
 			],
 		},
@@ -205,7 +209,7 @@ test("the scope dialog writes the pick, and the next read shows it", async () =>
 	assert.deepEqual(world.writes, [
 		{ plugin: "model-router-omp", key: "scope", value: "extended" },
 	]);
-	assert.equal(text, valueLine("scope", "extended"));
+	assert.equal(text, "scope: extended");
 	assert.match(await world.callTool({}), /\nscope: extended\n/);
 });
 
@@ -290,7 +294,7 @@ test("an unknown setting is a bad call and writes nothing", async () => {
 	install();
 	assert.equal(
 		await world.callTool({ setting: "tier" }),
-		"Unknown setting. Pass no setting, or one of: provider, scope",
+		"Unknown setting. Pass no setting, or one of: provider, gateway, scope",
 	);
 	assert.equal(world.writes.length, 0);
 });
@@ -301,20 +305,58 @@ test("a project value that wins is named after the write", async () => {
 	choose("scope", "extended");
 	assert.equal(
 		await world.callTool({ setting: "scope" }),
-		lines(valueLine("scope", "core"), projectOverrides("scope")),
+		lines("scope: core", projectOverrides("scope")),
 	);
 	assert.equal(world.writes.length, 1);
 });
 
-test("a project narrowing is named after a provider write", async () => {
+test("a project narrowing is named after a gateway write", async () => {
 	install();
-	world.lockfile = lockfileWith("typesafe");
-	world.project = { provider: "openrouter" };
-	choose("provider", "auto");
+	world.lockfile = lockfileWith({ gateway: "direct" });
+	world.project = { gateway: "openrouter" };
+	choose("gateway", "auto");
 	assert.equal(
-		await world.callTool({ setting: "provider" }),
-		lines(valueLine("provider", "openrouter"), projectOverrides("provider")),
+		await world.callTool({ setting: "gateway" }),
+		lines("gateway: openrouter (openrouter)", projectOverrides("gateway")),
 	);
+});
+
+test("a command writes a value that only the project's value already holds", async () => {
+	install();
+	world.lockfile = lockfileWith({ gateway: "auto" });
+	world.project = { gateway: "direct" };
+	await world.runCommand(GATEWAY_COMMAND, "direct");
+	assert.deepEqual(world.writes, [
+		{ plugin: "model-router-omp", key: "gateway", value: "direct" },
+	]);
+	assert.deepEqual(world.notes, ["gateway: direct (typesafe)"]);
+});
+
+test("a command that meets a project value over an equal global text writes nothing and names the override", async () => {
+	install();
+	world.lockfile = lockfileWith({ gateway: "auto" });
+	world.project = { gateway: "direct" };
+	await world.runCommand(GATEWAY_COMMAND, "auto");
+	assert.equal(world.writes.length, 0);
+	assert.deepEqual(world.notes, [
+		lines(
+			"gateway: direct (typesafe)",
+			"A project value for gateway overrides it.",
+		),
+	]);
+});
+
+test("a command answers unreadable and writes nothing when only the applied settings cannot be read", async () => {
+	install({
+		...world.imports,
+		getPluginSettings: async () => {
+			throw new Error("no settings");
+		},
+	});
+	world.lockfile = lockfileWith({ gateway: "auto" });
+	await world.runCommand(GATEWAY_COMMAND, "direct");
+	assert.equal(world.writes.length, 0);
+	assert.deepEqual(world.notes, ["gateway unchanged: settings unreadable"]);
 });
 
 test("the pick stands in when the settings cannot be read after the write", async () => {
@@ -325,20 +367,17 @@ test("the pick stands in when the settings cannot be read after the write", asyn
 		},
 	});
 	choose("scope", "extended");
-	assert.equal(
-		await world.callTool({ setting: "scope" }),
-		valueLine("scope", "extended"),
-	);
+	assert.equal(await world.callTool({ setting: "scope" }), "scope: extended");
 });
 
 test("a bare command prints the value on the screen", async () => {
 	install();
-	world.lockfile = lockfileWith("auto");
-	await world.runCommand(PROVIDER_COMMAND, "");
+	world.lockfile = lockfileWith({ gateway: "auto" });
+	await world.runCommand(GATEWAY_COMMAND, "");
 	await world.runCommand(SCOPE_COMMAND, "  ");
 	assert.deepEqual(world.notes, [
-		valueLine("provider", "auto"),
-		valueLine("scope", "core"),
+		"gateway: auto (typesafe, then openrouter)",
+		"scope: core",
 	]);
 	assert.equal(world.stderr.length, 0);
 	assert.equal(world.writes.length, 0);
@@ -350,7 +389,7 @@ test("a command with a valid value writes it and prints the new value", async ()
 	assert.deepEqual(world.writes, [
 		{ plugin: "model-router-omp", key: "scope", value: "extended" },
 	]);
-	assert.deepEqual(world.notes, [valueLine("scope", "extended")]);
+	assert.deepEqual(world.notes, ["scope: extended"]);
 	assert.equal(world.dialogs.length, 0);
 });
 
@@ -362,14 +401,24 @@ test("a command with an invalid value lists the valid ones and writes nothing", 
 	assert.equal(world.writes.length, 0);
 });
 
-test("a command that repeats the value or meets a project value says so", async () => {
+test("a valid value over a stored text that is not valid is written", async () => {
+	install();
+	world.lockfile = lockfileWith({ provider: "auto" });
+	await world.runCommand(PROVIDER_COMMAND, "typesafe");
+	assert.deepEqual(world.writes, [
+		{ plugin: "model-router-omp", key: "provider", value: "typesafe" },
+	]);
+	assert.deepEqual(world.notes, ["provider: typesafe"]);
+});
+
+test("a command that writes the default or meets a project value says so", async () => {
 	install();
 	await world.runCommand(SCOPE_COMMAND, "core");
 	world.project = { scope: "core" };
 	await world.runCommand(SCOPE_COMMAND, "extended");
 	assert.deepEqual(world.notes, [
-		unchanged("scope", alreadyValue("core")),
-		lines(valueLine("scope", "core"), projectOverrides("scope")),
+		"scope: core",
+		lines("scope: core", projectOverrides("scope")),
 	]);
 });
 
@@ -379,10 +428,7 @@ test("without a UI a command answers on standard error", async () => {
 	await world.runCommand(SCOPE_COMMAND, "extended");
 	await world.runCommand(PROVIDER_COMMAND, "");
 	assert.equal(world.notes.length, 0);
-	assert.deepEqual(world.stderr, [
-		`${valueLine("scope", "extended")}\n`,
-		`${valueLine("provider", "typesafe")}\n`,
-	]);
+	assert.deepEqual(world.stderr, ["scope: extended\n", "provider: typesafe\n"]);
 });
 
 test("the tool says what the command says for the same outcome", async () => {
@@ -391,11 +437,11 @@ test("the tool says what the command says for the same outcome", async () => {
 		["scope", "extended", {}],
 		["scope", "core", {}],
 		["scope", "extended", { scope: "core" }],
-		["provider", "auto", {}],
+		["gateway", "auto", {}],
 	];
 	for (const [setting, value, project] of outcomes) {
 		const start = () => {
-			world.lockfile = lockfileWith("typesafe");
+			world.lockfile = lockfileWith({ gateway: "direct" });
 			world.project = project;
 			world.notes.length = 0;
 		};
@@ -421,7 +467,7 @@ test("calls run one at a time, and a failed call does not block the next", async
 	await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
 	assert.equal(world.dialogs.length, 1);
 	release(labelOf("scope", "extended"));
-	assert.equal(await first, valueLine("scope", "extended"));
+	assert.equal(await first, "scope: extended");
 	await settle(2);
 	release(labelOf("scope", "extended"));
 	assert.equal(await second, unchanged("scope", alreadyValue("extended")));
@@ -457,7 +503,7 @@ test("a dialog that fails gives its call the no-answer line, and the call behind
 	await settle(2);
 	assert.equal(world.writes.length, 0);
 	open[1]?.resolve(labelOf("scope", "extended"));
-	assert.equal(await second, valueLine("scope", "extended"));
+	assert.equal(await second, "scope: extended");
 	assert.equal(world.writes.length, 1);
 });
 
@@ -491,7 +537,7 @@ test("a command and the tool share one queue, and a failed write does not stop t
 	release();
 	await first;
 	assert.deepEqual(world.notes, [unchanged("scope", "disk full")]);
-	assert.equal(await second, valueLine("scope", "extended"));
+	assert.equal(await second, "scope: extended");
 	assert.equal(world.dialogs.length, 1);
 	assert.equal(attempts, 2);
 });
@@ -511,60 +557,57 @@ test("a scope pick is read, asked, read again, written and read back, in that or
 	]);
 });
 
-// The report lists the stored provider, the scope and one line for each key the provider allows.
+// The report lists the provider, the gateway, the scope and one line for each key the gateway allows.
 test("the settings report lists the values and the key state of each allowed provider", async () => {
 	install();
 	const cases: {
-		provider: string;
+		gateway: string;
 		scope: string;
 		typesafe: boolean;
 		openrouter: boolean;
 		text: string;
 	}[] = [
 		{
-			provider: "auto",
+			gateway: "auto",
 			scope: "core",
 			typesafe: true,
 			openrouter: true,
-			text: "provider: auto (typesafe, then openrouter)\nscope: core\ntypesafe key: set\nopenrouter key: set",
+			text: "provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: core\ntypesafe key: set\nopenrouter key: set",
 		},
 		{
-			provider: "auto",
+			gateway: "auto",
 			scope: "extended",
 			typesafe: false,
 			openrouter: true,
-			text: "provider: auto (typesafe, then openrouter)\nscope: extended\ntypesafe key: unset\nopenrouter key: set",
+			text: "provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: extended\ntypesafe key: unset\nopenrouter key: set",
 		},
 		{
-			provider: "openrouter-first",
+			gateway: "openrouter-first",
 			scope: "core",
 			typesafe: true,
 			openrouter: false,
-			text: "provider: openrouter-first (openrouter, then typesafe)\nscope: core\nopenrouter key: unset\ntypesafe key: set",
+			text: "provider: typesafe\ngateway: openrouter-first (openrouter, then typesafe)\nscope: core\nopenrouter key: unset\ntypesafe key: set",
 		},
 		{
-			provider: "typesafe",
+			gateway: "direct",
 			scope: "extended",
 			typesafe: false,
 			openrouter: true,
-			text: "provider: typesafe (typesafe)\nscope: extended\ntypesafe key: unset",
+			text: "provider: typesafe\ngateway: direct (typesafe)\nscope: extended\ntypesafe key: unset",
 		},
 		{
-			provider: "openrouter",
+			gateway: "openrouter",
 			scope: "core",
 			typesafe: true,
 			openrouter: false,
-			text: "provider: openrouter (openrouter)\nscope: core\nopenrouter key: unset",
+			text: "provider: typesafe\ngateway: openrouter (openrouter)\nscope: core\nopenrouter key: unset",
 		},
 	];
-	for (const { provider, scope, typesafe, openrouter, text } of cases) {
-		world.lockfile = {
-			plugins: {},
-			settings: { "model-router-omp": { provider, scope } },
-		};
+	for (const { gateway, scope, typesafe, openrouter, text } of cases) {
+		world.lockfile = lockfileWith({ gateway, scope });
 		world.credential = async (name) =>
 			(name === "typesafe" ? typesafe : openrouter) ? "a-key" : undefined;
 		setEnv(OR_VARIABLE, undefined);
-		assert.equal(await world.callTool({}), text, `${provider} ${scope}`);
+		assert.equal(await world.callTool({}), text, `${gateway} ${scope}`);
 	}
 });

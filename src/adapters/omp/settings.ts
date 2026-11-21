@@ -1,13 +1,13 @@
 import { readFile } from "node:fs/promises";
-import { resolveScope, type Scope } from "#core/options/scope.ts";
+import { type Stored, valueFor } from "#core/options/settings.ts";
 import {
 	type Attempt,
+	type Choice,
 	collectKeys,
+	type Gateway,
 	KEY_VARIABLES,
 	type KeyHolder,
-	type ProviderValue,
 	plan,
-	resolve as resolveProvider,
 } from "#core/providers/provider.ts";
 import { isRecord } from "#utils/guards.ts";
 import { nonEmpty } from "#utils/text.ts";
@@ -15,45 +15,84 @@ import type { Facts } from "./items.ts";
 import { FALLBACK_NAME } from "./name.ts";
 import type { Context, Lookup, OmpImports } from "./types.ts";
 
-const NARROWABLE: readonly ProviderValue[] = ["auto", "openrouter-first"];
+// A gateway value a project may narrow, and the single-path values it narrows to.
+const NARROWABLE: readonly Gateway[] = ["auto", "openrouter-first"];
+const SINGLE_PATH: readonly Gateway[] = ["direct", "openrouter"];
 
-export type Settings = {
-	readonly provider: ProviderValue;
-	readonly scope: Scope;
-};
+const namesNoValue = (
+	setting: "provider" | "gateway",
+	text: unknown,
+): boolean => valueFor(setting, text) === undefined;
 
-// A project may only drop one provider from a two-provider global value, never swap, add or reorder.
-export function narrow(global: unknown, project: unknown): ProviderValue {
-	const value = resolveProvider(global);
-	return NARROWABLE.includes(value) &&
-		(project === "typesafe" || project === "openrouter")
-		? project
-		: value;
+/**
+ * Returns the stored text the plugin applies for each setting, from the global
+ * text and the effective one (a project's over the global). A project file comes
+ * with a checkout, so it never changes who scores, and it may only drop a path
+ * from a global gateway, never add, swap or reorder one: it cannot send a
+ * request where the user did not allow it. A text that is not valid always
+ * passes through, so the core skips routing and the report shows it.
+ */
+function applied(
+	global: Record<string, unknown>,
+	effective: Record<string, unknown>,
+): Stored {
+	const { provider: fromGlobal, gateway: gatewayFromGlobal } = global;
+	const { provider, gateway, scope } = effective;
+	return {
+		provider: namesNoValue("provider", provider) ? provider : fromGlobal,
+		gateway: gatewayText(gatewayFromGlobal, gateway),
+		scope,
+	};
+}
+
+function gatewayText(global: unknown, effective: unknown): unknown {
+	if (namesNoValue("gateway", effective)) return effective;
+	if (namesNoValue("gateway", global)) return global;
+	// Compares the stored texts, not their values: a blank text reads as direct and would narrow auto.
+	const narrows =
+		NARROWABLE.some((value) => value === global) &&
+		SINGLE_PATH.some((value) => value === effective);
+	return narrows ? effective : global;
 }
 
 /**
- * Returns the effective settings: the project's value when it sets one, and the
- * global value otherwise. A project may only narrow the provider, and its scope
- * wins both ways. Returns undefined when the settings are unreadable. When omp
- * gave no installed name, reads use the catalogue name. Writes still refuse, in
- * omp/config.ts. Never throws.
+ * Returns the stored text the plugin applies for each setting, unchecked: the
+ * core decides whether a text is valid. Returns undefined when the settings are
+ * unreadable. When omp gave no installed name, reads use the catalogue name.
+ * Writes still refuse, in omp/config.ts. Never throws.
  */
 export async function readSettings(
 	omp: OmpImports,
 	cwd: string,
-): Promise<Settings | undefined> {
+): Promise<Stored | undefined> {
 	const plugin = omp.plugin ?? FALLBACK_NAME;
 	try {
 		const [global, effective] = await Promise.all([
 			readGlobal(omp.getPluginsLockfile(), plugin),
 			omp.getPluginSettings(plugin, cwd),
 		]);
-		const { provider: fromGlobal } = global;
-		const { provider: fromProject, scope } = effective;
-		return {
-			provider: narrow(fromGlobal, fromProject),
-			scope: resolveScope(scope),
-		};
+		return applied(global, effective);
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Returns the stored text of each setting in the global settings alone, without
+ * a project's value. A write replaces the global text, so the test for "already"
+ * needs that text. Returns undefined when it cannot be read. When omp gave no
+ * installed name, reads use the catalogue name. Never throws.
+ */
+export async function readGlobalSettings(
+	omp: OmpImports,
+): Promise<Stored | undefined> {
+	const plugin = omp.plugin ?? FALLBACK_NAME;
+	try {
+		const { provider, gateway, scope } = await readGlobal(
+			omp.getPluginsLockfile(),
+			plugin,
+		);
+		return { provider, gateway, scope };
 	} catch {
 		return undefined;
 	}
@@ -84,16 +123,16 @@ async function readGlobal(
 }
 
 /**
- * Returns the attempts, each with its key, for the key holders the value allows. Reads
+ * Returns the attempts, each with its key, for the key holders the choice asks. Reads
  * only those key holders. omp's own credential comes first, then the variable.
  * Returns no attempts when no key is set. Never throws.
  */
 export async function findAttempts(
 	ctx: Context,
-	value: string,
+	choice: Choice,
 ): Promise<Attempt[]> {
-	const keys = await collectKeys(value, (holder) => findKey(ctx, holder));
-	return plan(value, keys);
+	const keys = await collectKeys(choice, (holder) => findKey(ctx, holder));
+	return plan(choice, keys);
 }
 
 /**

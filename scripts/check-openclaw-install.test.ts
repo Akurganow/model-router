@@ -74,7 +74,7 @@ test("something that is not a report is a problem", () => {
 	]);
 });
 
-test("the shipped bundle registers the hook, the tool and both commands", async () => {
+test("the shipped bundle registers the hook, the tool and every command", async () => {
 	const { default: plugin } = await import(join(TREE, "index.js"));
 	assert.deepEqual(registrationProblems(plugin), []);
 });
@@ -84,7 +84,7 @@ test("a plugin that registers nothing is reported on every count in the live mod
 		id: "model-router-openclaw",
 		register: () => {},
 	});
-	assert.equal(problems.length, 9);
+	assert.equal(problems.length, 11);
 	assert.match(problems.join("\n"), /full mode: no before_tool_call/);
 	assert.match(problems.join("\n"), /discovery mode: no before_tool_call/);
 	assert.match(problems.join("\n"), /discovery mode: no model-router-scope/);
@@ -105,6 +105,7 @@ test("a plugin that registers only in full mode is reported for discovery and to
 		"discovery mode: no before_tool_call hook registered",
 		"discovery mode: no model_router_config tool registered",
 		"discovery mode: no model-router-provider command registered",
+		"discovery mode: no model-router-gateway command registered",
 		"discovery mode: no model-router-scope command registered",
 		"tool-discovery mode: no model_router_config tool registered",
 	]);
@@ -121,6 +122,7 @@ test("a plugin that registers everything in every mode is reported where a mode 
 	assert.deepEqual(problems, [
 		"tool-discovery mode: before_tool_call hook registered, which this mode should not hold",
 		"tool-discovery mode: model-router-provider command registered, which this mode should not hold",
+		"tool-discovery mode: model-router-gateway command registered, which this mode should not hold",
 		"tool-discovery mode: model-router-scope command registered, which this mode should not hold",
 		...["setup-only", "setup-runtime", "cli-metadata"].map(
 			(mode) =>

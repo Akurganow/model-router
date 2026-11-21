@@ -135,6 +135,7 @@ export type Options = {
 	readonly api_key?: unknown;
 	readonly openrouter_api_key?: unknown;
 	readonly provider?: unknown;
+	readonly gateway?: unknown;
 	readonly scope?: unknown;
 };
 

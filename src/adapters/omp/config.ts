@@ -6,6 +6,8 @@ import {
 	isValue,
 	isValueSetting,
 	NO_ANSWER,
+	type Stored,
+	settingsOf,
 	settingsReport,
 	TOOL_LABEL,
 	TOOL_NAME,
@@ -21,7 +23,7 @@ import { UNREADABLE } from "#core/output/reasons.ts";
 import { collectKeys } from "#core/providers/provider.ts";
 import { isRecord } from "#utils/guards.ts";
 import { serializer } from "#utils/serializer.ts";
-import { findKey, readSettings, type Settings } from "./settings.ts";
+import { findKey, readGlobalSettings, readSettings } from "./settings.ts";
 import type { Context, OmpImports, Pi, ToolReply } from "./types.ts";
 
 const COMMAND_PREFIX = "model-router:";
@@ -43,26 +45,29 @@ export function say(ctx: Context, text: string): void {
 async function withSettings(
 	omp: OmpImports,
 	ctx: Context,
-	show: (settings: Settings) => string | Promise<string>,
+	show: (stored: Stored) => string | Promise<string>,
 ): Promise<string> {
-	const settings = await readSettings(omp, ctx.cwd);
-	return settings === undefined ? UNREADABLE : show(settings);
+	const stored = await readSettings(omp, ctx.cwd);
+	return stored === undefined ? UNREADABLE : show(stored);
 }
 
 // A key is only checked for presence. Nothing about it leaves this function.
 const readAll = (omp: OmpImports, ctx: Context): Promise<string> =>
-	withSettings(omp, ctx, async ({ provider, scope }) => {
-		const keys = await collectKeys(provider, (name) => findKey(ctx, name));
-		return settingsReport(provider, scope, [], keys);
-	});
+	withSettings(omp, ctx, async (stored) =>
+		settingsReport(
+			stored,
+			[],
+			await collectKeys(settingsOf(stored), (holder) => findKey(ctx, holder)),
+		),
+	);
 
 /**
  * Sets a setting to a value and returns the line to show. Returns the allowed
  * values when the value is not one of them. Returns an unchanged line when the
- * settings are unreadable, omp gave no installed name, the value already holds,
- * or the write fails. Writes go to the global settings. The effective value is
- * read again, because a project value can win, and the line then names the
- * override. Never throws.
+ * settings are unreadable, omp gave no installed name, or the write fails.
+ * A write replaces the global text, so it is skipped when that text already
+ * equals the value. The line is then "already" if the applied text equals it
+ * too, else the applied line and the project-override line. Never throws.
  */
 async function apply(
 	omp: OmpImports,
@@ -73,17 +78,25 @@ async function apply(
 	if (!isValue(setting, value)) return useOneOf(setting);
 	const { plugin } = omp;
 	const before = await readSettings(omp, ctx.cwd);
-	if (before === undefined || plugin === undefined)
+	const global = await readGlobalSettings(omp);
+	if (before === undefined || global === undefined || plugin === undefined)
 		return unchanged(setting, UNREADABLE);
-	if (before[setting] === value) return unchanged(setting, alreadyValue(value));
-	try {
-		await omp.writeSetting(ctx.cwd, plugin, setting, value);
-	} catch (err) {
-		return unchangedBy(setting, err);
+	if (global[setting] === value && before[setting] === value)
+		return unchanged(setting, alreadyValue(value));
+	const wrote = global[setting] !== value;
+	if (wrote) {
+		try {
+			await omp.writeSetting(ctx.cwd, plugin, setting, value);
+		} catch (err) {
+			return unchangedBy(setting, err);
+		}
 	}
-	const now = (await readSettings(omp, ctx.cwd))?.[setting] ?? value;
-	const line = valueLine(setting, now);
-	return now === value
+	// Nothing changed without a write, so the first read still holds.
+	const after = wrote
+		? ((await readSettings(omp, ctx.cwd)) ?? { ...before, [setting]: value })
+		: before;
+	const line = valueLine(setting, after);
+	return after[setting] === value
 		? line
 		: [line, projectOverrides(setting)].join(LINE_BREAK);
 }
@@ -121,9 +134,7 @@ async function runCommand(
 ): Promise<string> {
 	const value = args.trim();
 	return value === ""
-		? withSettings(omp, ctx, (settings) =>
-				valueLine(setting, settings[setting]),
-			)
+		? withSettings(omp, ctx, (stored) => valueLine(setting, stored))
 		: apply(omp, ctx, setting, value);
 }
 

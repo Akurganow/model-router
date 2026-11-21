@@ -62,10 +62,10 @@ const FIXTURE: Source = {
 		openclaw: { manifest: "m" },
 		hermes: { manifest: "m" },
 	},
-	options: { provider: HERMES_OPTION, scope: OPTION },
+	options: { provider: HERMES_OPTION, gateway: HERMES_OPTION, scope: OPTION },
 	claude: {
 		skills: ["s"],
-		commandContents: { provider: "p", scope: "s" },
+		commandContents: { provider: "p", gateway: "g", scope: "s" },
 		userConfig: {
 			optionType: "t",
 			keys: { api_key: SECRET, openrouter_api_key: SECRET },

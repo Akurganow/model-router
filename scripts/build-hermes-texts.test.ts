@@ -2,18 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { setupTexts } from "#adapters/hermes/setup.ts";
-import {
-	alreadyValue,
-	COMMAND_DESCRIPTIONS,
-	commandName,
-	keyLine,
-	TOOL_LABEL,
-	TOOL_NAME,
-	unchanged,
-	useOneOf,
-	valueLine,
-} from "#core/options/settings.ts";
-import { KEY_HOLDERS, PROVIDER_VALUES } from "#core/providers/provider.ts";
+import { keyLine, TOOL_LABEL, TOOL_NAME } from "#core/options/settings.ts";
+import { KEY_HOLDERS } from "#core/providers/provider.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { HERMES_OUTPUTS } from "./build/outputs.ts";
 import { loadSource } from "./build/source.ts";
@@ -25,31 +15,17 @@ const rendered = renderHermes(source).find(
 );
 const { texts } = JSON.parse(rendered?.text ?? "{}");
 
-test("the tool and command names and texts equal the src/ values", () => {
+test("the tool names and texts equal the src/ values", () => {
 	assert.equal(texts.toolName, TOOL_NAME);
 	assert.equal(texts.toolLabel, TOOL_LABEL);
 	assert.equal(texts.toolset, "model_router");
-	assert.equal(texts.commandName, commandName("provider"));
-	assert.equal(texts.commandDescription, COMMAND_DESCRIPTIONS.provider);
 });
 
 test("the tool description says what it reads, changes nothing and returns no key", () => {
 	assert.equal(
 		texts.toolDescription,
-		"Reads the router's settings. It returns the provider, the three models, and whether each key the provider allows is set. It changes nothing and never returns a key.",
+		"Reads the router's settings. It returns the provider, the gateway, the three models, and whether each key the settings allow is set. It changes nothing and never returns a key.",
 	);
-});
-
-test("the provider texts equal the shared builders", () => {
-	assert.equal(texts.useOneOf, useOneOf("provider"));
-	assert.equal(texts.unchangedPrefix, unchanged("provider", ""));
-	for (const value of PROVIDER_VALUES) {
-		assert.equal(texts.providerLines[value], valueLine("provider", value));
-		assert.equal(
-			texts.already[value],
-			unchanged("provider", alreadyValue(value)),
-		);
-	}
 });
 
 test("the key lines cover each provider in both states", () => {
@@ -60,11 +36,7 @@ test("the key lines cover each provider in both states", () => {
 	assert.equal(texts.unset, "unset");
 });
 
-test("a write from a non-local session is refused with its own reason", () => {
-	assert.equal(
-		texts.refused,
-		unchanged("provider", "only a local session can change it"),
-	);
+test("the platforms of a local session are the ones Hermes names", () => {
 	assert.deepEqual(texts.localPlatforms, ["local", "cli", "tui", "desktop"]);
 });
 

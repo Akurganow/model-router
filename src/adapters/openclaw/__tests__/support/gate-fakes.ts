@@ -6,13 +6,13 @@ import {
 	gateSpawn,
 } from "#adapters/openclaw/gates.ts";
 import { readSpawn } from "#adapters/openclaw/params.ts";
-import type { OpenClawSettings } from "#adapters/openclaw/settings.ts";
 import type { OpenClawConfig } from "#adapters/openclaw/types.ts";
+import type { Settings } from "#core/options/settings.ts";
 
-export const SETTINGS: OpenClawSettings = {
+export const SETTINGS: Settings = {
 	provider: "typesafe",
+	gateway: "direct",
 	scope: "core",
-	models: { small: "openai/small", middle: undefined, large: "openai/large" },
 };
 export const REQUESTER = "main";
 export const OTHER = "writer";
@@ -30,7 +30,7 @@ export const gate = ({
 		spawn: readSpawn(params),
 		requester: REQUESTER,
 		config: {},
-		settings: SETTINGS,
+		chosen: SETTINGS,
 		hasKey: true,
 		...overrides,
 	});

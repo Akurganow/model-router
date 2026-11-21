@@ -4,6 +4,8 @@ import {
 	chooseValue,
 	isValue,
 	isValueSetting,
+	type Stored,
+	settingsOf,
 	settingsReport,
 	toolDescription,
 	unchanged,
@@ -55,6 +57,13 @@ export function resetConfig(): void {
 const current = (options: Options, setting: ValueSetting): unknown =>
 	written[setting] ?? options[setting];
 
+// The three settings as stored, so one setting's line can name the others it depends on.
+const storedOf = (options: Options): Stored => ({
+	provider: current(options, "provider"),
+	gateway: current(options, "gateway"),
+	scope: current(options, "scope"),
+});
+
 export async function registerConfigTool(
 	$: Engine,
 	e: SessionStart,
@@ -64,9 +73,10 @@ export async function registerConfigTool(
 	return next(e);
 }
 
-// The tool and both commands write through this one function, so equal outcomes read alike.
+// The tool and every command write through this one function, so equal outcomes read alike.
 async function write(
 	$: Engine,
+	options: Options,
 	setting: ValueSetting,
 	value: string,
 ): Promise<string> {
@@ -77,7 +87,7 @@ async function write(
 		});
 		if (deny !== undefined) return unchanged(setting, deny);
 		written[setting] = value;
-		return valueLine(setting, value);
+		return valueLine(setting, storedOf(options));
 	} catch (err) {
 		return unchangedBy(setting, err);
 	}
@@ -96,14 +106,14 @@ async function choose(
 		async (value) =>
 			value === current(options, setting)
 				? unchanged(setting, alreadyValue(value))
-				: write($, setting, value),
+				: write($, options, setting, value),
 	);
 }
 
 async function read($: Engine, options: Options): Promise<string> {
-	const provider = current(options, "provider");
-	const keys = await readKeys($, options, provider);
-	return settingsReport(provider, current(options, "scope"), [], keys);
+	const stored = storedOf(options);
+	const keys = await readKeys($, options, settingsOf(stored));
+	return settingsReport(stored, [], keys);
 }
 
 async function answer(
@@ -138,6 +148,6 @@ export async function configCommand(
 	if (args !== "" && !isValue(setting, args))
 		return { text: useOneOf(setting) };
 	if (args === "" || e.origin.kind !== PERSON)
-		return { text: valueLine(setting, current(options, setting)) };
-	return { text: await write($, setting, args) };
+		return { text: valueLine(setting, storedOf(options)) };
+	return { text: await write($, options, setting, args) };
 }

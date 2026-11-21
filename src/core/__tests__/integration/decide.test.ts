@@ -86,7 +86,10 @@ async function scoreAgainst(body: unknown) {
 	const bodies: unknown[] = [];
 	const result = await scoreWork({
 		state: STATE,
-		attempts: plan("typesafe", { typesafe: "test-key" }),
+		attempts: plan(
+			{ provider: "typesafe", gateway: "direct" },
+			{ typesafe: "test-key" },
+		),
 		fetchFn: async (_url, init) => {
 			bodies.push(JSON.parse(String(init?.body)));
 			return scoringReply(200, body);

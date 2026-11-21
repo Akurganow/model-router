@@ -106,7 +106,7 @@ def skipped_label(reason_key: str) -> str:
 class FakeCtx:
     """The part of the Hermes plugin context the plugin uses.
 
-    `fail` maps a registrar or `set_config` to the exception it raises."""
+    `fail` maps a registrar, `set_config` or one command's name to the exception it raises."""
 
     def __init__(
         self, settings: dict[str, Any] | None = None, fail: dict[str, Exception] | None = None
@@ -145,6 +145,8 @@ class FakeCtx:
         )
 
     def register_command(self, name, handler, description="", args_hint="") -> None:
+        if name in self.fail:
+            raise self.fail[name]
         self._enter("command")
         self.commands.append(
             {"name": name, "handler": handler, "description": description, "args_hint": args_hint}

@@ -30,11 +30,13 @@ const typed = (args: string): CommandRun => ({
 const CALL = { tool: "mcp__model-router__config" };
 const CORE = "core - built-in general agents only";
 const EXTENDED = "extended - also routes other agents that pass no model";
-const AUTO = "auto - TypeSafe, then OpenRouter if TypeSafe fails";
+const DIRECT = "direct - the provider's own API only";
+const AUTO = "auto - the provider's own API, then OpenRouter if it fails";
 const OPENROUTER_FIRST =
-	"openrouter-first - OpenRouter, then TypeSafe if OpenRouter fails";
-const TYPESAFE = "typesafe - TypeSafe only";
+	"openrouter-first - OpenRouter, then the provider's own API if it fails";
 const OPENROUTER = "openrouter - OpenRouter only";
+const TYPESAFE =
+	"typesafe - Jev from TypeSafe, the model the plugin's questions are fitted to";
 
 const call = (setting: string): ConfigCall => ({ ...CALL, setting });
 
@@ -75,7 +77,9 @@ test("a call whose dialog fails answers no answer, and the call behind it starts
 	await flush();
 	assert.deepEqual(log, ["check", "ask", "check", "ask"]);
 	open[1]?.resolve(EXTENDED);
-	assert.deepEqual(await second, { result: valueLine("scope", "extended") });
+	assert.deepEqual(await second, {
+		result: valueLine("scope", { scope: "extended" }),
+	});
 });
 
 test("a call that throws rejects its caller, and the call behind it still runs after", async () => {
@@ -103,7 +107,9 @@ test("a call that throws rejects its caller, and the call behind it still runs a
 	await flush();
 	assert.deepEqual(log, ["check", "check", "ask"]);
 	open[0]?.resolve(EXTENDED);
-	assert.deepEqual(await second, { result: valueLine("scope", "extended") });
+	assert.deepEqual(await second, {
+		result: valueLine("scope", { scope: "extended" }),
+	});
 });
 
 test("a reset drops a pending queue, so a call after it does not wait for an unsettled one", async () => {
@@ -117,7 +123,9 @@ test("a reset drops a pending queue, so a call after it does not wait for an uns
 	await flush();
 	assert.deepEqual(log, ["check", "ask", "check", "ask"]);
 	open[1]?.resolve(EXTENDED);
-	assert.deepEqual(await fresh, { result: valueLine("scope", "extended") });
+	assert.deepEqual(await fresh, {
+		result: valueLine("scope", { scope: "extended" }),
+	});
 	open[0]?.reject(new Error("dialog gone"));
 	assert.deepEqual(await stuck, { result: unchanged("scope", NO_ANSWER) });
 });
@@ -140,26 +148,37 @@ test("the scope dialog offers the current value first and writes a new pick", as
 	]);
 });
 
-test("the provider dialog puts the stored value first and keeps the rest in order", async () => {
+test("the gateway dialog puts the stored value first and keeps the rest in order", async () => {
 	resetConfig();
 	const { $, log } = answeringEngine(async () => OPENROUTER_FIRST);
 	assert.deepEqual(
-		await configCall($, call("provider"), { provider: "openrouter" }),
-		{ result: "provider: openrouter-first (openrouter, then typesafe)" },
+		await configCall($, call("gateway"), { gateway: "openrouter" }),
+		{ result: "gateway: openrouter-first (openrouter, then typesafe)" },
 	);
 	assert.deepEqual(log, [
 		"check",
 		{
 			ask: [
-				"Which providers should score subagent calls?",
+				"How should OpenRouter be used for the provider?",
 				{
-					options: [OPENROUTER, AUTO, OPENROUTER_FIRST, TYPESAFE],
-					header: "provider",
+					options: [OPENROUTER, DIRECT, AUTO, OPENROUTER_FIRST],
+					header: "gateway",
 				},
 			],
 		},
-		{ set: { key: "model-router.provider", value: "openrouter-first" } },
+		{ set: { key: "model-router.gateway", value: "openrouter-first" } },
 	]);
+});
+
+test("a valid value chosen over a stored text that is not valid is written", async () => {
+	resetConfig();
+	const { $, log } = answeringEngine(async () => DIRECT);
+	assert.deepEqual(await configCall($, call("gateway"), { gateway: "fast" }), {
+		result: "gateway: direct (typesafe)",
+	});
+	assert.deepEqual(log.at(-1), {
+		set: { key: "model-router.gateway", value: "direct" },
+	});
 });
 
 // The steps a call took that are not the dialog itself: the permission check and any write.
@@ -203,7 +222,7 @@ test("the default picked while nothing is stored is written, because no stored v
 	resetConfig();
 	const { $, log } = answeringEngine(async () => TYPESAFE);
 	assert.deepEqual(await configCall($, call("provider"), {}), {
-		result: "provider: typesafe (typesafe)",
+		result: "provider: typesafe",
 	});
 	assert.deepEqual(log.at(-1), {
 		set: { key: "model-router.provider", value: "typesafe" },
@@ -264,7 +283,7 @@ test("a tool call denied by the permission rules never opens the dialog", async 
 	assert.deepEqual(log, ["check"]);
 });
 
-// The report lists the stored value, the scope and one line for each key the provider allows.
+// The report lists the three settings and one line for each key the gateway allows.
 const report = async (options: Record<string, unknown>, env: Set<string>) => {
 	const { engine, reads } = recordingEngine((name) =>
 		env.has(name) ? "a-key" : undefined,
@@ -273,33 +292,33 @@ const report = async (options: Record<string, unknown>, env: Set<string>) => {
 	return { answer, reads };
 };
 
-test("the settings report lists the values and each key the provider allows", async () => {
+test("the settings report lists the values and each key the gateway allows", async () => {
 	resetConfig();
 	const cases: [Record<string, unknown>, string[], string][] = [
 		[
 			{},
 			[],
-			"provider: undefined (typesafe)\nscope: core\ntypesafe key: unset",
+			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\ntypesafe key: unset",
 		],
 		[
-			{ provider: "auto", scope: "extended", api_key: "k-1" },
+			{ gateway: "auto", scope: "extended", api_key: "k-1" },
 			["OPENROUTER_API_KEY"],
-			"provider: auto (typesafe, then openrouter)\nscope: extended\ntypesafe key: set\nopenrouter key: set",
+			"provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: extended\ntypesafe key: set\nopenrouter key: set",
 		],
 		[
-			{ provider: "openrouter-first" },
+			{ gateway: "openrouter-first" },
 			["TYPESAFE_API_KEY"],
-			"provider: openrouter-first (openrouter, then typesafe)\nscope: core\nopenrouter key: unset\ntypesafe key: set",
+			"provider: typesafe\ngateway: openrouter-first (openrouter, then typesafe)\nscope: core\nopenrouter key: unset\ntypesafe key: set",
 		],
 		[
-			{ provider: "openrouter", openrouter_api_key: "k-2", api_key: "k-1" },
+			{ gateway: "openrouter", openrouter_api_key: "k-2", api_key: "k-1" },
 			[],
-			"provider: openrouter (openrouter)\nscope: core\nopenrouter key: set",
+			"provider: typesafe\ngateway: openrouter (openrouter)\nscope: core\nopenrouter key: set",
 		],
 		[
-			{ provider: "auto", api_key: "  ", openrouter_api_key: "" },
+			{ gateway: "auto", api_key: "  ", openrouter_api_key: "" },
 			[],
-			"provider: auto (typesafe, then openrouter)\nscope: core\ntypesafe key: unset\nopenrouter key: unset",
+			"provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: core\ntypesafe key: unset\nopenrouter key: unset",
 		],
 	];
 	for (const [options, env, text] of cases) {
@@ -309,8 +328,8 @@ test("the settings report lists the values and each key the provider allows", as
 	}
 });
 
-test("the settings report reads only the variables of the providers the value allows", async () => {
+test("the settings report reads only the variables of the key holders the gateway allows", async () => {
 	resetConfig();
-	const { reads } = await report({ provider: "openrouter" }, new Set());
+	const { reads } = await report({ gateway: "openrouter" }, new Set());
 	assert.deepEqual(reads, ["OPENROUTER_API_KEY"]);
 });

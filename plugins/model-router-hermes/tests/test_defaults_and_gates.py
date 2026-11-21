@@ -57,35 +57,69 @@ class GateTest(RouterCase):
         self.assertNodeNotRun(stub)
         return route
 
-    def test_key_unset_for_each_provider_value(self):
+    def test_key_unset_for_each_gateway_value(self):
         cases = {
-            "typesafe": {"OPENROUTER_API_KEY": "or-secret-one"},
+            "direct": {"OPENROUTER_API_KEY": "or-secret-one"},
             "openrouter": {"TYPESAFE_API_KEY": "ts-secret-one"},
             "auto": {},
             "openrouter-first": {},
         }
-        for provider, secrets in cases.items():
-            with self.subTest(provider):
+        for gateway, secrets in cases.items():
+            with self.subTest(gateway):
                 self.assertSkipped(
                     "keyUnset",
                     api=fake_api(secrets=secrets),
-                    settings=good_settings(provider=provider),
+                    settings=good_settings(provider="typesafe", gateway=gateway),
                 )
+
+    def test_the_key_holders_are_looked_up_in_the_order_of_each_gateway_value(self):
+        ts, orr = "TYPESAFE_API_KEY", "OPENROUTER_API_KEY"
+        cases = {"direct": [ts], "auto": [ts, orr], "openrouter-first": [orr, ts], "openrouter": [orr]}
+        for gateway, looked_up in cases.items():
+            with self.subTest(gateway):
+                calls = []
+                self.route(
+                    api=fake_api(get_secret=calls.append),
+                    settings=good_settings(provider="typesafe", gateway=gateway),
+                )
+                self.assertEqual(calls, looked_up)
+
+    def test_a_setting_that_is_not_valid_skips_before_any_secret_or_node(self):
+        calls = []
+        api = fake_api(get_secret=calls.append, find_node=lambda: calls.append("node"))
+        for stored, label in (
+            ({"provider": "auto"}, "model-router skipped, provider not valid: run setup"),
+            ({"gateway": "fast"}, "model-router skipped, gateway not valid: run setup"),
+            (
+                {"provider": "openrouter", "gateway": "fast"},
+                "model-router skipped, provider not valid: run setup",
+            ),
+        ):
+            route, stub = self.route(api=api, settings=good_settings(**stored))
+            self.assertEqual(route["label"], label)
+            self.assertNodeNotRun(stub)
+        self.assertEqual(calls, [])
+
+    def test_a_setting_that_is_not_valid_skips_a_task_with_a_level_too(self):
+        stub = self.stub(reply=skip_reply())
+        router = make_router(script=stub.script, settings=good_settings(gateway="fast"))
+        route = router.route({"goal": "g", "index": 0, "level": 1}, {})
+        self.assertEqual(route, {"label": "model-router skipped, gateway not valid: run setup"})
 
     def test_blank_key_counts_as_unset(self):
         self.assertSkipped("keyUnset", api=fake_api(secrets={"TYPESAFE_API_KEY": "  "}))
 
     def test_any_allowed_key_opens_the_gate(self):
-        for provider, secret in (
+        for gateway, secret in (
             ("auto", "OPENROUTER_API_KEY"),
             ("auto", "TYPESAFE_API_KEY"),
             ("openrouter-first", "TYPESAFE_API_KEY"),
             ("openrouter", "OPENROUTER_API_KEY"),
         ):
-            with self.subTest((provider, secret)):
+            with self.subTest((gateway, secret)):
                 route, stub = self.route(
                     api=fake_api(secrets={secret: "k-secret-one"}),
-                    settings=good_settings(provider=provider),
+                    settings=good_settings(provider="typesafe", gateway=gateway),
                 )
                 self.assertEqual(route["label"], PREFIX + "skipped, test")
                 self.assertTrue(stub.capture.exists())

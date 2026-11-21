@@ -20,12 +20,16 @@ const manifest: { commands: Record<string, Command | undefined> } = JSON.parse(
 );
 
 const HINTS = {
-	provider: "[auto|openrouter-first|typesafe|openrouter]",
+	provider: "[typesafe]",
+	gateway: "[direct|auto|openrouter-first|openrouter]",
 	scope: "[core|extended]",
 };
 
 test("each command is declared, with the shared description and a hint", () => {
-	assert.deepEqual(Object.keys(manifest.commands).sort(), [...VALUE_SETTINGS]);
+	assert.deepEqual(
+		Object.keys(manifest.commands).sort(),
+		[...VALUE_SETTINGS].sort(),
+	);
 	for (const name of VALUE_SETTINGS) {
 		assert.equal(
 			manifest.commands[name]?.description,

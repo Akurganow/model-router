@@ -7,9 +7,10 @@ import {
 	type ValueSetting,
 } from "#core/options/settings.ts";
 import {
+	GATEWAYS,
 	KEY_FIELDS,
 	type KeyHolder,
-	PROVIDER_VALUES,
+	MAKERS,
 } from "#core/providers/provider.ts";
 
 // Every fact the renderers take from src/ comes through this module, so a
@@ -26,4 +27,4 @@ export {
 };
 
 export const SETTING_VALUES: Readonly<Record<ValueSetting, readonly string[]>> =
-	{ provider: PROVIDER_VALUES, scope: SCOPE_VALUES };
+	{ provider: MAKERS, gateway: GATEWAYS, scope: SCOPE_VALUES };

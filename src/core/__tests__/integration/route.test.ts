@@ -13,7 +13,7 @@ import { routingState } from "#core/brief/brief.ts";
 import { KEY_UNSET } from "#core/output/reasons.ts";
 import { tier } from "#core/parts/tier.ts";
 import { work } from "#core/parts/work.ts";
-import { type Attempt, plan } from "#core/providers/provider.ts";
+import { type Attempt, type Gateway, plan } from "#core/providers/provider.ts";
 import { LIMIT_REACHED, ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type Decision, type RouteInput, route } from "#core/scoring/route.ts";
 import { realClock } from "#utils/clock.ts";
@@ -21,7 +21,7 @@ import { realClock } from "#utils/clock.ts";
 const KEY = "test-key";
 const OR_KEY = "test-openrouter-key";
 const KEYS = { typesafe: KEY, openrouter: OR_KEY };
-const BOTH = plan("auto", KEYS);
+const BOTH = plan({ provider: "typesafe", gateway: "auto" }, KEYS);
 const MODEL = "jev-test";
 const STATE = routingState({
 	role: "coder",
@@ -293,7 +293,10 @@ test("openrouter-first asks OpenRouter first and falls back after a network erro
 		if (count === 1) throw new TypeError("fetch failed");
 		return scoringReply(200, VALID);
 	});
-	const attempts = plan("openrouter-first", KEYS);
+	const attempts = plan(
+		{ provider: "typesafe", gateway: "openrouter-first" },
+		KEYS,
+	);
 	const decision = asDecision(await run(fetchFn, { attempts }));
 	assert.equal(sent.length, 2);
 	assert.match(sent[0] ?? "", /^https:\/\/openrouter\.ai\//);
@@ -458,13 +461,13 @@ test("tier and work send the System One body as one string", async () => {
 	);
 });
 
-// One row per endpoint: the value that plans it, its address, and its key header as sent.
+// One row per endpoint: the gateway that plans it, its address, and its key header as sent.
 const ADDRESSES: readonly [
-	value: string,
+	gateway: Gateway,
 	address: string,
 	authorization: string,
 ][] = [
-	["typesafe", "https://api.typesafe.ai/v1/systemone", "Bearer test-key"],
+	["direct", "https://api.typesafe.ai/v1/systemone", "Bearer test-key"],
 	[
 		"openrouter",
 		"https://openrouter.ai/api/v1/systemone",
@@ -472,10 +475,12 @@ const ADDRESSES: readonly [
 	],
 ];
 
-for (const [value, address, authorization] of ADDRESSES)
-	test(`${value} sends its key to its own address in one header`, async () => {
+for (const [gateway, address, authorization] of ADDRESSES)
+	test(`${gateway} sends its key to its own address in one header`, async () => {
 		const { sent, bodies, inits, fetchFn } = answering(VALID);
-		await run(fetchFn, { attempts: plan(value, KEYS) });
+		await run(fetchFn, {
+			attempts: plan({ provider: "typesafe", gateway }, KEYS),
+		});
 		assert.deepEqual(sent, [`${address} ${authorization}`]);
 		assert.equal(JSON.parse(bodies[0] ?? "").model, "jev-latest");
 		assert.deepEqual(inits[0]?.headers, {
