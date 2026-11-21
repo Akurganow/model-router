@@ -3,6 +3,7 @@ import { OPENCLAW_OUTPUTS } from "./outputs.ts";
 import { optionText, type Source } from "./source.ts";
 import {
 	KEY_FIELDS,
+	KEY_HOLDERS,
 	SLOT_SETTINGS,
 	TOOL_NAME,
 	VALUE_SETTINGS,
@@ -49,6 +50,12 @@ const uiHints = (source: Source): JsonObject => ({
 		]),
 	),
 	...source.openclaw.uiHints,
+	...Object.fromEntries(
+		KEY_HOLDERS.map((holder) => [
+			KEY_FIELDS[holder],
+			source.openclaw.keys[holder],
+		]),
+	),
 });
 
 // manifest/config-and-secrets.md, "secretInputs paths": the only accepted `expected` is "string".

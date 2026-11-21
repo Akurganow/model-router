@@ -10,6 +10,7 @@ import {
 import {
 	GATEWAYS,
 	KEY_FIELDS,
+	KEY_HOLDERS,
 	type KeyHolder,
 	MAKERS,
 } from "#core/providers/provider.ts";
@@ -19,6 +20,7 @@ import {
 export {
 	COMMAND_DESCRIPTIONS,
 	KEY_FIELDS,
+	KEY_HOLDERS,
 	type KeyHolder,
 	SLOT_SETTINGS,
 	type SlotSetting,

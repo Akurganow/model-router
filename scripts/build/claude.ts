@@ -3,6 +3,8 @@ import { CLAUDE_OUTPUTS } from "./outputs.ts";
 import { optionText, type Source } from "./source.ts";
 import {
 	COMMAND_DESCRIPTIONS,
+	KEY_FIELDS,
+	KEY_HOLDERS,
 	SETTING_VALUES,
 	VALUE_SETTINGS,
 	valueFor,
@@ -21,7 +23,12 @@ const commands = (source: Source): JsonObject =>
 	);
 
 const userConfig = (source: Source): JsonObject => ({
-	...source.claude.userConfig.keys,
+	...Object.fromEntries(
+		KEY_HOLDERS.map((holder) => [
+			KEY_FIELDS[holder],
+			source.claude.userConfig.keys[holder],
+		]),
+	),
 	...Object.fromEntries(
 		VALUE_SETTINGS.map((setting) => {
 			const option = source.options[setting];

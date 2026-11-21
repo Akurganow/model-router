@@ -51,7 +51,7 @@ const keySettings = (source: Source): JsonObject =>
 			{
 				type: "secret",
 				env: KEY_VARIABLES[holder],
-				...describe(source.hermes.settings[hermesKeySetting(holder)]),
+				...describe(source.hermes.keys[holder]),
 			},
 		]),
 	);

@@ -18,7 +18,7 @@ const OPTION: Source["options"]["scope"] = {
 	title: "t",
 	descriptions: { claude: "c", omp: "o", openclaw: "w" },
 };
-const SECRET: Source["claude"]["userConfig"]["keys"]["api_key"] = {
+const SECRET: Source["claude"]["userConfig"]["keys"]["typesafe"] = {
 	type: "t",
 	title: "t",
 	description: "d",
@@ -28,7 +28,7 @@ const HINT: Source["openclaw"]["uiHints"]["small_model"] = {
 	label: "l",
 	help: "h",
 };
-const SECRET_HINT: Source["openclaw"]["uiHints"]["api_key"] = {
+const SECRET_HINT: Source["openclaw"]["keys"]["typesafe"] = {
 	label: "l",
 	help: "h",
 	sensitive: true,
@@ -63,7 +63,7 @@ const FIXTURE: Source = {
 		commandContents: { provider: "p", gateway: "g", scope: "s" },
 		userConfig: {
 			optionType: "t",
-			keys: { api_key: SECRET, openrouter_api_key: SECRET },
+			keys: { typesafe: SECRET, openrouter: SECRET },
 		},
 		catalogueSource: "c",
 		install: INSTALL,
@@ -85,9 +85,8 @@ const FIXTURE: Source = {
 			small_model: HINT,
 			middle_model: HINT,
 			large_model: HINT,
-			api_key: SECRET_HINT,
-			openrouter_api_key: SECRET_HINT,
 		},
+		keys: { typesafe: SECRET_HINT, openrouter: SECRET_HINT },
 		install: INSTALL,
 	},
 	hermes: {
@@ -98,9 +97,8 @@ const FIXTURE: Source = {
 			small_model: HINT,
 			middle_model: HINT,
 			large_model: HINT,
-			typesafe_api_key: HINT,
-			openrouter_api_key: HINT,
 		},
+		keys: { typesafe: HINT, openrouter: HINT },
 		install: INSTALL,
 	},
 	npm: {
@@ -154,11 +152,17 @@ const unique = (paths: string[]) => [...new Set(paths)].sort();
 
 // A harness's option text is optional in the schema, so the comparison leaves those keys out. loadSource checks them against HARNESS_SETTINGS.
 const OPTIONAL_TEXT = /^\.options\.\w+\.descriptions\./;
+// A key record is keyed by key holder, and the schema names no holder. loadSource checks the members against KEY_HOLDERS.
+const HOLDER_TEXT = /^\.(claude\.userConfig|openclaw|hermes)\.keys\./;
 
 test("the schema requires exactly the keys of the Source type", () => {
 	assert.deepEqual(
 		unique(requiredPaths(schema)),
-		unique(keyPaths(FIXTURE).filter((path) => !OPTIONAL_TEXT.test(path))),
+		unique(
+			keyPaths(FIXTURE).filter(
+				(path) => !OPTIONAL_TEXT.test(path) && !HOLDER_TEXT.test(path),
+			),
+		),
 	);
 });
 
@@ -186,19 +190,8 @@ test("the option and command maps hold one key per value setting", () => {
 // The builders read a hint for each slot setting, so the source must name one for each, in the slot order.
 test("the source names a hint for each slot setting of OpenClaw and Hermes", () => {
 	const source = loadSource(ROOT);
-	const slotKeys = (hints: object, others: readonly string[]) =>
-		Object.keys(hints).filter((key) => !others.includes(key));
 	const EXPECTED = ["small_model", "middle_model", "large_model"];
-	assert.deepEqual(
-		slotKeys(source.openclaw.uiHints, ["api_key", "openrouter_api_key"]),
-		EXPECTED,
-	);
-	assert.deepEqual(
-		slotKeys(source.hermes.settings, [
-			"typesafe_api_key",
-			"openrouter_api_key",
-		]),
-		EXPECTED,
-	);
+	assert.deepEqual(Object.keys(source.openclaw.uiHints), EXPECTED);
+	assert.deepEqual(Object.keys(source.hermes.settings), EXPECTED);
 	assert.deepEqual(SLOT_SETTINGS, EXPECTED);
 });

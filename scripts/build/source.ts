@@ -4,6 +4,7 @@ import { type Schema, validate } from "./schema.ts";
 import {
 	HARNESS_SETTINGS,
 	type Harness,
+	KEY_HOLDERS,
 	type KeyHolder,
 	type SlotSetting,
 	VALUE_SETTINGS,
@@ -18,6 +19,7 @@ type Option = {
 	readonly descriptions: Readonly<Partial<Record<Harness, string>>>;
 };
 type Hint = { readonly label: string; readonly help: string };
+type SecretHint = Hint & { readonly sensitive: boolean };
 // Hermes stores a secret under its variable, so the setting's own name is free: the key holder's name and a fixed ending.
 export type HermesKeySetting = `${KeyHolder}_api_key`;
 export const hermesKeySetting = (holder: KeyHolder): HermesKeySetting =>
@@ -69,10 +71,7 @@ export type Source = {
 		readonly commandContents: Readonly<Record<ValueSetting, string>>;
 		readonly userConfig: {
 			readonly optionType: string;
-			readonly keys: {
-				readonly api_key: Secret;
-				readonly openrouter_api_key: Secret;
-			};
+			readonly keys: Readonly<Record<KeyHolder, Secret>>;
 		};
 		readonly catalogueSource: string;
 		readonly install: Install;
@@ -96,17 +95,16 @@ export type Source = {
 		readonly skills: readonly string[];
 		// One OpenClaw version behind compat, build and install.minHostVersion.
 		readonly hostFloor: string;
-		readonly uiHints: Readonly<Record<SlotSetting, Hint>> & {
-			readonly api_key: Hint & { readonly sensitive: boolean };
-			readonly openrouter_api_key: Hint & { readonly sensitive: boolean };
-		};
+		readonly uiHints: Readonly<Record<SlotSetting, Hint>>;
+		readonly keys: Readonly<Record<KeyHolder, SecretHint>>;
 		readonly install: Install;
 	};
 	readonly hermes: {
 		readonly pluginName: string;
 		readonly backendName: string;
 		readonly requiresHermes: string;
-		readonly settings: Readonly<Record<SlotSetting | HermesKeySetting, Hint>>;
+		readonly settings: Readonly<Record<SlotSetting, Hint>>;
+		readonly keys: Readonly<Record<KeyHolder, Hint>>;
 		readonly install: Install;
 	};
 	readonly npm: {
@@ -154,9 +152,38 @@ function optionTextProblems(source: Source): string[] {
 }
 
 /**
+ * Lists each key record that does not hold exactly the members of KEY_HOLDERS:
+ * a key holder with no text, and a member that names no key holder. The schema
+ * names no holder, so this check is the only one.
+ */
+function keyHolderProblems(source: Source): string[] {
+	const records: Readonly<Record<string, object>> = {
+		"$.claude.userConfig.keys": source.claude.userConfig.keys,
+		"$.openclaw.keys": source.openclaw.keys,
+		"$.hermes.keys": source.hermes.keys,
+	};
+	const holders: readonly string[] = KEY_HOLDERS;
+	return Object.entries(records).flatMap(([path, record]) => [
+		...holders
+			.filter((holder) => !Object.hasOwn(record, holder))
+			.map(
+				(holder) =>
+					`${path}.${holder}: ${holder} is a key holder, so the text is required`,
+			),
+		...Object.keys(record)
+			.filter((member) => !holders.includes(member))
+			.map(
+				(member) =>
+					`${path}.${member}: ${member} is not a key holder, so the text is not allowed`,
+			),
+	]);
+}
+
+/**
  * Reads metadata/source.json and returns it typed as Source. It throws with
  * every schema problem first, so the cast only names a shape already proven.
- * Then it throws with every option text that does not match its harness.
+ * Then it throws with every option text that does not match its harness, and
+ * with every key record that does not match the key holders.
  */
 export function loadSource(root: string): Source {
 	const data = readJson(root, SOURCE_PATH);
@@ -170,6 +197,11 @@ export function loadSource(root: string): Source {
 	if (textProblems.length > 0)
 		throw new Error(
 			`${SOURCE_PATH} does not match the settings each harness stores:\n${textProblems.join("\n")}`,
+		);
+	const holderProblems = keyHolderProblems(source);
+	if (holderProblems.length > 0)
+		throw new Error(
+			`${SOURCE_PATH} does not match the key holders:\n${holderProblems.join("\n")}`,
 		);
 	return source;
 }
