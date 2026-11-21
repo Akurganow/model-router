@@ -146,8 +146,9 @@ the task's `reasoning_effort` parameter.
 
 The plugin reads no credential of a model's provider but one: the OpenRouter
 key, which Hermes's own OpenRouter provider shares, as [Keys](README.md#keys)
-says. It sets the model and provider you named in a slot on the task. Of its reads, only the role text
-leaves your machine, in the request, as described above.
+says. It sets the model and provider you named in a slot on the task. Of its
+reads, only the role text leaves your machine, in the request, as described
+above.
 
 The `model_router_config` tool only reads.
 [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool)
