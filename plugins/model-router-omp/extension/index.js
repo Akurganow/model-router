@@ -298,7 +298,7 @@ var notValid = (setting) => `${setting} not valid: run setup`;
 var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
 
 // src/core/providers/provider.ts
-var MAKERS = ["typesafe", "openai"];
+var MAKERS = ["typesafe", "openai", "google"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
 var GATEWAYS = [
   "direct",
@@ -309,6 +309,7 @@ var GATEWAYS = [
 var KEY_VARIABLES = {
   typesafe: "TYPESAFE_API_KEY",
   openai: "OPENAI_API_KEY",
+  google: "GEMINI_API_KEY",
   openrouter: "OPENROUTER_API_KEY"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 5e3;
@@ -358,7 +359,8 @@ var TEXTS = {
     question: "Which provider's model should score subagent calls?",
     consequences: {
       typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to",
-      openai: "OpenAI's decision model; costs more than Jev and its answers are not fitted"
+      openai: "OpenAI's decision model; costs more than Jev and its answers are not fitted",
+      google: "Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text"
     }
   },
   gateway: {
@@ -1011,6 +1013,19 @@ var replyReader = (probabilitiesOf, usageOf) => (parts, text) => {
   return { answers: pairs, model, usage: usageOf(usage) };
 };
 
+// src/core/scoring/formats/gemini-decisions.ts
+var GEMINI_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    model,
+    input: stateText(state),
+    questions: questionMap(parts)
+  }),
+  read: replyReader(
+    mapAnswer,
+    usageNamed("total_input_tokens", "total_output_tokens")
+  )
+};
+
 // src/core/scoring/formats/openai-decisions.ts
 function listAnswer(answers, key) {
   if (!Array.isArray(answers)) return void 0;
@@ -1062,6 +1077,7 @@ var SYSTEM_ONE = {
 
 // src/core/scoring/endpoints.ts
 var BEARER = { name: "Authorization", prefix: "Bearer " };
+var GOOGLE_KEY = { name: "x-goog-api-key", prefix: "" };
 var JEV = "jev-latest";
 var ENDPOINTS = {
   typesafe: {
@@ -1089,6 +1105,20 @@ var ENDPOINTS = {
       url: "https://openrouter.ai/api/alpha/decisions",
       format: OPENROUTER_DECISIONS,
       model: "openai/gpt-6-luna-decisions",
+      keyHeader: BEARER
+    }
+  },
+  google: {
+    direct: {
+      url: "https://generativelanguage.googleapis.com/v1beta/decisions",
+      format: GEMINI_DECISIONS,
+      model: "gemini-decision-1",
+      keyHeader: GOOGLE_KEY
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "google/gemini-decision-1",
       keyHeader: BEARER
     }
   }

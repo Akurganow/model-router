@@ -45,6 +45,8 @@ const TEXTS: Readonly<Record<ValueSetting, ValueText>> = {
 				"Jev from TypeSafe, the model the plugin's questions are fitted to",
 			openai:
 				"OpenAI's decision model; costs more than Jev and its answers are not fitted",
+			google:
+				"Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text",
 		},
 	},
 	gateway: {

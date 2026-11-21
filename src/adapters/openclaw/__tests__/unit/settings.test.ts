@@ -237,19 +237,24 @@ test("an empty or non-string key is ignored and the variable applies", () => {
 		);
 });
 
-test("a blank, spaces or null openai key is unset and the variable stands in", () => {
-	const openai: Choice = { provider: "openai", gateway: "direct" };
-	for (const bad of ["", "   ", null]) {
-		assert.deepEqual(
-			readKeys(live({ openai_api_key: bad }), undefined, openai, {
-				OPENAI_API_KEY: "env-oa-key",
-			}),
-			{ openai: "env-oa-key" },
-		);
-		assert.deepEqual(
-			readKeys(live({ openai_api_key: bad }), undefined, openai, {}),
-			{},
-		);
+test("a blank, spaces or null openai or google key is unset and the variable stands in", () => {
+	for (const [provider, field, variable] of [
+		["openai", "openai_api_key", "OPENAI_API_KEY"],
+		["google", "google_api_key", "GEMINI_API_KEY"],
+	] as const) {
+		const own: Choice = { provider, gateway: "direct" };
+		for (const bad of ["", "   ", null]) {
+			assert.deepEqual(
+				readKeys(live({ [field]: bad }), undefined, own, {
+					[variable]: "env-key",
+				}),
+				{ [provider]: "env-key" },
+			);
+			assert.deepEqual(
+				readKeys(live({ [field]: bad }), undefined, own, {}),
+				{},
+			);
+		}
 	}
 });
 

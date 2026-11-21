@@ -4,9 +4,11 @@ import { callOnce } from "./harness.ts";
 const VARIABLE_KEY = "typesafe-var-key";
 const OPENROUTER_VARIABLE_KEY = "openrouter-var-key";
 const OPENAI_VARIABLE_KEY = "openai-var-key";
+const GOOGLE_VARIABLE_KEY = "google-var-key";
 const TYPESAFE_URL = "https://api.typesafe.ai/v1/systemone";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/systemone";
 const OPENAI_URL = "https://api.openai.com/v1/decisions";
+const GOOGLE_URL = "https://generativelanguage.googleapis.com/v1beta/decisions";
 
 // OpenAI's own API answers a list of answers; the harness's default reply is System One's map.
 const level = (value: number, probability: number) => ({ value, probability });
@@ -92,14 +94,26 @@ for (const [name, options, env, key] of [
 		{ OPENAI_API_KEY: OPENAI_VARIABLE_KEY },
 		OPENAI_VARIABLE_KEY,
 	],
+	[
+		"the Google option is the key under provider google, in the x-goog-api-key header",
+		{ provider: "google", google_api_key: "google-option-key" },
+		{},
+		"google-option-key",
+	],
+	[
+		"GEMINI_API_KEY is the key under provider google when the option is empty",
+		{ provider: "google", google_api_key: "" },
+		{ GEMINI_API_KEY: GOOGLE_VARIABLE_KEY },
+		GOOGLE_VARIABLE_KEY,
+	],
 ] as const)
 	test(name, { options }, async ($, on) => {
-		const openai = "provider" in options;
+		const own = "provider" in options ? options.provider : undefined;
 		const { h } = await callOnce(
 			$,
 			on,
 			{},
-			openai ? { env, text: OPENAI_ANSWER } : { env },
+			own === "openai" ? { env, text: OPENAI_ANSWER } : { env },
 		);
 		if (key === null) {
 			expect(h.received.model).toBeUndefined();
@@ -108,13 +122,18 @@ for (const [name, options, env, key] of [
 			return;
 		}
 		expect(h.request.url).toBe(
-			openai
+			own === "openai"
 				? OPENAI_URL
-				: "gateway" in options
-					? OPENROUTER_URL
-					: TYPESAFE_URL,
+				: own === "google"
+					? GOOGLE_URL
+					: "gateway" in options
+						? OPENROUTER_URL
+						: TYPESAFE_URL,
 		);
-		expect(h.auth).toBe(`Bearer ${key}`);
+		if (own === "google") {
+			expect(h.request.init?.headers?.["x-goog-api-key"]).toBe(key);
+			expect(h.auth).toBeUndefined();
+		} else expect(h.auth).toBe(`Bearer ${key}`);
 		expect(h.received.model).toBe("haiku");
 		expect([...h.logs, ...h.debug].join("\n")).not.toContain(key);
 	});

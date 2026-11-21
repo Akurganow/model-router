@@ -65,7 +65,12 @@ const FIXTURE: Source = {
 		commandContents: { provider: "p", gateway: "g", scope: "s" },
 		userConfig: {
 			optionType: "t",
-			keys: { typesafe: SECRET, openai: SECRET, openrouter: SECRET },
+			keys: {
+				typesafe: SECRET,
+				openai: SECRET,
+				google: SECRET,
+				openrouter: SECRET,
+			},
 		},
 		catalogueSource: "c",
 		install: INSTALL,
@@ -91,6 +96,7 @@ const FIXTURE: Source = {
 		keys: {
 			typesafe: SECRET_HINT,
 			openai: SECRET_HINT,
+			google: SECRET_HINT,
 			openrouter: SECRET_HINT,
 		},
 		install: INSTALL,
@@ -104,7 +110,7 @@ const FIXTURE: Source = {
 			middle_model: HINT,
 			large_model: HINT,
 		},
-		keys: { typesafe: HINT, openai: HINT, openrouter: HINT },
+		keys: { typesafe: HINT, openai: HINT, google: HINT, openrouter: HINT },
 		install: INSTALL,
 	},
 	npm: {

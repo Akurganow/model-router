@@ -36,6 +36,18 @@ const AO = {
 	holder: "openrouter",
 	key: "or-key",
 };
+const G = {
+	maker: "google",
+	path: "direct",
+	holder: "google",
+	key: "g-key",
+};
+const GO = {
+	maker: "google",
+	path: "openrouter",
+	holder: "openrouter",
+	key: "or-key",
+};
 const FIRST = { timeout: 5000, retries: 0 };
 
 const NONE = {};
@@ -77,17 +89,26 @@ test("plan orders the attempts for each gateway and set of keys", () => {
 			);
 });
 
-test("plan asks the openai maker on each path, and a typesafe key plans nothing for it", () => {
-	const keys = { openai: "oa-key", openrouter: "or-key" };
-	const table: [Gateway, unknown[]][] = [
-		["auto", [{ ...A, ...FIRST }, AO]],
-		["openrouter-first", [{ ...AO, ...FIRST }, A]],
-		["direct", [A]],
-		["openrouter", [AO]],
-	];
-	for (const [gateway, expected] of table)
-		assert.deepEqual(plan(via(gateway, "openai"), keys), expected, gateway);
-	assert.deepEqual(plan(via("auto", "openai"), { typesafe: "ts-key" }), []);
+test("plan asks the openai and google makers on each path, and a typesafe key plans nothing for them", () => {
+	for (const [maker, D, R] of [
+		["openai", A, AO],
+		["google", G, GO],
+	] as const) {
+		const keys = { [maker]: D.key, openrouter: "or-key" };
+		const table: [Gateway, unknown[]][] = [
+			["auto", [{ ...D, ...FIRST }, R]],
+			["openrouter-first", [{ ...R, ...FIRST }, D]],
+			["direct", [D]],
+			["openrouter", [R]],
+		];
+		for (const [gateway, expected] of table)
+			assert.deepEqual(
+				plan(via(gateway, maker), keys),
+				expected,
+				`${maker} ${gateway}`,
+			);
+		assert.deepEqual(plan(via("auto", maker), { typesafe: "ts-key" }), []);
+	}
 });
 
 test("plan attempts only the providers whose key is set", () => {
@@ -99,6 +120,7 @@ test("plan attempts only the providers whose key is set", () => {
 const LOOKED_UP = {
 	typesafe: "ts-key",
 	openai: "oa-key",
+	google: "g-key",
 	openrouter: "or-key",
 };
 
@@ -176,6 +198,13 @@ test("collectKeysSync looks up only the holders of each gateway, in order", () =
 		"openai",
 	]);
 	assert.deepEqual(looked("openrouter", "openai"), ["openrouter"]);
+	assert.deepEqual(looked("direct", "google"), ["google"]);
+	assert.deepEqual(looked("auto", "google"), ["google", "openrouter"]);
+	assert.deepEqual(looked("openrouter-first", "google"), [
+		"openrouter",
+		"google",
+	]);
+	assert.deepEqual(looked("openrouter", "google"), ["openrouter"]);
 });
 
 test("collectKeysSync never looks up a provider the value leaves out", () => {

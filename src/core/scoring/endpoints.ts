@@ -1,5 +1,6 @@
 import type { Attempt, Maker, Path } from "#core/providers/provider.ts";
 import type { Format } from "./formats/format.ts";
+import { GEMINI_DECISIONS } from "./formats/gemini-decisions.ts";
 import { OPENAI_DECISIONS } from "./formats/openai-decisions.ts";
 import { OPENROUTER_DECISIONS } from "./formats/openrouter-decisions.ts";
 import { SYSTEM_ONE } from "./formats/system-one.ts";
@@ -14,6 +15,7 @@ type Endpoint = {
 };
 
 const BEARER: KeyHeader = { name: "Authorization", prefix: "Bearer " };
+const GOOGLE_KEY: KeyHeader = { name: "x-goog-api-key", prefix: "" };
 // Both endpoints resolve this alias to their newest Jev release.
 const JEV = "jev-latest";
 
@@ -47,6 +49,20 @@ export const ENDPOINTS: Readonly<
 			url: "https://openrouter.ai/api/alpha/decisions",
 			format: OPENROUTER_DECISIONS,
 			model: "openai/gpt-6-luna-decisions",
+			keyHeader: BEARER,
+		},
+	},
+	google: {
+		direct: {
+			url: "https://generativelanguage.googleapis.com/v1beta/decisions",
+			format: GEMINI_DECISIONS,
+			model: "gemini-decision-1",
+			keyHeader: GOOGLE_KEY,
+		},
+		openrouter: {
+			url: "https://openrouter.ai/api/alpha/decisions",
+			format: OPENROUTER_DECISIONS,
+			model: "google/gemini-decision-1",
 			keyHeader: BEARER,
 		},
 	},

@@ -5,6 +5,7 @@ import { getEventListeners } from "node:events";
 import { test } from "node:test";
 import {
 	brokenReply,
+	GEMINI_REPLY,
 	OPENAI_REPLY,
 	OPENROUTER_REPLY,
 	scoringReply,
@@ -27,7 +28,12 @@ import { realClock } from "#utils/clock.ts";
 
 const KEY = "test-key";
 const OR_KEY = "test-openrouter-key";
-const KEYS = { typesafe: KEY, openrouter: OR_KEY, openai: "test-openai-key" };
+const KEYS = {
+	typesafe: KEY,
+	openrouter: OR_KEY,
+	openai: "test-openai-key",
+	google: "test-google-key",
+};
 const BOTH = plan({ provider: "typesafe", gateway: "auto" }, KEYS);
 const MODEL = "jev-test";
 const STATE = routingState({
@@ -469,14 +475,14 @@ test("tier and work send the System One body as one string", async () => {
 });
 
 // One row per endpoint: who is asked and through which gateway, the address, the model name the
-// request carries, the key header value as sent, a reply in the endpoint's own format, and the
+// request carries, the key header as sent, a reply in the endpoint's own format, and the
 // model and token counts the decision then holds.
 const ADDRESSES: readonly [
 	provider: Maker,
 	gateway: Gateway,
 	address: string,
 	sentModel: string,
-	authorization: string,
+	keyHeader: [name: string, value: string],
 	reply: unknown,
 	model: string,
 	usage: { input_tokens: number; output_tokens: number },
@@ -486,7 +492,7 @@ const ADDRESSES: readonly [
 		"direct",
 		"https://api.typesafe.ai/v1/systemone",
 		"jev-latest",
-		"Bearer test-key",
+		["Authorization", "Bearer test-key"],
 		VALID,
 		"jev-1.14.0",
 		{ input_tokens: 120, output_tokens: 8 },
@@ -496,7 +502,7 @@ const ADDRESSES: readonly [
 		"openrouter",
 		"https://openrouter.ai/api/v1/systemone",
 		"jev-latest",
-		"Bearer test-openrouter-key",
+		["Authorization", "Bearer test-openrouter-key"],
 		VALID,
 		"jev-1.14.0",
 		{ input_tokens: 120, output_tokens: 8 },
@@ -506,7 +512,7 @@ const ADDRESSES: readonly [
 		"direct",
 		"https://api.openai.com/v1/decisions",
 		"gpt-6-luna",
-		"Bearer test-openai-key",
+		["Authorization", "Bearer test-openai-key"],
 		JSON.parse(OPENAI_REPLY),
 		"gpt-6-luna",
 		{ input_tokens: 506, output_tokens: 0 },
@@ -516,9 +522,29 @@ const ADDRESSES: readonly [
 		"openrouter",
 		"https://openrouter.ai/api/alpha/decisions",
 		"openai/gpt-6-luna-decisions",
-		"Bearer test-openrouter-key",
+		["Authorization", "Bearer test-openrouter-key"],
 		JSON.parse(OPENROUTER_REPLY),
 		"openai/gpt-6-luna-decisions-20261006",
+		{ input_tokens: 488, output_tokens: 0 },
+	],
+	[
+		"google",
+		"direct",
+		"https://generativelanguage.googleapis.com/v1beta/decisions",
+		"gemini-decision-1",
+		["x-goog-api-key", "test-google-key"],
+		JSON.parse(GEMINI_REPLY),
+		"",
+		{ input_tokens: 430, output_tokens: 0 },
+	],
+	[
+		"google",
+		"openrouter",
+		"https://openrouter.ai/api/alpha/decisions",
+		"google/gemini-decision-1",
+		["Authorization", "Bearer test-openrouter-key"],
+		{ ...JSON.parse(OPENROUTER_REPLY), model: "google/gemini-decision-1" },
+		"google/gemini-decision-1",
 		{ input_tokens: 488, output_tokens: 0 },
 	],
 ];
@@ -528,7 +554,7 @@ for (const [
 	gateway,
 	address,
 	sentModel,
-	authorization,
+	[headerName, headerValue],
 	reply,
 	model,
 	usage,
@@ -538,10 +564,10 @@ for (const [
 		const decision = asDecision(
 			await run(fetchFn, { attempts: plan({ provider, gateway }, KEYS) }),
 		);
-		assert.deepEqual(sent, [`${address} ${authorization}`]);
+		assert.equal(sent[0]?.split(" ")[0], address);
 		assert.equal(JSON.parse(bodies[0] ?? "").model, sentModel);
 		assert.deepEqual(inits[0]?.headers, {
-			Authorization: authorization,
+			[headerName]: headerValue,
 			Accept: "application/json",
 			"Content-Type": "application/json",
 			"User-Agent":

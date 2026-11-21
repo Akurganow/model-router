@@ -36,6 +36,8 @@ function keyVariable($: Engine, holder: KeyHolder): Promise<unknown> {
 			return $.env.get("TYPESAFE_API_KEY");
 		case "openai":
 			return $.env.get("OPENAI_API_KEY");
+		case "google":
+			return $.env.get("GEMINI_API_KEY");
 		case "openrouter":
 			return $.env.get("OPENROUTER_API_KEY");
 	}

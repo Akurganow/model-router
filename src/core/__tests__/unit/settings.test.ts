@@ -150,7 +150,10 @@ test("the scope line shows the value, the default when none is stored, or that i
 });
 
 test("use-one-of and unchanged texts name the setting", () => {
-	assert.equal(useOneOf("provider"), "provider: use one of typesafe, openai");
+	assert.equal(
+		useOneOf("provider"),
+		"provider: use one of typesafe, openai, google",
+	);
 	assert.equal(useOneOf("scope"), "scope: use one of core, extended");
 	assert.equal(
 		unchanged("scope", "already core"),
@@ -203,6 +206,7 @@ test("labels carry the consequences of each value", () => {
 	assert.deepEqual(ask("provider", "typesafe").options, [
 		"typesafe - Jev from TypeSafe, the model the plugin's questions are fitted to",
 		"openai - OpenAI's decision model; costs more than Jev and its answers are not fitted",
+		"google - Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text",
 	]);
 	assert.deepEqual(ask("gateway", "direct").options, [
 		"direct - the provider's own API only",
@@ -374,6 +378,16 @@ test("settingsReport names the openai holder first under provider openai and gat
 	);
 });
 
+test("settingsReport names the openrouter holder first under provider google and gateway openrouter-first", () => {
+	assert.equal(
+		settingsReport({ provider: "google", gateway: "openrouter-first" }, [], {
+			google: "key-1",
+			openrouter: "key-2",
+		}),
+		"provider: google\ngateway: openrouter-first (openrouter, then google)\nscope: core\nopenrouter key: set\ngoogle key: set",
+	);
+});
+
 test("settingsReport never prints a key", () => {
 	const report = settingsReport({ gateway: "auto" }, [], {
 		typesafe: "key-1",
@@ -390,7 +404,7 @@ test("settingsReport gives key lines only when every setting is valid", () => {
 	);
 	assert.equal(
 		settingsReport({ provider: "auto" }, [], KEY),
-		"provider: auto (not valid: use one of typesafe, openai)\ngateway: direct\nscope: core",
+		"provider: auto (not valid: use one of typesafe, openai, google)\ngateway: direct\nscope: core",
 	);
 	assert.equal(
 		settingsReport({ gateway: "fast" }, [], KEY),
