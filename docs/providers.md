@@ -148,6 +148,7 @@ openrouter key: unset
 ```
 
 The tool never returns a key, its length or any part of it.
+When a harness cannot read its settings, Oh My Pi prints `settings unreadable`, and OpenClaw and Hermes Agent print `error: <message>`.
 In OpenClaw and Hermes Agent the tool also prints each model setting between the setting lines and the key lines, as its README says: the configured value, or `unset`.
 
 [A setting that is not valid](#a-setting-that-is-not-valid) prints its stored text and the values to use, as `<setting>: <stored text> (not valid: use one of <values>)`.
