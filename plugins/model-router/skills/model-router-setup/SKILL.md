@@ -51,9 +51,9 @@ Find out which of these already hold, with the `mcp__model-router__config` tool 
   - `typesafe` scores on TypeSafe only. `openrouter` scores on OpenRouter only.
   - `auto` tries TypeSafe, then OpenRouter when TypeSafe fails.
   - `openrouter-first` tries OpenRouter, then TypeSafe when OpenRouter fails.
-  - A stored value outside these four counts as `typesafe`.
   - With `auto` or `openrouter-first` and only one key set, that key's provider scores alone.
-- `scope` takes `core` (the default) or `extended`. A stored value outside these two counts as `core`.
+- Claude Code hands the plugin an option's default in place of a stored value outside the option's list. So the tool then prints the default, and no setup line shows.
+- `scope` takes `core` (the default) or `extended`.
   - Under `core`, the plugin routes a call to the built-in agents `general-purpose`, `claude`, `Explore` and `Plan`. A call with no `subagent_type` counts as `general-purpose`.
   - Under `extended`, it routes every Agent call that passes no `model` and no `name`, a fork excepted. That includes user, project and plugin agents.
   - Under `extended`, the routed model and effort replace the ones an agent's definition sets, and the agent's description and task text go to the provider.
@@ -97,6 +97,7 @@ More than one can hold. Report every one that holds.
 
 ### Skip reasons
 
+- `<setting> not valid: run setup`: a stored setting holds text outside its list. Claude Code replaces such a value with the default before the plugin sees it, so the line is not expected here. If it shows, the person sets the setting with its command.
 - `key unset`: no provider the `provider` value allows has a key. Add one as the Keys facts say.
 - `bad reply`: the provider answered without a valid score for one of the two questions.
 - `timeout`: a first attempt got no answer in 2 s, or the call got no decision in the 8 s limit. The network or provider is slow.
@@ -104,6 +105,19 @@ More than one can hold. Report every one that holds.
 - `network error`: every attempt failed before an answer came. An organization fetch policy that refuses openrouter.ai shows as this too.
 - `HTTP <status>`: the provider answered with that status. `HTTP 401` means the provider rejected the key. `HTTP 429` and `HTTP 503` mean the provider refused or failed on every attempt.
 - `failed`: any other error.
+
+### A retired provider value
+
+Earlier versions took `auto`, `openrouter-first` and `openrouter` as values of `provider`. They are values of `gateway` now. Do these steps in this order:
+
+1. The tool cannot show a retired value, because Claude Code hands the plugin the default. The stored value sits under `pluginConfigs` in the user settings file. Read only that entry, because the `env` block of the same file can hold keys. If you cannot read the entry, ask the person which `provider` value they chose before the update.
+2. For a stored `auto`, `openrouter-first` or `openrouter`, tell the person the plugin now gets `typesafe` on the direct path. Propose the `gateway` of the same name:
+   - `auto` becomes `provider` `typesafe` with `gateway` `auto`.
+   - `openrouter-first` becomes `provider` `typesafe` with `gateway` `openrouter-first`.
+   - `openrouter` becomes `provider` `typesafe` with `gateway` `openrouter`.
+3. On the person's word, call the tool with `setting` set to `gateway`. The person picks the value in the dialog. Where no dialog opens, the person types `/model-router:gateway <value>`.
+4. Then do the same for `provider`, where the person picks `typesafe`, so the retired value leaves the settings. A reply `provider unchanged: already typesafe` is fine, because the plugin already gets `typesafe`.
+5. Call the tool with no setting and check the gateway line.
 
 ### The routing check
 

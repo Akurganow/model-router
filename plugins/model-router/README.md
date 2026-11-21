@@ -102,7 +102,7 @@ The plugin has four options. Set them in the install dialog or in `/config`:
   - `core` (default): the four built-in agents, as before.
   - `extended`: also every other Agent call that passes no model and no name,
     forks excepted. [Which calls are routed](#which-calls-are-routed) lists
-    the cases. A value other than these two counts as `core`.
+    the cases.
 - `api_key`: your TypeSafe key, a sensitive value.
 - `openrouter_api_key`: your OpenRouter key, a sensitive value.
 
@@ -117,16 +117,36 @@ shift with no change to the plugin. TypeSafe's
 [Models](https://docs.typesafe.ai/models) page says which version it points
 to, and the log line names the model that answered.
 
+Claude Code ignores plugin options in project and local settings. No project
+can set `provider`, `gateway` or `scope`.
+[PRIVACY.md](PRIVACY.md) says what the options can and cannot change.
+
+### A stored value outside an option's list
+
+Claude Code hands the mod an option's default in place of a stored value that
+the option's list does not hold. The stored value stays in the settings.
+[The hooks module](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#hooks-module)
+holds the harness fact.
+
+So the mod never gets such a value, and Claude Code shows no
+`<setting> not valid: run setup` line for it. This platform limit makes Claude
+Code differ from the other three harnesses.
+[A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)
+holds the rule.
+
 An install updated from an earlier version follows these rules:
 
+- A stored `provider` of `auto`, `openrouter-first` or `openrouter` reaches the
+  mod as `typesafe`, on the direct path, with no setup line.
+- A stored `openrouter` asked OpenRouter only. Beside a TypeSafe key, the mod
+  now sends the task text to TypeSafe's own API.
+- With no TypeSafe key, every call then skips with `key unset`.
+- To get the earlier requests back, set `gateway` to the value `provider`
+  held. [Retired values of `provider`](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retired-values-of-provider)
+  gives the pairs.
 - The removed `model` option is ignored, a stored `jev-preview` included. The
   mod sends `jev-latest`.
-- A stored `provider` outside the four values counts as `typesafe`.
 - A missing `scope` counts as `core`, so an update changes no routing.
-
-Claude Code ignores plugin options in project and local settings. No project
-can set `provider` or `scope`.
-[PRIVACY.md](PRIVACY.md) says what the options can and cannot change.
 
 ### Change the options
 
@@ -343,6 +363,12 @@ Claude Code then refuses adds a second line, `denied`.
 - A routed call logs `skipped, <cause>` and runs unchanged. After both
   providers fail, the line names each provider with its cause, as
   [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. The causes are:
+  - `<setting> not valid: run setup`: a stored setting holds text outside its
+    list, as
+    [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)
+    says. Claude Code does not show it for such a value, as
+    [A stored value outside an option's list](#a-stored-value-outside-an-options-list)
+    says.
   - `key unset`: no provider the `provider` option allows has a key. The
     TypeSafe key comes from `api_key` or `TYPESAFE_API_KEY`, the OpenRouter
     key from `openrouter_api_key` or `OPENROUTER_API_KEY`. Set one as
