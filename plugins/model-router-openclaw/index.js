@@ -14,7 +14,7 @@ var outsideCoreScope = (id) => `${id} is outside the core scope`;
 var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
 var agentUnknown = (id) => `${id} agent unknown`;
 var setsOwnModel = (id) => `${id} sets its own model`;
-var failedAttemptText = (f) => `${f.provider} ${f.reason}`;
+var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
 
 // src/core/output/line.ts
 var LINE_PREFIX = "model-router ";
@@ -35,13 +35,13 @@ var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 function decisionSuffix({
-  provider,
+  holder,
   model,
   inputTokens,
   outputTokens,
   failed
 }) {
-  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
+  return ` \xB7 ${holder}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
 }
 
 // src/core/scoring/limit.ts
@@ -138,7 +138,11 @@ var PROVIDER_VALUES = [
   "typesafe",
   "openrouter"
 ];
-var PROVIDERS = ["typesafe", "openrouter"];
+var MAKERS = ["typesafe"];
+var KEY_HOLDERS = [...MAKERS, "openrouter"];
+var PATHS_OF = {
+  typesafe: ["direct", "openrouter"]
+};
 var KEY_VARIABLES = {
   typesafe: "TYPESAFE_API_KEY",
   openrouter: "OPENROUTER_API_KEY"
@@ -148,33 +152,35 @@ var KEY_FIELDS = {
   openrouter: "openrouter_api_key"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var MODELS = {
-  typesafe: "jev-latest",
-  openrouter: "jev-latest"
-};
 var DEFAULT_VALUE = "typesafe";
-var ORDER = {
-  auto: PROVIDERS,
-  "openrouter-first": ["openrouter", "typesafe"],
-  typesafe: ["typesafe"],
+var MAKER = "typesafe";
+var VALUE_PATHS = {
+  auto: ["direct", "openrouter"],
+  "openrouter-first": ["openrouter", "direct"],
+  typesafe: ["direct"],
   openrouter: ["openrouter"]
 };
-var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
+var holderOf = (maker, path) => path === "direct" ? maker : "openrouter";
+function steps(value) {
+  const paths = PATHS_OF[MAKER];
+  return VALUE_PATHS[resolve(value)].filter((path) => paths.includes(path)).map((path) => ({ maker: MAKER, path, holder: holderOf(MAKER, path) }));
+}
+var parseProvider = (value) => typeof value === "string" && Object.hasOwn(VALUE_PATHS, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
-var order = (value) => ORDER[resolve(value)];
+var order = (value) => steps(value).map((step) => step.holder);
 function collectKeysSync(value, lookup) {
   const keys = {};
-  for (const provider of order(value)) {
-    const key = lookup(provider);
-    if (key !== void 0) keys[provider] = key;
+  for (const holder of order(value)) {
+    const key = lookup(holder);
+    if (key !== void 0) keys[holder] = key;
   }
   return keys;
 }
 function plan(value, keys) {
   const attempts = [];
-  for (const provider of order(value)) {
-    const key = keys[provider];
-    if (key) attempts.push({ provider, model: MODELS[provider], key });
+  for (const step of steps(value)) {
+    const key = keys[step.holder];
+    if (key) attempts.push({ ...step, key });
   }
   return attempts.map(
     (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt
@@ -225,7 +231,7 @@ var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
-var keyLine = (provider, state) => `${provider} key: ${state}`;
+var keyLine = (holder, state) => `${holder} key: ${state}`;
 var settingsReport = (provider, scope, extra, keys) => [
   valueLine("provider", provider),
   valueLine("scope", scope),
@@ -760,17 +766,29 @@ var SYSTEM_ONE = {
 };
 
 // src/core/scoring/endpoints.ts
+var BEARER = { name: "Authorization", prefix: "Bearer " };
+var JEV = "jev-latest";
 var ENDPOINTS = {
   typesafe: {
-    url: "https://api.typesafe.ai/v1/systemone",
-    format: SYSTEM_ONE
-  },
-  openrouter: {
-    url: "https://openrouter.ai/api/v1/systemone",
-    format: SYSTEM_ONE
+    direct: {
+      url: "https://api.typesafe.ai/v1/systemone",
+      format: SYSTEM_ONE,
+      model: JEV,
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/v1/systemone",
+      format: SYSTEM_ONE,
+      model: JEV,
+      keyHeader: BEARER
+    }
   }
 };
-var endpointOf = (attempt) => Object.hasOwn(ENDPOINTS, attempt.provider) ? ENDPOINTS[attempt.provider] : void 0;
+function endpointOf(attempt) {
+  if (!Object.hasOwn(ENDPOINTS, attempt.maker)) return void 0;
+  const rows = ENDPOINTS[attempt.maker];
+  return Object.hasOwn(rows, attempt.path) ? rows[attempt.path] : void 0;
+}
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
@@ -893,14 +911,14 @@ async function askOnce(input, attempt) {
   const { parts, state, fetchFn, clock, signal } = input;
   const endpoint = endpointOf(attempt);
   if (!endpoint) return UNKNOWN;
-  const { url, format } = endpoint;
-  const body = format.body(parts, state, attempt.model);
+  const { url, format, model, keyHeader } = endpoint;
+  const body = format.body(parts, state, attempt.model ?? model);
   const received = await send(
     fetchFn,
     url,
     {
       headers: {
-        Authorization: `Bearer ${attempt.key}`,
+        [keyHeader.name]: `${keyHeader.prefix}${attempt.key}`,
         Accept: "application/json",
         "Content-Type": "application/json",
         "User-Agent": USER_AGENT
@@ -942,14 +960,14 @@ async function route(input) {
     const result = await ask(input, attempt);
     if (isFailure(result)) {
       failed.push({
-        provider: attempt.provider,
+        holder: attempt.holder,
         reason: skipText(result, abortCategory(signal))
       });
       if (!fallsBack(result)) break;
-      if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
+      if (i < attempts.length - 1) input.onFallback?.(attempt.holder);
       continue;
     }
-    const decision = toDecision(result, attempt.provider);
+    const decision = toDecision(result, attempt.holder);
     const [first] = failed;
     return first ? { ...decision, firstFailed: first } : decision;
   }
@@ -960,11 +978,11 @@ function skip(failed) {
   if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
   return { skipped: failed.map(failedAttemptText).join(", ") };
 }
-function toDecision({ answers, model, usage }, provider) {
+function toDecision({ answers, model, usage }, holder) {
   const parts = {};
   for (const [part, probabilities] of answers)
     parts[part.key] = { level: part.pick(probabilities), probabilities };
-  return { parts, provider, model, usage };
+  return { parts, holder, model, usage };
 }
 
 // src/core/decision/decide.ts
@@ -987,7 +1005,7 @@ function decide(decision, tierKey, workKey) {
     work: work2.level,
     probabilities: `${tier2.probability}/${work2.probability}`,
     suffix: decisionSuffix({
-      provider: decision.provider,
+      holder: decision.holder,
       model: decision.model,
       inputTokens: decision.usage?.input_tokens,
       outputTokens: decision.usage?.output_tokens,

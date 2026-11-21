@@ -33,14 +33,14 @@ async function askOnce(
 	const { parts, state, fetchFn, clock, signal } = input;
 	const endpoint = endpointOf(attempt);
 	if (!endpoint) return UNKNOWN;
-	const { url, format } = endpoint;
-	const body = format.body(parts, state, attempt.model);
+	const { url, format, model, keyHeader } = endpoint;
+	const body = format.body(parts, state, attempt.model ?? model);
 	const received = await send(
 		fetchFn,
 		url,
 		{
 			headers: {
-				Authorization: `Bearer ${attempt.key}`,
+				[keyHeader.name]: `${keyHeader.prefix}${attempt.key}`,
 				Accept: "application/json",
 				"Content-Type": "application/json",
 				"User-Agent": USER_AGENT,
@@ -67,7 +67,7 @@ async function askOnce(
 }
 
 /**
- * Asks one provider once, retries included, and returns its answers or the failure that ended the
+ * Asks one attempt once, retries included, and returns its answers or the failure that ended the
  * attempt. Never rejects: a body that cannot be serialised, or any other exception, is a failed
  * attempt that sent nothing more.
  */

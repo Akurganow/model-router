@@ -1,8 +1,8 @@
 import {
 	collectKeys,
 	KEY_FIELDS,
+	type KeyHolder,
 	type Keys,
-	type Provider,
 } from "#core/providers/provider.ts";
 import { nonEmpty } from "#utils/text.ts";
 import type { Engine, Options } from "./host.ts";
@@ -28,8 +28,8 @@ export async function readKeys(
 }
 
 // plugin validate lists the variables a module reads, so each $.env.get names its variable literally.
-function keyVariable($: Engine, provider: Provider): Promise<unknown> {
-	switch (provider) {
+function keyVariable($: Engine, holder: KeyHolder): Promise<unknown> {
+	switch (holder) {
 		case "typesafe":
 			return $.env.get("TYPESAFE_API_KEY");
 		case "openrouter":

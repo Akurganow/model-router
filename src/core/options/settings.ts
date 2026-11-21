@@ -1,8 +1,8 @@
 import {
+	type KeyHolder,
 	type Keys,
 	order,
 	PROVIDER_VALUES,
-	type Provider,
 	resolve as resolveProvider,
 } from "#core/providers/provider.ts";
 import { errorText } from "#utils/error.ts";
@@ -79,8 +79,8 @@ export const alreadyValue = (value: string): string => `already ${value}`;
 export const NO_ANSWER = "no answer from the dialog";
 export const NOT_OFFERED = "the answer was not one of the offered values";
 
-export const keyLine = (provider: Provider, state: KeyState): string =>
-	`${provider} key: ${state}`;
+export const keyLine = (holder: KeyHolder, state: KeyState): string =>
+	`${holder} key: ${state}`;
 
 const label = (setting: ValueSetting, value: string): string =>
 	`${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;

@@ -25,10 +25,10 @@ export const setsOwnModel = (id: string): string => `${id} sets its own model`;
 
 // A failed attempt as plain text, so this folder needs no type of the scoring code.
 export type PlainFailedAttempt = {
-	readonly provider: string;
+	readonly holder: string;
 	readonly reason: string;
 };
 
 // Both the skip text and the routing line name a failed attempt this way.
 export const failedAttemptText = (f: PlainFailedAttempt): string =>
-	`${f.provider} ${f.reason}`;
+	`${f.holder} ${f.reason}`;

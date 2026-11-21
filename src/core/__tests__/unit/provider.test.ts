@@ -11,8 +11,18 @@ import {
 	plan,
 } from "#core/providers/provider.ts";
 
-const T = { provider: "typesafe", model: "jev-latest", key: "ts-key" };
-const O = { provider: "openrouter", model: "jev-latest", key: "or-key" };
+const T = {
+	maker: "typesafe",
+	path: "direct",
+	holder: "typesafe",
+	key: "ts-key",
+};
+const O = {
+	maker: "typesafe",
+	path: "openrouter",
+	holder: "openrouter",
+	key: "or-key",
+};
 const FIRST = { timeout: 2000, retries: 0 };
 
 const NONE = {};

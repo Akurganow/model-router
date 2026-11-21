@@ -440,11 +440,11 @@ for (const [state, tier, target] of [
 			effort: "medium",
 			probabilities: "0.80/0.55",
 			suffix: decisionSuffix({
-				provider: "openrouter",
+				holder: "openrouter",
 				model: "typesafe/jev-1.14.0",
 				inputTokens: 812,
 				outputTokens: 9,
-				failed: { provider: "typesafe", reason: "HTTP 503" },
+				failed: { holder: "typesafe", reason: "HTTP 503" },
 			}),
 		});
 		const evidence = omp.parse({

@@ -296,7 +296,7 @@ var outsideCoreScope = (id) => `${id} is outside the core scope`;
 var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
 var agentUnknown = (id) => `${id} agent unknown`;
 var setsOwnModel = (id) => `${id} sets its own model`;
-var failedAttemptText = (f) => `${f.provider} ${f.reason}`;
+var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
 
 // src/core/output/line.ts
 var LINE_PREFIX = "model-router ";
@@ -318,13 +318,13 @@ var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 function decisionSuffix({
-  provider,
+  holder,
   model,
   inputTokens,
   outputTokens,
   failed
 }) {
-  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
+  return ` \xB7 ${holder}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
 }
 
 // src/core/providers/provider.ts
@@ -334,39 +334,45 @@ var PROVIDER_VALUES = [
   "typesafe",
   "openrouter"
 ];
-var PROVIDERS = ["typesafe", "openrouter"];
+var MAKERS = ["typesafe"];
+var KEY_HOLDERS = [...MAKERS, "openrouter"];
+var PATHS_OF = {
+  typesafe: ["direct", "openrouter"]
+};
 var KEY_VARIABLES = {
   typesafe: "TYPESAFE_API_KEY",
   openrouter: "OPENROUTER_API_KEY"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var MODELS = {
-  typesafe: "jev-latest",
-  openrouter: "jev-latest"
-};
 var DEFAULT_VALUE = "typesafe";
-var ORDER = {
-  auto: PROVIDERS,
-  "openrouter-first": ["openrouter", "typesafe"],
-  typesafe: ["typesafe"],
+var MAKER = "typesafe";
+var VALUE_PATHS = {
+  auto: ["direct", "openrouter"],
+  "openrouter-first": ["openrouter", "direct"],
+  typesafe: ["direct"],
   openrouter: ["openrouter"]
 };
-var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
+var holderOf = (maker, path) => path === "direct" ? maker : "openrouter";
+function steps(value) {
+  const paths = PATHS_OF[MAKER];
+  return VALUE_PATHS[resolve(value)].filter((path) => paths.includes(path)).map((path) => ({ maker: MAKER, path, holder: holderOf(MAKER, path) }));
+}
+var parseProvider = (value) => typeof value === "string" && Object.hasOwn(VALUE_PATHS, value) ? value : void 0;
 var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
-var order = (value) => ORDER[resolve(value)];
+var order = (value) => steps(value).map((step) => step.holder);
 async function collectKeys(value, lookup2) {
   const keys = {};
-  for (const provider of order(value)) {
-    const key = await lookup2(provider);
-    if (key !== void 0) keys[provider] = key;
+  for (const holder of order(value)) {
+    const key = await lookup2(holder);
+    if (key !== void 0) keys[holder] = key;
   }
   return keys;
 }
 function plan(value, keys) {
   const attempts = [];
-  for (const provider of order(value)) {
-    const key = keys[provider];
-    if (key) attempts.push({ provider, model: MODELS[provider], key });
+  for (const step of steps(value)) {
+    const key = keys[step.holder];
+    if (key) attempts.push({ ...step, key });
   }
   return attempts.map(
     (attempt2, i) => i < attempts.length - 1 ? { ...attempt2, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt2
@@ -413,7 +419,7 @@ var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var NO_ANSWER = "no answer from the dialog";
 var NOT_OFFERED = "the answer was not one of the offered values";
-var keyLine = (provider, state) => `${provider} key: ${state}`;
+var keyLine = (holder, state) => `${holder} key: ${state}`;
 var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
 function ask(setting, current) {
   const { values, resolve: resolve2, question } = TEXTS[setting];
@@ -507,17 +513,17 @@ async function readGlobal(path, plugin) {
   return isRecord(mine) ? mine : {};
 }
 async function findAttempts(ctx, value) {
-  const keys = await collectKeys(value, (provider) => findKey(ctx, provider));
+  const keys = await collectKeys(value, (holder) => findKey(ctx, holder));
   return plan(value, keys);
 }
-async function findKey(ctx, provider) {
+async function findKey(ctx, holder) {
   try {
-    const key = await ctx.modelRegistry.getApiKeyForProvider(provider);
+    const key = await ctx.modelRegistry.getApiKeyForProvider(holder);
     const trimmed = nonEmpty(key);
     if (trimmed !== void 0) return trimmed;
   } catch {
   }
-  return nonEmpty(process.env[KEY_VARIABLES[provider]]);
+  return nonEmpty(process.env[KEY_VARIABLES[holder]]);
 }
 function read(lookup2, id, settings, fallback) {
   try {
@@ -953,17 +959,29 @@ var SYSTEM_ONE = {
 };
 
 // src/core/scoring/endpoints.ts
+var BEARER = { name: "Authorization", prefix: "Bearer " };
+var JEV = "jev-latest";
 var ENDPOINTS = {
   typesafe: {
-    url: "https://api.typesafe.ai/v1/systemone",
-    format: SYSTEM_ONE
-  },
-  openrouter: {
-    url: "https://openrouter.ai/api/v1/systemone",
-    format: SYSTEM_ONE
+    direct: {
+      url: "https://api.typesafe.ai/v1/systemone",
+      format: SYSTEM_ONE,
+      model: JEV,
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/v1/systemone",
+      format: SYSTEM_ONE,
+      model: JEV,
+      keyHeader: BEARER
+    }
   }
 };
-var endpointOf = (attempt2) => Object.hasOwn(ENDPOINTS, attempt2.provider) ? ENDPOINTS[attempt2.provider] : void 0;
+function endpointOf(attempt2) {
+  if (!Object.hasOwn(ENDPOINTS, attempt2.maker)) return void 0;
+  const rows = ENDPOINTS[attempt2.maker];
+  return Object.hasOwn(rows, attempt2.path) ? rows[attempt2.path] : void 0;
+}
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
@@ -1086,14 +1104,14 @@ async function askOnce(input, attempt2) {
   const { parts, state, fetchFn, clock, signal } = input;
   const endpoint = endpointOf(attempt2);
   if (!endpoint) return UNKNOWN;
-  const { url, format } = endpoint;
-  const body = format.body(parts, state, attempt2.model);
+  const { url, format, model, keyHeader } = endpoint;
+  const body = format.body(parts, state, attempt2.model ?? model);
   const received = await send(
     fetchFn,
     url,
     {
       headers: {
-        Authorization: `Bearer ${attempt2.key}`,
+        [keyHeader.name]: `${keyHeader.prefix}${attempt2.key}`,
         Accept: "application/json",
         "Content-Type": "application/json",
         "User-Agent": USER_AGENT
@@ -1135,14 +1153,14 @@ async function route(input) {
     const result = await ask2(input, attempt2);
     if (isFailure(result)) {
       failed.push({
-        provider: attempt2.provider,
+        holder: attempt2.holder,
         reason: skipText(result, abortCategory(signal))
       });
       if (!fallsBack(result)) break;
-      if (i < attempts.length - 1) input.onFallback?.(attempt2.provider);
+      if (i < attempts.length - 1) input.onFallback?.(attempt2.holder);
       continue;
     }
-    const decision = toDecision(result, attempt2.provider);
+    const decision = toDecision(result, attempt2.holder);
     const [first] = failed;
     return first ? { ...decision, firstFailed: first } : decision;
   }
@@ -1153,11 +1171,11 @@ function skip(failed) {
   if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
   return { skipped: failed.map(failedAttemptText).join(", ") };
 }
-function toDecision({ answers, model, usage }, provider) {
+function toDecision({ answers, model, usage }, holder) {
   const parts = {};
   for (const [part, probabilities] of answers)
     parts[part.key] = { level: part.pick(probabilities), probabilities };
-  return { parts, provider, model, usage };
+  return { parts, holder, model, usage };
 }
 
 // src/core/decision/decide.ts
@@ -1180,7 +1198,7 @@ function decide(decision, tierKey, workKey) {
     work: work2.level,
     probabilities: `${tier2.probability}/${work2.probability}`,
     suffix: decisionSuffix({
-      provider: decision.provider,
+      holder: decision.holder,
       model: decision.model,
       inputTokens: decision.usage?.input_tokens,
       outputTokens: decision.usage?.output_tokens,
@@ -1220,8 +1238,8 @@ async function scoreItems(items, context, { attempts, facts }, deadline) {
       const reason = itemCheck(agent, facts, item.model);
       if (reason !== void 0) return { ...pending, stored: skipped(reason) };
       const routing = {
-        attempts: attempts.filter((a) => !passedOver.has(a.provider)),
-        onFallback: (p) => void passedOver.add(p)
+        attempts: attempts.filter((a) => !passedOver.has(a.holder)),
+        onFallback: (holder) => void passedOver.add(holder)
       };
       const decided = await scoreItem(
         item,

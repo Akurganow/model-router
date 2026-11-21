@@ -84,13 +84,19 @@ test("a provider takes its key from omp's credential and the other from the vari
 	const attempts = await findAttempts(world.ctx(), "auto");
 	assert.deepEqual(attempts, [
 		{
-			provider: "typesafe",
-			model: "jev-latest",
+			maker: "typesafe",
+			path: "direct",
+			holder: "typesafe",
 			key: KEY,
 			timeout: 2000,
 			retries: 0,
 		},
-		{ provider: "openrouter", model: "jev-latest", key: "env-or-key" },
+		{
+			maker: "typesafe",
+			path: "openrouter",
+			holder: "openrouter",
+			key: "env-or-key",
+		},
 	]);
 	assert.deepEqual(world.asked, ["typesafe", "openrouter"]);
 });
@@ -104,13 +110,19 @@ test("a credential store that throws falls through to the variable and the next 
 	const attempts = await findAttempts(world.ctx(), "auto");
 	assert.deepEqual(attempts, [
 		{
-			provider: "typesafe",
-			model: "jev-latest",
+			maker: "typesafe",
+			path: "direct",
+			holder: "typesafe",
 			key: "env-ts-key",
 			timeout: 2000,
 			retries: 0,
 		},
-		{ provider: "openrouter", model: "jev-latest", key: "env-or-key" },
+		{
+			maker: "typesafe",
+			path: "openrouter",
+			holder: "openrouter",
+			key: "env-or-key",
+		},
 	]);
 	assert.deepEqual(world.asked, ["typesafe", "openrouter"]);
 });
