@@ -92,12 +92,15 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
   The key holds an array with one path, relative to that file, to the hooks module.
 - The hooks module is an ES module that exports `register(on, options)`.
   `options` holds the `userConfig` values with their defaults filled in.
+  A stored value that the option's `options` list does not hold stays out of it, and the option's default stands in its place.
+  The stored value stays under `pluginConfigs`.
 - Claude Code loads `.js` and `.ts` files directly, with no build step.
   A hooks module imports only files inside the plugin directory by relative path, and the one bare import allowed is `claude-code`.
 - `$.ui.ask` takes at most four options.
 - When a hooks module fails, Claude Code skips it and the session continues.
   A broken mod can therefore look like one that does nothing.
 - A mod installed from a marketplace loads at the next start of Claude Code, or at `/reload-plugins` in an open session.
+- In print mode, a turn that ends in a sign-in error has loaded the hooks module and run its `session.start` hook.
 - Claude Code caches an installed plugin by version.
   An edit reaches the installed copy only after the version rises and the user installs again.
 
@@ -183,6 +186,10 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 - The lockfile sits in `plugins/` under the scope root, `~/.omp/plugins/` by default for the user scope.
   omp writes it with owner-only permissions, because it can hold values a plugin marks `secret`.
 - A project file, `<project>/.omp/plugin-overrides.json`, can override a plugin's features and settings.
+- An extension's settings read returns the stored values only, and fills no manifest default for a setting that is not stored.
+  `omp plugin config get` prints the manifest default for such a setting.
+- A stored `enum` value that the manifest no longer lists stays in the lockfile across an upgrade and reaches the extension as stored.
+  `omp plugin config validate` reports it with `Must be one of: <values>` and exits 1.
 - omp's extension-package discovery also reads a package's sibling folders `skills/`, `hooks/pre|post/`, `tools/`, `commands/`, `rules/`, `prompts/` and `.mcp.json`.
   So the npm package keeps OpenClaw's skills in `openclaw-skills/`.
 - Extension modules load when a session starts.
@@ -348,6 +355,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 - A skill file reached twice, as through a symbolic link, loads once: omp skips a real path it has already loaded.
 - `PI_CONFIG_DIR` names the configuration folder relative to the home folder, `.omp` by default.
   `PI_CODING_AGENT_DIR` names the agent folder, which is otherwise `agent` inside the configuration folder.
+- A standalone omp binary creates `natives/<version>` and sets that folder's times at each start.
+  The `natives` folder sits in `~/.omp`, or in `$XDG_DATA_HOME/omp` when that folder exists.
+  `PI_NATIVES_DIR`, an absolute path, moves it, and `PI_CONFIG_DIR` does not.
 - omp picks the first model from an explicit CLI model, then the first scoped model, then the saved default.
   `--model` is the preferred form, and an exact `provider/modelId` is unambiguous.
 
@@ -393,7 +403,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   The mode list calls `tool-discovery` "capability discovery for executable tools", and `full` "live runtime activation".
   In that mode this plugin registers only its config tool, so `inspect` lists `model_router_config` and no hook or command.
 - The `inspect --runtime --json` report holds the plugin id, the package name and version, a status that reads `loaded` for a loaded plugin, `imported` and `enabled`, the plugin's tools in `contracts.tools`, and diagnostics.
-- The Gateway log shows a command registration as `Registered plugin command: /<name> (plugin: <id>)`.
+- The Gateway log shows a command registration as `Registered plugin command: /<name> (plugin: <id>)`, once for each command in each plugin load.
   OpenClaw writes the line through `logVerbose`, which logs under `--verbose` or at file log level `debug`.
   A registered hook counts in `hook runner initialized with <n> registered hooks`, a debug-level line of the `plugins` logger.
 - In the default `hybrid` reload mode, a change under `plugins.entries.<id>` replaces that plugin's runtime instance and reruns registration.
@@ -427,6 +437,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
 - `activation.onStartup` set to `true` imports the plugin when the Gateway starts.
 - `contracts.tools` lists the tool names a plugin owns, and a runtime `api.registerTool` call must match it.
 - `configContracts.secretInputs` names the config paths under `plugins.entries.<id>.config` that hold secrets.
+  `openclaw config set` stores a plain string on such a path and asks for no SecretRef.
+  A manifest whose `uiHints` mark such a key `sensitive` loads.
 - `package.json` carries `openclaw.extensions`, `openclaw.compat.pluginApi` and `openclaw.install.minHostVersion`.
   OpenClaw enforces the last two when it installs a non-bundled plugin.
 
@@ -479,6 +491,11 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   The operator's `hooks` settings sit under `api.config.plugins.entries.<id>.hooks`, readable at registration.
   `api.runtime.config.current` exists.
 - A plugin loaded from `plugins.load.paths` without an install record loads with a trust note and is active.
+  The note is a diagnostic of level `warn` that starts `OpenClaw can't verify where this plugin came from` and carries `reason=record-missing`, in `openclaw plugins inspect --runtime --json` and in the Gateway log.
+  It reads the plugin's status, origin, trust reason and install records and `plugins.allow`, and nothing of `configSchema`, `uiHints` or `configContracts`.
+  The plugin's id in `plugins.allow` silences it.
+- `openclaw plugins doctor` exits 1 on a diagnostic, that trust note included.
+  It passes over one kind alone: the note that an explicit config-selected plugin resolved a duplicate plugin id.
 
 ### OpenClaw hook and spawn
 
@@ -570,6 +587,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   Until then the old instance serves every call, and its `api.runtime.config.current()` returns the old config.
   OpenClaw throws `Gateway requester authority changed` when a request's client authority is no longer current.
 - `api.logger` is a scoped logger with `debug`, `info`, `warn` and `error`.
+- `logging.file` sets the path of the Gateway's file log.
+  Without it the file log sits in OpenClaw's own temp folder, outside the home folder.
 - A workspace `.env` is a lower-trust source.
   OpenClaw drops known provider credential variables from it, and `OPENROUTER_API_KEY` is on that list.
   `TYPESAFE_API_KEY` is not on the static list.
@@ -596,6 +615,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   It never walks up into parent folders, and it does not read `.claude/skills`.
 - `OPENCLAW_HOME`, `OPENCLAW_STATE_DIR` and `OPENCLAW_CONFIG_PATH` replace the home folder, the state folder and the config file.
 - `openclaw gateway run` starts the Gateway. It refuses to start unless `gateway.mode` is `local`, and `--allow-unconfigured` skips that check.
+  A Gateway with no model configured starts and loads its plugins.
 - `POST /tools/invoke` takes `tool` and `args`, and with `gateway.auth.mode` `token` it needs `Authorization: Bearer <token>`.
   `sessions_spawn` is on its default deny list, `gateway.tools.allow` lifts that, and a denied tool returns 404.
 - `SIGINT` or `SIGTERM` stops the Gateway process. A shell or wrapper that does not forward signals leaves the Gateway serving after the wrapper is killed.
@@ -645,6 +665,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 - A configured backend that no enabled plugin provides fails closed. `delegate_task` returns a tool error that ends in `No subagent was started.` and names `hermes config set delegation.backend default` as the fix.
   A disabled or removed plugin is such a case.
 - `hermes plugins install file://<repo>#plugins/<name> --enable` installs and enables a plugin from a subfolder with no prompt, also with standard input closed.
+- `hermes plugins install --enable` does not call the plugin's `register` in its own process.
+  It asks a running Desktop backend and a running gateway to load the plugin.
 - `hermes plugins capabilities <name>` prints what an installed plugin declares, and `hermes plugins doctor <name>` checks its discovery, manifest, import and registration.
 
 ### Hermes package files
@@ -669,9 +691,13 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 - `ctx.get_config(key, default)` reads `plugins.entries.<plugin id>.settings.<key>`, and returns `default` when the entry or the key is absent. It applies no `config_schema` default.
   `ctx.set_config(key, value)` writes one value in that subtree.
 - `hermes config set` on a key under `plugins.entries.<plugin id>.settings` takes a JSON object and stores it as a mapping. `hermes config get` prints its fields on separate lines.
+  It takes a scalar too and stores its text, which `hermes config get` prints.
 - A `secret` entry never reaches `config.yaml`. The Desktop settings form stores it in `.env` under the entry's `env:` name, and the plugin reads it with `get_secret(NAME)` from `agent.secret_scope`.
 - `get_secret(NAME)` returns the value of a `config_schema` secret's variable from the Hermes home's `.env`, in process and in the plugin host. The variable is also in the environment of the host and of the gateway.
 - `ctx.get_config(key)` returns the value from `plugins.entries.<plugin id>.settings`, in process and in the plugin host.
+- `ctx.get_config` returns a stored `str` value outside the entry's `choices` as stored.
+  `save_plugin_settings` refuses to write a value outside `choices`, and leaves such a stored value alone when it saves another key.
+  The settings field list shows a `str` entry with `choices` as type `enum`.
 - A plugin slash command's handler runs in the gateway process that owns the session. It can declare `session_id`, `session_key`, `platform` or `source` as keyword arguments, and Hermes passes them.
   The handler returns its text.
 - Hermes names `api_server`, `cli`, `codex`, `desktop`, `gateway`, `kanban`, `local`, `msgraph_webhook`, `tool`, `tui` and `webhook` as surfaces that are not a human messaging channel.
@@ -788,6 +814,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
   It loads them only when `skills.trusted_project_dirs` lists that root, and the list is empty by default.
   It does not read `.claude/skills`.
 - `HERMES_HOME` names the Hermes home.
+- On an install that Hermes's package manager manages, a command under a new `HERMES_HOME` first builds a dependency environment of its own under that home.
+  `hermes --version`, `hermes --help`, `hermes pm` and a command with `HERMES_DISABLE_LAZY_INSTALLS` set skip that build.
+  With no environment built, `hermes --version` and `hermes --help` then fail with `no dependency environment is committed for this install`.
 - `hermes plugins install "file://<repository>#<folder>"` clones the repository with `git clone --depth 1` and installs `<folder>` from the clone, so it takes the committed `HEAD`, not the working tree.
 
 ### Hermes gaps
