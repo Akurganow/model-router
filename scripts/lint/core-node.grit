@@ -5,6 +5,7 @@ language js
 // with its own import ban would switch this ban off.
 // core-adapter.grit explains the three specifier forms.
 // A type import holds the whole type as its text, hence the [^"']* before the quote.
+// Only the `node:` form is read here: Biome's useNodejsImportProtocol bans a Node import without it.
 or {
 	or {
 		JsModuleSource() as $specifier,

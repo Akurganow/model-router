@@ -3,6 +3,36 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.24.2 - 2026-11-21
+#### Bug Fixes
+- read a Retry-After date only in its HTTP form (27de90d)
+#### Documentation
+- say what the GMT check does and which globals the core override lists (f662998)
+- name the Biome rule that bans a Node import without node: (d1d3a3c)
+- say what the alias rule leaves unchecked and whose alias a ban reads (6ce36dc)
+- say that fitWarnings reads a model name without its vendor prefix (c6bd0ba)
+- state the import alias rule for all of src (065b345)
+- put the alias rule before the bans and name what it leaves out (76972fa)
+- state the import alias rule and what the bans read (4e4b0b3)
+#### Tests
+- keep one global in the files the override must not reach (c538767)
+- plant one fault for the denied globals of the core (4106f16)
+- delete four tests that repeat a fact or restate a constant (5a50171)
+- pin the length of an sk- key and the characters of a Bearer token (3f18050)
+- drop the test that reads brief.ts as text (45ad38f)
+#### Refactoring
+- drop XMLHttpRequest from the denied globals of the core (2e5be36)
+- ban every adapter but its own in each adapter override (980c5b1)
+- hold the 5xx comparison once, in isServerError (21ad614)
+- ban a ../ in all of src and read aliases in the adapter bans (8def4f3)
+- import src/adapters through aliases (fc967d6)
+- ban a ../ anywhere in a specifier and scope the plugin in biome.json (04bbae2)
+- ban a parent import and read aliases in the import bans (b440c74)
+- import src/core, src/utils and scripts through aliases (69ace20)
+
+- - -
+
+
 ## v0.24.1 - 2026-11-20
 #### Bug Fixes
 - count a blank retry header as absent (0f13676)

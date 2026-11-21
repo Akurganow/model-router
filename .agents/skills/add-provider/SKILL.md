@@ -150,7 +150,8 @@ So a provider with no value of its own name gets no attempt, and every case read
 46. Unless the provider has a value of its own name, make `main` build the provider's attempt itself.
 47. Change the command line under [Calibration](../../../CONTRIBUTING.md#calibration).
 
-`fitWarnings` in `scripts/jev-fit.ts` compares the model name of a reply with `FITTED_ON` as text.
+`fitWarnings` in `scripts/jev-fit.ts` drops the vendor prefix of a reply's model name, the text up to the last `/`.
+It compares the rest with `FITTED_ON` as text.
 
 48. When a reply names the fitted model in another form, tell the maintainer that the warning prints on every run.
 
