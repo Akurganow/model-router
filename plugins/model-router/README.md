@@ -172,7 +172,9 @@ Three commands show or change an option:
 Run a command with no value to print the current value. The gateway line
 also prints the order, for example `gateway: auto (typesafe, then openrouter)`.
 Run it with a value, for example `/model-router:scope extended`, to write the
-option and print the new value.
+option and print the new value. Claude Code reloads the mod when an option
+changes, so the new value holds from the next subagent call of the same
+session.
 [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands)
 says what a bad value or a refused write prints. A command writes only when
 you type it at your own prompt. From any other origin a valid value writes
@@ -340,7 +342,7 @@ and keeps its effort. A call that names a model is not routed, so it keeps
 both. A subagent that Claude resumes with `SendMessage` keeps its routed
 effort. The mod keeps in memory the efforts of the 1024 routed subagents it
 used most recently, so a reload of the mod or a restart of Claude Code forgets
-them.
+them. A [changed option](#change-the-options) is such a reload.
 `CLAUDE_CODE_EFFORT_LEVEL` outranks either, as
 [Precedence](#precedence) says. Claude Code reads the per-invocation effort
 from v2.1.292. Under the `extended` scope the ladder also replaces an effort

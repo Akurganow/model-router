@@ -20,13 +20,14 @@ import { notValid } from "#core/output/reasons.ts";
 import { LEVELS, type Level } from "#core/parts/part.ts";
 import {
 	holders,
+	KEY_FIELDS,
 	KEY_HOLDERS,
 	KEY_VARIABLES,
 } from "#core/providers/provider.ts";
 import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
-import { hermesKeySetting, optionText, type Source } from "./source.ts";
+import { optionText, type Source } from "./source.ts";
 import {
 	defaultOf,
 	HARNESS_SETTINGS,
@@ -47,7 +48,7 @@ const describe = (hint: { label: string; help: string }) => ({
 const keySettings = (source: Source): JsonObject =>
 	Object.fromEntries(
 		KEY_HOLDERS.map((holder) => [
-			hermesKeySetting(holder),
+			KEY_FIELDS[holder],
 			{
 				type: "secret",
 				env: KEY_VARIABLES[holder],

@@ -63,7 +63,7 @@ var errorText = (err) => err instanceof Error ? err.message : String(err);
 
 // src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
-var DEFAULT_SCOPE = "core";
+var DEFAULT_SCOPE = SCOPE_VALUES[0];
 
 // src/core/options/settings.ts
 var VALUE_SETTINGS = ["provider", "gateway", "scope"];

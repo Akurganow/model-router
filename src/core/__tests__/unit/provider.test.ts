@@ -9,6 +9,7 @@ import {
 	GATEWAYS,
 	type Gateway,
 	type Maker,
+	narrowsGateway,
 	plan,
 } from "#core/providers/provider.ts";
 
@@ -194,4 +195,22 @@ test("collectKeysSync stops at a throw and passes it through", () => {
 test("collectKeysSync keeps an empty key", () => {
 	const keys = collectKeysSync(via("direct"), () => "");
 	assert.deepEqual(keys, { typesafe: "" });
+});
+
+test("narrowsGateway is true only when the narrowed value drops a path and adds none", () => {
+	const rows: [Gateway, Gateway, boolean][] = [
+		["direct", "auto", true],
+		["openrouter", "openrouter-first", true],
+		["openrouter-first", "auto", false],
+		["openrouter", "direct", false],
+		["auto", "direct", false],
+		["auto", "auto", false],
+	];
+	for (const [narrowed, wider, expected] of rows) {
+		assert.equal(
+			narrowsGateway(narrowed, wider),
+			expected,
+			`${wider} to ${narrowed}`,
+		);
+	}
 });

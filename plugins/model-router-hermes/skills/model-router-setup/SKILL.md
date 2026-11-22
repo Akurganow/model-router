@@ -99,7 +99,7 @@ When the person wants to choose the provider, follow these steps in order:
 
 - A key counts as set when its variable holds non-blank text. The plugin reads a key only for a key holder that the `provider` and `gateway` settings allow. The key of the chosen provider serves the direct path, and the OpenRouter key serves the gateway path.
 - Each key is a variable in the `.env` file of the Hermes home:
-  - TypeSafe: `TYPESAFE_API_KEY`, form secret `typesafe_api_key`. Get a key at https://console.typesafe.ai/keys.
+  - TypeSafe: `TYPESAFE_API_KEY`, form secret `api_key`. Get a key at https://console.typesafe.ai/keys.
   - OpenAI: `OPENAI_API_KEY`, form secret `openai_api_key`. Get a key at https://platform.openai.com/api-keys.
   - Google: `GEMINI_API_KEY`, form secret `google_api_key`. Get a key at https://aistudio.google.com/docs/api-key. The plugin does not read `GOOGLE_API_KEY`.
   - OpenRouter: `OPENROUTER_API_KEY`, form secret `openrouter_api_key`. Get a key at https://openrouter.ai.
@@ -143,8 +143,8 @@ When the person wants to choose the provider, follow these steps in order:
 - `key unset`: no path the `provider` and `gateway` settings allow has a key. A task with a `level` meets no key check. The person sets one, as the keys facts say.
 - `subagent model set`: the `delegation` section sets a model. The person decides whether to clear it.
 - `node not found`: Hermes has no Node of its own. The plugin runs scoring in that Node and never uses a Node on `PATH`. The person adds a Node for Hermes.
-- `timeout`: the routing limit of 10 s for a whole `delegate_task` call ran out.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: the company did not answer, or the plugin failed. After both attempts the reason names each.
+- `timeout`: a first attempt got no answer in 5 s, or the routing limit of 10 s for a whole `delegate_task` call ran out.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score, or the plugin failed. After both attempts the reason names each.
   - With `HTTP 401` or `HTTP 403`, or `HTTP 400` from Google's own API, the person checks that holder's key first. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says.
   - For another status, `network error`, `bad reply` or `failed`, look at the company that failed and the network.
 - Check every reason that holds, not only the first.

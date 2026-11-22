@@ -17,7 +17,7 @@ export function abortCategory(signal: AbortSignal): string {
  * removes the parent listener.
  * A caller of this form awaits its own work, as Claude Code, omp and the
  * calibration script do. The work must end on the abort. Its own result comes
- * back, with the skip text that names each provider.
+ * back, with the skip text that names each key holder.
  */
 export function limitSignal(
 	ms: number,

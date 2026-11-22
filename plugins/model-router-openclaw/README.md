@@ -220,9 +220,9 @@ The plugin finds an agent in either roster by its normalised id, as OpenClaw doe
 
 A scored spawn can still skip:
 
-- `timeout`: the routing limit expired before the plugin finished routing. The line reads `timeout` alone, even after the first attempt failed. [Hook timeout](#hook-timeout) gives the limit.
+- `timeout`: the first of two attempts got no answer in 5 s, or the routing limit expired before the plugin finished routing. Once the limit has expired, the line reads `timeout` alone, even after the first attempt failed. [Hook timeout](#hook-timeout) gives the limit.
 - `cancelled`: OpenClaw cancelled the `sessions_spawn` call before the plugin finished routing.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: the company did not answer. After both attempts fail, the reason names each attempt and its reason, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score. After both attempts fail, the reason names each attempt and its reason, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 ### How the plugin reads a spawn
 

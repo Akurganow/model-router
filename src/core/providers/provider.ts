@@ -6,7 +6,7 @@ export type Maker = (typeof MAKERS)[number];
 export const KEY_HOLDERS = [...MAKERS, "openrouter"] as const;
 export type KeyHolder = (typeof KEY_HOLDERS)[number];
 // How a maker is asked: its own API, or OpenRouter as the gateway.
-export const PATHS = ["direct", "openrouter"] as const;
+const PATHS = ["direct", "openrouter"] as const;
 export type Path = (typeof PATHS)[number];
 // How OpenRouter is used for the maker, from its own API only to OpenRouter only. The first value is the default.
 export const GATEWAYS = [
@@ -25,7 +25,7 @@ export const KEY_VARIABLES: Readonly<Record<KeyHolder, string>> = {
 	openrouter: "OPENROUTER_API_KEY",
 };
 
-// The setting name that holds each key holder's key in Claude Code and OpenClaw.
+// The setting name that holds each key holder's key in Claude Code, OpenClaw and Hermes.
 export const KEY_FIELDS = {
 	typesafe: "api_key",
 	openai: "openai_api_key",
@@ -45,6 +45,11 @@ const GATEWAY_PATHS: Readonly<Record<Gateway, readonly Path[]>> = {
 	"openrouter-first": ["openrouter", "direct"],
 	openrouter: ["openrouter"],
 };
+
+// A narrowing may drop a path and never add one.
+export const narrowsGateway = (narrowed: Gateway, wider: Gateway): boolean =>
+	GATEWAY_PATHS[narrowed].length < GATEWAY_PATHS[wider].length &&
+	GATEWAY_PATHS[narrowed].every((path) => GATEWAY_PATHS[wider].includes(path));
 
 // The two settings that decide who is asked.
 export type Choice = { readonly provider: Maker; readonly gateway: Gateway };

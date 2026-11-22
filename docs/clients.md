@@ -100,6 +100,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 - When a hooks module fails, Claude Code skips it and the session continues.
   A broken mod can therefore look like one that does nothing.
 - A mod installed from a marketplace loads at the next start of Claude Code, or at `/reload-plugins` in an open session.
+- When `$.config.set` writes an option of a mod in an open session, Claude Code reloads the mod's hooks module at once, with no `/reload-plugins`, and runs its `session.start` hook again.
+- A command typed at the prompt of an interactive session reaches `command.run` with the origin kind `composer`. A command given as the prompt of `claude -p` reaches it with another origin.
 - In print mode, a turn that ends in a sign-in error exits with status 1, and it has loaded the hooks module and run its `session.start` hook.
 - Claude Code caches an installed plugin by version.
   An edit reaches the installed copy only after the version rises and the user installs again.
@@ -705,6 +707,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 - `hermes config set` on a key under `plugins.entries.<plugin id>.settings` takes a JSON object and stores it as a mapping. `hermes config get` prints its fields on separate lines.
   `hermes config set` takes a scalar on such a key too and stores its text, which `hermes config get` prints.
 - A `secret` entry never reaches `config.yaml`. The Desktop settings form stores it in `.env` under the entry's `env:` name, and the plugin reads it with `get_secret(NAME)` from `agent.secret_scope`.
+  A plugin update that renames a `secret` entry and keeps its `env:` name leaves the stored value in place: the settings form's field list shows the renamed entry as set, and `get_secret(NAME)` returns the value.
 - Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY`, so a `secret` entry with that `env:` name sets that provider's key too.
 - With the provider `auto`, or with none requested, Hermes takes its own session's provider in this order: a key or a base URL given on the command line, `model.provider` of `config.yaml`, a `model.base_url` on a loopback host when `model` names no provider, a usable `OPENROUTER_API_KEY`, the OpenRouter pool, another provider's key in the environment, an OAuth login.
   `model.provider` may name a registry provider, `openrouter`, `custom` or a named custom provider.

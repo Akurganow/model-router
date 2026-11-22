@@ -42,7 +42,7 @@ test("a tier and a work part give both levels and a joined probability", () => {
 	);
 });
 
-test("a decision after a fallback ends its suffix with the failed provider and its reason", () => {
+test("a decision after a fallback ends its suffix with the failed key holder and its reason", () => {
 	const decided = decide(
 		{
 			...decision({ tier: part(0, 0.9), work: part(1, 0.7) }),

@@ -277,7 +277,7 @@ function pickModel(level, state) {
 
 // src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
-var DEFAULT_SCOPE = "core";
+var DEFAULT_SCOPE = SCOPE_VALUES[0];
 
 // src/core/output/reasons.ts
 var CALLER_EFFORT = "caller effort";
@@ -319,6 +319,7 @@ var GATEWAY_PATHS = {
   "openrouter-first": ["openrouter", "direct"],
   openrouter: ["openrouter"]
 };
+var narrowsGateway = (narrowed, wider) => GATEWAY_PATHS[narrowed].length < GATEWAY_PATHS[wider].length && GATEWAY_PATHS[narrowed].every((path) => GATEWAY_PATHS[wider].includes(path));
 var holderOf = (maker, path) => path === "direct" ? maker : path;
 var steps = (choice) => GATEWAY_PATHS[choice.gateway].map((path) => ({
   maker: choice.provider,
@@ -506,8 +507,7 @@ function serializer() {
 
 // src/adapters/omp/settings.ts
 import { readFile } from "node:fs/promises";
-var NARROWABLE = ["auto", "openrouter-first"];
-var SINGLE_PATH = ["direct", "openrouter"];
+var gatewayOf = (text) => GATEWAYS.find((gateway) => gateway === text);
 var namesNoValue = (setting, text) => valueFor(setting, text) === void 0;
 function applied(global, effective) {
   const { provider: fromGlobal, gateway: gatewayFromGlobal } = global;
@@ -521,8 +521,9 @@ function applied(global, effective) {
 function gatewayText(global, effective) {
   if (namesNoValue("gateway", effective)) return effective;
   if (namesNoValue("gateway", global)) return global;
-  const narrows = NARROWABLE.some((value) => value === global) && SINGLE_PATH.some((value) => value === effective);
-  return narrows ? effective : global;
+  const wider = gatewayOf(global);
+  const narrowed = gatewayOf(effective);
+  return wider && narrowed && narrowsGateway(narrowed, wider) ? effective : global;
 }
 async function readSettings(omp, cwd) {
   const plugin = omp.plugin ?? FALLBACK_NAME;

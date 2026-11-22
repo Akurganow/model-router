@@ -88,7 +88,7 @@ test("the suffix names the provider alone when the reply carries no model name",
 	);
 });
 
-test("the suffix ends with the failed provider and its reason after a fallback", () => {
+test("the suffix ends with the failed key holder and its reason after a fallback", () => {
 	assert.equal(
 		decisionSuffix({
 			holder: "openrouter",
