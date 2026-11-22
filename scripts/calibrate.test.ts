@@ -211,7 +211,7 @@ test("main reports each miss with its probability and fails below the bar", asyn
 	assert.equal(code, 1);
 	const text = out.join("\n");
 	assert.match(text, /miss tier {2}expected 0 {2}got 2 {2}p=0\.70 {2}/);
-	assert.match(text, /tier agreement 35% \(61\/172\), bar 85%/);
+	assert.match(text, /tier agreement 31% \(61\/198\), bar 85%/);
 	assert.match(text, /jev-latest answered as jev-1\.14\.0/);
 });
 
@@ -233,7 +233,7 @@ test("main --record writes each case's labels and probabilities as JSONL", async
 		.trim()
 		.split("\n")
 		.map((l) => JSON.parse(l));
-	assert.equal(rows.length, 172);
+	assert.equal(rows.length, 198);
 	assert.deepEqual(Object.keys(rows[0]), [
 		"description",
 		"expected",

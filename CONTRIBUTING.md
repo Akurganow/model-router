@@ -266,7 +266,7 @@ needs Node 22.18 or 23.6 or later. Its first argument names the key holder:
 reads that holder's key from a masked prompt or from stdin. The prompt names
 the URL that gets the key, for example
 `openrouter API key for https://openrouter.ai/api/v1/systemone:`. The script sends
-`calibration.jsonl`, 172 labelled cases, to the endpoint that the
+`calibration.jsonl`, 198 labelled cases, to the endpoint that the
 plugins use for that holder. Its optional second argument names the Jev
 model and defaults to `jev-latest`. It exits 1 when tier or work
 agreement falls below 85%. This script, `scripts/compare-rules.ts` and
