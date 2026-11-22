@@ -9,7 +9,7 @@ A heading with evidence holds one line before its first fact, `Evidence: [wiki](
 The heading is the address, so a heading renamed or added here is renamed or added on the wiki too.
 [Adding evidence](https://github.com/Akurganow/model-router/wiki#adding-evidence) on the wiki gives the rest of the rules.
 The records of this project's own runs are on the [wiki](https://github.com/Akurganow/model-router/wiki).
-Install commands and install-time notes are in the [README](../README.md#install).
+Install commands are in the [root README](../README.md#install), and each plugin README holds the install-time notes of its harness.
 The reasons built on these facts are in [About this repository's design](design.md).
 
 Four clients are covered: Claude Code, Oh My Pi (omp), OpenClaw and Hermes Agent.
@@ -219,6 +219,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 
 - The commands are `omp plugin marketplace add <source>`, `omp plugin install name@marketplace` and `omp plugin upgrade [name@marketplace]`.
   `install` accepts `--scope user|project`, and the user scope is its default.
+- `omp plugin disable <pkg>` turns off an npm install, and `omp plugin uninstall <pkg>` removes it, each by the package name.
 - The installed version comes from the catalogue entry's `version`, then `.claude-plugin/plugin.json`, then a root `plugin.json`, then `package.json`.
   It falls back to the first seven characters of the source SHA, and then to `0.0.0`.
 - An upgrade of all plugins compares only catalogue entries that declare `version`.

@@ -2,101 +2,49 @@
 
 [![Release](https://img.shields.io/github/v/release/Akurganow/model-router)](https://github.com/Akurganow/model-router/releases)
 [![CI](https://github.com/Akurganow/model-router/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Akurganow/model-router/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/Akurganow/model-router)](LICENSE)
+[![MIT licence](https://img.shields.io/github/license/Akurganow/model-router)](LICENSE)
 
 ![Gamayun, the prophetic bird of Slavic folklore](docs/banner.jpg)
 
-Picks a model for each subagent, judged by a decision model from TypeSafe, OpenAI or Google, on its own API or through OpenRouter. For the harnesses in the table.
+model-router picks a model for subagents that your coding agent starts. It
+sends a lookup to a small model, bounded work to a middle model and open-ended
+work to a large one, each with a fitting effort. In Oh My Pi, OpenClaw and
+Hermes Agent, work with no model set keeps the harness's own model. There is a
+plugin for Claude Code, Oh My Pi, OpenClaw and Hermes Agent.
 
-| Harness | The plugin sets | Questions to the model | Starts a program | Minimum version | Reference |
-| --- | --- | --- | --- | --- | --- |
-| Claude Code | `model` and `effort` | 2 | no | v2.1.308 | [plugin README](plugins/model-router/README.md) |
-| Oh My Pi | the `smol`, `midl` or `slow` role and the thinking level | 2 | no | v18.12.6 | [plugin README](plugins/model-router-omp/README.md) |
-| OpenClaw | `model` and `thinking` | 2 | no | 2026.10.10 | [plugin README](plugins/model-router-openclaw/README.md) |
-| Hermes Agent | `model`, `provider` and `reasoning_effort` | 2 | yes, Node once per task | 0.22.6 | [plugin README](plugins/model-router-hermes/README.md) |
+For each task it scores, the plugin asks a decision model two questions: how
+much judgment the task needs and how much work it takes. The answers pick the
+model and the effort. The decision model is [Jev](https://docs.typesafe.ai) from
+TypeSafe by default, or OpenAI's or Google's, on the provider's own API or
+through OpenRouter. The plugin routes subagents only. It never changes the
+model of your main session.
 
-Claude Code, Oh My Pi and OpenClaw each have a `scope` setting. It takes `core` (the default) or `extended` and picks the agents the plugin routes. The plugin README says how. Hermes Agent has no `scope` setting: the plugin routes every `delegate_task` task and never the main turn.
+| Harness | The plugin sets | Minimum version | Install | Guide |
+| --- | --- | --- | --- | --- |
+| Claude Code | `model` and `effort` | v2.1.308 | [Install for Claude Code](#claude-code) | [Claude Code guide](plugins/model-router/README.md) |
+| Oh My Pi | the `smol`, `midl` or `slow` role and the thinking level | v18.12.6 | [Install for Oh My Pi](#oh-my-pi) | [Oh My Pi guide](plugins/model-router-omp/README.md) |
+| OpenClaw | `model` and `thinking` | 2026.10.10 | [Install for OpenClaw](#openclaw) | [OpenClaw guide](plugins/model-router-openclaw/README.md) |
+| Hermes Agent | the `model`, `provider` and `reasoning_effort` of the task's child | 0.22.6 | [Install for Hermes Agent](#hermes-agent) | [Hermes Agent guide](plugins/model-router-hermes/README.md) |
 
-[Install](#install) · [Verify](#verify) · [Update](#update) · [Turn off and uninstall](#turn-off-and-uninstall) · [What leaves the machine](#what-leaves-the-machine)
-
-## How it works
-
-The scoring model is [Jev](https://docs.typesafe.ai) from TypeSafe by default.
-The `provider` option can name OpenAI's or Google's decision model instead.
-[The provider and the gateway](docs/providers.md#the-provider-and-the-gateway)
-says what each value means.
-
-**Claude Code.** On each Agent tool call it routes, the plugin asks the
-scoring model two questions: how much judgment and how much
-work the task needs. The model reads the task and the agent text (the request's
-`role` field). Then the plugin sets the call's `model` and `effort`. The model
-is `haiku` for lookup or transcription, `sonnet` for bounded judgment and `opus`
-for open judgment.
-[Effort](plugins/model-router/README.md#effort) shows the effort ladder.
-[model-choice.md](plugins/model-router/docs/model-choice.md) says why the
-tiers and the ladder are what they are, with Anthropic's sources.
-
-The `scope` option picks the calls. [Which calls are routed](plugins/model-router/README.md#which-calls-are-routed)
-holds the rules.
-
-**Oh My Pi.** The plugin scores each batch item with the scoring model, which
-answers two questions: how much judgment the task needs and how much work it
-takes. The model reads the task and the agent text. For lookup work the plugin gives the spawn
-the `smol` role. For bounded judgment it gives the `midl` role, and for open
-judgment the `slow` role. Each spawn also gets a thinking level from a fixed
-ladder. The plugin never changes the tool input. The roles run on the models
-you point `smol`, `midl` and `slow` at.
-[Effort](plugins/model-router-omp/README.md#effort) has the ladder and the
-efforts the plugin keeps.
-
-The `scope` setting picks the agents. [Scope](plugins/model-router-omp/README.md#scope)
-holds the rules.
-
-**OpenClaw.** The plugin scores each routed `sessions_spawn` call with the scoring model, then
-sets `model` from your `small_model`, `middle_model` or `large_model` and
-`thinking` from a fixed ladder. [Routing](plugins/model-router-openclaw/README.md#routing) has the
-levels, and [Which spawns are routed](plugins/model-router-openclaw/README.md#which-spawns-are-routed)
-has the rules.
-
-**Hermes Agent.** The plugin is a delegation backend. It scores each `delegate_task`
-task with the scoring model, then gives the task's child your `small_model`, `middle_model`
-or `large_model` and a `reasoning_effort` from a fixed ladder. Hermes has no
-`scope`, so the plugin routes every task of the tool and never the main turn. A Python shim
-starts Hermes's own Node once per task to run the scoring step.
-[Routing](plugins/model-router-hermes/README.md#routing) has the levels, and
-[Which tasks are routed](plugins/model-router-hermes/README.md#which-tasks-are-routed)
-has the rules.
-
-In Oh My Pi, OpenClaw and Hermes Agent, a level whose model you did not set
-keeps the model the harness gives it, and the plugin still sets the effort
-unless you set one. [A slot with no model](docs/providers.md#a-slot-with-no-model)
-has the rule. The plugin sets the model you named and does not check that it
-runs.
-
-The npm package `@akurganow/model-router` carries the OpenClaw plugin. Oh My Pi
-can install the same package as a second route, as [its README](plugins/model-router-omp/README.md)
-says.
+You need the API key of the provider you choose (TypeSafe, OpenAI or Google)
+or an OpenRouter key. OpenRouter is a gateway that reaches all three, once the
+`gateway` setting allows it.
+[What leaves the machine](#what-leaves-the-machine) says what each scored task
+sends, and to whom.
 
 ## Install
 
 You need:
 
 - A harness at or above the minimum version in the table.
-- An API key for the provider you choose: TypeSafe from
-  https://console.typesafe.ai/keys, OpenAI from
-  https://platform.openai.com/api-keys or Google from
-  https://aistudio.google.com/docs/api-key. An OpenRouter API key from
-  https://openrouter.ai/settings/keys serves the gateway to any of them.
-  [Keys](docs/providers.md#keys) lists the variable of each.
-- For Claude Code, the `claude` command-line tool. Every `claude plugin` line
-  on this page runs in a shell, whichever app you use.
+- Your provider's API key or an OpenRouter key.
+  [Where to get each key](docs/providers.md#keys) gives the address for getting
+  each key, and its variable.
 
-Two options decide who receives each task. `provider` says whose model
-scores: `typesafe` (the default), `openai` or `google`. `gateway` says how
-OpenRouter is used to reach it: `direct` (the default), `auto`, `openrouter-first` or
-`openrouter`.
-[The provider and the gateway](docs/providers.md#the-provider-and-the-gateway)
-says what each value does, what one key does and when the second attempt runs.
+Two settings decide who receives each task. `provider` says whose model
+scores, and `gateway` says how OpenRouter is used to reach it.
+[The page on both settings](docs/providers.md#the-provider-and-the-gateway)
+gives their values, their defaults and what one key does.
 
 <!-- install:start -->
 
@@ -111,7 +59,7 @@ Source: Claude Code documentation, [Install and manage plugins](https://code.cla
 
 CI installs it on Ubuntu.
 
-[Set up Claude Code](#set-up-claude-code) has the next steps.
+The guide has the [Claude Code install notes and setup steps](plugins/model-router/README.md#install).
 
 ### Oh My Pi
 
@@ -124,7 +72,7 @@ Source: Oh My Pi documentation, [marketplace.md, lines 20 to 25](https://github.
 
 CI installs it on Ubuntu.
 
-[Set up Oh My Pi](#set-up-oh-my-pi) has the next steps.
+The guide has the [Oh My Pi install notes and setup steps](plugins/model-router-omp/README.md#install).
 
 ### OpenClaw
 
@@ -136,11 +84,11 @@ openclaw plugins inspect model-router-openclaw --runtime --json
 
 Source: OpenClaw documentation, [Manage plugins](https://docs.openclaw.ai/plugins/manage-plugins).
 
-The npm package `@akurganow/model-router` exists only after its first publication. Review the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`.
+Review the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`.
 
 CI installs the packed npm package on Ubuntu and checks that OpenClaw loads it.
 
-[Set up OpenClaw](#set-up-openclaw) has the next steps.
+The guide has the [OpenClaw install notes and setup steps](plugins/model-router-openclaw/README.md#install).
 
 ### Hermes Agent
 
@@ -151,351 +99,88 @@ hermes config set delegation.backend model-router
 
 Source: Hermes Agent documentation, [Plugins](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins).
 
+The second command replaces `model_map` or any other delegation backend, because Hermes runs one backend at a time.
+
 CI installs it on Ubuntu.
 
-[Set up Hermes Agent](#set-up-hermes-agent) has the next steps.
+The guide has the [Hermes Agent install notes and setup steps](plugins/model-router-hermes/README.md#install).
 
 <!-- install:end -->
 
-The Hermes command `hermes config set delegation.backend model-router` replaces `model_map` or any other delegation backend, because Hermes runs one backend at a time.
-
-[docs/clients.md](docs/clients.md) states what each client reads, and the [wiki's evidence pages](https://github.com/Akurganow/model-router/wiki#evidence-pages) hold the evidence of each fact.
-
-### Set up Claude Code
-
-Pick one route: the two `claude` lines under [Claude Code](#claude-code) are
-the minimal one, and each route below also sets the options and the keys.
-Those two lines install the plugin without its keys.
-After them, run `/plugin configure model-router@model-router` in a session to
-set the keys.
-
-#### Terminal
-
-1. Run this line in a Claude Code session:
-
-   ```text
-   /plugin install model-router --marketplace Akurganow/model-router
-   ```
-
-2. Answer `y` to add the marketplace.
-3. Pick the user scope.
-4. Pick a `provider`, a `gateway` and a `scope` in the dialog.
-5. Paste the key of your provider, your OpenRouter key or both into the dialog.
-6. Run `/reload-plugins`, or start a new session.
-7. Ask Claude to run the `model-router-setup` skill. It asks the provider, the
-   gateway and the scope with buttons, writes your choices itself and checks
-   the keys.
-
-To reopen the dialog later, run
-`/plugin configure model-router@model-router`. `/config` also changes the
-options. `/model-router:provider`, `/model-router:gateway` and
-`/model-router:scope` change one each.
-Claude Code keeps the keys in the system's secure storage.
-
-**Install from a shell.** This line installs the plugin, sets `gateway` to
-`auto` and saves the keys. It shows `TypeSafe key:`, then `OpenRouter key:`.
-It reads each key you paste without showing it. Press Enter at a prompt to
-skip a key you do not have. Only the line goes to the shell history, never a
-key. The line is for zsh, the default shell on macOS.
-
-```sh
-claude plugin install model-router --marketplace Akurganow/model-router && read -rs 'TS_KEY?TypeSafe key: ' && echo && read -rs 'OR_KEY?OpenRouter key: ' && echo && printf '{"gateway":"auto","api_key":"%s","openrouter_api_key":"%s"}' "$TS_KEY" "$OR_KEY" | claude plugin configure model-router@model-router --values-stdin
-```
-
-To pick another `gateway` value, replace `auto` in the line. To use OpenAI or
-Google, add `"provider":"openai"` or `"provider":"google"` to the JSON, and
-replace `api_key` with `openai_api_key` or `google_api_key`. The first prompt
-then takes that key, though it still reads `TypeSafe key:`. In bash, replace
-`read -rs 'TS_KEY?TypeSafe key: '` with `read -rsp 'TypeSafe key: ' TS_KEY`.
-Replace `read -rs 'OR_KEY?OpenRouter key: '` with
-`read -rsp 'OpenRouter key: ' OR_KEY`. Look for these two lines in the output:
-
-```text
-Successfully installed plugin
-Configuration saved. Restart Claude Code to apply it.
-```
-
-Then run `/reload-plugins` in each open session, or start a new one. The
-plugin reads the key when it loads.
-
-<details>
-<summary>Other shells, PowerShell included</summary>
-
-Run this line in place of the one above:
-
-```sh
-claude plugin install model-router --marketplace Akurganow/model-router --config gateway=auto --config api_key=YOUR_KEY --config openrouter_api_key=YOUR_OPENROUTER_KEY
-```
-
-`YOUR_KEY` stands for your TypeSafe key and `YOUR_OPENROUTER_KEY` for your
-OpenRouter key. To use OpenAI or Google, add `--config provider=openai` or
-`--config provider=google`, and replace `api_key` with `openai_api_key` or
-`google_api_key`. Drop the `--config` pair of a key you do not have. The line
-leaves the keys in your shell history and shows them in the process list
-while it runs.
-
-</details>
-
-#### VS Code
-
-1. Run `/plugins` to open **Manage plugins**.
-2. Add `Akurganow/model-router` on the **Marketplaces** tab.
-3. Install `model-router` on the **Plugins** tab.
-4. Pick a `provider`, a `gateway` and a `scope` in the form that opens.
-5. Enter the key of your provider, your OpenRouter key or both.
-6. Start a new session.
-
-The gear icon on the plugin's row opens the form again. If the form does not
-open, set the key as [Desktop app](#desktop-app) describes.
-
-#### Desktop app
-
-1. Open a local session.
-2. Choose **+**, then **Add plugins**.
-3. Add the marketplace `Akurganow/model-router`.
-4. Install `model-router`.
-
-> [!WARNING]
-> The desktop app cannot set a plugin's key yet.
-> [Keys in the desktop app](plugins/model-router/README.md#keys-in-the-desktop-app)
-> says how to set it in the settings file.
-
-### Set up Oh My Pi
-
-1. Install [Oh My Pi](https://github.com/can1357/oh-my-pi) v18.12.6 or later.
-2. Run the two install commands under [Oh My Pi](#oh-my-pi).
-3. Restart omp, because omp loads extension modules at startup.
-4. Run `/login typesafe`, `/login openrouter` or both in omp to store your
-   keys. For OpenAI or Google, set the variable named below.
-5. Ask omp to run the `model-router-setup` skill. It asks the provider, the
-   gateway and the scope with buttons and writes your choices itself. It also
-   helps you set the `smol`, `midl` and `slow` roles.
-
-Instead of `/login`, you can run `omp login typesafe` or
-`omp login openrouter` outside a session. You can also set `TYPESAFE_API_KEY`,
-`OPENAI_API_KEY`, `GEMINI_API_KEY` or `OPENROUTER_API_KEY`. To change the provider, the gateway or the scope
-later, open `/settings` → Plugins, or run `/model-router:provider`,
-`/model-router:gateway` or `/model-router:scope`.
-[Set up](plugins/model-router-omp/README.md#set-up) says what the skill checks.
-
-### Set up OpenClaw
-
-After the commands: check the install under [Install](plugins/model-router-openclaw/README.md#install) in the OpenClaw plugin README, then follow [Set up](plugins/model-router-openclaw/README.md#set-up).
-
-### Set up Hermes Agent
-
-After the two commands: check the install under [Install](plugins/model-router-hermes/README.md#install) in the Hermes plugin README, then follow [Set up](plugins/model-router-hermes/README.md#set-up).
-
-## Verify
-
-**Claude Code.** Send this prompt in a new session:
-
-```text
-Use the Agent tool with the general-purpose agent, and no model or name, to list the files in this folder.
-```
-
-The plugin then logs one line for the routed call, like this example:
-
-```text
-model-router L0 haiku · medium · p=0.91/0.62 · typesafe jev-1.14.0 · 812/9 tok
-```
-
-This README has not checked where VS Code or the desktop app shows the line.
-If the line says `skipped, <cause>`, or no line appears, see
-[Troubleshooting](plugins/model-router/README.md#troubleshooting).
-
-**Oh My Pi.** Give omp any job that makes it spawn a `task` subagent. The
-plugin prints one line per batch, like this example:
-
-```text
-model-router task 1: L0 @smol · high · p=0.91/0.84 · typesafe jev-1.14.0 · 812/9 tok | task 2: L1 middle model unset · medium · p=0.62/0.70 · typesafe jev-1.14.0 · 640/9 tok | task 3: skipped, timeout
-```
-
-An entry such as `L1 middle model unset` is no error: the level ran on the
-agent's model, as [Models](plugins/model-router-omp/README.md#models) says.
-[Gate reasons](plugins/model-router-omp/README.md#gate-reasons) and
-[Item reasons](plugins/model-router-omp/README.md#item-reasons) explain each
-`skipped` entry. No line prints when `task.batch` is off or the batch has no
-eligible item.
-
-**OpenClaw.** OpenClaw shows no line in the chat. Start a subagent, and read the Gateway log with `openclaw logs --follow --plain`. The plugin writes one line per spawn. [The log line](plugins/model-router-openclaw/README.md#the-log-line) shows an example and explains it. [Which spawns are routed](plugins/model-router-openclaw/README.md#which-spawns-are-routed) lists the `skipped` reasons. If no line appears, [No line at all?](plugins/model-router-openclaw/README.md#no-line-at-all) lists the causes.
-
-**Hermes Agent.** Ask Hermes to delegate one small task, such as listing the files in the current folder. The plugin puts its line in the task's `route.label`, and Hermes shows the label with the child's progress and result. [The label and the log](plugins/model-router-hermes/README.md#the-label-and-the-log) shows an example, explains the line and says where else it goes. [Which tasks are routed](plugins/model-router-hermes/README.md#which-tasks-are-routed) lists the `skipped` reasons.
-
-## Update
-
-**Claude Code.** Claude Code turns auto-update off by default for a
-third-party marketplace like this one. To turn it on, choose
-**Enable auto-update** for the marketplace on the **Marketplaces** tab of
-`/plugin`. To update by hand, run these lines in a shell:
-
-```sh
-claude plugin marketplace update model-router
-claude plugin update model-router@model-router
-```
-
-Then run `/reload-plugins` in each open session, or start a new one.
-
-**Oh My Pi.** Run these lines in a shell:
-
-```sh
-omp plugin marketplace update
-omp plugin upgrade model-router@model-router
-```
-
-Then restart omp.
-
-**OpenClaw.** Run these lines in a shell, then restart the Gateway:
-
-```sh
-openclaw plugins update model-router-openclaw
-openclaw gateway restart
-```
-
-**Hermes Agent.** Run these lines in a shell:
-
-```sh
-hermes plugins update model-router-hermes
-hermes gateway stop
-```
-
-A gateway keeps a loaded plugin, so Hermes loads the new code on its next start. [Install](plugins/model-router-hermes/README.md#install) says how to pin a commit.
+### After an update
 
 After an update, a line that ends in `not valid: run setup` means a stored setting holds a value the new version does not take. [A setting that is not valid](docs/providers.md#a-setting-that-is-not-valid) says what to do, and lists the retired values of `provider`. Claude Code shows no such line: [A stored value outside an option's list](plugins/model-router/README.md#a-stored-value-outside-an-options-list) says what it does in its place.
 
-## Turn off and uninstall
+## How it works
 
-**Claude Code.** To turn routing off, disable the plugin in `/plugin`. The
-plugin sends nothing while it is disabled. To remove it, run this line in a
-shell:
+The plugin scores a task before its subagent starts. The decision model reads
+the task and a short text about the agent, and answers two questions:
 
-```sh
-claude plugin uninstall model-router@model-router
-```
+- How much judgment the task needs. The answer is level 0 (lookup or
+  transcription), 1 (bounded judgment) or 2 (open judgment). The level picks
+  the small, middle or large model.
+- How much work the task takes. The answer picks the effort from a fixed
+  ladder. [model-choice.md](plugins/model-router/docs/model-choice.md) says why
+  the levels and the ladder are what they are.
 
-If you added `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or
-`OPENROUTER_API_KEY` to the `env` block of `~/.claude/settings.json`, delete
-those lines too.
+The `provider` setting names the decision model, and `typesafe`, which is Jev,
+is the default. Each guide lists the subagents its plugin routes and the models
+and efforts of yours that it keeps. The plugin
+[fails open](docs/providers.md#fails-open): a task it cannot score runs as it
+would without the plugin. In Oh My Pi, OpenClaw and Hermes Agent,
+[a level with no model](docs/providers.md#a-slot-with-no-model) keeps the model
+the harness gives it. It still gets the effort, unless you set one.
 
-**Oh My Pi.** To turn routing off, run this line in a shell:
-
-```sh
-omp plugin disable model-router@model-router
-```
-
-Then restart omp. The plugin sends nothing while it is disabled. To remove it,
-run this line:
-
-```sh
-omp plugin uninstall model-router@model-router
-```
-
-**OpenClaw.** To turn routing off, run this line in a shell:
-
-```sh
-openclaw plugins disable model-router-openclaw
-```
-
-The plugin sends nothing while it is disabled. Removing the key of every
-path the `gateway` setting allows also stops routing, and every spawn that does
-not pass through unchanged then reports `key unset`.
-
-**Hermes Agent.** To turn routing off, set the delegation backend back to
-`default`. Run this line in a shell:
-
-```sh
-hermes config set delegation.backend default
-```
-
-In a running session, type `/delegation default --now`. The plugin sends
-nothing while the backend is `default`. To disable or remove the plugin, run
-one of these lines after that:
-
-```sh
-hermes plugins disable model-router-hermes
-hermes plugins remove model-router-hermes
-```
-
-Never disable or remove the plugin while `delegation.backend` is still
-`model-router`. Hermes then fails delegation closed, and every `delegate_task`
-call returns an error. Removing the key of every path the `gateway`
-setting allows also stops routing, and every task without a `level` then
-reports `key unset`.
+Only the Hermes Agent plugin starts a program: Hermes's own Node, once for each
+task it scores. The other three start none.
 
 ## What leaves the machine
 
 > [!IMPORTANT]
-> Each call, batch item or task the plugin scores sends the condensed, redacted
-> task text to the host that `gateway` picks, with that host's key:
+> Each task the plugin scores sends a request. It holds the condensed task
+> text, a text about the agent and, when there is one, a short description of
+> the task, all with token-shaped strings masked. `provider` and `gateway` pick
+> the host, and each host gets its own key:
 >
-> - The provider's own API gets that provider's key under `direct`, and first
->   under `auto`. `provider` picks the host: `api.typesafe.ai`,
->   `api.openai.com` or `generativelanguage.googleapis.com`.
-> - `openrouter.ai` gets your OpenRouter key under `openrouter`, and first
->   under `openrouter-first`.
+> - The provider's own API gets the request under `direct`, and first under
+>   `auto`. `provider` picks the host: `api.typesafe.ai`, `api.openai.com` or
+>   `generativelanguage.googleapis.com`.
+> - `openrouter.ai` gets it under `openrouter`, and first under
+>   `openrouter-first`.
 >
-> [The request](docs/providers.md#the-request) lists the address and the
-> model of each. With both keys, `auto` and `openrouter-first` send the same
-> text to the second host when the first fails in a way that
-> [The provider and the gateway](docs/providers.md#the-provider-and-the-gateway)
-> lists. The default, `direct`, never contacts OpenRouter.
+> With both keys, `auto` and `openrouter-first` send the same texts to the
+> second host after [some failures of the first](docs/providers.md#the-provider-and-the-gateway).
+> To keep each task with one company, leave `gateway` at `direct`, the
+> default: it never contacts OpenRouter.
 >
-> Each request also carries the agent text. The built-in `general-purpose` and
-> `claude` agents, omp's bundled `task` agent, and every Hermes Agent task send
-> a fixed text. In
-> OpenClaw, [the spawn of the requesting agent itself](plugins/model-router-openclaw/README.md#the-spawn-of-the-requesting-agent-itself)
-> sends that agent's description when it has one, and a fixed text otherwise.
-> Every other agent sends its description, masked and cut to 500 characters.
-> [model-choice.md](plugins/model-router/docs/model-choice.md#the-role-of-the-default-agent)
-> says why. Under `extended`, the descriptions and task text of your other
-> agents leave the machine too.
+> In Claude Code, Oh My Pi and OpenClaw, the `scope` setting at `extended` also
+> sends your other agents' descriptions and task text, as each privacy policy
+> says.
+>
+> To stop the requests, turn the plugin off as its guide says, or remove the
+> key of every path `gateway` allows.
 
-The Claude Code and Oh My Pi READMEs list the full request, and each privacy
-policy states the same in policy form. For OpenClaw and Hermes Agent, the
-privacy policy holds the request:
+[The request](docs/providers.md#the-request) lists the address and the model
+of each path. Each privacy policy says what its plugin sends:
 
-- Claude Code:
-  [What leaves the machine](plugins/model-router/README.md#what-leaves-the-machine),
-  [PRIVACY.md](plugins/model-router/PRIVACY.md)
-- Oh My Pi:
-  [What leaves the machine](plugins/model-router-omp/README.md#what-leaves-the-machine),
-  [PRIVACY.md](plugins/model-router-omp/PRIVACY.md),
-  [The extended scope](plugins/model-router-omp/PRIVACY.md#the-extended-scope)
-- OpenClaw:
-  [What the plugin sends](plugins/model-router-openclaw/PRIVACY.md#what-the-plugin-sends),
-  [PRIVACY.md](plugins/model-router-openclaw/PRIVACY.md),
-  [The extended scope](plugins/model-router-openclaw/PRIVACY.md#the-extended-scope)
-- Hermes Agent:
-  [What the plugin sends](plugins/model-router-hermes/PRIVACY.md#what-the-plugin-sends),
-  [The program the plugin starts](plugins/model-router-hermes/PRIVACY.md#the-program-the-plugin-starts),
-  [PRIVACY.md](plugins/model-router-hermes/PRIVACY.md)
-- All four: [How the plugins use the providers](docs/providers.md) holds the
-  rules they share: the two settings, the keys, the fallback, the request, the
-  retries and what each company does with the text.
-
-[Turn off and uninstall](#turn-off-and-uninstall) says how to stop the
-requests.
-
-## Documentation
-
-- [Claude Code plugin README](plugins/model-router/README.md): what the plugin
-  can reach, routing, the effort ladder and troubleshooting.
-- [Oh My Pi plugin README](plugins/model-router-omp/README.md): the key, the
-  setup skill, routing and the skip reasons.
-- [OpenClaw plugin README](plugins/model-router-openclaw/README.md): the
-  install, the model slots, the keys, routing and the skip reasons.
-- [Hermes Agent plugin README](plugins/model-router-hermes/README.md): the
-  install, the model slots, the keys, routing, the Node step and the skip
-  reasons.
-- [model-choice.md](plugins/model-router/docs/model-choice.md): why the model
-  tiers and the effort ladder are what they are.
-- [How the plugins use the providers](docs/providers.md): the provider and the
-  gateway, the fallback rules, the request, the retries and what each company
-  does with the text.
 - [Claude Code privacy policy](plugins/model-router/PRIVACY.md)
 - [Oh My Pi privacy policy](plugins/model-router-omp/PRIVACY.md)
 - [OpenClaw privacy policy](plugins/model-router-openclaw/PRIVACY.md)
 - [Hermes Agent privacy policy](plugins/model-router-hermes/PRIVACY.md)
+
+## Documentation
+
+| Fact | The file that holds it |
+| --- | --- |
+| What the four plugins share: settings, keys, fallback, request, retries and what each company does with the text | [docs/providers.md](docs/providers.md) |
+| Claude Code: set up, reach, routing, effort, update and troubleshooting | [plugins/model-router/README.md](plugins/model-router/README.md) |
+| Oh My Pi: set up, roles, routing, effort, update and skip reasons | [plugins/model-router-omp/README.md](plugins/model-router-omp/README.md) |
+| OpenClaw: set up, models, routing, effort, update and skip reasons | [plugins/model-router-openclaw/README.md](plugins/model-router-openclaw/README.md) |
+| Hermes Agent: set up, models, routing, the Node step, update and skip reasons | [plugins/model-router-hermes/README.md](plugins/model-router-hermes/README.md) |
+| What one plugin sends, stores and reads | The `PRIVACY.md` beside that plugin's guide |
+| Why the model levels and the effort ladder are what they are | [plugins/model-router/docs/model-choice.md](plugins/model-router/docs/model-choice.md) |
+| What each client reads from a package | [docs/clients.md](docs/clients.md) |
+| The evidence of each client fact | [The wiki's evidence pages](https://github.com/Akurganow/model-router/wiki#evidence-pages) |
 
 ## Contributing
 

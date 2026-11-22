@@ -2,10 +2,12 @@
 // bundle list take their paths from here, and generatedFiles in copies.ts lists
 // them all. This module imports nothing, so the owner-setup scan reads the
 // list without loading esbuild or a renderer.
+export const CLAUDE_DIR = "plugins/model-router";
+
 export const CLAUDE_OUTPUTS = {
-	manifest: "plugins/model-router/.claude-plugin/plugin.json",
+	manifest: `${CLAUDE_DIR}/.claude-plugin/plugin.json`,
 	catalogue: ".claude-plugin/marketplace.json",
-	bundle: "plugins/model-router/hooks/register.js",
+	bundle: `${CLAUDE_DIR}/hooks/register.js`,
 } as const;
 
 export const OMP_DIR = "plugins/model-router-omp";
@@ -22,7 +24,7 @@ export const OPENCLAW_OUTPUTS = {
 	bundle: "plugins/model-router-openclaw/index.js",
 } as const;
 
-const HERMES_DIR = "plugins/model-router-hermes";
+export const HERMES_DIR = "plugins/model-router-hermes";
 
 // plugin.yaml holds JSON text with space indentation, which is valid YAML. Hermes reads it with yaml.safe_load, which refuses a tab, and the version check reads it as JSON.
 export const HERMES_OUTPUTS = {

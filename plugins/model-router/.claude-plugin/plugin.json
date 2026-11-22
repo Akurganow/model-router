@@ -16,7 +16,10 @@
 		"subagents",
 		"model-routing",
 		"typesafe",
-		"jev"
+		"jev",
+		"openai",
+		"gemini",
+		"openrouter"
 	],
 	"skills": ["."],
 	"commands": {

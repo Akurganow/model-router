@@ -81,6 +81,8 @@ export type Source = {
 			readonly type: string;
 			readonly extensions: readonly string[];
 		};
+		// The commands that install the npm package, for the npm README.
+		readonly npmCommands: readonly string[];
 		readonly settingType: string;
 		readonly catalogueSource: string;
 		readonly install: Install;

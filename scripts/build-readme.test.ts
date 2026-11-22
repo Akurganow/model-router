@@ -40,15 +40,20 @@ test("the region holds one section for each harness, in order", () => {
 	]);
 });
 
-test("each section ends with a link to its setup heading", () => {
+test("each section ends with its link to the guide's install section", () => {
 	const text = renderReadme(readme("\nold\n"), source);
-	for (const heading of ["Claude Code", "Oh My Pi", "OpenClaw", "Hermes Agent"])
-		assert.ok(
-			text.includes(
-				`[Set up ${heading}](#${anchorOf(`Set up ${heading}`)}) has the next steps.`,
-			),
-			heading,
-		);
+	const sections = text
+		.split(/\n\n(?=### |<!-- install:end -->)/)
+		.filter((piece) => piece.startsWith("### "));
+	assert.deepEqual(
+		sections.map((section) => section.split("\n").at(-1)),
+		[
+			"The guide has the [Claude Code install notes and setup steps](plugins/model-router/README.md#install).",
+			"The guide has the [Oh My Pi install notes and setup steps](plugins/model-router-omp/README.md#install).",
+			"The guide has the [OpenClaw install notes and setup steps](plugins/model-router-openclaw/README.md#install).",
+			"The guide has the [Hermes Agent install notes and setup steps](plugins/model-router-hermes/README.md#install).",
+		],
+	);
 });
 
 test("a heading sign inside a fenced code block makes no anchor", () => {
@@ -158,9 +163,14 @@ test("a note renders under the source line, with the package name filled in", ()
 	const text = renderReadme(readme("\nold\n"), source);
 	assert.match(
 		text,
-		/^Source: OpenClaw documentation, .+\n\nThe npm package `@akurganow\/model-router` exists only after its first publication\. .+\n\nCI installs/m,
+		/^Source: OpenClaw documentation, .+\n\nReview the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`\.\n\nCI installs/m,
 	);
-	assert.equal(text.match(/first publication/g)?.length, 1);
+	const install = { ...source.openclaw.install, note: "Read `{package}`." };
+	const filled = renderReadme(readme("\nold\n"), {
+		...source,
+		openclaw: { ...source.openclaw, install },
+	});
+	assert.match(filled, /^Read `@akurganow\/model-router`\.$/m);
 });
 
 test("only the region changes, and the rest keeps its bytes", () => {

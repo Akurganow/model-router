@@ -8,6 +8,7 @@ import {
 	OMP_DIR,
 	OPENCLAW_DIR,
 } from "./outputs.ts";
+import { installCommands, noteLines } from "./readme.ts";
 import type { Source } from "./source.ts";
 
 const GIT_PREFIX = "git+";
@@ -68,20 +69,44 @@ const manifest = (source: Source): JsonObject => ({
 const readmeUrl = (source: Source, dir: string): string =>
 	`${source.homepage}/blob/main/${dir}/README.md`;
 
-const readme = (source: Source): string =>
-	[
+const fence = (commands: readonly string[]): string[] => [
+	"```sh",
+	...commands,
+	"```",
+];
+
+const readme = (source: Source): string => {
+	const { openclaw, omp } = source;
+	return [
 		`# ${source.npm.name}`,
 		"",
 		source.npm.description,
 		"",
-		"The package carries the Model Router plugin for two harnesses. The README of each plugin has its install steps and settings. Its privacy policy says what leaves the machine.",
+		"model-router sends a lookup to a small model, bounded work to a middle model and open-ended work to a large one. Where no model is set for one of the three, the harness keeps its own. A decision model scores each task the plugin routes: [Jev](https://docs.typesafe.ai) from TypeSafe by default, or OpenAI's or Google's, on the provider's own API or through OpenRouter.",
 		"",
-		`- ${source.openclaw.install.heading}: [README](${readmeUrl(source, OPENCLAW_DIR)}), [privacy policy](${source.privacyPolicyUrls.openclaw})`,
-		`- ${source.omp.install.heading}: [README](${readmeUrl(source, OMP_DIR)}), [privacy policy](${source.privacyPolicyUrls.omp})`,
+		"## Install",
 		"",
-		`The source is at ${source.repository}. The licence is ${source.license}.`,
+		`${openclaw.install.heading}:`,
+		"",
+		...fence(installCommands(source, openclaw.install)),
+		"",
+		...noteLines(source, openclaw.install),
+		`${omp.install.heading}:`,
+		"",
+		...fence(installCommands(source, { commands: omp.npmCommands })),
+		"",
+		`Then follow the setup steps: [${openclaw.install.heading} guide](${readmeUrl(source, OPENCLAW_DIR)}), [${omp.install.heading} guide](${readmeUrl(source, OMP_DIR)}).`,
+		"",
+		"## What leaves the machine",
+		"",
+		`Each task the plugin scores sends its condensed text and short texts that describe it and its agent, with token-shaped strings masked. They go to the provider's own API, to OpenRouter or to both, as the \`provider\` and \`gateway\` settings allow. The privacy policies list the request: [${openclaw.install.heading} privacy policy](${source.privacyPolicyUrls.openclaw}), [${omp.install.heading} privacy policy](${source.privacyPolicyUrls.omp}).`,
+		"",
+		"## More",
+		"",
+		`The source, and the plugins for Claude Code and Hermes Agent, are at ${source.repository}. The licence is ${source.license}.`,
 		"",
 	].join("\n");
+};
 
 export const renderNpm = (source: Source): Rendered[] => [
 	{ path: NPM_OUTPUTS.manifest, text: serialize(manifest(source)) },

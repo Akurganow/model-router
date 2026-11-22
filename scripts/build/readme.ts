@@ -1,4 +1,10 @@
-import { README_OUTPUT } from "./outputs.ts";
+import {
+	CLAUDE_DIR,
+	HERMES_DIR,
+	OMP_DIR,
+	OPENCLAW_DIR,
+	README_OUTPUT,
+} from "./outputs.ts";
 import type { Install, Source } from "./source.ts";
 
 const START = "<!-- install:start -->";
@@ -26,10 +32,14 @@ const fill = (source: Source, text: string, marketplace: string): string =>
 
 export const installCommands = (
 	source: Source,
-	install: Install,
+	install: Pick<Install, "commands">,
 	marketplace: string = marketplaceArgument(source),
 ): string[] =>
 	install.commands.map((command) => fill(source, command, marketplace));
+
+// The note of an install as its own paragraph, or no lines when it has none.
+export const noteLines = (source: Source, { note }: Install): string[] =>
+	note ? [fill(source, note, marketplaceArgument(source)), ""] : [];
 
 // GitHub's heading anchor: lower case, punctuation dropped, spaces as hyphens.
 export const anchorOf = (heading: string): string =>
@@ -38,11 +48,9 @@ export const anchorOf = (heading: string): string =>
 		.replace(/[^\p{L}\p{N} _-]/gu, "")
 		.replaceAll(" ", "-");
 
-// The hand-written setup steps sit under "Set up <harness>" after the region.
-const setupLine = ({ heading }: Install): string => {
-	const setup = `Set up ${heading}`;
-	return `[${setup}](#${anchorOf(setup)}) has the next steps.`;
-};
+// In each guide, Set up follows Install, so the one link leads to both.
+const setupLine = ({ heading }: Install, dir: string): string =>
+	`The guide has the [${heading} install notes and setup steps](${dir}/README.md#install).`;
 
 /**
  * Returns the sentence about CI for one install. The install's own sentence
@@ -57,13 +65,10 @@ const ciLine = ({ ciSystems, ciLine: sentence }: Install): string =>
 
 /**
  * Returns the README section of one install: its heading, commands, source,
- * optional note, CI sentence and link to the setup steps.
+ * optional note, CI sentence and link to the guide's install section.
  */
-const section = (source: Source, install: Install): string => {
+const section = (source: Source, install: Install, dir: string): string => {
 	const { publisher, title, url } = install.source;
-	const note = install.note
-		? [fill(source, install.note, marketplaceArgument(source)), ""]
-		: [];
 	return [
 		`### ${install.heading}`,
 		"",
@@ -73,10 +78,10 @@ const section = (source: Source, install: Install): string => {
 		"",
 		`Source: ${publisher}, [${title}](${url}).`,
 		"",
-		...note,
+		...noteLines(source, install),
 		ciLine(install),
 		"",
-		setupLine(install),
+		setupLine(install, dir),
 	].join("\n");
 };
 
@@ -108,13 +113,14 @@ function checkMarkers(readme: string): void {
 // Returns the README with the text between the install markers replaced.
 export function renderReadme(readme: string, source: Source): string {
 	checkMarkers(readme);
-	const body = [
-		source.claude.install,
-		source.omp.install,
-		source.openclaw.install,
-		source.hermes.install,
-	]
-		.map((install) => section(source, install))
+	const harnesses: readonly (readonly [Install, string])[] = [
+		[source.claude.install, CLAUDE_DIR],
+		[source.omp.install, OMP_DIR],
+		[source.openclaw.install, OPENCLAW_DIR],
+		[source.hermes.install, HERMES_DIR],
+	];
+	const body = harnesses
+		.map(([install, dir]) => section(source, install, dir))
 		.join("\n\n");
 	const head = readme.slice(0, readme.indexOf(START) + START.length);
 	const tail = readme.slice(readme.indexOf(END));

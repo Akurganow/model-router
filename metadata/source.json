@@ -15,7 +15,10 @@
 		"subagents",
 		"model-routing",
 		"typesafe",
-		"jev"
+		"jev",
+		"openai",
+		"gemini",
+		"openrouter"
 	],
 	"privacyPolicyUrls": {
 		"claude": "https://github.com/Akurganow/model-router/blob/main/plugins/model-router/PRIVACY.md",
@@ -125,6 +128,7 @@
 			"type": "module",
 			"extensions": ["./extension/index.js"]
 		},
+		"npmCommands": ["omp plugin install {package}"],
 		"settingType": "enum",
 		"catalogueSource": "./plugins/model-router-omp",
 		"install": {
@@ -196,7 +200,7 @@
 				"title": "Manage plugins",
 				"url": "https://docs.openclaw.ai/plugins/manage-plugins"
 			},
-			"note": "The npm package `{package}` exists only after its first publication. Review the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`.",
+			"note": "Review the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`.",
 			"ciSystems": ["Ubuntu"],
 			"ciLine": "CI installs the packed npm package on Ubuntu and checks that OpenClaw loads it."
 		}
@@ -248,6 +252,7 @@
 				"title": "Plugins",
 				"url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins"
 			},
+			"note": "The second command replaces `model_map` or any other delegation backend, because Hermes runs one backend at a time.",
 			"ciSystems": ["Ubuntu"]
 		}
 	},
@@ -255,7 +260,7 @@
 		"name": "@akurganow/model-router",
 		"private": false,
 		"type": "module",
-		"description": "Routes subagents to a model and effort that fits the task, judged by a decision model from TypeSafe, OpenAI or Google. One package for OpenClaw and Oh My Pi.",
+		"description": "Routes OpenClaw and Oh My Pi subagents to a small, middle or large model and an effort that fit the task.",
 		"keywords": [
 			"openclaw",
 			"oh-my-pi",
@@ -263,7 +268,13 @@
 			"subagents",
 			"model-routing",
 			"typesafe",
-			"jev"
+			"jev",
+			"openai",
+			"gemini",
+			"openrouter",
+			"openclaw-plugin",
+			"model-router",
+			"subagent"
 		],
 		"publishConfig": { "access": "public" }
 	}

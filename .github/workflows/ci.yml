@@ -211,11 +211,12 @@ jobs:
           tarball=$(node scripts/check-npm-pack.ts "$RUNNER_TEMP/pack")
           echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
 
-      # A dry run goes through every publish check and sends nothing.
+      # A dry run sends nothing. Between releases the tree carries the published version,
+      # and npm refuses that version even in a dry run unless --force skips its version checks.
       - name: Dry-run the publish
         env:
           TARBALL: ${{ steps.pack.outputs.tarball }}
-        run: npm publish --dry-run --access public --ignore-scripts "$TARBALL"
+        run: npm publish --dry-run --force --access public --ignore-scripts "$TARBALL"
 
       # The script checks the inspect report's status, imported and enabled
       # fields, its contracts.tools and its diagnostics. The inspection does

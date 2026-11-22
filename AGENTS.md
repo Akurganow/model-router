@@ -138,6 +138,12 @@ This file adds what an agent gets wrong without being told.
 ## Writing
 
 - One copy of each text. Every other place links to it.
+- A fact about one harness lives in that harness's plugin README. A fact
+  about all four lives in the root README or in `docs/providers.md`.
+- The root README links to a plugin README by its file, never by its folder.
+- A plugin README links outside its own folder by absolute address. The npm
+  README uses absolute addresses only.
+- Each link has its own text. No two links on a page read the same.
 - Tracked files, commits and pull request text are in English.
 - A code comment explains a why that the code does not show.
 

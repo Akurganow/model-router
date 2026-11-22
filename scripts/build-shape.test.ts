@@ -77,6 +77,7 @@ const FIXTURE: Source = {
 	},
 	omp: {
 		package: { name: "n", private: true, type: "t", extensions: ["e"] },
+		npmCommands: ["c"],
 		settingType: "t",
 		catalogueSource: "c",
 		install: INSTALL,
