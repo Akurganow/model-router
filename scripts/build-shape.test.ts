@@ -77,6 +77,7 @@ const FIXTURE: Source = {
 	},
 	omp: {
 		package: { name: "n", private: true, type: "t", extensions: ["e"] },
+		npmCommands: ["c"],
 		settingType: "t",
 		catalogueSource: "c",
 		install: INSTALL,
@@ -88,6 +89,7 @@ const FIXTURE: Source = {
 		extensions: ["e"],
 		skills: ["s"],
 		hostFloor: "1.0.0",
+		reviewNote: "r",
 		uiHints: {
 			small_model: HINT,
 			middle_model: HINT,

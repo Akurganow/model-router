@@ -14,9 +14,11 @@ export const catalogueId = (source: Source): string =>
 
 // The placeholders a command or a note may hold: {marketplace}, {plugin} (the
 // catalogue id), {package} (the npm name), {id} (the OpenClaw plugin id),
-// {hermes} (the Hermes plugin name) and {backend} (the Hermes backend name).
+// {hermes} (the Hermes plugin name), {backend} (the Hermes backend name) and
+// {review} (the OpenClaw review note).
 const fill = (source: Source, text: string, marketplace: string): string =>
 	text
+		.replaceAll("{review}", source.openclaw.reviewNote)
 		.replaceAll("{marketplace}", marketplace)
 		.replaceAll("{plugin}", catalogueId(source))
 		.replaceAll("{package}", source.npm.name)
@@ -26,7 +28,7 @@ const fill = (source: Source, text: string, marketplace: string): string =>
 
 export const installCommands = (
 	source: Source,
-	install: Install,
+	install: Pick<Install, "commands">,
 	marketplace: string = marketplaceArgument(source),
 ): string[] =>
 	install.commands.map((command) => fill(source, command, marketplace));

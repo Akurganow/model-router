@@ -109,7 +109,13 @@
 		"omp": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["package", "settingType", "catalogueSource", "install"],
+			"required": [
+				"package",
+				"npmCommands",
+				"settingType",
+				"catalogueSource",
+				"install"
+			],
 			"properties": {
 				"package": {
 					"type": "object",
@@ -125,6 +131,12 @@
 							"items": { "$ref": "#/$defs/text" }
 						}
 					}
+				},
+				"npmCommands": {
+					"type": "array",
+					"description": "The commands that install the npm package in Oh My Pi, for the npm README. Each holds the placeholders of an install command.",
+					"minItems": 1,
+					"items": { "$ref": "#/$defs/text" }
 				},
 				"settingType": { "$ref": "#/$defs/text" },
 				"catalogueSource": { "$ref": "#/$defs/text" },
@@ -142,6 +154,7 @@
 				"extensions",
 				"skills",
 				"hostFloor",
+				"reviewNote",
 				"uiHints",
 				"keys",
 				"install"
@@ -161,6 +174,7 @@
 					"items": { "$ref": "#/$defs/text" }
 				},
 				"hostFloor": { "$ref": "#/$defs/version" },
+				"reviewNote": { "$ref": "#/$defs/text" },
 				"uiHints": {
 					"type": "object",
 					"additionalProperties": false,
@@ -313,7 +327,7 @@
 		},
 		"install": {
 			"type": "object",
-			"description": "What the README install region shows for one harness. A command or a note holds {marketplace}, {plugin}, {package}, {id}, {hermes} and {backend}, which the builder fills from repository, name, the catalogue name, the npm name, the OpenClaw plugin id, the Hermes plugin name and the Hermes backend name. An empty ciSystems list renders as a harness that CI does not install. ciLine replaces the generated CI sentence, for a harness whose CI install differs from a user's; ciSystems still names the runners that the CI check ties to the workflow.",
+			"description": "What the README install region shows for one harness. A command or a note holds {marketplace}, {plugin}, {package}, {id}, {hermes}, {backend} and {review}, which the builder fills from repository, name, the catalogue name, the npm name, the OpenClaw plugin id, the Hermes plugin name, the Hermes backend name and the OpenClaw review note. An empty ciSystems list renders as a harness that CI does not install. ciLine replaces the generated CI sentence, for a harness whose CI install differs from a user's; ciSystems still names the runners that the CI check ties to the workflow.",
 			"additionalProperties": false,
 			"required": ["heading", "commands", "source", "ciSystems"],
 			"properties": {

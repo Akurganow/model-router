@@ -15,7 +15,10 @@
 		"subagents",
 		"model-routing",
 		"typesafe",
-		"jev"
+		"jev",
+		"openai",
+		"gemini",
+		"openrouter"
 	],
 	"privacyPolicyUrls": {
 		"claude": "https://github.com/Akurganow/model-router/blob/main/plugins/model-router/PRIVACY.md",
@@ -125,6 +128,7 @@
 			"type": "module",
 			"extensions": ["./extension/index.js"]
 		},
+		"npmCommands": ["omp plugin install {package}"],
 		"settingType": "enum",
 		"catalogueSource": "./plugins/model-router-omp",
 		"install": {
@@ -147,6 +151,7 @@
 		"settingType": "string",
 		"extensions": ["./index.js"],
 		"skills": ["./openclaw-skills"],
+		"reviewNote": "Review the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`.",
 		"hostFloor": "2026.10.10",
 		"uiHints": {
 			"small_model": {
@@ -196,7 +201,7 @@
 				"title": "Manage plugins",
 				"url": "https://docs.openclaw.ai/plugins/manage-plugins"
 			},
-			"note": "The npm package `{package}` exists only after its first publication. Review the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`.",
+			"note": "The npm package `{package}` exists only after its first publication. {review}",
 			"ciSystems": ["Ubuntu"],
 			"ciLine": "CI installs the packed npm package on Ubuntu and checks that OpenClaw loads it."
 		}
@@ -255,7 +260,7 @@
 		"name": "@akurganow/model-router",
 		"private": false,
 		"type": "module",
-		"description": "Routes subagents to a model and effort that fits the task, judged by a decision model from TypeSafe, OpenAI or Google. One package for OpenClaw and Oh My Pi.",
+		"description": "Routes each OpenClaw or Oh My Pi subagent to a small, middle or large model and an effort that fit its task.",
 		"keywords": [
 			"openclaw",
 			"oh-my-pi",
@@ -263,7 +268,13 @@
 			"subagents",
 			"model-routing",
 			"typesafe",
-			"jev"
+			"jev",
+			"openai",
+			"gemini",
+			"openrouter",
+			"openclaw-plugin",
+			"model-router",
+			"subagent"
 		],
 		"publishConfig": { "access": "public" }
 	}

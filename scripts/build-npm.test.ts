@@ -87,6 +87,18 @@ test("the README links both plugin READMEs and both privacy policies", () => {
 		assert.ok(text.includes(`(${url})`), url);
 });
 
+test("the README holds the four install commands and no first-publication note", () => {
+	const lines = (textOf(NPM_OUTPUTS.readme) ?? "").split("\n");
+	for (const command of [
+		"openclaw plugins install npm:@akurganow/model-router --force --accept-capabilities",
+		"openclaw plugins enable model-router-openclaw",
+		"openclaw plugins inspect model-router-openclaw --runtime --json",
+		"omp plugin install @akurganow/model-router",
+	])
+		assert.ok(lines.includes(command), command);
+	assert.ok(!lines.join("\n").includes("first publication"));
+});
+
 test("each rendered file equals the committed file byte for byte", () => {
 	for (const { path, text } of rendered)
 		assert.equal(formatRendered(path, text, ROOT), read(path), path);
