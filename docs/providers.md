@@ -265,7 +265,7 @@ The routing limit ends any wait, so a 429 with a long `Retry-After` can hold a t
 
 With two attempts, the first gets one request and no retry.
 The plugin gives up on it after 5 s.
-When less of the routing limit is left than that, the first attempt takes all of it and the second is never asked.
+When less of the routing limit is left than that, a first attempt that gets no answer takes all of it, and the second is never asked.
 The second then gets up to three requests as above, within the rest of the routing limit.
 One task therefore sends at most four requests.
 
