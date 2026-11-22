@@ -1,8 +1,10 @@
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { OPENCLAW_OUTPUTS } from "./outputs.ts";
-import type { Source } from "./source.ts";
+import { optionText, type Source } from "./source.ts";
 import {
+	defaultOf,
 	KEY_FIELDS,
+	keyEntries,
 	SLOT_SETTINGS,
 	TOOL_NAME,
 	VALUE_SETTINGS,
@@ -13,7 +15,7 @@ const SECRET_KEYS = Object.values(KEY_FIELDS);
 const SECRET_EXPECTED = "string";
 
 // manifest.md, "JSON Schema requirements": the config is validated against this schema before the plugin loads.
-// The two value settings carry no enumeration: OpenClaw then accepts any string, and the code counts an invalid value as the default.
+// The value settings carry no enumeration: OpenClaw then accepts any string, and the code skips the routing for a text that names no value.
 const configSchema = (source: Source): JsonObject => ({
 	type: "object",
 	additionalProperties: false,
@@ -23,7 +25,7 @@ const configSchema = (source: Source): JsonObject => ({
 				setting,
 				{
 					type: source.openclaw.settingType,
-					default: source.options[setting].default,
+					default: defaultOf(setting),
 				},
 			]),
 		),
@@ -43,11 +45,12 @@ const uiHints = (source: Source): JsonObject => ({
 			setting,
 			{
 				label: source.options[setting].title,
-				help: source.options[setting].descriptions.openclaw,
+				help: optionText(source, "openclaw", setting),
 			},
 		]),
 	),
 	...source.openclaw.uiHints,
+	...keyEntries(source.openclaw.keys),
 });
 
 // manifest/config-and-secrets.md, "secretInputs paths": the only accepted `expected` is "string".

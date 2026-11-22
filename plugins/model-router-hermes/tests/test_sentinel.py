@@ -17,11 +17,15 @@ from support import (
 # Hyphenated words: no sentinel is a key-shaped run for a scanner.
 TYPESAFE_SENTINEL = "ts-sentinel-alpha"
 OPENROUTER_SENTINEL = "or-sentinel-beta"
+OPENAI_SENTINEL = "oa-sentinel-zeta"
+GOOGLE_SENTINEL = "gm-sentinel-eta"
 CONFIG_API_SENTINEL = "cfg-sentinel-gamma"
 TASK_SENTINEL = "goal-sentinel-delta"
 CONTEXT_SENTINEL = "ctx-sentinel-epsilon"
 SECRETS = {
     "TYPESAFE_API_KEY": TYPESAFE_SENTINEL,
+    "OPENAI_API_KEY": OPENAI_SENTINEL,
+    "GEMINI_API_KEY": GOOGLE_SENTINEL,
     "OPENROUTER_API_KEY": OPENROUTER_SENTINEL,
 }
 
@@ -35,7 +39,7 @@ class SentinelTest(unittest.TestCase):
     def route(self, config, reply, **settings):
         stub = make_node_stub(self.dir, reply=reply)
         router = make_router(
-            settings=good_settings(provider="auto", **settings),
+            settings=good_settings(gateway="auto", **settings),
             api=fake_api(secrets=SECRETS),
             script=stub.script,
         )
@@ -59,6 +63,8 @@ class SentinelTest(unittest.TestCase):
         for sentinel in (
             TYPESAFE_SENTINEL,
             OPENROUTER_SENTINEL,
+            OPENAI_SENTINEL,
+            GOOGLE_SENTINEL,
             CONFIG_API_SENTINEL,
             TASK_SENTINEL,
             CONTEXT_SENTINEL,
@@ -71,7 +77,9 @@ class SentinelTest(unittest.TestCase):
         without_keys = {k: v for k, v in request.items() if k != "keys"}
         self.assertNotIn(TYPESAFE_SENTINEL, json.dumps(without_keys))
         self.assertNotIn(OPENROUTER_SENTINEL, json.dumps(without_keys))
-        for field in ("provider", "models"):
+        self.assertNotIn(OPENAI_SENTINEL, json.dumps(request))
+        self.assertNotIn(GOOGLE_SENTINEL, json.dumps(request))
+        for field in ("provider", "gateway", "models"):
             self.assertNotIn(TASK_SENTINEL, str(request[field]))
 
     def test_config_api_key_never_reaches_node_or_a_log(self):

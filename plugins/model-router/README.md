@@ -19,11 +19,13 @@ asks six questions. The answers for this mod:
 
 - **Acts on your machine as you?** No. It reads no files, writes no files of
   its own and starts no program.
-- **Reads your secrets?** Only its own TypeSafe and OpenRouter keys. Claude
-  Code hands it the plugin's sensitive `api_key` and `openrouter_api_key`
-  options from secure storage. When an option is empty, the mod reads the key
-  from `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY`. It reads a key only for a
-  provider the `provider` option allows. It reads one more environment
+- **Reads your secrets?** Only its own keys: TypeSafe, OpenAI, Google and
+  OpenRouter. Claude Code hands it the plugin's sensitive `api_key`,
+  `openai_api_key`, `google_api_key` and `openrouter_api_key` options from
+  secure storage. When an option is empty, the mod reads the key from
+  `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or
+  `OPENROUTER_API_KEY`. It reads a key only for a holder the `provider` and
+  `gateway` options allow. It reads one more environment
   variable, `CLAUDE_CODE_EFFORT_LEVEL`, and only to see whether it is set. It
   never sends its value anywhere. It reads no file.
 - **Sees your session?** The arguments of each Agent tool call. It sends the
@@ -42,8 +44,8 @@ asks six questions. The answers for this mod:
   the [extended scope](#which-calls-are-routed), replaces the one the agent's
   definition sets. A model without effort gets none. It registers one tool the model can call,
   `mcp__model-router__config`. The tool reads the settings and opens the
-  mod's own dialog. It writes the `provider` and `scope` options only after
-  you pick a value there. The two commands write the same options, and only from your own prompt. The
+  mod's own dialog. It writes the `provider`, `gateway` and `scope` options
+  only after you pick a value there. The three commands write the same options, and only from your own prompt. The
   model never passes a value. [Change the options](#change-the-options) has
   the details.
 - **Acts without asking you?** No. It approves nothing, and it denies only its
@@ -51,7 +53,7 @@ asks six questions. The answers for this mod:
   and prompts decide every call. Every setting change waits for your choice in
   the mod's dialog or your own command.
 - **Spends your usage?** No model calls on your plan. Up to four requests per
-  routed call go to TypeSafe or OpenRouter, each on its own key, as
+  routed call go to the provider you chose or to OpenRouter, each on its own key, as
   [What leaves the machine](#what-leaves-the-machine) counts them. An
   OpenRouter key may also pay for your chat models, and the scoring requests
   spend the same credit.
@@ -63,6 +65,7 @@ This is the whole surface:
 | --- | --- | --- |
 | hook | `agent.offer` | Records which agents Claude Code offers, from where and with which description. It passes each offer on unchanged. |
 | hook | `command.run{command=model-router:provider}` | Answers the `/model-router:provider` command. |
+| hook | `command.run{command=model-router:gateway}` | Answers the `/model-router:gateway` command. |
 | hook | `command.run{command=model-router:scope}` | Answers the `/model-router:scope` command. |
 | hook | `session.start` | Registers the `mcp__model-router__config` tool, at session start and after each plugin reload. |
 | hook | `agent.spawn` | Scores the brief and sets the subagent's `model` before it starts. |
@@ -70,11 +73,11 @@ This is the whole surface:
 | hook | `tool.call{tool=mcp__model-router__config}` | Answers the `config` tool: the settings and the dialogs. |
 | hook | `turn.step` | Sets the routed `effort` on the subagent's requests. |
 | hook | `turn.complete` | Forgets that a finished subagent's first request already waited for the spawns in flight. |
-| call | `$.clock.after` | The 8 s limit and the request's timers run on it, for example the retry wait. |
+| call | `$.clock.after` | The 10 s limit and the request's timers run on it, for example the retry wait. |
 | call | `$.clock.sleep` | Bounds the wait of a subagent's first request for the spawns in flight, 1 s at most. |
-| call | `$.config.set` | Writes the `provider` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. |
-| call | `$.env.get` | Reads `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY`, and whether `CLAUDE_CODE_EFFORT_LEVEL` is set, the only variables the mod reads. |
-| call | `$.http.fetch` | Sends the request to TypeSafe or OpenRouter. |
+| call | `$.config.set` | Writes the `provider`, `gateway` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. |
+| call | `$.env.get` | Reads `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and `OPENROUTER_API_KEY`, and whether `CLAUDE_CODE_EFFORT_LEVEL` is set, the only variables the mod reads. |
+| call | `$.http.fetch` | Sends the request to `api.typesafe.ai`, `api.openai.com`, `generativelanguage.googleapis.com` or `openrouter.ai`. |
 | call | `$.tool.check` | Asks for the permission verdict of a call to the `config` tool. |
 | call | `$.tool.register` | Registers the `config` tool. |
 | call | `$.ui.ask` | Opens the mod's dialog for a setting. |
@@ -91,73 +94,108 @@ disable the plugin in `/plugin`.
 
 ### Options
 
-The plugin has four options. Set them in the install dialog or in `/config`:
+The plugin has seven options. Set them in the install dialog or in `/config`:
 
-- `provider`: which providers may score a call, and in which order.
-  - `typesafe` (default): TypeSafe only.
-  - `openrouter`: OpenRouter only.
-  - `auto`: TypeSafe, then OpenRouter when TypeSafe fails.
-  - `openrouter-first`: OpenRouter, then TypeSafe when OpenRouter fails.
+- `provider`: whose model scores a call. Its values are `typesafe` (the
+  default), `openai` and `google`.
+- `gateway`: how OpenRouter is used to reach the provider. Its values are
+  `direct` (the default), `auto`, `openrouter-first` and `openrouter`.
 - `scope`: which Agent calls the mod routes.
   - `core` (default): the four built-in agents, as before.
   - `extended`: also every other Agent call that passes no model and no name,
     forks excepted. [Which calls are routed](#which-calls-are-routed) lists
-    the cases. A value other than these two counts as `core`.
+    the cases.
 - `api_key`: your TypeSafe key, a sensitive value.
+- `openai_api_key`: your OpenAI key, a sensitive value.
+- `google_api_key`: your Google key, a sensitive value.
 - `openrouter_api_key`: your OpenRouter key, a sensitive value.
 
-With `auto` or `openrouter-first` and only one key set, that key's provider
-scores alone. [PRIVACY.md](PRIVACY.md) says which company receives the task
-under each value.
+[Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
+says where to get each key, and which variable the mod reads when an option is
+empty.
 
-Every request names the alias `jev-latest`. TypeSafe points it at the most
+[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
+says which model each `provider` value names, which path each `gateway` value
+takes first, and when the second one runs.
+[PRIVACY.md](PRIVACY.md) says which company receives the task under each
+value.
+
+Under `typesafe`, every request names the alias `jev-latest`. TypeSafe points it at the most
 recent official Jev release. OpenRouter routes it to its own alias for the
 newest Jev release. The alias moves when a release ships, so the picks can
 shift with no change to the plugin. TypeSafe's
 [Models](https://docs.typesafe.ai/models) page says which version it points
 to, and the log line names the model that answered.
+Under `openai` and `google`, the request names the model of that endpoint, as
+[The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
+lists.
+
+Claude Code ignores plugin options in project and local settings. No project
+can set `provider`, `gateway` or `scope`.
+[PRIVACY.md](PRIVACY.md) says what the options can and cannot change.
+
+### A stored value outside an option's list
+
+Claude Code hands the mod an option's default in place of a stored value that
+the option's list does not hold. The stored value stays in the settings.
+[The hooks module](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#hooks-module)
+holds the harness fact.
+
+So the mod never gets such a value, and Claude Code shows no
+`<setting> not valid: run setup` line for it. This platform limit makes Claude
+Code differ from the other three harnesses.
+[A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)
+holds the rule.
 
 An install updated from an earlier version follows these rules:
 
-- The removed `model` option is ignored, a stored `jev-preview` included. The
-  mod sends `jev-latest`.
-- A stored `provider` outside the four values counts as `typesafe`.
+- A stored `provider` of `auto`, `openrouter-first` or `openrouter` reaches the
+  mod as `typesafe`, on the direct path, with no setup line.
+- A stored `openrouter` asked OpenRouter only. Beside a TypeSafe key, the mod
+  now sends the task text to TypeSafe's own API.
+- With no TypeSafe key, every call then skips with `key unset`.
+- To get the earlier requests back, set `gateway` to the value `provider`
+  held. [Retired values of `provider`](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retired-values-of-provider)
+  gives the pairs.
+- The removed `model` option is ignored, a stored `jev-preview` included.
+  Under `typesafe`, the mod sends `jev-latest`.
 - A missing `scope` counts as `core`, so an update changes no routing.
-
-Claude Code ignores plugin options in project and local settings. No project
-can set `provider` or `scope`.
-[PRIVACY.md](PRIVACY.md) says what the options can and cannot change.
 
 ### Change the options
 
-Two commands show or change an option:
+Three commands show or change an option:
 
-- `/model-router:provider [auto|openrouter-first|typesafe|openrouter]`
+- `/model-router:provider [typesafe|openai|google]`
+- `/model-router:gateway [direct|auto|openrouter-first|openrouter]`
 - `/model-router:scope [core|extended]`
 
-Run a command with no value to print the current value. The provider line
-also prints the order, for example `provider: auto (typesafe, then openrouter)`.
+Run a command with no value to print the current value. The gateway line
+also prints the order, for example `gateway: auto (typesafe, then openrouter)`.
 Run it with a value, for example `/model-router:scope extended`, to write the
-option and print the new value. A value outside the list prints the allowed
-ones. When Claude Code refuses the change, the command prints
-`<setting> unchanged: <reason>`. A command writes only when you type it at
-your own prompt. From any other origin the command prints the value and writes
-nothing. When Claude runs a command itself, the command's text tells Claude to
-call the tool below. `/config` changes the same options.
+option and print the new value. Claude Code reloads the mod when an option
+changes, so the new value holds from the next subagent call of the same
+session.
+[The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands)
+says what a bad value or a refused write prints. A command writes only when
+you type it at your own prompt. From any other origin a valid value writes
+nothing, and the command prints the current value. When Claude runs a command
+itself, the command's text tells Claude to call the tool below. `/config`
+changes the same options.
 
 The tool `mcp__model-router__config` takes one optional input, `setting`:
 
-- With no setting, it returns the `provider` and `scope` lines. For each
-  provider the `provider` value allows, it adds `<provider> key: set` or
-  `<provider> key: unset`. A key counts as set when its option or its variable
-  holds a non-empty value. The tool never returns a key, its length or any
+- With no setting, it returns the provider line, the gateway line, the scope
+  line and the key lines, as
+  [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool)
+  gives them. A key counts as set when its option or its variable
+  holds a non-blank value. The tool never returns a key, its length or any
   part of it.
-- With `provider` or `scope`, the mod opens its own dialog. The current value
+- With `provider`, `gateway` or `scope`, the mod opens its own dialog. The current value
   comes first, and each label says what the value does. The mod writes only
   the value you pick. It writes nothing for free text, for the current value
   or for a dismissed or interrupted dialog. It writes nothing where no dialog
-  can open, such as `claude -p`. The reply equals the command's text for the
-  same outcome.
+  can open, such as `claude -p`. A written value, a refused write and a failed
+  write get the reply the command gives.
 
 The tool takes no key. Add a key in the plugin's settings: `/plugin` in the
 terminal, or the plugin's gear icon in VS Code. The model never passes a
@@ -167,7 +205,8 @@ dialog closes.
 
 To be guided through the choices, ask Claude to run the `model-router-setup`
 skill. It reads the settings and the key status through the tool, then asks
-about the provider, any missing key and the scope. It lists the reasons routing
+about the provider, the gateway, any missing key and the scope, and it moves a
+retired `provider` value. It lists the reasons routing
 is off and ends with a routing check. The skill lives in
 [skills/model-router-setup/](skills/model-router-setup/).
 
@@ -227,15 +266,19 @@ another model.
 ## What leaves the machine
 
 On each routed call the mod sends an HTTPS POST through Claude Code's own
-`$.http.fetch` to the first provider in the `provider` order:
+`$.http.fetch` to the first path of the `gateway` value that has a key:
 
-- TypeSafe: https://api.typesafe.ai/v1/systemone, with your TypeSafe key as
-  the bearer token.
-- OpenRouter: https://openrouter.ai/api/v1/systemone, with your OpenRouter key
-  as the bearer token.
+- The direct path, the provider's own API: `api.typesafe.ai`, `api.openai.com`
+  or `generativelanguage.googleapis.com`, with the key of the provider you
+  chose.
+- The gateway path, OpenRouter: `openrouter.ai`, with your OpenRouter key.
 
-The second provider in the order gets a request only after the first fails,
-as below. Each key goes only to its own provider. The body holds:
+[The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
+lists the address and the model of each path and the header that carries the
+key.
+
+The second attempt runs only after the first fails, as below. Each key goes
+only to the company that issued it. The body holds:
 
 - the task text, condensed and redacted as below
 - the agent's role: the built-in `general-purpose` and `claude` agents send a
@@ -243,7 +286,7 @@ as below. Each key goes only to its own provider. The body holds:
   500 characters. [model-choice.md](docs/model-choice.md#the-role-of-the-default-agent)
   says why
 - the caller's one-line description, masked like the task text
-- the Jev alias `jev-latest` and two scoring questions with their
+- the model of the endpoint and two scoring questions with their
   three texts each, which ship with the plugin
 
 Two steps run on the task text before it leaves. Fenced code blocks become a
@@ -257,10 +300,10 @@ plugin agents leave too. [The extended scope](PRIVACY.md#the-extended-scope)
 says what that can expose, and [PRIVACY.md](PRIVACY.md) lists what else the
 mod reads, stores and passes on.
 
-[Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider)
-gives the attempts at each provider.
+[Retries and the second attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-attempt)
+gives the requests of each attempt.
 
-One fixed 8 s limit covers the whole call, retries and the second provider
+One fixed 10 s limit covers the whole call, retries and the second attempt
 included. A call that runs past it runs unchanged.
 [The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing) says what a
 request in flight can cost.
@@ -281,10 +324,11 @@ log line then says `skipped` and names the cause, as
 
 ## Effort
 
-Jev answers a second question: how much work the task takes once the
+The scoring model answers a second question: how much work the task takes once the
 judgment is settled, as an index from 0 to 2. The index rests on the middle
-and moves to an end only when Jev gives that end more than a fitted factor
-times the middle's probability: 2.38 for index 0 and 1.41 for index 2. The index then maps to an effort per model:
+and moves to an end only when the model gives that end more than a fitted factor
+times the middle's probability: 2.38 for index 0 and 1.41 for index 2. The
+factors are fitted to Jev, and `openai` and `google` use them unfitted. The index then maps to an effort per model:
 
 | index | haiku | sonnet | opus |
 | --- | --- | --- | --- |
@@ -298,7 +342,7 @@ and keeps its effort. A call that names a model is not routed, so it keeps
 both. A subagent that Claude resumes with `SendMessage` keeps its routed
 effort. The mod keeps in memory the efforts of the 1024 routed subagents it
 used most recently, so a reload of the mod or a restart of Claude Code forgets
-them.
+them. A [changed option](#change-the-options) is such a reload.
 `CLAUDE_CODE_EFFORT_LEVEL` outranks either, as
 [Precedence](#precedence) says. Claude Code reads the per-invocation effort
 from v2.1.292. Under the `extended` scope the ladder also replaces an effort
@@ -311,7 +355,7 @@ The mod needs no prompt of its own. It acts whenever Claude calls the Agent
 tool. Three dispatches and what the mod does with them:
 
 1. "Copy this function into `utils.ts` exactly as given and run the tests."
-   The task holds the exact code, so Jev scores it level 0. The subagent runs
+   The task holds the exact code, so the model scores it level 0. The subagent runs
    on `haiku`.
 2. "Check this diff against the five requirements in the spec and list what
    is missing." Bounded judgment over given material scores level 1,
@@ -341,29 +385,33 @@ Claude Code then refuses adds a second line, `denied`.
   the scope, and [Which calls are routed](#which-calls-are-routed) lists the
   cases. Enable the plugin in `/plugin`.
 - A routed call logs `skipped, <cause>` and runs unchanged. After both
-  providers fail, the line names each provider with its cause, as
+  attempts fail, the line names each attempt with its cause, as
   [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. The causes are:
-  - `key unset`: no provider the `provider` option allows has a key. The
-    TypeSafe key comes from `api_key` or `TYPESAFE_API_KEY`, the OpenRouter
+  - `key unset`: no path the `gateway` option allows has a key. The
+    TypeSafe key comes from `api_key` or `TYPESAFE_API_KEY`, the OpenAI key
+    from `openai_api_key` or `OPENAI_API_KEY`, the Google key from
+    `google_api_key` or `GEMINI_API_KEY`, and the OpenRouter
     key from `openrouter_api_key` or `OPENROUTER_API_KEY`. Set one as
     [Install](https://github.com/Akurganow/model-router#install) says for
     your app, then run `/reload-plugins`. In the desktop app a saved key can
     read back as empty after a restart. [Keys in the desktop
     app](#keys-in-the-desktop-app) has the workaround.
-  - `bad reply`: the provider answered, but the answer lacks a valid score
+  - `bad reply`: the company answered, but the answer lacks a valid score
     for one of the two questions.
-  - `timeout`: a first attempt got no answer in 2 s, or the call got no
-    decision in the 8 s limit. Check the network and try again.
+  - `timeout`: a first attempt got no answer in 5 s, or the call got no
+    decision in the 10 s limit. Check the network and try again.
   - `cancelled`: Claude Code abandoned the call before the answer came, for
     example because you interrupted it.
   - `network error`: every attempt failed before an answer came. An
     organization fetch policy that refuses openrouter.ai shows as this too.
     Check the network and try again.
-  - `HTTP <status>`: the provider answered with that status, after the
-    retries for a status that is retried. `HTTP 401` means the provider
-    rejected the key. Check a TypeSafe key at https://console.typesafe.ai/keys
-    and an OpenRouter key in your OpenRouter account. `HTTP 429` and
-    `HTTP 503` mean the provider refused or failed on every attempt. Try
+  - `HTTP <status>`: the company answered with that status, after the
+    retries for a status that is retried. `HTTP 401` means the company
+    rejected the key. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
+    says where each key comes from. Google's own API answers a bad key with `HTTP 400`, as
+    [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
+    says. `HTTP 429` and
+    `HTTP 503` mean the company refused or failed on every attempt. Try
     again later.
   - `failed`: any other error.
 - A subagent ran on a model you did not expect: the mod did not route the
@@ -393,8 +441,10 @@ variable and the user settings file, and you add the variable to its `env`
 block. Until the bug is fixed:
 
 1. Open `~/.claude/settings.json`.
-2. Add `TYPESAFE_API_KEY`, `OPENROUTER_API_KEY` or both to the `env` block,
-   with your keys in place of `YOUR_KEY` and `YOUR_OPENROUTER_KEY`:
+2. Add the variable of each key you use to the `env` block:
+   `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or
+   `OPENROUTER_API_KEY`. This example sets a TypeSafe key and an OpenRouter
+   key, with your keys in place of `YOUR_KEY` and `YOUR_OPENROUTER_KEY`:
 
    ```json
    {
@@ -406,7 +456,7 @@ block. Until the bug is fixed:
    ```
 
 3. Start a new session.
-4. If you set `OPENROUTER_API_KEY`, run `/model-router:provider auto` in the
+4. If you set `OPENROUTER_API_KEY`, run `/model-router:gateway auto` in the
    session.
 5. Delete those lines once the bug is fixed.
 

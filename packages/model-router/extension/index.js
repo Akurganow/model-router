@@ -277,9 +277,7 @@ function pickModel(level, state) {
 
 // src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
-var DEFAULT_SCOPE = "core";
-var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
-var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
+var DEFAULT_SCOPE = SCOPE_VALUES[0];
 
 // src/core/output/reasons.ts
 var CALLER_EFFORT = "caller effort";
@@ -296,7 +294,177 @@ var outsideCoreScope = (id) => `${id} is outside the core scope`;
 var agentDiscoveryFailed = (id) => `${id} agent discovery failed`;
 var agentUnknown = (id) => `${id} agent unknown`;
 var setsOwnModel = (id) => `${id} sets its own model`;
-var failedAttemptText = (f) => `${f.provider} ${f.reason}`;
+var notValid = (setting) => `${setting} not valid: run setup`;
+var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
+
+// src/core/providers/provider.ts
+var MAKERS = ["typesafe", "openai", "google"];
+var KEY_HOLDERS = [...MAKERS, "openrouter"];
+var GATEWAYS = [
+  "direct",
+  "auto",
+  "openrouter-first",
+  "openrouter"
+];
+var KEY_VARIABLES = {
+  typesafe: "TYPESAFE_API_KEY",
+  openai: "OPENAI_API_KEY",
+  google: "GEMINI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY"
+};
+var FIRST_ATTEMPT_TIMEOUT_MS = 5e3;
+var GATEWAY_PATHS = {
+  direct: ["direct"],
+  auto: ["direct", "openrouter"],
+  "openrouter-first": ["openrouter", "direct"],
+  openrouter: ["openrouter"]
+};
+var narrowsGateway = (narrowed, wider) => GATEWAY_PATHS[narrowed].length < GATEWAY_PATHS[wider].length && GATEWAY_PATHS[narrowed].every((path) => GATEWAY_PATHS[wider].includes(path));
+var holderOf = (maker, path) => path === "direct" ? maker : path;
+var steps = (choice) => GATEWAY_PATHS[choice.gateway].map((path) => ({
+  maker: choice.provider,
+  path,
+  holder: holderOf(choice.provider, path)
+}));
+var holders = (choice) => "skipped" in choice ? [] : steps(choice).map((step) => step.holder);
+async function collectKeys(choice, lookup2) {
+  const keys = {};
+  for (const holder of holders(choice)) {
+    const key = await lookup2(holder);
+    if (key !== void 0) keys[holder] = key;
+  }
+  return keys;
+}
+function plan(choice, keys) {
+  const attempts = [];
+  for (const step of steps(choice)) {
+    const key = keys[step.holder];
+    if (key) attempts.push({ ...step, key });
+  }
+  return attempts.map(
+    (attempt2, i) => i < attempts.length - 1 ? { ...attempt2, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt2
+  );
+}
+
+// src/utils/error.ts
+var errorText = (err) => err instanceof Error ? err.message : String(err);
+
+// src/core/options/settings.ts
+var VALUE_SETTINGS = ["provider", "gateway", "scope"];
+var TOOL_NAME = "model_router_config";
+var LABEL_SEPARATOR = " - ";
+var TEXTS = {
+  provider: {
+    values: MAKERS,
+    about: "whose model scores subagent calls",
+    question: "Which provider's model should score subagent calls?",
+    consequences: {
+      typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to",
+      openai: "OpenAI's decision model; costs more than Jev and its answers are not fitted",
+      google: "Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text"
+    }
+  },
+  gateway: {
+    values: GATEWAYS,
+    about: "how OpenRouter is used for the provider",
+    question: "How should OpenRouter be used for the provider?",
+    consequences: {
+      direct: "the provider's own API only",
+      auto: "the provider's own API, then OpenRouter if it fails",
+      "openrouter-first": "OpenRouter, then the provider's own API if it fails",
+      openrouter: "OpenRouter only"
+    }
+  },
+  scope: {
+    values: SCOPE_VALUES,
+    about: "which agent calls the router routes",
+    question: "Which agent calls should the router route?",
+    consequences: {
+      core: "built-in general agents only",
+      extended: "also routes other agents that pass no model"
+    }
+  }
+};
+var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
+var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
+var isSilent = (stored) => typeof stored !== "string" || stored.trim() === "";
+var valueFor = (setting, stored) => isSilent(stored) ? TEXTS[setting].values[0] : TEXTS[setting].values.find((value) => value === stored);
+var readProvider = (stored) => MAKERS.find((maker) => maker === valueFor("provider", stored));
+var readGateway = (stored) => GATEWAYS.find((gateway) => gateway === valueFor("gateway", stored));
+var readScope = (stored) => SCOPE_VALUES.find((scope) => scope === valueFor("scope", stored));
+function settingsOf(stored) {
+  const provider = readProvider(stored.provider);
+  if (provider === void 0) return { skipped: notValid("provider") };
+  const gateway = readGateway(stored.gateway);
+  if (gateway === void 0) return { skipped: notValid("gateway") };
+  const scope = readScope(stored.scope);
+  if (scope === void 0) return { skipped: notValid("scope") };
+  return { provider, gateway, scope };
+}
+var scopeOf = (stored) => readScope(stored.scope) ?? DEFAULT_SCOPE;
+var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
+var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
+var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
+var alreadyValue = (value) => `already ${value}`;
+var NO_ANSWER = "no answer from the dialog";
+var NOT_OFFERED = "the answer was not one of the offered values";
+var keyLine = (holder, state) => `${holder} key: ${state}`;
+var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
+function ask(setting, current) {
+  const { values, question } = TEXTS[setting];
+  const first = valueFor(setting, current);
+  const sorted = first === void 0 ? values : [first, ...values.filter((value) => value !== first)];
+  return { question, options: sorted.map((value) => label(setting, value)) };
+}
+function pick(setting, answer) {
+  return TEXTS[setting].values.find(
+    (value) => label(setting, value) === answer
+  );
+}
+async function chooseValue(setting, current, select, apply2) {
+  const { question, options } = ask(setting, current);
+  let answer;
+  try {
+    answer = await select(question, options);
+  } catch {
+    answer = void 0;
+  }
+  if (answer === void 0) return unchanged(setting, NO_ANSWER);
+  const value = pick(setting, answer);
+  return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply2(value);
+}
+var valueLine = (setting, stored) => {
+  const value = valueFor(setting, stored[setting]);
+  if (value === void 0)
+    return `${setting}: ${String(stored[setting])} (not valid: use one of ${TEXTS[setting].values.join(", ")})`;
+  const settings = settingsOf(stored);
+  if (setting === "gateway" && !("skipped" in settings))
+    return `gateway: ${value} (${holders(settings).join(", then ")})`;
+  return `${setting}: ${value}`;
+};
+var settingsReport = (stored, extra, keys) => {
+  const settings = settingsOf(stored);
+  const keyLines = "skipped" in settings ? [] : holders(settings).map(
+    (holder) => keyLine(holder, keys[holder] === void 0 ? "unset" : "set")
+  );
+  return [
+    ...VALUE_SETTINGS.map((setting) => valueLine(setting, stored)),
+    ...extra,
+    ...keyLines
+  ].join("\n");
+};
+var toolDescription = () => `Reads the router's settings. With no input it returns the provider, gateway and scope, and whether each key the settings allow is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
+var TOOL_LABEL = "Model Router settings";
+var badCall = () => `Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
+function describeCommand(setting) {
+  const { about, values } = TEXTS[setting];
+  return `Shows or changes ${about}: ${values.join(", ")}.`;
+}
+var COMMAND_DESCRIPTIONS = {
+  provider: describeCommand("provider"),
+  gateway: describeCommand("gateway"),
+  scope: describeCommand("scope")
+};
 
 // src/core/output/line.ts
 var LINE_PREFIX = "model-router ";
@@ -318,145 +486,14 @@ var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 function decisionSuffix({
-  provider,
+  holder,
   model,
   inputTokens,
   outputTokens,
   failed
 }) {
-  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
+  return ` \xB7 ${holder}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
 }
-
-// src/core/providers/provider.ts
-var PROVIDER_VALUES = [
-  "auto",
-  "openrouter-first",
-  "typesafe",
-  "openrouter"
-];
-var PROVIDERS = ["typesafe", "openrouter"];
-var KEY_VARIABLES = {
-  typesafe: "TYPESAFE_API_KEY",
-  openrouter: "OPENROUTER_API_KEY"
-};
-var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var MODELS = {
-  typesafe: "jev-latest",
-  openrouter: "jev-latest"
-};
-var DEFAULT_VALUE = "typesafe";
-var ORDER = {
-  auto: PROVIDERS,
-  "openrouter-first": ["openrouter", "typesafe"],
-  typesafe: ["typesafe"],
-  openrouter: ["openrouter"]
-};
-var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
-var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
-var order = (value) => ORDER[resolve(value)];
-async function collectKeys(value, lookup2) {
-  const keys = {};
-  for (const provider of order(value)) {
-    const key = await lookup2(provider);
-    if (key !== void 0) keys[provider] = key;
-  }
-  return keys;
-}
-function plan(value, keys) {
-  const attempts = [];
-  for (const provider of order(value)) {
-    const key = keys[provider];
-    if (key) attempts.push({ provider, model: MODELS[provider], key });
-  }
-  return attempts.map(
-    (attempt2, i) => i < attempts.length - 1 ? { ...attempt2, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt2
-  );
-}
-
-// src/utils/error.ts
-var errorText = (err) => err instanceof Error ? err.message : String(err);
-
-// src/core/options/settings.ts
-var VALUE_SETTINGS = ["provider", "scope"];
-var TOOL_NAME = "model_router_config";
-var LABEL_SEPARATOR = " - ";
-var TEXTS = {
-  provider: {
-    values: PROVIDER_VALUES,
-    resolve,
-    about: "which providers score subagent calls",
-    question: "Which providers should score subagent calls?",
-    consequences: {
-      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
-      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
-      typesafe: "TypeSafe only",
-      openrouter: "OpenRouter only"
-    }
-  },
-  scope: {
-    values: SCOPE_VALUES,
-    resolve: resolveScope,
-    about: "which agent calls the router routes",
-    question: "Which agent calls should the router route?",
-    consequences: {
-      core: "built-in general agents only",
-      extended: "also routes other agents that pass no model"
-    }
-  }
-};
-var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
-var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
-var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
-var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
-var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
-var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
-var alreadyValue = (value) => `already ${value}`;
-var NO_ANSWER = "no answer from the dialog";
-var NOT_OFFERED = "the answer was not one of the offered values";
-var keyLine = (provider, state) => `${provider} key: ${state}`;
-var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
-function ask(setting, current) {
-  const { values, resolve: resolve2, question } = TEXTS[setting];
-  const first = resolve2(current);
-  const sorted = [first, ...values.filter((value) => value !== first)];
-  return { question, options: sorted.map((value) => label(setting, value)) };
-}
-function pick(setting, answer) {
-  return TEXTS[setting].values.find(
-    (value) => label(setting, value) === answer
-  );
-}
-async function chooseValue(setting, current, select, apply2) {
-  const { question, options } = ask(setting, current);
-  let answer;
-  try {
-    answer = await select(question, options);
-  } catch {
-    answer = void 0;
-  }
-  if (answer === void 0) return unchanged(setting, NO_ANSWER);
-  const value = pick(setting, answer);
-  return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply2(value);
-}
-var settingsReport = (provider, scope, extra, keys) => [
-  valueLine("provider", provider),
-  valueLine("scope", scope),
-  ...extra,
-  ...order(provider).map(
-    (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
-  )
-].join("\n");
-var toolDescription = () => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
-var TOOL_LABEL = "Model Router settings";
-var badCall = () => `Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
-function describeCommand(setting) {
-  const { about, values } = TEXTS[setting];
-  return `Shows or changes ${about}: ${values.join(", ")}.`;
-}
-var COMMAND_DESCRIPTIONS = {
-  provider: describeCommand("provider"),
-  scope: describeCommand("scope")
-};
 
 // src/utils/serializer.ts
 function serializer() {
@@ -470,10 +507,23 @@ function serializer() {
 
 // src/adapters/omp/settings.ts
 import { readFile } from "node:fs/promises";
-var NARROWABLE = ["auto", "openrouter-first"];
-function narrow(global, project) {
-  const value = resolve(global);
-  return NARROWABLE.includes(value) && (project === "typesafe" || project === "openrouter") ? project : value;
+var gatewayOf = (text) => GATEWAYS.find((gateway) => gateway === text);
+var namesNoValue = (setting, text) => valueFor(setting, text) === void 0;
+function applied(global, effective) {
+  const { provider: fromGlobal, gateway: gatewayFromGlobal } = global;
+  const { provider, gateway, scope } = effective;
+  return {
+    provider: namesNoValue("provider", provider) ? provider : fromGlobal,
+    gateway: gatewayText(gatewayFromGlobal, gateway),
+    scope
+  };
+}
+function gatewayText(global, effective) {
+  if (namesNoValue("gateway", effective)) return effective;
+  if (namesNoValue("gateway", global)) return global;
+  const wider = gatewayOf(global);
+  const narrowed = gatewayOf(effective);
+  return wider && narrowed && narrowsGateway(narrowed, wider) ? effective : global;
 }
 async function readSettings(omp, cwd) {
   const plugin = omp.plugin ?? FALLBACK_NAME;
@@ -482,12 +532,19 @@ async function readSettings(omp, cwd) {
       readGlobal(omp.getPluginsLockfile(), plugin),
       omp.getPluginSettings(plugin, cwd)
     ]);
-    const { provider: fromGlobal } = global;
-    const { provider: fromProject, scope } = effective;
-    return {
-      provider: narrow(fromGlobal, fromProject),
-      scope: resolveScope(scope)
-    };
+    return applied(global, effective);
+  } catch {
+    return void 0;
+  }
+}
+async function readGlobalSettings(omp) {
+  const plugin = omp.plugin ?? FALLBACK_NAME;
+  try {
+    const { provider, gateway, scope } = await readGlobal(
+      omp.getPluginsLockfile(),
+      plugin
+    );
+    return { provider, gateway, scope };
   } catch {
     return void 0;
   }
@@ -506,18 +563,18 @@ async function readGlobal(path, plugin) {
   const mine = isRecord(settings) ? settings[plugin] : void 0;
   return isRecord(mine) ? mine : {};
 }
-async function findAttempts(ctx, value) {
-  const keys = await collectKeys(value, (provider) => findKey(ctx, provider));
-  return plan(value, keys);
+async function findAttempts(ctx, choice) {
+  const keys = await collectKeys(choice, (holder) => findKey(ctx, holder));
+  return plan(choice, keys);
 }
-async function findKey(ctx, provider) {
+async function findKey(ctx, holder) {
   try {
-    const key = await ctx.modelRegistry.getApiKeyForProvider(provider);
+    const key = await ctx.modelRegistry.getApiKeyForProvider(holder);
     const trimmed = nonEmpty(key);
     if (trimmed !== void 0) return trimmed;
   } catch {
   }
-  return nonEmpty(process.env[KEY_VARIABLES[provider]]);
+  return nonEmpty(process.env[KEY_VARIABLES[holder]]);
 }
 function read(lookup2, id, settings, fallback) {
   try {
@@ -549,28 +606,38 @@ function say(ctx, text) {
   }
 }
 async function withSettings(omp, ctx, show) {
-  const settings = await readSettings(omp, ctx.cwd);
-  return settings === void 0 ? UNREADABLE : show(settings);
+  const stored = await readSettings(omp, ctx.cwd);
+  return stored === void 0 ? UNREADABLE : show(stored);
 }
-var readAll = (omp, ctx) => withSettings(omp, ctx, async ({ provider, scope }) => {
-  const keys = await collectKeys(provider, (name) => findKey(ctx, name));
-  return settingsReport(provider, scope, [], keys);
-});
+var readAll = (omp, ctx) => withSettings(
+  omp,
+  ctx,
+  async (stored) => settingsReport(
+    stored,
+    [],
+    await collectKeys(settingsOf(stored), (holder) => findKey(ctx, holder))
+  )
+);
 async function apply(omp, ctx, setting, value) {
   if (!isValue(setting, value)) return useOneOf(setting);
   const { plugin } = omp;
   const before = await readSettings(omp, ctx.cwd);
-  if (before === void 0 || plugin === void 0)
+  const global = await readGlobalSettings(omp);
+  if (before === void 0 || global === void 0 || plugin === void 0)
     return unchanged(setting, UNREADABLE);
-  if (before[setting] === value) return unchanged(setting, alreadyValue(value));
-  try {
-    await omp.writeSetting(ctx.cwd, plugin, setting, value);
-  } catch (err) {
-    return unchangedBy(setting, err);
+  if (global[setting] === value && before[setting] === value)
+    return unchanged(setting, alreadyValue(value));
+  const wrote = global[setting] !== value;
+  if (wrote) {
+    try {
+      await omp.writeSetting(ctx.cwd, plugin, setting, value);
+    } catch (err) {
+      return unchangedBy(setting, err);
+    }
   }
-  const now = (await readSettings(omp, ctx.cwd))?.[setting] ?? value;
-  const line = valueLine(setting, now);
-  return now === value ? line : [line, projectOverrides(setting)].join(LINE_BREAK);
+  const after = wrote ? await readSettings(omp, ctx.cwd) ?? { ...before, [setting]: value } : before;
+  const line = valueLine(setting, after);
+  return after[setting] === value ? line : [line, projectOverrides(setting)].join(LINE_BREAK);
 }
 async function dialog(omp, ctx, setting) {
   if (!ctx.hasUI) return unchanged(setting, NO_ANSWER);
@@ -589,11 +656,7 @@ async function runTool(omp, ctx, params) {
 }
 async function runCommand(omp, ctx, setting, args) {
   const value = args.trim();
-  return value === "" ? withSettings(
-    omp,
-    ctx,
-    (settings) => valueLine(setting, settings[setting])
-  ) : apply(omp, ctx, setting, value);
+  return value === "" ? withSettings(omp, ctx, (stored) => valueLine(setting, stored)) : apply(omp, ctx, setting, value);
 }
 var reply = (text) => ({
   content: [{ type: "text", text }]
@@ -619,7 +682,7 @@ function registerConfig(omp, pi) {
 }
 
 // src/core/scoring/limit.ts
-var ROUTING_LIMIT_MS = 8e3;
+var ROUTING_LIMIT_MS = 1e4;
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 function abortCategory(signal) {
   return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
@@ -776,9 +839,11 @@ async function checkGates(omp, pi, ctx, spawning = { agent: TASK }) {
   const reason = spawnCheck(spawning, batch.facts);
   return reason === void 0 ? batch : { closed: reason };
 }
-async function openBatch(omp, pi, ctx, settings) {
-  if (settings === void 0) return { closed: UNREADABLE };
-  const attempts = await findAttempts(ctx, settings.provider);
+async function openBatch(omp, pi, ctx, stored) {
+  if (stored === void 0) return { closed: UNREADABLE };
+  const settings = settingsOf(stored);
+  if ("skipped" in settings) return { closed: settings.skipped };
+  const attempts = await findAttempts(ctx, settings);
   if (attempts.length === 0) return { closed: KEY_UNSET };
   const config = readConfig(omp.lookup, pi.pi.settings);
   if (config === void 0) return { closed: UNREADABLE };
@@ -904,67 +969,166 @@ function fallsBack(failure) {
   }
 }
 
-// src/core/scoring/formats/system-one.ts
+// src/core/scoring/formats/shared.ts
+var stateText = (state) => JSON.stringify(state);
+var questionMap = (parts) => Object.fromEntries(parts.map((p) => [p.key, p.question]));
+var count = (v) => typeof v === "number" ? v : null;
+var usageNamed = (input, output) => (usage) => {
+  if (!isRecord(usage)) return void 0;
+  return {
+    input_tokens: count(usage[input]),
+    output_tokens: count(usage[output])
+  };
+};
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
-function parseProbabilities(answers, key) {
+function levelProbabilities(p0, p1, p2) {
+  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+var mapAnswer = (answers, key) => {
   const a = isRecord(answers) ? answers[key] : void 0;
   if (!isRecord(a)) return void 0;
   const { type, probabilities } = a;
   if (type !== "score" || !isRecord(probabilities)) return void 0;
   if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
   const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
-    return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
-}
-function parse(text) {
+  return levelProbabilities(p0, p1, p2);
+};
+function parseJson(text) {
   try {
     return JSON.parse(text);
   } catch {
     return void 0;
   }
 }
-var count = (v) => typeof v === "number" ? v : null;
-function usageOf(usage) {
-  if (!isRecord(usage)) return void 0;
-  const { input_tokens, output_tokens } = usage;
-  return {
-    input_tokens: count(input_tokens),
-    output_tokens: count(output_tokens)
-  };
-}
-function read2(parts, text) {
-  const reply2 = parse(text);
+var replyReader = (probabilitiesOf, usageOf) => (parts, text) => {
+  const reply2 = parseJson(text);
   const { answers, model, usage } = isRecord(reply2) ? reply2 : {};
   const pairs = [];
   for (const part of parts) {
-    const probabilities = parseProbabilities(answers, part.key);
+    const probabilities = probabilitiesOf(answers, part.key);
     if (!probabilities) return MALFORMED;
     pairs.push([part, probabilities]);
   }
   return { answers: pairs, model, usage: usageOf(usage) };
-}
-var SYSTEM_ONE = {
+};
+
+// src/core/scoring/formats/gemini-decisions.ts
+var GEMINI_DECISIONS = {
   body: (parts, state, model) => JSON.stringify({
-    state,
     model,
-    questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
+    input: stateText(state),
+    questions: questionMap(parts)
   }),
-  read: read2
+  read: replyReader(
+    mapAnswer,
+    usageNamed("total_input_tokens", "total_output_tokens")
+  )
+};
+
+// src/core/scoring/formats/openai-decisions.ts
+function listAnswer(answers, key) {
+  if (!Array.isArray(answers)) return void 0;
+  const [item, ...others] = answers.filter(isRecord).filter(({ name }) => name === key);
+  if (!item || others.length > 0) return void 0;
+  const { type, probabilities } = item;
+  if (type !== "score" || !Array.isArray(probabilities)) return void 0;
+  if (probabilities.length !== LEVELS.length) return void 0;
+  const byValue = /* @__PURE__ */ new Map();
+  for (const entry2 of probabilities) {
+    if (!isRecord(entry2)) return void 0;
+    const { value, probability } = entry2;
+    byValue.set(value, probability);
+  }
+  return levelProbabilities(byValue.get(0), byValue.get(1), byValue.get(2));
+}
+var OPENAI_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    model,
+    input: stateText(state),
+    questions: parts.map(({ key, question }) => ({
+      type: "score",
+      name: key,
+      instructions: question.instructions,
+      levels: question.criteria.map((description, index) => ({
+        label: String(index),
+        description
+      }))
+    }))
+  }),
+  read: replyReader(listAnswer, usageNamed("input_tokens", "output_tokens"))
+};
+
+// src/core/scoring/formats/openrouter-decisions.ts
+var OPENROUTER_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    state: stateText(state),
+    model,
+    questions: questionMap(parts)
+  }),
+  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
+};
+
+// src/core/scoring/formats/system-one.ts
+var SYSTEM_ONE = {
+  body: (parts, state, model) => JSON.stringify({ state, model, questions: questionMap(parts) }),
+  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
 };
 
 // src/core/scoring/endpoints.ts
+var BEARER = { name: "Authorization", prefix: "Bearer " };
+var GOOGLE_KEY = { name: "x-goog-api-key", prefix: "" };
+var JEV = "jev-latest";
 var ENDPOINTS = {
   typesafe: {
-    url: "https://api.typesafe.ai/v1/systemone",
-    format: SYSTEM_ONE
+    direct: {
+      url: "https://api.typesafe.ai/v1/systemone",
+      format: SYSTEM_ONE,
+      model: JEV,
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/v1/systemone",
+      format: SYSTEM_ONE,
+      model: JEV,
+      keyHeader: BEARER
+    }
   },
-  openrouter: {
-    url: "https://openrouter.ai/api/v1/systemone",
-    format: SYSTEM_ONE
+  openai: {
+    direct: {
+      url: "https://api.openai.com/v1/decisions",
+      format: OPENAI_DECISIONS,
+      model: "gpt-6-luna",
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "openai/gpt-6-luna-decisions",
+      keyHeader: BEARER
+    }
+  },
+  google: {
+    direct: {
+      url: "https://generativelanguage.googleapis.com/v1beta/decisions",
+      format: GEMINI_DECISIONS,
+      model: "gemini-decision-1",
+      keyHeader: GOOGLE_KEY
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "google/gemini-decision-1",
+      keyHeader: BEARER
+    }
   }
 };
-var endpointOf = (attempt2) => Object.hasOwn(ENDPOINTS, attempt2.provider) ? ENDPOINTS[attempt2.provider] : void 0;
+function endpointOf(attempt2) {
+  if (!Object.hasOwn(ENDPOINTS, attempt2.maker)) return void 0;
+  const rows = ENDPOINTS[attempt2.maker];
+  return Object.hasOwn(rows, attempt2.path) ? rows[attempt2.path] : void 0;
+}
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
@@ -1053,11 +1217,11 @@ async function exchange(fetchFn, url, request, caller, timeout, clock) {
 }
 function pause(ms, caller, clock) {
   if (caller.aborted) return Promise.resolve();
-  return new Promise((resolve2) => {
+  return new Promise((resolve) => {
     const done = () => {
       timer.cancel();
       caller.removeEventListener("abort", done);
-      resolve2();
+      resolve();
     };
     const timer = clock.after(ms, done);
     caller.addEventListener("abort", done, { once: true });
@@ -1088,14 +1252,14 @@ async function askOnce(input, attempt2) {
   const { parts, state, fetchFn, clock, signal } = input;
   const endpoint = endpointOf(attempt2);
   if (!endpoint) return UNKNOWN;
-  const { url, format } = endpoint;
-  const body = format.body(parts, state, attempt2.model);
+  const { url, format, model, keyHeader } = endpoint;
+  const body = format.body(parts, state, attempt2.model ?? model);
   const received = await send(
     fetchFn,
     url,
     {
       headers: {
-        Authorization: `Bearer ${attempt2.key}`,
+        [keyHeader.name]: `${keyHeader.prefix}${attempt2.key}`,
         Accept: "application/json",
         "Content-Type": "application/json",
         "User-Agent": USER_AGENT
@@ -1112,12 +1276,12 @@ async function askOnce(input, attempt2) {
   if (isFailure(received)) return received;
   if (!isSuccess(received.status))
     return { failure: "status", status: received.status };
-  const read3 = format.read(parts, received.text);
-  if (isFailure(read3)) return read3;
+  const read2 = format.read(parts, received.text);
+  if (isFailure(read2)) return read2;
   return {
-    answers: read3.answers,
-    model: cleanModel(read3.model),
-    usage: read3.usage
+    answers: read2.answers,
+    model: cleanModel(read2.model),
+    usage: read2.usage
   };
 }
 async function ask2(input, attempt2) {
@@ -1137,14 +1301,14 @@ async function route(input) {
     const result = await ask2(input, attempt2);
     if (isFailure(result)) {
       failed.push({
-        provider: attempt2.provider,
+        holder: attempt2.holder,
         reason: skipText(result, abortCategory(signal))
       });
       if (!fallsBack(result)) break;
-      if (i < attempts.length - 1) input.onFallback?.(attempt2.provider);
+      if (i < attempts.length - 1) input.onFallback?.(attempt2.holder);
       continue;
     }
-    const decision = toDecision(result, attempt2.provider);
+    const decision = toDecision(result, attempt2.holder);
     const [first] = failed;
     return first ? { ...decision, firstFailed: first } : decision;
   }
@@ -1155,11 +1319,11 @@ function skip(failed) {
   if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
   return { skipped: failed.map(failedAttemptText).join(", ") };
 }
-function toDecision({ answers, model, usage }, provider) {
+function toDecision({ answers, model, usage }, holder) {
   const parts = {};
   for (const [part, probabilities] of answers)
     parts[part.key] = { level: part.pick(probabilities), probabilities };
-  return { parts, provider, model, usage };
+  return { parts, holder, model, usage };
 }
 
 // src/core/decision/decide.ts
@@ -1182,7 +1346,7 @@ function decide(decision, tierKey, workKey) {
     work: work2.level,
     probabilities: `${tier2.probability}/${work2.probability}`,
     suffix: decisionSuffix({
-      provider: decision.provider,
+      holder: decision.holder,
       model: decision.model,
       inputTokens: decision.usage?.input_tokens,
       outputTokens: decision.usage?.output_tokens,
@@ -1222,8 +1386,8 @@ async function scoreItems(items, context, { attempts, facts }, deadline) {
       const reason = itemCheck(agent, facts, item.model);
       if (reason !== void 0) return { ...pending, stored: skipped(reason) };
       const routing = {
-        attempts: attempts.filter((a) => !passedOver.has(a.provider)),
-        onFallback: (p) => void passedOver.add(p)
+        attempts: attempts.filter((a) => !passedOver.has(a.holder)),
+        onFallback: (holder) => void passedOver.add(holder)
       };
       const decided = await scoreItem(
         item,
@@ -1289,9 +1453,9 @@ function link({ byKey }, entry2, key) {
 }
 function unlink({ byKey }, entry2) {
   for (const key of entry2.keys) {
-    const holders = byKey.get(key);
-    holders?.delete(entry2);
-    if (holders?.size === 0) byKey.delete(key);
+    const holders2 = byKey.get(key);
+    holders2?.delete(entry2);
+    if (holders2?.size === 0) byKey.delete(key);
   }
   entry2.keys.clear();
 }
@@ -1345,8 +1509,8 @@ function createStore() {
     // More than one match is ambiguous, and an ambiguous key takes nothing.
     // A decision binds to its agent: another agent takes nothing and leaves it stored.
     take(key, agent) {
-      const holders = key === void 0 ? void 0 : c.byKey.get(key);
-      const [entry2] = holders?.size === 1 ? holders : [];
+      const holders2 = key === void 0 ? void 0 : c.byKey.get(key);
+      const [entry2] = holders2?.size === 1 ? holders2 : [];
       if (entry2?.agent !== agent) return void 0;
       remove(c, entry2);
       return { stored: entry2.stored, index: entry2.index };
@@ -1384,8 +1548,8 @@ function createRouter(omp, pi) {
     if (!Array.isArray(tasks)) return;
     const eligible = eligibleItems(tasks);
     if (eligible.length === 0) return;
-    const settings = await readSettings(omp, ctx.cwd);
-    const scope = settings?.scope ?? DEFAULT_SCOPE;
+    const stored = await readSettings(omp, ctx.cwd);
+    const scope = stored === void 0 ? DEFAULT_SCOPE : scopeOf(stored);
     const items = eligible.filter(({ agent }) => inScope(agent, scope));
     if (items.length === 0) return;
     const skipAll = (reason) => report(
@@ -1394,7 +1558,7 @@ function createRouter(omp, pi) {
     );
     const budget = budgetFor(readTimeoutSetting(omp.lookup, pi.pi.settings));
     if ("closed" in budget) return skipAll(budget.closed);
-    const gates = await openBatch(omp, pi, ctx, settings);
+    const gates = await openBatch(omp, pi, ctx, stored);
     if ("closed" in gates) return skipAll(gates.closed);
     const scored = await scoreItems(
       items,
@@ -1402,11 +1566,11 @@ function createRouter(omp, pi) {
       gates,
       budget.deadline - (Date.now() - started)
     );
-    for (const { index, item, agent, stored } of scored)
-      store.add(event.toolCallId, index, item.name, agent, stored);
+    for (const { index, item, agent, stored: stored2 } of scored)
+      store.add(event.toolCallId, index, item.name, agent, stored2);
     report(
       ctx,
-      scored.map(({ index, stored }) => entry(index, stored.line))
+      scored.map(({ index, stored: stored2 }) => entry(index, stored2.line))
     );
   }
   async function onSpawn(event, ctx) {

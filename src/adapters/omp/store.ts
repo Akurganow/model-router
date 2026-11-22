@@ -5,14 +5,14 @@ import type { Routed } from "./effort.ts";
 export const STORE_MAX = 64;
 
 // A skipped item stores its line alone.
-export type Stored = {
+export type StoredItem = {
 	readonly line: string;
 	readonly routed?: Routed;
 };
 // The index numbers a spawn-time line.
-type Taken = { readonly stored: Stored; readonly index: number };
+type Taken = { readonly stored: StoredItem; readonly index: number };
 type Entry = {
-	readonly stored: Stored;
+	readonly stored: StoredItem;
 	readonly agent: string;
 	readonly call: string;
 	readonly index: number;
@@ -72,7 +72,7 @@ export function createStore() {
 			index: number,
 			name: unknown,
 			agent: string,
-			stored: Stored,
+			stored: StoredItem,
 		): void {
 			const oldest = c.entries.values().next();
 			if (c.entries.size >= STORE_MAX && !oldest.done) remove(c, oldest.value);

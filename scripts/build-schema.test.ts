@@ -23,9 +23,9 @@ test("an unknown key fails and names its path", () => {
 
 test("a missing required key fails and names its path", () => {
 	const broken = source();
-	delete broken.claude.userConfig.keys.api_key.title;
+	delete broken.claude.userConfig.keys.typesafe.title;
 	assert.deepEqual(validate(schema, broken), [
-		"$.claude.userConfig.keys.api_key.title: required key is missing",
+		"$.claude.userConfig.keys.typesafe.title: required key is missing",
 	]);
 });
 
@@ -91,7 +91,7 @@ test("an annotation next to a reference is allowed", () => {
 test("an additionalProperties that is not a boolean is a schema error", () => {
 	const odd = {
 		type: "object",
-		additionalProperties: { type: "string" },
+		additionalProperties: "no",
 	} as unknown as Schema;
 	assert.throws(() => validate(odd, {}), /additionalProperties.*boolean/);
 });
@@ -105,4 +105,16 @@ test("an enum lists the allowed values and a value outside it fails", () => {
 test("a default is an annotation and does not constrain the value", () => {
 	const schema = { type: "string", default: "a" } as Schema;
 	assert.deepEqual(validate(schema, "z"), []);
+});
+
+test("an additionalProperties schema checks each unnamed member and names its path", () => {
+	const schema = {
+		type: "object",
+		properties: { named: { type: "number" } },
+		additionalProperties: { type: "string" },
+	} as unknown as Schema;
+	assert.deepEqual(validate(schema, { named: 1, a: "x" }), []);
+	assert.deepEqual(validate(schema, { named: 1, a: "x", b: 2 }), [
+		"$.b: expected string, got number",
+	]);
 });

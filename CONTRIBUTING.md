@@ -80,16 +80,18 @@ every commit as a [conventional commit](#commits).
   - `brief/`: the task text that leaves the machine, condensed and masked.
   - `parts/`: the questions `tier` and `work`, their shared types and the
     pick rule. It imports only `parts/part.ts` and `utils/`.
-  - `providers/`: the provider list, the values of the `provider` setting,
-    their order, the key names, each provider's default model and the plan
-    of attempts. An attempt carries its provider's key. `collectKeys` and
+  - `providers/`: the makers, the key holders, the paths, the values of the
+    `gateway` setting with the paths each allows, the key names and the plan
+    of attempts. An attempt names its maker, its path and its key holder, and
+    carries that holder's key. `collectKeys` and
     `collectKeysSync` hold the one rule that collects the keys, for a lookup
     that waits and for one that answers at once; `found_keys` in the Hermes
     plugin's `settings.py` walks the same order in Python, over the generated
     constants. It imports nothing from `scoring/`.
   - `scoring/`: the call. `route` asks the attempts in order and picks each
     part's level, `ask` sends one request, `endpoints.ts` holds one table
-    with each provider's URL and wire format, `formats/` holds the wire
+    with a row for each maker and path: the URL, the wire format, the model
+    name and the key header. `formats/` holds the wire
     formats, `transport/` the request and its retries. `limit.ts` holds the
     routing limit: its duration, the signal that the clock aborts when it
     runs out, and the race of a handler's work against a deadline.
@@ -149,7 +151,7 @@ every commit as a [conventional commit](#commits).
 - `docs/clients.md` states how each client loads a package, and the wiki's evidence pages hold the evidence.
   `docs/design.md` gives the reasons for the generated copies, the single
   version and the CI checks.
-  `docs/providers.md` holds what the four plugins do the same way when they ask Jev.
+  `docs/providers.md` holds what the four plugins do the same way when they ask the scoring model.
 - `evals/` and `scripts/evals.ts` run real clients against the plugins.
 - `.agents/skills/` holds the project skills of the agents that work in this
   repository, and `.claude/skills` is a symbolic link to it.
@@ -259,12 +261,13 @@ node scripts/calibrate.ts <typesafe|openrouter> [model]
 ```
 
 `scripts/calibrate.ts` is a developer tool, and Claude Code never runs it. It
-needs Node 22.18 or 23.6 or later. Its first argument names the provider. It
-reads that provider's key from a masked prompt or from stdin. The prompt names
+needs Node 22.18 or 23.6 or later. Its first argument names the key holder:
+`typesafe` for TypeSafe's own API, `openrouter` for the gateway. It
+reads that holder's key from a masked prompt or from stdin. The prompt names
 the URL that gets the key, for example
-`OpenRouter API key for https://openrouter.ai/api/v1/systemone:`. The script sends
+`openrouter API key for https://openrouter.ai/api/v1/systemone:`. The script sends
 `calibration.jsonl`, 172 labelled cases, to the endpoint that the
-plugins use for that provider. Its optional second argument names the Jev
+plugins use for that holder. Its optional second argument names the Jev
 model and defaults to `jev-latest`. It exits 1 when tier or work
 agreement falls below 85%. This script, `scripts/compare-rules.ts` and
 `scripts/evals.ts` warn on stderr when Jev answers as another model than

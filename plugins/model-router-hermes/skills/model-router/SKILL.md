@@ -5,7 +5,7 @@ description: Use to pick a model or effort for a delegated task by hand, when a 
 
 # model-router for Hermes Agent
 
-model-router is the `delegate_task` backend. It scores each task through Jev, on TypeSafe or OpenRouter as the `provider` setting allows.
+model-router is the `delegate_task` backend. It scores each task through the decision model of the `provider` setting, on the provider's own API or through OpenRouter as the `gateway` setting allows.
 
 - Level 0 gives the task the person's `small_model`, level 1 their `middle_model` and level 2 their `large_model`. A level whose slot is unset keeps the model Hermes would give it. A slot that holds a model sets that `model` and its `provider` on the task.
 - It sets `reasoning_effort` from a fixed ladder: `low`, `medium`, `high` or `xhigh`.
@@ -16,9 +16,9 @@ model-router is the `delegate_task` backend. It scores each task through Jev, on
 
 Each `tasks[]` item takes three parameters of this plugin:
 
-- `description`: one line that says what the task is. Set it on every task. Jev reads it with the goal.
+- `description`: one line that says what the task is. Set it on every task. The scoring model reads it with the goal.
 - `reasoning_effort`: one of `low`, `medium`, `high` or `xhigh`. The child runs at it, and the plugin still picks the model.
-- `level`: `0`, `1` or `2`. The child runs on that level's model, and Jev scores nothing. Such a task carries no `route.label` when its model is set. When the slot is unset, it runs on Hermes's model with the label `model-router L<level> <slot> model unset`.
+- `level`: `0`, `1` or `2`. The child runs on that level's model, and the scoring model scores nothing. Such a task carries no `route.label` when its model is set. When the slot is unset, it runs on Hermes's model with the label `model-router L<level> <slot> model unset`.
 
 Leave `reasoning_effort` and `level` unset on a first dispatch. Set them only to escalate.
 

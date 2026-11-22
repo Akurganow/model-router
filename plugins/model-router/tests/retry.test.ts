@@ -51,7 +51,7 @@ test("the limit cuts a retry wait short", KEYED, async ($, on) => {
 	const h = harness(on, { replies: [retryAfter, {}] });
 	await offerAll($);
 	const pending = runAgent($, h);
-	await h.clock.advance(8000);
+	await h.clock.advance(10000);
 	await pending;
 	expect(h.fetched).toBe(1);
 	expect(h.logs).toEqual(["skipped, timeout"]);

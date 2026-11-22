@@ -5,7 +5,12 @@ from support import CONSTANTS, FakeCtx, UnreadableCtx, fake_api, good_settings, 
 
 TEXTS = CONSTANTS["texts"]
 LINES = TEXTS["lineBreak"]
-SECRETS = {"TYPESAFE_API_KEY": "typesafe-secret-one", "OPENROUTER_API_KEY": "openrouter-secret-2"}
+SECRETS = {
+    "TYPESAFE_API_KEY": "typesafe-secret-one",
+    "OPENAI_API_KEY": "openai-secret-three",
+    "GEMINI_API_KEY": "google-secret-four",
+    "OPENROUTER_API_KEY": "openrouter-secret-2",
+}
 
 
 def handler_for(settings=None, secrets=None, **api_overrides):
@@ -26,15 +31,41 @@ def call(handler, args=None, **kwargs):
 
 
 class ReadAllTest(unittest.TestCase):
-    def test_no_input_gives_the_provider_the_three_models_and_the_key_lines(self):
+    def test_nothing_stored_gives_the_defaults_the_unset_models_and_the_key_line(self):
+        handler = handler_for({}, {"TYPESAFE_API_KEY": "x"})
+        self.assertEqual(
+            call(handler),
+            "provider: typesafe\n"
+            "gateway: direct (typesafe)\n"
+            "small_model: unset\n"
+            "middle_model: unset\n"
+            "large_model: unset\n"
+            "typesafe key: set",
+        )
+
+    def test_a_setting_that_is_not_valid_shows_its_notice_and_lists_no_key(self):
+        looked_up = []
+        models = "\nsmall_model: unset\nmiddle_model: unset\nlarge_model: unset"
+        gateways = "direct, auto, openrouter-first, openrouter"
+        for stored, expected in (
+            ({"provider": "auto"}, "provider: auto (not valid: use one of typesafe, openai, google)\ngateway: direct"),
+            ({"gateway": "fast"}, f"provider: typesafe\ngateway: fast (not valid: use one of {gateways})"),
+        ):
+            with self.subTest(stored):
+                handler = handler_for(stored, get_secret=looked_up.append)
+                self.assertEqual(call(handler), expected + models)
+        self.assertEqual(looked_up, [])
+
+    def test_no_input_gives_the_settings_the_three_models_and_the_key_lines(self):
         handler = handler_for(
-            good_settings(provider="auto", large_model=None), {"TYPESAFE_API_KEY": "x"}
+            good_settings(gateway="auto", large_model=None), {"TYPESAFE_API_KEY": "x"}
         )
         self.assertEqual(
             call(handler),
             LINES.join(
                 [
-                    TEXTS["providerLines"]["auto"],
+                    "provider: typesafe",
+                    "gateway: auto (typesafe, then openrouter)",
                     "small_model: openrouter small-model",
                     "middle_model: unset",
                     "large_model: unset",
@@ -44,18 +75,19 @@ class ReadAllTest(unittest.TestCase):
             ),
         )
 
-    def test_only_the_keys_the_provider_allows_are_listed(self):
-        for value, names in CONSTANTS["providers"]["order"].items():
+    def test_only_the_keys_the_gateway_allows_are_listed(self):
+        holders = {
+            "direct": ["typesafe"],
+            "auto": ["typesafe", "openrouter"],
+            "openrouter-first": ["openrouter", "typesafe"],
+            "openrouter": ["openrouter"],
+        }
+        for value, names in holders.items():
             with self.subTest(value):
-                lines = call(handler_for(good_settings(provider=value), SECRETS)).split(LINES)
+                lines = call(handler_for(good_settings(gateway=value), SECRETS)).split(LINES)
                 self.assertEqual(
-                    lines[4:], [TEXTS["keyLines"][name]["set"] for name in names]
+                    lines[5:], [TEXTS["keyLines"][name]["set"] for name in names]
                 )
-
-    def test_an_unset_provider_reads_as_the_default(self):
-        text = call(handler_for({}))
-        default = CONSTANTS["providers"]["default"]
-        self.assertEqual(text.split(LINES)[0], TEXTS["providerLines"][default])
 
     def test_a_blank_key_is_unset(self):
         text = call(handler_for(secrets={"TYPESAFE_API_KEY": "   "}))
@@ -71,14 +103,14 @@ class ReadAllTest(unittest.TestCase):
     def test_an_incomplete_model_slot_shows_the_missing_part_as_unset(self):
         settings = good_settings(small_model={"model": "m/x"}, large_model={"provider": "p"})
         lines = call(handler_for(settings)).split(LINES)
-        self.assertEqual(lines[1], "small_model: unset m/x")
-        self.assertEqual(lines[3], "large_model: unset")
+        self.assertEqual(lines[2], "small_model: unset m/x")
+        self.assertEqual(lines[4], "large_model: unset")
 
     def test_the_report_shows_a_model_as_configured(self):
         settings = good_settings(middle_model={"provider": "openrouter", "model": "middle-model"})
         handler = handler_for(settings)
         self.assertEqual(
-            call(handler).split(LINES)[1:4],
+            call(handler).split(LINES)[2:5],
             [
                 "small_model: openrouter small-model",
                 "middle_model: openrouter middle-model",
@@ -87,7 +119,7 @@ class ReadAllTest(unittest.TestCase):
         )
 
     def test_a_blank_spaces_or_missing_model_is_unset_in_every_slot(self):
-        for index, slot in enumerate(("small", "middle", "large"), start=1):
+        for index, slot in enumerate(("small", "middle", "large"), start=2):
             for value in ({"provider": "openrouter", "model": ""}, {"model": "   "}, None):
                 with self.subTest(slot=slot, value=value):
                     settings = good_settings(**{f"{slot}_model": value})
@@ -95,13 +127,13 @@ class ReadAllTest(unittest.TestCase):
                     self.assertEqual(lines[index], f"{slot}_model: unset")
 
     def test_extra_keywords_from_hermes_are_accepted(self):
-        self.assertIn("provider", call(handler_for(), task_id="t", parent_agent=None))
+        self.assertIn("provider: typesafe", call(handler_for(), task_id="t", parent_agent=None))
 
 
 class NoKeyLeakTest(unittest.TestCase):
     @staticmethod
     def outputs(secrets):
-        handler = handler_for(good_settings(provider="auto"), secrets)
+        handler = handler_for(good_settings(gateway="auto"), secrets)
         return [handler({})]
 
     def test_no_output_holds_a_key(self):

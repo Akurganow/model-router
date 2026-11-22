@@ -1,7 +1,7 @@
 {
 	"name": "model-router",
 	"version": "0.24.3",
-	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev. For each routed Agent call it sends the task text, condensed to at most 12,000 characters, the agent's description, cut to 500 characters, and the call's one-line description, all with token-shaped strings such as keys masked, to api.typesafe.ai, openrouter.ai or both, as its provider option allows, each with its own key. The built-in general-purpose and claude agents send a fixed text in place of their description. The scope option picks the calls: core routes the four built-in agents, extended also routes user, project and plugin agents and sends their text. A config tool opens the plugin's own dialog to change both options. A key set as an environment variable is visible to every process Claude Code starts.",
+	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev or the decision model the provider option names. For each routed Agent call it sends the task text, condensed to at most 12,000 characters, the agent's description, cut to 500 characters, and the call's one-line description, all with token-shaped strings such as keys masked, to the provider's own API (api.typesafe.ai, api.openai.com or generativelanguage.googleapis.com), to openrouter.ai or to both, as its provider and gateway options allow, each with its own key. The built-in general-purpose and claude agents send a fixed text in place of their description. The scope option picks the calls: core routes the four built-in agents, extended also routes user, project and plugin agents and sends their text. A config tool opens the plugin's own dialog to change the provider, gateway and scope options. A key set as an environment variable is visible to every process Claude Code starts.",
 	"author": {
 		"name": "Akurganow",
 		"url": "https://github.com/Akurganow"
@@ -21,9 +21,14 @@
 	"skills": ["."],
 	"commands": {
 		"provider": {
-			"description": "Shows or changes which providers score subagent calls: auto, openrouter-first, typesafe, openrouter.",
-			"argumentHint": "[auto|openrouter-first|typesafe|openrouter]",
-			"content": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"provider\" it asks the person which providers should score subagent calls and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its provider option in the plugin's settings."
+			"description": "Shows or changes whose model scores subagent calls: typesafe, openai, google.",
+			"argumentHint": "[typesafe|openai|google]",
+			"content": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"provider\" it asks the person whose model should score subagent calls and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its provider option in the plugin's settings."
+		},
+		"gateway": {
+			"description": "Shows or changes how OpenRouter is used for the provider: direct, auto, openrouter-first, openrouter.",
+			"argumentHint": "[direct|auto|openrouter-first|openrouter]",
+			"content": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"gateway\" it asks the person how OpenRouter should be used for the provider and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its gateway option in the plugin's settings."
 		},
 		"scope": {
 			"description": "Shows or changes which agent calls the router routes: core, extended.",
@@ -35,21 +40,40 @@
 		"api_key": {
 			"type": "string",
 			"title": "TypeSafe API key",
-			"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider option allows TypeSafe. The README says where to get one.",
+			"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider option is typesafe and the gateway option allows TypeSafe's own API. The README says where to get one.",
+			"sensitive": true
+		},
+		"openai_api_key": {
+			"type": "string",
+			"title": "OpenAI API key",
+			"description": "Your OpenAI API key. The plugin sends it to OpenAI only, as the bearer token of the scoring request, and only when the provider option is openai and the gateway option allows OpenAI's own API. The README says where to get one.",
+			"sensitive": true
+		},
+		"google_api_key": {
+			"type": "string",
+			"title": "Google API key",
+			"description": "Your Google API key. The plugin sends it to Google only, in the x-goog-api-key header of the scoring request, and only when the provider option is google and the gateway option allows Google's own API. The README says where to get one.",
 			"sensitive": true
 		},
 		"openrouter_api_key": {
 			"type": "string",
 			"title": "OpenRouter API key",
-			"description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the provider option allows OpenRouter.",
+			"description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the gateway option allows OpenRouter.",
 			"sensitive": true
 		},
 		"provider": {
 			"type": "string",
-			"title": "Jev provider",
-			"description": "Which providers may score a subagent call, and in which order. typesafe: TypeSafe only. openrouter: OpenRouter only. auto: TypeSafe, then OpenRouter if TypeSafe fails. openrouter-first: OpenRouter, then TypeSafe. With auto or openrouter-first and both keys set, one call may reach both companies.",
-			"options": ["auto", "openrouter-first", "typesafe", "openrouter"],
+			"title": "Scoring provider",
+			"description": "Whose model scores a subagent call. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to. openai: OpenAI's decision model; costs more than Jev and its answers are not fitted. google: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.",
+			"options": ["typesafe", "openai", "google"],
 			"default": "typesafe"
+		},
+		"gateway": {
+			"type": "string",
+			"title": "OpenRouter gateway",
+			"description": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one call may reach both companies.",
+			"options": ["direct", "auto", "openrouter-first", "openrouter"],
+			"default": "direct"
 		},
 		"scope": {
 			"type": "string",

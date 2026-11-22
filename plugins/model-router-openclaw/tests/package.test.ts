@@ -12,6 +12,7 @@ import {
 	readSettings,
 } from "../../../src/adapters/openclaw/settings.ts";
 import { systemOneAnswer } from "../../../src/core/__tests__/support/replies.ts";
+import { settingsOf } from "../../../src/core/options/settings.ts";
 
 const PLUGIN = join(import.meta.dirname, "..");
 const TREE = join(PLUGIN, "..", "..", "packages", "model-router");
@@ -95,18 +96,22 @@ test("the config schema accepts each default", () => {
 			"default" in property ? [[name, property.default]] : [],
 		),
 	);
-	assert.deepEqual(Object.keys(defaults).sort(), ["provider", "scope"]);
+	assert.deepEqual(Object.keys(defaults).sort(), [
+		"gateway",
+		"provider",
+		"scope",
+	]);
 	assert.deepEqual(validate(schema, defaults), []);
 });
 
-test("the config schema accepts any string, and the code reads an invalid value as the default", () => {
-	for (const name of ["provider", "scope"])
+test("the config schema accepts any string, and the code skips routing for an invalid value", () => {
+	for (const name of ["provider", "gateway", "scope"])
 		assert.equal(property(name)?.enum, undefined, name);
-	const invalid = { provider: "nope", scope: "nope" };
+	const invalid = { provider: "nope", gateway: "nope", scope: "nope" };
 	assert.deepEqual(validate(schema, invalid), []);
-	const fallback = readSettings(undefined, {});
-	assert.equal(readSettings(undefined, invalid).provider, fallback.provider);
-	assert.equal(readSettings(undefined, invalid).scope, fallback.scope);
+	assert.deepEqual(settingsOf(readSettings(undefined, invalid).stored), {
+		skipped: "provider not valid: run setup",
+	});
 });
 
 // A record that notes each field the settings code asks it for.
@@ -128,10 +133,16 @@ test("the config schema rejects no field the code reads", () => {
 	const settings = watched();
 	readSettings(undefined, settings.record);
 	const keys = watched();
-	readKeys(undefined, keys.record, "auto", {});
+	readKeys(
+		undefined,
+		keys.record,
+		{ provider: "typesafe", gateway: "auto" },
+		{},
+	);
 	const fields = [...settings.read, ...keys.read].sort();
 	assert.deepEqual(fields, [
 		"api_key",
+		"gateway",
 		"large_model",
 		"middle_model",
 		"openrouter_api_key",
@@ -143,7 +154,8 @@ test("the config schema rejects no field the code reads", () => {
 		assert.ok(schema.properties?.[field], `${field} is in the schema`);
 	assert.deepEqual(
 		validate(schema, {
-			provider: "auto",
+			provider: "typesafe",
+			gateway: "auto",
 			scope: "extended",
 			small_model: "a/b",
 			middle_model: "e/f",

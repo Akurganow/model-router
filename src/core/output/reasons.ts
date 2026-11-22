@@ -22,13 +22,16 @@ export const agentDiscoveryFailed = (id: string): string =>
 	`${id} agent discovery failed`;
 export const agentUnknown = (id: string): string => `${id} agent unknown`;
 export const setsOwnModel = (id: string): string => `${id} sets its own model`;
+// The skip text for a stored setting that names no value of its setting.
+export const notValid = (setting: string): string =>
+	`${setting} not valid: run setup`;
 
 // A failed attempt as plain text, so this folder needs no type of the scoring code.
 export type PlainFailedAttempt = {
-	readonly provider: string;
+	readonly holder: string;
 	readonly reason: string;
 };
 
 // Both the skip text and the routing line name a failed attempt this way.
 export const failedAttemptText = (f: PlainFailedAttempt): string =>
-	`${f.provider} ${f.reason}`;
+	`${f.holder} ${f.reason}`;

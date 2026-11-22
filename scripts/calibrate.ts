@@ -3,8 +3,15 @@ import { prepareBrief, routingState } from "#core/brief/brief.ts";
 import { formatProbability } from "#core/output/line.ts";
 import { tier } from "#core/parts/tier.ts";
 import { work } from "#core/parts/work.ts";
-import { type Attempt, type Provider, plan } from "#core/providers/provider.ts";
-import { ENDPOINTS } from "#core/scoring/endpoints.ts";
+import {
+	type Attempt,
+	type Choice,
+	holders,
+	type KeyHolder,
+	type Maker,
+	plan,
+} from "#core/providers/provider.ts";
+import { endpointOf } from "#core/scoring/endpoints.ts";
 import { limitSignal, ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type Decision, route, type Skipped } from "#core/scoring/route.ts";
 import type { Fetch } from "#core/scoring/transport/send.ts";
@@ -15,11 +22,24 @@ import { fitWarnings } from "./jev-fit.ts";
 const AGREEMENT_BAR = 0.85;
 const CASE_HEAD_CHARS = 60;
 const PERCENT = 100;
-const PROVIDER_NAMES: Readonly<Record<Provider, string>> = {
-	typesafe: "TypeSafe",
-	openrouter: "OpenRouter",
-};
-const USAGE = `usage: node scripts/calibrate.ts <typesafe|openrouter> [model] [--record <file>]  (typesafe sends the cases to ${ENDPOINTS.typesafe.url}, openrouter to ${ENDPOINTS.openrouter.url}; enter that provider's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
+// The factors of the pick rule and the question texts are fitted to this maker's answers.
+const MAKER: Maker = "typesafe";
+// The gateways the script calibrates through: the maker's own API, and OpenRouter.
+const ASKED_GATEWAYS = ["direct", "openrouter"] as const;
+// The key holders the script asks, each with the choice that reaches its endpoint.
+const ASKED = ASKED_GATEWAYS.flatMap((gateway) => {
+	const choice: Choice = { provider: MAKER, gateway };
+	return holders(choice).map((holder) => ({ holder, choice }));
+});
+
+// The endpoint row of the step a key holder's choice asks. The prompt needs it before a key is typed, so the key is a stand-in that only the plan reads.
+function rowOf(holder: KeyHolder, choice: Choice) {
+	const [step] = plan(choice, { [holder]: "-" });
+	const row = step && endpointOf(step);
+	if (!row) throw new Error(`no endpoint row for ${holder}`);
+	return row;
+}
+const USAGE = `usage: node scripts/calibrate.ts <${ASKED.map(({ holder }) => holder).join("|")}> [model] [--record <file>]  (the cases go to: ${ASKED.map(({ holder, choice }) => `${holder} ${rowOf(holder, choice).url}`).join(", ")}; enter that provider's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
 
 export type Case = {
 	role: string;
@@ -71,11 +91,10 @@ function keystroke(typed: string, ch: string): Keystroke {
 
 function typeKey(
 	stdin: NodeJS.ReadStream,
-	provider: Provider,
+	holder: KeyHolder,
+	url: string,
 ): Promise<string> {
-	process.stderr.write(
-		`${PROVIDER_NAMES[provider]} API key for ${ENDPOINTS[provider].url}: `,
-	);
+	process.stderr.write(`${holder} API key for ${url}: `);
 	stdin.setRawMode(true);
 	stdin.resume();
 	return new Promise((resolve) => {
@@ -102,10 +121,11 @@ function typeKey(
 
 export async function readKey(
 	stdin: NodeJS.ReadStream,
-	provider: Provider,
+	holder: KeyHolder,
+	url: string,
 ): Promise<string> {
 	stdin.setEncoding("utf8");
-	if (stdin.isTTY) return typeKey(stdin, provider);
+	if (stdin.isTTY) return typeKey(stdin, holder, url);
 	let text = "";
 	for await (const chunk of stdin) text += chunk;
 	return text.trim();
@@ -129,7 +149,7 @@ function hit(
  * Runs the calibration and returns the process exit code. Returns EXIT_USAGE
  * for bad arguments, an unwritable record file or a missing key. Returns 0 when
  * tier and work agreement both meet the bar, and 1 otherwise. Expects the
- * provider first, then an optional model and an optional --record file. Throws
+ * key holder first, then an optional model and an optional --record file. Throws
  * when calibration.jsonl is unreadable or holds invalid JSON.
  */
 export async function main(
@@ -140,12 +160,9 @@ export async function main(
 	const at = args.indexOf("--record");
 	const record = at === -1 ? undefined : args[at + 1];
 	const positional = at === -1 ? args : args.toSpliced(at, 2);
-	const [provider, model, ...surplus] = positional;
-	if (
-		(provider !== "typesafe" && provider !== "openrouter") ||
-		surplus.length > 0 ||
-		(at !== -1 && !record)
-	) {
+	const [name, model, ...surplus] = positional;
+	const asked = ASKED.find(({ holder }) => holder === name);
+	if (!asked || surplus.length > 0 || (at !== -1 && !record)) {
 		console.error(USAGE);
 		return EXIT_USAGE;
 	}
@@ -158,15 +175,15 @@ export async function main(
 			return EXIT_USAGE;
 		}
 	}
-	const key = await readKey(stdin, provider);
+	const { holder, choice } = asked;
+	const key = await readKey(stdin, holder, rowOf(holder, choice).url);
 	if (!key) {
 		console.error(USAGE);
 		return EXIT_USAGE;
 	}
-	const attempts = plan(provider, { [provider]: key }).map((a) => ({
-		...a,
-		model: model ?? a.model,
-	}));
+	const attempts = plan(choice, { [holder]: key }).map((a) =>
+		model === undefined ? a : { ...a, model },
+	);
 	const cases: Case[] = readFileSync(
 		new URL("../calibration.jsonl", import.meta.url),
 		"utf8",
@@ -213,7 +230,7 @@ export async function main(
 		return a;
 	};
 	console.log(
-		`${attempts[0]?.model} answered as ${[...answeredBy].join(", ") || "unknown"}`,
+		`${model ?? rowOf(holder, choice).model} answered as ${[...answeredBy].join(", ") || "unknown"}`,
 	);
 	// A warning, not a failure: the agreement alone decides the exit code.
 	for (const warning of fitWarnings(answeredBy)) console.error(warning);

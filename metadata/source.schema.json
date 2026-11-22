@@ -57,9 +57,10 @@
 		"options": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["provider", "scope"],
+			"required": ["provider", "gateway", "scope"],
 			"properties": {
-				"provider": { "$ref": "#/$defs/providerOption" },
+				"provider": { "$ref": "#/$defs/option" },
+				"gateway": { "$ref": "#/$defs/option" },
 				"scope": { "$ref": "#/$defs/option" }
 			}
 		},
@@ -82,9 +83,10 @@
 				"commandContents": {
 					"type": "object",
 					"additionalProperties": false,
-					"required": ["provider", "scope"],
+					"required": ["provider", "gateway", "scope"],
 					"properties": {
 						"provider": { "$ref": "#/$defs/text" },
+						"gateway": { "$ref": "#/$defs/text" },
 						"scope": { "$ref": "#/$defs/text" }
 					}
 				},
@@ -96,12 +98,7 @@
 						"optionType": { "$ref": "#/$defs/text" },
 						"keys": {
 							"type": "object",
-							"additionalProperties": false,
-							"required": ["api_key", "openrouter_api_key"],
-							"properties": {
-								"api_key": { "$ref": "#/$defs/secret" },
-								"openrouter_api_key": { "$ref": "#/$defs/secret" }
-							}
+							"additionalProperties": { "$ref": "#/$defs/secret" }
 						}
 					}
 				},
@@ -146,6 +143,7 @@
 				"skills",
 				"hostFloor",
 				"uiHints",
+				"keys",
 				"install"
 			],
 			"properties": {
@@ -166,33 +164,30 @@
 				"uiHints": {
 					"type": "object",
 					"additionalProperties": false,
-					"required": [
-						"small_model",
-						"middle_model",
-						"large_model",
-						"api_key",
-						"openrouter_api_key"
-					],
+					"required": ["small_model", "middle_model", "large_model"],
 					"properties": {
 						"small_model": { "$ref": "#/$defs/hint" },
 						"middle_model": { "$ref": "#/$defs/hint" },
-						"large_model": { "$ref": "#/$defs/hint" },
-						"api_key": { "$ref": "#/$defs/secretHint" },
-						"openrouter_api_key": { "$ref": "#/$defs/secretHint" }
+						"large_model": { "$ref": "#/$defs/hint" }
 					}
+				},
+				"keys": {
+					"type": "object",
+					"additionalProperties": { "$ref": "#/$defs/secretHint" }
 				},
 				"install": { "$ref": "#/$defs/install" }
 			}
 		},
 		"hermes": {
 			"type": "object",
-			"description": "What only the Hermes plugin manifest and the README install region need. Hermes has no scope setting.",
+			"description": "What only the Hermes plugin manifest and the README install region need.",
 			"additionalProperties": false,
 			"required": [
 				"pluginName",
 				"backendName",
 				"requiresHermes",
 				"settings",
+				"keys",
 				"install"
 			],
 			"properties": {
@@ -202,20 +197,16 @@
 				"settings": {
 					"type": "object",
 					"additionalProperties": false,
-					"required": [
-						"small_model",
-						"middle_model",
-						"large_model",
-						"typesafe_api_key",
-						"openrouter_api_key"
-					],
+					"required": ["small_model", "middle_model", "large_model"],
 					"properties": {
 						"small_model": { "$ref": "#/$defs/hint" },
 						"middle_model": { "$ref": "#/$defs/hint" },
-						"large_model": { "$ref": "#/$defs/hint" },
-						"typesafe_api_key": { "$ref": "#/$defs/hint" },
-						"openrouter_api_key": { "$ref": "#/$defs/hint" }
+						"large_model": { "$ref": "#/$defs/hint" }
 					}
+				},
+				"keys": {
+					"type": "object",
+					"additionalProperties": { "$ref": "#/$defs/hint" }
 				},
 				"install": { "$ref": "#/$defs/install" }
 			}
@@ -304,34 +295,13 @@
 		"option": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["default", "title", "descriptions"],
+			"required": ["title", "descriptions"],
 			"properties": {
-				"default": { "$ref": "#/$defs/text" },
 				"title": { "$ref": "#/$defs/text" },
 				"descriptions": {
 					"type": "object",
+					"description": "One text for each harness that stores the setting. A harness that lacks the setting has no text.",
 					"additionalProperties": false,
-					"required": ["claude", "omp", "openclaw"],
-					"properties": {
-						"claude": { "$ref": "#/$defs/text" },
-						"omp": { "$ref": "#/$defs/text" },
-						"openclaw": { "$ref": "#/$defs/text" }
-					}
-				}
-			}
-		},
-		"providerOption": {
-			"type": "object",
-			"description": "The provider option, which Hermes also offers. Hermes has no scope option.",
-			"additionalProperties": false,
-			"required": ["default", "title", "descriptions"],
-			"properties": {
-				"default": { "$ref": "#/$defs/text" },
-				"title": { "$ref": "#/$defs/text" },
-				"descriptions": {
-					"type": "object",
-					"additionalProperties": false,
-					"required": ["claude", "omp", "openclaw", "hermes"],
 					"properties": {
 						"claude": { "$ref": "#/$defs/text" },
 						"omp": { "$ref": "#/$defs/text" },

@@ -33,6 +33,7 @@ test("a plain spawn of the requesting agent itself is routed", () => {
 		effort: { kind: "set" },
 		task: "do the work",
 		description: "",
+		chosen: SETTINGS,
 	});
 });
 
@@ -131,7 +132,7 @@ const other = (
 	gate({
 		params: { task: "t", agentId: OTHER, ...params },
 		config,
-		settings: extended,
+		chosen: extended,
 	});
 
 test("an unreadable config gives agent discovery failed", () => {
@@ -147,7 +148,7 @@ test("an inherited property name is not a configured agent", () => {
 	const result = gate({
 		params: { task: "t", agentId: "constructor" },
 		config: agents({ entries: {} }),
-		settings: extended,
+		chosen: extended,
 	});
 	assert.equal(skipped(result), agentUnknown("constructor"));
 });
@@ -219,20 +220,29 @@ test("no key for any allowed provider skips with key unset", () => {
 	assert.equal(skipped(gate({ hasKey: false })), KEY_UNSET);
 });
 
+test("a setting that is not valid skips with its setup reason before the key check", () => {
+	assert.equal(
+		skipped(
+			gate({
+				chosen: { skipped: "provider not valid: run setup" },
+				hasKey: false,
+			}),
+		),
+		"provider not valid: run setup",
+	);
+});
+
 const NO_MODELS = {
 	...SETTINGS,
 	models: { small: undefined, middle: undefined, large: undefined },
 };
 
 test("no model slot set still routes, so the spawn gets its effort", () => {
-	routed(gate({ settings: NO_MODELS }));
+	routed(gate({ chosen: NO_MODELS }));
 });
 
 test("key unset still skips first when no model is set", () => {
-	assert.equal(
-		skipped(gate({ hasKey: false, settings: NO_MODELS })),
-		KEY_UNSET,
-	);
+	assert.equal(skipped(gate({ hasKey: false, chosen: NO_MODELS })), KEY_UNSET);
 });
 
 test("key unset comes before every other skip, as in omp", () => {
@@ -261,7 +271,7 @@ test("subagent model set comes before the agent checks, as in omp", () => {
 			gate({
 				params: { task: "t", agentId: OTHER },
 				config,
-				settings: extended,
+				chosen: extended,
 			}),
 		),
 		"subagent model set",
@@ -273,7 +283,7 @@ test("a silent pass comes before every skip", () => {
 		gate({
 			params: { task: "t", model: "a/b" },
 			hasKey: false,
-			settings: NO_MODELS,
+			chosen: NO_MODELS,
 		}),
 		{ outcome: "pass" },
 	);
@@ -341,7 +351,7 @@ test("effort step 1 decides over every configured value", () => {
 			gate({
 				params: { task: "t", thinking: "low" },
 				config,
-				settings: extended,
+				chosen: extended,
 			}),
 		),
 		{
@@ -372,7 +382,7 @@ test("effort step 3: under core the requester's thinking is kept", () => {
 
 test("effort step 4: under extended the requester's thinking is replaced", () => {
 	assert.deepEqual(
-		effort(gate({ config: thinking(undefined, "high"), settings: extended })),
+		effort(gate({ config: thinking(undefined, "high"), chosen: extended })),
 		{ kind: "set" },
 	);
 });
@@ -411,13 +421,13 @@ test("an unreadable config skips the route with settings unreadable", () => {
 test("settings unreadable comes after every other skip of the spawn of the requesting agent itself", () => {
 	assert.equal(skipped(gate({ config: undefined, hasKey: false })), KEY_UNSET);
 	assert.equal(
-		skipped(gate({ config: undefined, settings: NO_MODELS })),
+		skipped(gate({ config: undefined, chosen: NO_MODELS })),
 		UNREADABLE,
 	);
 });
 
 test("the first match decides: under extended a global default beats a per-agent value", () => {
-	const result = gate({ config: thinking("low", "high"), settings: extended });
+	const result = gate({ config: thinking("low", "high"), chosen: extended });
 	assert.deepEqual(effort(result), { kind: "keep", label: "config effort" });
 });
 

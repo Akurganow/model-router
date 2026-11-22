@@ -100,6 +100,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 - When a hooks module fails, Claude Code skips it and the session continues.
   A broken mod can therefore look like one that does nothing.
 - A mod installed from a marketplace loads at the next start of Claude Code, or at `/reload-plugins` in an open session.
+- When `$.config.set` writes an option of a mod in an open session, Claude Code reloads the mod's hooks module at once, with no `/reload-plugins`, and runs its `session.start` hook again.
+- A command typed at the prompt of an interactive session reaches `command.run` with the origin kind `composer`. A command given as the prompt of `claude -p` reaches it with another origin.
 - In print mode, a turn that ends in a sign-in error exits with status 1, and it has loaded the hooks module and run its `session.start` hook.
 - Claude Code caches an installed plugin by version.
   An edit reaches the installed copy only after the version rises and the user installs again.
@@ -135,6 +137,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
   It also notes that its checks apply none of the plugin directory's own rules for hooks modules.
 - `claude plugin test [directory]` runs every file under the directory whose name ends in `.test.ts` or `.test.tsx`.
   It needs no session, sign-in or network, and exits `1` when a test fails.
+- Under `claude plugin test`, a `$.ui.ask` dialog given one option holds that option followed by `Yes`.
+  Two or more options arrive as given. The type declarations Claude Code writes for a plugin say of `$.ui.ask` that fewer than two options are padded with Yes/No.
 
 ### Package files
 
@@ -311,6 +315,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 - A `smol` or `slow` role that `modelRoles` does not name resolves through an explicitly configured `default` model before omp's built-in priority list.
 - A child's retry fallback chain is `retry.fallbackChains` at the spawn's own model role, kept from before the role's expansion, and otherwise at `default`.
   A role that a spawn hook returns does not change the spawn's role, so `retry.fallbackChains` at that role does not reach the spawn.
+- omp's provider ids for OpenAI and Google are `openai` and `google`.
+  `getApiKeyForProvider` hands the id it is given to omp's credential lookup unchanged.
+  The environment variable of `openai` is `OPENAI_API_KEY`. That of `google` is `GEMINI_API_KEY`, and `GOOGLE_API_KEY` is not read for it.
 
 ### omp thinking levels
 
@@ -594,11 +601,11 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   `OPENCLAW_SKIP_CHANNELS` skips the start of the channels, `OPENCLAW_SKIP_CRON` disables cron, and `OPENCLAW_NO_AUTO_UPDATE` skips the update check at start.
   `OPENCLAW_SKIP_CRON` takes `1` alone, and the other four take `true`, `yes` and `on` too.
 - A workspace `.env` is a lower-trust source.
-  OpenClaw drops known provider credential variables from it, and `OPENROUTER_API_KEY` is on that list.
+  OpenClaw drops known provider credential variables from it. `OPENROUTER_API_KEY`, `OPENAI_API_KEY` and `GEMINI_API_KEY` are on that list.
   `TYPESAFE_API_KEY` is not on the static list.
   The global `~/.openclaw/.env` and the Gateway's process environment are trusted sources.
 - Plugins receive resolved values, with defaults selected from the source config, for the `secretInputs` paths a manifest declares.
-  This plugin declares `api_key` and `openrouter_api_key`.
+  This plugin declares `api_key`, `openai_api_key`, `google_api_key` and `openrouter_api_key`.
   It reads the live config first, where it skips a value that is not text, such as an unresolved SecretRef object, and then `api.pluginConfig`.
 
 ### OpenClaw question tool
@@ -700,9 +707,12 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 - `hermes config set` on a key under `plugins.entries.<plugin id>.settings` takes a JSON object and stores it as a mapping. `hermes config get` prints its fields on separate lines.
   `hermes config set` takes a scalar on such a key too and stores its text, which `hermes config get` prints.
 - A `secret` entry never reaches `config.yaml`. The Desktop settings form stores it in `.env` under the entry's `env:` name, and the plugin reads it with `get_secret(NAME)` from `agent.secret_scope`.
+  A plugin update that renames a `secret` entry and keeps its `env:` name leaves the stored value in place: the settings form's field list shows the renamed entry as set, and `get_secret(NAME)` returns the value.
 - Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY`, so a `secret` entry with that `env:` name sets that provider's key too.
 - With the provider `auto`, or with none requested, Hermes takes its own session's provider in this order: a key or a base URL given on the command line, `model.provider` of `config.yaml`, a `model.base_url` on a loopback host when `model` names no provider, a usable `OPENROUTER_API_KEY`, the OpenRouter pool, another provider's key in the environment, an OAuth login.
   `model.provider` may name a registry provider, `openrouter`, `custom` or a named custom provider.
+  Among other providers' keys Hermes takes the first API-key provider in its registry's declared order whose variable holds a usable value, and logs a warning when that passes over an OAuth login.
+  `openai-api`, with `OPENAI_API_KEY`, stands before `gemini`. `gemini` reads `GOOGLE_API_KEY` before `GEMINI_API_KEY`, for this pick and for the key it sends, unless `model.key_env` names a variable for it.
 - The settings form saves a secret as it saves a provider key. Hermes writes `.env`, replaces the previous value in the `api_key` of `model`, `auxiliary.<task>`, `custom_providers.<name>` and `providers.<id>` in `config.yaml`, and loads the credential pool of each provider its registry lists for the variable.
   It replaces the legacy `api` field of the first three too. `delegation.api_key` keeps its value.
   The registry lists no OpenRouter provider. Hermes seeds the OpenRouter pool in `auth.json` from `OPENROUTER_API_KEY` when it loads that pool.
@@ -716,7 +726,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 - A plugin slash command's handler runs in the gateway process that owns the session. It can declare `session_id`, `session_key`, `platform` or `source` as keyword arguments, and Hermes passes them.
   The handler returns its text.
 - Hermes names `api_server`, `cli`, `codex`, `desktop`, `gateway`, `kanban`, `local`, `msgraph_webhook`, `tool`, `tui` and `webhook` as surfaces that are not a human messaging channel.
-  The plugin's `/model-router-provider` writes only for `local`, `cli`, `tui` and `desktop`, four of those names. `localPlatforms` in `constants.json` lists them.
+  The plugin's `/model-router-provider` and `/model-router-gateway` write only for `local`, `cli`, `tui` and `desktop`, four of those names. `localPlatforms` in `constants.json` lists them.
 - With no saved tool selection, a plugin's toolset is on by default. Enabling a plugin puts its toolset back into a saved selection.
 
 ### Hermes routing and refusals

@@ -21,7 +21,6 @@ import {
 	TOOL_LABEL,
 	unchanged,
 	useOneOf,
-	valueLine,
 } from "#core/options/settings.ts";
 
 /** Registers the config tool and the commands on `api`, as the full pass does. */
@@ -39,7 +38,12 @@ const live = (config: Record<string, unknown>): OpenClawConfig => ({
 	plugins: { entries: { [PLUGIN_ID]: { config } } },
 });
 
-type Stored = { provider?: unknown; scope?: unknown; small_model?: unknown };
+type Stored = {
+	provider?: unknown;
+	gateway?: unknown;
+	scope?: unknown;
+	small_model?: unknown;
+};
 
 /**
  * Registers the config tool and commands on a fake api whose live config holds
@@ -122,6 +126,7 @@ describe("registration", () => {
 		);
 		assert.equal(fake.tool().label, TOOL_LABEL);
 		assert.deepEqual(fake.commands.map((c) => c.name).sort(), [
+			"model-router-gateway",
 			"model-router-provider",
 			"model-router-scope",
 		]);
@@ -142,7 +147,7 @@ describe("registration", () => {
 	it("registers the tool with its description text", () => {
 		assert.equal(
 			setup().tool().description,
-			"Reads the router's settings. It returns the provider, the scope, the three models, and whether each key the provider allows is set. It changes nothing and never returns a key.",
+			"Reads the router's settings. It returns the provider, the gateway, the scope, the three models, and whether each key the settings allow is set. It changes nothing and never returns a key.",
 		);
 	});
 
@@ -171,8 +176,9 @@ describe("the tool reads", () => {
 			assert.equal(
 				await runTool(fake),
 				lines(
-					valueLine("provider", "typesafe"),
-					valueLine("scope", "core"),
+					"provider: typesafe",
+					"gateway: direct (typesafe)",
+					"scope: core",
 					"small_model: unset",
 					"middle_model: unset",
 					"large_model: unset",
@@ -184,8 +190,8 @@ describe("the tool reads", () => {
 
 	it("shows both key lines for auto and openrouter-first", async () => {
 		await withEnv({}, async () => {
-			for (const provider of ["auto", "openrouter-first"]) {
-				const text = await runTool(setup({ provider }));
+			for (const gateway of ["auto", "openrouter-first"]) {
+				const text = await runTool(setup({ gateway }));
 				assert.match(text, new RegExp(keyLine("typesafe", "unset")));
 				assert.match(text, new RegExp(keyLine("openrouter", "unset")));
 			}
@@ -194,7 +200,7 @@ describe("the tool reads", () => {
 
 	it("shows only the openrouter key line for openrouter", async () => {
 		await withEnv({}, async () => {
-			const text = await runTool(setup({ provider: "openrouter" }));
+			const text = await runTool(setup({ gateway: "openrouter" }));
 			assert.match(text, new RegExp(keyLine("openrouter", "unset")));
 			assert.doesNotMatch(text, /typesafe key/);
 		});
@@ -202,7 +208,7 @@ describe("the tool reads", () => {
 
 	it("shows the models and the set key state without any key text", async () => {
 		const fake = setup({
-			provider: "auto",
+			gateway: "auto",
 			scope: "extended",
 			small_model: "openai/gpt-5-mini",
 			middle_model: "openai/gpt-5",
@@ -214,8 +220,9 @@ describe("the tool reads", () => {
 		assert.equal(
 			text,
 			lines(
-				valueLine("provider", "auto"),
-				valueLine("scope", "extended"),
+				"provider: typesafe",
+				"gateway: auto (typesafe, then openrouter)",
+				"scope: extended",
 				"small_model: openai/gpt-5-mini",
 				"middle_model: openai/gpt-5",
 				"large_model: anthropic/claude-opus-5-5",
@@ -232,10 +239,11 @@ describe("the tool reads", () => {
 	it("shows a model on its own line, unset when only another is set", async () => {
 		const env = { ...NO_ENV, TYPESAFE_API_KEY: TYPESAFE_KEY };
 		const report = (config: Record<string, unknown>) =>
-			runTool(setup({ provider: "openrouter-first", ...config }, env));
+			runTool(setup({ gateway: "openrouter-first", ...config }, env));
 		const head = [
-			valueLine("provider", "openrouter-first"),
-			valueLine("scope", "core"),
+			"provider: typesafe",
+			"gateway: openrouter-first (openrouter, then typesafe)",
+			"scope: core",
 		];
 		const keys = [keyLine("openrouter", "unset"), keyLine("typesafe", "set")];
 		assert.equal(
@@ -279,8 +287,9 @@ describe("the tool reads", () => {
 		assert.equal(
 			await runTool(fake),
 			lines(
-				valueLine("provider", "typesafe"),
-				valueLine("scope", "core"),
+				"provider: typesafe",
+				"gateway: direct (typesafe)",
+				"scope: core",
 				"small_model: openai/gpt-5-mini",
 				"middle_model: openai/gpt-5",
 				"large_model: unset",
@@ -300,7 +309,7 @@ describe("the tool reads", () => {
 	it("reads the keys from the environment it was given, not from the process", async () => {
 		await withEnv({ OPENROUTER_API_KEY: OPENROUTER_KEY }, async () => {
 			const given = await runTool(
-				setup({ provider: "auto" }, { TYPESAFE_API_KEY: TYPESAFE_KEY }),
+				setup({ gateway: "auto" }, { TYPESAFE_API_KEY: TYPESAFE_KEY }),
 			);
 			assert.match(given, new RegExp(keyLine("typesafe", "set")));
 			assert.match(given, new RegExp(keyLine("openrouter", "unset")));
@@ -329,32 +338,32 @@ describe("the tool reads", () => {
 
 describe("the commands", () => {
 	it("show the current value when called without an argument", async () => {
-		const fake = setup({ provider: "auto", scope: "extended" });
+		const fake = setup({ gateway: "auto", scope: "extended" });
 		assert.equal(
-			await runCommand("model-router-provider", ownerContext(), fake),
-			valueLine("provider", "auto"),
+			await runCommand("model-router-gateway", ownerContext(), fake),
+			"gateway: auto (typesafe, then openrouter)",
 		);
 		assert.equal(
 			await runCommand("model-router-scope", ownerContext("  "), fake),
-			valueLine("scope", "extended"),
+			"scope: extended",
 		);
 		assert.deepEqual(fake.runtime.calls.mutate, []);
 	});
 
 	it("write the value with the owner check and show it", async () => {
-		const fake = setup({ provider: "typesafe" });
+		const fake = setup({ gateway: "direct" });
 		assert.equal(
 			await runCommand(
-				"model-router-provider",
+				"model-router-gateway",
 				ownerContext(" openrouter "),
 				fake,
 			),
-			valueLine("provider", "openrouter"),
+			"gateway: openrouter (openrouter)",
 		);
-		assert.equal(fake.stored().provider, "openrouter");
+		assert.equal(fake.stored().gateway, "openrouter");
 		assert.equal(
 			await runCommand("model-router-scope", ownerContext("extended"), fake),
-			valueLine("scope", "extended"),
+			"scope: extended",
 		);
 		assert.equal(fake.stored().scope, "extended");
 	});
@@ -372,12 +381,12 @@ describe("the commands", () => {
 
 	it("keep the other settings and let the next read see the write", async () => {
 		const fake = setup({ small_model: "openai/gpt-5-mini" });
-		await runCommand("model-router-provider", ownerContext("auto"), fake);
+		await runCommand("model-router-gateway", ownerContext("auto"), fake);
 		assert.equal(fake.stored().small_model, "openai/gpt-5-mini");
-		assert.match(await runTool(fake), /provider: auto/);
+		assert.match(await runTool(fake), /gateway: auto/);
 	});
 
-	it("reload the gateway's plugins so the next spawn reads the value", async () => {
+	it("ask OpenClaw to replace the plugin so the new instance reads the value", async () => {
 		const fake = setup();
 		await runCommand("model-router-scope", ownerContext("extended"), fake);
 		const [call] = fake.runtime.calls.mutate;
@@ -409,24 +418,27 @@ describe("the commands", () => {
 	});
 
 	it("word the refusal as the owner-only rule", async () => {
-		const fake = setup({ provider: "auto" });
+		const fake = setup({ gateway: "auto" });
 		const context = { ...ownerContext("openrouter"), senderIsOwner: false };
 		assert.equal(NOT_OWNER, "only the owner can change it");
 		assert.equal(
-			await runCommand("model-router-provider", context, fake),
+			await runCommand("model-router-gateway", context, fake),
 			lines(
-				"provider unchanged: only the owner can change it",
-				valueLine("provider", "auto"),
+				"gateway unchanged: only the owner can change it",
+				"gateway: auto (typesafe, then openrouter)",
 			),
 		);
 	});
 
 	it("refuse without the owner flag and show the current value", async () => {
-		const fake = setup({ provider: "auto" });
+		const fake = setup({ gateway: "auto" });
 		const context = { ...ownerContext("openrouter"), senderIsOwner: false };
 		assert.equal(
-			await runCommand("model-router-provider", context, fake),
-			lines(unchanged("provider", NOT_OWNER), valueLine("provider", "auto")),
+			await runCommand("model-router-gateway", context, fake),
+			lines(
+				unchanged("gateway", NOT_OWNER),
+				"gateway: auto (typesafe, then openrouter)",
+			),
 		);
 		assert.deepEqual(fake.runtime.calls.mutate, []);
 	});
@@ -456,7 +468,7 @@ describe("the commands", () => {
 	});
 
 	it("say the value is already set and write nothing", async () => {
-		const fake = setup({ scope: "extended" });
+		const fake = setup({ provider: "typesafe", scope: "extended" });
 		assert.equal(
 			await runCommand("model-router-scope", ownerContext("extended"), fake),
 			unchanged("scope", alreadyValue("extended")),
@@ -466,6 +478,15 @@ describe("the commands", () => {
 			unchanged("provider", alreadyValue("typesafe")),
 		);
 		assert.deepEqual(fake.runtime.calls.mutate, []);
+	});
+
+	it("write a valid value over a stored text that is not valid", async () => {
+		const fake = setup({ gateway: "fast" });
+		assert.equal(
+			await runCommand("model-router-gateway", ownerContext("direct"), fake),
+			"gateway: direct (typesafe)",
+		);
+		assert.equal(fake.stored().gateway, "direct");
 	});
 
 	it("answer with text when the write throws", async () => {

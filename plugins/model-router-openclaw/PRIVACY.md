@@ -2,40 +2,53 @@
 
 model-router for OpenClaw is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-14.
+2026-11-21.
 
 ## Where requests go
 
-Each `sessions_spawn` call the plugin routes goes to Jev for scoring. Under the
-default `core` scope, only [the spawn of the requesting agent
-itself](README.md#the-spawn-of-the-requesting-agent-itself) routes, and [the
-extended scope](#the-extended-scope) adds the other configured agents. Jev
-answers on one or two providers:
+Each `sessions_spawn` call the plugin routes goes to a decision model for
+scoring. Under the default `core` scope, only [the spawn of the requesting
+agent itself](README.md#the-spawn-of-the-requesting-agent-itself) routes, and
+[the extended scope](#the-extended-scope) adds the other configured agents. The
+model answers on one or two paths:
 
-- TypeSafe, at https://api.typesafe.ai/v1/systemone, with your TypeSafe key
-- OpenRouter, at https://openrouter.ai/api/v1/systemone, with your OpenRouter
-  key.
+- the direct path: the provider's own API, with the provider's key
+- the gateway path: OpenRouter, with your OpenRouter key.
 
-The plugin's `provider` setting decides which providers receive the task text
-and their keys:
+The `provider` setting says whose model scores: `typesafe`, `openai` or
+`google`. OpenRouter is a gateway that passes the request to that provider's
+model. These companies can receive the task text:
 
-| `provider` | First request | Second request, after a failure |
+| Company | Host | It receives the text when | Key it takes |
+| :-- | :-- | :-- | :-- |
+| TypeSafe | `api.typesafe.ai` | `provider` is `typesafe` and `gateway` allows the direct path | the TypeSafe key, as a bearer token |
+| OpenAI | `api.openai.com` | `provider` is `openai` and `gateway` allows the direct path | the OpenAI key, as a bearer token |
+| Google | `generativelanguage.googleapis.com` | `provider` is `google` and `gateway` allows the direct path | the Google key, in the `x-goog-api-key` header |
+| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each of the three | the OpenRouter key, as a bearer token |
+
+The `gateway` setting decides which paths are open:
+
+| `gateway` | First request | Second request, after a failure |
 | :-- | :-- | :-- |
-| `typesafe`, the default | TypeSafe, with the TypeSafe key | none |
+| `direct`, the default | the provider, with its key | none |
+| `auto` | the provider, with its key | OpenRouter, with the OpenRouter key |
+| `openrouter-first` | OpenRouter, with the OpenRouter key | the provider, with its key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
-| `auto` | TypeSafe, with the TypeSafe key | OpenRouter, with the OpenRouter key |
-| `openrouter-first` | OpenRouter, with the OpenRouter key | TypeSafe, with the TypeSafe key |
 
-With both keys under `auto` or `openrouter-first`, one spawn may reach both companies.
+A path with no key is left out. With both keys under `auto` or `openrouter-first`, one spawn may reach both the provider and OpenRouter.
 
 A model setting does not decide whether a request leaves: with a key set and
 no model set, each routed spawn is still sent for scoring, as
 [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) says.
 
-[Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task)
+[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
 gives the fallback rules.
 
-Each key goes only to its own provider's address above, as
+A setting that is not valid sends nothing, as
+[A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)
+says.
+
+Each key goes only to the host above of the company that issued it, as
 [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys)
 explains.
 
@@ -44,7 +57,7 @@ the plugin stores](#what-the-plugin-stores) says.
 
 ## What the plugin sends
 
-Each routed spawn sends an HTTPS POST to the provider the table above names. The
+Each routed spawn sends an HTTPS POST to the company the table above names. The
 JSON body holds:
 
 - the spawn's `task` text, prepared as
@@ -71,7 +84,7 @@ JSON body holds:
   private name in a label still leaves your machine, as
   [Descriptions and private names](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#descriptions-and-private-names)
   says
-- the Jev alias and the two scoring questions, as
+- the model of the endpoint and the two scoring questions, as
   [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
   lists them
 
@@ -99,35 +112,37 @@ that does not set its own model, as well as
 ## Requests and billing
 
 One spawn sends at most four requests.
-[Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider)
-gives the attempts at each provider. The plugin gives up on the first provider
-after the [per-provider wait](README.md#hook-timeout).
+[Retries and the second attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-attempt)
+gives the attempts on each path. The plugin gives up on the first attempt
+after the [first-attempt wait](README.md#hook-timeout).
 
-One routing limit covers the whole spawn, both providers and all retries
+One routing limit covers the whole spawn, both attempts and all retries
 included. [Hook timeout](README.md#hook-timeout) gives the limit.
 [The routing limit and billing](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-limit-and-billing)
 says what a request in flight can cost. Many parallel spawns make as many
-requests, so a provider's rate limit can leave later spawns unrouted. The plugin
+requests, so a company's rate limit can leave later spawns unrouted. The plugin
 sends no other request.
 
-## What the providers do with it
+## What each company does with the text
 
-The providers' privacy policies are linked at
-[What the providers do with it](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-the-providers-do-with-it).
+The companies' own pages are linked at
+[What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text).
 
 ## What the plugin stores
 
 The plugin keeps no file of its own and no state between spawns.
 
-It reads a key only for a provider the `provider` setting allows.
-[Keys](README.md#keys) says where it looks, in which order, and who can read an
+It reads a key only for a company that the `provider` and `gateway` settings
+allow. [Keys](README.md#keys) says where it looks, in which order, and who can read an
 environment variable. The plugin holds a key in memory only while it checks
 whether to route and while it sends a request. It reads no other environment
 variable, and it runs no program.
 
-A `.env` file in the Gateway's working directory can supply either variable.
-The plugin then sends the task text to the account that key belongs to. OpenClaw 2026.10.10 drops `OPENROUTER_API_KEY`
-from such a file but loads `TYPESAFE_API_KEY`, as
+A `.env` file in the Gateway's working directory is a lower-trust source.
+OpenClaw drops `OPENROUTER_API_KEY`, `OPENAI_API_KEY` and `GEMINI_API_KEY` from
+it, while it can still supply `TYPESAFE_API_KEY`. The plugin then sends the task
+text to the account that key belongs to. The global `~/.openclaw/.env` and the Gateway's
+environment stay trusted sources, as
 [the `.env` fact](../../docs/clients.md#openclaw-runtime-logs-and-environment)
 records. The plugin does not depend on that filter. Keep the keys in the
 plugin's settings, or in the Gateway's own environment.
@@ -136,9 +151,10 @@ The `model_router_config` tool only reads.
 [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool)
 says what it reports.
 
-The commands `/model-router-provider` and `/model-router-scope` write the
-plugin's `provider` or `scope` setting into OpenClaw's configuration. They
-refuse unless the sender is the owner. The plugin writes no other setting and no
+The commands `/model-router-provider`, `/model-router-gateway` and
+`/model-router-scope` write the plugin's `provider`, `gateway` or `scope`
+setting into OpenClaw's configuration. They
+write only when the sender is the owner. The plugin writes no other setting and no
 file. You assign `small_model`, `middle_model` and `large_model` yourself, in
 OpenClaw's configuration.
 
@@ -150,9 +166,9 @@ and, under `extended`, the target agent, `description`, `model`,
 named in the slot. Nothing from these reads leaves your machine, except the
 role text the request carries as described above.
 
-The plugin reads no credential of a model's provider but one: the OpenRouter
-key, which OpenClaw's own OpenRouter provider shares, as [Keys](README.md#keys)
-says.
+The plugin reads no credential of a model's provider except the four keys that
+[Keys](README.md#keys) lists. It says there which of them OpenClaw's own
+OpenRouter provider shares.
 
 The plugin writes one line per routed or skipped spawn to the Gateway log and
 nowhere else. [The log line](README.md#the-log-line) lists its fields. It holds
@@ -177,7 +193,7 @@ Every plugin offers the choices in
 [Your choices](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#your-choices).
 Here, keep `scope` at `core` to route only
 [the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself).
-Remove the keys from the plugin's settings and from both variables. Disable the
+Remove the keys from the plugin's settings and from the four variables. Disable the
 plugin, as [Turn it off](README.md#turn-it-off) says, and nothing is sent.
 
 ## Children

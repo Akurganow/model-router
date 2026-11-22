@@ -94,7 +94,7 @@ function registerRouting(api: OpenClawApi, deps: RouterDeps): void {
 
 /**
  * Registers what the registration mode keeps. The config tool goes into the full,
- * discovery and tool-discovery passes, and the two commands and the
+ * discovery and tool-discovery passes, and the setting commands and the
  * before_tool_call hook into the full and discovery passes, so no registry holds a
  * name twice. The timeout warning belongs to the full pass alone. The setup and CLI
  * modes register nothing. Never throws: a failure logs a warning and leaves the

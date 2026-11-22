@@ -291,7 +291,7 @@ export function roleText(description: unknown): string {
 
 declare const masked: unique symbol;
 /**
- * The state Jev reads. Only routingState builds one, so no caller can send a
+ * The state the scoring model reads. Only routingState builds one, so no caller can send a
  * field it forgot to mask.
  */
 export type RoutingState = {

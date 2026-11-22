@@ -45,23 +45,23 @@ const isCount = (v: unknown): v is number =>
 	typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 
 type DecisionSuffix = {
-	readonly provider: string;
+	readonly holder: string;
 	readonly model: string;
 	readonly inputTokens?: number | null | undefined;
 	readonly outputTokens?: number | null | undefined;
 	readonly failed?: PlainFailedAttempt | undefined;
 };
 
-// The provider always shows. A model or usage the reply lacks is left out, never guessed.
+// The key holder always shows. A model or usage the reply lacks is left out, never guessed.
 export function decisionSuffix({
-	provider,
+	holder,
 	model,
 	inputTokens,
 	outputTokens,
 	failed,
 }: DecisionSuffix): string {
 	return (
-		` · ${provider}` +
+		` · ${holder}` +
 		(model ? ` ${model}` : "") +
 		(isCount(inputTokens) && isCount(outputTokens)
 			? ` · ${inputTokens}/${outputTokens} tok`

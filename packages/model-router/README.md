@@ -1,6 +1,6 @@
 # @akurganow/model-router
 
-Routes subagents to a model and effort that fits the task, judged by Jev. One package for OpenClaw and Oh My Pi.
+Routes subagents to a model and effort that fits the task, judged by a decision model from TypeSafe, OpenAI or Google. One package for OpenClaw and Oh My Pi.
 
 The package carries the Model Router plugin for two harnesses. The README of each plugin has its install steps and settings. Its privacy policy says what leaves the machine.
 

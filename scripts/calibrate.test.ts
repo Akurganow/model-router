@@ -6,11 +6,12 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { afterEach, mock, test } from "node:test";
 import { ROLE_CAP } from "#core/brief/brief.ts";
-import { plan } from "#core/providers/provider.ts";
+import { type Choice, plan } from "#core/providers/provider.ts";
 import { type Case, caseHead, main, readKey, runCase } from "./calibrate.ts";
 import { FITTED_ON, fitWarning } from "./jev-fit.ts";
 import { OTHER_JEV } from "./jev-fit-fakes.ts";
 
+const DIRECT: Choice = { provider: "typesafe", gateway: "direct" };
 const CASE: Case = {
 	role: "coder",
 	description: "Fix it",
@@ -37,7 +38,7 @@ test("runCase sends the brief through the client and returns the decision", asyn
 	};
 	const d = await runCase(
 		CASE,
-		plan("typesafe", { typesafe: "test-key" }),
+		plan(DIRECT, { typesafe: "test-key" }),
 		fetchFn,
 	);
 	assert.ok(!("skipped" in d));
@@ -63,7 +64,7 @@ test("runCase sends the role collapsed and cut to the role cap", async () => {
 	const role = `coder\n\n  helper ${"x".repeat(ROLE_CAP * 2)}`;
 	await runCase(
 		{ ...CASE, role },
-		plan("typesafe", { typesafe: "test-key" }),
+		plan(DIRECT, { typesafe: "test-key" }),
 		fetchFn,
 	);
 	assert.ok(body.includes("coder helper x"), "whitespace is collapsed");
@@ -80,7 +81,7 @@ test("runCase masks the description like the plugins do", async () => {
 	const key = ["sk", "a1B2c3D4e5F6g7H8"].join("-");
 	await runCase(
 		{ ...CASE, description: `Fix it with ${key}` },
-		plan("typesafe", { typesafe: "test-key" }),
+		plan(DIRECT, { typesafe: "test-key" }),
 		fetchFn,
 	);
 	assert.equal(JSON.parse(body).state.description, "Fix it with ***");
@@ -109,7 +110,11 @@ function typing(...chunks: string[]) {
 		resume() {},
 		pause() {},
 	});
-	const key = readKey(stdin as unknown as NodeJS.ReadStream, "openrouter");
+	const key = readKey(
+		stdin as unknown as NodeJS.ReadStream,
+		"openrouter",
+		"https://openrouter.ai/api/v1/systemone",
+	);
 	for (const chunk of chunks) stdin.emit("data", chunk);
 	return { key, stdin };
 }
@@ -127,7 +132,7 @@ afterEach(() => mock.restoreAll());
 
 test("a key piped on stdin is read and trimmed", async () => {
 	assert.equal(
-		await readKey(piped("  secret-key\n"), "typesafe"),
+		await readKey(piped("  secret-key\n"), "typesafe", "https://example.test"),
 		"secret-key",
 	);
 });
@@ -139,7 +144,7 @@ test("a typed key ends at enter, and backspace removes a character", async () =>
 	assert.deepEqual(stdin.raw, [true, false]);
 	assert.match(
 		out.join(""),
-		/OpenRouter API key for https:\/\/openrouter\.ai\/api\/v1\/systemone: /,
+		/openrouter API key for https:\/\/openrouter\.ai\/api\/v1\/systemone: /,
 	);
 });
 

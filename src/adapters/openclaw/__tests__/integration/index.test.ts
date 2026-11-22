@@ -61,7 +61,7 @@ describe("registration", () => {
 		assert.deepEqual(s.hooks[0]?.options, {
 			matcher: [SPAWN_TOOL],
 			priority: 100,
-			timeoutMs: 10000,
+			timeoutMs: 12000,
 		});
 		assert.deepEqual(s.logs, []);
 	});
@@ -82,6 +82,7 @@ describe("registration", () => {
 			s.commands.map((command) => [command.name, command.requiredScopes]),
 			[
 				["model-router-provider", ["operator.admin"]],
+				["model-router-gateway", ["operator.admin"]],
 				["model-router-scope", ["operator.admin"]],
 			],
 		);
@@ -164,20 +165,20 @@ describe("registration", () => {
 
 describe("the deadline from the operator's hook timeouts", () => {
 	const cases: [string, unknown, number][] = [
-		["the plugin's own value without settings", undefined, 8000],
-		["the plugin's own value for empty settings", {}, 8000],
+		["the plugin's own value without settings", undefined, 10000],
+		["the plugin's own value for empty settings", {}, 10000],
 		[
 			"the per-hook timeout first",
 			{ timeouts: { before_tool_call: 6000 }, timeoutMs: 20000 },
 			4000,
 		],
 		[
-			"a per-hook timeout of 12000 against all hooks at 3000",
-			{ timeouts: { before_tool_call: 12000 }, timeoutMs: 3000 },
-			8000,
+			"a per-hook timeout of 14000 against all hooks at 3000",
+			{ timeouts: { before_tool_call: 14000 }, timeoutMs: 3000 },
+			10000,
 		],
 		["all hooks without a per-hook value", { timeoutMs: 5000 }, 3000],
-		["all hooks above the limit", { timeoutMs: 20000 }, 8000],
+		["all hooks above the limit", { timeoutMs: 20000 }, 10000],
 		["the smallest routing timeout", { timeoutMs: 3000 }, 1000],
 		[
 			"all hooks when the per-hook value is not usable",
@@ -187,11 +188,11 @@ describe("the deadline from the operator's hook timeouts", () => {
 		[
 			"the plugin's value when nothing is usable",
 			{ timeouts: { before_tool_call: -1 }, timeoutMs: 1.5 },
-			8000,
+			10000,
 		],
-		["a value over 600000 not usable", { timeoutMs: 600001 }, 8000],
-		["a string not usable", { timeouts: { before_tool_call: "5000" } }, 8000],
-		["600000 usable", { timeoutMs: 600000 }, 8000],
+		["a value over 600000 not usable", { timeoutMs: 600001 }, 10000],
+		["a string not usable", { timeouts: { before_tool_call: "5000" } }, 10000],
+		["600000 usable", { timeoutMs: 600000 }, 10000],
 	];
 	for (const [name, hooks, expected] of cases)
 		it(`uses ${name}: ${expected} ms`, async () => {

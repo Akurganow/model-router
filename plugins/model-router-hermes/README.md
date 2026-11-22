@@ -1,10 +1,10 @@
 # model-router for Hermes Agent
 
-A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks a model and an effort for each `delegate_task` task. It asks [Jev](https://docs.typesafe.ai), on TypeSafe or OpenRouter, how much judgment the task needs and how much work it takes. It then gives the task's child that model and effort.
+A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks a model and an effort for each `delegate_task` task. It asks a decision model, on the provider's own API or through OpenRouter, how much judgment the task needs and how much work it takes. It then gives the task's child that model and effort.
 
 ## What it does
 
-- It is a delegation backend named `model-router`. It scores each `delegate_task` task through Jev, using the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
+- It is a delegation backend named `model-router`. It scores each `delegate_task` task through the decision model of the `provider` setting: [Jev](https://docs.typesafe.ai) from TypeSafe, OpenAI's or Google's. Under `typesafe` the request names the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - It routes the tasks of `delegate_task` only. The main turn is never routed.
 - Level 0 gives the task your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A slot can be unset. Its level then keeps Hermes's model and gets the effort alone, as [Models](#models) says.
 - It sets the effort from a fixed ladder, as [Routing](#routing) says.
@@ -13,7 +13,7 @@ A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks
 - The delegating model can describe each task, and can set a task's effort or level to escalate it. [Parameters of `delegate_task`](#parameters-of-delegate_task) lists them.
 - It starts Hermes's own Node once per task to run the scoring step. [Node](#node) says how.
 - It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what Hermes can still do.
-- The plugin changes a setting only when you type `/model-router-provider`. It never writes `delegation.backend`.
+- The plugin changes a setting only when you type `/model-router-provider` or `/model-router-gateway`. It never writes `delegation.backend`.
 
 ## Install
 
@@ -38,23 +38,43 @@ Routing needs the plugin enabled, the backend on and a key. The models in the sl
 1. A backend change applies from the next session. In a running session, type `/delegation model-router --now`.
 2. Add a [key](#keys).
 3. Assign any of `small_model`, `middle_model` and `large_model`, as [Models](#models) says. Each slot is optional: a slot you leave unset runs its level on Hermes's model.
-4. Pick the [provider](#provider) if the default does not fit.
+4. Pick the [provider and the gateway](#provider-and-gateway) if the defaults do not fit.
 5. Delegate one small task, and read its [label](#the-label-and-the-log).
 
 [Facts behind this section](../../docs/clients.md#hermes-registration-and-settings)
 
 ## Keys
 
-The plugin reads a key only for a provider the [`provider` setting](#provider) allows. It reads each key through Hermes's own secret reader, from one variable. A key counts as set when the variable holds non-blank text.
+The plugin reads a key only for a key holder that the [`provider` and `gateway` settings](#provider-and-gateway) allow. It reads each key through Hermes's own secret reader, from one variable. A key counts as set when the variable holds non-blank text.
 
 | Key | Environment variable | Settings secret |
 | --- | --- | --- |
-| TypeSafe | `TYPESAFE_API_KEY` | `typesafe_api_key` |
+| TypeSafe | `TYPESAFE_API_KEY` | `api_key` |
+| OpenAI | `OPENAI_API_KEY` | `openai_api_key` |
+| Google | `GEMINI_API_KEY` | `google_api_key` |
 | OpenRouter | `OPENROUTER_API_KEY` | `openrouter_api_key` |
 
-Set a key in the `.env` file of the Hermes home or in the plugin's settings form in Hermes Desktop. Hermes stores a key from the form under its variable in that `.env` file.
+The plugin does not read `GOOGLE_API_KEY`. Set a key in the `.env` file of the Hermes home or in the plugin's settings form in Hermes Desktop. Hermes stores a key from the form under its variable in that `.env` file.
 
-Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY` too. So a key you save in the form becomes that provider's key: Hermes writes the variable and the copies of the old value in `config.yaml`. With a key in that variable and neither `model.provider` nor a local `model.base_url` in `config.yaml`, Hermes uses OpenRouter for its own session, so set `model.provider` to keep another provider. A key already in that variable scores tasks when the `provider` setting allows OpenRouter. No other credential of Hermes serves as a Jev key.
+Some of Hermes's own providers read these variables too, so a key you save in the form can change Hermes itself:
+
+- Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY`. A key you save in the form becomes that provider's key: Hermes writes the variable and the copies of the old value in `config.yaml`. A key already in that variable scores tasks when the `gateway` setting allows OpenRouter.
+- A key you save in the form for OpenAI is also the key of Hermes's own OpenAI provider. A key already in `OPENAI_API_KEY` scores tasks when the plugin's settings allow OpenAI's own API.
+- The plugin's Google secret writes `GEMINI_API_KEY`. Hermes's own Gemini provider reads `GOOGLE_API_KEY` before `GEMINI_API_KEY`, unless `model.key_env` names a variable for it. So a Google key you set for Hermes under `GOOGLE_API_KEY` is not used for scoring. Hermes's own Gemini provider prefers it over the key saved in the form, with the same `model.key_env` limit.
+
+Hermes picks the provider of your own session in this order, with the provider `auto` or none requested. The first rung that applies decides:
+
+1. A key or a base URL given on the command line.
+2. `model.provider` in `config.yaml`.
+3. A `model.base_url` on a loopback host, when `model` names no provider.
+4. A usable `OPENROUTER_API_KEY`.
+5. The OpenRouter credential pool.
+6. Another provider's key in the environment: the first provider in Hermes's own order whose variable holds a usable value. OpenAI's stands before Gemini's.
+7. An OAuth login.
+
+So Hermes's own OpenRouter, OpenAI or Gemini provider may become the provider of your own session. Set `model.provider` to keep another provider.
+
+No other credential of Hermes serves as a scoring key.
 
 [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key, where it goes and when a task reports `key unset`.
 
@@ -62,29 +82,29 @@ Hermes holds a key in the gateway's environment, so the programs Hermes starts c
 
 [Facts behind this section](../../docs/clients.md#hermes-registration-and-settings)
 
-## Provider
+## Provider and gateway
 
-The `provider` setting picks which providers judge each task, and in which order:
+The `provider` setting says whose model scores each task. Its values are `typesafe` (the default), `openai` and `google`.
 
-| Value | Providers |
-| --- | --- |
-| `typesafe` (default) | TypeSafe only |
-| `openrouter` | OpenRouter only |
-| `auto` | TypeSafe, then OpenRouter |
-| `openrouter-first` | OpenRouter, then TypeSafe |
+The `gateway` setting says how OpenRouter is used to reach the provider. Its values are `direct` (the default), `auto`, `openrouter-first` and `openrouter`. It is not Hermes's gateway, the process that owns a session.
 
-Fallback rules: [Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task). Who receives a task under each value: [PRIVACY.md](PRIVACY.md).
+[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which model each `provider` value names, which path each `gateway` value takes first, and when the second one runs. Who receives a task under each value: [PRIVACY.md](PRIVACY.md).
 
-Switch it with `/model-router-provider <value>`. The plugin reads the setting at each task.
+Switch them with `/model-router-provider <value>` and `/model-router-gateway <value>`. The plugin reads both settings at each task.
+
+A setting that holds a value outside its list is not valid, and the plugin routes no task. The retired values of `provider` and the pair that replaces each one are listed in [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid). Hermes passes such a stored value on as stored. The Desktop settings form refuses to save a value outside the choices, and it leaves such a stored value alone when it saves another field.
+
+[Facts behind this section](../../docs/clients.md#hermes-registration-and-settings)
 
 ## Change the options
 
-`/model-router-provider [auto|openrouter-first|typesafe|openrouter]` shows or changes the provider. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. The command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, it prints `provider unchanged: only a local session can change it` and the current value.
+`/model-router-provider [typesafe|openai|google]` shows or changes the provider, and `/model-router-gateway [direct|auto|openrouter-first|openrouter]` shows or changes the gateway. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. Each command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, a valid value prints `<setting> unchanged: only a local session can change it` and the current line.
 
-The read-only `model_router_config` tool returns the `provider` line, the three model lines and the key lines. A model line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
+The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the three model lines and the key lines. A model line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
 
 ```text
-provider: auto (typesafe, then openrouter)
+provider: typesafe
+gateway: auto (typesafe, then openrouter)
 small_model: openrouter <model>
 middle_model: unset
 large_model: unset
@@ -126,13 +146,13 @@ The routed effort replaces the effort of the calling session. Hermes ranks a rou
 
 ### Precedence
 
-Your `delegation` section outranks the delegating model, and both outrank Jev. For each of the model and the effort, the first row that applies decides:
+Your `delegation` section outranks the delegating model, and both outrank the scoring model. For each of the model and the effort, the first row that applies decides:
 
 | Rank | Model | Effort |
 | --- | --- | --- |
 | 1 | `model`, `provider`, `base_url` or `api_key` set in the `delegation` section. The plugin changes no model, and the line shows `subagent model set`. | A non-empty `delegation.reasoning_effort`. The plugin sets no effort, and the line shows `config effort`. |
 | 2 | The task's `level`. The task takes that level's model, unscored, and carries no line while that model is set. | The task's `reasoning_effort`. Every route of the task carries it, a skipped one too, and a routed line shows `caller effort`. |
-| 3 | The level Jev picks. | The ladder's effort for that level. |
+| 3 | The level the scoring model picks. | The ladder's effort for that level. |
 | 4 | | None, for a task with a `level` and no effort above. Hermes gives it the parent's level. |
 
 The route starts as the whole `delegation` section, as Hermes's default backend returns it. Two settings of that section, `api_mode` and `request_overrides`, therefore apply at every level. They also apply when the plugin changes the provider. That is a known limit: an `api_mode` set for one provider reaches a child on another.
@@ -147,17 +167,17 @@ The plugin adds three parameters to each task of `delegate_task`. Hermes shows t
 
 | Parameter | Values | What the plugin does with it |
 | --- | --- | --- |
-| `description` | One line of text | Masks token-shaped strings as in the task text, turns each run of whitespace into one space, cuts it to 500 characters and sends it to Jev as the request's description. A missing, blank or non-text value sends an empty description. |
+| `description` | One line of text | Masks token-shaped strings as in the task text, turns each run of whitespace into one space, cuts it to 500 characters and sends it to the scoring model as the request's description. A missing, blank or non-text value sends an empty description. |
 | `reasoning_effort` | `low`, `medium`, `high`, `xhigh` | Keeps this effort, as rank 2 of [Precedence](#precedence) says. |
-| `level` | `0`, `1`, `2` | Asks Jev nothing. Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. [Precedence](#precedence) says what outranks it. |
+| `level` | `0`, `1`, `2` | Asks the scoring model nothing. Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. [Precedence](#precedence) says what outranks it. |
 
 Hermes refuses a task whose `reasoning_effort` or `level` is off these lists, before the plugin sees it. The plugin reads a `level` of `true` or `false` as unset.
 
 A task that sets `level`:
 
-- Meets one gate, `subagent model set`. It needs no key and no Node.
+- Meets two gates: `<setting> not valid: run setup` first, then `subagent model set`. It needs no key and no Node.
 - Gets its slot's model, as [Models](#models) says. An unset slot runs the task on Hermes's own route, with the label `model-router L<level> <slot> model unset`.
-- Carries no `route.label` and writes no log line when its model is set. The other plugins print no line for a call that names a model either. The task's result still names the model and provider it ran on.
+- Carries no `route.label` and writes no log line when it passes both gates and its model is set. The task's result still names the model and provider it ran on.
 
 The delegating model should leave `reasoning_effort` and `level` unset on a first dispatch. The escalation skill, `model-router-hermes:model-router`, says when to set them. [The skill](skills/model-router/SKILL.md) follows the escalation steps of the other plugins.
 
@@ -167,7 +187,7 @@ The parameters are part of the session's tool list. After an install or an updat
 
 ## Limits
 
-Hermes passes this backend a task's `goal`, `context` and index, and the parameters the plugin declares. It never passes `images` or `output_schema`. Jev scores a task with images on its text alone, so a level-0 task gets your `small_model` even when that model takes no images. If your tasks carry images, assign a `small_model` that accepts them, or pin such a task with `level`. Hermes still checks a child's answer against its `output_schema`; the plugin cannot see it.
+Hermes passes this backend a task's `goal`, `context` and index, and the parameters the plugin declares. It never passes `images` or `output_schema`. The scoring model reads a task's text alone, so a level-0 task gets your `small_model` even when that model takes no images. If your tasks carry images, assign a `small_model` that accepts them, or pin such a task with `level`. Hermes still checks a child's answer against its `output_schema`; the plugin cannot see it.
 
 [Facts behind this section](../../docs/clients.md#hermes-task-parameters)
 
@@ -175,19 +195,20 @@ Hermes passes this backend a task's `goal`, `context` and index, and the paramet
 
 ### The gates
 
-Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets only the second.
+Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets the first gate and the third.
 
-1. `key unset`: no provider the `provider` setting allows has a key.
-2. `subagent model set`: the `delegation` section sets `model`, `provider`, `base_url` or `api_key`. Hermes's own choice decides.
-3. `node not found`: Hermes has no Node. [Node](#node) says why.
-4. `timeout`: the routing limit was used up before this task started. [Sequential routing and the shared budget](#sequential-routing-and-the-shared-budget) says when.
+1. `<setting> not valid: run setup`: a stored `provider` or `gateway` holds a value outside its list. [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names.
+2. `key unset`: no path the `gateway` setting allows has a key.
+3. `subagent model set`: the `delegation` section sets `model`, `provider`, `base_url` or `api_key`. Hermes's own choice decides.
+4. `node not found`: Hermes has no Node. [Node](#node) says why.
+5. `timeout`: the routing limit was used up before this task started. [Sequential routing and the shared budget](#sequential-routing-and-the-shared-budget) says when.
 
 ### After the gates
 
 A scored task can still skip:
 
-- `timeout`: Jev did not answer within the budget.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: Jev did not answer at all, or the Node step failed. `failed` also covers any error in the plugin. After two providers, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
+- `timeout`: a first attempt got no answer in 5 s, or the budget ran out.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score, or the Node step failed. `failed` also covers any error in the plugin. After both attempts fail, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 [Facts behind this section](../../docs/clients.md#hermes-routing-and-refusals)
 
@@ -195,7 +216,7 @@ A scored task can still skip:
 
 Hermes routes the tasks of one `delegate_task` call one after another, before any child starts. The wait is the sum over the tasks.
 
-One routing limit of 8 s covers a whole call. It holds the scoring of every task, both providers and all retries included. The first task of a call opens a budget, and each later task gets what is left. A task that starts with no time left runs unrouted and reports `skipped, timeout`. The plugin ends a Node run 1 s after its share, as a guard for a stuck process.
+One routing limit of 10 s covers a whole call. It holds the scoring of every task, both attempts and all retries included. The first task of a call opens a budget, and each later task gets what is left. A task that starts with no time left runs unrouted and reports `skipped, timeout`. The plugin ends a Node run 1 s after its share, as a guard for a stuck process.
 
 The budget record lives in the process that holds the plugin: the gateway, or the plugin host under `plugins.isolation: host`. It is not kept per call or per session. Concurrent sessions on one gateway share one record. Under host isolation the plugin host, one per profile, holds it. A call's first task, or a task that starts more than the limit after the last one ended, restarts it. Two calls that route at the same time can therefore shorten each other's share.
 
@@ -237,7 +258,7 @@ Under `plugins.isolation: host`, the plugin host drops INFO lines by default, so
 
 ## What leaves the machine
 
-[PRIVACY.md](PRIVACY.md) lists the request, the providers, the retries and the Node program.
+[PRIVACY.md](PRIVACY.md) lists the request, the companies that receive it, the retries and the Node program.
 
 [How the plugins use the providers](https://github.com/Akurganow/model-router/blob/main/docs/providers.md) holds what the four plugins share.
 

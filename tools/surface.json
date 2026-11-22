@@ -2,6 +2,7 @@
 	"hooks": [
 		"agent.offer",
 		"agent.spawn",
+		"command.run{command=model-router:gateway}",
 		"command.run{command=model-router:provider}",
 		"command.run{command=model-router:scope}",
 		"session.start",

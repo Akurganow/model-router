@@ -6,7 +6,7 @@ import {
 import { nonEmpty } from "#utils/text.ts";
 
 // The defaults when the caller names none: two retries after the first request, and 10 s for each
-// request. The routing limit ends a longer wait first.
+// request. That equals the routing limit. The limit's clock starts first, so the limit ends a call.
 export const RETRIES = 2;
 export const TIMEOUT_MS = 10000;
 

@@ -3,9 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { resolveScope } from "#core/options/scope.ts";
 import { VALUE_SETTINGS } from "#core/options/settings.ts";
-import { resolve as resolveProvider } from "#core/providers/provider.ts";
 import { formatRendered } from "./build/json.ts";
 import { renderReadme } from "./build/readme.ts";
 import { loadSource } from "./build/source.ts";
@@ -51,11 +49,6 @@ test("the bundles equal the committed bundles byte for byte", async () => {
 		assert.deepEqual(await buildBundle(harness, entry, built), []);
 		assert.equal(readFileSync(built, "utf8"), read(out), out);
 	}
-});
-
-test("the source defaults are the defaults the code applies", () => {
-	assert.equal(source.options.scope.default, resolveScope(undefined));
-	assert.equal(source.options.provider.default, resolveProvider(undefined));
 });
 
 test("the source holds one entry for each value setting", () => {

@@ -100,7 +100,7 @@ function pause(ms: number, caller: AbortSignal, clock: Clock): Promise<void> {
 	});
 }
 
-// One provider's attempt: the first request, then up to `retries` more. Returns the last
+// One key holder's attempt: the first request, then up to `retries` more. Returns the last
 // outcome, or aborted once the caller's signal fires. Sends nothing after an abort.
 export async function send(
 	fetchFn: Fetch,

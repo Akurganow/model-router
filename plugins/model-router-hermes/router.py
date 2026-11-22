@@ -12,7 +12,7 @@ from .budget import Budget
 from .constants import CONSTANTS, MS_PER_SECOND, PLUGIN_DIR
 from .hermes_api import live_api
 from .labels import OnceLog
-from .settings import found_keys, read_provider, read_slot, stripped
+from .settings import choice, first_not_valid, found_keys, read_slot, read_texts, stripped
 
 # Config keys that name a model route of their own; the plugin then leaves the task alone.
 SUBAGENT_ROUTE_KEYS = ("model", "provider", "base_url", "api_key")
@@ -87,6 +87,11 @@ class Router:
         return {**base, "label": self._constants["skips"][reason]}
 
     def _decide(self, task, config, base, window):
+        # A setting that is not valid skips every task, a pinned level too, before any secret or Node.
+        stored = read_texts(self._ctx, self._constants)
+        not_valid = first_not_valid(self._constants, stored)
+        if not_valid is not None:
+            return {**base, "label": not_valid["skip"]}
         slot_settings = {
             name: read_slot(self._ctx, spec["setting"])
             for name, spec in self._constants["slots"].items()
@@ -94,8 +99,7 @@ class Router:
         level = params.level(task, self._constants)
         if level is not None:
             return self._pinned(level, config, base, slot_settings)
-        provider = read_provider(self._ctx, self._constants)
-        keys = found_keys(self._api, self._constants, provider)
+        keys = found_keys(self._api, self._constants, choice(self._constants, stored)["holders"])
         # These gates read Hermes state, and a skipped task starts no Node.
         if not keys:
             return self._skip(base, "keyUnset")
@@ -110,7 +114,7 @@ class Router:
         request = {
             "task": task.get("goal") or "",
             "context": task.get("context") or "",
-            "provider": provider,
+            **stored,
             "keys": keys,
             "budgetMs": budget_ms,
             "models": {name: slot.model or None for name, slot in slot_settings.items()},

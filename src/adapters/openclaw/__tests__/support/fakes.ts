@@ -14,7 +14,7 @@ import {
 	scoringReply,
 	systemOneAnswer,
 } from "#core/__tests__/support/replies.ts";
-import { KEY_FIELDS, type Provider } from "#core/providers/provider.ts";
+import { KEY_FIELDS, type KeyHolder } from "#core/providers/provider.ts";
 import type { Fetch } from "#core/scoring/transport/send.ts";
 
 type Params<K extends keyof FakeCalls> = FakeCalls[K][number];
@@ -216,15 +216,15 @@ export function createScoringFetch(initial: Levels = { tier: 1, work: 1 }) {
 // A settings object that records each key field read into the trace.
 export const traced = (
 	trace: string[],
-	fields: Partial<Record<Provider, unknown>>,
+	fields: Partial<Record<KeyHolder, unknown>>,
 ) => {
 	const settings: Record<string, unknown> = {};
-	for (const provider of Object.keys(KEY_FIELDS) as Provider[])
-		Object.defineProperty(settings, KEY_FIELDS[provider], {
+	for (const holder of Object.keys(KEY_FIELDS) as KeyHolder[])
+		Object.defineProperty(settings, KEY_FIELDS[holder], {
 			enumerable: true,
 			get: () => {
-				trace.push(`field ${KEY_FIELDS[provider]}`);
-				return fields[provider];
+				trace.push(`field ${KEY_FIELDS[holder]}`);
+				return fields[holder];
 			},
 		});
 	return settings;

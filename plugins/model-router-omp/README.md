@@ -1,10 +1,10 @@
 # model-router for Oh My Pi
 
-An [Oh My Pi](https://github.com/can1357/oh-my-pi) (omp) plugin that picks a model role and an effort for each subagent. It asks [Jev](https://docs.typesafe.ai), on TypeSafe or OpenRouter, how much judgment the task needs and how much work it takes. It then gives the agent the `smol`, `midl` or `slow` role for that spawn, and a thinking level from a fixed ladder.
+An [Oh My Pi](https://github.com/can1357/oh-my-pi) (omp) plugin that picks a model role and an effort for each subagent. It asks a decision model, on the provider's own API or through OpenRouter, how much judgment the task needs and how much work it takes. It then gives the agent the `smol`, `midl` or `slow` role for that spawn, and a thinking level from a fixed ladder.
 
 ## What it does
 
-- It scores each eligible batch item through Jev, using the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
+- It scores each eligible batch item through the decision model of the `provider` setting: [Jev](https://docs.typesafe.ai) from TypeSafe, OpenAI's or Google's. Under `typesafe` the request names the `jev-latest` alias. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - At spawn, it returns `@smol` for level 0, `@midl` for level 1 and `@slow` for level 2. Each role carries the effort as a thinking suffix, such as `@smol:high`. Without a set role, the spawn keeps the agent's model and gets the effort alone, as [Models](#models) says.
 - The [`scope` setting](#scope) picks the agents. Under `core`, the default, only omp's bundled `task` agent is routed. Under `extended`, every agent whose model you did not set is routed.
 - It never overrides a model you set. It keeps the item's own `effort` and a thinking level on the role it picks. Without a set role, it keeps a thinking level on the spawn's model patterns. [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the rules, and [Effort](#effort) names the exception: a level that an agent sets gives way to the ladder. It never changes the tool input.
@@ -27,40 +27,49 @@ omp plugin upgrade @akurganow/model-router
 
 The git catalogue route stays. It installs `model-router-omp`, and `omp plugin upgrade model-router@model-router` upgrades it. omp keys the plugin's settings by the package name it installed. The git route uses `model-router-omp`, and the npm route uses `@akurganow/model-router`. The plugin reads and writes its settings under the name it was installed with. Existing git installs keep their settings.
 
-Installing both the git plugin and the npm package is not advised. omp keeps their settings under different names, so each copy needs its own `provider` and `scope` ([omp install names](../../docs/clients.md#omp-install-names)). With both installed, change each in its own entry of `/settings` → Plugins.
+Installing both the git plugin and the npm package is not advised. omp keeps their settings under different names, so each copy needs its own `provider`, `gateway` and `scope` ([omp install names](../../docs/clients.md#omp-install-names)). With both installed, change each in its own entry of `/settings` → Plugins.
 
 ## Key
 
-For each provider the [`provider` setting](#provider) allows, the plugin checks two places, in this order:
+For each key holder the [`provider` and `gateway` settings](#provider-and-gateway) allow, the plugin checks two places, in this order: omp's credential for the holder, then the holder's environment variable.
 
-- TypeSafe: omp's stored `typesafe` credential, which `/login typesafe` stores, then the `TYPESAFE_API_KEY` environment variable.
-- OpenRouter: omp's stored `openrouter` credential, then the `OPENROUTER_API_KEY` environment variable.
+omp has no setting for a key. The plugin asks omp's credential lookup by the id `typesafe`, `openai`, `google` or `openrouter`, and sends the credential omp returns for the id. [omp model roles](../../docs/clients.md#omp-model-roles) has what omp does with such an id.
 
-A key counts as set when either place holds a non-empty value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key.
+| Key holder | omp credential id | Variable |
+| --- | --- | --- |
+| TypeSafe | `typesafe`, which `/login typesafe` stores | `TYPESAFE_API_KEY` |
+| OpenAI | `openai` | `OPENAI_API_KEY` |
+| Google | `google` | `GEMINI_API_KEY` |
+| OpenRouter | `openrouter`, which `/login openrouter` stores | `OPENROUTER_API_KEY` |
+
+The plugin does not read `GOOGLE_API_KEY`. A key counts as set when either place holds a non-blank value. [Keys](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) says where to get a key.
 
 Add a key in one of two ways:
 
-- Run `/login typesafe` or `/login openrouter`.
+- Store the credential omp holds for the id: run `/login typesafe` or `/login openrouter`. For `openai` and `google`, store it the way omp stores a credential for that provider.
 - Set the environment variable where omp reads it. The variable is visible to every process omp starts. [PRIVACY.md](PRIVACY.md#what-the-plugin-stores) says more.
 
-## Provider
+## Provider and gateway
 
-The `provider` plugin setting picks which providers judge each task, and in which order:
+The `provider` setting says whose model scores each task. Its values are `typesafe` (the default), `openai` and `google`.
 
-| Value | Providers |
-| --- | --- |
-| `typesafe` (default) | TypeSafe only |
-| `openrouter` | OpenRouter only |
-| `auto` | TypeSafe, then OpenRouter |
-| `openrouter-first` | OpenRouter, then TypeSafe |
+The `gateway` setting says how OpenRouter is used to reach the provider. Its values are `direct` (the default), `auto`, `openrouter-first` and `openrouter`.
 
-Fallback rules: [Which provider gets a task](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#which-provider-gets-a-task). Who receives a batch item under each value: [PRIVACY.md](PRIVACY.md).
+[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says which model each `provider` value names, which path each `gateway` value takes first, and when the second one runs. Who receives a batch item under each value: [PRIVACY.md](PRIVACY.md).
 
-Switch it with `/model-router:provider`, or in omp's `/settings` → Plugins, under the name omp installed it with: `model-router-omp` from the git catalogue, `@akurganow/model-router` from npm. The plugin reads the setting on every batch, so a change reaches the next batch with no reload.
+Switch them with `/model-router:provider` or `/model-router:gateway`, or in omp's `/settings` → Plugins, under the name omp installed it with: `model-router-omp` from the git catalogue, `@akurganow/model-router` from npm. The plugin reads both settings on every batch, so a change reaches the next batch with no reload.
 
-A project's plugin settings may only narrow your global `provider` value: from `auto` or `openrouter-first` to `typesafe` or `openrouter`. The plugin ignores any other project value and uses the global one.
+A setting that holds a value outside its list is not valid, and the plugin routes no task. The retired values of `provider` and the pair that replaces each one are listed in [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid). omp passes such a stored value on as stored, as [omp manifest and settings](../../docs/clients.md#omp-manifest-and-settings) says.
 
-Both providers get the `jev-latest` alias. OpenRouter routes it to its own alias for the newest Jev release.
+### What a project can change
+
+A project's plugin settings never change the provider: the plugin ignores a valid project `provider` value. A project may only narrow `gateway`, from a global `auto` or `openrouter-first` to `direct` or `openrouter`. It drops one path and never adds one. The plugin ignores any other valid project `gateway` and uses the global one.
+
+omp merges a project's override file, `<project>/.omp/plugin-overrides.json`, into the settings it hands the plugin. The plugin never opens that file. A project value outside its setting's list is not valid. So a project file that still sets `provider` to `auto`, `openrouter-first` or `openrouter` skips every task of that project with `provider not valid: run setup`. Delete a `provider` of `auto` or `openrouter-first`. Replace `provider: openrouter` with `gateway: openrouter`, which narrows only a global `auto` or `openrouter-first`.
+
+Earlier versions let a project narrow with `provider`. A project's `provider: typesafe` kept OpenRouter out. It narrows nothing now, and the plugin prints no line about it. State it as `gateway: direct`. Check every project that has an override file.
+
+Under `typesafe`, both paths get the `jev-latest` alias. OpenRouter routes it to its own alias for the newest Jev release. Under `openai` and `google`, the request names the model of that endpoint, as [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request) lists.
 
 ## Scope
 
@@ -71,7 +80,7 @@ The `scope` plugin setting picks which agents the plugin routes:
 | `core` (default) | The bundled `task` agent only |
 | `extended` | Every agent whose model you did not set, bundled agents included |
 
-A value outside the two counts as `core`.
+A value outside the two is not valid, as [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says.
 
 Under `extended`, the plugin judges each batch item on its own. Bundled agents route: `task`, `scout`, `sonic`, `reviewer` and `security-reviewer`, on omp 18.12.6 and 18.18.9. A bundled agent's default model is not your choice. The bundled `seance` agent is the exception: omp gives it no spawn hook, so the plugin skips it.
 
@@ -86,34 +95,38 @@ The plugin skips an item, with the reason in the [batch line](#the-batch-line), 
 
 Every routed agent gets the roles of [Models](#models), each while omp has a model for it: `@smol` at level 0, `@midl` at level 1 and `@slow` at level 2. A set role replaces a bundled agent's own role at every level. Each level also sets the effort, as [Effort](#effort) says.
 
-A project's plugin settings may set `scope` to either value. A project value overrides your global one in both directions. `provider` differs: a project may only narrow it. [PRIVACY.md](PRIVACY.md#the-extended-scope) says what a project that sets `extended` changes.
+A project's plugin settings may set `scope` to either value. A project value overrides your global one in both directions. `gateway` differs: a project may only narrow it. [PRIVACY.md](PRIVACY.md#the-extended-scope) says what a project that sets `extended` changes.
 
 ## Change the options
 
-Two commands show or change an option:
+Three commands show or change an option:
 
-- `/model-router:provider [auto|openrouter-first|typesafe|openrouter]`
+- `/model-router:provider [typesafe|openai|google]`
+- `/model-router:gateway [direct|auto|openrouter-first|openrouter]`
 - `/model-router:scope [core|extended]`
 
 [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a command prints. A command with a valid value writes it to your global plugin settings. When a project value wins over the new global one, the output says `A project value for <setting> overrides it.` Without a UI, a command prints to standard error.
 
-The `model_router_config` tool takes one optional input, `setting`: `provider` or `scope`. The tool loads as essential and omp treats it as a write tool.
+omp keys the plugin's settings by the name in the installed `package.json`. When the plugin cannot read that name, a change prints `<setting> unchanged: settings unreadable` and writes nothing, while showing a value still works.
 
-- **No setting:** the tool returns the `provider` line, the `scope` line and the key lines. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show.
+The `model_router_config` tool takes one optional input, `setting`: `provider`, `gateway` or `scope`. The tool loads as essential and omp treats it as a write tool.
+
+- **No setting:** the tool returns the `provider` line, the `gateway` line, the `scope` line and the key lines. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid.
 
   ```text
-  provider: auto (typesafe, then openrouter)
+  provider: typesafe
+  gateway: auto (typesafe, then openrouter)
   scope: core
   typesafe key: set
   openrouter key: unset
   ```
 
-- **`provider` or `scope`:** the plugin asks you in its own dialog. The current value comes first, and each choice carries a one-line consequence. The plugin writes only the value you pick.
+- **`provider`, `gateway` or `scope`:** the plugin asks you in its own dialog. The current value comes first while it is valid, and each choice carries a one-line consequence. The plugin writes only the value you pick.
 
 The tool asks the person. It never takes a value from the model. Nothing is written when:
 
 - the dialog is dismissed or you answer with free text;
-- the value is unchanged;
+- your global setting already holds the value;
 - omp has no UI.
 
 The tool writes the global plugin settings only. It checks the value first, because omp does not. Its result text equals the commands' text for the same outcome.
@@ -205,7 +218,7 @@ A routed entry reads `L<level> <role or slot state> · <effort or kept label> ·
 
 omp's task view shows the same decision as the spawn's routing note, without the item number.
 
-A skipped entry reads `task <n>: skipped, <reason>`. After both providers fail, the reason names each provider, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. The item then runs as omp would run it without the plugin.
+A skipped entry reads `task <n>: skipped, <reason>`. After both attempts fail, the reason names each attempt that failed, with its own reason, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says. The item then runs as omp would run it without the plugin.
 
 A routed item can still skip at spawn time, or get another line there. The batch knows no model patterns, and a setting or a role can change before the spawn. The plugin then prints one more line for that item alone, in the same format, after the batch line. For that item, the later line is the one that holds:
 
@@ -219,9 +232,10 @@ model-router task 3: L2 large model unset · config effort · p=0.88/0.71 · typ
 A closed gate skips every item the scope covers with the same reason. The gates run in this order:
 
 1. `tool call timeout <n> ms leaves <m> ms to route`: omp's tool call timeout leaves less than 1 s to score, as [Limits and retries](#limits-and-retries) says. The plugin reads no key and sends nothing.
-2. `settings unreadable`: the `provider` and `scope` settings or the plugins lockfile cannot be read. The plugin then cannot read `scope`, so it reports `task` items only.
-3. `key unset`: no provider the `provider` setting allows has a key.
-4. `settings unreadable`: omp's model roles, task model overrides or disabled agents cannot be read.
+2. `settings unreadable`: the `provider`, `gateway` and `scope` settings or the plugins lockfile cannot be read. The plugin then cannot read `scope`, so it reports `task` items only.
+3. `<setting> not valid: run setup`: a stored `provider`, `gateway` or `scope` holds a value outside its list. The reason covers the items of the stored `scope`, or `task` items only when `scope` itself is not valid. [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names.
+4. `key unset`: no path the `gateway` setting allows has a key.
+5. `settings unreadable`: omp's model roles, task model overrides or disabled agents cannot be read.
 
 ### Item reasons
 
@@ -243,8 +257,8 @@ One reason appears only at spawn time:
 
 After the item check, a scored item can still skip:
 
-- `timeout`: a first attempt got no answer in 2 s, or the scoring limit ran out: 8 s, or less under a short tool call timeout. When the limit runs out, items still waiting skip too.
-- `HTTP <status>`: the provider returned an error status, after any retries. For example, `HTTP 401` means the provider refused the key.
+- `timeout`: the first of two attempts got no answer in 5 s, or the scoring limit ran out: 10 s, or less under a short tool call timeout. When the limit runs out, items still waiting skip too.
+- `HTTP <status>`: the company returned an error status for the attempt, after any retries. For example, `HTTP 401` means that company refused the key.
 - `network error`: the request could not connect, after any retries.
 - `bad reply`: the reply holds no valid score for the question.
 - `failed`: any other error.
@@ -255,13 +269,13 @@ The plugin calls `pi.pi.discoverAgents`, a typed omp API at omp 18.12.6 and 18.1
 
 - The source tells omp's bundled agents from a user, project or plugin agent with the same name.
 - The declared models decide whether a non-bundled agent keeps its own model under `extended`, and what the agent's own role is.
-- The description goes to Jev as the agent text (the request's `role` field). The bundled `task` agent sends a fixed text instead, as [What leaves the machine](#what-leaves-the-machine) says.
+- The description goes to the scoring model as the agent text (the request's `role` field). The bundled `task` agent sends a fixed text instead, as [What leaves the machine](#what-leaves-the-machine) says.
 
 ## Limits and retries
 
-- One limit covers a batch from the moment omp calls the plugin: the reads before scoring, the scoring, retries and second providers included. It is 8 s, or the tool call timeout less 2 s when that is shorter. At most four items are scored at once.
-- [Retries and the second provider](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-provider) gives the attempts at each provider.
-- Inside one batch, a provider whose first attempt for an item failed and fell back is passed over: items that start later in that batch go straight to the other provider. The next batch tries both again.
+- One limit covers a batch from the moment omp calls the plugin: the reads before scoring, the scoring, retries and second attempts included. It is 10 s, or the tool call timeout less 2 s when that is shorter. At most four items are scored at once.
+- [Retries and the second attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retries-and-the-second-attempt) gives the attempts on each path.
+- Inside one batch, a path whose first attempt for an item failed and fell back is passed over: items that start later in that batch go straight to the other path. The next batch tries both again.
 - omp blocks the whole `task` call when a `tool_call` handler passes `extensionHandlers.toolCallTimeoutMs`, 30 s by default. The plugin reads the setting on every batch and keeps 2 s of it back as a margin. Under 3 s nothing is left to score: every item skips with `tool call timeout <n> ms leaves <m> ms to route`. Set it to 3000 ms or more, or keep the default.
 - The plugin registers a `tool_call` handler, because only that hook gives a plugin the `task` input before omp runs it. While any extension has such a handler, omp starts no work early. `task.speculativeLaunch`, on by default, then no longer starts each subagent while the `task` call streams: the subagents start once the whole call has arrived. The experimental early reads of `tools.speculativeExecution.enabled` stop too. omp 18.12.6 and 18.18.9 both do this ([omp tool_call cost and timeout](../../docs/clients.md#omp-tool_call-cost-and-timeout)).
 
@@ -273,33 +287,33 @@ The plugin prints no line when the call has no eligible item. A call with `task.
 
 - omp's settings: `modelRoles`, `task.agentModelOverrides`, `task.disabledAgents`, `task.maxEffort`, `task.enableEffort` and `extensionHandlers.toolCallTimeoutMs`.
 - The model patterns and the model role omp sends with each spawn, and the `effort` of each item.
-- Its own `provider` and `scope` plugin settings, through omp's plugin settings loader, and the plugins lockfile that holds your global values. The project value may only narrow `provider` and may set `scope` both ways, as [Provider](#provider) and [Scope](#scope) say.
+- Its own `provider`, `gateway` and `scope` plugin settings, through omp's plugin settings loader, and the plugins lockfile that holds your global values. A project value may only narrow `gateway`, and may set `scope` both ways, as [Provider and gateway](#provider-and-gateway) and [Scope](#scope) say.
 - Whether omp has a model for the `smol`, `midl` and `slow` roles.
 - The agent list, with each agent's source, models and description, through `pi.pi.discoverAgents`.
 - The items and the batch `context` of each `task` call.
-- The key of each provider the `provider` setting allows, from omp's stored credential first and then `TYPESAFE_API_KEY` or `OPENROUTER_API_KEY`. The plugin reads no other environment variable.
+- The key of each holder the `provider` and `gateway` settings allow, from the places [Key](#key) names. The plugin reads no other environment variable.
 
 ## What the plugin writes
 
-- The global `provider` or `scope` plugin setting, when you pick a value in its dialog or give a command.
+- The global `provider`, `gateway` or `scope` plugin setting, when you pick a value in its dialog or give a command.
 
 The plugin writes nothing else and starts no program.
 
 ## What leaves the machine
 
-For each routed item, the plugin sends an HTTPS POST to the first provider in the `provider` order:
+For each routed item, the plugin sends an HTTPS POST to the first path of the `gateway` setting that has a key:
 
-- TypeSafe: `https://api.typesafe.ai/v1/systemone`, with your TypeSafe key as a bearer token.
-- OpenRouter: `https://openrouter.ai/api/v1/systemone`, with your OpenRouter key as a bearer token.
+- The provider's own API, on the direct path: `api.typesafe.ai`, `api.openai.com` or `generativelanguage.googleapis.com`, with the key of the provider you chose.
+- OpenRouter, on the gateway path: `openrouter.ai`, with your OpenRouter key.
 
-The second provider gets a request only after the first fails, as [Limits and retries](#limits-and-retries) says. No environment variable changes either endpoint.
+[The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request) lists the address and the model of each path and the header that carries the key. The second attempt sends a request only after the first fails, as [Limits and retries](#limits-and-retries) says. No environment variable changes an endpoint.
 
 The request body holds:
 
 - The item's task text and the batch `context`. Together they stay within 12,000 characters, and the context takes at most 3,000 of them.
 - The item's name, masked like the task text and sent as the description.
 - The agent text: the bundled `task` agent sends one fixed text, and every other agent sends its description, masked and cut to 500 characters. [PRIVACY.md](PRIVACY.md) has the details, and [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent) says why.
-- The `jev-latest` alias and two fixed questions: one about judgment and one about work.
+- The model of the endpoint and two fixed questions: one about judgment and one about work.
 
 Before sending, the plugin condenses the task text. It replaces each fenced code block with a line count, and it masks token-shaped strings, as [The task text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-task-text) lists.
 
@@ -311,7 +325,7 @@ A failed request leaves the call unchanged. The item skips with its reason, and 
 
 [Turn off and uninstall](../../README.md#turn-off-and-uninstall) in the repository README gives the steps.
 
-Removing the key of every provider the `provider` setting allows also stops routing. Every batch then reports `key unset`.
+Removing the key of every path the `gateway` setting allows also stops routing. Every batch then reports `key unset`.
 
 ## Support
 

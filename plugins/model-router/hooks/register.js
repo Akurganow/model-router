@@ -1,43 +1,57 @@
+// src/core/output/reasons.ts
+var CALLER_EFFORT = "caller effort";
+var KEY_UNSET = "key unset";
+var BAD_REPLY = "bad reply";
+var TIMEOUT = "timeout";
+var FAILED = "failed";
+var NETWORK_ERROR = "network error";
+var httpStatus = (status) => `HTTP ${status}`;
+var CANCELLED = "cancelled";
+var notValid = (setting) => `${setting} not valid: run setup`;
+var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
+
 // src/core/providers/provider.ts
-var PROVIDER_VALUES = [
+var MAKERS = ["typesafe", "openai", "google"];
+var KEY_HOLDERS = [...MAKERS, "openrouter"];
+var GATEWAYS = [
+  "direct",
   "auto",
   "openrouter-first",
-  "typesafe",
   "openrouter"
 ];
-var PROVIDERS = ["typesafe", "openrouter"];
 var KEY_FIELDS = {
   typesafe: "api_key",
+  openai: "openai_api_key",
+  google: "google_api_key",
   openrouter: "openrouter_api_key"
 };
-var FIRST_ATTEMPT_TIMEOUT_MS = 2e3;
-var MODELS = {
-  typesafe: "jev-latest",
-  openrouter: "jev-latest"
-};
-var DEFAULT_VALUE = "typesafe";
-var ORDER = {
-  auto: PROVIDERS,
-  "openrouter-first": ["openrouter", "typesafe"],
-  typesafe: ["typesafe"],
+var FIRST_ATTEMPT_TIMEOUT_MS = 5e3;
+var GATEWAY_PATHS = {
+  direct: ["direct"],
+  auto: ["direct", "openrouter"],
+  "openrouter-first": ["openrouter", "direct"],
   openrouter: ["openrouter"]
 };
-var parseProvider = (value) => typeof value === "string" && Object.hasOwn(ORDER, value) ? value : void 0;
-var resolve = (value) => parseProvider(value) ?? DEFAULT_VALUE;
-var order = (value) => ORDER[resolve(value)];
-async function collectKeys(value, lookup) {
+var holderOf = (maker, path) => path === "direct" ? maker : path;
+var steps = (choice) => GATEWAY_PATHS[choice.gateway].map((path) => ({
+  maker: choice.provider,
+  path,
+  holder: holderOf(choice.provider, path)
+}));
+var holders = (choice) => "skipped" in choice ? [] : steps(choice).map((step) => step.holder);
+async function collectKeys(choice, lookup) {
   const keys = {};
-  for (const provider of order(value)) {
-    const key = await lookup(provider);
-    if (key !== void 0) keys[provider] = key;
+  for (const holder of holders(choice)) {
+    const key = await lookup(holder);
+    if (key !== void 0) keys[holder] = key;
   }
   return keys;
 }
-function plan(value, keys) {
+function plan(choice, keys) {
   const attempts = [];
-  for (const provider of order(value)) {
-    const key = keys[provider];
-    if (key) attempts.push({ provider, model: MODELS[provider], key });
+  for (const step of steps(choice)) {
+    const key = keys[step.holder];
+    if (key) attempts.push({ ...step, key });
   }
   return attempts.map(
     (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt
@@ -49,29 +63,35 @@ var errorText = (err) => err instanceof Error ? err.message : String(err);
 
 // src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
-var DEFAULT_SCOPE = "core";
-var parseScope = (value) => SCOPE_VALUES.find((known) => known === value);
-var resolveScope = (value) => parseScope(value) ?? DEFAULT_SCOPE;
+var DEFAULT_SCOPE = SCOPE_VALUES[0];
 
 // src/core/options/settings.ts
-var VALUE_SETTINGS = ["provider", "scope"];
+var VALUE_SETTINGS = ["provider", "gateway", "scope"];
 var LABEL_SEPARATOR = " - ";
 var TEXTS = {
   provider: {
-    values: PROVIDER_VALUES,
-    resolve,
-    about: "which providers score subagent calls",
-    question: "Which providers should score subagent calls?",
+    values: MAKERS,
+    about: "whose model scores subagent calls",
+    question: "Which provider's model should score subagent calls?",
     consequences: {
-      auto: "TypeSafe, then OpenRouter if TypeSafe fails",
-      "openrouter-first": "OpenRouter, then TypeSafe if OpenRouter fails",
-      typesafe: "TypeSafe only",
+      typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to",
+      openai: "OpenAI's decision model; costs more than Jev and its answers are not fitted",
+      google: "Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text"
+    }
+  },
+  gateway: {
+    values: GATEWAYS,
+    about: "how OpenRouter is used for the provider",
+    question: "How should OpenRouter be used for the provider?",
+    consequences: {
+      direct: "the provider's own API only",
+      auto: "the provider's own API, then OpenRouter if it fails",
+      "openrouter-first": "OpenRouter, then the provider's own API if it fails",
       openrouter: "OpenRouter only"
     }
   },
   scope: {
     values: SCOPE_VALUES,
-    resolve: resolveScope,
     about: "which agent calls the router routes",
     question: "Which agent calls should the router route?",
     consequences: {
@@ -82,19 +102,33 @@ var TEXTS = {
 };
 var isValueSetting = (name) => VALUE_SETTINGS.some((known) => known === name);
 var isValue = (setting, value) => TEXTS[setting].values.some((known) => known === value);
-var valueLine = (setting, value) => setting === "provider" ? `provider: ${value} (${order(value).join(", then ")})` : `scope: ${resolveScope(value)}`;
+var isSilent = (stored) => typeof stored !== "string" || stored.trim() === "";
+var valueFor = (setting, stored) => isSilent(stored) ? TEXTS[setting].values[0] : TEXTS[setting].values.find((value) => value === stored);
+var readProvider = (stored) => MAKERS.find((maker) => maker === valueFor("provider", stored));
+var readGateway = (stored) => GATEWAYS.find((gateway) => gateway === valueFor("gateway", stored));
+var readScope = (stored) => SCOPE_VALUES.find((scope) => scope === valueFor("scope", stored));
+function settingsOf(stored) {
+  const provider = readProvider(stored.provider);
+  if (provider === void 0) return { skipped: notValid("provider") };
+  const gateway = readGateway(stored.gateway);
+  if (gateway === void 0) return { skipped: notValid("gateway") };
+  const scope = readScope(stored.scope);
+  if (scope === void 0) return { skipped: notValid("scope") };
+  return { provider, gateway, scope };
+}
+var scopeOf = (stored) => readScope(stored.scope) ?? DEFAULT_SCOPE;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var NO_ANSWER = "no answer from the dialog";
 var NOT_OFFERED = "the answer was not one of the offered values";
-var keyLine = (provider, state) => `${provider} key: ${state}`;
+var keyLine = (holder, state) => `${holder} key: ${state}`;
 var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
 function ask(setting, current2) {
-  const { values, resolve: resolve2, question } = TEXTS[setting];
-  const first = resolve2(current2);
-  const sorted = [first, ...values.filter((value) => value !== first)];
+  const { values, question } = TEXTS[setting];
+  const first = valueFor(setting, current2);
+  const sorted = first === void 0 ? values : [first, ...values.filter((value) => value !== first)];
   return { question, options: sorted.map((value) => label(setting, value)) };
 }
 function pick(setting, answer2) {
@@ -114,15 +148,27 @@ async function chooseValue(setting, current2, select, apply) {
   const value = pick(setting, answer2);
   return value === void 0 ? unchanged(setting, NOT_OFFERED) : apply(value);
 }
-var settingsReport = (provider, scope, extra, keys) => [
-  valueLine("provider", provider),
-  valueLine("scope", scope),
-  ...extra,
-  ...order(provider).map(
-    (name) => keyLine(name, keys[name] === void 0 ? "unset" : "set")
-  )
-].join("\n");
-var toolDescription = () => `Reads the router's settings. With no input it returns the provider and scope, and whether each key the provider allows is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
+var valueLine = (setting, stored) => {
+  const value = valueFor(setting, stored[setting]);
+  if (value === void 0)
+    return `${setting}: ${String(stored[setting])} (not valid: use one of ${TEXTS[setting].values.join(", ")})`;
+  const settings = settingsOf(stored);
+  if (setting === "gateway" && !("skipped" in settings))
+    return `gateway: ${value} (${holders(settings).join(", then ")})`;
+  return `${setting}: ${value}`;
+};
+var settingsReport = (stored, extra, keys) => {
+  const settings = settingsOf(stored);
+  const keyLines = "skipped" in settings ? [] : holders(settings).map(
+    (holder) => keyLine(holder, keys[holder] === void 0 ? "unset" : "set")
+  );
+  return [
+    ...VALUE_SETTINGS.map((setting) => valueLine(setting, stored)),
+    ...extra,
+    ...keyLines
+  ].join("\n");
+};
+var toolDescription = () => `Reads the router's settings. With no input it returns the provider, gateway and scope, and whether each key the settings allow is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice. Never pass a value or a key. The person picks the value in the dialog.`;
 var badCall = () => `Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
 function describeCommand(setting) {
   const { about, values } = TEXTS[setting];
@@ -130,6 +176,7 @@ function describeCommand(setting) {
 }
 var COMMAND_DESCRIPTIONS = {
   provider: describeCommand("provider"),
+  gateway: describeCommand("gateway"),
   scope: describeCommand("scope")
 };
 
@@ -169,16 +216,20 @@ var nonEmpty = (value) => {
 };
 
 // src/adapters/claude/keys.ts
-async function readKeys($, options, provider) {
+async function readKeys($, options, choice) {
   return collectKeys(
-    provider,
-    async (name) => nonEmpty(options[KEY_FIELDS[name]]) ?? nonEmpty(await keyVariable($, name))
+    choice,
+    async (holder) => nonEmpty(options[KEY_FIELDS[holder]]) ?? nonEmpty(await keyVariable($, holder))
   );
 }
-function keyVariable($, provider) {
-  switch (provider) {
+function keyVariable($, holder) {
+  switch (holder) {
     case "typesafe":
       return $.env.get("TYPESAFE_API_KEY");
+    case "openai":
+      return $.env.get("OPENAI_API_KEY");
+    case "google":
+      return $.env.get("GEMINI_API_KEY");
     case "openrouter":
       return $.env.get("OPENROUTER_API_KEY");
   }
@@ -203,11 +254,16 @@ function resetConfig() {
   serial = serializer();
 }
 var current = (options, setting) => written[setting] ?? options[setting];
+var storedOf = (options) => ({
+  provider: current(options, "provider"),
+  gateway: current(options, "gateway"),
+  scope: current(options, "scope")
+});
 async function registerConfigTool($, e, next) {
   await $.tool.register(TOOL_SPEC);
   return next(e);
 }
-async function write($, setting, value) {
+async function write($, options, setting, value) {
   try {
     const { deny } = await $.config.set({
       key: `${ROW_PREFIX}${setting}`,
@@ -215,7 +271,7 @@ async function write($, setting, value) {
     });
     if (deny !== void 0) return unchanged(setting, deny);
     written[setting] = value;
-    return valueLine(setting, value);
+    return valueLine(setting, storedOf(options));
   } catch (err) {
     return unchangedBy(setting, err);
   }
@@ -225,13 +281,13 @@ async function choose($, setting, options) {
     setting,
     current(options, setting),
     (question, labels) => $.ui.ask(question, { options: labels, header: setting }),
-    async (value) => value === current(options, setting) ? unchanged(setting, alreadyValue(value)) : write($, setting, value)
+    async (value) => value === current(options, setting) ? unchanged(setting, alreadyValue(value)) : write($, options, setting, value)
   );
 }
 async function read($, options) {
-  const provider = current(options, "provider");
-  const keys = await readKeys($, options, provider);
-  return settingsReport(provider, current(options, "scope"), [], keys);
+  const stored = storedOf(options);
+  const keys = await readKeys($, options, settingsOf(stored));
+  return settingsReport(stored, [], keys);
 }
 async function answer($, call, options) {
   if (await denied($, call)) return { deny: REFUSED };
@@ -249,8 +305,8 @@ async function configCommand($, e, setting, options) {
   if (args !== "" && !isValue(setting, args))
     return { text: useOneOf(setting) };
   if (args === "" || e.origin.kind !== PERSON)
-    return { text: valueLine(setting, current(options, setting)) };
-  return { text: await write($, setting, args) };
+    return { text: valueLine(setting, storedOf(options)) };
+  return { text: await write($, options, setting, args) };
 }
 
 // src/core/brief/brief.ts
@@ -482,17 +538,6 @@ function routingState(raw) {
   };
 }
 
-// src/core/output/reasons.ts
-var CALLER_EFFORT = "caller effort";
-var KEY_UNSET = "key unset";
-var BAD_REPLY = "bad reply";
-var TIMEOUT = "timeout";
-var FAILED = "failed";
-var NETWORK_ERROR = "network error";
-var httpStatus = (status) => `HTTP ${status}`;
-var CANCELLED = "cancelled";
-var failedAttemptText = (f) => `${f.provider} ${f.reason}`;
-
 // src/core/output/line.ts
 var pinnedLine = (level, target) => `L${level} ${target}`;
 function routedLine({
@@ -511,13 +556,13 @@ var PROBABILITY_DIGITS = 2;
 var formatProbability = (p) => p.toFixed(PROBABILITY_DIGITS);
 var isCount = (v) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 function decisionSuffix({
-  provider,
+  holder,
   model,
   inputTokens,
   outputTokens,
   failed
 }) {
-  return ` \xB7 ${provider}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
+  return ` \xB7 ${holder}` + (model ? ` ${model}` : "") + (isCount(inputTokens) && isCount(outputTokens) ? ` \xB7 ${inputTokens}/${outputTokens} tok` : "") + (failed ? ` \xB7 ${failedAttemptText(failed)}` : "");
 }
 
 // src/core/parts/part.ts
@@ -619,67 +664,166 @@ function fallsBack(failure) {
 // src/utils/guards.ts
 var isRecord = (v) => typeof v === "object" && v !== null;
 
-// src/core/scoring/formats/system-one.ts
+// src/core/scoring/formats/shared.ts
+var stateText = (state) => JSON.stringify(state);
+var questionMap = (parts) => Object.fromEntries(parts.map((p) => [p.key, p.question]));
+var count = (v) => typeof v === "number" ? v : null;
+var usageNamed = (input, output) => (usage) => {
+  if (!isRecord(usage)) return void 0;
+  return {
+    input_tokens: count(usage[input]),
+    output_tokens: count(usage[output])
+  };
+};
 var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
-function parseProbabilities(answers, key) {
+function levelProbabilities(p0, p1, p2) {
+  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+var mapAnswer = (answers, key) => {
   const a = isRecord(answers) ? answers[key] : void 0;
   if (!isRecord(a)) return void 0;
   const { type, probabilities } = a;
   if (type !== "score" || !isRecord(probabilities)) return void 0;
   if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
   const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
-    return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
-}
-function parse(text) {
+  return levelProbabilities(p0, p1, p2);
+};
+function parseJson(text) {
   try {
     return JSON.parse(text);
   } catch {
     return void 0;
   }
 }
-var count = (v) => typeof v === "number" ? v : null;
-function usageOf(usage) {
-  if (!isRecord(usage)) return void 0;
-  const { input_tokens, output_tokens } = usage;
-  return {
-    input_tokens: count(input_tokens),
-    output_tokens: count(output_tokens)
-  };
-}
-function read2(parts, text) {
-  const reply = parse(text);
+var replyReader = (probabilitiesOf, usageOf) => (parts, text) => {
+  const reply = parseJson(text);
   const { answers, model, usage } = isRecord(reply) ? reply : {};
   const pairs = [];
   for (const part of parts) {
-    const probabilities = parseProbabilities(answers, part.key);
+    const probabilities = probabilitiesOf(answers, part.key);
     if (!probabilities) return MALFORMED;
     pairs.push([part, probabilities]);
   }
   return { answers: pairs, model, usage: usageOf(usage) };
-}
-var SYSTEM_ONE = {
+};
+
+// src/core/scoring/formats/gemini-decisions.ts
+var GEMINI_DECISIONS = {
   body: (parts, state, model) => JSON.stringify({
-    state,
     model,
-    questions: Object.fromEntries(parts.map((p) => [p.key, p.question]))
+    input: stateText(state),
+    questions: questionMap(parts)
   }),
-  read: read2
+  read: replyReader(
+    mapAnswer,
+    usageNamed("total_input_tokens", "total_output_tokens")
+  )
+};
+
+// src/core/scoring/formats/openai-decisions.ts
+function listAnswer(answers, key) {
+  if (!Array.isArray(answers)) return void 0;
+  const [item, ...others] = answers.filter(isRecord).filter(({ name }) => name === key);
+  if (!item || others.length > 0) return void 0;
+  const { type, probabilities } = item;
+  if (type !== "score" || !Array.isArray(probabilities)) return void 0;
+  if (probabilities.length !== LEVELS.length) return void 0;
+  const byValue = /* @__PURE__ */ new Map();
+  for (const entry of probabilities) {
+    if (!isRecord(entry)) return void 0;
+    const { value, probability } = entry;
+    byValue.set(value, probability);
+  }
+  return levelProbabilities(byValue.get(0), byValue.get(1), byValue.get(2));
+}
+var OPENAI_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    model,
+    input: stateText(state),
+    questions: parts.map(({ key, question }) => ({
+      type: "score",
+      name: key,
+      instructions: question.instructions,
+      levels: question.criteria.map((description, index) => ({
+        label: String(index),
+        description
+      }))
+    }))
+  }),
+  read: replyReader(listAnswer, usageNamed("input_tokens", "output_tokens"))
+};
+
+// src/core/scoring/formats/openrouter-decisions.ts
+var OPENROUTER_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    state: stateText(state),
+    model,
+    questions: questionMap(parts)
+  }),
+  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
+};
+
+// src/core/scoring/formats/system-one.ts
+var SYSTEM_ONE = {
+  body: (parts, state, model) => JSON.stringify({ state, model, questions: questionMap(parts) }),
+  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
 };
 
 // src/core/scoring/endpoints.ts
+var BEARER = { name: "Authorization", prefix: "Bearer " };
+var GOOGLE_KEY = { name: "x-goog-api-key", prefix: "" };
+var JEV = "jev-latest";
 var ENDPOINTS = {
   typesafe: {
-    url: "https://api.typesafe.ai/v1/systemone",
-    format: SYSTEM_ONE
+    direct: {
+      url: "https://api.typesafe.ai/v1/systemone",
+      format: SYSTEM_ONE,
+      model: JEV,
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/v1/systemone",
+      format: SYSTEM_ONE,
+      model: JEV,
+      keyHeader: BEARER
+    }
   },
-  openrouter: {
-    url: "https://openrouter.ai/api/v1/systemone",
-    format: SYSTEM_ONE
+  openai: {
+    direct: {
+      url: "https://api.openai.com/v1/decisions",
+      format: OPENAI_DECISIONS,
+      model: "gpt-6-luna",
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "openai/gpt-6-luna-decisions",
+      keyHeader: BEARER
+    }
+  },
+  google: {
+    direct: {
+      url: "https://generativelanguage.googleapis.com/v1beta/decisions",
+      format: GEMINI_DECISIONS,
+      model: "gemini-decision-1",
+      keyHeader: GOOGLE_KEY
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "google/gemini-decision-1",
+      keyHeader: BEARER
+    }
   }
 };
-var endpointOf = (attempt) => Object.hasOwn(ENDPOINTS, attempt.provider) ? ENDPOINTS[attempt.provider] : void 0;
+function endpointOf(attempt) {
+  if (!Object.hasOwn(ENDPOINTS, attempt.maker)) return void 0;
+  const rows = ENDPOINTS[attempt.maker];
+  return Object.hasOwn(rows, attempt.path) ? rows[attempt.path] : void 0;
+}
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
@@ -768,11 +912,11 @@ async function exchange(fetchFn, url, request, caller, timeout, clock) {
 }
 function pause(ms, caller, clock) {
   if (caller.aborted) return Promise.resolve();
-  return new Promise((resolve2) => {
+  return new Promise((resolve) => {
     const done = () => {
       timer.cancel();
       caller.removeEventListener("abort", done);
-      resolve2();
+      resolve();
     };
     const timer = clock.after(ms, done);
     caller.addEventListener("abort", done, { once: true });
@@ -803,14 +947,14 @@ async function askOnce(input, attempt) {
   const { parts, state, fetchFn, clock, signal } = input;
   const endpoint = endpointOf(attempt);
   if (!endpoint) return UNKNOWN;
-  const { url, format } = endpoint;
-  const body = format.body(parts, state, attempt.model);
+  const { url, format, model, keyHeader } = endpoint;
+  const body = format.body(parts, state, attempt.model ?? model);
   const received = await send(
     fetchFn,
     url,
     {
       headers: {
-        Authorization: `Bearer ${attempt.key}`,
+        [keyHeader.name]: `${keyHeader.prefix}${attempt.key}`,
         Accept: "application/json",
         "Content-Type": "application/json",
         "User-Agent": USER_AGENT
@@ -827,12 +971,12 @@ async function askOnce(input, attempt) {
   if (isFailure(received)) return received;
   if (!isSuccess(received.status))
     return { failure: "status", status: received.status };
-  const read3 = format.read(parts, received.text);
-  if (isFailure(read3)) return read3;
+  const read2 = format.read(parts, received.text);
+  if (isFailure(read2)) return read2;
   return {
-    answers: read3.answers,
-    model: cleanModel(read3.model),
-    usage: read3.usage
+    answers: read2.answers,
+    model: cleanModel(read2.model),
+    usage: read2.usage
   };
 }
 async function ask2(input, attempt) {
@@ -844,7 +988,7 @@ async function ask2(input, attempt) {
 }
 
 // src/core/scoring/limit.ts
-var ROUTING_LIMIT_MS = 8e3;
+var ROUTING_LIMIT_MS = 1e4;
 var LIMIT_REACHED = /* @__PURE__ */ Symbol("routing limit reached");
 function abortCategory(signal) {
   return signal.reason === LIMIT_REACHED ? TIMEOUT : CANCELLED;
@@ -882,14 +1026,14 @@ async function route(input) {
     const result = await ask2(input, attempt);
     if (isFailure(result)) {
       failed.push({
-        provider: attempt.provider,
+        holder: attempt.holder,
         reason: skipText(result, abortCategory(signal))
       });
       if (!fallsBack(result)) break;
-      if (i < attempts.length - 1) input.onFallback?.(attempt.provider);
+      if (i < attempts.length - 1) input.onFallback?.(attempt.holder);
       continue;
     }
-    const decision = toDecision(result, attempt.provider);
+    const decision = toDecision(result, attempt.holder);
     const [first] = failed;
     return first ? { ...decision, firstFailed: first } : decision;
   }
@@ -900,11 +1044,11 @@ function skip(failed) {
   if (!first || rest.length === 0) return { skipped: first?.reason ?? FAILED };
   return { skipped: failed.map(failedAttemptText).join(", ") };
 }
-function toDecision({ answers, model, usage }, provider) {
+function toDecision({ answers, model, usage }, holder) {
   const parts = {};
   for (const [part, probabilities] of answers)
     parts[part.key] = { level: part.pick(probabilities), probabilities };
-  return { parts, provider, model, usage };
+  return { parts, holder, model, usage };
 }
 
 // src/core/decision/decide.ts
@@ -927,7 +1071,7 @@ function decide(decision, tierKey, workKey) {
     work: work2.level,
     probabilities: `${tier2.probability}/${work2.probability}`,
     suffix: decisionSuffix({
-      provider: decision.provider,
+      holder: decision.holder,
       model: decision.model,
       inputTokens: decision.usage?.input_tokens,
       outputTokens: decision.usage?.output_tokens,
@@ -981,7 +1125,7 @@ function outcomeOf(decided, models, kept) {
 }
 
 // src/adapters/claude/router.ts
-var MODELS2 = { small: "haiku", middle: "sonnet", large: "opus" };
+var MODELS = { small: "haiku", middle: "sonnet", large: "opus" };
 var BUILT_IN = "built-in";
 var ENGINE = "engine";
 var GENERAL_PURPOSE = "general-purpose";
@@ -1044,24 +1188,29 @@ function roleFor(agent) {
 }
 async function routeSpawn($, spawn, next, options) {
   const callerSet = callerEffort.delete(spawn.tool_use_id);
-  if (next.origin.plugin !== ENGINE || !routable(spawn, resolveScope(options.scope)))
+  const settings = settingsOf(options);
+  if (next.origin.plugin !== ENGINE || !routable(spawn, scopeOf(options)))
     return next(spawn);
+  if ("skipped" in settings) {
+    await $.ui.log(skippedLine(settings.skipped));
+    return next(spawn);
+  }
   const state = routingState({
     role: roleFor(spawn.subagentType),
     description: spawn.description,
     task: spawn.prompt
   });
-  const keys = await readKeys($, options, options.provider);
+  const keys = await readKeys($, options, settings);
   const decided = await scored($, next.signal, {
     state,
-    attempts: plan(options.provider, keys)
+    attempts: plan(settings, keys)
   });
   if ("skipped" in decided) {
     await $.ui.log(skippedLine(decided.skipped));
     return next(spawn);
   }
   const kept = callerSet ? CALLER_EFFORT : await $.env.get("CLAUDE_CODE_EFFORT_LEVEL") ? "env effort" : void 0;
-  const { model, effort, line } = outcomeOf(decided, MODELS2, kept);
+  const { model, effort, line } = outcomeOf(decided, MODELS, kept);
   await $.ui.log(line);
   const started = next(model === void 0 ? spawn : { ...spawn, model });
   if (effort !== void 0) track(started, effort);
@@ -1183,6 +1332,11 @@ function register(on, options) {
     "tool.call",
     { tool: "mcp__model-router__config" },
     ($, e) => configCall($, e, options)
+  );
+  on(
+    "command.run",
+    { command: "model-router:gateway" },
+    ($, e) => configCommand($, e, "gateway", options)
   );
   on(
     "command.run",

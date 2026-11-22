@@ -26,10 +26,12 @@ const world = useWorld();
 const ENV_KEY = "env-key-0002";
 const OR_ENV_KEY = "env-or-key-0004";
 const open = (key = KEY) => ({
-	attempts: [{ provider: "typesafe", model: "jev-latest", key }],
+	attempts: [{ maker: "typesafe", path: "direct", holder: "typesafe", key }],
 });
 const openOr = (key = OR_KEY) => ({
-	attempts: [{ provider: "openrouter", model: "jev-latest", key }],
+	attempts: [
+		{ maker: "typesafe", path: "openrouter", holder: "openrouter", key },
+	],
 });
 
 const ctx = world.ctx;
@@ -49,7 +51,7 @@ test("omp's credential wins over the variable", async () => {
 });
 
 test("omp's OpenRouter credential wins over its variable", async () => {
-	world.lockfile = lockfileWith("openrouter");
+	world.lockfile = lockfileWith({ gateway: "openrouter" });
 	setEnv(OR_VARIABLE, OR_ENV_KEY);
 	assert.deepEqual(await gates(), openOr());
 });
@@ -69,7 +71,7 @@ for (const [name, credential] of [
 		setEnv(OR_VARIABLE, OR_ENV_KEY);
 		world.credential = credential;
 		assert.deepEqual(await gates(), open(ENV_KEY));
-		world.lockfile = lockfileWith("openrouter");
+		world.lockfile = lockfileWith({ gateway: "openrouter" });
 		assert.deepEqual(await gates(), openOr(OR_ENV_KEY));
 	});
 
@@ -95,7 +97,7 @@ test("no credential and no variable close the gate", async () => {
 	assert.deepEqual(await gates(), { closed: KEY_UNSET });
 	setEnv(KEY_VARIABLE, "");
 	assert.deepEqual(await gates(), { closed: KEY_UNSET });
-	world.lockfile = lockfileWith("openrouter");
+	world.lockfile = lockfileWith({ gateway: "openrouter" });
 	setEnv(KEY_VARIABLE, ENV_KEY);
 	assert.deepEqual(await gates(), { closed: KEY_UNSET });
 });
@@ -118,40 +120,41 @@ test("the default reads no OpenRouter credential and no OpenRouter variable", as
 });
 
 test("both providers in order, each with its own key", async () => {
-	world.lockfile = lockfileWith("openrouter-first");
+	world.lockfile = lockfileWith({ gateway: "openrouter-first" });
 	assert.deepEqual(await gates(), {
 		attempts: [
 			{
-				provider: "openrouter",
-				model: "jev-latest",
+				maker: "typesafe",
+				path: "openrouter",
+				holder: "openrouter",
 				key: OR_KEY,
-				timeout: 2000,
+				timeout: 5000,
 				retries: 0,
 			},
-			{ provider: "typesafe", model: "jev-latest", key: KEY },
+			{ maker: "typesafe", path: "direct", holder: "typesafe", key: KEY },
 		],
 	});
 	assert.deepEqual(world.asked, ["openrouter", "typesafe"]);
 });
 
 test("a two-provider value with one key present plans that provider alone", async () => {
-	world.lockfile = lockfileWith("auto");
+	world.lockfile = lockfileWith({ gateway: "auto" });
 	world.credential = async (provider) =>
 		provider === "openrouter" ? OR_KEY : undefined;
 	assert.deepEqual(await gates(), openOr());
 });
 
-// The full table lives with narrow(); these pairs show the reads reach it.
+// The full table lives with readSettings(); these pairs show the reads reach it.
 const narrowing: [string, unknown, unknown, string[]][] = [
 	["global auto alone", "auto", undefined, ["typesafe", "openrouter"]],
 	["a project narrowing auto", "auto", "openrouter", ["openrouter"]],
 	[
 		"a project narrowing openrouter-first",
 		"openrouter-first",
-		"typesafe",
+		"direct",
 		["typesafe"],
 	],
-	["a project swapping providers", "typesafe", "openrouter", ["typesafe"]],
+	["a project swapping providers", "direct", "openrouter", ["typesafe"]],
 	[
 		"a project reordering",
 		"auto",
@@ -159,25 +162,30 @@ const narrowing: [string, unknown, unknown, string[]][] = [
 		["typesafe", "openrouter"],
 	],
 	["a project value with no global", undefined, "openrouter", ["typesafe"]],
-	["an unknown global", "everything", undefined, ["typesafe"]],
 ];
 for (const [name, global, project, providers] of narrowing)
 	test(`settings: ${name}`, async () => {
-		world.lockfile = lockfileWith(global);
-		if (project !== undefined) world.project = { provider: project };
+		world.lockfile = lockfileWith({ gateway: global });
+		if (project !== undefined) world.project = { gateway: project };
 		const result = await gates();
 		assert.ok("attempts" in result);
 		assert.deepEqual(
-			result.attempts.map((a) => a.provider),
+			result.attempts.map((a) => a.holder),
 			providers,
 		);
 		assert.deepEqual(world.asked, providers);
 	});
 
+test("settings: an unknown global gateway closes the gate and reads no key", async () => {
+	world.lockfile = lockfileWith({ gateway: "everything" });
+	assert.deepEqual(await gates(), { closed: "gateway not valid: run setup" });
+	assert.deepEqual(world.asked, []);
+});
+
 test("a missing lockfile or a value stored under another name means typesafe", async () => {
 	world.lockfile = undefined;
 	assert.deepEqual(await gates(), open());
-	world.lockfile = lockfileWith("openrouter", "model-router");
+	world.lockfile = lockfileWith({ gateway: "openrouter" }, "model-router");
 	assert.deepEqual(await gates(), open());
 });
 

@@ -56,7 +56,7 @@ export function decide(
 		work: work.level,
 		probabilities: `${tier.probability}/${work.probability}`,
 		suffix: decisionSuffix({
-			provider: decision.provider,
+			holder: decision.holder,
 			model: decision.model,
 			inputTokens: decision.usage?.input_tokens,
 			outputTokens: decision.usage?.output_tokens,
@@ -66,7 +66,7 @@ export function decide(
 }
 
 /**
- * Asks Jev once for the tier and work parts and reads both levels from the
+ * Asks the scoring model once for the tier and work parts and reads both levels from the
  * reply. Returns the skip when the call skips or the reply lacks a part.
  * Rejects as route does.
  */

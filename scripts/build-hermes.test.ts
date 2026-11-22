@@ -11,12 +11,7 @@ import {
 } from "#adapters/hermes/texts.ts";
 import { EFFORTS, effortFor } from "#core/decision/ladder.ts";
 import { LEVELS } from "#core/parts/part.ts";
-import {
-	KEY_VARIABLES,
-	order,
-	PROVIDER_VALUES,
-	resolve as resolveProvider,
-} from "#core/providers/provider.ts";
+import { KEY_VARIABLES } from "#core/providers/provider.ts";
 import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { renderHermes } from "./build/hermes.ts";
 import { formatJson } from "./build/json.ts";
@@ -68,27 +63,43 @@ test("the manifest names the plugin, its version and its backend kind", () => {
 	assert.deepEqual(manifest.provides_tools, [TOOL_NAME]);
 });
 
-test("the manifest holds six settings and no scope", () => {
+test("the manifest holds nine settings and no scope", () => {
 	assert.deepEqual(Object.keys(schema), [
 		"provider",
+		"gateway",
 		"small_model",
 		"middle_model",
 		"large_model",
-		"typesafe_api_key",
+		"api_key",
+		"openai_api_key",
+		"google_api_key",
 		"openrouter_api_key",
 	]);
 	assert.equal(JSON.stringify(manifest).includes("scope"), false);
 });
 
-test("the provider setting offers the values the code accepts, with its default", () => {
-	assert.equal(schema.provider.type, "str");
-	assert.deepEqual(schema.provider.choices, [...PROVIDER_VALUES]);
-	assert.equal(schema.provider.default, resolveProvider(undefined));
-	assert.equal(schema.provider.label, source.options.provider.title);
-	assert.equal(
-		schema.provider.description,
-		source.options.provider.descriptions.hermes,
-	);
+test("the provider and gateway settings offer the values the code accepts, with their defaults", () => {
+	const shown = (name: string) => ({
+		type: schema[name].type,
+		choices: schema[name].choices,
+		default: schema[name].default,
+		label: schema[name].label,
+		description: schema[name].description,
+	});
+	assert.deepEqual(shown("provider"), {
+		type: "str",
+		choices: ["typesafe", "openai", "google"],
+		default: "typesafe",
+		label: source.options.provider.title,
+		description: source.options.provider.descriptions.hermes,
+	});
+	assert.deepEqual(shown("gateway"), {
+		type: "str",
+		choices: ["direct", "auto", "openrouter-first", "openrouter"],
+		default: "direct",
+		label: source.options.gateway.title,
+		description: source.options.gateway.descriptions.hermes,
+	});
 });
 
 test("the models are dict settings and each key is a secret stored under its variable", () => {
@@ -102,7 +113,9 @@ test("the models are dict settings and each key is a secret stored under its var
 		assert.match(schema[name].description, /model/);
 	}
 	const secret = (name: string) => [schema[name]?.type, schema[name]?.env];
-	assert.deepEqual(secret("typesafe_api_key"), ["secret", "TYPESAFE_API_KEY"]);
+	assert.deepEqual(secret("api_key"), ["secret", "TYPESAFE_API_KEY"]);
+	assert.deepEqual(secret("openai_api_key"), ["secret", "OPENAI_API_KEY"]);
+	assert.deepEqual(secret("google_api_key"), ["secret", "GEMINI_API_KEY"]);
 	assert.deepEqual(secret("openrouter_api_key"), [
 		"secret",
 		"OPENROUTER_API_KEY",
@@ -113,7 +126,10 @@ test("the constants hold only the keys the Python shim reads", () => {
 	assert.deepEqual(Object.keys(constants), [
 		"routingLimitMs",
 		"graceMs",
-		"providers",
+		"blank",
+		"keyVariables",
+		"settings",
+		"choices",
 		"efforts",
 		"skips",
 		"slots",
@@ -131,12 +147,7 @@ test("the constants hold the values src/ gives", () => {
 	assert.equal(constants.routingLimitMs, ROUTING_LIMIT_MS);
 	assert.equal(constants.graceMs, HERMES_TEXTS.graceMs);
 	assert.equal(constants.backend, source.hermes.backendName);
-	assert.deepEqual(constants.providers, {
-		values: [...PROVIDER_VALUES],
-		default: resolveProvider(undefined),
-		order: Object.fromEntries(PROVIDER_VALUES.map((v) => [v, order(v)])),
-		keyVariables: KEY_VARIABLES,
-	});
+	assert.deepEqual(constants.keyVariables, KEY_VARIABLES);
 	assert.deepEqual(constants.skips, {
 		keyUnset: "model-router skipped, key unset",
 		subagentModelSet: "model-router skipped, subagent model set",
@@ -162,6 +173,112 @@ test("the constants hold the values src/ gives", () => {
 	assert.deepEqual(constants.levelSlots, ["small", "middle", "large"]);
 });
 
+test("the settings table lists provider then gateway, each with its texts", () => {
+	assert.deepEqual(constants.settings, [
+		{
+			name: "provider",
+			values: ["typesafe", "openai", "google"],
+			default: "typesafe",
+			skip: "model-router skipped, provider not valid: run setup",
+			notValid:
+				"provider: {stored} (not valid: use one of typesafe, openai, google)",
+			valueLines: {
+				typesafe: "provider: typesafe",
+				openai: "provider: openai",
+				google: "provider: google",
+			},
+			useOneOf: "provider: use one of typesafe, openai, google",
+			already: {
+				typesafe: "provider unchanged: already typesafe",
+				openai: "provider unchanged: already openai",
+				google: "provider unchanged: already google",
+			},
+			unchanged: "provider unchanged: ",
+			refused: "provider unchanged: only a local session can change it",
+			command: {
+				name: "model-router-provider",
+				description:
+					"Shows or changes whose model scores subagent calls: typesafe, openai, google.",
+				argsHint: "<typesafe|openai|google>",
+			},
+		},
+		{
+			name: "gateway",
+			values: ["direct", "auto", "openrouter-first", "openrouter"],
+			default: "direct",
+			skip: "model-router skipped, gateway not valid: run setup",
+			notValid:
+				"gateway: {stored} (not valid: use one of direct, auto, openrouter-first, openrouter)",
+			valueLines: {
+				direct: "gateway: direct",
+				auto: "gateway: auto",
+				"openrouter-first": "gateway: openrouter-first",
+				openrouter: "gateway: openrouter",
+			},
+			useOneOf:
+				"gateway: use one of direct, auto, openrouter-first, openrouter",
+			already: {
+				direct: "gateway unchanged: already direct",
+				auto: "gateway unchanged: already auto",
+				"openrouter-first": "gateway unchanged: already openrouter-first",
+				openrouter: "gateway unchanged: already openrouter",
+			},
+			unchanged: "gateway unchanged: ",
+			refused: "gateway unchanged: only a local session can change it",
+			command: {
+				name: "model-router-gateway",
+				description:
+					"Shows or changes how OpenRouter is used for the provider: direct, auto, openrouter-first, openrouter.",
+				argsHint: "<direct|auto|openrouter-first|openrouter>",
+			},
+		},
+	]);
+});
+
+test("the choices table holds the key holders and the lines of each provider and gateway", () => {
+	const leaf = (holders: string[], gateway: string, provider = "typesafe") => ({
+		holders,
+		lines: [`provider: ${provider}`, gateway],
+	});
+	const choices = constants.choices as { typesafe: unknown; openai: unknown };
+	assert.deepEqual(Object.keys(choices), ["typesafe", "openai", "google"]);
+	assert.deepEqual(
+		{ typesafe: choices.typesafe, openai: choices.openai },
+		{
+			typesafe: {
+				direct: leaf(["typesafe"], "gateway: direct (typesafe)"),
+				auto: leaf(
+					["typesafe", "openrouter"],
+					"gateway: auto (typesafe, then openrouter)",
+				),
+				"openrouter-first": leaf(
+					["openrouter", "typesafe"],
+					"gateway: openrouter-first (openrouter, then typesafe)",
+				),
+				openrouter: leaf(["openrouter"], "gateway: openrouter (openrouter)"),
+			},
+			openai: {
+				direct: leaf(["openai"], "gateway: direct (openai)", "openai"),
+				auto: leaf(
+					["openai", "openrouter"],
+					"gateway: auto (openai, then openrouter)",
+					"openai",
+				),
+				"openrouter-first": leaf(
+					["openrouter", "openai"],
+					"gateway: openrouter-first (openrouter, then openai)",
+					"openai",
+				),
+				openrouter: leaf(
+					["openrouter"],
+					"gateway: openrouter (openrouter)",
+					"openai",
+				),
+			},
+		},
+	);
+});
+
 test("the task parameters are the texts src/ gives, with the ladder and the levels as enums", () => {
 	const texts = taskParameterTexts(source.hermes.pluginName);
 	assert.deepEqual(constants.taskParameters, texts.taskParameters);
@@ -172,7 +289,7 @@ test("the task parameters are the texts src/ gives, with the ladder and the leve
 	assert.deepEqual(level, { ...level, type: "integer", enum: [0, 1, 2] });
 	assert.equal(
 		level.description,
-		"Leave it unset unless you re-dispatch a failed task. 0 runs the child on the user's small model, 1 on the user's middle model, 2 on the large model, and model-router asks Jev nothing. A level whose model is not set runs on the model Hermes gives it. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins.",
+		"Leave it unset unless you re-dispatch a failed task. 0 runs the child on the user's small model, 1 on the user's middle model, 2 on the large model, and model-router asks the scoring model nothing. A level whose model is not set runs on the model Hermes gives it. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins.",
 	);
 	assert.ok(
 		constants.delegationAddendum.includes(
@@ -286,6 +403,6 @@ test("the manifest and the middle setting say the effort is set unless the user 
 	);
 	assert.equal(
 		schema.middle_model.description,
-		"The model a delegated task gets when Jev rates its task middle, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one.",
+		"The model a delegated task gets when the scoring model rates its task middle, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one.",
 	);
 });

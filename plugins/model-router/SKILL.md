@@ -10,7 +10,8 @@ description: >
 # model-router
 
 A mod in this folder hooks the Agent tool call. For each call it routes, it
-asks Jev, on TypeSafe or OpenRouter as the `provider` option allows, how much
+asks the decision model of the `provider` option, on the provider's own API
+or through OpenRouter as the `gateway` option allows, how much
 judgment and work the task needs. It then sets the subagent's model and
 effort. The model is `haiku` for lookup or transcription,
 `sonnet` for bounded judgment and `opus` for open judgment. One dim line per

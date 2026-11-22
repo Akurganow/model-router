@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+	GEMINI_REPLY,
+	OPENAI_REPLY,
+	OPENROUTER_REPLY,
 	scoringReply,
 	systemOneAnswer,
 } from "#core/__tests__/support/replies.ts";
@@ -8,7 +11,7 @@ import { routingState } from "#core/brief/brief.ts";
 import { decide, scoreWork } from "#core/decision/decide.ts";
 import { tier } from "#core/parts/tier.ts";
 import { work } from "#core/parts/work.ts";
-import { plan } from "#core/providers/provider.ts";
+import { type Gateway, type Maker, plan } from "#core/providers/provider.ts";
 import type { Decision } from "#core/scoring/route.ts";
 import { realClock } from "#utils/clock.ts";
 
@@ -18,7 +21,7 @@ const part = (level: 0 | 1 | 2, p: number) => ({
 });
 const decision = (parts: Decision["parts"], model = "m"): Decision => ({
 	parts,
-	provider: "typesafe",
+	holder: "typesafe",
 	model,
 	usage: { input_tokens: 1, output_tokens: 2 },
 });
@@ -39,12 +42,12 @@ test("a tier and a work part give both levels and a joined probability", () => {
 	);
 });
 
-test("a decision after a fallback ends its suffix with the failed provider and its reason", () => {
+test("a decision after a fallback ends its suffix with the failed key holder and its reason", () => {
 	const decided = decide(
 		{
 			...decision({ tier: part(0, 0.9), work: part(1, 0.7) }),
-			provider: "openrouter",
-			firstFailed: { provider: "typesafe", reason: "HTTP 503" },
+			holder: "openrouter",
+			firstFailed: { holder: "typesafe", reason: "HTTP 503" },
 		},
 		"tier",
 		"work",
@@ -86,7 +89,10 @@ async function scoreAgainst(body: unknown) {
 	const bodies: unknown[] = [];
 	const result = await scoreWork({
 		state: STATE,
-		attempts: plan("typesafe", { typesafe: "test-key" }),
+		attempts: plan(
+			{ provider: "typesafe", gateway: "direct" },
+			{ typesafe: "test-key" },
+		),
 		fetchFn: async (_url, init) => {
 			bodies.push(JSON.parse(String(init?.body)));
 			return scoringReply(200, body);
@@ -115,4 +121,59 @@ test("scoreWork asks for the tier and work questions and reads both levels", asy
 test("scoreWork returns a bad reply for a reply without the work part", async () => {
 	const { result } = await scoreAgainst(systemOneAnswer(2));
 	assert.deepEqual(result, { skipped: "bad reply" });
+});
+
+const KEYS = {
+	openai: "test-openai-key",
+	google: "test-google-key",
+	openrouter: "test-openrouter-key",
+};
+
+const scoreUnder = (
+	gateway: Gateway,
+	reply: (url: string) => Response,
+	provider: Maker = "openai",
+) =>
+	scoreWork({
+		state: STATE,
+		attempts: plan({ provider, gateway }, KEYS),
+		fetchFn: async (url) => reply(url),
+		clock: realClock,
+		signal: new AbortController().signal,
+	});
+
+test("scoreWork under openai direct shows the openai holder, the model and the counts", async () => {
+	assert.deepEqual(
+		await scoreUnder("direct", () => scoringReply(200, OPENAI_REPLY)),
+		{
+			tier: 2,
+			work: 1,
+			probabilities: "0.90/0.40",
+			suffix: " · openai gpt-6-luna · 506/0 tok",
+		},
+	);
+});
+
+test("scoreWork under openai through OpenRouter shows the openrouter holder", async () => {
+	assert.deepEqual(
+		await scoreUnder("openrouter", () => scoringReply(200, OPENROUTER_REPLY)),
+		{
+			tier: 2,
+			work: 1,
+			probabilities: "0.95/0.43",
+			suffix: " · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok",
+		},
+	);
+});
+
+test("scoreWork under google direct shows the google holder and the counts, and no model", async () => {
+	assert.deepEqual(
+		await scoreUnder("direct", () => scoringReply(200, GEMINI_REPLY), "google"),
+		{
+			tier: 2,
+			work: 1,
+			probabilities: "0.83/0.56",
+			suffix: " · google · 430/0 tok",
+		},
+	);
 });

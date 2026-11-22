@@ -41,10 +41,13 @@ const PLUGIN = "model-router-omp";
 export const TASK_DESCRIPTION =
 	"General-purpose agent for researching and executing multi-step tasks.";
 
-// The global provider as omp's plugins lockfile stores it.
-export const lockfileWith = (provider: unknown, plugin = PLUGIN) => ({
+// The global settings as omp's plugins lockfile stores them.
+export const lockfileWith = (
+	settings: Record<string, unknown>,
+	plugin = PLUGIN,
+) => ({
 	plugins: {},
-	settings: { [plugin]: { provider } },
+	settings: { [plugin]: settings },
 });
 
 export const lockfileScoped = (scope: unknown) => ({
@@ -363,7 +366,10 @@ export function logged(
 
 // A batch that scores through the typesafe key, over the agents omp discovered.
 export const batch = (agents: DiscoveredAgent[]): Batch => ({
-	attempts: plan("typesafe", { typesafe: "ts-key" }),
+	attempts: plan(
+		{ provider: "typesafe", gateway: "direct" },
+		{ typesafe: "ts-key" },
+	),
 	facts: {
 		scope: "core",
 		roles: {},

@@ -44,17 +44,6 @@ test("a new registration forgets the offers made before it", async () => {
 	assert.deepEqual(logs, [skippedLine(KEY_UNSET)]);
 });
 
-test("an unknown provider value routes as typesafe and reads no OpenRouter key", async () => {
-	const { reads, requests } = await routedCall({
-		options: { provider: "bogus", api_key: "", openrouter_api_key: "or-key" },
-		env: { TYPESAFE_API_KEY: "ts-key", OPENROUTER_API_KEY: "or-var-key" },
-	});
-	assert.deepEqual(reads, ["TYPESAFE_API_KEY", "CLAUDE_CODE_EFFORT_LEVEL"]);
-	assert.deepEqual(requests, [
-		{ url: "https://api.typesafe.ai/v1/systemone", model: "jev-latest" },
-	]);
-});
-
 test("a stored model option is ignored and jev-latest is sent", async () => {
 	const { requests } = await routedCall({
 		options: { api_key: "ts-key", model: "jev-preview" },
@@ -142,10 +131,11 @@ test("the Agent call's one-line description is masked like the task text", async
 	assert.deepEqual(descriptions, ["Deploy with ***"]);
 });
 
-test("register hooks the offers, the spawn, the steps, the turn ends, the session start, the config tool and both commands by literal matcher", () => {
+test("register hooks the offers, the spawn, the steps, the turn ends, the session start, the config tool and the three commands by literal matcher", () => {
 	assert.deepEqual(Object.keys(registered()).sort(), [
 		"agent.offer",
 		"agent.spawn",
+		'command.run {"command":"model-router:gateway"}',
 		'command.run {"command":"model-router:provider"}',
 		'command.run {"command":"model-router:scope"}',
 		"session.start",

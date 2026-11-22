@@ -59,7 +59,7 @@ test("the suffix leaves out null, missing or unsafe usage", () => {
 	const model = "jev-1";
 	assert.equal(
 		decisionSuffix({
-			provider: "typesafe",
+			holder: "typesafe",
 			model,
 			inputTokens: null,
 			outputTokens: 3,
@@ -67,12 +67,12 @@ test("the suffix leaves out null, missing or unsafe usage", () => {
 		" · typesafe jev-1",
 	);
 	assert.equal(
-		decisionSuffix({ provider: "typesafe", model }),
+		decisionSuffix({ holder: "typesafe", model }),
 		" · typesafe jev-1",
 	);
 	assert.equal(
 		decisionSuffix({
-			provider: "typesafe",
+			holder: "typesafe",
 			model,
 			inputTokens: -1,
 			outputTokens: 3,
@@ -83,27 +83,27 @@ test("the suffix leaves out null, missing or unsafe usage", () => {
 
 test("the suffix names the provider alone when the reply carries no model name", () => {
 	assert.equal(
-		decisionSuffix({ provider: "typesafe", model: "" }),
+		decisionSuffix({ holder: "typesafe", model: "" }),
 		" · typesafe",
 	);
 });
 
-test("the suffix ends with the failed provider and its reason after a fallback", () => {
+test("the suffix ends with the failed key holder and its reason after a fallback", () => {
 	assert.equal(
 		decisionSuffix({
-			provider: "openrouter",
+			holder: "openrouter",
 			model: "jev-1",
 			inputTokens: 120,
 			outputTokens: 8,
-			failed: { provider: "typesafe", reason: "HTTP 503" },
+			failed: { holder: "typesafe", reason: "HTTP 503" },
 		}),
 		" · openrouter jev-1 · 120/8 tok · typesafe HTTP 503",
 	);
 	assert.equal(
 		decisionSuffix({
-			provider: "openrouter",
+			holder: "openrouter",
 			model: "",
-			failed: { provider: "typesafe", reason: "HTTP 503" },
+			failed: { holder: "typesafe", reason: "HTTP 503" },
 		}),
 		" · openrouter · typesafe HTTP 503",
 	);

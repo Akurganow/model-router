@@ -5,6 +5,9 @@ import { getEventListeners } from "node:events";
 import { test } from "node:test";
 import {
 	brokenReply,
+	GEMINI_REPLY,
+	OPENAI_REPLY,
+	OPENROUTER_REPLY,
 	scoringReply,
 	stalledReply,
 } from "#core/__tests__/support/replies.ts";
@@ -13,15 +16,25 @@ import { routingState } from "#core/brief/brief.ts";
 import { KEY_UNSET } from "#core/output/reasons.ts";
 import { tier } from "#core/parts/tier.ts";
 import { work } from "#core/parts/work.ts";
-import { type Attempt, plan } from "#core/providers/provider.ts";
+import {
+	type Attempt,
+	type Gateway,
+	type Maker,
+	plan,
+} from "#core/providers/provider.ts";
 import { LIMIT_REACHED, ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type Decision, type RouteInput, route } from "#core/scoring/route.ts";
 import { realClock } from "#utils/clock.ts";
 
 const KEY = "test-key";
 const OR_KEY = "test-openrouter-key";
-const KEYS = { typesafe: KEY, openrouter: OR_KEY };
-const BOTH = plan("auto", KEYS);
+const KEYS = {
+	typesafe: KEY,
+	openrouter: OR_KEY,
+	openai: "test-openai-key",
+	google: "test-google-key",
+};
+const BOTH = plan({ provider: "typesafe", gateway: "auto" }, KEYS);
 const MODEL = "jev-test";
 const STATE = routingState({
 	role: "coder",
@@ -80,7 +93,15 @@ function run(
 	return route({
 		parts: [tier, work],
 		state: STATE,
-		attempts: [{ provider: "typesafe", model: MODEL, key: KEY }],
+		attempts: [
+			{
+				maker: "typesafe",
+				path: "direct",
+				holder: "typesafe",
+				key: KEY,
+				model: MODEL,
+			},
+		],
 		fetchFn,
 		clock: realClock,
 		signal: new AbortController().signal,
@@ -100,8 +121,8 @@ test("route takes only a state that routingState built", () => {
 	assert.equal(state, raw);
 });
 
-test("the routing limit is 8000 ms", () => {
-	assert.equal(ROUTING_LIMIT_MS, 8000);
+test("the routing limit is 10000 ms", () => {
+	assert.equal(ROUTING_LIMIT_MS, 10000);
 });
 
 test("tier alone sends no work question", async () => {
@@ -116,7 +137,7 @@ test("tier alone sends no work question", async () => {
 	assert.equal(sent.model, MODEL);
 });
 
-test("a valid reply gives each part its level, probabilities, provider, model and usage", async () => {
+test("a valid reply gives each part its level, probabilities, key holder, model and usage", async () => {
 	const { fetchFn } = answering(VALID);
 	const decision = asDecision(await run(fetchFn));
 	const { tier: tierPart, work: workPart } = decision.parts;
@@ -127,7 +148,7 @@ test("a valid reply gives each part its level, probabilities, provider, model an
 		1: 0.8,
 		2: 0.1,
 	});
-	assert.equal(decision.provider, "typesafe");
+	assert.equal(decision.holder, "typesafe");
 	assert.equal(decision.model, "jev-1.14.0");
 	assert.deepEqual(decision.usage, { input_tokens: 120, output_tokens: 8 });
 });
@@ -241,7 +262,7 @@ test("the model keeps safe characters and / and is capped at 40", async () => {
 	assert.equal(decision.model, `typesafe/jev1.14b${"x".repeat(23)}`);
 });
 
-test("a 503 falls back once to the next provider with its own host and key", async () => {
+test("a 503 falls back once to the next key holder with its own host and key", async () => {
 	const { sent, fetchFn } = stub(async (_init, count) =>
 		count === 1 ? scoringReply(503, "down", NO_WAIT) : scoringReply(200, VALID),
 	);
@@ -250,14 +271,14 @@ test("a 503 falls back once to the next provider with its own host and key", asy
 		`https://api.typesafe.ai/v1/systemone Bearer ${KEY}`,
 		`https://openrouter.ai/api/v1/systemone Bearer ${OR_KEY}`,
 	]);
-	assert.equal(decision.provider, "openrouter");
+	assert.equal(decision.holder, "openrouter");
 	assert.deepEqual(decision.firstFailed, {
-		provider: "typesafe",
+		holder: "typesafe",
 		reason: "HTTP 503",
 	});
 });
 
-test("a fallback reports the failed provider before the next attempt's request", async () => {
+test("a fallback reports the failed key holder before the next attempt's request", async () => {
 	const log: string[] = [];
 	const { fetchFn } = stub(async (_init, count) => {
 		log.push(`request ${count}`);
@@ -265,14 +286,14 @@ test("a fallback reports the failed provider before the next attempt's request",
 			? scoringReply(503, "down", NO_WAIT)
 			: scoringReply(200, VALID);
 	});
-	const onFallback = (provider: string) => void log.push(provider);
+	const onFallback = (holder: string) => void log.push(holder);
 	asDecision(await run(fetchFn, { attempts: BOTH, onFallback }));
 	assert.deepEqual(log, ["request 1", "typesafe", "request 2"]);
 });
 
 test("no fallback, no report: a 400, or a 503 with no attempt left", async () => {
 	const fallbacks: string[] = [];
-	const onFallback = (provider: string) => void fallbacks.push(provider);
+	const onFallback = (holder: string) => void fallbacks.push(holder);
 	const bad = stub(async () => scoringReply(400, "bad"));
 	await run(bad.fetchFn, { attempts: BOTH, onFallback });
 	const down = stub(async () => scoringReply(503, "down", NO_WAIT));
@@ -285,13 +306,16 @@ test("openrouter-first asks OpenRouter first and falls back after a network erro
 		if (count === 1) throw new TypeError("fetch failed");
 		return scoringReply(200, VALID);
 	});
-	const attempts = plan("openrouter-first", KEYS);
+	const attempts = plan(
+		{ provider: "typesafe", gateway: "openrouter-first" },
+		KEYS,
+	);
 	const decision = asDecision(await run(fetchFn, { attempts }));
 	assert.equal(sent.length, 2);
 	assert.match(sent[0] ?? "", /^https:\/\/openrouter\.ai\//);
-	assert.equal(decision.provider, "typesafe");
+	assert.equal(decision.holder, "typesafe");
 	assert.deepEqual(decision.firstFailed, {
-		provider: "openrouter",
+		holder: "openrouter",
 		reason: "network error",
 	});
 });
@@ -299,7 +323,7 @@ test("openrouter-first asks OpenRouter first and falls back after a network erro
 test("an attempt whose provider has no endpoint is skipped as failed and sends nothing", async () => {
 	const { sent, fetchFn } = answering(VALID);
 	const attempts = [
-		{ provider: "toString", model: MODEL, key: KEY },
+		{ maker: "toString", path: "direct", holder: "typesafe", key: KEY },
 	] as unknown as Attempt[];
 	assert.deepEqual(await run(fetchFn, { attempts }), { skipped: "failed" });
 	assert.equal(sent.length, 0);
@@ -309,13 +333,19 @@ test("a per-attempt timeout falls back and reports timeout", async (t) => {
 	const time = fakeTime(t);
 	const attempts: Attempt[] = [
 		{
-			provider: "typesafe",
-			model: MODEL,
+			maker: "typesafe",
+			path: "direct",
+			holder: "typesafe",
 			key: KEY,
 			timeout: 20,
 			retries: 0,
 		},
-		{ provider: "openrouter", model: MODEL, key: OR_KEY },
+		{
+			maker: "typesafe",
+			path: "openrouter",
+			holder: "openrouter",
+			key: OR_KEY,
+		},
 	];
 	const { bodies, fetchFn } = stub((init, count) =>
 		count === 1 ? hang(init, count) : Promise.resolve(scoringReply(200, VALID)),
@@ -384,7 +414,7 @@ test("one routing limit covers both attempts", async (t) => {
 	});
 });
 
-test("two failed attempts send at most four requests and name both providers", async () => {
+test("two failed attempts send at most four requests and name both key holders", async () => {
 	const { bodies, fetchFn } = stub(async () =>
 		scoringReply(503, "down", NO_WAIT),
 	);
@@ -394,7 +424,7 @@ test("two failed attempts send at most four requests and name both providers", a
 	assert.equal(bodies.length, 4);
 });
 
-test("a bad reply after a fallback names both providers", async () => {
+test("a bad reply after a fallback names both key holders", async () => {
 	const { fetchFn } = stub(async (_init, count) =>
 		count === 1
 			? scoringReply(429, "slow", NO_WAIT)
@@ -405,7 +435,7 @@ test("a bad reply after a fallback names both providers", async () => {
 	});
 });
 
-test("a single-provider failure that allows fallback keeps its bare reason", async () => {
+test("a one-attempt failure that allows fallback keeps its bare reason", async () => {
 	const { bodies, fetchFn } = stub(async () =>
 		scoringReply(503, "down", NO_WAIT),
 	);
@@ -418,7 +448,7 @@ const DECISION = {
 		tier: { level: 2, probabilities: { 0: 0.1, 1: 0.2, 2: 0.7 } },
 		work: { level: 1, probabilities: { 0: 0.1, 1: 0.8, 2: 0.1 } },
 	},
-	provider: "typesafe",
+	holder: "typesafe",
 	model: "jev-1.14.0",
 	usage: { input_tokens: 120, output_tokens: 8 },
 };
@@ -444,17 +474,109 @@ test("tier and work send the System One body as one string", async () => {
 	);
 });
 
-test("a request hands the fetch exactly four headers", async () => {
-	const { inits, fetchFn } = answering(VALID);
-	await run(fetchFn);
-	assert.deepEqual(inits[0]?.headers, {
-		Authorization: "Bearer test-key",
-		Accept: "application/json",
-		"Content-Type": "application/json",
-		"User-Agent":
-			"model-router/dev (+https://github.com/Akurganow/model-router)",
+// One row per endpoint: who is asked and through which gateway, the address, the model name the
+// request carries, the key header as sent, a reply in the endpoint's own format, and the
+// model and token counts the decision then holds.
+const ADDRESSES: readonly [
+	provider: Maker,
+	gateway: Gateway,
+	address: string,
+	sentModel: string,
+	keyHeader: [name: string, value: string],
+	reply: unknown,
+	model: string,
+	usage: { input_tokens: number; output_tokens: number },
+][] = [
+	[
+		"typesafe",
+		"direct",
+		"https://api.typesafe.ai/v1/systemone",
+		"jev-latest",
+		["Authorization", "Bearer test-key"],
+		VALID,
+		"jev-1.14.0",
+		{ input_tokens: 120, output_tokens: 8 },
+	],
+	[
+		"typesafe",
+		"openrouter",
+		"https://openrouter.ai/api/v1/systemone",
+		"jev-latest",
+		["Authorization", "Bearer test-openrouter-key"],
+		VALID,
+		"jev-1.14.0",
+		{ input_tokens: 120, output_tokens: 8 },
+	],
+	[
+		"openai",
+		"direct",
+		"https://api.openai.com/v1/decisions",
+		"gpt-6-luna",
+		["Authorization", "Bearer test-openai-key"],
+		JSON.parse(OPENAI_REPLY),
+		"gpt-6-luna",
+		{ input_tokens: 506, output_tokens: 0 },
+	],
+	[
+		"openai",
+		"openrouter",
+		"https://openrouter.ai/api/alpha/decisions",
+		"openai/gpt-6-luna-decisions",
+		["Authorization", "Bearer test-openrouter-key"],
+		JSON.parse(OPENROUTER_REPLY),
+		"openai/gpt-6-luna-decisions-20261006",
+		{ input_tokens: 488, output_tokens: 0 },
+	],
+	[
+		"google",
+		"direct",
+		"https://generativelanguage.googleapis.com/v1beta/decisions",
+		"gemini-decision-1",
+		["x-goog-api-key", "test-google-key"],
+		JSON.parse(GEMINI_REPLY),
+		"",
+		{ input_tokens: 430, output_tokens: 0 },
+	],
+	[
+		"google",
+		"openrouter",
+		"https://openrouter.ai/api/alpha/decisions",
+		"google/gemini-decision-1",
+		["Authorization", "Bearer test-openrouter-key"],
+		{ ...JSON.parse(OPENROUTER_REPLY), model: "google/gemini-decision-1" },
+		"google/gemini-decision-1",
+		{ input_tokens: 488, output_tokens: 0 },
+	],
+];
+
+for (const [
+	provider,
+	gateway,
+	address,
+	sentModel,
+	[headerName, headerValue],
+	reply,
+	model,
+	usage,
+] of ADDRESSES)
+	test(`${provider} through ${gateway} sends its key to ${address} in one header`, async () => {
+		const { sent, bodies, inits, fetchFn } = answering(reply);
+		const decision = asDecision(
+			await run(fetchFn, { attempts: plan({ provider, gateway }, KEYS) }),
+		);
+		assert.equal(sent.length, 1);
+		assert.equal(sent[0]?.split(" ")[0], address);
+		assert.equal(JSON.parse(bodies[0] ?? "").model, sentModel);
+		assert.deepEqual(inits[0]?.headers, {
+			[headerName]: headerValue,
+			Accept: "application/json",
+			"Content-Type": "application/json",
+			"User-Agent":
+				"model-router/dev (+https://github.com/Akurganow/model-router)",
+		});
+		assert.equal(decision.model, model);
+		assert.deepEqual(decision.usage, usage);
 	});
-});
 
 test("a status gives HTTP n after one request, or after three when it is retried", async (t) => {
 	const time = fakeTime(t);
@@ -479,12 +601,12 @@ test("a status gives HTTP n after one request, or after three when it is retried
 	}
 });
 
-test("a status that falls back gives the next provider's decision, any other ends the call", async (t) => {
+test("a status that falls back gives the next key holder's decision, any other ends the call", async (t) => {
 	const time = fakeTime(t);
 	const fellBack = (reason: string) => ({
 		...DECISION,
-		provider: "openrouter",
-		firstFailed: { provider: "typesafe", reason },
+		holder: "openrouter",
+		firstFailed: { holder: "typesafe", reason },
 	});
 	const cases: [number, unknown, number][] = [
 		[401, fellBack("HTTP 401"), 2],
@@ -507,13 +629,13 @@ test("a status that falls back gives the next provider's decision, any other end
 	}
 });
 
-test("the first of two attempts times out at 2000 ms and falls back", async (t) => {
+test("the first of two attempts times out at 5000 ms and falls back", async (t) => {
 	const time = fakeTime(t);
 	const { bodies, inits, fetchFn } = stub((init, count) =>
 		count === 1 ? hang(init, count) : Promise.resolve(scoringReply(200, VALID)),
 	);
 	const routed = run(fetchFn, { attempts: BOTH });
-	await time.pass(1999);
+	await time.pass(4999);
 	assert.equal(bodies.length, 1);
 	assert.equal(inits[0]?.signal?.aborted, false);
 	await time.pass(1);
@@ -575,7 +697,7 @@ test("a fetch that ignores its signal ends at the attempt timeout and falls back
 			: Promise.resolve(scoringReply(200, VALID)),
 	);
 	const routed = run(fetchFn, { attempts: BOTH });
-	await time.pass(2000);
+	await time.pass(5000);
 	assert.equal(bodies.length, 2);
 	assert.equal(
 		asDecision(await time.settled(routed)).firstFailed?.reason,
@@ -603,7 +725,7 @@ test("a reply whose text never arrives ends at the attempt timeout", async (t) =
 		count === 1 ? stalledReply() : scoringReply(200, VALID),
 	);
 	const routed = run(fetchFn, { attempts: BOTH });
-	await time.pass(1999);
+	await time.pass(4999);
 	assert.equal(bodies.length, 1);
 	await time.pass(1);
 	assert.equal(bodies.length, 2);
@@ -744,7 +866,7 @@ test("a 400 whose body never ends ends the call at the attempt timeout and does 
 	const time = fakeTime(t);
 	const { sent, fetchFn } = stub(async () => stalledReply(400));
 	const routed = run(fetchFn, { attempts: BOTH });
-	await time.pass(2000);
+	await time.pass(5000);
 	assert.deepEqual(await time.settled(routed), { skipped: "HTTP 400" });
 	assert.deepEqual(sent, [
 		`https://api.typesafe.ai/v1/systemone Bearer ${KEY}`,
@@ -815,11 +937,11 @@ const EXITS: readonly Exit[] = [
 			count === 1
 				? hang(init, count)
 				: Promise.resolve(scoringReply(200, VALID)),
-		passMs: 2000,
+		passMs: 5000,
 		expected: {
 			...DECISION,
-			provider: "openrouter",
-			firstFailed: { provider: "typesafe", reason: "timeout" },
+			holder: "openrouter",
+			firstFailed: { holder: "typesafe", reason: "timeout" },
 		},
 	},
 	{
