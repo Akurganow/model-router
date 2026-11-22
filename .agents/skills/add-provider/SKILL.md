@@ -187,7 +187,7 @@ The failures name each place. They do not say this:
 - Most failing rows pin a literal, which stays a literal: write the new one out.
   Among them are the `use one of` and label texts in `src/core/__tests__/unit/settings.test.ts`, `HINTS` in `src/adapters/claude/__tests__/integration/manifest.test.ts` and the dialog test in `plugins/model-router/tests/config.test.ts`.
 - `plugins/model-router-hermes/tests/test_config_tool.py` holds `SECRETS` and, beside it, the expected key lines, both written by hand.
-- `scripts/build-texts.test.ts` fails until each text under `options.provider.descriptions` in `metadata/source.json` names the value as `value: consequence`, for all four harnesses.
+- `scripts/build-texts.test.ts` fails until each text under `options.provider.descriptions` in `metadata/source.json` names the value as `value: consequence`, for all four harnesses. The consequence is the label that `consequences` holds; the test reads the value's name alone.
 - `plugins/model-router-hermes/tests/test_defaults_and_gates.py` holds the key holders of each gateway value as a table, written by hand.
 - The build writes the bundles, the npm tree, the manifests and `plugins/model-router-hermes/constants.json`. The Hermes Python source needs no edit.
 - A new maker reaches the choices of `provider` in `plugins/model-router-hermes/plugin.yaml`, and the `settings` and `choices` of `constants.json`. `scripts/build/hermes.ts` needs no edit.
