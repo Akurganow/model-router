@@ -8,7 +8,7 @@ import {
 	OMP_DIR,
 	OPENCLAW_DIR,
 } from "./outputs.ts";
-import { installCommands } from "./readme.ts";
+import { installCommands, noteLines } from "./readme.ts";
 import type { Source } from "./source.ts";
 
 const GIT_PREFIX = "git+";
@@ -90,8 +90,7 @@ const readme = (source: Source): string => {
 		"",
 		...fence(installCommands(source, openclaw.install)),
 		"",
-		openclaw.reviewNote,
-		"",
+		...noteLines(source, openclaw.install),
 		`${omp.install.heading}:`,
 		"",
 		...fence(installCommands(source, { commands: omp.npmCommands })),

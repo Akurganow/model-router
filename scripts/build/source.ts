@@ -95,8 +95,6 @@ export type Source = {
 		readonly skills: readonly string[];
 		// One OpenClaw version behind compat, build and install.minHostVersion.
 		readonly hostFloor: string;
-		// The sentence that fills {review} in an install note.
-		readonly reviewNote: string;
 		readonly uiHints: Readonly<Record<SlotSetting, Hint>>;
 		readonly keys: Readonly<Record<KeyHolder, SecretHint>>;
 		readonly install: Install;

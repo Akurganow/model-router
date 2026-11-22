@@ -86,7 +86,7 @@ openclaw plugins inspect model-router-openclaw --runtime --json
 
 Source: OpenClaw documentation, [Manage plugins](https://docs.openclaw.ai/plugins/manage-plugins).
 
-The npm package `@akurganow/model-router` exists only after its first publication. Review the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`.
+Review the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`.
 
 CI installs the packed npm package on Ubuntu and checks that OpenClaw loads it.
 

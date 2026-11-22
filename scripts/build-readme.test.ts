@@ -158,9 +158,14 @@ test("a note renders under the source line, with the package name filled in", ()
 	const text = renderReadme(readme("\nold\n"), source);
 	assert.match(
 		text,
-		/^Source: OpenClaw documentation, .+\n\nThe npm package `@akurganow\/model-router` exists only after its first publication\. .+\n\nCI installs/m,
+		/^Source: OpenClaw documentation, .+\n\nReview the source of the package before you run these commands: they carry `--force` and `--accept-capabilities`\.\n\nCI installs/m,
 	);
-	assert.equal(text.match(/first publication/g)?.length, 1);
+	const install = { ...source.openclaw.install, note: "Read `{package}`." };
+	const filled = renderReadme(readme("\nold\n"), {
+		...source,
+		openclaw: { ...source.openclaw, install },
+	});
+	assert.match(filled, /^Read `@akurganow\/model-router`\.$/m);
 });
 
 test("only the region changes, and the rest keeps its bytes", () => {

@@ -89,7 +89,6 @@ const FIXTURE: Source = {
 		extensions: ["e"],
 		skills: ["s"],
 		hostFloor: "1.0.0",
-		reviewNote: "r",
 		uiHints: {
 			small_model: HINT,
 			middle_model: HINT,

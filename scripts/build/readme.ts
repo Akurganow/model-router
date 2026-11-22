@@ -14,11 +14,9 @@ export const catalogueId = (source: Source): string =>
 
 // The placeholders a command or a note may hold: {marketplace}, {plugin} (the
 // catalogue id), {package} (the npm name), {id} (the OpenClaw plugin id),
-// {hermes} (the Hermes plugin name), {backend} (the Hermes backend name) and
-// {review} (the OpenClaw review note).
+// {hermes} (the Hermes plugin name) and {backend} (the Hermes backend name).
 const fill = (source: Source, text: string, marketplace: string): string =>
 	text
-		.replaceAll("{review}", source.openclaw.reviewNote)
 		.replaceAll("{marketplace}", marketplace)
 		.replaceAll("{plugin}", catalogueId(source))
 		.replaceAll("{package}", source.npm.name)
@@ -32,6 +30,10 @@ export const installCommands = (
 	marketplace: string = marketplaceArgument(source),
 ): string[] =>
 	install.commands.map((command) => fill(source, command, marketplace));
+
+// The note of an install as its own paragraph, or no lines when it has none.
+export const noteLines = (source: Source, { note }: Install): string[] =>
+	note ? [fill(source, note, marketplaceArgument(source)), ""] : [];
 
 // GitHub's heading anchor: lower case, punctuation dropped, spaces as hyphens.
 export const anchorOf = (heading: string): string =>
@@ -63,9 +65,6 @@ const ciLine = ({ ciSystems, ciLine: sentence }: Install): string =>
  */
 const section = (source: Source, install: Install): string => {
 	const { publisher, title, url } = install.source;
-	const note = install.note
-		? [fill(source, install.note, marketplaceArgument(source)), ""]
-		: [];
 	return [
 		`### ${install.heading}`,
 		"",
@@ -75,7 +74,7 @@ const section = (source: Source, install: Install): string => {
 		"",
 		`Source: ${publisher}, [${title}](${url}).`,
 		"",
-		...note,
+		...noteLines(source, install),
 		ciLine(install),
 		"",
 		setupLine(install),
