@@ -3,6 +3,22 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.25.1 - 2026-11-22
+#### Bug Fixes
+- (**tier**) word levels 1 and 2 by how hard the open part is (c140c99)
+#### Documentation
+- (**readme**) list Microsoft Decision 1.1 among the candidate models (f591c99)
+- say that a calibration label is a judgment of the brief (58011d0)
+- state the calibration runs at the present texts and name the fitting set once (8beb3ae)
+- state the role counts and the labelling of the calibration set as they stand (31eb978)
+#### Tests
+- (**calibration**) record why the retries lookup is labelled 0 (ed90fc1)
+- (**calibration**) relabel 18 cases and add 26 for kinds of brief the set lacked (da8f840)
+- keep the recorded provider replies as they were recorded (3c7150d)
+
+- - -
+
+
 ## v0.25.0 - 2026-11-22
 #### Features
 - (**claude**) document the gateway option and command (59c215e)
