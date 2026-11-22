@@ -516,4 +516,4 @@ MIT, as [LICENSE](LICENSE) states.
 ## To do
 
 - Score with more decision models.
-  Candidates not supported yet: Liquid D1, Nace.AI Drex and Perplexity Decider.
+  Candidates not supported yet: Liquid D1, Microsoft Decision 1.1, Nace.AI Drex and Perplexity Decider.
