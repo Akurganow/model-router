@@ -9,8 +9,8 @@ const TIER_INSTRUCTIONS =
 
 export const TIER_TEXTS = [
 	"Lookup or transcription: the brief names the exact files to read or string to find, or holds the exact code, config or prose to write. It gives the commands to run and the check that proves the work done. No choice is left.",
-	"Bounded judgment: the brief fixes the goal and a way to check the result. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
-	"Open judgment: the brief leaves the approach open. Decide a design, create content with no plan or spec to follow, review a multi-file change for risks no checklist names, or debug with an unclear cause.",
+	"Bounded judgment: the brief fixes the goal, and whatever it leaves open is routine. Check work against stated requirements, fix named defects, implement from a given plan or spec, or answer a question from a few named files.",
+	"Open judgment: the part the brief leaves open is hard to get right, or a wrong choice there would be easy to miss. Make a design decision that other work depends on, find a cause the symptom does not show, solve a problem with no standard method, or judge risks and flaws that are easy to miss.",
 ] as const;
 
 export const tier: Part = {

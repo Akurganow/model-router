@@ -30,14 +30,15 @@ find, or holds the exact code, config or prose to write. It gives the
 commands to run and the check that proves the work done. No choice is left.
 </td></tr>
 <tr><td>1</td><td><code>sonnet</code></td><td>
-Bounded judgment: the brief fixes the goal and a way to check the result.
-Check work against stated requirements, fix named defects, implement from a
-given plan or spec, or answer a question from a few named files.
+Bounded judgment: the brief fixes the goal, and whatever it leaves open is
+routine. Check work against stated requirements, fix named defects, implement
+from a given plan or spec, or answer a question from a few named files.
 </td></tr>
 <tr><td>2</td><td><code>opus</code></td><td>
-Open judgment: the brief leaves the approach open. Decide a design, create
-content with no plan or spec to follow, review a multi-file change for risks
-no checklist names, or debug with an unclear cause.
+Open judgment: the part the brief leaves open is hard to get right, or a wrong
+choice there would be easy to miss. Make a design decision that other work
+depends on, find a cause the symptom does not show, solve a problem with no
+standard method, or judge risks and flaws that are easy to miss.
 </td></tr>
 </table>
 
@@ -56,7 +57,14 @@ requirements and implementation from a given plan.
 Tier 2 rests on *Introducing Claude Sonnet 5.5*, which keeps complex,
 open-ended work that needs sustained judgment on Opus. *Choosing the right
 model* starts most workloads on Opus 5.5, and *Models overview* starts there
-when unsure. Tier 2 takes the tasks whose brief leaves the approach open.
+when unsure.
+
+The two texts divide the work by the part the brief leaves open: routine in
+tier 1, and hard to get right or easy to get wrong unnoticed in tier 2. That
+division rests on no source. It was chosen by measurement on `jev-1.14.0`.
+Against the earlier texts it sent fewer large tasks to the middle model and
+fewer middle tasks to the large one, on the case set and on briefs written
+afterwards.
 
 ## The default level
 
@@ -90,15 +98,27 @@ and picks the ends on demand, so the factors rest on measurement.
 
 ### How the factors were measured
 
-`calibration.jsonl` holds 172 labelled cases. It grew from 21 cases. Each new
-case names its source, its license and the basis of its label. Labels that the
-brief supports both ways carry `contested`. Two annotators labelled the new
-cases blind, and a third settled their disagreements.
+`calibration.jsonl` holds 198 labelled cases. It grew from 21 cases. Each case
+added later names its source, its license and the basis of its label. Labels
+that the brief supports both ways carry `contested`.
+
+The factors were fitted on an earlier state of the set, called the fitting set
+below. It held 172 cases, with other labels for 18 of them and other texts for
+tiers 1 and 2. Two annotators had labelled its added cases blind, and a third
+had settled their disagreements.
+
+Since the fit, three annotators who saw no tier text labelled every case
+blind. 18 labels were decided anew, and 26 cases were added for kinds of brief
+the set lacked, each with the label that most of the three gave it. The texts
+of tiers 1 and 2 were reworded, and the factors were kept. With the present
+texts and factors, three `scripts/calibrate.ts` runs on `jev-1.14.0` gave 85%
+to 87% tier agreement, 169 to 172 of the 198 cases, and 87% to 88% work
+agreement. The bar of the script is 85%, which is 169 cases.
 
 One `scripts/calibrate.ts --record` run on `jev-1.14.0` wrote the probabilities
-for all 172 cases. `scripts/compare-rules.ts` then scored each rule module in
-`scripts/rules/` offline, with 5-fold cross-validation. Each rule fitted its
-parameters on the training folds only. The
+for the fitting set. `scripts/compare-rules.ts` then scored
+each rule module in `scripts/rules/` offline, with 5-fold cross-validation.
+Each rule fitted its parameters on the training folds only. The
 [rule measurements](https://github.com/Akurganow/model-router/issues/57#issuecomment-6627372979)
 and commit `f089899` record the run. "Under" means a pick below the label.
 "Over" means a pick above it.
@@ -108,8 +128,9 @@ and commit `f089899` record the run. "Under" means a pick below the label.
 | old: near ties up, work prior `[0.5, 1, 0.5]` | 84% | 6% / 10% | 90% | 6% / 4% |
 | new: stay at the middle | 88% | 6% / 5% | 90% | 4% / 6% |
 
-Fitted on all 172 cases, the factors give 89% tier agreement and 91% work
-agreement on the same run. The factors fit for agreement with the labels.
+On the fitting set, the fitted factors give 89% tier agreement and 91% work
+agreement on the same run. The factors fit for
+agreement with the labels.
 Other rule families scored within one or two cases of the ratio rule on tier.
 Absolute thresholds per end matched its accuracy with about three times the
 doubt. Fitting to a quality-loss cap overfit, and held-out under-routing rose
@@ -119,9 +140,10 @@ cases.
 ### The trade-off
 
 The old tier rule moved a near tie up, to the larger model. That sent 17 of
-172 cases to a larger model than their label. The new rule halves
-over-routing from 10% to 5% and leaves under-routing at 6%. A tier too low
-can fail and pay for a second attempt, so the 6% matters. It did not grow.
+the 172 cases of the fitting set to a larger model than their label. The new
+rule halves over-routing from 10% to 5% and leaves under-routing at 6%. A tier
+too low can fail and pay for a second attempt, so the 6% matters. It did not
+grow.
 
 For work, the old prior was the same rule with a factor of 2 on both ends.
 The fit moves the downward factor to 2.38 and the upward factor to 1.41.
@@ -157,14 +179,15 @@ The harnesses word their descriptions differently, and a release can reword
 them again. A reworded role moves Jev's picks. `Explore`, `Plan` and omp's other
 agents keep their harness descriptions, so a harness rewording can still shift
 their picks. This was not measured. The fixed text keeps the Claude Code, omp and
-Hermes plugins on the input the calibration used. In `calibration.jsonl`, 115 of the 122
-`general-purpose` cases carry it exactly. The other 7 come from sst/opencode's
+Hermes plugins on the input the calibration used. In `calibration.jsonl` every
+`general-purpose` case carries it exactly, except the 7 from sst/opencode's
 general agent, as their `source` field shows.
 
-The measurement ran on 2026-11-05 with `jev-1.14.0`. It used the 122 cases of
-`calibration.jsonl` whose role starts with "General-purpose agent", with the same
-briefs and only the role swapped. The case that carries omp's `task` description
-is not among them. Two full runs of all 172 calibration cases differed in 2 of 172
+The measurement ran on 2026-11-05 with `jev-1.14.0`, on the fitting set of
+[How the factors were measured](#how-the-factors-were-measured). It used the
+122 of its 172 cases whose role starts with "General-purpose agent",
+with the same briefs and only the role swapped. The case that carries omp's `task` description
+is not among them. Two full runs of all 172 cases differed in 2 of 172
 tier picks.
 
 | Role variant | Agreement with labels, of 122 | Tier under-routing, of 122 |
