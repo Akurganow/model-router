@@ -137,7 +137,7 @@ test("tier alone sends no work question", async () => {
 	assert.equal(sent.model, MODEL);
 });
 
-test("a valid reply gives each part its level, probabilities, provider, model and usage", async () => {
+test("a valid reply gives each part its level, probabilities, key holder, model and usage", async () => {
 	const { fetchFn } = answering(VALID);
 	const decision = asDecision(await run(fetchFn));
 	const { tier: tierPart, work: workPart } = decision.parts;
@@ -262,7 +262,7 @@ test("the model keeps safe characters and / and is capped at 40", async () => {
 	assert.equal(decision.model, `typesafe/jev1.14b${"x".repeat(23)}`);
 });
 
-test("a 503 falls back once to the next provider with its own host and key", async () => {
+test("a 503 falls back once to the next key holder with its own host and key", async () => {
 	const { sent, fetchFn } = stub(async (_init, count) =>
 		count === 1 ? scoringReply(503, "down", NO_WAIT) : scoringReply(200, VALID),
 	);
@@ -278,7 +278,7 @@ test("a 503 falls back once to the next provider with its own host and key", asy
 	});
 });
 
-test("a fallback reports the failed provider before the next attempt's request", async () => {
+test("a fallback reports the failed key holder before the next attempt's request", async () => {
 	const log: string[] = [];
 	const { fetchFn } = stub(async (_init, count) => {
 		log.push(`request ${count}`);
@@ -414,7 +414,7 @@ test("one routing limit covers both attempts", async (t) => {
 	});
 });
 
-test("two failed attempts send at most four requests and name both providers", async () => {
+test("two failed attempts send at most four requests and name both key holders", async () => {
 	const { bodies, fetchFn } = stub(async () =>
 		scoringReply(503, "down", NO_WAIT),
 	);
@@ -424,7 +424,7 @@ test("two failed attempts send at most four requests and name both providers", a
 	assert.equal(bodies.length, 4);
 });
 
-test("a bad reply after a fallback names both providers", async () => {
+test("a bad reply after a fallback names both key holders", async () => {
 	const { fetchFn } = stub(async (_init, count) =>
 		count === 1
 			? scoringReply(429, "slow", NO_WAIT)
@@ -435,7 +435,7 @@ test("a bad reply after a fallback names both providers", async () => {
 	});
 });
 
-test("a single-provider failure that allows fallback keeps its bare reason", async () => {
+test("a one-attempt failure that allows fallback keeps its bare reason", async () => {
 	const { bodies, fetchFn } = stub(async () =>
 		scoringReply(503, "down", NO_WAIT),
 	);
@@ -601,7 +601,7 @@ test("a status gives HTTP n after one request, or after three when it is retried
 	}
 });
 
-test("a status that falls back gives the next provider's decision, any other ends the call", async (t) => {
+test("a status that falls back gives the next key holder's decision, any other ends the call", async (t) => {
 	const time = fakeTime(t);
 	const fellBack = (reason: string) => ({
 		...DECISION,
