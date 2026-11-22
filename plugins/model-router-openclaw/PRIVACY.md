@@ -74,7 +74,7 @@ JSON body holds:
   - under `extended`, a spawn of another configured agent sends that agent's
     own description, prepared the same way. A missing or blank description
     sends `An agent with no description.`
-  - [The role of the default agent](../model-router/docs/model-choice.md#the-role-of-the-default-agent)
+  - [The role of the default agent](https://github.com/Akurganow/model-router/blob/main/plugins/model-router/docs/model-choice.md#the-role-of-the-default-agent)
     says why the other plugins always send the fixed text
 - the spawn's `label` as the description, else its `taskName`, or an empty
   description when it has neither. The plugin reads `label` and `taskName` as
@@ -143,7 +143,7 @@ OpenClaw drops `OPENROUTER_API_KEY`, `OPENAI_API_KEY` and `GEMINI_API_KEY` from
 it, while it can still supply `TYPESAFE_API_KEY`. The plugin then sends the task
 text to the account that key belongs to. The global `~/.openclaw/.env` and the Gateway's
 environment stay trusted sources, as
-[the `.env` fact](../../docs/clients.md#openclaw-runtime-logs-and-environment)
+[the `.env` fact](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#openclaw-runtime-logs-and-environment)
 records. The plugin does not depend on that filter. Keep the keys in the
 plugin's settings, or in the Gateway's own environment.
 

@@ -57,7 +57,7 @@ Never restore a settings file whole; when a run changed one by mistake, revert o
 
 Never print or log a key, and never put one into a brief, a commit or a wiki entry.
 
-25. Take each key from the environment by the variable name its plugin README gives: [Claude Code](../../../plugins/model-router/README.md#what-this-mod-can-reach), [omp](../../../plugins/model-router-omp/README.md#key), [OpenClaw](../../../plugins/model-router-openclaw/README.md#keys), [Hermes](../../../plugins/model-router-hermes/README.md#keys).
+25. Take each key from the environment by the variable name its plugin README gives: [Claude Code](../../../plugins/model-router/README.md#what-this-mod-can-reach), [omp](../../../plugins/model-router-omp/README.md#keys), [OpenClaw](../../../plugins/model-router-openclaw/README.md#keys), [Hermes](../../../plugins/model-router-hermes/README.md#keys).
 26. Take the harness's own provider key from the environment the same way.
 27. Write a key only where the harness reads it, inside the isolated copy.
 28. Delete the copy after the run.

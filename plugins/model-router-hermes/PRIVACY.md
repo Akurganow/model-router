@@ -67,7 +67,7 @@ JSON body holds:
   the plugin. Hermes passes this backend the goal, the context, the task's
   index and the parameters the plugin declares, so the plugin has no agent
   description to send.
-  [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent)
+  [model-choice.md](https://github.com/Akurganow/model-router/blob/main/plugins/model-router/docs/model-choice.md#the-role-of-the-default-agent)
   says why the text is fixed
 - the task's `description` parameter, when the delegating model sets one, or
   an empty description. The plugin masks its token-shaped strings as it masks
@@ -196,7 +196,7 @@ The plugin cannot promise more than that:
 - Hermes fails delegation closed when `delegation.backend` names a backend that
   no enabled plugin provides. If you disable or remove the plugin and leave
   `delegation.backend` at `model-router`, every `delegate_task` call returns an
-  error. [Turn off and uninstall](../../README.md#turn-off-and-uninstall) gives
+  error. [The steps to turn it off](README.md#turn-it-off) give
   the order.
 
 ## Your choices

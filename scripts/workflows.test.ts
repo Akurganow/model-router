@@ -295,14 +295,17 @@ test("each omp pin locks the version its package.json pins", () => {
 	}
 });
 
-test("the README names the minimum omp pin as the minimum version", () => {
+test("the root README and the omp guide name the minimum omp pin as the minimum version", () => {
 	const version = escapeRegExp(ompVersion("minimum"));
 	const readme = read("README.md");
 	assert.match(
 		readme,
 		new RegExp(`^\\| Oh My Pi \\|.*\\| v${version} \\|`, "m"),
 	);
-	assert.match(readme, new RegExp(`v${version} or later`));
+	assert.match(
+		read("plugins/model-router-omp/README.md"),
+		new RegExp(`v${version} or later`),
+	);
 });
 
 test("the latest omp pin is not older than the minimum", () => {

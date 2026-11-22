@@ -85,7 +85,7 @@ names for each request. The JSON body holds:
     lists, collapses whitespace and cuts it to 500 characters
   - a missing or blank description sends `An agent with no description.`
   - under the default scope only the bundled `task` agent is routed
-  - [model-choice.md](../model-router/docs/model-choice.md#the-role-of-the-default-agent)
+  - [model-choice.md](https://github.com/Akurganow/model-router/blob/main/plugins/model-router/docs/model-choice.md#the-role-of-the-default-agent)
     says why the text is fixed
 - the item's `name` as the description, masked, collapsed and cut like the
   agent's description, or an empty description when it has none
@@ -134,7 +134,7 @@ later in the same batch skip the failed path.
 says what a request in flight can cost. One limit covers the scoring of a
 whole batch, both attempts and all retries included: 10 s, or less under a
 short omp tool call timeout, as the
-[README](README.md#limits-and-retries) says. The plugin sends no
+[README](README.md#limits) says. The plugin sends no
 other request.
 
 ## What each company does with the text
