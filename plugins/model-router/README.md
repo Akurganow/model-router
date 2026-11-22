@@ -275,10 +275,19 @@ block. Until the bug is fixed:
 3. Start a new session.
 4. If you set `OPENROUTER_API_KEY`, run `/model-router:gateway auto` in the
    session.
-5. Delete those lines once the bug is fixed.
 
 The keys sit there in plaintext, and every process Claude Code starts can see
 them.
+
+Once the bug is fixed, move the keys, because the mod never copies a variable
+into an option:
+
+1. Save each key in the plugin's settings.
+2. Delete those lines from the `env` block. While a line stands, its key
+   reads as set even when the option is empty.
+3. Restart the app, then ask Claude to run the `model-router-setup` skill,
+   which checks the keys.
+4. Put back the line of each key that reads `unset`.
 
 ## Provider and gateway
 
