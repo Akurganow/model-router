@@ -162,8 +162,9 @@ Edit metadata only in `metadata/source.json`. Then run
 `node scripts/build.ts` and commit the generated files with the change.
 Never edit a generated file by hand. CI fails when one differs from the
 builder's output. `generatedFiles` in `scripts/build/copies.ts` lists the
-generated files. In the README only the region between
+generated files. In the root README only the region between
 `<!-- install:start -->` and `<!-- install:end -->` is generated.
+The npm README, `packages/model-router/README.md`, is generated whole.
 
 ### No package.json in the Claude Code plugin
 
@@ -413,8 +414,9 @@ every package by digest:
 - `minimum/` pins the oldest omp the README supports, and Renovate leaves it
   alone. To raise it, a person edits `minimum/package.json`, runs
   `bun install --ignore-scripts` in that folder to refresh `bun.lock`, and
-  raises the version in the README's harness table and omp setup steps in the
-  same pull request. A test fails when the pin and the README differ.
+  raises the version in the root README's harness table and in the Install
+  section of the omp guide in the same pull request. A test fails when the pin
+  and either file differ.
 
 The Bun that both pins run on keeps the 14-day rule. When a new omp needs a
 newer Bun, its pull request fails at `omp --version` with omp's own message,
