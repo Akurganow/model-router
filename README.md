@@ -61,7 +61,7 @@ Source: Claude Code documentation, [Install and manage plugins](https://code.cla
 
 CI installs it on Ubuntu.
 
-[Set up Claude Code](#set-up-claude-code) has the next steps.
+The guide has the [Claude Code install notes and setup steps](plugins/model-router/README.md#install).
 
 ### Oh My Pi
 
@@ -74,7 +74,7 @@ Source: Oh My Pi documentation, [marketplace.md, lines 20 to 25](https://github.
 
 CI installs it on Ubuntu.
 
-[Set up Oh My Pi](#set-up-oh-my-pi) has the next steps.
+The guide has the [Oh My Pi install notes and setup steps](plugins/model-router-omp/README.md#install).
 
 ### OpenClaw
 
@@ -90,7 +90,7 @@ Review the source of the package before you run these commands: they carry `--fo
 
 CI installs the packed npm package on Ubuntu and checks that OpenClaw loads it.
 
-[Set up OpenClaw](#set-up-openclaw) has the next steps.
+The guide has the [OpenClaw install notes and setup steps](plugins/model-router-openclaw/README.md#install).
 
 ### Hermes Agent
 
@@ -101,33 +101,13 @@ hermes config set delegation.backend model-router
 
 Source: Hermes Agent documentation, [Plugins](https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins).
 
+The second command replaces `model_map` or any other delegation backend, because Hermes runs one backend at a time.
+
 CI installs it on Ubuntu.
 
-[Set up Hermes Agent](#set-up-hermes-agent) has the next steps.
+The guide has the [Hermes Agent install notes and setup steps](plugins/model-router-hermes/README.md#install).
 
 <!-- install:end -->
-
-The Hermes command `hermes config set delegation.backend model-router` replaces `model_map` or any other delegation backend, because Hermes runs one backend at a time.
-
-### Set up Claude Code
-
-After the commands, follow the [Claude Code setup steps](plugins/model-router/README.md#set-up).
-They cover the terminal, VS Code and the desktop app, and set the options and the keys.
-
-### Set up Oh My Pi
-
-After the commands, follow the [Oh My Pi setup steps](plugins/model-router-omp/README.md#set-up).
-They cover the restart, the keys and the model roles.
-
-### Set up OpenClaw
-
-After the commands, check the install as the [OpenClaw install notes](plugins/model-router-openclaw/README.md#install) say.
-Then follow the [OpenClaw setup steps](plugins/model-router-openclaw/README.md#set-up).
-
-### Set up Hermes Agent
-
-After the commands, read the [Hermes Agent install notes](plugins/model-router-hermes/README.md#install).
-Then follow the [Hermes Agent setup steps](plugins/model-router-hermes/README.md#set-up).
 
 ### After an update
 

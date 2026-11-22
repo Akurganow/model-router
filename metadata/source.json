@@ -252,6 +252,7 @@
 				"title": "Plugins",
 				"url": "https://hermes-agent.nousresearch.com/docs/user-guide/features/plugins"
 			},
+			"note": "The second command replaces `model_map` or any other delegation backend, because Hermes runs one backend at a time.",
 			"ciSystems": ["Ubuntu"]
 		}
 	},
@@ -259,7 +260,7 @@
 		"name": "@akurganow/model-router",
 		"private": false,
 		"type": "module",
-		"description": "Routes each OpenClaw or Oh My Pi subagent to a small, middle or large model and an effort that fit its task.",
+		"description": "Routes OpenClaw and Oh My Pi subagents to a small, middle or large model and an effort that fit the task.",
 		"keywords": [
 			"openclaw",
 			"oh-my-pi",

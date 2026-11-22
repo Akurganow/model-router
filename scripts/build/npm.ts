@@ -82,7 +82,7 @@ const readme = (source: Source): string => {
 		"",
 		source.npm.description,
 		"",
-		"model-router picks a model for subagents that OpenClaw or Oh My Pi starts. It sends a lookup to a small model, bounded work to a middle model and open-ended work to a large one. Where no model is set for one of the three, the harness keeps its own. A decision model scores each task the plugin routes: [Jev](https://docs.typesafe.ai) from TypeSafe by default, or OpenAI's or Google's, on the provider's own API or through OpenRouter.",
+		"model-router sends a lookup to a small model, bounded work to a middle model and open-ended work to a large one. Where no model is set for one of the three, the harness keeps its own. A decision model scores each task the plugin routes: [Jev](https://docs.typesafe.ai) from TypeSafe by default, or OpenAI's or Google's, on the provider's own API or through OpenRouter.",
 		"",
 		"## Install",
 		"",

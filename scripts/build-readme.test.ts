@@ -40,15 +40,20 @@ test("the region holds one section for each harness, in order", () => {
 	]);
 });
 
-test("each section ends with a link to its setup heading", () => {
+test("each section ends with its link to the guide's install section", () => {
 	const text = renderReadme(readme("\nold\n"), source);
-	for (const heading of ["Claude Code", "Oh My Pi", "OpenClaw", "Hermes Agent"])
-		assert.ok(
-			text.includes(
-				`[Set up ${heading}](#${anchorOf(`Set up ${heading}`)}) has the next steps.`,
-			),
-			heading,
-		);
+	const sections = text
+		.split(/\n\n(?=### |<!-- install:end -->)/)
+		.filter((piece) => piece.startsWith("### "));
+	assert.deepEqual(
+		sections.map((section) => section.split("\n").at(-1)),
+		[
+			"The guide has the [Claude Code install notes and setup steps](plugins/model-router/README.md#install).",
+			"The guide has the [Oh My Pi install notes and setup steps](plugins/model-router-omp/README.md#install).",
+			"The guide has the [OpenClaw install notes and setup steps](plugins/model-router-openclaw/README.md#install).",
+			"The guide has the [Hermes Agent install notes and setup steps](plugins/model-router-hermes/README.md#install).",
+		],
+	);
 });
 
 test("a heading sign inside a fenced code block makes no anchor", () => {
