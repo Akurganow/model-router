@@ -1,6 +1,6 @@
 {
 	"name": "model-router-omp",
-	"version": "0.24.3",
+	"version": "0.25.0",
 	"private": true,
 	"type": "module",
 	"description": "Routes Oh My Pi subagents to the smol, midl or slow model role and a thinking level that fits the task, judged by Jev or the decision model the provider setting names. It scores a task even when you set no model, and sets the effort unless you set one. It sends the task text, condensed to at most 12,000 characters, and the agent's description, cut to 500 characters, with token-shaped strings such as keys masked, to the provider's own API (api.typesafe.ai, api.openai.com or generativelanguage.googleapis.com), to openrouter.ai or to both, as its provider and gateway settings allow. The bundled task agent sends a fixed text in place of its description. The scope setting picks the agents: core routes the bundled task agent, extended routes every agent whose model you did not set. A project can set scope, and extended there can raise spend on the midl and slow roles. A key set as an environment variable is visible to every process omp starts.",
