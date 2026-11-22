@@ -291,8 +291,10 @@ only. A rule module default-exports a `Rule`. In `scripts/rules/`,
 `threshold.ts` and `doubt.ts` are helpers, not rules. It prints
 agreement, under-routing and over-routing for the tier and the work index.
 
-A new case in `calibration.jsonl` names its source, its license and the basis
-of its label. A basis may quote a tier text as it stood when the label was
+A label names the smallest model that should get the brief, judged from the
+brief alone. The tier texts do not decide a label: the labels are what tests
+the texts. A new case in `calibration.jsonl` names its source, its license and
+the basis of its label. A basis may quote a tier text as it stood when the label was
 given. For a label that the brief supports both ways, set the array
 `contested` to `["expected"]`, `["work"]` or both.
 
