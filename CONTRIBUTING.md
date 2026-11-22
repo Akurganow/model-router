@@ -117,7 +117,8 @@ every commit as a [conventional commit](#commits).
 - `plugins/model-router-omp` is the omp plugin.
 - `plugins/model-router-openclaw` is the OpenClaw plugin.
 - `plugins/model-router-hermes` is the Hermes Agent plugin: a Python shim
-  that starts the generated Node bundle `route.mjs` once per delegated task.
+  that starts the generated Node bundle `route.mjs` once for each delegated
+  task it scores.
   Its Python uses the standard library only, so it has no `pyproject.toml`
   and no requirements file. The builder writes its `plugin.yaml`,
   `constants.json` and `route.mjs`. The Python reads from `constants.json`
@@ -452,7 +453,7 @@ CI runs these checks:
 - the install of the Claude Code and omp plugins from the checkout, once per
   omp pin, and a check that omp loads the plugin
 - the `package` job: it packs `packages/model-router` and compares the packed
-  files with its `files` list, runs `npm publish --dry-run`, and installs the
+  files with its `files` list, checks the publish with a dry run, and installs the
   tarball into the pinned OpenClaw and into each pinned omp, which must load it
 - the `hermes` job: it runs the Hermes plugin's tests on Python 3.11 and 3.14,
   validates the plugin with the pinned Hermes, installs it from the checkout,

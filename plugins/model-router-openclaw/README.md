@@ -52,7 +52,7 @@ Routing needs a key. The models in the slots decide what each level runs on. The
 
    [What each model must support](#models) has more. The plugin has no command for the models.
 2. Add a [key](#keys).
-3. Pick the [provider](#provider-and-gateway), the [gateway](#provider-and-gateway) and the [scope](#scope) if the defaults do not fit.
+3. Pick the [provider](#provider-and-gateway), the [gateway](#provider-and-gateway) and the [scope of routing](#scope) if the defaults do not fit.
 4. Check the routing, as [Verify](#verify) says.
 
 ## Verify
@@ -83,7 +83,7 @@ Never type a key into the chat.
 
 ## Provider and gateway
 
-The `provider` and `gateway` settings decide who receives each task. [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists their values, their defaults and the order of the paths.
+The `provider` and `gateway` settings decide who receives each task. By default, `provider` is `typesafe` and `gateway` is `direct`. [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists the other values, says which of them cost more and tells where each sends the task.
 
 The `gateway` setting is not OpenClaw's Gateway, the process that loads the plugin.
 
@@ -161,7 +161,7 @@ Check these when you choose a model:
 
 ## Routing
 
-The judgment question picks the level, and the level picks the slot, as [the level and slot table](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) lists.
+The judgment question picks the level, and the level picks the slot, as [the table under A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) lists.
 
 The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](https://github.com/Akurganow/model-router/blob/main/plugins/model-router/docs/model-choice.md#the-default-level) explains the factors.
 
@@ -237,7 +237,7 @@ A scored spawn can still skip:
 
 - `timeout`: the first of two attempts got no answer in 5 s, or the routing limit expired before the plugin finished routing. Once the limit has expired, the line reads `timeout` alone, even after the first attempt failed. [The hook's three limits](#hook-timeout) give the limit.
 - `cancelled`: OpenClaw cancelled the `sessions_spawn` call before the plugin finished routing.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score. [A failed attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-failed-attempt) explains each, and says how the line names two of them.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score. [A failed attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-failed-attempt) explains each. [The fallback rule of the line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says how the line names two of them.
 
 ### How the plugin reads a spawn
 

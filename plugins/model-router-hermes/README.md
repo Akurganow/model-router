@@ -11,7 +11,7 @@ A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks
 - It sets only a model you assigned.
 - It never overrides a model you chose, nor an effort the `delegation` section sets. [Precedence](#precedence) gives the whole order for the model and the effort.
 - The delegating model can describe each task, and can set a task's effort or level to escalate it. [Parameters of `delegate_task`](#parameters-of-delegate_task) lists them.
-- It starts Hermes's own Node once per task to run the scoring step. [Node](#node) says how.
+- It starts Hermes's own Node once for each task it scores. [Node](#node) says how.
 - It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what Hermes can still do.
 - The plugin changes a setting only when you type `/model-router-provider` or `/model-router-gateway`. It never writes `delegation.backend`.
 
@@ -21,7 +21,7 @@ The install commands are under [Hermes Agent in the root README](https://github.
 
 Hermes 0.22.6 or later is required. The manifest declares `requires_hermes: ">=0.22.6"`, and Hermes refuses an older version before it loads the plugin. A Hermes core that does not check that field and has no delegation providers loads the plugin, logs a warning and leaves it off.
 
-The install command takes the repository's subfolder, `Akurganow/model-router/plugins/model-router-hermes`. `--enable` enables the plugin without Hermes's prompt. The root README's install block also sets `delegation.backend` to `model-router`, so the plugin and its backend are both on after install.
+The install command takes the repository's subfolder, `Akurganow/model-router/plugins/model-router-hermes`. `--enable` enables the plugin without Hermes's prompt. The root README's install block also sets `delegation.backend` to `model-router`, so the plugin and its backend are both on after install. [The note under those commands](https://github.com/Akurganow/model-router/blob/main/README.md#hermes-agent) says what that setting replaces.
 
 Pin an install to one commit by adding `--ref <commit>` with the full 40-character commit hash to the install command. Hermes refuses to update a pinned plugin. To move the pin, run the install again with `--force --ref <new-commit>`.
 
@@ -36,7 +36,7 @@ Routing needs the plugin enabled, the backend on and a key. The models in the sl
 1. A backend change applies from the next session. In a running session, type `/delegation model-router --now`.
 2. Add a [key](#keys).
 3. Assign any of `small_model`, `middle_model` and `large_model`, as [the format of a slot](#models) says. Each slot is optional: a slot you leave unset runs its level on Hermes's model.
-4. Pick the [provider and the gateway](#provider-and-gateway) if the defaults do not fit.
+4. Pick the [scoring provider and its gateway](#provider-and-gateway) if the defaults do not fit.
 5. Check the routing, as [Verify](#verify) says.
 
 [Facts behind the setup steps](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#hermes-registration-and-settings)
@@ -49,12 +49,12 @@ Ask Hermes to delegate one small task, such as listing the files in the current 
 
 The plugin reads a key only for a key holder that the [`provider` and `gateway` settings](#provider-and-gateway) allow. It reads each key through Hermes's own secret reader, from one variable.
 
-| Key | Environment variable | Settings secret |
+| Key holder | Settings secret | Variable |
 | --- | --- | --- |
-| TypeSafe | `TYPESAFE_API_KEY` | `api_key` |
-| OpenAI | `OPENAI_API_KEY` | `openai_api_key` |
-| Google | `GEMINI_API_KEY` | `google_api_key` |
-| OpenRouter | `OPENROUTER_API_KEY` | `openrouter_api_key` |
+| TypeSafe | `api_key` | `TYPESAFE_API_KEY` |
+| OpenAI | `openai_api_key` | `OPENAI_API_KEY` |
+| Google | `google_api_key` | `GEMINI_API_KEY` |
+| OpenRouter | `openrouter_api_key` | `OPENROUTER_API_KEY` |
 
 [Where to get a key](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) also says when a key counts as set and which Google variable the plugins do not read.
 
@@ -86,7 +86,7 @@ Hermes holds a key in the gateway's environment, so the programs Hermes starts c
 
 ## Provider and gateway
 
-The `provider` and `gateway` settings decide who receives each task. [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists their values, their defaults and the order of the paths.
+The `provider` and `gateway` settings decide who receives each task. By default, `provider` is `typesafe` and `gateway` is `direct`. [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists the other values, says which of them cost more and tells where each sends the task.
 
 The `gateway` setting is not Hermes's gateway, the process that owns a session.
 
@@ -138,7 +138,7 @@ An unset slot keeps the route Hermes would give the task, and the line names the
 
 ## Routing
 
-The judgment question picks the level, and the level picks the slot, as [the level and slot table](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) lists.
+The judgment question picks the level, and the level picks the slot, as [the table under A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) lists.
 
 The plugin stays at level 1 unless an end is clearly more likely. [model-choice.md](https://github.com/Akurganow/model-router/blob/main/plugins/model-router/docs/model-choice.md#the-default-level) explains the factors. A level whose slot is unset runs the child on the route Hermes would give it, as [the rule of an unset slot](#models) says.
 
@@ -185,7 +185,7 @@ The parameters are part of the session's tool list. After an install or an updat
 
 ### Node
 
-The plugin runs the scoring step in Node. It uses only Hermes's own Node. It never uses a Node on `PATH`, and it reports `node not found` when Hermes has none. It starts the program `route.mjs` once per task. It writes the request to the program's standard input and reads one line of JSON back. Keys travel on standard input only.
+The plugin runs the scoring step in Node. It uses only Hermes's own Node. It never uses a Node on `PATH`, and it reports `node not found` when Hermes has none. It starts the program `route.mjs` once for each task it scores. It writes the request to the program's standard input and reads one line of JSON back. Keys travel on standard input only.
 
 The program sees a short list of environment variables. [The program the plugin starts](PRIVACY.md#the-program-the-plugin-starts) lists them. The list holds the proxy variables. Node's `fetch` reads `HTTPS_PROXY` and `HTTP_PROXY` only when `NODE_USE_ENV_PROXY=1` is set. When `HTTPS_PROXY` or `HTTP_PROXY` is present, in either case, the plugin sets that switch, unless the environment sets it already. `NO_PROXY` alone turns nothing on.
 
@@ -216,7 +216,7 @@ Every task without a `level` meets these gates in order. The first that fails sk
 A scored task can still skip:
 
 - `timeout`: a first attempt got no answer in 5 s, or the budget ran out.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score, or the Node step failed. [A failed attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-failed-attempt) explains each, and says how the line names two of them. `failed` also covers any error in the plugin.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score, or the Node step failed. [A failed attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-failed-attempt) explains each. [The fallback rule of the line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says how the line names two of them. `failed` also covers any error in the plugin.
 
 [Facts behind the gates](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#hermes-routing-and-refusals)
 

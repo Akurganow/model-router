@@ -108,7 +108,7 @@ The plugin reads four keys, each from one variable:
 
 The plugin does not read `GOOGLE_API_KEY`.
 A key counts as set when a place the plugin reads for it holds non-blank text.
-The key of the provider you chose serves the direct path, and the OpenRouter key serves the gateway path.
+The key of the provider you chose serves the direct path, the provider's own API, and the OpenRouter key serves the gateway path, through OpenRouter.
 Each plugin README names where else a key can sit and, in a harness that has one, the setting that holds it.
 A plugin reads a key only for a holder that the `provider` and `gateway` settings allow.
 Each key goes only to the host of its holder, at the address that [The request](#the-request) lists for it.
@@ -175,12 +175,13 @@ Each of them takes the model for a level from a slot:
 | 1 | Bounded judgment | `middle` | `middle_model` |
 | 2 | Open judgment | `large` | `large_model` |
 
-In Oh My Pi each slot is a model role, as [Models](../plugins/model-router-omp/README.md#models) lists.
+In Oh My Pi each slot is a model role, as [Models in the Oh My Pi guide](../plugins/model-router-omp/README.md#models) lists.
 
 In OpenClaw and Hermes Agent a slot is set when its setting names a model, and unset when it names none.
 In Oh My Pi a slot is set when omp has a model for the slot's role, and unset when it has none.
 For an unset slot, the task keeps the model the harness gives it.
-For a task it scores, the plugin still sets the effort, except where the README's list of kept efforts says otherwise.
+For a task it scores, the plugin still sets the effort, with the exceptions that each guide lists.
+Those lists are [Efforts the plugin keeps in Oh My Pi](../plugins/model-router-omp/README.md#efforts-the-plugin-keeps), [Efforts the plugin keeps in OpenClaw](../plugins/model-router-openclaw/README.md#efforts-the-plugin-keeps) and [Precedence in Hermes Agent](../plugins/model-router-hermes/README.md#precedence).
 The routing line names the slot and its state in place of a model, as in `L1 middle model unset`.
 
 An unset slot is your choice and needs no fix: its level runs on the harness's model.
@@ -213,7 +214,7 @@ Each provider and path has its own address and model:
 Under `typesafe`, both paths get the alias `jev-latest`.
 TypeSafe points it at the most recent official Jev release, and OpenRouter routes it to its own alias for the newest Jev release.
 The alias moves when a release ships, so the picks can shift with no change to the plugin.
-TypeSafe's [Models](https://docs.typesafe.ai/models) page says which version it points to, and the routing line names the model that answered.
+[TypeSafe's Models page](https://docs.typesafe.ai/models) says which version it points to, and the routing line names the model that answered.
 
 The plugin sets exactly four request headers:
 
@@ -294,12 +295,12 @@ A first request the plugin gave up on may still be billed, on top of the second 
 
 ## What each company does with the text
 
-The `provider` and `gateway` settings pick the company that receives the text, as [The provider and the gateway](#the-provider-and-the-gateway) says.
+The `provider` and `gateway` settings pick the company that receives the text, as [the values of both settings](#the-provider-and-the-gateway) say.
 Each company processes the request to answer the scoring questions.
 The plugin author has no access to those requests.
 Each company's own page sets what it does with the text:
 
-- TypeSafe: its handling of request data is set by its [privacy policy](https://typesafe.ai/legal/privacy-policy).
+- TypeSafe: its handling of request data is set by the [TypeSafe privacy policy](https://typesafe.ai/legal/privacy-policy).
 - OpenAI: it does not train its models on API data unless the customer opts in.
   It keeps abuse-monitoring logs for a limited time, and an account can ask OpenAI to approve less.
   Its page is [Data controls in the OpenAI platform](https://developers.openai.com/api/docs/guides/your-data).
@@ -312,7 +313,7 @@ Each company's own page sets what it does with the text:
   OpenRouter says it stores a prompt only when you opt in, with the exceptions its page lists.
   Each provider behind it has its own data policy, and the plugin cannot see which endpoint answered.
   For TypeSafe's System One route, OpenRouter does not document retention or training.
-  Its pages are its [privacy policy](https://openrouter.ai/privacy), [provider logging](https://openrouter.ai/docs/guides/privacy/provider-logging) and [data collection](https://openrouter.ai/docs/guides/privacy/data-collection).
+  Its pages are the [OpenRouter privacy policy](https://openrouter.ai/privacy), [provider logging](https://openrouter.ai/docs/guides/privacy/provider-logging) and [data collection](https://openrouter.ai/docs/guides/privacy/data-collection).
 
 With `auto` or `openrouter-first` and both keys set, one task can reach the provider directly and through OpenRouter.
 
@@ -363,19 +364,21 @@ OpenRouter's reply names the model with a date suffix, as in ` · openrouter ope
 
 After a fallback, a routed line ends with the attempt that failed and its reason, for example ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429`.
 
+After both attempts fail, a skip reason names each with its own reason, in the order they were tried, for example `skipped, openai HTTP 503, openrouter timeout`.
+
 ### A failed attempt
 
 An attempt that gives no score has one of these reasons:
 
 - `HTTP <status>`: the company answered with that status, after any retries.
   `HTTP 401` means the company refused the key.
-  [The provider and the gateway](#the-provider-and-the-gateway) says what Google's own API answers to a bad key.
+  [The rule for a bad key](#the-provider-and-the-gateway) says what Google's own API answers to one.
   `HTTP 429` and `HTTP 503` mean the company refused or failed, so try again later.
 - `network error`: the request got no answer that could be read, after any retries.
   Check the network and try again.
 - `timeout`: the request got no answer in time, or the routing limit ran out.
   [Retries and the second attempt](#retries-and-the-second-attempt) gives the wait of a first attempt.
+- `cancelled`: the harness cancelled the call before the attempt ended.
+  Only the Claude Code and OpenClaw plugins print it.
 - `bad reply`: the company answered, but the answer lacks a valid score for one of the questions.
 - `failed`: any other error.
-
-After both attempts fail, a skip reason names each with its own reason, in the order they were tried, for example `skipped, openai HTTP 503, openrouter timeout`.

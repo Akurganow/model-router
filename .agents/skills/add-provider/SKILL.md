@@ -270,9 +270,9 @@ The next four steps hold only when the evals score through the new provider.
 
 No test reads these texts for a provider's name.
 A new provider is a new company that receives the task text.
-Each search below reads every Markdown file and `metadata/source.json`.
+Each search below reads every Markdown file, `metadata/source.json` and `scripts/build/npm.ts`.
 
-69. Run `git grep -n -i -E 'typesafe|openrouter' -- '*.md' metadata/source.json ':!CHANGELOG.md' ':!packages'`, and read each hit. Each hit that lists the makers, their keys, their variables or their hosts takes the new one, whether or not a step below names its file.
+69. Run `git grep -n -i -E 'typesafe|openrouter' -- '*.md' metadata/source.json scripts/build/npm.ts ':!CHANGELOG.md' ':!packages'`, and read each hit. Each hit that lists the makers, their keys, their variables or their hosts takes the new one, whether or not a step below names its file.
 70. In the company table of each of the four `PRIVACY.md` under `plugins/`, name the company, its host and its privacy policy.
 71. In each of the four READMEs under `plugins/`, add the key and its variable.
 72. In the same READMEs, add the new value to the usage of the `provider` command. Add no label: the table in `docs/providers.md` holds it.
@@ -286,16 +286,16 @@ Each search below reads every Markdown file and `metadata/source.json`.
     - [Your choices](../../../docs/providers.md#your-choices);
     - the names and the examples of [The routing line](../../../docs/providers.md#the-routing-line);
     - the table of [The request](../../../docs/providers.md#the-request), with a row for each path, and its sentences on the key header and on who accepts an image reference.
-77. Change the plugin descriptions under `descriptions` in `metadata/source.json`: they name the hosts of the providers' own APIs.
+77. Change the plugin descriptions under `descriptions` in `metadata/source.json`: they name the hosts of the providers' own APIs. In `scripts/build/npm.ts`, change the lead of the npm README: it names every provider.
 78. End each key text in `metadata/source.json` with the provider condition: "…and only when the provider option is <maker> and the gateway option allows <company>'s own API." Say "setting" where the harness does.
 
 A line that counts providers, keys or variables names none of them, so the first search misses it.
 
-79. Run `git grep -n -i -w -E 'both|either|two|three|second|other provider|four' -- '*.md' metadata/source.json ':!CHANGELOG.md' ':!packages'`, and correct each hit the change makes false.
+79. Run `git grep -n -i -w -E 'both|either|two|three|second|other provider|four' -- '*.md' metadata/source.json scripts/build/npm.ts ':!CHANGELOG.md' ':!packages'`, and correct each hit the change makes false.
 
 A text says Jev only where it means Jev itself: the `typesafe` label, the calibration, the evals and the fit. Elsewhere it says "the scoring model".
 
-80. Run `git grep -n 'Jev' -- '*.md' metadata/source.json src ':!CHANGELOG.md' ':!packages'`, and reword each hit that says Jev where the scoring model is meant.
+80. Run `git grep -n 'Jev' -- '*.md' metadata/source.json scripts/build/npm.ts src ':!CHANGELOG.md' ':!packages'`, and reword each hit that says Jev where the scoring model is meant.
 
 The rebuild holds for every change.
 

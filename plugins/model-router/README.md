@@ -117,6 +117,7 @@ the minimal one, and each route below also sets the options and the keys.
 Those two lines install the plugin without its keys.
 After them, run `/plugin configure model-router@model-router` in a session to
 set the keys.
+After the route you pick, check the routing, as [Verify](#verify) says.
 
 ### Terminal
 
@@ -282,8 +283,9 @@ them.
 ## Provider and gateway
 
 The `provider` and `gateway` options decide who receives each task.
-[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
-lists their values, their defaults and the order of the paths.
+By default, `provider` is `typesafe` and `gateway` is `direct`.
+[The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists the other
+values, says which of them cost more and tells where each sends the task.
 [PRIVACY.md](PRIVACY.md) says which company receives the task under each
 value.
 
@@ -500,7 +502,8 @@ For a lookup the log shows:
 model-router L0 haiku · medium · p=0.91/0.62 · typesafe jev-1.14.0 · 812/9 tok
 ```
 
-The second number is the probability of the chosen work index.
+A routed line reads `L<level> <model> · <effort or kept label> · p=<tier>/<work>`.
+The probabilities belong to the chosen level and the chosen work index.
 [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line)
 says what the tail holds and how a fallback ends the line. A kept caller effort shows as
 `caller effort`, and a `CLAUDE_CODE_EFFORT_LEVEL` that is set shows as
@@ -522,7 +525,8 @@ Claude Code then refuses adds a second line, `denied`.
     is under Keys.
   - `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave
     no score. [A failed attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-failed-attempt) explains
-    each, and says how the line names two of them. An organization fetch
+    each. [The fallback rule of the line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line)
+    says how the line names two of them. An organization fetch
     policy that refuses openrouter.ai shows as `network error` too.
   - `timeout`: a first attempt got no answer in 5 s, or the call got no
     decision in the 10 s limit. Check the network and try again.

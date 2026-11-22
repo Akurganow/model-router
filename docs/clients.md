@@ -219,6 +219,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 
 - The commands are `omp plugin marketplace add <source>`, `omp plugin install name@marketplace` and `omp plugin upgrade [name@marketplace]`.
   `install` accepts `--scope user|project`, and the user scope is its default.
+- `omp plugin disable <pkg>` turns off an npm install, and `omp plugin uninstall <pkg>` removes it, each by the package name.
 - The installed version comes from the catalogue entry's `version`, then `.claude-plugin/plugin.json`, then a root `plugin.json`, then `package.json`.
   It falls back to the first seven characters of the source SHA, and then to `0.0.0`.
 - An upgrade of all plugins compares only catalogue entries that declare `version`.

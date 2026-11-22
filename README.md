@@ -2,15 +2,15 @@
 
 [![Release](https://img.shields.io/github/v/release/Akurganow/model-router)](https://github.com/Akurganow/model-router/releases)
 [![CI](https://github.com/Akurganow/model-router/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Akurganow/model-router/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/Akurganow/model-router)](LICENSE)
+[![MIT licence](https://img.shields.io/github/license/Akurganow/model-router)](LICENSE)
 
 ![Gamayun, the prophetic bird of Slavic folklore](docs/banner.jpg)
 
 model-router picks a model for subagents that your coding agent starts. It
 sends a lookup to a small model, bounded work to a middle model and open-ended
-work to a large one, each with a fitting effort. Where no model is set for one
-of the three, the harness keeps its own. There is a plugin for Claude Code,
-Oh My Pi, OpenClaw and Hermes Agent.
+work to a large one, each with a fitting effort. In Oh My Pi, OpenClaw and
+Hermes Agent, work with no model set keeps the harness's own model. There is a
+plugin for Claude Code, Oh My Pi, OpenClaw and Hermes Agent.
 
 For each task it scores, the plugin asks a decision model two questions: how
 much judgment the task needs and how much work it takes. The answers pick the
@@ -27,21 +27,19 @@ model of your main session.
 | Hermes Agent | the `model`, `provider` and `reasoning_effort` of the task's child | 0.22.6 | [Install for Hermes Agent](#hermes-agent) | [Hermes Agent guide](plugins/model-router-hermes/README.md) |
 
 You need the API key of the provider you choose (TypeSafe, OpenAI or Google)
-or an OpenRouter key. The OpenRouter key reaches any of them when the `gateway`
-setting allows OpenRouter. Each task the plugin scores sends its condensed
-text and short texts that describe it and its agent, with token-shaped strings
-masked. They go to the provider's own API, to OpenRouter or to both, as the
-`provider` and `gateway` settings allow.
-[What leaves the machine](#what-leaves-the-machine) says more.
+or an OpenRouter key. OpenRouter is a gateway that reaches all three, once the
+`gateway` setting allows it.
+[What leaves the machine](#what-leaves-the-machine) says what each scored task
+sends, and to whom.
 
 ## Install
 
 You need:
 
 - A harness at or above the minimum version in the table.
-- An API key for a path your settings allow.
-  [Where to get each key](docs/providers.md#keys) lists the four and their
-  variables.
+- Your provider's API key or an OpenRouter key.
+  [Where to get each key](docs/providers.md#keys) gives the address for getting
+  each key, and its variable.
 
 Two settings decide who receives each task. `provider` says whose model
 scores, and `gateway` says how OpenRouter is used to reach it.
@@ -133,6 +131,9 @@ would without the plugin. In Oh My Pi, OpenClaw and Hermes Agent,
 [a level with no model](docs/providers.md#a-slot-with-no-model) keeps the model
 the harness gives it. It still gets the effort, unless you set one.
 
+Only the Hermes Agent plugin starts a program: Hermes's own Node, once for each
+task it scores. The other three start none.
+
 ## What leaves the machine
 
 > [!IMPORTANT]
@@ -151,6 +152,10 @@ the harness gives it. It still gets the effort, unless you set one.
 > second host after [some failures of the first](docs/providers.md#the-provider-and-the-gateway).
 > To keep each task with one company, leave `gateway` at `direct`, the
 > default: it never contacts OpenRouter.
+>
+> In Claude Code, Oh My Pi and OpenClaw, the `scope` setting at `extended` also
+> sends your other agents' descriptions and task text, as each privacy policy
+> says.
 >
 > To stop the requests, turn the plugin off as its guide says, or remove the
 > key of every path `gateway` allows.

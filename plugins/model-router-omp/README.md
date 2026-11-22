@@ -69,7 +69,7 @@ Add a key in one of two ways:
 
 ## Provider and gateway
 
-The `provider` and `gateway` settings decide who receives each task. [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists their values, their defaults and the order of the paths. Who receives a batch item under each value: [PRIVACY.md](PRIVACY.md).
+The `provider` and `gateway` settings decide who receives each task. By default, `provider` is `typesafe` and `gateway` is `direct`. [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists the other values, says which of them cost more and tells where each sends the task. Who receives a batch item under each value: [PRIVACY.md](PRIVACY.md).
 
 [The model of each request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request) also says when the `jev-latest` alias moves.
 
@@ -242,7 +242,7 @@ One reason appears only at spawn time:
 After the item check, a scored item can still skip:
 
 - `timeout`: the first of two attempts got no answer in 5 s, or the scoring limit ran out: 10 s, or less under a short tool call timeout. When the limit runs out, items still waiting skip too.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score. [A failed attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-failed-attempt) explains each, and says how the line names two of them.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score. [A failed attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-failed-attempt) explains each. [The fallback rule of the line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says how the line names two of them.
 
 ### Agent discovery
 
@@ -304,17 +304,31 @@ Then restart omp.
 
 ## Turn it off
 
-To turn routing off, run this line in a shell:
+To turn routing off, run this line in a shell for the git catalogue route:
 
 ```sh
 omp plugin disable model-router@model-router
 ```
 
-Then restart omp. The plugin sends nothing while it is disabled. To remove it, run this line:
+For the npm route, run this line:
+
+```sh
+omp plugin disable @akurganow/model-router
+```
+
+Then restart omp. The plugin sends nothing while it is disabled. To remove the git catalogue route's plugin, run this line:
 
 ```sh
 omp plugin uninstall model-router@model-router
 ```
+
+To remove the npm route's plugin, run this line:
+
+```sh
+omp plugin uninstall @akurganow/model-router
+```
+
+[The facts on omp's plugin commands](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#omp-install-and-update) have the sources.
 
 Removing the key of every path the `gateway` setting allows also stops routing. Every batch then reports `key unset`.
 
