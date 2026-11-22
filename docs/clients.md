@@ -100,6 +100,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 - When a hooks module fails, Claude Code skips it and the session continues.
   A broken mod can therefore look like one that does nothing.
 - A mod installed from a marketplace loads at the next start of Claude Code, or at `/reload-plugins` in an open session.
+- When `$.config.set` writes an option of a mod in an open session, Claude Code reloads the mod's hooks module at once, with no `/reload-plugins`, and runs its `session.start` hook again.
+- A command typed at the prompt of an interactive session reaches `command.run` with the origin kind `composer`. A command given as the prompt of `claude -p` reaches it with another origin.
 - In print mode, a turn that ends in a sign-in error exits with status 1, and it has loaded the hooks module and run its `session.start` hook.
 - Claude Code caches an installed plugin by version.
   An edit reaches the installed copy only after the version rises and the user installs again.
