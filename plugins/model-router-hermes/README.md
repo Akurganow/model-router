@@ -177,7 +177,7 @@ A task that sets `level`:
 
 - Meets two gates: `<setting> not valid: run setup` first, then `subagent model set`. It needs no key and no Node.
 - Gets its slot's model, as [Models](#models) says. An unset slot runs the task on Hermes's own route, with the label `model-router L<level> <slot> model unset`.
-- Carries no `route.label` and writes no log line when it passes both gates and its model is set. The other plugins print no line for a call that names a model either. The task's result still names the model and provider it ran on.
+- Carries no `route.label` and writes no log line when it passes both gates and its model is set. The task's result still names the model and provider it ran on.
 
 The delegating model should leave `reasoning_effort` and `level` unset on a first dispatch. The escalation skill, `model-router-hermes:model-router`, says when to set them. [The skill](skills/model-router/SKILL.md) follows the escalation steps of the other plugins.
 
@@ -207,8 +207,8 @@ Every task without a `level` meets these gates in order. The first that fails sk
 
 A scored task can still skip:
 
-- `timeout`: the company did not answer within the budget.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: the company did not answer at all, or the Node step failed. `failed` also covers any error in the plugin. After both attempts fail, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
+- `timeout`: a first attempt got no answer in 5 s, or the budget ran out.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score, or the Node step failed. `failed` also covers any error in the plugin. After both attempts fail, the reason names each, as [The routing line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says.
 
 [Facts behind this section](../../docs/clients.md#hermes-routing-and-refusals)
 
