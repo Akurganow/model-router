@@ -167,7 +167,7 @@ Skip reasons, checked in this order, with the fix:
 - `settings unreadable`: the plugin cannot read OpenClaw's live config.
 - `timeout`: the 10 s routing limit expired. The limit shrinks to the hook timeout minus 2 s when that is smaller.
 - `cancelled`: OpenClaw cancelled the `sessions_spawn` call before routing finished.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: the company did not answer. Look at the company that failed, its key and the network. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score. Look at the company that failed, its key and the network. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says.
 
 ### Checking routing
 
