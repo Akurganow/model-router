@@ -199,14 +199,14 @@ test("collectKeysSync keeps an empty key", () => {
 
 test("narrowsGateway is true only when the narrowed value drops a path and adds none", () => {
 	const rows: [Gateway, Gateway, boolean][] = [
-		["auto", "direct", true],
-		["openrouter-first", "openrouter", true],
-		["auto", "openrouter-first", false],
-		["direct", "openrouter", false],
-		["direct", "auto", false],
+		["direct", "auto", true],
+		["openrouter", "openrouter-first", true],
+		["openrouter-first", "auto", false],
+		["openrouter", "direct", false],
+		["auto", "direct", false],
 		["auto", "auto", false],
 	];
-	for (const [wider, narrowed, expected] of rows) {
+	for (const [narrowed, wider, expected] of rows) {
 		assert.equal(
 			narrowsGateway(narrowed, wider),
 			expected,
