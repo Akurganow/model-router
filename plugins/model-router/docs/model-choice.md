@@ -95,14 +95,15 @@ and picks the ends on demand, so the factors rest on measurement.
 
 `calibration.jsonl` holds 198 labelled cases. It grew from 21 cases. Each case
 added later names its source, its license and the basis of its label. Labels
-that the brief supports both ways carry `contested`. Two annotators labelled
-the added cases blind, and a third settled their disagreements.
+that the brief supports both ways carry `contested`.
 
 The factors were fitted when the set held 172 cases, with their earlier labels
-and the earlier texts of tiers 1 and 2. Later, three annotators who saw no
-tier text labelled all cases blind. Eighteen labels were then decided anew,
-and 26 cases were added for kinds of brief the set lacked. The texts of tiers
-1 and 2 were reworded after that, and the factors were kept. With the present
+and the earlier texts of tiers 1 and 2. Two annotators had labelled the cases
+added by then blind, and a third had settled their disagreements. Later, three
+annotators who saw no tier text labelled all cases blind. Eighteen labels
+were then decided anew. 26 cases were added for kinds of brief the set
+lacked, each with the label that most of the three gave it. The texts of
+tiers 1 and 2 were reworded after that, and the factors were kept. With the present
 texts and factors, three runs on `jev-1.14.0` gave 86% to 87% tier agreement
 and 87% to 88% work agreement on the 198 cases. The earlier tier texts gave 80%
 to 81% against the same labels.
@@ -171,14 +172,14 @@ The harnesses word their descriptions differently, and a release can reword
 them again. A reworded role moves Jev's picks. `Explore`, `Plan` and omp's other
 agents keep their harness descriptions, so a harness rewording can still shift
 their picks. This was not measured. The fixed text keeps the Claude Code, omp and
-Hermes plugins on the input the calibration used. In `calibration.jsonl`, 115 of the 122
+Hermes plugins on the input the calibration used. In `calibration.jsonl`, 140 of the 147
 `general-purpose` cases carry it exactly. The other 7 come from sst/opencode's
 general agent, as their `source` field shows.
 
-The measurement ran on 2026-11-05 with `jev-1.14.0`. It used the 122 cases of
-`calibration.jsonl` whose role starts with "General-purpose agent", with the same
-briefs and only the role swapped. The case that carries omp's `task` description
-is not among them. Two full runs of all 172 calibration cases differed in 2 of 172
+The measurement ran on 2026-11-05 with `jev-1.14.0`, when the set held 172
+cases. It used the 122 of them whose role starts with "General-purpose agent",
+with the same briefs and only the role swapped. The case that carries omp's `task` description
+is not among them. Two full runs of all 172 cases differed in 2 of 172
 tier picks.
 
 | Role variant | Agreement with labels, of 122 | Tier under-routing, of 122 |
