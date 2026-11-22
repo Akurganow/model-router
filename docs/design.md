@@ -107,7 +107,9 @@ The install does: omp reads `.omp-plugin/marketplace.json` before the Claude cat
 **Package.**
 The npm tree is committed, so the `package` job packs it as it stands.
 It compares the files in the tarball with the `files` list of the tree.
-It runs `npm publish --dry-run`, which packs and checks the package and sends nothing.
+It runs `npm publish --dry-run --force`, which packs and checks the package and sends nothing.
+Between releases the tree carries the published version, so `--force` skips npm's checks of the version against the registry and of a prerelease's tag.
+The release's `publish` job looks the version up on the registry before it publishes, and that publish runs without `--force`.
 The dry run passes without a registry login, so it does not show that the registry would accept a publish.
 It then installs the tarball into a pinned OpenClaw, and checks the install report and that the installed bundle registers its hook, tool and commands against a recording `api`.
 It unpacks the tarball and installs the folder into a pinned omp, because omp installs a registry name, a git spec or a folder, not a tarball.
