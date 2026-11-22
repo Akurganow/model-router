@@ -3,6 +3,22 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.25.2 - 2026-11-22
+#### Bug Fixes
+- (**metadata**) link each install to its guide and stop overstating (2046329)
+- (**metadata**) say what the npm package does and how to install it (8bf9146)
+- (**openclaw**) drop the note that the npm package is not published yet (4093619)
+#### Documentation
+- (**readme**) save the keys before the desktop workaround goes (3363184)
+- (**readme**) apply the review fixes to the texts (2e6b67e)
+- (**readme**) say what the plugin does first and keep each fact once (5bae4f0)
+- say where a README fact lives and what is generated (96f57e1)
+#### Continuous Integration
+- let the publish dry run pass on a published version (eccf2cb)
+
+- - -
+
+
 ## v0.25.1 - 2026-11-22
 #### Bug Fixes
 - (**tier**) word levels 1 and 2 by how hard the open part is (c140c99)
