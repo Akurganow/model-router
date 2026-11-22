@@ -172,7 +172,9 @@ Three commands show or change an option:
 Run a command with no value to print the current value. The gateway line
 also prints the order, for example `gateway: auto (typesafe, then openrouter)`.
 Run it with a value, for example `/model-router:scope extended`, to write the
-option and print the new value.
+option and print the new value. Claude Code reloads the mod when an option
+changes, so the new value holds from the next subagent call of the same
+session.
 [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands)
 says what a bad value or a refused write prints. A command writes only when
 you type it at your own prompt. From any other origin a valid value writes
