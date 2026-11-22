@@ -52,14 +52,19 @@ Tier 1 rests on the `opusplan` alias in *Model configuration*. That alias plans
 with Opus and switches to Sonnet for code generation and implementation. The
 workload table in *Building with Claude Sonnet 5.5* gives Sonnet bug fixes and
 checks against requirements. Tier 1 therefore holds named defects, stated
-requirements, implementation from a given plan and work whose open part is
-routine.
+requirements and implementation from a given plan.
 
 Tier 2 rests on *Introducing Claude Sonnet 5.5*, which keeps complex,
 open-ended work that needs sustained judgment on Opus. *Choosing the right
 model* starts most workloads on Opus 5.5, and *Models overview* starts there
-when unsure. Tier 2 takes the tasks whose open part is hard to get right, or
-where a wrong choice would be easy to miss.
+when unsure.
+
+The two texts divide the work by the part the brief leaves open: routine in
+tier 1, and hard to get right or easy to get wrong unnoticed in tier 2. That
+division rests on no source. It was chosen by measurement on `jev-1.14.0`.
+Against the earlier texts it sent fewer large tasks to the middle model and
+fewer middle tasks to the large one, on the case set and on briefs written
+afterwards.
 
 ## The default level
 
@@ -97,19 +102,21 @@ and picks the ends on demand, so the factors rest on measurement.
 added later names its source, its license and the basis of its label. Labels
 that the brief supports both ways carry `contested`.
 
-The factors were fitted when the set held 172 cases, with their earlier labels
-and the earlier texts of tiers 1 and 2. Two annotators had labelled the cases
-added by then blind, and a third had settled their disagreements. Later, three
-annotators who saw no tier text labelled all cases blind. Eighteen labels
-were then decided anew. 26 cases were added for kinds of brief the set
-lacked, each with the label that most of the three gave it. The texts of
-tiers 1 and 2 were reworded after that, and the factors were kept. With the present
-texts and factors, three runs on `jev-1.14.0` gave 86% to 87% tier agreement
-and 87% to 88% work agreement on the 198 cases. The earlier tier texts gave 80%
-to 81% against the same labels.
+The factors were fitted on an earlier state of the set, called the fitting set
+below. It held 172 cases, with other labels for 18 of them and other texts for
+tiers 1 and 2. Two annotators had labelled its added cases blind, and a third
+had settled their disagreements.
+
+Since the fit, three annotators who saw no tier text labelled every case
+blind. 18 labels were decided anew, and 26 cases were added for kinds of brief
+the set lacked, each with the label that most of the three gave it. The texts
+of tiers 1 and 2 were reworded, and the factors were kept. With the present
+texts and factors, three `scripts/calibrate.ts` runs on `jev-1.14.0` gave 85%
+to 87% tier agreement, 169 to 172 of the 198 cases, and 87% to 88% work
+agreement. The bar of the script is 85%, which is 169 cases.
 
 One `scripts/calibrate.ts --record` run on `jev-1.14.0` wrote the probabilities
-for the 172 cases the set then held. `scripts/compare-rules.ts` then scored
+for the fitting set. `scripts/compare-rules.ts` then scored
 each rule module in `scripts/rules/` offline, with 5-fold cross-validation.
 Each rule fitted its parameters on the training folds only. The
 [rule measurements](https://github.com/Akurganow/model-router/issues/57#issuecomment-6627372979)
@@ -121,8 +128,8 @@ and commit `f089899` record the run. "Under" means a pick below the label.
 | old: near ties up, work prior `[0.5, 1, 0.5]` | 84% | 6% / 10% | 90% | 6% / 4% |
 | new: stay at the middle | 88% | 6% / 5% | 90% | 4% / 6% |
 
-Fitted on the 172 cases the set then held, the factors give 89% tier
-agreement and 91% work agreement on the same run. The factors fit for
+On the fitting set, the fitted factors give 89% tier agreement and 91% work
+agreement on the same run. The factors fit for
 agreement with the labels.
 Other rule families scored within one or two cases of the ratio rule on tier.
 Absolute thresholds per end matched its accuracy with about three times the
@@ -133,7 +140,7 @@ cases.
 ### The trade-off
 
 The old tier rule moved a near tie up, to the larger model. That sent 17 of
-the 172 cases the set then held to a larger model than their label. The new
+the 172 cases of the fitting set to a larger model than their label. The new
 rule halves over-routing from 10% to 5% and leaves under-routing at 6%. A tier
 too low can fail and pay for a second attempt, so the 6% matters. It did not
 grow.
@@ -172,12 +179,13 @@ The harnesses word their descriptions differently, and a release can reword
 them again. A reworded role moves Jev's picks. `Explore`, `Plan` and omp's other
 agents keep their harness descriptions, so a harness rewording can still shift
 their picks. This was not measured. The fixed text keeps the Claude Code, omp and
-Hermes plugins on the input the calibration used. In `calibration.jsonl`, 140 of the 147
-`general-purpose` cases carry it exactly. The other 7 come from sst/opencode's
+Hermes plugins on the input the calibration used. In `calibration.jsonl` every
+`general-purpose` case carries it exactly, except the 7 from sst/opencode's
 general agent, as their `source` field shows.
 
-The measurement ran on 2026-11-05 with `jev-1.14.0`, when the set held 172
-cases. It used the 122 of them whose role starts with "General-purpose agent",
+The measurement ran on 2026-11-05 with `jev-1.14.0`, on the fitting set of
+[How the factors were measured](#how-the-factors-were-measured). It used the
+122 of its 172 cases whose role starts with "General-purpose agent",
 with the same briefs and only the role swapped. The case that carries omp's `task` description
 is not among them. Two full runs of all 172 cases differed in 2 of 172
 tier picks.
