@@ -63,7 +63,7 @@ In Oh My Pi two gates stand before this check, as [Gate reasons](../plugins/mode
 
 The skip line shows for these tasks:
 
-- In Claude Code and Oh My Pi, the calls the stored `scope` covers.
+- In Oh My Pi, the calls the stored `scope` covers.
   When `scope` itself is not valid, they are the calls of the default scope.
 - In OpenClaw, every spawn that does not pass through unchanged.
 - In Hermes Agent, every task.
@@ -265,6 +265,7 @@ The routing limit ends any wait, so a 429 with a long `Retry-After` can hold a t
 
 With two attempts, the first gets one request and no retry.
 The plugin gives up on it after 5 s.
+When less of the routing limit is left than that, the first attempt takes all of it and the second is never asked.
 The second then gets up to three requests as above, within the rest of the routing limit.
 One task therefore sends at most four requests.
 

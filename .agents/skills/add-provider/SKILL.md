@@ -297,7 +297,7 @@ Each search below reads every Markdown file and `metadata/source.json`.
 
 A line that counts providers, keys or variables names none of them, so the first search misses it.
 
-81. Run `git grep -n -i -w -E 'both|either|two|second|other provider|four' -- '*.md' metadata/source.json ':!CHANGELOG.md' ':!packages'`, and correct each hit the change makes false.
+81. Run `git grep -n -i -w -E 'both|either|two|three|second|other provider|four' -- '*.md' metadata/source.json ':!CHANGELOG.md' ':!packages'`, and correct each hit the change makes false.
 
 A text says Jev only where it means Jev itself: the `typesafe` label, the calibration, the evals and the fit. Elsewhere it says "the scoring model".
 
