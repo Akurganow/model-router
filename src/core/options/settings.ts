@@ -238,7 +238,7 @@ const silent = (models: unknown): boolean =>
  * which entry is not valid. A valid value then gets one line per maker with the model name for each
  * path.
  */
-const modelsLines = (stored: Stored): string[] => {
+export const modelsLines = (stored: Stored): string[] => {
 	const { stored: migrated } = migrate(stored);
 	const { models } = migrated;
 	const shown = silent(models) ? "unset" : textOf(models);
