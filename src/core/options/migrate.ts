@@ -9,34 +9,16 @@
 // - OpenClaw also runs the ladder over its stored config through its own migration entry. Give that
 //   entry the new step.
 // - A step that reads `models` handles its three shapes: the short text
-//   `{typesafe:jev-preview}`, a JSON text, and a native object. `withModel` keeps each shape.
+//   `{typesafe:jev-preview}`, a JSON text, and a native object.
 // - A step changes nothing on its own output, so a second run gives the same record.
-
-import { nonEmpty } from "#utils/text.ts";
-import { withModel } from "./models.ts";
 
 export type StoredRecord = Readonly<Record<string, unknown>>;
 type Step = (
 	stored: StoredRecord,
 ) => { stored: StoredRecord; change: string } | undefined;
 
-// Claude Code's removed option `model` names the TypeSafe model: it becomes the `typesafe` entry of
-// `models` unless `models` names one already or is not valid, or the entry would not read back as
-// written. `models` keeps its form. `model` itself stays.
-const typesafeFromModel: Step = (stored) => {
-	const { model, models } = stored;
-	const name = nonEmpty(model);
-	if (name === undefined) return undefined;
-	const added = withModel(models, "typesafe", name);
-	if (added === undefined) return undefined;
-	return {
-		stored: { ...stored, models: added },
-		change: "models: typesafe from the removed model option",
-	};
-};
-
 // Oldest step first.
-const STEPS: readonly Step[] = [typesafeFromModel];
+const STEPS: readonly Step[] = [];
 
 // Names the newest step, for the changelog and OpenClaw's migration id. No version is stored:
 // each step recognises its input from the data.

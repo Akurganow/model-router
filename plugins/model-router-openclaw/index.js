@@ -476,6 +476,21 @@ function endpointOf(attempt) {
 // src/utils/error.ts
 var errorText = (err) => err instanceof Error ? err.message : String(err);
 
+// src/core/options/migrate.ts
+var STEPS = [];
+var SETTINGS_VERSION = STEPS.length;
+function migrate(stored) {
+  let current = stored;
+  const changes = [];
+  for (const step of STEPS) {
+    const done = step(current);
+    if (done === void 0) continue;
+    current = done.stored;
+    changes.push(done.change);
+  }
+  return { stored: current, changes };
+}
+
 // src/core/options/models.ts
 var JSON_CHARS = /["{}]/;
 var makerOf = (name) => MAKERS.find((maker) => maker === name);
@@ -556,50 +571,6 @@ function readModels(stored) {
   }
   return readOwnerForm(text);
 }
-var formatModels = (names) => `{${MAKERS.flatMap((maker) => {
-  const name = names[maker];
-  return name === void 0 ? [] : [`${maker}:${name}`];
-}).join(", ")}}`;
-var sameNames = (a, b) => MAKERS.every((maker) => a[maker] === b[maker]);
-function withModel(models, maker, name) {
-  const read = readModels(models);
-  if ("invalid" in read || read.models[maker] !== void 0) return void 0;
-  const text = typeof models === "string" ? models.trim() : void 0;
-  const parsed = text?.startsWith("{") ? parseJson2(text) : void 0;
-  let added;
-  if (isPlainObject(models)) added = { ...models, [maker]: name };
-  else if (isPlainObject(parsed))
-    added = JSON.stringify({ ...parsed, [maker]: name });
-  else added = formatModels({ ...read.models, [maker]: name });
-  const back = readModels(added);
-  return "models" in back && sameNames(back.models, { ...read.models, [maker]: name }) ? added : void 0;
-}
-
-// src/core/options/migrate.ts
-var typesafeFromModel = (stored) => {
-  const { model, models } = stored;
-  const name = nonEmpty(model);
-  if (name === void 0) return void 0;
-  const added = withModel(models, "typesafe", name);
-  if (added === void 0) return void 0;
-  return {
-    stored: { ...stored, models: added },
-    change: "models: typesafe from the removed model option"
-  };
-};
-var STEPS = [typesafeFromModel];
-var SETTINGS_VERSION = STEPS.length;
-function migrate(stored) {
-  let current = stored;
-  const changes = [];
-  for (const step of STEPS) {
-    const done = step(current);
-    if (done === void 0) continue;
-    current = done.stored;
-    changes.push(done.change);
-  }
-  return { stored: current, changes };
-}
 
 // src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
@@ -679,36 +650,28 @@ var valueLineFrom = (setting, record) => {
   return `${setting}: ${value}`;
 };
 var valueLine = (setting, stored) => valueLineFrom(setting, migrate(stored).stored);
-var NOT_STORED = " (not stored yet: run setup)";
-var modelsLinesFrom = (record, pending) => {
+var modelsLinesFrom = (record) => {
   const { models } = record;
   const shown = isSilentModels(models) ? "unset" : textOf(models);
   const read = readModels(models);
   if ("invalid" in read)
     return [`models: ${shown} (not valid: ${read.invalid})`];
   return [
-    `models: ${shown}${pending ? NOT_STORED : ""}`,
+    `models: ${shown}`,
     ...MAKERS.map(
       (maker) => `${maker} model: ${modelOf(maker, "direct", read.models[maker])} (OpenRouter: ${modelOf(maker, "openrouter", read.models[maker])})`
     )
   ];
 };
-var hasModel = (stored) => nonEmpty(stored.model) !== void 0;
-var carryFrom = (stored, { stored: { models }, changes }) => ({
-  ...changes.length > 0 ? { models: textOf(models) } : {},
-  eraseModel: hasModel(stored)
-});
-var isPending = (carry) => carry.models !== void 0 || carry.eraseModel;
 var settingsReport = (stored, extra, keys) => {
-  const migrated = migrate(stored);
-  const { stored: record } = migrated;
+  const { stored: record } = migrate(stored);
   const settings = settingsFrom(record);
   const keyLines = "skipped" in settings ? [] : holders(settings).map(
     (holder) => keyLine(holder, keys[holder] === void 0 ? "unset" : "set")
   );
   return [
     ...VALUE_SETTINGS.map((setting) => valueLineFrom(setting, record)),
-    ...modelsLinesFrom(record, isPending(carryFrom(stored, migrated))),
+    ...modelsLinesFrom(record),
     ...extra,
     ...keyLines
   ].join("\n");

@@ -636,6 +636,21 @@ function endpointOf(attempt2) {
 // src/utils/error.ts
 var errorText = (err) => err instanceof Error ? err.message : String(err);
 
+// src/core/options/migrate.ts
+var STEPS = [];
+var SETTINGS_VERSION = STEPS.length;
+function migrate(stored) {
+  let current = stored;
+  const changes = [];
+  for (const step of STEPS) {
+    const done = step(current);
+    if (done === void 0) continue;
+    current = done.stored;
+    changes.push(done.change);
+  }
+  return { stored: current, changes };
+}
+
 // src/core/options/models.ts
 var JSON_CHARS = /["{}]/;
 var makerOf = (name) => MAKERS.find((maker) => maker === name);
@@ -715,50 +730,6 @@ function readModels(stored) {
     }
   }
   return readOwnerForm(text);
-}
-var formatModels = (names) => `{${MAKERS.flatMap((maker) => {
-  const name = names[maker];
-  return name === void 0 ? [] : [`${maker}:${name}`];
-}).join(", ")}}`;
-var sameNames = (a, b) => MAKERS.every((maker) => a[maker] === b[maker]);
-function withModel(models, maker, name) {
-  const read2 = readModels(models);
-  if ("invalid" in read2 || read2.models[maker] !== void 0) return void 0;
-  const text = typeof models === "string" ? models.trim() : void 0;
-  const parsed = text?.startsWith("{") ? parseJson2(text) : void 0;
-  let added;
-  if (isPlainObject(models)) added = { ...models, [maker]: name };
-  else if (isPlainObject(parsed))
-    added = JSON.stringify({ ...parsed, [maker]: name });
-  else added = formatModels({ ...read2.models, [maker]: name });
-  const back = readModels(added);
-  return "models" in back && sameNames(back.models, { ...read2.models, [maker]: name }) ? added : void 0;
-}
-
-// src/core/options/migrate.ts
-var typesafeFromModel = (stored) => {
-  const { model, models } = stored;
-  const name = nonEmpty(model);
-  if (name === void 0) return void 0;
-  const added = withModel(models, "typesafe", name);
-  if (added === void 0) return void 0;
-  return {
-    stored: { ...stored, models: added },
-    change: "models: typesafe from the removed model option"
-  };
-};
-var STEPS = [typesafeFromModel];
-var SETTINGS_VERSION = STEPS.length;
-function migrate(stored) {
-  let current = stored;
-  const changes = [];
-  for (const step of STEPS) {
-    const done = step(current);
-    if (done === void 0) continue;
-    current = done.stored;
-    changes.push(done.change);
-  }
-  return { stored: current, changes };
 }
 
 // src/core/options/settings.ts
@@ -885,53 +856,38 @@ var valueLineFrom = (setting, record) => {
   return `${setting}: ${value}`;
 };
 var valueLine = (setting, stored) => valueLineFrom(setting, migrate(stored).stored);
-var NOT_STORED = " (not stored yet: run setup)";
-var modelsLinesFrom = (record, pending) => {
+var modelsLinesFrom = (record) => {
   const { models } = record;
   const shown = isSilentModels(models) ? "unset" : textOf(models);
   const read2 = readModels(models);
   if ("invalid" in read2)
     return [`models: ${shown} (not valid: ${read2.invalid})`];
   return [
-    `models: ${shown}${pending ? NOT_STORED : ""}`,
+    `models: ${shown}`,
     ...MAKERS.map(
       (maker) => `${maker} model: ${modelOf(maker, "direct", read2.models[maker])} (OpenRouter: ${modelOf(maker, "openrouter", read2.models[maker])})`
     )
   ];
 };
-var hasModel = (stored) => nonEmpty(stored.model) !== void 0;
-var carryFrom = (stored, { stored: { models }, changes }) => ({
-  ...changes.length > 0 ? { models: textOf(models) } : {},
-  eraseModel: hasModel(stored)
-});
-var isPending = (carry) => carry.models !== void 0 || carry.eraseModel;
-var modelsLines = (stored) => {
-  const migrated = migrate(stored);
-  return modelsLinesFrom(
-    migrated.stored,
-    isPending(carryFrom(stored, migrated))
-  );
-};
+var modelsLines = (stored) => modelsLinesFrom(migrate(stored).stored);
 var settingsReport = (stored, extra, keys) => {
-  const migrated = migrate(stored);
-  const { stored: record } = migrated;
+  const { stored: record } = migrate(stored);
   const settings = settingsFrom(record);
   const keyLines = "skipped" in settings ? [] : holders(settings).map(
     (holder) => keyLine(holder, keys[holder] === void 0 ? "unset" : "set")
   );
   return [
     ...VALUE_SETTINGS.map((setting) => valueLineFrom(setting, record)),
-    ...modelsLinesFrom(record, isPending(carryFrom(stored, migrated))),
+    ...modelsLinesFrom(record),
     ...extra,
     ...keyLines
   ].join("\n");
 };
-var modelCarry = (stored) => carryFrom(stored, migrate(stored));
-function modelsWrite(stored, text) {
+function modelsWrite(text) {
   const read2 = readModels(text);
   if ("invalid" in read2)
     return { refused: unchanged("models", `not valid: ${read2.invalid}`) };
-  return { models: modelCarry({ ...stored, models: text }).models ?? text };
+  return { models: text };
 }
 var modelsCallOf = (setting, models) => typeof models === "string" && setting === void 0 ? { text: models } : { refused: BAD_MODELS_CALL };
 var modelsAlready = (held, text) => held === text ? unchanged("models", alreadyValue(text)) : void 0;
@@ -1128,7 +1084,7 @@ async function applyModels(omp, ctx, text) {
   const global = await readGlobalSettings(omp);
   if (global === void 0 || plugin === void 0)
     return unchanged("models", UNREADABLE);
-  const write = modelsWrite(global, text);
+  const write = modelsWrite(text);
   if ("refused" in write) return write.refused;
   const already = modelsAlready(global.models, write.models);
   if (already !== void 0) return already;

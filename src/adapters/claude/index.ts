@@ -1,7 +1,6 @@
 import {
 	configCall,
 	configCommand,
-	hideRow,
 	registerConfigTool,
 	resetConfig,
 } from "./config.ts";
@@ -36,8 +35,6 @@ export function register(on: On, options: Options): void {
 	on("tool.call", { tool: "mcp__model-router__config" }, ($, e) =>
 		configCall($, e, options),
 	);
-	// The row key is a literal too: the manifest names the removed option `model`.
-	on("config.describe", { key: "model-router.model" }, hideRow);
 	on("command.run", { command: "model-router:gateway" }, ($, e) =>
 		configCommand($, e, "gateway", options),
 	);

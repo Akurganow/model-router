@@ -2,11 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-	formatModels,
-	isSilentModels,
-	readModels,
-} from "#core/options/models.ts";
+import { isSilentModels, readModels } from "#core/options/models.ts";
 
 test("a silent value names no model", () => {
 	for (const stored of [undefined, null, "", "   "])
@@ -154,19 +150,6 @@ test("a value that is not text or an object is neither form", () => {
 	assert.deepEqual(readModels(5), { invalid: "5" });
 	assert.deepEqual(readModels(true), { invalid: "true" });
 	assert.deepEqual(readModels(["openai:a"]), { invalid: '["openai:a"]' });
-});
-
-test("formatModels writes the short form in the order of the makers", () => {
-	assert.equal(
-		formatModels({
-			google: "g",
-			openai: "gpt-6-luna",
-			typesafe: "jev-preview",
-		}),
-		"{typesafe:jev-preview, openai:gpt-6-luna, google:g}",
-	);
-	assert.equal(formatModels({ openai: "gpt-6-luna" }), "{openai:gpt-6-luna}");
-	assert.equal(formatModels({}), "{}");
 });
 
 test("isSilentModels is true for unset, null, a blank text and spaces, and false for any other value", () => {

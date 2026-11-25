@@ -86,11 +86,7 @@
 			"scope": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"scope\" it asks the person which agent calls the router should route and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its scope option in the plugin's settings."
 		},
 		"userConfig": {
-			"optionType": "string",
-			"model": {
-				"title": "Jev model",
-				"description": "Removed: the setup skill moves it into models."
-			}
+			"optionType": "string"
 		},
 		"catalogueSource": "./plugins/model-router",
 		"install": {

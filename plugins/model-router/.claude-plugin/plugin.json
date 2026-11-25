@@ -67,11 +67,6 @@
 			"description": "The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.",
 			"default": ""
 		},
-		"model": {
-			"type": "string",
-			"title": "Jev model",
-			"description": "Removed: the setup skill moves it into models."
-		},
 		"api_key": {
 			"type": "string",
 			"title": "TypeSafe API key",

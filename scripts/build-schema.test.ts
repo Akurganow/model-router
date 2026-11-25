@@ -141,14 +141,6 @@ test("the models record is required, and so is its one text", () => {
 	]);
 });
 
-test("the removed Claude Code model option is required", () => {
-	const broken = source();
-	delete broken.claude.userConfig.model;
-	assert.deepEqual(validate(schema, broken), [
-		"$.claude.userConfig.model: required key is missing",
-	]);
-});
-
 test("the models record holds the shared title and one text", () => {
 	const { models } = loadSource(ROOT);
 	const text =

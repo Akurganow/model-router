@@ -10,7 +10,7 @@
 		"tools": ["model_router_config"]
 	},
 	"setup": {
-		"configMigrations": ["settings-v1"]
+		"configMigrations": ["settings-v0"]
 	},
 	"skills": ["./openclaw-skills"],
 	"configContracts": {

@@ -13,17 +13,17 @@ import {
 } from "#core/providers/provider.ts";
 import { modelOf } from "#core/scoring/maker-registry.ts";
 import { errorText } from "#utils/error.ts";
-import { nonEmpty, textOf } from "#utils/text.ts";
+import { textOf } from "#utils/text.ts";
 import { migrate, type StoredRecord } from "./migrate.ts";
 import { isSilentModels, readModels } from "./models.ts";
 import { DEFAULT_SCOPE, SCOPE_VALUES, type Scope } from "./scope.ts";
 
 export const VALUE_SETTINGS = ["provider", "gateway", "scope"] as const;
 export type ValueSetting = (typeof VALUE_SETTINGS)[number];
-// What a harness stored for each value setting, and for `models` and the removed `model`, as it read
-// it. Any type: valueFor and readModels check each value, and the migration ladder reads `model`.
+// What a harness stored for each value setting and for `models`, as it read it. Any type: valueFor
+// and readModels check each value.
 export type Stored = Readonly<
-	Partial<Record<ValueSetting | "models" | "model", unknown>>
+	Partial<Record<ValueSetting | "models", unknown>>
 >;
 export type Settings = Choice & {
 	readonly scope: Scope;
@@ -280,16 +280,14 @@ const valueLineFrom = (setting: ValueSetting, record: StoredRecord): string => {
 export const valueLine = (setting: ValueSetting, stored: Stored): string =>
 	valueLineFrom(setting, migrate(stored).stored);
 
-const NOT_STORED = " (not stored yet: run setup)";
-
-const modelsLinesFrom = (record: StoredRecord, pending: boolean): string[] => {
+const modelsLinesFrom = (record: StoredRecord): string[] => {
 	const { models } = record;
 	const shown = isSilentModels(models) ? "unset" : textOf(models);
 	const read = readModels(models);
 	if ("invalid" in read)
 		return [`models: ${shown} (not valid: ${read.invalid})`];
 	return [
-		`models: ${shown}${pending ? NOT_STORED : ""}`,
+		`models: ${shown}`,
 		...MAKERS.map(
 			(maker) =>
 				`${maker} model: ${modelOf(maker, "direct", read.models[maker])} (OpenRouter: ${modelOf(maker, "openrouter", read.models[maker])})`,
@@ -297,37 +295,13 @@ const modelsLinesFrom = (record: StoredRecord, pending: boolean): string[] => {
 	];
 };
 
-type Migrated = ReturnType<typeof migrate>;
-
-const hasModel = (stored: Stored): boolean =>
-	nonEmpty(stored.model) !== undefined;
-
-// What the stored removed `model` leaves to do: the models text the ladder made, when it changed
-// anything, and the erase of `model` itself.
-const carryFrom = (
-	stored: Stored,
-	{ stored: { models }, changes }: Migrated,
-): { readonly models?: string; readonly eraseModel: boolean } => ({
-	...(changes.length > 0 ? { models: textOf(models) } : {}),
-	eraseModel: hasModel(stored),
-});
-
-const isPending = (carry: ReturnType<typeof carryFrom>): boolean =>
-	carry.models !== undefined || carry.eraseModel;
-
 /**
  * Returns the lines of the `models` setting, read after the migration ladder. The first line shows
- * the value as stored, and says when the ladder changed it or a removed `model` is left to erase
- * and the change is not stored yet, or which entry is not valid. A valid value then gets one line
- * per maker with the model name for each path.
+ * the value as stored, or which entry is not valid. A valid value then gets one line per maker with
+ * the model name for each path.
  */
-export const modelsLines = (stored: Stored): string[] => {
-	const migrated = migrate(stored);
-	return modelsLinesFrom(
-		migrated.stored,
-		isPending(carryFrom(stored, migrated)),
-	);
-};
+export const modelsLines = (stored: Stored): string[] =>
+	modelsLinesFrom(migrate(stored).stored);
 
 /**
  * Returns the settings report: the line of each setting in order, the models lines, then the extra
@@ -341,8 +315,7 @@ export const settingsReport = (
 	extra: readonly string[],
 	keys: Keys,
 ): string => {
-	const migrated = migrate(stored);
-	const { stored: record } = migrated;
+	const { stored: record } = migrate(stored);
 	const settings = settingsFrom(record);
 	const keyLines: string[] =
 		"skipped" in settings
@@ -352,35 +325,20 @@ export const settingsReport = (
 				);
 	return [
 		...VALUE_SETTINGS.map((setting) => valueLineFrom(setting, record)),
-		...modelsLinesFrom(record, isPending(carryFrom(stored, migrated))),
+		...modelsLinesFrom(record),
 		...extra,
 		...keyLines,
 	].join("\n");
 };
 
-/**
- * Returns what a stored removed `model` leaves to write. `models` is the text the ladder made of
- * the record, present only when the ladder changed it. `eraseModel` is true whenever a `model`
- * that is not blank is stored, even when the ladder copied nothing.
- */
-export const modelCarry = (
-	stored: Stored,
-): { readonly models?: string; readonly eraseModel: boolean } =>
-	carryFrom(stored, migrate(stored));
-
-/**
- * Returns the `models` text to store for the text a person asked for, or the line that refuses it.
- * The text goes through the ladder, so a stored removed `model` becomes the `typesafe` entry when
- * the text names none.
- */
+/** Returns the `models` text to store for the text a person asked for, or the line that refuses it. */
 export function modelsWrite(
-	stored: Stored,
 	text: string,
 ): { readonly models: string } | { readonly refused: string } {
 	const read = readModels(text);
 	if ("invalid" in read)
 		return { refused: unchanged("models", `not valid: ${read.invalid}`) };
-	return { models: modelCarry({ ...stored, models: text }).models ?? text };
+	return { models: text };
 }
 
 /**

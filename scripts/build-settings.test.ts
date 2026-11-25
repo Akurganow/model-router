@@ -16,13 +16,12 @@ const omp = rendered(renderOmp(source), OMP_OUTPUTS.manifest);
 const MODELS_TEXT =
 	"The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.";
 
-test("Claude Code lists the three options, models, the removed model and the keys, in that order", () => {
+test("Claude Code lists the three options, models and the keys, in that order", () => {
 	assert.deepEqual(Object.keys(claude.userConfig), [
 		"provider",
 		"gateway",
 		"scope",
 		"models",
-		"model",
 		"api_key",
 		"openai_api_key",
 		"google_api_key",
@@ -36,14 +35,6 @@ test("the Claude Code models option is a string that defaults to empty and lists
 		title: "Scoring models",
 		description: MODELS_TEXT,
 		default: "",
-	});
-});
-
-test("the removed Claude Code model option has no default and no options, so an erase to an empty string stays allowed", () => {
-	assert.deepEqual(claude.userConfig.model, {
-		type: "string",
-		title: "Jev model",
-		description: "Removed: the setup skill moves it into models.",
 	});
 });
 

@@ -495,24 +495,6 @@ export const modelsTool = async ($: Engine, models: unknown) => {
 	return outcome;
 };
 
-// Answers $.config.describe beneath the plugin with the row as the menu would draw it.
-export const drawRows = (on: On) =>
-	on("config.describe", (_, e) => ({
-		label: e.label,
-		...(e.description === undefined ? {} : { description: e.description }),
-		isHidden: e.isHidden,
-	}));
-
-// Asks for the row of the key, as the menu does when it lists it.
-export const describedRow = ($: Engine, key: string) =>
-	$.config.describe({
-		key,
-		label: "A row",
-		description: "Its help text.",
-		isHidden: false,
-		provider: { plugin: "engine", tier: "core" },
-	} as never);
-
 // Sets up a harness whose settings write is refused.
 export const refusedWrites = (on: On) => {
 	harness(on);

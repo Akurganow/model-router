@@ -325,11 +325,6 @@ test("the settings report lists the values and each key the gateway allows", asy
 			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: {typesafe:jev-preview, openai:gpt-7-sol}\ntypesafe model: jev-preview (OpenRouter: jev-preview)\nopenai model: gpt-7-sol (OpenRouter: openai/gpt-7-sol)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset",
 		],
 		[
-			{ model: "jev-preview" },
-			[],
-			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: {typesafe:jev-preview} (not stored yet: run setup)\ntypesafe model: jev-preview (OpenRouter: jev-preview)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset",
-		],
-		[
 			{ models: "{typesafe:jev-latest, foo:bar}" },
 			[],
 			"provider: typesafe\ngateway: direct\nscope: core\nmodels: {typesafe:jev-latest, foo:bar} (not valid: foo:bar)",
@@ -356,7 +351,6 @@ const MODELS_LINES = [
 	"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
 ].join("\n");
 const MODELS_KEY = "model-router.models";
-const MODEL_KEY = "model-router.model";
 const OPENAI = "openai - OpenAI's decision model";
 
 const modelsCall = (models: unknown, setting?: unknown): ConfigCall => ({
@@ -365,39 +359,7 @@ const modelsCall = (models: unknown, setting?: unknown): ConfigCall => ({
 	...(setting === undefined ? {} : { setting }),
 });
 
-test("a models write returns the models lines and writes models, then erases the removed model option", async () => {
-	resetConfig();
-	const { $, log } = answeringEngine(async () => "unused");
-	assert.deepEqual(
-		await configCall($, modelsCall(MODELS), { model: "jev-preview" }),
-		{ result: MODELS_LINES },
-	);
-	assert.deepEqual(log, [
-		"check",
-		{ set: { key: MODELS_KEY, value: MODELS } },
-		{ set: { key: MODEL_KEY, value: "" } },
-	]);
-});
-
-test("a models write that names no typesafe entry stores the removed model option as one", async () => {
-	resetConfig();
-	const { $, log } = answeringEngine(async () => "unused");
-	await configCall($, modelsCall("{openai:gpt-6-luna}"), {
-		model: "jev-preview",
-	});
-	assert.deepEqual(log, [
-		"check",
-		{
-			set: {
-				key: MODELS_KEY,
-				value: "{typesafe:jev-preview, openai:gpt-6-luna}",
-			},
-		},
-		{ set: { key: MODEL_KEY, value: "" } },
-	]);
-});
-
-test("a models write with no removed model option writes models alone", async () => {
+test("a models write returns the models lines and writes models alone", async () => {
 	resetConfig();
 	const { $, log } = answeringEngine(async () => "unused");
 	assert.deepEqual(await configCall($, modelsCall(MODELS), {}), {
@@ -406,43 +368,14 @@ test("a models write with no removed model option writes models alone", async ()
 	assert.deepEqual(log, ["check", { set: { key: MODELS_KEY, value: MODELS } }]);
 });
 
-test("the text already stored is unchanged, unless a removed model option is left to erase", async () => {
-	resetConfig();
-	const same = answeringEngine(async () => "unused");
-	assert.deepEqual(
-		await configCall(same.$, modelsCall(MODELS), { models: MODELS }),
-		{ result: `models unchanged: already ${MODELS}` },
-	);
-	assert.deepEqual(same.log, ["check"]);
-	const left = answeringEngine(async () => "unused");
-	assert.deepEqual(
-		await configCall(left.$, modelsCall(MODELS), {
-			models: MODELS,
-			model: "jev-preview",
-		}),
-		{ result: MODELS_LINES },
-	);
-	assert.deepEqual(left.log, ["check", { set: { key: MODEL_KEY, value: "" } }]);
-});
-
-test("the text the report shows, with a removed model option stored, erases it and writes no models", async () => {
+test("the text already stored is unchanged and writes nothing", async () => {
 	resetConfig();
 	const { $, log } = answeringEngine(async () => "unused");
 	assert.deepEqual(
-		await configCall($, modelsCall("{typesafe:jev-1.14.0}"), {
-			model: "jev-preview",
-			models: "{typesafe:jev-1.14.0}",
-		}),
-		{
-			result: [
-				"models: {typesafe:jev-1.14.0}",
-				"typesafe model: jev-1.14.0 (OpenRouter: typesafe/jev-1.14)",
-				"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
-				"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
-			].join("\n"),
-		},
+		await configCall($, modelsCall(MODELS), { models: MODELS }),
+		{ result: `models unchanged: already ${MODELS}` },
 	);
-	assert.deepEqual(log, ["check", { set: { key: MODEL_KEY, value: "" } }]);
+	assert.deepEqual(log, ["check"]);
 });
 
 test("a models write is remembered, so the same text again is unchanged", async () => {
@@ -466,23 +399,21 @@ for (const [text, entry] of [
 	test(`models text ${text} is refused with its failing entry and writes nothing`, async () => {
 		resetConfig();
 		const { $, log } = answeringEngine(async () => "unused");
-		assert.deepEqual(
-			await configCall($, modelsCall(text), { model: "jev-preview" }),
-			{ result: `models unchanged: not valid: ${entry}` },
-		);
+		assert.deepEqual(await configCall($, modelsCall(text), {}), {
+			result: `models unchanged: not valid: ${entry}`,
+		});
 		assert.deepEqual(log, ["check"]);
 	});
 
-test("a denied or thrown models write stops before the erase and is not remembered", async () => {
+test("a denied or thrown models write is not remembered", async () => {
 	resetConfig();
 	const denied = answeringEngine(
 		async () => "unused",
 		async () => ({ deny: "read only" }),
 	);
-	assert.deepEqual(
-		await configCall(denied.$, modelsCall(MODELS), { model: "jev-preview" }),
-		{ result: "models unchanged: read only" },
-	);
+	assert.deepEqual(await configCall(denied.$, modelsCall(MODELS), {}), {
+		result: "models unchanged: read only",
+	});
 	assert.deepEqual(denied.log, [
 		"check",
 		{ set: { key: MODELS_KEY, value: MODELS } },
@@ -494,29 +425,13 @@ test("a denied or thrown models write stops before the erase and is not remember
 			throw new Error("row gone");
 		},
 	);
-	assert.deepEqual(
-		await configCall(thrown.$, modelsCall(MODELS), { model: "jev-preview" }),
-		{ result: "models unchanged: row gone" },
-	);
+	assert.deepEqual(await configCall(thrown.$, modelsCall(MODELS), {}), {
+		result: "models unchanged: row gone",
+	});
 	assert.equal(thrown.log.length, 2);
 	assert.deepEqual(await configCall(thrown.$, modelsCall(MODELS), {}), {
 		result: "models unchanged: row gone",
 	});
-});
-
-test("an erase that fails leaves the models written and names the model option", async () => {
-	resetConfig();
-	let writes = 0;
-	const { $ } = answeringEngine(
-		async () => "unused",
-		async () => (++writes === 2 ? { deny: "read only" } : {}),
-	);
-	assert.deepEqual(
-		await configCall($, modelsCall(MODELS), { model: "jev-preview" }),
-		{
-			result: `${MODELS_LINES.replace(MODELS, `${MODELS} (not stored yet: run setup)`)}\nmodel unchanged: read only`,
-		},
-	);
 });
 
 for (const [name, input] of [
@@ -533,37 +448,7 @@ for (const [name, input] of [
 		assert.deepEqual(log, ["check"]);
 	});
 
-test("a provider pick writes the models text the removed model option makes, then erases it", async () => {
-	resetConfig();
-	const { $, log } = answeringEngine(async () => OPENAI);
-	assert.deepEqual(
-		await configCall($, call("provider"), { model: "jev-preview" }),
-		{ result: "provider: openai" },
-	);
-	assert.deepEqual(log.slice(2), [
-		{ set: { key: "model-router.provider", value: "openai" } },
-		{ set: { key: MODELS_KEY, value: "{typesafe:jev-preview}" } },
-		{ set: { key: MODEL_KEY, value: "" } },
-	]);
-});
-
-test("a provider pick erases the removed model option though the ladder changes nothing, and writes no models text", async () => {
-	resetConfig();
-	const { $, log } = answeringEngine(async () => OPENAI);
-	assert.deepEqual(
-		await configCall($, call("provider"), {
-			model: "jev-preview",
-			models: "{typesafe:jev-latest}",
-		}),
-		{ result: "provider: openai" },
-	);
-	assert.deepEqual(log.slice(2), [
-		{ set: { key: "model-router.provider", value: "openai" } },
-		{ set: { key: MODEL_KEY, value: "" } },
-	]);
-});
-
-test("a provider pick with no removed model option writes the provider alone, and a refused one writes nothing more", async () => {
+test("a provider pick writes the provider alone, and a refused one writes nothing more", async () => {
 	resetConfig();
 	const plain = answeringEngine(async () => OPENAI);
 	await configCall(plain.$, call("provider"), {});
@@ -573,26 +458,23 @@ test("a provider pick with no removed model option writes the provider alone, an
 		async () => OPENAI,
 		async () => ({ deny: "read only" }),
 	);
-	assert.deepEqual(
-		await configCall(refused.$, call("provider"), { model: "jev-preview" }),
-		{ result: "provider unchanged: read only" },
-	);
+	assert.deepEqual(await configCall(refused.$, call("provider"), {}), {
+		result: "provider unchanged: read only",
+	});
 	assert.equal(refused.log.length, 3);
 });
 
-test("the provider command makes the same follow-up writes as the dialog", async () => {
+test("the provider command writes the provider alone, as the dialog does", async () => {
 	resetConfig();
 	const { $, log } = answeringEngine(async () => "unused");
 	const out = await configCommand(
 		$,
 		{ ...typed("openai"), command: "model-router:provider" },
 		"provider",
-		{ model: "jev-preview" },
+		{},
 	);
 	assert.deepEqual(out, { text: "provider: openai" });
 	assert.deepEqual(log, [
 		{ set: { key: "model-router.provider", value: "openai" } },
-		{ set: { key: MODELS_KEY, value: "{typesafe:jev-preview}" } },
-		{ set: { key: MODEL_KEY, value: "" } },
 	]);
 });

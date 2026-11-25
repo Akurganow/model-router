@@ -228,15 +228,6 @@ for (const models of ["", "   "])
 	);
 
 test(
-	"a stored model option with no models is the TypeSafe model",
-	{ options: { api_key: "typesafe-key", model: "jev-preview" } },
-	async ($, on) => {
-		const { h } = await callOnce($, on);
-		expect(JSON.parse(h.sent ?? "").model).toBe("jev-preview");
-	},
-);
-
-test(
 	"a models text that is not valid skips the call with the setup line",
 	{ options: { api_key: "typesafe-key", models: "{typesafe:a/b}" } },
 	async ($, on) => {
