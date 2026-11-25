@@ -14,8 +14,8 @@ paths:
 - the direct path: the provider's own API, with the provider's key
 - the gateway path: OpenRouter, with your OpenRouter key.
 
-The `provider` option says whose model scores: `typesafe`, `openai` or
-`google`. OpenRouter is a gateway that passes the request to that provider's
+The `provider` option says whose model scores: `typesafe`, `openai`,
+`google` or `perplexity`. OpenRouter is a gateway that passes the request to that provider's
 model. These companies can receive the task text:
 
 | Company | Host | It receives the text when | Key it takes |
@@ -23,7 +23,8 @@ model. These companies can receive the task text:
 | TypeSafe | `api.typesafe.ai` | `provider` is `typesafe` and `gateway` allows the direct path | the TypeSafe key, as a bearer token |
 | OpenAI | `api.openai.com` | `provider` is `openai` and `gateway` allows the direct path | the OpenAI key, as a bearer token |
 | Google | `generativelanguage.googleapis.com` | `provider` is `google` and `gateway` allows the direct path | the Google key, in the `x-goog-api-key` header |
-| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each of the three | the OpenRouter key, as a bearer token |
+| Perplexity | `api.perplexity.ai` | `provider` is `perplexity` and `gateway` allows the direct path | the Perplexity key, as a bearer token |
+| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each of the four | the OpenRouter key, as a bearer token |
 
 The `gateway` option decides which paths are open:
 
@@ -129,8 +130,8 @@ Claude Code keeps your API keys in your system's secure storage as sensitive
 plugin options. The plugin reads a key only for a company that the `provider`
 and `gateway` options allow, and only to send it to the company that issued
 it. When a key option is empty, the plugin reads that key from its variable:
-`TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or `OPENROUTER_API_KEY`.
-It does not read `GOOGLE_API_KEY`. A key in a variable stays
+`TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY` or
+`OPENROUTER_API_KEY`. It does not read `GOOGLE_API_KEY`. A key in a variable stays
 wherever you set it, for example in plaintext in a settings file. It is
 visible to every process Claude Code starts.
 
@@ -150,9 +151,7 @@ The plugin writes them in three cases only. You pick a value in the dialog that
 the `config` tool opens. Or you type `/model-router:provider`,
 `/model-router:gateway` or `/model-router:scope` with a value at your own
 prompt. Or the agent passes a `models` text to the `config` tool at your
-request. A command from any other origin writes nothing. When it writes
-`models` or changes `provider`, the plugin also empties the removed option
-`model`. The plugin writes no other option and no file. Claude
+request. A command from any other origin writes nothing. The plugin writes no other option and no file. Claude
 Code ignores plugin options in project and local settings, so a project cannot
 change any of these options.
 
@@ -170,7 +169,7 @@ The lines the plugin prints per call go to your own transcript and, with
 Every plugin offers the choices in
 [Your choices](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#your-choices).
 Here, keep `scope` at `core` to route the four built-in agents only. Remove the
-keys from the plugin's configuration and from the four variables. Disable the plugin
+keys from the plugin's configuration and from the five variables. Disable the plugin
 and nothing is sent.
 
 ## Children

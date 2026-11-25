@@ -4,7 +4,7 @@ An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model an
 
 ## What it does
 
-- It scores each routed `sessions_spawn` call through the decision model of the `provider` setting: [Jev](https://docs.typesafe.ai) from TypeSafe, OpenAI's or Google's. One request asks two questions: how much judgment the task needs, and how much work it takes.
+- It scores each routed `sessions_spawn` call through the decision model of the `provider` setting: [Jev](https://docs.typesafe.ai) from TypeSafe, OpenAI's, Google's or Perplexity's. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A slot you leave unset keeps OpenClaw's model for its level, which then gets the effort alone, as [Models](#models) says.
 - It sets `thinking` from a fixed ladder of efforts, as [Effort](#effort) says.
 - It sets only a model you assigned.
@@ -68,6 +68,7 @@ For each key holder the [`provider` and `gateway` settings](#provider-and-gatewa
 | TypeSafe | `api_key` | `TYPESAFE_API_KEY` |
 | OpenAI | `openai_api_key` | `OPENAI_API_KEY` |
 | Google | `google_api_key` | `GEMINI_API_KEY` |
+| Perplexity | `perplexity_api_key` | `PERPLEXITY_API_KEY` |
 | OpenRouter | `openrouter_api_key` | `OPENROUTER_API_KEY` |
 
 [Where to get a key](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) also says when a key counts as set and which Google variable the plugins do not read. OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in any variable of the table scores tasks when the `provider` and `gateway` settings allow its holder and the plugin's setting for that holder holds none. No other credential of OpenClaw serves as a scoring key.
@@ -135,7 +136,7 @@ The requester is the agent that makes the `sessions_spawn` call. The target agen
 
 Three commands show or change an option:
 
-- `/model-router-provider [typesafe|openai|google]`
+- `/model-router-provider [typesafe|openai|google|perplexity]`
 - `/model-router-gateway [direct|auto|openrouter-first|openrouter]`
 - `/model-router-scope [core|extended]`
 

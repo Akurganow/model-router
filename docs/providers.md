@@ -14,13 +14,14 @@ A path is one way to the provider: the direct path is the provider's own API, an
 Two settings decide who receives a task.
 
 The `provider` setting says whose model scores.
-It has three values, and `typesafe` is the default:
+It has four values, and `typesafe` is the default:
 
 | `provider` | The model that scores |
 | :-- | :-- |
 | `typesafe`, the default | Jev from TypeSafe, the model the plugin's questions are fitted to |
 | `openai` | OpenAI's decision model; costs more than Jev and its answers are not fitted |
 | `google` | Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text |
+| `perplexity` | Perplexity's decision model; costs less than Jev, and nothing through OpenRouter's `:free` variant; its answers are not fitted |
 
 Each provider is reached on its own API or through OpenRouter.
 
@@ -46,6 +47,12 @@ A 2xx reply whose body cannot be read is a `network error`.
 A bad key gets HTTP 401 from OpenAI and from OpenRouter, and HTTP 400 from Google's own API.
 400 is no fallback status.
 So under `auto`, a bad Google key does not reach OpenRouter, and the task skips with `HTTP 400`.
+
+Under `perplexity`, the OpenRouter path asks the `:free` variant of the decision model by default.
+OpenRouter rate limits every `:free` variant to 20 requests a minute.
+It also allows 50 requests a day to an account that bought fewer than 10 credits in all, and 1000 a day to an account that bought 10 or more.
+A 429 from either limit is a failure that counts, so under `auto` or `openrouter-first` the task reaches the second path.
+[OpenRouter's limits page](https://openrouter.ai/docs/api-reference/limits) holds the figures.
 
 ## A setting that is not valid
 
@@ -143,7 +150,7 @@ The config tool prints each provider's OpenRouter model on its `<provider> model
 `jev-preview` has no OpenRouter model.
 
 A name that the module does not map goes bare on TypeSafe's System One route.
-On the Decisions route of OpenAI and Google it goes as `<vendor>/<name>`.
+On the Decisions route of OpenAI, Google and Perplexity it goes as `<vendor>/<name>`.
 OpenRouter answers an unknown name with HTTP 400.
 That status gets no second attempt, as [the fallback rule](#the-provider-and-the-gateway) says.
 So under `openrouter-first`, routing skips with `HTTP 400` and never asks the provider's own API.
@@ -153,8 +160,6 @@ So under `openrouter-first`, routing skips with `HTTP 400` and never asks the pr
 The config tool prints these lines after the setting lines:
 
 - `models: <stored text>`, or `models: unset` when nothing is stored.
-- ` (not stored yet: run setup)` follows the text when [the ladder](#the-migration-ladder) changed it, or when Claude Code stores a removed `model` that is not blank.
-  The line then shows the migrated text.
 - ` (not valid: <entry>)` follows the text when `models` is not valid, and no provider lines print.
 - Then one line for each provider: `<provider> model: <direct name> (OpenRouter: <slug>)`.
 
@@ -168,6 +173,7 @@ models: {openai:gpt-6-luna}
 typesafe model: jev-latest (OpenRouter: jev-latest)
 openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)
 google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)
+perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)
 typesafe key: set
 ```
 
@@ -178,10 +184,6 @@ It runs on every read of stored settings, in every harness.
 Each step recognises its input from the data.
 A step changes nothing on a second run, and no version is stored.
 
-The first step reads Claude Code's removed option `model`.
-It becomes the `typesafe` entry of `models` when `models` names none.
-A `models` that is not valid stays as it is.
-
 The plugin writes no setting when it loads.
 Where the harness lets the plugin migrate its own config, the plugin README says so.
 Elsewhere the setup skill writes the migrated shape when the person agrees.
@@ -189,13 +191,14 @@ Elsewhere the setup skill writes the migrated shape when the person agrees.
 ## Keys
 
 Each provider has its own key, and OpenRouter has one for the gateway to all of them.
-The plugin reads four keys, each from one variable:
+The plugin reads five keys, each from one variable:
 
 | Key holder | Variable | Get a key from |
 | :-- | :-- | :-- |
 | `typesafe` | `TYPESAFE_API_KEY` | [TypeSafe](https://console.typesafe.ai/keys) |
 | `openai` | `OPENAI_API_KEY` | [OpenAI](https://platform.openai.com/api-keys) |
 | `google` | `GEMINI_API_KEY` | [Google](https://aistudio.google.com/docs/api-key) |
+| `perplexity` | `PERPLEXITY_API_KEY` | [Perplexity](https://console.perplexity.ai) |
 | `openrouter` | `OPENROUTER_API_KEY` | [OpenRouter](https://openrouter.ai/settings/keys) |
 
 The plugin does not read `GOOGLE_API_KEY`.
@@ -214,7 +217,7 @@ A key with no model still scores: [A slot with no model](#a-slot-with-no-model) 
 
 The config tool prints one line for each setting, then one line for each key:
 
-- The provider line reads `provider: typesafe`, `provider: openai` or `provider: google`.
+- The provider line reads `provider: typesafe`, `provider: openai`, `provider: google` or `provider: perplexity`.
 - The gateway line holds the value and, in order, who the plugin asks, as in `gateway: auto (typesafe, then openrouter)`.
   The name is the provider's own on the direct path and `openrouter` on the gateway path.
 - The scope line reads `scope: core`, in a harness that has the setting.
@@ -304,6 +307,8 @@ Each provider and path has its own address and model:
 | `openai` | OpenRouter | `https://openrouter.ai/api/alpha/decisions` | `openai/gpt-6-luna-decisions` |
 | `google` | direct | `https://generativelanguage.googleapis.com/v1beta/decisions` | `gemini-decision-1` |
 | `google` | OpenRouter | `https://openrouter.ai/api/alpha/decisions` | `google/gemini-decision-1` |
+| `perplexity` | direct | `https://api.perplexity.ai/v1/decisions` | `pplx-decider-latest` |
+| `perplexity` | OpenRouter | `https://openrouter.ai/api/alpha/decisions` | `perplexity/pplx-decider-v1.3:free` |
 
 Under `typesafe`, both paths get the alias `jev-latest`.
 TypeSafe points it at the most recent official Jev release, and OpenRouter routes it to its own alias for the newest Jev release.
@@ -341,7 +346,7 @@ Masking replaces these shapes with `***`:
 - the credentials of an `Authorization` header: after a scheme such as `Basic`, `Bearer`, `Digest` or `Token`, up to the unescaped quote that encloses them, else to the end of the line; with no scheme, a single value of 16 or more characters;
 - a 40-character AWS secret within 100 characters after an access key id, on the same line;
 - a JSON Web Token;
-- GitHub, GitLab, Slack, Stripe, npm, Hugging Face and PyPI tokens, Slack webhook URLs, Google API keys and AWS access key ids, by their prefixes, each with the whole run of its characters;
+- GitHub, GitLab, Slack, Stripe, npm, Hugging Face and PyPI tokens, Slack webhook URLs, Google and Perplexity API keys and AWS access key ids, by their prefixes, each with the whole run of its characters;
 - a `Bearer` token, in any case;
 - an `sk-` key, such as an OpenAI, Anthropic or OpenRouter key;
 - the `user:password` after `-u`, also attached as in `-uuser:pass` or after a group of short flags that ends in `u` as in `-fsSu`, and after `--user` or `--proxy-user`;
@@ -403,10 +408,15 @@ Each company's own page sets what it does with the text:
   The plugin cannot tell the tier.
   A key from a project without billing is on the free tier.
   Its page is the [Gemini API terms](https://aistudio.google.com/docs/terms).
-- OpenRouter, the gateway for all three: the text reaches OpenRouter, which passes it to the provider.
+- Perplexity: its API terms forbid training on the text.
+  Without a written zero-retention agreement, Perplexity may keep it for an unstated period.
+  Its pages are the [Perplexity API Terms of Service](https://www.perplexity.ai/hub/legal/perplexity-api-terms-of-service) and [Privacy and security](https://docs.perplexity.ai/docs/resources/privacy-security).
+  Perplexity's consumer privacy policy says it does not apply to API offerings.
+- OpenRouter, the gateway for all four: the text reaches OpenRouter, which passes it to the provider.
   OpenRouter says it stores a prompt only when you opt in, with the exceptions its page lists.
   Each provider behind it has its own data policy, and the plugin cannot see which endpoint answered.
   For TypeSafe's System One route, OpenRouter does not document retention or training.
+  For the free Perplexity endpoint, OpenRouter stores no prompt unless you opt in or child-safety screening flags it, and it lists that endpoint as [zero retention](https://openrouter.ai/api/v1/endpoints/zdr).
   Its pages are the [OpenRouter privacy policy](https://openrouter.ai/privacy), [provider logging](https://openrouter.ai/docs/guides/privacy/provider-logging) and [data collection](https://openrouter.ai/docs/guides/privacy/data-collection).
 
 With `auto` or `openrouter-first` and both keys set, one task can reach the provider directly and through OpenRouter.
@@ -451,7 +461,7 @@ A routed line holds the chosen level as `L<level>`, then the model or role it se
 It then holds `p=` with the probability of each chosen level, one for each question the plugin asks.
 Each plugin's README gives the exact shape.
 
-The line then names who answered: `typesafe`, `openai` or `google` on the direct path, and `openrouter` on the gateway path.
+The line then names who answered: `typesafe`, `openai`, `google` or `perplexity` on the direct path, and `openrouter` on the gateway path.
 The model the reply names follows, and then the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok` or ` · openai gpt-6-luna · 506/0 tok`.
 A reply with no model name or no token counts leaves that part out, and the name stays.
 Google's reply names no model, so its line shows none, as in ` · google · 430/0 tok`.

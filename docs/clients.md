@@ -37,6 +37,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 - Claude Code saves non-sensitive values under `pluginConfigs` in `settings.json`.
   It saves `sensitive` values in the platform's secure credential store.
 - Claude Code keeps a stored `pluginConfigs` value under a key that the manifest does not declare, through load and update.
+- A stored `pluginConfigs` value under a key that the manifest does not declare reaches the `options` argument of `register`, when the manifest declares at least one option.
+- No settings surface lists such a key: not `/config`, not `/plugin configure`, not the desktop app's plugin settings.
 - `/config` shows a row for each option, except `sensitive` options and `multiple` lists.
 - `commands` accepts an object map from a command name to `source` or `content`.
   Each value sets exactly one of the two, and `description` and `argumentHint` are optional.
@@ -101,6 +103,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 - A free string option that a manifest declares again hands its stored string to the plugin.
 - A `config.describe` hook returns `{ label, description, isHidden }` for each `/config` row, keyed `<plugin>.<field>`.
   A hidden row still answers `$.config.set`.
+- `$.config.set` rejects a key with no `/config` row, an undeclared key included, with `<plugin>: $.config.set: no /config row with key <key> ($.config.list names them)`.
+- No `config.describe` event fires for a key that the manifest does not declare.
 - When a hooks module fails, Claude Code skips it and the session continues.
   A broken mod can therefore look like one that does nothing.
 - A mod installed from a marketplace loads at the next start of Claude Code, or at `/reload-plugins` in an open session.
@@ -326,6 +330,10 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 - omp's provider ids for OpenAI and Google are `openai` and `google`.
   `getApiKeyForProvider` hands the id it is given to omp's credential lookup unchanged.
   The environment variable of `openai` is `OPENAI_API_KEY`. That of `google` is `GEMINI_API_KEY`, and `GOOGLE_API_KEY` is not read for it.
+- omp's provider id for Perplexity is `perplexity`, an auth provider for web search with the environment variable `PERPLEXITY_API_KEY`.
+  omp has no Perplexity model provider.
+- While omp stores a Perplexity login, its credential lookup for `perplexity` returns that login's session token, not an API key.
+  `api.perplexity.ai` rejects the token with HTTP 401.
 
 ### omp thinking levels
 
@@ -630,11 +638,11 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   `OPENCLAW_SKIP_CHANNELS` skips the start of the channels, `OPENCLAW_SKIP_CRON` disables cron, and `OPENCLAW_NO_AUTO_UPDATE` skips the update check at start.
   `OPENCLAW_SKIP_CRON` takes `1` alone, and the other four take `true`, `yes` and `on` too.
 - A workspace `.env` is a lower-trust source.
-  OpenClaw drops known provider credential variables from it. `OPENROUTER_API_KEY`, `OPENAI_API_KEY` and `GEMINI_API_KEY` are on that list.
+  OpenClaw drops known provider credential variables from it. `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and `PERPLEXITY_API_KEY` are on that list.
   `TYPESAFE_API_KEY` is not on the static list.
   The global `~/.openclaw/.env` and the Gateway's process environment are trusted sources.
 - Plugins receive resolved values, with defaults selected from the source config, for the `secretInputs` paths a manifest declares.
-  This plugin declares `api_key`, `openai_api_key`, `google_api_key` and `openrouter_api_key`.
+  This plugin declares `api_key`, `openai_api_key`, `google_api_key`, `perplexity_api_key` and `openrouter_api_key`.
   It reads the live config first, where it skips a value that is not text, such as an unresolved SecretRef object, and then `api.pluginConfig`.
 
 ### OpenClaw question tool
@@ -738,6 +746,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Hermes#
 - A `secret` entry never reaches `config.yaml`. The Desktop settings form stores it in `.env` under the entry's `env:` name, and the plugin reads it with `get_secret(NAME)` from `agent.secret_scope`.
   A plugin update that renames a `secret` entry and keeps its `env:` name leaves the stored value in place: the settings form's field list shows the renamed entry as set, and `get_secret(NAME)` returns the value.
 - Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY`, so a `secret` entry with that `env:` name sets that provider's key too.
+- Hermes's own Perplexity web search reads `PERPLEXITY_API_KEY`, so a `secret` entry with that `env:` name sets its key too.
+  Hermes's provider registry lists no provider for `PERPLEXITY_API_KEY`.
 - With the provider `auto`, or with none requested, Hermes takes its own session's provider in this order: a key or a base URL given on the command line, `model.provider` of `config.yaml`, a `model.base_url` on a loopback host when `model` names no provider, a usable `OPENROUTER_API_KEY`, the OpenRouter pool, another provider's key in the environment, an OAuth login.
   `model.provider` may name a registry provider, `openrouter`, `custom` or a named custom provider.
   Among other providers' keys Hermes takes the first API-key provider in its registry's declared order whose variable holds a usable value, and logs a warning when that passes over an OAuth login.

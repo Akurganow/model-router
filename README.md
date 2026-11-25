@@ -15,8 +15,8 @@ plugin for Claude Code, Oh My Pi, OpenClaw and Hermes Agent.
 For each task it scores, the plugin asks a decision model two questions: how
 much judgment the task needs and how much work it takes. The answers pick the
 model and the effort. The decision model is [Jev](https://docs.typesafe.ai) from
-TypeSafe by default, or OpenAI's or Google's, on the provider's own API or
-through OpenRouter. The plugin routes subagents only. It never changes the
+TypeSafe by default, or OpenAI's, Google's or Perplexity's, on the provider's
+own API or through OpenRouter. The plugin routes subagents only. It never changes the
 model of your main session.
 
 | Harness | The plugin sets | Minimum version | Install | Guide |
@@ -26,8 +26,8 @@ model of your main session.
 | OpenClaw | `model` and `thinking` | 2026.10.10 | [Install for OpenClaw](#openclaw) | [OpenClaw guide](plugins/model-router-openclaw/README.md) |
 | Hermes Agent | the `model`, `provider` and `reasoning_effort` of the task's child | 0.22.6 | [Install for Hermes Agent](#hermes-agent) | [Hermes Agent guide](plugins/model-router-hermes/README.md) |
 
-You need the API key of the provider you choose (TypeSafe, OpenAI or Google)
-or an OpenRouter key. OpenRouter is a gateway that reaches all three, once the
+You need the API key of the provider you choose (TypeSafe, OpenAI, Google or
+Perplexity) or an OpenRouter key. OpenRouter is a gateway that reaches all four, once the
 `gateway` setting allows it.
 [What leaves the machine](#what-leaves-the-machine) says what each scored task
 sends, and to whom.
@@ -143,8 +143,8 @@ task it scores. The other three start none.
 > the host, and each host gets its own key:
 >
 > - The provider's own API gets the request under `direct`, and first under
->   `auto`. `provider` picks the host: `api.typesafe.ai`, `api.openai.com` or
->   `generativelanguage.googleapis.com`.
+>   `auto`. `provider` picks the host: `api.typesafe.ai`, `api.openai.com`,
+>   `generativelanguage.googleapis.com` or `api.perplexity.ai`.
 > - `openrouter.ai` gets it under `openrouter`, and first under
 >   `openrouter-first`.
 >
@@ -201,4 +201,4 @@ MIT, as [LICENSE](LICENSE) states.
 ## To do
 
 - Score with more decision models.
-  Candidates not supported yet: Liquid D1, Microsoft Decision 1.1, Nace.AI Drex and Perplexity Decider.
+  Candidates not supported yet: Liquid D1, Microsoft Decision 1.1 and Nace.AI Drex.

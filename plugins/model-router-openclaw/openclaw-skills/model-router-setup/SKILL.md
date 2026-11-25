@@ -16,7 +16,7 @@ Routing works when both of these hold:
 
 The person may also choose these, and each has a default:
 
-- `provider`: whose model scores tasks. It takes `typesafe` (the default), `openai` or `google`.
+- `provider`: whose model scores tasks. It takes `typesafe` (the default), `openai`, `google` or `perplexity`.
 - `gateway`: how OpenRouter is used to reach the provider. The default is `direct`.
 - `scope`: which spawns the plugin routes. The default is `core`.
 - `models`: the scoring model of each provider. A provider with no entry uses its default model.
@@ -25,6 +25,21 @@ The person may also choose these, and each has a default:
 ## Your job
 
 Find out which of these already hold, with the `model_router_config` tool and OpenClaw's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool OpenClaw gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
+
+When you find what already holds, also check the stored field names. Follow these steps in order:
+
+1. Read only the field names stored under `plugins.entries.model-router-openclaw.config` in OpenClaw's configuration.
+2. Compare them with the fields the plugin declares: `provider`, `gateway`, `scope`, `models`, `small_model`, `middle_model`, `large_model`, `api_key`, `openai_api_key`, `google_api_key`, `perplexity_api_key` and `openrouter_api_key`.
+3. Tell the person each stored field that the plugin does not declare.
+4. Never print the value of a key field, or of an unknown field named like a key or a secret.
+5. Say only that such a field holds a value.
+6. When an unknown field's name resembles a declared one and holds a value, propose the move.
+7. Name the declared field and the text it would write, for example `model` against `models`.
+8. For a key field, name the declared field and ask the person to enter the key there.
+9. On the person's word, write the declared field, then remove the old field.
+10. Write a field with `openclaw config set plugins.entries.model-router-openclaw.config.<field> '<text>'`.
+11. On the person's word, remove only an unknown field that resembles no declared one.
+12. Write nothing else in the file.
 
 When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
 
@@ -81,10 +96,11 @@ openrouter key: unset
 
 ### Provider and gateway
 
-- `provider` has three values. `typesafe` is the default.
+- `provider` has four values. `typesafe` is the default.
   - `typesafe - Jev from TypeSafe`
   - `openai - OpenAI's decision model`
   - `google - Google's decision model`
+  - `perplexity - Perplexity's decision model`
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
 - `gateway` has four values. `direct` is the default.
   - `direct - the provider's own API only`
@@ -139,13 +155,14 @@ openrouter key: unset
   - TypeSafe: the setting `api_key`, else `TYPESAFE_API_KEY`. Get a key at https://console.typesafe.ai/keys.
   - OpenAI: the setting `openai_api_key`, else `OPENAI_API_KEY`. Get a key at https://platform.openai.com/api-keys.
   - Google: the setting `google_api_key`, else `GEMINI_API_KEY`. Get a key at https://aistudio.google.com/docs/api-key.
+  - Perplexity: the setting `perplexity_api_key`, else `PERPLEXITY_API_KEY`. Get a key at https://console.perplexity.ai.
   - OpenRouter: the setting `openrouter_api_key`, else `OPENROUTER_API_KEY`. Get a key at https://openrouter.ai.
 - The key of the chosen provider serves the direct path, and the OpenRouter key serves the gateway path.
 - The person adds a key in the secret field of the plugin's page in the Control UI, or sets the variable in the Gateway's environment and restarts the Gateway.
 - A key counts as set when either place holds a non-blank value.
 - OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in any of these variables scores tasks when the `provider` and `gateway` settings allow its holder and the plugin's setting for that holder holds none.
 - No other credential of OpenClaw serves as a scoring key.
-- A workspace `.env` is a lower-trust source: OpenClaw drops `OPENROUTER_API_KEY`, `OPENAI_API_KEY` and `GEMINI_API_KEY` from it, and not `TYPESAFE_API_KEY`. The global `~/.openclaw/.env` and the Gateway's environment stay trusted. Tell the person to keep a key in one of those two.
+- A workspace `.env` is a lower-trust source: OpenClaw drops `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and `PERPLEXITY_API_KEY` from it, and not `TYPESAFE_API_KEY`. The global `~/.openclaw/.env` and the Gateway's environment stay trusted. Tell the person to keep a key in one of those two.
 - A key variable reaches every process the Gateway starts.
 - With `auto` or `openrouter-first` and one key, that key's path scores alone.
 
@@ -167,7 +184,7 @@ openrouter key: unset
 
 - OpenClaw shows no line in the chat. The plugin writes one line per routed or skipped spawn to the Gateway log. The line starts with `model-router`.
 - A routed line reads `L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`. The model is the slot string as written. An unset slot shows `<slot> model unset`, and that spawn keeps OpenClaw's model.
-- Who answered follows, as `typesafe`, `openai`, `google` or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
+- Who answered follows, as `typesafe`, `openai`, `google`, `perplexity` or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
 - After a fallback, the line ends with the attempt that failed and its reason, as in ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429`.
 - Example lines:
 

@@ -15,8 +15,8 @@ model answers on one or two paths:
 - the direct path: the provider's own API, with the provider's key
 - the gateway path: OpenRouter, with your OpenRouter key.
 
-The `provider` setting says whose model scores: `typesafe`, `openai` or
-`google`. OpenRouter is a gateway that passes the request to that provider's
+The `provider` setting says whose model scores: `typesafe`, `openai`,
+`google` or `perplexity`. OpenRouter is a gateway that passes the request to that provider's
 model. These companies can receive the task text:
 
 | Company | Host | It receives the text when | Key it takes |
@@ -24,7 +24,8 @@ model. These companies can receive the task text:
 | TypeSafe | `api.typesafe.ai` | `provider` is `typesafe` and `gateway` allows the direct path | the TypeSafe key, as a bearer token |
 | OpenAI | `api.openai.com` | `provider` is `openai` and `gateway` allows the direct path | the OpenAI key, as a bearer token |
 | Google | `generativelanguage.googleapis.com` | `provider` is `google` and `gateway` allows the direct path | the Google key, in the `x-goog-api-key` header |
-| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each of the three | the OpenRouter key, as a bearer token |
+| Perplexity | `api.perplexity.ai` | `provider` is `perplexity` and `gateway` allows the direct path | the Perplexity key, as a bearer token |
+| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each of the four | the OpenRouter key, as a bearer token |
 
 The `gateway` setting decides which paths are open:
 
@@ -139,8 +140,8 @@ whether to route and while it sends a request. It reads no other environment
 variable, and it runs no program.
 
 A `.env` file in the Gateway's working directory is a lower-trust source.
-OpenClaw drops `OPENROUTER_API_KEY`, `OPENAI_API_KEY` and `GEMINI_API_KEY` from
-it, while it can still supply `TYPESAFE_API_KEY`. The plugin then sends the task
+OpenClaw drops `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and
+`PERPLEXITY_API_KEY` from it, while it can still supply `TYPESAFE_API_KEY`. The plugin then sends the task
 text to the account that key belongs to. The global `~/.openclaw/.env` and the Gateway's
 environment stay trusted sources, as
 [the `.env` fact](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#openclaw-runtime-logs-and-environment)
@@ -166,7 +167,7 @@ and, under `extended`, the target agent, `description`, `model`,
 named in the slot. Nothing from these reads leaves your machine, except the
 role text the request carries as described above.
 
-The plugin reads no credential of a model's provider except the four keys that
+The plugin reads no credential of a model's provider except the five keys that
 [Keys](README.md#keys) lists. It says there which of them OpenClaw's own
 OpenRouter provider shares.
 
@@ -193,7 +194,7 @@ Every plugin offers the choices in
 [Your choices](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#your-choices).
 Here, keep `scope` at `core` to route only
 [the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself).
-Remove the keys from the plugin's settings and from the four variables. Disable the
+Remove the keys from the plugin's settings and from the five variables. Disable the
 plugin, as [Turn it off](README.md#turn-it-off) says, and nothing is sent.
 
 ## Children
