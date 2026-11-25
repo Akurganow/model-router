@@ -184,7 +184,7 @@ To move a retired value, follow these steps in order:
   - TypeSafe: the id `typesafe`, which `/login typesafe` stores, then `TYPESAFE_API_KEY`. Get a key at https://console.typesafe.ai/keys.
   - OpenAI: the id `openai`, then `OPENAI_API_KEY`. Get a key at https://platform.openai.com/api-keys.
   - Google: the id `google`, then `GEMINI_API_KEY`. Get a key at https://aistudio.google.com/docs/api-key. The plugin does not read `GOOGLE_API_KEY`.
-  - Perplexity: the id `perplexity`, then `PERPLEXITY_API_KEY`. Get a key at https://console.perplexity.ai. Scoring takes an API key: [a stored login is skipped](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#keys), and the variable is read.
+  - Perplexity: the id `perplexity`, then `PERPLEXITY_API_KEY`. Get a key at https://console.perplexity.ai. Scoring takes an API key. From omp 18.13.2 [a stored login is skipped](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#keys) and the variable is read; an earlier omp hands the plugin the login's token.
   - OpenRouter: the id `openrouter`, which `/login openrouter` stores, then `OPENROUTER_API_KEY`. Get a key at https://openrouter.ai.
 - The key of the chosen provider serves the direct path, and the OpenRouter key serves the gateway path.
 - A key counts as set when either place holds a non-blank value.

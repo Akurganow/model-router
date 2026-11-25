@@ -83,6 +83,11 @@ test("the bearer rule ignores case, as the redaction in src/core/brief/brief.ts 
 	assert.ok(bearer?.pattern.flags.includes("i"));
 });
 
+test("a key after an underscore, as in emphasis, is still found", () => {
+	assert.deepEqual(findMarkers(`_${SK_KEY}_`), ["sk- key"]);
+	assert.deepEqual(findMarkers(`_${PPLX_KEY}_`), ["pplx- key"]);
+});
+
 test("a short pplx- word passes", () => {
 	assert.deepEqual(findMarkers("pplx-decider-latest"), []);
 	assert.deepEqual(findMarkers(`pplx-${"a".repeat(47)}`), []);

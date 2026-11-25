@@ -22,8 +22,8 @@ export const MARKERS = [
 		kind: "absolute home path",
 		pattern: HOME_PATH,
 	},
-	{ kind: "sk- key", pattern: /\bsk-[A-Za-z0-9_-]{8,}/ },
-	{ kind: "pplx- key", pattern: /\bpplx-[A-Za-z0-9]{48,}/ },
+	{ kind: "sk- key", pattern: /(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{8,}/ },
+	{ kind: "pplx- key", pattern: /(?<![A-Za-z0-9])pplx-[A-Za-z0-9]{48,}/ },
 	{
 		kind: "Bearer token",
 		pattern: new RegExp(
