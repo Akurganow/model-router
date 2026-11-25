@@ -13,6 +13,16 @@ export const textOf = (value: unknown): string => {
 	try {
 		return JSON.stringify(value) ?? String(value);
 	} catch {
-		return String(value);
+		return plainText(value);
 	}
 };
+
+// String() throws for an object with no toString, such as a null-prototype object; the
+// built-in tag never does.
+function plainText(value: unknown): string {
+	try {
+		return String(value);
+	} catch {
+		return Object.prototype.toString.call(value);
+	}
+}

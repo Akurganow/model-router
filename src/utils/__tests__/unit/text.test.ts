@@ -25,4 +25,7 @@ test("textOf never throws for a value JSON cannot hold", () => {
 	const loop = { self: undefined as unknown };
 	loop.self = loop;
 	assert.equal(textOf(loop), "[object Object]");
+	const bare: { self?: unknown } = Object.create(null);
+	bare.self = bare;
+	assert.equal(textOf(bare), "[object Object]");
 });
