@@ -53,11 +53,12 @@ test("an object stays an object", () => {
 });
 
 test("a JSON text stays JSON, and a name with a comma stays valid", () => {
+	const { models: google } = migrate({
+		model: "jev-preview",
+		models: '{"google": "gemini-decision-1"}',
+	}).stored;
 	assert.equal(
-		migrate({
-			model: "jev-preview",
-			models: '{"google": "gemini-decision-1"}',
-		}).stored.models,
+		google,
 		'{"google":"gemini-decision-1","typesafe":"jev-preview"}',
 	);
 	const { models } = migrate({
