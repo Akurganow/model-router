@@ -134,18 +134,11 @@ So `models` never sends the task text to a company other than the one `provider`
 ### The model name on each path
 
 The stored name goes as written to the provider's own API.
-On OpenRouter, the module of each provider maps the names it knows to a model:
+The module of each provider holds its OpenRouter names.
+The config tool prints each provider's OpenRouter model on its `<provider> model` line, as [The report lines](#the-report-lines) shows.
+`jev-preview` has no OpenRouter model.
 
-| `provider` | Stored name | OpenRouter model |
-| :-- | :-- | :-- |
-| `openai` | `gpt-6-luna` | `openai/gpt-6-luna-decisions` |
-| `google` | `gemini-decision-1` | `google/gemini-decision-1` |
-| `typesafe` | `jev-1.14.0` | `typesafe/jev-1.14` |
-| `typesafe` | `jev-1.13.0` | `typesafe/jev-1.13` |
-| `typesafe` | `jev-latest` | `jev-latest` |
-| `typesafe` | `jev-preview` | `jev-preview`, a name OpenRouter does not serve |
-
-A name outside the table goes bare on TypeSafe's System One route.
+A name that the module does not map goes bare on TypeSafe's System One route.
 On the Decisions route of OpenAI and Google it goes as `<vendor>/<name>`.
 OpenRouter answers an unknown name with HTTP 400.
 That status gets no second attempt, as [the fallback rule](#the-provider-and-the-gateway) says.
@@ -156,7 +149,8 @@ So under `openrouter-first`, routing skips with `HTTP 400` and never asks the pr
 The config tool prints these lines after the setting lines:
 
 - `models: <stored text>`, or `models: unset` when nothing is stored.
-- ` (not stored yet: run setup)` follows the text when [the ladder](#the-migration-ladder) changed it.
+- ` (not stored yet: run setup)` follows the text when [the ladder](#the-migration-ladder) changed it, or when Claude Code stores a removed `model` that is not blank.
+  The line then shows the migrated text.
 - ` (not valid: <entry>)` follows the text when `models` is not valid, and no provider lines print.
 - Then one line for each provider: `<provider> model: <direct name> (OpenRouter: <slug>)`.
 

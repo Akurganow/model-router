@@ -297,8 +297,7 @@ Each search below reads every Markdown file, `metadata/source.json` and `scripts
     - [What each company does with the text](../../../docs/providers.md#what-each-company-does-with-the-text);
     - [Your choices](../../../docs/providers.md#your-choices);
     - the names and the examples of [The routing line](../../../docs/providers.md#the-routing-line);
-    - the table of [The request](../../../docs/providers.md#the-request), with a row for each path, and its sentences on the key header and on who accepts an image reference.
-    - the table of [The model name on each path](../../../docs/providers.md#the-model-name-on-each-path), with a row for each name of the module's `openrouterNames`;
+    - the table of [The request](../../../docs/providers.md#the-request), with a row for each path, and its sentences on the key header and on who accepts an image reference;
     - the example of [The report lines](../../../docs/providers.md#the-report-lines), which holds a line for each provider.
 84. Change the plugin descriptions under `descriptions` in `metadata/source.json`: they name the hosts of the providers' own APIs. In `scripts/build/npm.ts`, change the lead of the npm README: it names every provider.
 85. End each key text in `metadata/source.json` with the provider condition: "…and only when the provider option is <maker> and the gateway option allows <company>'s own API." Say "setting" where the harness does.
@@ -318,18 +317,18 @@ The rebuild holds for every change.
 ## Keep the OpenRouter names current
 
 A provider that releases a model needs no new module.
-The two steps below hold for each such release.
+The step below holds for each such release.
 
 89. Read OpenRouter's catalog, and refresh `openrouterNames` in each module with the new model names and their slugs.
-90. Write each new row into the table of [The model name on each path](../../../docs/providers.md#the-model-name-on-each-path).
 
-A name that the catalog lacks stays out of the table, and OpenRouter answers it with HTTP 400.
+`docs/providers.md` lists no name. The module holds the names, and the config tool prints each provider's OpenRouter model.
+A name that the catalog lacks stays out of `openrouterNames`, and OpenRouter answers it with HTTP 400.
 
 ## Before the pull request
 
-91. For each file the change touched, name the check or the step of this skill that led you there.
-92. Key by `KeyHolder` or `Maker` each place neither led to, or add it to this skill in the same pull request.
-93. Name the commit and the pull request `feat`, as [Commits and pull requests](../../../AGENTS.md#commits-and-pull-requests) says.
-94. Cite the page behind each API fact in the pull request text.
-95. List each harness whose path of the new key no test and no section of `docs/clients.md` proves.
-96. Ask the maintainer for a live run of each, with its question, as [the live-run skill](../live-run/SKILL.md) says.
+90. For each file the change touched, name the check or the step of this skill that led you there.
+91. Key by `KeyHolder` or `Maker` each place neither led to, or add it to this skill in the same pull request.
+92. Name the commit and the pull request `feat`, as [Commits and pull requests](../../../AGENTS.md#commits-and-pull-requests) says.
+93. Cite the page behind each API fact in the pull request text.
+94. List each harness whose path of the new key no test and no section of `docs/clients.md` proves.
+95. Ask the maintainer for a live run of each, with its question, as [the live-run skill](../live-run/SKILL.md) says.
