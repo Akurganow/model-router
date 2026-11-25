@@ -40,61 +40,61 @@
 		}
 	},
 	"userConfig": {
-		"api_key": {
-			"type": "string",
-			"title": "TypeSafe API key",
-			"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider option is typesafe and the gateway option allows TypeSafe's own API. The README says where to get one.",
-			"sensitive": true
-		},
-		"openai_api_key": {
-			"type": "string",
-			"title": "OpenAI API key",
-			"description": "Your OpenAI API key. The plugin sends it to OpenAI only, as the bearer token of the scoring request, and only when the provider option is openai and the gateway option allows OpenAI's own API. The README says where to get one.",
-			"sensitive": true
-		},
-		"google_api_key": {
-			"type": "string",
-			"title": "Google API key",
-			"description": "Your Google API key. The plugin sends it to Google only, in the x-goog-api-key header of the scoring request, and only when the provider option is google and the gateway option allows Google's own API. The README says where to get one.",
-			"sensitive": true
-		},
-		"openrouter_api_key": {
-			"type": "string",
-			"title": "OpenRouter API key",
-			"description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the gateway option allows OpenRouter.",
-			"sensitive": true
-		},
 		"provider": {
 			"type": "string",
 			"title": "Scoring provider",
-			"description": "Whose model scores a subagent call. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to. openai: OpenAI's decision model; costs more than Jev and its answers are not fitted. google: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.",
+			"description": "Whose model scores each subagent task: typesafe, openai or google.",
 			"options": ["typesafe", "openai", "google"],
 			"default": "typesafe"
 		},
 		"gateway": {
 			"type": "string",
 			"title": "OpenRouter gateway",
-			"description": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one call may reach both companies.",
+			"description": "How the provider is reached: direct (its own API only), auto (its own API, then OpenRouter), openrouter-first (OpenRouter, then its own API) or openrouter (OpenRouter only).",
 			"options": ["direct", "auto", "openrouter-first", "openrouter"],
 			"default": "direct"
 		},
 		"scope": {
 			"type": "string",
 			"title": "Routing scope",
-			"description": "Which Agent calls the plugin routes. core: the built-in agents general-purpose, claude, Explore and Plan only. extended: also any Agent call that passes no model, including plugin and user agents, replacing the model and effort their definition sets. Forks and named calls stay unrouted.",
+			"description": "Which subagents are routed: core or extended, which also routes other agents that set no model.",
 			"options": ["core", "extended"],
 			"default": "core"
 		},
 		"models": {
 			"type": "string",
 			"title": "Scoring models",
-			"description": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.",
+			"description": "The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.",
 			"default": ""
 		},
 		"model": {
 			"type": "string",
 			"title": "Jev model",
 			"description": "Removed: the setup skill moves it into models."
+		},
+		"api_key": {
+			"type": "string",
+			"title": "TypeSafe API key",
+			"description": "Sent to TypeSafe only, when provider is typesafe and gateway is not openrouter.",
+			"sensitive": true
+		},
+		"openai_api_key": {
+			"type": "string",
+			"title": "OpenAI API key",
+			"description": "Sent to OpenAI only, when provider is openai and gateway is not openrouter.",
+			"sensitive": true
+		},
+		"google_api_key": {
+			"type": "string",
+			"title": "Google API key",
+			"description": "Sent to Google only, when provider is google and gateway is not openrouter.",
+			"sensitive": true
+		},
+		"openrouter_api_key": {
+			"type": "string",
+			"title": "OpenRouter API key",
+			"description": "Sent to OpenRouter only, when gateway is not direct.",
+			"sensitive": true
 		}
 	}
 }

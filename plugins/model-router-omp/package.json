@@ -14,7 +14,7 @@
 		"settings": {
 			"provider": {
 				"type": "enum",
-				"description": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to. openai: OpenAI's decision model; costs more than Jev and its answers are not fitted. google: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.",
+				"description": "Whose model scores each subagent task: typesafe, openai or google.",
 				"values": [
 					"typesafe",
 					"openai",
@@ -24,7 +24,7 @@
 			},
 			"gateway": {
 				"type": "enum",
-				"description": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies.",
+				"description": "How the provider is reached: direct (its own API only), auto (its own API, then OpenRouter), openrouter-first (OpenRouter, then its own API) or openrouter (OpenRouter only).",
 				"values": [
 					"direct",
 					"auto",
@@ -35,7 +35,7 @@
 			},
 			"scope": {
 				"type": "enum",
-				"description": "Which subagents are routed. core: the task agent only. extended: every agent whose model you did not set, bundled agents included.",
+				"description": "Which subagents are routed: core or extended, which also routes other agents that set no model.",
 				"values": [
 					"core",
 					"extended"
@@ -44,7 +44,7 @@
 			},
 			"models": {
 				"type": "string",
-				"description": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model."
+				"description": "The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default."
 			}
 		}
 	}

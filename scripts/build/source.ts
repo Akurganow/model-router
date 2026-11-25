@@ -2,32 +2,19 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type Schema, validate } from "./schema.ts";
 import {
-	HARNESS_SETTINGS,
-	HARNESSES,
 	type Harness,
 	KEY_HOLDERS,
 	type KeyHolder,
 	type SlotSetting,
-	storesSetting,
-	VALUE_SETTINGS,
 	type ValueSetting,
 } from "./values.ts";
 
 export const SOURCE_PATH = "metadata/source.json";
 const SCHEMA_PATH = "metadata/source.schema.json";
 
-type Option = {
-	readonly title: string;
-	readonly descriptions: Readonly<Partial<Record<Harness, string>>>;
-};
+// The title and the one text of a setting or a key field. HARNESS_SETTINGS says which harness stores a setting; each shows this text.
+type Option = { readonly title: string; readonly description: string };
 type Hint = { readonly label: string; readonly help: string };
-type SecretHint = Hint & { readonly sensitive: boolean };
-type Secret = {
-	readonly type: string;
-	readonly title: string;
-	readonly description: string;
-	readonly sensitive: boolean;
-};
 
 export type Install = {
 	readonly heading: string;
@@ -65,13 +52,14 @@ export type Source = {
 	};
 	readonly options: Readonly<Record<ValueSetting, Option>>;
 	// The scoring model of each provider. Every harness stores it and shows this one text.
-	readonly models: { readonly title: string; readonly description: string };
+	readonly models: Option;
+	// The key field of each key holder, shown in every harness that has the field.
+	readonly keys: Readonly<Record<KeyHolder, Option>>;
 	readonly claude: {
 		readonly skills: readonly string[];
 		readonly commandContents: Readonly<Record<ValueSetting, string>>;
 		readonly userConfig: {
 			readonly optionType: string;
-			readonly keys: Readonly<Record<KeyHolder, Secret>>;
 			// The removed option the manifest still declares, so a stored value reaches the plugin. It has no default and no options.
 			readonly model: { readonly title: string; readonly description: string };
 		};
@@ -100,7 +88,6 @@ export type Source = {
 		// One OpenClaw version behind compat, build and install.minHostVersion.
 		readonly hostFloor: string;
 		readonly uiHints: Readonly<Record<SlotSetting, Hint>>;
-		readonly keys: Readonly<Record<KeyHolder, SecretHint>>;
 		readonly install: Install;
 	};
 	readonly hermes: {
@@ -108,7 +95,6 @@ export type Source = {
 		readonly backendName: string;
 		readonly requiresHermes: string;
 		readonly settings: Readonly<Record<SlotSetting, Hint>>;
-		readonly keys: Readonly<Record<KeyHolder, Hint>>;
 		readonly install: Install;
 	};
 	readonly npm: {
@@ -128,63 +114,33 @@ export const loadSchema = (root: string): Schema =>
 	readJson(root, SCHEMA_PATH) as Schema;
 
 /**
- * Lists each option text that does not match the settings its harness stores:
- * a stored setting with no text, and a text for a setting the harness does not
- * store.
- */
-export function optionTextProblems(source: Source): string[] {
-	const problems: string[] = [];
-	for (const harness of HARNESSES)
-		for (const setting of HARNESS_SETTINGS[harness])
-			if (source.options[setting].descriptions[harness] === undefined)
-				problems.push(
-					`$.options.${setting}.descriptions.${harness}: ${harness} stores ${setting}, so the text is required`,
-				);
-	for (const setting of VALUE_SETTINGS)
-		for (const harness of HARNESSES)
-			if (
-				source.options[setting].descriptions[harness] !== undefined &&
-				!storesSetting(harness, setting)
-			)
-				problems.push(
-					`$.options.${setting}.descriptions.${harness}: ${harness} does not store ${setting}, so the text is not allowed`,
-				);
-	return problems;
-}
-
-/**
- * Lists each key record that does not hold exactly the members of KEY_HOLDERS:
- * a key holder with no text, and a member that names no key holder. The schema
- * names no holder, so this check is the only one.
+ * Lists each member of the key record that is not a key holder, and each key
+ * holder with no text. The schema names no holder, so this check is the only
+ * one.
  */
 export function keyHolderProblems(source: Source): string[] {
-	const records: Readonly<Record<string, object>> = {
-		"$.claude.userConfig.keys": source.claude.userConfig.keys,
-		"$.openclaw.keys": source.openclaw.keys,
-		"$.hermes.keys": source.hermes.keys,
-	};
 	const holders: readonly string[] = KEY_HOLDERS;
-	return Object.entries(records).flatMap(([path, record]) => [
+	return [
 		...holders
-			.filter((holder) => !Object.hasOwn(record, holder))
+			.filter((holder) => !Object.hasOwn(source.keys, holder))
 			.map(
 				(holder) =>
-					`${path}.${holder}: ${holder} is a key holder, so the text is required`,
+					`$.keys.${holder}: ${holder} is a key holder, so the text is required`,
 			),
-		...Object.keys(record)
+		...Object.keys(source.keys)
 			.filter((member) => !holders.includes(member))
 			.map(
 				(member) =>
-					`${path}.${member}: ${member} is not a key holder, so the text is not allowed`,
+					`$.keys.${member}: ${member} is not a key holder, so the text is not allowed`,
 			),
-	]);
+	];
 }
 
 /**
  * Reads metadata/source.json and returns it typed as Source. It throws with
  * every schema problem first, so the cast only names a shape already proven.
- * Then it throws with every option text that does not match its harness, and
- * with every key record that does not match the key holders.
+ * Then it throws with every member of the key record that does not match the
+ * key holders.
  */
 export function loadSource(root: string): Source {
 	const data = readJson(root, SOURCE_PATH);
@@ -194,31 +150,10 @@ export function loadSource(root: string): Source {
 			`${SOURCE_PATH} does not match ${SCHEMA_PATH}:\n${problems.join("\n")}`,
 		);
 	const source = data as Source;
-	const textProblems = optionTextProblems(source);
-	if (textProblems.length > 0)
-		throw new Error(
-			`${SOURCE_PATH} does not match the settings each harness stores:\n${textProblems.join("\n")}`,
-		);
 	const holderProblems = keyHolderProblems(source);
 	if (holderProblems.length > 0)
 		throw new Error(
 			`${SOURCE_PATH} does not match the key holders:\n${holderProblems.join("\n")}`,
 		);
 	return source;
-}
-
-/**
- * Returns the text of one option for one harness. loadSource has checked every
- * text against HARNESS_SETTINGS, so this throws only for a pair the source does
- * not hold.
- */
-export function optionText(
-	source: Source,
-	harness: Harness,
-	setting: ValueSetting,
-): string {
-	const text = source.options[setting].descriptions[harness];
-	if (text === undefined)
-		throw new Error(`${SOURCE_PATH} has no ${harness} text for ${setting}`);
-	return text;
 }

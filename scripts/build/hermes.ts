@@ -31,7 +31,7 @@ import {
 import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
-import { optionText, type Source } from "./source.ts";
+import type { Source } from "./source.ts";
 import {
 	defaultOf,
 	HARNESS_SETTINGS,
@@ -56,7 +56,8 @@ const keySettings = (source: Source): JsonObject =>
 			{
 				type: "secret",
 				env: KEY_VARIABLES[holder],
-				...describe(source.hermes.keys[holder]),
+				label: source.keys[holder].title,
+				description: source.keys[holder].description,
 			},
 		]),
 	);
@@ -71,7 +72,7 @@ const configSchema = (source: Source): JsonObject => ({
 				choices: [...SETTING_VALUES[setting]],
 				default: defaultOf(setting),
 				label: source.options[setting].title,
-				description: optionText(source, "hermes", setting),
+				description: source.options[setting].description,
 			},
 		]),
 	),

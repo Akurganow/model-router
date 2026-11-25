@@ -8,7 +8,6 @@ import {
 	readKeys,
 	readSettings,
 } from "#adapters/openclaw/settings.ts";
-import { SCOPE_VALUES } from "#core/options/scope.ts";
 import { settingsOf, TOOL_NAME } from "#core/options/settings.ts";
 import { KEY_FIELDS, KEY_HOLDERS } from "#core/providers/provider.ts";
 import { formatJson } from "./build/json.ts";
@@ -100,7 +99,7 @@ test("the models setting takes a string or an object of strings, with the shared
 	});
 	assert.deepEqual(manifest.uiHints.models, {
 		label: "Scoring models",
-		help: "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.",
+		help: "The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.",
 	});
 	assert.deepEqual(validate(schema, { models: "{typesafe:jev-latest}" }), []);
 	assert.deepEqual(
@@ -115,13 +114,11 @@ test("the models setting takes a string or an object of strings, with the shared
 	]);
 });
 
-test("the options text names each value", () => {
+test("the scope help is the shared scope text", () => {
 	assert.equal(
 		manifest.uiHints.scope.help,
-		source.options.scope.descriptions.openclaw,
+		"Which subagents are routed: core or extended, which also routes other agents that set no model.",
 	);
-	for (const value of SCOPE_VALUES)
-		assert.ok(manifest.uiHints.scope.help.includes(`${value}: `), value);
 });
 
 test("a value outside the lists is kept as stored and skips the routing", () => {
@@ -135,10 +132,7 @@ test("a value outside the lists is kept as stored and skips the routing", () => 
 
 test("the key names in the source are the setting names the code reads", () => {
 	const names = Object.values(KEY_FIELDS).sort();
-	assert.deepEqual(
-		Object.keys(source.claude.userConfig.keys).sort(),
-		[...KEY_HOLDERS].sort(),
-	);
+	assert.deepEqual(Object.keys(source.keys).sort(), [...KEY_HOLDERS].sort());
 	const hinted = Object.entries<object>(manifest.uiHints)
 		.filter(([, hint]) => "sensitive" in hint)
 		.map(([name]) => name);
@@ -224,7 +218,7 @@ test("the bundles hold no absolute path", () => {
 		);
 });
 
-test("the manifest and the middle hint say the effort is set unless the user sets one", () => {
+test("the manifest says the effort is set unless the user sets one, and the middle hint says what unset means", () => {
 	assert.ok(
 		manifest.description.includes(
 			"It scores a task even when you set no model, and sets the effort unless you set one.",
@@ -232,6 +226,6 @@ test("the manifest and the middle hint say the effort is set unless the user set
 	);
 	assert.equal(
 		manifest.uiHints.middle_model.help,
-		"The model a spawn gets when the scoring model rates its task middle, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one.",
+		"The model a task rated middle gets, as provider/model; unset, the task keeps the model it would get without the plugin.",
 	);
 });

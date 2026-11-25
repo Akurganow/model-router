@@ -23,9 +23,9 @@ test("an unknown key fails and names its path", () => {
 
 test("a missing required key fails and names its path", () => {
 	const broken = source();
-	delete broken.claude.userConfig.keys.typesafe.title;
+	delete broken.keys.typesafe.title;
 	assert.deepEqual(validate(schema, broken), [
-		"$.claude.userConfig.keys.typesafe.title: required key is missing",
+		"$.keys.typesafe.title: required key is missing",
 	]);
 });
 
@@ -152,6 +152,6 @@ test("the removed Claude Code model option is required", () => {
 test("the models record holds the shared title and one text", () => {
 	const { models } = loadSource(ROOT);
 	const text =
-		"The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.";
+		"The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.";
 	assert.deepEqual(models, { title: "Scoring models", description: text });
 });

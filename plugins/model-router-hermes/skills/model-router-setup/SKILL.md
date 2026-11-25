@@ -25,10 +25,12 @@ The person's optional choices:
 
 Find out which of these already hold, with the `model_router_config` tool and Hermes's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool Hermes gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
 
+When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
+
 When the person wants to choose the provider, follow these steps in order:
 
 1. Call `model_router_config` with no input, and read the settings and the key lines.
-2. Ask which provider's model scores, and give the three labels from the provider and gateway facts.
+2. Ask which provider's model scores, and give the labels from the provider and gateway facts.
 3. Ask how OpenRouter is used, before any write.
 4. On the person's word, ask them to type `/model-router-gateway <value>` and `/model-router-provider <value>` in a local session, one command at a time. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
    - Ask for the second command only after `model_router_config` shows the agreed value of the first setting. If it does not, stop and tell the person.
@@ -72,9 +74,10 @@ When the person wants another scoring model for one provider, follow these steps
 ### The provider and the gateway
 
 - `provider` names whose model scores. It has three values, and `typesafe` is the default:
-  - `typesafe`: Jev from TypeSafe, the model the plugin's questions are fitted to.
-  - `openai`: OpenAI's decision model; costs more than Jev and its answers are not fitted.
-  - `google`: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.
+  - `typesafe - Jev from TypeSafe`
+  - `openai - OpenAI's decision model`
+  - `google - Google's decision model`
+  - On a free-tier Google key, Google may use the text.
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
 - `gateway` says how OpenRouter is used to reach the provider. OpenRouter is a gateway, never a provider. It has four values:
   - `direct` is the default and asks the provider's own API only.
