@@ -511,6 +511,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
 
 ### OpenClaw setup entry and config migration
 
+Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenClaw#openclaw-setup-entry-and-config-migration)
+
 - A plugin can ship a setup entry that OpenClaw loads in a pass of its own.
   `openclaw.setupEntry` in `package.json` names it. Without that field OpenClaw takes a file named `setup-api` with one of the extensions `.js`, `.mjs`, `.cjs`, `.ts`, `.mts` or `.cts`, at the plugin root or in its `dist/` folder.
 - The pass builds an `api` in `setup-only` mode whose `runtime` is unavailable, and calls the module's `register(api)`.
