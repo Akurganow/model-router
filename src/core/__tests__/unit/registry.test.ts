@@ -78,20 +78,36 @@ test("endpointOf carries the model that the attempt's stored name translates to"
 	assert.equal(endpointOf(attemptOf("openai", "direct"))?.model, "gpt-6-luna");
 });
 
-test("every slug that holds a slash starts with its module's vendor, on either route", () => {
+test("every slug that holds a slash starts with its module's vendor", () => {
 	for (const maker of MAKERS) {
-		const { vendor, openrouterRoute, openrouterNames, paths } = MODULES[maker];
+		const { vendor, openrouterNames, paths } = MODULES[maker];
 		for (const slug of [
 			...Object.values(openrouterNames),
 			paths.openrouter.model,
 		]) {
-			const named =
-				slug.startsWith(`${vendor}/`) || slug.startsWith(`~${vendor}/`);
-			assert.equal(
-				named,
-				slug.includes("/") || openrouterRoute === "decisions",
-				`${maker}: ${slug}`,
-			);
+			if (slug.includes("/"))
+				assert.match(slug, new RegExp(`^~?${vendor}/`), `${maker}: ${slug}`);
 		}
 	}
+});
+
+test("every slug on a Decisions route holds a slash", () => {
+	for (const maker of MAKERS) {
+		const { openrouterRoute, openrouterNames, paths } = MODULES[maker];
+		if (openrouterRoute === "decisions")
+			for (const slug of [
+				...Object.values(openrouterNames),
+				paths.openrouter.model,
+			])
+				assert.ok(slug.includes("/"), `${maker}: ${slug}`);
+	}
+});
+
+test("the model a module defaults to on the direct path maps to its OpenRouter default", () => {
+	for (const maker of MAKERS)
+		assert.equal(
+			modelOf(maker, "openrouter", MODULES[maker].paths.direct.model),
+			modelOf(maker, "openrouter", undefined),
+			maker,
+		);
 });

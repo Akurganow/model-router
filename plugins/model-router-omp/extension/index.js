@@ -579,6 +579,7 @@ var JEV = "jev-latest";
 var typesafe = {
   vendor: "typesafe",
   openrouterRoute: "system-one",
+  // Every known name has an entry, and OpenRouter's System One route maps these aliases itself.
   openrouterNames: {
     "jev-latest": "jev-latest",
     "jev-preview": "jev-preview",
