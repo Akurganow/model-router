@@ -8,7 +8,10 @@ type ModelsRead =
 	| { readonly models: ModelNames }
 	| { readonly invalid: string };
 
-const QUOTED = /"(?:[^"\\]|\\.)*"/g;
+// A quoted token is a key when a colon follows it.
+const QUOTED_KEY = /"(?:[^"\\]|\\.)*"(?=\s*:)/g;
+// The short form cannot hold these in a name: they belong to the JSON form.
+const JSON_CHARS = /["{}]/;
 
 export const isPlainObject = (
 	value: unknown,
@@ -61,13 +64,11 @@ function readObject(object: Record<string, unknown>): ModelsRead {
 	return { models: named };
 }
 
-// JSON.parse keeps the last of two equal keys. With every value a string, the string tokens
-// alternate key and value, so the keys are the even tokens of the raw text.
+// JSON.parse keeps the last of two equal keys, so the raw text is the only place that shows a repeat.
 function repeatedKey(text: string): string | undefined {
 	const seen = new Set<string>();
-	const tokens = text.match(QUOTED) ?? [];
-	for (let i = 0; i < tokens.length; i += 2) {
-		const key = String(JSON.parse(tokens[i] ?? '""')).trim();
+	for (const [token] of text.matchAll(QUOTED_KEY)) {
+		const key = String(JSON.parse(token));
 		if (seen.has(key)) return key;
 		seen.add(key);
 	}
@@ -95,6 +96,7 @@ function readOwnerForm(text: string): ModelsRead {
 		const colon = entry.indexOf(":");
 		if (
 			colon < 0 ||
+			JSON_CHARS.test(entry.slice(colon + 1)) ||
 			!accept(named, entry.slice(0, colon), entry.slice(colon + 1))
 		)
 			return { invalid: entry === "" ? text : entry };

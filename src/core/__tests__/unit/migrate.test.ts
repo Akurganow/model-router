@@ -72,7 +72,7 @@ test("a JSON text stays JSON, and a name with a comma stays valid", () => {
 });
 
 test("a model that would not read back as the typesafe entry is not copied", () => {
-	for (const model of ["a/b", "a,b", "a, openai:b"])
+	for (const model of ["a/b", "a,b", "a, openai:b", "a}", "a{b", 'a"b'])
 		assert.deepEqual(migrate({ model }).changes, [], model);
 });
 

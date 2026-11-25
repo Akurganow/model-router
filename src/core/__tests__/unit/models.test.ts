@@ -93,6 +93,26 @@ test("a provider named twice is not valid, in every form", () => {
 	});
 });
 
+test("a provider named twice is not valid when an earlier value is not text", () => {
+	assert.deepEqual(readModels('{"openai": 5, "openai": "b"}'), {
+		invalid: "openai",
+	});
+});
+
+test("an empty entry between two commas is not valid and names the text", () => {
+	assert.deepEqual(readModels("{openai:a,,google:b}"), {
+		invalid: "{openai:a,,google:b}",
+	});
+});
+
+test("a short-form name that holds a quote or a brace is neither form", () => {
+	assert.deepEqual(readModels('{typesafe: "jev-preview"}'), {
+		invalid: 'typesafe: "jev-preview"',
+	});
+	assert.deepEqual(readModels("typesafe:a{b"), { invalid: "typesafe:a{b" });
+	assert.deepEqual(readModels("{typesafe:a}}"), { invalid: "typesafe:a}" });
+});
+
 test("a model that holds a slash is not valid", () => {
 	assert.deepEqual(readModels("{openai:openai/gpt-6-luna}"), {
 		invalid: "openai:openai/gpt-6-luna",
