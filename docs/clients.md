@@ -337,6 +337,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 - In omp's credential lookup a stored OAuth login wins over the environment variable.
 - An extension's `ctx.modelRegistry` is omp's full model registry.
   Its `getApiKeyWithCredentialForProvider(id)` returns the key with `oauthAccess` set only when the key came from a stored OAuth login.
+  The method exists in omp 18.12.6. `oauthAccess` exists from omp 18.13.2, and an earlier omp sets no such field.
 - Of the ids `typesafe`, `openai`, `google`, `perplexity` and `openrouter`, only `perplexity` has a built-in login that stores an OAuth credential.
   omp's OpenRouter login stores a plain API key.
 

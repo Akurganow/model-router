@@ -153,7 +153,7 @@ or when newer decisions push it out.
 It holds a key in memory only while it checks whether to route and while it
 sends a request. It reads a key only for a company that the `provider` and
 `gateway` settings allow. It reads the credential omp holds for that company's
-id, `typesafe`, `openai`, `google`, `perplexity` or `openrouter`, and when that is empty or a
+id, `typesafe`, `openai`, `google`, `perplexity` or `openrouter`, and when that is empty or, from omp 18.13.2, a
 stored login, the environment variable `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`,
 `PERPLEXITY_API_KEY` or `OPENROUTER_API_KEY`. It sends each key only to its own company's host above.
 It does not read `GOOGLE_API_KEY`. It reads no other environment variable, and

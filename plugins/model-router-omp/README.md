@@ -68,7 +68,7 @@ Add a key in one of two ways:
 - Store the credential omp holds for the id: run `/login typesafe` or `/login openrouter`, or run `omp login typesafe` or `omp login openrouter` outside a session. For `openai` and `google`, store it the way omp stores a credential for that provider.
 - Set the environment variable where omp reads it. The variable is visible to every process omp starts. [What the plugin stores](PRIVACY.md#what-the-plugin-stores) says more.
 
-Scoring takes an API key. A login stored for the same id is skipped, and the plugin reads the holder's variable instead.
+Scoring takes an API key. From omp 18.13.2, a login stored for the same id is skipped, and the plugin reads the holder's variable instead. An earlier omp hands the plugin the login's token.
 
 ## Provider and gateway
 
