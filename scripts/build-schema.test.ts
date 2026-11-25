@@ -118,3 +118,40 @@ test("an additionalProperties schema checks each unnamed member and names its pa
 		"$.b: expected string, got number",
 	]);
 });
+
+test("a type may list several kinds, and a value of another kind names them", () => {
+	const schema = { type: ["string", "object"] } as unknown as Schema;
+	assert.deepEqual(validate(schema, "a"), []);
+	assert.deepEqual(validate(schema, {}), []);
+	assert.deepEqual(validate(schema, 1), [
+		"$: expected string or object, got number",
+	]);
+});
+
+test("the models record is required, and so is its one text", () => {
+	const missing = source();
+	delete missing.models;
+	assert.deepEqual(validate(schema, missing), [
+		"$.models: required key is missing",
+	]);
+	const partial = source();
+	delete partial.models.description;
+	assert.deepEqual(validate(schema, partial), [
+		"$.models.description: required key is missing",
+	]);
+});
+
+test("the removed Claude Code model option is required", () => {
+	const broken = source();
+	delete broken.claude.userConfig.model;
+	assert.deepEqual(validate(schema, broken), [
+		"$.claude.userConfig.model: required key is missing",
+	]);
+});
+
+test("the models record holds the shared title and one text", () => {
+	const { models } = loadSource(ROOT);
+	const text =
+		"The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.";
+	assert.deepEqual(models, { title: "Scoring models", description: text });
+});

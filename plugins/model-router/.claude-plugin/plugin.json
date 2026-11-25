@@ -84,6 +84,17 @@
 			"description": "Which Agent calls the plugin routes. core: the built-in agents general-purpose, claude, Explore and Plan only. extended: also any Agent call that passes no model, including plugin and user agents, replacing the model and effort their definition sets. Forks and named calls stay unrouted.",
 			"options": ["core", "extended"],
 			"default": "core"
+		},
+		"models": {
+			"type": "string",
+			"title": "Scoring models",
+			"description": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.",
+			"default": ""
+		},
+		"model": {
+			"type": "string",
+			"title": "Jev model",
+			"description": "Removed: the setup skill moves it into models."
 		}
 	}
 }

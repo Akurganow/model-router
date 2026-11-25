@@ -30,19 +30,21 @@ const namesNoValue = (
  * text and the effective one (a project's over the global). A project file comes
  * with a checkout, so it never changes who scores, and it may only drop a path
  * from a global gateway, never add, swap or reorder one: it cannot send a
- * request where the user did not allow it. A text that is not valid always
+ * request where the user did not allow it. The same holds for `models`, which
+ * names the model that scores each provider's calls. A text that is not valid always
  * passes through, so the core skips routing and the report shows it.
  */
 function applied(
 	global: Record<string, unknown>,
 	effective: Record<string, unknown>,
 ): Stored {
-	const { provider: fromGlobal, gateway: gatewayFromGlobal } = global;
+	const { provider: fromGlobal, gateway: gatewayFromGlobal, models } = global;
 	const { provider, gateway, scope } = effective;
 	return {
 		provider: namesNoValue("provider", provider) ? provider : fromGlobal,
 		gateway: gatewayText(gatewayFromGlobal, gateway),
 		scope,
+		models,
 	};
 }
 
@@ -90,11 +92,11 @@ export async function readGlobalSettings(
 ): Promise<Stored | undefined> {
 	const plugin = omp.plugin ?? FALLBACK_NAME;
 	try {
-		const { provider, gateway, scope } = await readGlobal(
+		const { provider, gateway, scope, models } = await readGlobal(
 			omp.getPluginsLockfile(),
 			plugin,
 		);
-		return { provider, gateway, scope };
+		return { provider, gateway, scope, models };
 	} catch {
 		return undefined;
 	}

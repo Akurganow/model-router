@@ -64,12 +64,16 @@ export type Source = {
 		readonly hermes: { readonly manifest: string };
 	};
 	readonly options: Readonly<Record<ValueSetting, Option>>;
+	// The scoring model of each provider. Every harness stores it and shows this one text.
+	readonly models: { readonly title: string; readonly description: string };
 	readonly claude: {
 		readonly skills: readonly string[];
 		readonly commandContents: Readonly<Record<ValueSetting, string>>;
 		readonly userConfig: {
 			readonly optionType: string;
 			readonly keys: Readonly<Record<KeyHolder, Secret>>;
+			// The removed option the manifest still declares, so a stored value reaches the plugin. It has no default and no options.
+			readonly model: { readonly title: string; readonly description: string };
 		};
 		readonly catalogueSource: string;
 		readonly install: Install;

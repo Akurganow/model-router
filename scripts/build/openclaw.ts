@@ -29,6 +29,11 @@ const configSchema = (source: Source): JsonObject => ({
 				},
 			]),
 		),
+		// A string, or an object of provider to model, so a value typed as text and one set as a map both pass the validation.
+		models: {
+			type: ["string", "object"],
+			additionalProperties: { type: source.openclaw.settingType },
+		},
 		...Object.fromEntries(
 			[...SLOT_SETTINGS, ...SECRET_KEYS].map((name) => [
 				name,
@@ -49,6 +54,10 @@ const uiHints = (source: Source): JsonObject => ({
 			},
 		]),
 	),
+	models: {
+		label: source.models.title,
+		help: source.models.description,
+	},
 	...source.openclaw.uiHints,
 	...keyEntries(source.openclaw.keys),
 });

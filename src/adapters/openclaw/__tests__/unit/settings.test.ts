@@ -162,6 +162,7 @@ test("a blank or missing gateway is silent: the next source is read, else it rea
 				provider: "typesafe",
 				gateway: "direct",
 				scope: "core",
+				models: {},
 			},
 		);
 	}
@@ -355,6 +356,7 @@ test("readState reads the live config once and draws the settings and the keys f
 		provider: "typesafe",
 		gateway: "openrouter",
 		scope: "core",
+		models: {},
 	});
 	assert.deepEqual(state.keys, { openrouter: "k" });
 	assert.equal(fake.runtime.calls.config.length, 1);
@@ -369,6 +371,7 @@ test("readState falls back to the plugin config and the environment when the liv
 		provider: "typesafe",
 		gateway: "auto",
 		scope: "core",
+		models: {},
 	});
 	assert.deepEqual(state.keys, { openrouter: "env" });
 });

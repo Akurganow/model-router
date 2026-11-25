@@ -13,6 +13,7 @@ export const SETTINGS: Settings = {
 	provider: "typesafe",
 	gateway: "direct",
 	scope: "core",
+	models: {},
 };
 export const REQUESTER = "main";
 export const OTHER = "writer";

@@ -107,6 +107,7 @@ export type Pi = {
 	zod: {
 		object(shape: Record<string, unknown>): unknown;
 		enum(values: readonly string[]): Schema;
+		string(): Schema;
 	};
 	pi: {
 		settings: unknown;

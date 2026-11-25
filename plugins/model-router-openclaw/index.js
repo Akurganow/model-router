@@ -114,9 +114,29 @@ var nonEmpty = (value) => {
   const text = typeof value === "string" ? value.trim() : "";
   return text === "" ? void 0 : text;
 };
+var textOf = (value) => {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return plainText(value);
+  }
+};
+function plainText(value) {
+  try {
+    return String(value);
+  } catch {
+    return Object.prototype.toString.call(value);
+  }
+}
 
 // src/utils/guards.ts
 var isRecord = (v) => typeof v === "object" && v !== null;
+var isPlainObject = (value) => {
+  if (typeof value !== "object" || value === null) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+};
 var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
 
 // src/core/decision/slots.ts
@@ -160,6 +180,10 @@ var GATEWAY_PATHS = {
   "openrouter-first": ["openrouter", "direct"],
   openrouter: ["openrouter"]
 };
+var modelOfChoice = (choice) => {
+  const storedModel = choice.models?.[choice.provider];
+  return typeof storedModel === "string" ? { storedModel } : {};
+};
 var holderOf = (maker, path) => path === "direct" ? maker : path;
 var steps = (choice) => GATEWAY_PATHS[choice.gateway].map((path) => ({
   maker: choice.provider,
@@ -179,15 +203,392 @@ function plan(choice, keys) {
   const attempts = [];
   for (const step of steps(choice)) {
     const key = keys[step.holder];
-    if (key) attempts.push({ ...step, key });
+    if (key) attempts.push({ ...step, key, ...modelOfChoice(choice) });
   }
   return attempts.map(
     (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt
   );
 }
 
+// src/core/parts/part.ts
+var LEVELS = [0, 1, 2];
+var fromMiddle = (down, up) => (p) => {
+  const low = p[0] > down * p[1];
+  const high = p[2] > up * p[1];
+  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
+  return low ? 0 : high ? 2 : 1;
+};
+
+// src/core/scoring/failure.ts
+var ABORTED = { failure: "aborted" };
+var TIMED_OUT = { failure: "timed out" };
+var NETWORK = { failure: "network" };
+var MALFORMED = { failure: "malformed" };
+var UNKNOWN = { failure: "unknown" };
+var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
+  401,
+  402,
+  403,
+  404,
+  408,
+  429
+]);
+var SERVER_ERRORS = { min: 500, max: 599 };
+var OK = { min: 200, max: 299 };
+var isSuccess = (status) => status >= OK.min && status <= OK.max;
+var isServerError = (status) => status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
+var isFailure = (value) => Object.hasOwn(value, "failure");
+function skipText(failure2, aborted) {
+  switch (failure2.failure) {
+    case "aborted":
+      return aborted;
+    case "timed out":
+      return TIMEOUT;
+    case "network":
+      return NETWORK_ERROR;
+    case "status":
+      return httpStatus(failure2.status);
+    case "malformed":
+      return BAD_REPLY;
+    case "unknown":
+      return FAILED;
+  }
+}
+function fallsBack(failure2) {
+  switch (failure2.failure) {
+    case "timed out":
+    case "network":
+      return true;
+    case "status":
+      return FALLBACK_STATUSES.has(failure2.status) || isServerError(failure2.status);
+    case "aborted":
+    case "malformed":
+    case "unknown":
+      return false;
+  }
+}
+
+// src/core/scoring/formats/shared.ts
+var stateText = (state) => JSON.stringify(state);
+var questionMap = (parts) => Object.fromEntries(parts.map((p) => [p.key, p.question]));
+var count = (v) => typeof v === "number" ? v : null;
+var usageNamed = (input, output) => (usage) => {
+  if (!isRecord(usage)) return void 0;
+  return {
+    input_tokens: count(usage[input]),
+    output_tokens: count(usage[output])
+  };
+};
+var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
+function levelProbabilities(p0, p1, p2) {
+  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
+    return void 0;
+  return { 0: p0, 1: p1, 2: p2 };
+}
+var mapAnswer = (answers, key) => {
+  const a = isRecord(answers) ? answers[key] : void 0;
+  if (!isRecord(a)) return void 0;
+  const { type, probabilities } = a;
+  if (type !== "score" || !isRecord(probabilities)) return void 0;
+  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
+  const { 0: p0, 1: p1, 2: p2 } = probabilities;
+  return levelProbabilities(p0, p1, p2);
+};
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return void 0;
+  }
+}
+var replyReader = (probabilitiesOf, usageOf) => (parts, text) => {
+  const reply = parseJson(text);
+  const { answers, model, usage } = isRecord(reply) ? reply : {};
+  const pairs = [];
+  for (const part of parts) {
+    const probabilities = probabilitiesOf(answers, part.key);
+    if (!probabilities) return MALFORMED;
+    pairs.push([part, probabilities]);
+  }
+  return { answers: pairs, model, usage: usageOf(usage) };
+};
+
+// src/core/scoring/formats/gemini-decisions.ts
+var GEMINI_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    model,
+    input: stateText(state),
+    questions: questionMap(parts)
+  }),
+  read: replyReader(
+    mapAnswer,
+    usageNamed("total_input_tokens", "total_output_tokens")
+  )
+};
+
+// src/core/scoring/formats/openrouter-decisions.ts
+var OPENROUTER_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    state: stateText(state),
+    model,
+    questions: questionMap(parts)
+  }),
+  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
+};
+
+// src/core/scoring/maker-module.ts
+var BEARER = { name: "Authorization", prefix: "Bearer " };
+
+// src/core/scoring/makers/google.ts
+var GOOGLE_KEY = { name: "x-goog-api-key", prefix: "" };
+var google = {
+  vendor: "google",
+  openrouterRoute: "decisions",
+  openrouterNames: { "gemini-decision-1": "google/gemini-decision-1" },
+  paths: {
+    direct: {
+      url: "https://generativelanguage.googleapis.com/v1beta/decisions",
+      format: GEMINI_DECISIONS,
+      model: "gemini-decision-1",
+      keyHeader: GOOGLE_KEY
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "google/gemini-decision-1",
+      keyHeader: BEARER
+    }
+  }
+};
+
+// src/core/scoring/formats/openai-decisions.ts
+function listAnswer(answers, key) {
+  if (!Array.isArray(answers)) return void 0;
+  const [item, ...others] = answers.filter(isRecord).filter(({ name }) => name === key);
+  if (!item || others.length > 0) return void 0;
+  const { type, probabilities } = item;
+  if (type !== "score" || !Array.isArray(probabilities)) return void 0;
+  if (probabilities.length !== LEVELS.length) return void 0;
+  const byValue = /* @__PURE__ */ new Map();
+  for (const entry of probabilities) {
+    if (!isRecord(entry)) return void 0;
+    const { value, probability } = entry;
+    byValue.set(value, probability);
+  }
+  return levelProbabilities(byValue.get(0), byValue.get(1), byValue.get(2));
+}
+var OPENAI_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    model,
+    input: stateText(state),
+    questions: parts.map(({ key, question }) => ({
+      type: "score",
+      name: key,
+      instructions: question.instructions,
+      levels: question.criteria.map((description, index) => ({
+        label: String(index),
+        description
+      }))
+    }))
+  }),
+  read: replyReader(listAnswer, usageNamed("input_tokens", "output_tokens"))
+};
+
+// src/core/scoring/makers/openai.ts
+var openai = {
+  vendor: "openai",
+  openrouterRoute: "decisions",
+  openrouterNames: { "gpt-6-luna": "openai/gpt-6-luna-decisions" },
+  paths: {
+    direct: {
+      url: "https://api.openai.com/v1/decisions",
+      format: OPENAI_DECISIONS,
+      model: "gpt-6-luna",
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "openai/gpt-6-luna-decisions",
+      keyHeader: BEARER
+    }
+  }
+};
+
+// src/core/scoring/formats/system-one.ts
+var SYSTEM_ONE = {
+  body: (parts, state, model) => JSON.stringify({ state, model, questions: questionMap(parts) }),
+  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
+};
+
+// src/core/scoring/makers/typesafe.ts
+var JEV = "jev-latest";
+var typesafe = {
+  vendor: "typesafe",
+  openrouterRoute: "system-one",
+  // Every known name has an entry, and OpenRouter's System One route maps these aliases itself.
+  openrouterNames: {
+    "jev-latest": "jev-latest",
+    "jev-preview": "jev-preview",
+    "jev-1.14.0": "typesafe/jev-1.14",
+    "jev-1.13.0": "typesafe/jev-1.13"
+  },
+  paths: {
+    direct: {
+      url: "https://api.typesafe.ai/v1/systemone",
+      format: SYSTEM_ONE,
+      model: JEV,
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/v1/systemone",
+      format: SYSTEM_ONE,
+      model: JEV,
+      keyHeader: BEARER
+    }
+  }
+};
+
+// src/core/scoring/maker-registry.ts
+var MODULES = {
+  typesafe,
+  openai,
+  google
+};
+function modelOf(maker, path, stored) {
+  const made = MODULES[maker];
+  if (stored === void 0) return made.paths[path].model;
+  if (path === "direct") return stored;
+  if (Object.hasOwn(made.openrouterNames, stored))
+    return made.openrouterNames[stored] ?? stored;
+  return made.openrouterRoute === "system-one" ? stored : `${made.vendor}/${stored}`;
+}
+function endpointOf(attempt) {
+  if (!Object.hasOwn(MODULES, attempt.maker)) return void 0;
+  const { paths } = MODULES[attempt.maker];
+  if (!Object.hasOwn(paths, attempt.path)) return void 0;
+  return {
+    ...paths[attempt.path],
+    model: modelOf(attempt.maker, attempt.path, attempt.storedModel)
+  };
+}
+
 // src/utils/error.ts
 var errorText = (err) => err instanceof Error ? err.message : String(err);
+
+// src/core/options/models.ts
+var QUOTED_KEY = /"(?:[^"\\]|\\.)*"(?=\s*:)/g;
+var JSON_CHARS = /["{}]/;
+var makerOf = (name) => MAKERS.find((maker) => maker === name);
+function accept(named, provider, model) {
+  const maker = makerOf(provider.trim());
+  const name = model.trim();
+  if (maker === void 0 || name === "" || name.includes("/") || Object.hasOwn(named, maker))
+    return false;
+  named[maker] = name;
+  return true;
+}
+function readObject(object) {
+  const named = {};
+  for (const [provider, model] of Object.entries(object)) {
+    if (typeof model !== "string") return { invalid: provider.trim() };
+    if (!accept(named, provider, model))
+      return { invalid: `${provider.trim()}:${model.trim()}` };
+  }
+  return { models: named };
+}
+function repeatedKey(text) {
+  const seen = /* @__PURE__ */ new Set();
+  for (const [token] of text.matchAll(QUOTED_KEY)) {
+    const key = String(JSON.parse(token));
+    if (seen.has(key)) return key;
+    seen.add(key);
+  }
+  return void 0;
+}
+function parseJson2(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return void 0;
+  }
+}
+function readOwnerForm(text) {
+  if (text.startsWith("{") !== text.endsWith("}")) return { invalid: text };
+  const inner = (text.startsWith("{") ? text.slice(1, -1) : text).trim();
+  if (inner === "") return { models: {} };
+  const named = {};
+  for (const part of (inner.endsWith(",") ? inner.slice(0, -1) : inner).split(
+    ","
+  )) {
+    const entry = part.trim();
+    const colon = entry.indexOf(":");
+    if (colon < 0 || JSON_CHARS.test(entry.slice(colon + 1)) || !accept(named, entry.slice(0, colon), entry.slice(colon + 1)))
+      return { invalid: entry === "" ? text : entry };
+  }
+  return { models: named };
+}
+var isSilentModels = (stored) => stored === void 0 || stored === null || typeof stored === "string" && stored.trim() === "";
+function readModels(stored) {
+  if (isSilentModels(stored)) return { models: {} };
+  if (isPlainObject(stored)) return readObject(stored);
+  if (typeof stored !== "string") return { invalid: textOf(stored) };
+  const text = stored.trim();
+  if (text.startsWith("{")) {
+    const parsed = parseJson2(text);
+    if (isPlainObject(parsed)) {
+      const read = readObject(parsed);
+      if ("invalid" in read) return read;
+      const repeated = repeatedKey(text);
+      return repeated === void 0 ? read : { invalid: repeated };
+    }
+  }
+  return readOwnerForm(text);
+}
+var formatModels = (names) => `{${MAKERS.flatMap((maker) => {
+  const name = names[maker];
+  return name === void 0 ? [] : [`${maker}:${name}`];
+}).join(", ")}}`;
+var sameNames = (a, b) => MAKERS.every((maker) => a[maker] === b[maker]);
+function withModel(models, maker, name) {
+  const read = readModels(models);
+  if ("invalid" in read || read.models[maker] !== void 0) return void 0;
+  const text = typeof models === "string" ? models.trim() : void 0;
+  const parsed = text?.startsWith("{") ? parseJson2(text) : void 0;
+  let added;
+  if (isPlainObject(models)) added = { ...models, [maker]: name };
+  else if (isPlainObject(parsed))
+    added = JSON.stringify({ ...parsed, [maker]: name });
+  else added = formatModels({ ...read.models, [maker]: name });
+  const back = readModels(added);
+  return "models" in back && sameNames(back.models, { ...read.models, [maker]: name }) ? added : void 0;
+}
+
+// src/core/options/migrate.ts
+var typesafeFromModel = (stored) => {
+  const { model, models } = stored;
+  const name = nonEmpty(model);
+  if (name === void 0) return void 0;
+  const added = withModel(models, "typesafe", name);
+  if (added === void 0) return void 0;
+  return {
+    stored: { ...stored, models: added },
+    change: "models: typesafe from the removed model option"
+  };
+};
+var STEPS = [typesafeFromModel];
+var SETTINGS_VERSION = STEPS.length;
+function migrate(stored) {
+  let current = stored;
+  const changes = [];
+  for (const step of STEPS) {
+    const done = step(current);
+    if (done === void 0) continue;
+    current = done.stored;
+    changes.push(done.change);
+  }
+  return { stored: current, changes };
+}
 
 // src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
@@ -236,36 +637,65 @@ var valueFor = (setting, stored) => isSilent(stored) ? TEXTS[setting].values[0] 
 var readProvider = (stored) => MAKERS.find((maker) => maker === valueFor("provider", stored));
 var readGateway = (stored) => GATEWAYS.find((gateway) => gateway === valueFor("gateway", stored));
 var readScope = (stored) => SCOPE_VALUES.find((scope) => scope === valueFor("scope", stored));
-function settingsOf(stored) {
-  const provider = readProvider(stored.provider);
-  if (provider === void 0) return { skipped: notValid("provider") };
-  const gateway = readGateway(stored.gateway);
-  if (gateway === void 0) return { skipped: notValid("gateway") };
-  const scope = readScope(stored.scope);
-  if (scope === void 0) return { skipped: notValid("scope") };
-  return { provider, gateway, scope };
+function settingsFrom(record) {
+  const { provider, gateway, scope, models } = record;
+  const maker = readProvider(provider);
+  if (maker === void 0) return { skipped: notValid("provider") };
+  const via = readGateway(gateway);
+  if (via === void 0) return { skipped: notValid("gateway") };
+  const routed = readScope(scope);
+  if (routed === void 0) return { skipped: notValid("scope") };
+  const read = readModels(models);
+  if ("invalid" in read) return { skipped: notValid("models") };
+  return { provider: maker, gateway: via, scope: routed, models: read.models };
 }
+var settingsOf = (stored) => settingsFrom(migrate(stored).stored);
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var keyLine = (holder, state) => `${holder} key: ${state}`;
-var valueLine = (setting, stored) => {
-  const value = valueFor(setting, stored[setting]);
+var valueLineFrom = (setting, record) => {
+  const shown = record[setting];
+  const value = valueFor(setting, shown);
   if (value === void 0)
-    return `${setting}: ${String(stored[setting])} (not valid: use one of ${TEXTS[setting].values.join(", ")})`;
-  const settings = settingsOf(stored);
+    return `${setting}: ${String(shown)} (not valid: use one of ${TEXTS[setting].values.join(", ")})`;
+  const settings = settingsFrom(record);
   if (setting === "gateway" && !("skipped" in settings))
     return `gateway: ${value} (${holders(settings).join(", then ")})`;
   return `${setting}: ${value}`;
 };
+var valueLine = (setting, stored) => valueLineFrom(setting, migrate(stored).stored);
+var NOT_STORED = " (not stored yet: run setup)";
+var modelsLinesFrom = (record, pending) => {
+  const { models } = record;
+  const shown = isSilentModels(models) ? "unset" : textOf(models);
+  const read = readModels(models);
+  if ("invalid" in read)
+    return [`models: ${shown} (not valid: ${read.invalid})`];
+  return [
+    `models: ${shown}${pending ? NOT_STORED : ""}`,
+    ...MAKERS.map(
+      (maker) => `${maker} model: ${modelOf(maker, "direct", read.models[maker])} (OpenRouter: ${modelOf(maker, "openrouter", read.models[maker])})`
+    )
+  ];
+};
+var hasModel = (stored) => nonEmpty(stored.model) !== void 0;
+var carryFrom = (stored, { stored: { models }, changes }) => ({
+  ...changes.length > 0 ? { models: textOf(models) } : {},
+  eraseModel: hasModel(stored)
+});
+var isPending = (carry) => carry.models !== void 0 || carry.eraseModel;
 var settingsReport = (stored, extra, keys) => {
-  const settings = settingsOf(stored);
+  const migrated = migrate(stored);
+  const { stored: record } = migrated;
+  const settings = settingsFrom(record);
   const keyLines = "skipped" in settings ? [] : holders(settings).map(
     (holder) => keyLine(holder, keys[holder] === void 0 ? "unset" : "set")
   );
   return [
-    ...VALUE_SETTINGS.map((setting) => valueLine(setting, stored)),
+    ...VALUE_SETTINGS.map((setting) => valueLineFrom(setting, record)),
+    ...modelsLinesFrom(record, isPending(carryFrom(stored, migrated))),
     ...extra,
     ...keyLines
   ].join("\n");
@@ -386,7 +816,7 @@ async function runCommand(api, env, ctx, setting) {
   if (stored[setting] === value) return unchanged(setting, alreadyValue(value));
   return write(api, ctx, setting, value, stored);
 }
-var textOf = (text) => ({
+var textOf2 = (text) => ({
   content: [{ type: "text", text }]
 });
 function failure(err) {
@@ -404,9 +834,9 @@ function registerConfigTool(api, env) {
     },
     execute: async () => {
       try {
-        return textOf(readAll(readState(api, env)));
+        return textOf2(readAll(readState(api, env)));
       } catch (err) {
-        return textOf(failure(err));
+        return textOf2(failure(err));
       }
     }
   });
@@ -657,15 +1087,6 @@ function routingState(raw) {
   };
 }
 
-// src/core/parts/part.ts
-var LEVELS = [0, 1, 2];
-var fromMiddle = (down, up) => (p) => {
-  const low = p[0] > down * p[1];
-  const high = p[2] > up * p[1];
-  if (low && high) return p[0] > p[2] ? 0 : p[2] > p[0] ? 2 : 1;
-  return low ? 0 : high ? 2 : 1;
-};
-
 // src/core/parts/tier.ts
 var TIER_DOWN = 2 ** 0.25;
 var TIER_UP = 2 ** 0.5;
@@ -703,233 +1124,6 @@ var work = {
   },
   pick: fromMiddle(WORK_DOWN, WORK_UP)
 };
-
-// src/core/scoring/failure.ts
-var ABORTED = { failure: "aborted" };
-var TIMED_OUT = { failure: "timed out" };
-var NETWORK = { failure: "network" };
-var MALFORMED = { failure: "malformed" };
-var UNKNOWN = { failure: "unknown" };
-var FALLBACK_STATUSES = /* @__PURE__ */ new Set([
-  401,
-  402,
-  403,
-  404,
-  408,
-  429
-]);
-var SERVER_ERRORS = { min: 500, max: 599 };
-var OK = { min: 200, max: 299 };
-var isSuccess = (status) => status >= OK.min && status <= OK.max;
-var isServerError = (status) => status >= SERVER_ERRORS.min && status <= SERVER_ERRORS.max;
-var isFailure = (value) => Object.hasOwn(value, "failure");
-function skipText(failure2, aborted) {
-  switch (failure2.failure) {
-    case "aborted":
-      return aborted;
-    case "timed out":
-      return TIMEOUT;
-    case "network":
-      return NETWORK_ERROR;
-    case "status":
-      return httpStatus(failure2.status);
-    case "malformed":
-      return BAD_REPLY;
-    case "unknown":
-      return FAILED;
-  }
-}
-function fallsBack(failure2) {
-  switch (failure2.failure) {
-    case "timed out":
-    case "network":
-      return true;
-    case "status":
-      return FALLBACK_STATUSES.has(failure2.status) || isServerError(failure2.status);
-    case "aborted":
-    case "malformed":
-    case "unknown":
-      return false;
-  }
-}
-
-// src/core/scoring/formats/shared.ts
-var stateText = (state) => JSON.stringify(state);
-var questionMap = (parts) => Object.fromEntries(parts.map((p) => [p.key, p.question]));
-var count = (v) => typeof v === "number" ? v : null;
-var usageNamed = (input, output) => (usage) => {
-  if (!isRecord(usage)) return void 0;
-  return {
-    input_tokens: count(usage[input]),
-    output_tokens: count(usage[output])
-  };
-};
-var isProbability = (p) => typeof p === "number" && p >= 0 && p <= 1;
-function levelProbabilities(p0, p1, p2) {
-  if (!isProbability(p0) || !isProbability(p1) || !isProbability(p2))
-    return void 0;
-  return { 0: p0, 1: p1, 2: p2 };
-}
-var mapAnswer = (answers, key) => {
-  const a = isRecord(answers) ? answers[key] : void 0;
-  if (!isRecord(a)) return void 0;
-  const { type, probabilities } = a;
-  if (type !== "score" || !isRecord(probabilities)) return void 0;
-  if (Object.keys(probabilities).length !== LEVELS.length) return void 0;
-  const { 0: p0, 1: p1, 2: p2 } = probabilities;
-  return levelProbabilities(p0, p1, p2);
-};
-function parseJson(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return void 0;
-  }
-}
-var replyReader = (probabilitiesOf, usageOf) => (parts, text) => {
-  const reply = parseJson(text);
-  const { answers, model, usage } = isRecord(reply) ? reply : {};
-  const pairs = [];
-  for (const part of parts) {
-    const probabilities = probabilitiesOf(answers, part.key);
-    if (!probabilities) return MALFORMED;
-    pairs.push([part, probabilities]);
-  }
-  return { answers: pairs, model, usage: usageOf(usage) };
-};
-
-// src/core/scoring/formats/gemini-decisions.ts
-var GEMINI_DECISIONS = {
-  body: (parts, state, model) => JSON.stringify({
-    model,
-    input: stateText(state),
-    questions: questionMap(parts)
-  }),
-  read: replyReader(
-    mapAnswer,
-    usageNamed("total_input_tokens", "total_output_tokens")
-  )
-};
-
-// src/core/scoring/formats/openrouter-decisions.ts
-var OPENROUTER_DECISIONS = {
-  body: (parts, state, model) => JSON.stringify({
-    state: stateText(state),
-    model,
-    questions: questionMap(parts)
-  }),
-  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
-};
-
-// src/core/scoring/maker-module.ts
-var BEARER = { name: "Authorization", prefix: "Bearer " };
-
-// src/core/scoring/makers/google.ts
-var GOOGLE_KEY = { name: "x-goog-api-key", prefix: "" };
-var google = {
-  paths: {
-    direct: {
-      url: "https://generativelanguage.googleapis.com/v1beta/decisions",
-      format: GEMINI_DECISIONS,
-      model: "gemini-decision-1",
-      keyHeader: GOOGLE_KEY
-    },
-    openrouter: {
-      url: "https://openrouter.ai/api/alpha/decisions",
-      format: OPENROUTER_DECISIONS,
-      model: "google/gemini-decision-1",
-      keyHeader: BEARER
-    }
-  }
-};
-
-// src/core/scoring/formats/openai-decisions.ts
-function listAnswer(answers, key) {
-  if (!Array.isArray(answers)) return void 0;
-  const [item, ...others] = answers.filter(isRecord).filter(({ name }) => name === key);
-  if (!item || others.length > 0) return void 0;
-  const { type, probabilities } = item;
-  if (type !== "score" || !Array.isArray(probabilities)) return void 0;
-  if (probabilities.length !== LEVELS.length) return void 0;
-  const byValue = /* @__PURE__ */ new Map();
-  for (const entry of probabilities) {
-    if (!isRecord(entry)) return void 0;
-    const { value, probability } = entry;
-    byValue.set(value, probability);
-  }
-  return levelProbabilities(byValue.get(0), byValue.get(1), byValue.get(2));
-}
-var OPENAI_DECISIONS = {
-  body: (parts, state, model) => JSON.stringify({
-    model,
-    input: stateText(state),
-    questions: parts.map(({ key, question }) => ({
-      type: "score",
-      name: key,
-      instructions: question.instructions,
-      levels: question.criteria.map((description, index) => ({
-        label: String(index),
-        description
-      }))
-    }))
-  }),
-  read: replyReader(listAnswer, usageNamed("input_tokens", "output_tokens"))
-};
-
-// src/core/scoring/makers/openai.ts
-var openai = {
-  paths: {
-    direct: {
-      url: "https://api.openai.com/v1/decisions",
-      format: OPENAI_DECISIONS,
-      model: "gpt-6-luna",
-      keyHeader: BEARER
-    },
-    openrouter: {
-      url: "https://openrouter.ai/api/alpha/decisions",
-      format: OPENROUTER_DECISIONS,
-      model: "openai/gpt-6-luna-decisions",
-      keyHeader: BEARER
-    }
-  }
-};
-
-// src/core/scoring/formats/system-one.ts
-var SYSTEM_ONE = {
-  body: (parts, state, model) => JSON.stringify({ state, model, questions: questionMap(parts) }),
-  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
-};
-
-// src/core/scoring/makers/typesafe.ts
-var JEV = "jev-latest";
-var typesafe = {
-  paths: {
-    direct: {
-      url: "https://api.typesafe.ai/v1/systemone",
-      format: SYSTEM_ONE,
-      model: JEV,
-      keyHeader: BEARER
-    },
-    openrouter: {
-      url: "https://openrouter.ai/api/v1/systemone",
-      format: SYSTEM_ONE,
-      model: JEV,
-      keyHeader: BEARER
-    }
-  }
-};
-
-// src/core/scoring/maker-registry.ts
-var MODULES = {
-  typesafe,
-  openai,
-  google
-};
-function endpointOf(attempt) {
-  if (!Object.hasOwn(MODULES, attempt.maker)) return void 0;
-  const { paths } = MODULES[attempt.maker];
-  return Object.hasOwn(paths, attempt.path) ? paths[attempt.path] : void 0;
-}
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
@@ -1054,7 +1248,7 @@ async function askOnce(input, attempt) {
   const endpoint = endpointOf(attempt);
   if (!endpoint) return UNKNOWN;
   const { url, format, model, keyHeader } = endpoint;
-  const body = format.body(parts, state, attempt.model ?? model);
+  const body = format.body(parts, state, model);
   const received = await send(
     fetchFn,
     url,

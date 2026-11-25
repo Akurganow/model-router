@@ -44,12 +44,13 @@ test("the manifest names the plugin, its version, its tool and its skills", () =
 	assert.deepEqual(manifest.skills, source.openclaw.skills);
 });
 
-test("the config schema holds the ten settings and refuses any other key", () => {
+test("the config schema holds the eleven settings and refuses any other key", () => {
 	assert.equal(schema.additionalProperties, false);
 	assert.deepEqual(Object.keys(schema.properties ?? {}), [
 		"provider",
 		"gateway",
 		"scope",
+		"models",
 		"small_model",
 		"middle_model",
 		"large_model",
@@ -86,6 +87,28 @@ test("the settings carry no enumeration, so any string is accepted and counts as
 		validate(schema, { provider: "nope", gateway: "nope", scope: "nope" }),
 		[],
 	);
+});
+
+test("the models setting takes a string or an object of strings, with the shared label and text", () => {
+	assert.deepEqual(property("models"), {
+		type: ["string", "object"],
+		additionalProperties: { type: "string" },
+	});
+	assert.deepEqual(manifest.uiHints.models, {
+		label: "Scoring models",
+		help: "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.",
+	});
+	assert.deepEqual(validate(schema, { models: "{typesafe:jev-latest}" }), []);
+	assert.deepEqual(
+		validate(schema, { models: { typesafe: "jev-latest" } }),
+		[],
+	);
+	assert.deepEqual(validate(schema, { models: { typesafe: 1 } }), [
+		"$.models.typesafe: expected string, got number",
+	]);
+	assert.deepEqual(validate(schema, { models: 1 }), [
+		"$.models: expected string or object, got number",
+	]);
 });
 
 test("the options text names each value", () => {

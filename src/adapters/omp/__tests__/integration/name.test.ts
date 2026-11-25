@@ -78,6 +78,7 @@ for (const name of NAMES) {
 			provider: "typesafe",
 			gateway: "auto",
 			scope: "extended",
+			models: {},
 		});
 	});
 
@@ -89,6 +90,7 @@ for (const name of NAMES) {
 			provider: "typesafe",
 			gateway: "direct",
 			scope: "core",
+			models: {},
 		});
 	});
 
@@ -129,6 +131,7 @@ test("a name that cannot be read falls back to the catalogue name for reads", as
 		provider: "typesafe",
 		gateway: "openrouter",
 		scope: "core",
+		models: {},
 	});
 });
 
@@ -139,6 +142,7 @@ test("a value stored under the scoped name is ignored when the name cannot be re
 		provider: "typesafe",
 		gateway: "direct",
 		scope: "core",
+		models: {},
 	});
 });
 

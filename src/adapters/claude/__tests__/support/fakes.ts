@@ -111,8 +111,9 @@ export async function routedCall({
 				requests.push({ url, model: body.model });
 				bodies.push(body);
 				headers.push(init.headers);
-				roles.push(body.state.role);
-				descriptions.push(body.state.description);
+				// Only the System One body carries the state as an object.
+				roles.push(body.state?.role);
+				descriptions.push(body.state?.description);
 				return (
 					reply?.(url) ?? { status: 200, ok: true, headers: {}, text: ANSWER }
 				);

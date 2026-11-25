@@ -26,7 +26,7 @@ import {
 import { readKeys } from "./keys.ts";
 
 // Claude Code names a fixed model for each slot, so every slot is set.
-const MODELS = { small: "haiku", middle: "sonnet", large: "opus" };
+const SLOT_MODELS = { small: "haiku", middle: "sonnet", large: "opus" };
 
 const BUILT_IN = "built-in";
 // The origin of a spawn the Agent tool makes. Another plugin's $.agent.spawn carries its own name.
@@ -159,7 +159,7 @@ export async function routeSpawn(
 		: (await $.env.get("CLAUDE_CODE_EFFORT_LEVEL"))
 			? "env effort"
 			: undefined;
-	const { model, effort, line } = outcomeOf(decided, MODELS, kept);
+	const { model, effort, line } = outcomeOf(decided, SLOT_MODELS, kept);
 	await $.ui.log(line);
 	const started = next(model === undefined ? spawn : { ...spawn, model });
 	if (effort !== undefined) track(started, effort);

@@ -71,6 +71,11 @@ const configSchema = (source: Source): JsonObject => ({
 			},
 		]),
 	),
+	models: {
+		type: "str",
+		label: source.models.title,
+		description: source.models.description,
+	},
 	...Object.fromEntries(
 		SLOT_SETTINGS.map((setting) => [
 			setting,

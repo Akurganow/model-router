@@ -234,7 +234,7 @@ test("a setting that is not valid skips with its setup reason before the key che
 
 const NO_MODELS = {
 	...SETTINGS,
-	models: { small: undefined, middle: undefined, large: undefined },
+	models: {},
 };
 
 test("no model slot set still routes, so the spawn gets its effort", () => {

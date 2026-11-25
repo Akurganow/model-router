@@ -63,10 +63,11 @@ test("the manifest names the plugin, its version and its backend kind", () => {
 	assert.deepEqual(manifest.provides_tools, [TOOL_NAME]);
 });
 
-test("the manifest holds nine settings and no scope", () => {
+test("the manifest holds ten settings and no scope", () => {
 	assert.deepEqual(Object.keys(schema), [
 		"provider",
 		"gateway",
+		"models",
 		"small_model",
 		"middle_model",
 		"large_model",
@@ -99,6 +100,15 @@ test("the provider and gateway settings offer the values the code accepts, with 
 		default: "direct",
 		label: source.options.gateway.title,
 		description: source.options.gateway.descriptions.hermes,
+	});
+});
+
+test("the models setting is a plain string with the shared label and text, and no choices or default", () => {
+	assert.deepEqual(schema.models, {
+		type: "str",
+		label: "Scoring models",
+		description:
+			"The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.",
 	});
 });
 

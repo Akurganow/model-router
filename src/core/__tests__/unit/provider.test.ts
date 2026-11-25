@@ -214,3 +214,28 @@ test("narrowsGateway is true only when the narrowed value drops a path and adds 
 		);
 	}
 });
+
+test("plan sets the model of the choice's maker on every attempt, on both paths", () => {
+	const choice: Choice = {
+		provider: "openai",
+		gateway: "auto",
+		models: { openai: "gpt-7-sol", google: "gemini-decision-2" },
+	};
+	assert.deepEqual(plan(choice, { openai: "oa-key", openrouter: "or-key" }), [
+		{ ...A, ...FIRST, storedModel: "gpt-7-sol" },
+		{ ...AO, storedModel: "gpt-7-sol" },
+	]);
+});
+
+test("plan leaves the model unset when the choice names none for its maker", () => {
+	const base: Choice = { provider: "openai", gateway: "direct" };
+	for (const choice of [
+		base,
+		{ ...base, models: {} },
+		{ ...base, models: { typesafe: "jev-preview" } },
+	]) {
+		const attempts = plan(choice, { openai: "oa-key" });
+		assert.deepEqual(attempts, [A]);
+		assert.equal("model" in (attempts[0] ?? {}), false);
+	}
+});

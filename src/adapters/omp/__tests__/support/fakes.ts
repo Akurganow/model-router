@@ -223,6 +223,10 @@ const buildPi = (state: State): Pi => ({
 			values,
 			optional: () => ({ values, optional: true }),
 		}),
+		string: () => ({
+			type: "string",
+			optional: () => ({ type: "string", optional: true }),
+		}),
 	},
 	pi: {
 		settings: {},

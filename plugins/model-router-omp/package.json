@@ -41,6 +41,10 @@
 					"extended"
 				],
 				"default": "core"
+			},
+			"models": {
+				"type": "string",
+				"description": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model."
 			}
 		}
 	}
