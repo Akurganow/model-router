@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
 	AGENT_CALL,
+	ANSWER,
 	type Answers,
 	type Call,
 	CLOCK,
@@ -14,6 +15,7 @@ import {
 	routedCall,
 	SPAWN,
 } from "#adapters/claude/__tests__/support/fakes.ts";
+import { OPENAI_REPLY } from "#core/__tests__/support/replies.ts";
 
 // Rows are the tier level, columns the work level. The values are written out, not read from the ladder.
 const LADDER = [
@@ -164,5 +166,56 @@ describe("the stored text of both settings reaches the core", () => {
 				requests.map((r) => r.url),
 				["https://api.typesafe.ai/v1/systemone"],
 			);
+		});
+});
+
+describe("the models setting reaches the core", () => {
+	const MODELS = "{typesafe:jev-latest, openai:gpt-6-luna}";
+	const KEYS = { api_key: "ts-key", openai_api_key: "oa-key" };
+	const sent = async (options: Record<string, unknown>) =>
+		(
+			await routedCall({
+				options: { ...KEYS, ...options },
+				reply: (url) => ({
+					status: 200,
+					ok: true,
+					headers: {},
+					text: url.includes("openai.com") ? OPENAI_REPLY : ANSWER,
+				}),
+			})
+		).requests.map((r) => r.model);
+
+	test("a routed spawn sends the model of the provider in force, across a provider switch", async () => {
+		assert.deepEqual(await sent({ models: MODELS }), ["jev-latest"]);
+		assert.deepEqual(await sent({ models: MODELS, provider: "openai" }), [
+			"gpt-6-luna",
+		]);
+		assert.deepEqual(await sent({ models: MODELS, provider: "typesafe" }), [
+			"jev-latest",
+		]);
+	});
+
+	for (const models of ["", "   ", null])
+		test(`models ${JSON.stringify(models)} routes with the defaults`, async () => {
+			assert.deepEqual(await sent({ models }), ["jev-latest"]);
+		});
+
+	for (const models of [
+		"{foo:bar}",
+		"{typesafe:}",
+		"typesafe",
+		"{typesafe:a, typesafe:b}",
+		"{typesafe:a/b}",
+		'{"typesafe":5}',
+		"jev",
+	])
+		test(`models ${models} skips, reads no key and sends no request`, async () => {
+			const { logs, reads, requests } = await routedCall({
+				options: { ...KEYS, models },
+				env: { TYPESAFE_API_KEY: "ts-key" },
+			});
+			assert.deepEqual(logs, ["skipped, models not valid: run setup"]);
+			assert.deepEqual(reads, []);
+			assert.deepEqual(requests, []);
 		});
 });

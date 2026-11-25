@@ -131,13 +131,39 @@ test("the Agent call's one-line description is masked like the task text", async
 	assert.deepEqual(descriptions, ["Deploy with ***"]);
 });
 
-test("register hooks the offers, the spawn, the steps, the turn ends, the session start, the config tool and the three commands by literal matcher", () => {
+test("the row of the removed model option is hidden, with its label and help text kept", async () => {
+	const hide = registered()['config.describe {"key":"model-router.model"}'];
+	assert.deepEqual(
+		await hide?.(
+			{},
+			{
+				key: "model-router.model",
+				label: "Jev model",
+				description: "Removed.",
+				isHidden: false,
+			},
+			nextHook(),
+		),
+		{ label: "Jev model", description: "Removed.", isHidden: true },
+	);
+	assert.deepEqual(
+		await hide?.(
+			{},
+			{ key: "model-router.model", label: "Jev model", isHidden: false },
+			nextHook(),
+		),
+		{ label: "Jev model", isHidden: true },
+	);
+});
+
+test("register hooks the offers, the spawn, the steps, the turn ends, the session start, the config tool, the model row and the three commands by literal matcher", () => {
 	assert.deepEqual(Object.keys(registered()).sort(), [
 		"agent.offer",
 		"agent.spawn",
 		'command.run {"command":"model-router:gateway"}',
 		'command.run {"command":"model-router:provider"}',
 		'command.run {"command":"model-router:scope"}',
+		'config.describe {"key":"model-router.model"}',
 		"session.start",
 		'tool.call {"tool":"Agent"}',
 		'tool.call {"tool":"mcp__model-router__config"}',

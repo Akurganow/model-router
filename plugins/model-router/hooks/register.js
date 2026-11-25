@@ -512,7 +512,6 @@ function settingsOf(stored) {
 var scopeOf = (stored) => readScope(stored.scope) ?? DEFAULT_SCOPE;
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
-var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var NO_ANSWER = "no answer from the dialog";
 var NOT_OFFERED = "the answer was not one of the offered values";
@@ -578,6 +577,23 @@ var settingsReport = (stored, extra, keys) => {
     ...keyLines
   ].join("\n");
 };
+var hasModel = (stored) => typeof stored.model === "string" && stored.model.trim() !== "";
+function modelsWrite(stored, text) {
+  const read2 = readModels(text);
+  if ("invalid" in read2)
+    return { refused: unchanged("models", `not valid: ${read2.invalid}`) };
+  const { models } = migrate({ ...stored, models: text }).stored;
+  return {
+    models: typeof models === "string" ? models : text,
+    eraseModel: hasModel(stored)
+  };
+}
+function pendingModels(stored) {
+  const { stored: migrated, changes } = migrate(stored);
+  if (changes.length === 0 || !hasModel(stored)) return void 0;
+  const { models } = migrated;
+  return textOf(models);
+}
 var toolDescription = () => `Reads the router's settings. With no input it returns the provider, gateway, scope and models, and whether each key the settings allow is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice; never pass a value for these. With models and a string, the tool writes that string as the models setting at the person's request, for example {typesafe:jev-latest, openai:gpt-6-luna}. Never pass a key.`;
 var badCall = () => `Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
 function describeCommand(setting) {
@@ -648,37 +664,83 @@ var TOOL_SPEC = {
   description: toolDescription(),
   inputSchema: {
     type: "object",
-    properties: { setting: { type: "string", enum: VALUE_SETTINGS } }
+    properties: {
+      setting: { type: "string", enum: VALUE_SETTINGS },
+      models: { type: "string" }
+    }
   }
 };
+var ROWS = [...VALUE_SETTINGS, "models", "model"];
 var written = {};
 var serial = serializer();
 function resetConfig() {
-  for (const setting of VALUE_SETTINGS) delete written[setting];
+  for (const row of ROWS) delete written[row];
   serial = serializer();
 }
-var current = (options, setting) => written[setting] ?? options[setting];
+var current = (options, row) => written[row] ?? options[row];
 var storedOf = (options) => ({
   provider: current(options, "provider"),
   gateway: current(options, "gateway"),
-  scope: current(options, "scope")
+  scope: current(options, "scope"),
+  models: current(options, "models"),
+  model: current(options, "model")
 });
 async function registerConfigTool($, e, next) {
   await $.tool.register(TOOL_SPEC);
   return next(e);
 }
-async function write($, options, setting, value) {
+async function hideRow(_, row) {
+  return {
+    label: row.label,
+    ...row.description === void 0 ? {} : { description: row.description },
+    isHidden: true
+  };
+}
+async function put($, row, value) {
   try {
     const { deny } = await $.config.set({
-      key: `${ROW_PREFIX}${setting}`,
+      key: `${ROW_PREFIX}${row}`,
       value
     });
-    if (deny !== void 0) return unchanged(setting, deny);
-    written[setting] = value;
-    return valueLine(setting, storedOf(options));
+    if (deny !== void 0) return deny;
+    written[row] = value;
+    return void 0;
   } catch (err) {
-    return unchangedBy(setting, err);
+    return errorText(err);
   }
+}
+var modelKept = (reason) => `model unchanged: ${reason}`;
+async function storeModels($, models, eraseModel) {
+  const refused = await put($, "models", models);
+  if (refused !== void 0)
+    return { stored: false, lines: [unchanged("models", refused)] };
+  if (!eraseModel) return { stored: true, lines: [] };
+  const kept = await put($, "model", "");
+  return { stored: true, lines: kept === void 0 ? [] : [modelKept(kept)] };
+}
+async function carryModel($, options) {
+  const models = pendingModels(storedOf(options));
+  return models === void 0 ? [] : (await storeModels($, models, true)).lines;
+}
+async function write($, options, setting, value) {
+  const refused = await put($, setting, value);
+  if (refused !== void 0) return unchanged(setting, refused);
+  const rest = setting === "provider" ? await carryModel($, options) : [];
+  return [valueLine(setting, storedOf(options)), ...rest].join("\n");
+}
+async function writeModels($, options, text) {
+  const stored = storedOf(options);
+  const planned = modelsWrite(stored, text);
+  if ("refused" in planned) return planned.refused;
+  const held = typeof stored.models === "string" ? stored.models : "";
+  if (planned.models === held && !planned.eraseModel)
+    return unchanged("models", alreadyValue(planned.models));
+  const { stored: done, lines } = await storeModels(
+    $,
+    planned.models,
+    planned.eraseModel
+  );
+  return [...done ? modelsLines(storedOf(options)) : [], ...lines].join("\n");
 }
 async function choose($, setting, options) {
   return chooseValue(
@@ -695,7 +757,11 @@ async function read($, options) {
 }
 async function answer($, call, options) {
   if (await denied($, call)) return { deny: REFUSED };
-  const { setting } = call;
+  const { setting, models } = call;
+  if (models !== void 0)
+    return {
+      result: typeof models === "string" && setting === void 0 ? await writeModels($, options, models) : badCall()
+    };
   if (setting === void 0) return { result: await read($, options) };
   if (isValueSetting(setting))
     return { result: await choose($, setting, options) };
@@ -1515,6 +1581,7 @@ function register(on, options) {
     { tool: "mcp__model-router__config" },
     ($, e) => configCall($, e, options)
   );
+  on("config.describe", { key: "model-router.model" }, hideRow);
   on(
     "command.run",
     { command: "model-router:gateway" },

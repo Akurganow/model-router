@@ -176,6 +176,82 @@ test("a bad value is refused before the origin is read", async ($, on) => {
 	);
 });
 
+// The decisions endpoint of OpenAI answers a list, where System One answers an object.
+const OPENAI_ANSWER = JSON.stringify({
+	model: "gpt-6-luna",
+	answers: ["tier", "work"].map((name) => ({
+		type: "score",
+		name,
+		probabilities: [
+			{ value: 0, probability: 0.1 },
+			{ value: 1, probability: 0.8 },
+			{ value: 2, probability: 0.1 },
+		],
+	})),
+});
+
+// With models naming a model for two providers, each provider's request carries its own.
+for (const [provider, url, model, text] of [
+	["typesafe", TYPESAFE_URL, "jev-latest", undefined],
+	[
+		"openai",
+		"https://api.openai.com/v1/decisions",
+		"gpt-6-luna",
+		OPENAI_ANSWER,
+	],
+] as const)
+	test(
+		`${provider} sends the model the models setting names for it`,
+		{
+			options: {
+				provider,
+				api_key: "typesafe-key",
+				openai_api_key: "openai-key",
+				models: "{typesafe:jev-latest, openai:gpt-6-luna}",
+			},
+		},
+		async ($, on) => {
+			const { h } = await callOnce(
+				$,
+				on,
+				{},
+				text === undefined ? {} : { text },
+			);
+			expect(h.requests.map((r) => r.url)).toEqual([url]);
+			expect(JSON.parse(h.sent ?? "").model).toBe(model);
+		},
+	);
+
+for (const models of ["", "   "])
+	test(
+		`models ${JSON.stringify(models)} routes with the default model`,
+		{ options: { api_key: "typesafe-key", models } },
+		async ($, on) => {
+			const { h } = await callOnce($, on);
+			expect(JSON.parse(h.sent ?? "").model).toBe("jev-latest");
+		},
+	);
+
+test(
+	"a stored model option with no models is the TypeSafe model",
+	{ options: { api_key: "typesafe-key", model: "jev-preview" } },
+	async ($, on) => {
+		const { h } = await callOnce($, on);
+		expect(JSON.parse(h.sent ?? "").model).toBe("jev-preview");
+	},
+);
+
+test(
+	"a models text that is not valid skips the call with the setup line",
+	{ options: { api_key: "typesafe-key", models: "{typesafe:a/b}" } },
+	async ($, on) => {
+		const { h } = await callOnce($, on);
+		expect(h.fetched).toBe(0);
+		expect(h.received.model).toBeUndefined();
+		expect(h.logs).toEqual(["skipped, models not valid: run setup"]);
+	},
+);
+
 test("the gateway command writes the plugin's gateway row", async ($, on) => {
 	harness(on);
 	const writes = config(on, (e) => ({ value: e.value }));
