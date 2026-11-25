@@ -64,7 +64,7 @@ export type Attempt = {
 	readonly holder: KeyHolder;
 	// Reaches only the request's key header; never print it.
 	readonly key: string;
-	// Replaces the model of the endpoint row. `plan` never sets it.
+	// Replaces the model of the module's endpoint for the path. `plan` never sets it.
 	readonly model?: string;
 	readonly timeout?: number;
 	readonly retries?: number;

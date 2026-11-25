@@ -2,8 +2,8 @@ import type { RoutingState } from "#core/brief/brief.ts";
 import type { Part, Probabilities } from "#core/parts/part.ts";
 import type { Attempt } from "#core/providers/provider.ts";
 import type { Clock } from "#utils/clock.ts";
-import { endpointOf } from "./endpoints.ts";
 import { type Failure, isFailure, isSuccess, UNKNOWN } from "./failure.ts";
+import { endpointOf } from "./makers/registry.ts";
 import { cleanModel, type Usage } from "./reply.ts";
 import { type Fetch, send } from "./transport/send.ts";
 

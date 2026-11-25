@@ -11,8 +11,8 @@ import {
 	type Maker,
 	plan,
 } from "#core/providers/provider.ts";
-import { endpointOf } from "#core/scoring/endpoints.ts";
 import { limitSignal, ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
+import { endpointOf } from "#core/scoring/makers/registry.ts";
 import { type Decision, route, type Skipped } from "#core/scoring/route.ts";
 import type { Fetch } from "#core/scoring/transport/send.ts";
 import { realClock } from "#utils/clock.ts";
@@ -32,14 +32,14 @@ const ASKED = ASKED_GATEWAYS.flatMap((gateway) => {
 	return holders(choice).map((holder) => ({ holder, choice }));
 });
 
-// The endpoint row of the step a key holder's choice asks. The prompt needs it before a key is typed, so the key is a stand-in that only the plan reads.
-function rowOf(holder: KeyHolder, choice: Choice) {
+// The endpoint of the step a key holder's choice asks. The prompt needs it before a key is typed, so the key is a stand-in that only the plan reads.
+function endpointFor(holder: KeyHolder, choice: Choice) {
 	const [step] = plan(choice, { [holder]: "-" });
-	const row = step && endpointOf(step);
-	if (!row) throw new Error(`no endpoint row for ${holder}`);
-	return row;
+	const endpoint = step && endpointOf(step);
+	if (!endpoint) throw new Error(`no endpoint for ${holder}`);
+	return endpoint;
 }
-const USAGE = `usage: node scripts/calibrate.ts <${ASKED.map(({ holder }) => holder).join("|")}> [model] [--record <file>]  (the cases go to: ${ASKED.map(({ holder, choice }) => `${holder} ${rowOf(holder, choice).url}`).join(", ")}; enter that provider's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
+const USAGE = `usage: node scripts/calibrate.ts <${ASKED.map(({ holder }) => holder).join("|")}> [model] [--record <file>]  (the cases go to: ${ASKED.map(({ holder, choice }) => `${holder} ${endpointFor(holder, choice).url}`).join(", ")}; enter that provider's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
 
 export type Case = {
 	role: string;
@@ -176,7 +176,7 @@ export async function main(
 		}
 	}
 	const { holder, choice } = asked;
-	const key = await readKey(stdin, holder, rowOf(holder, choice).url);
+	const key = await readKey(stdin, holder, endpointFor(holder, choice).url);
 	if (!key) {
 		console.error(USAGE);
 		return EXIT_USAGE;
@@ -230,7 +230,7 @@ export async function main(
 		return a;
 	};
 	console.log(
-		`${model ?? rowOf(holder, choice).model} answered as ${[...answeredBy].join(", ") || "unknown"}`,
+		`${model ?? endpointFor(holder, choice).model} answered as ${[...answeredBy].join(", ") || "unknown"}`,
 	);
 	// A warning, not a failure: the agreement alone decides the exit code.
 	for (const warning of fitWarnings(answeredBy)) console.error(warning);

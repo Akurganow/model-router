@@ -811,6 +811,39 @@ var GEMINI_DECISIONS = {
   )
 };
 
+// src/core/scoring/formats/openrouter-decisions.ts
+var OPENROUTER_DECISIONS = {
+  body: (parts, state, model) => JSON.stringify({
+    state: stateText(state),
+    model,
+    questions: questionMap(parts)
+  }),
+  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
+};
+
+// src/core/scoring/makers/shared.ts
+var BEARER = { name: "Authorization", prefix: "Bearer " };
+var OPENROUTER_DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions";
+
+// src/core/scoring/makers/google.ts
+var GOOGLE_KEY = { name: "x-goog-api-key", prefix: "" };
+var google = {
+  paths: {
+    direct: {
+      url: "https://generativelanguage.googleapis.com/v1beta/decisions",
+      format: GEMINI_DECISIONS,
+      model: "gemini-decision-1",
+      keyHeader: GOOGLE_KEY
+    },
+    openrouter: {
+      url: OPENROUTER_DECISIONS_URL,
+      format: OPENROUTER_DECISIONS,
+      model: "google/gemini-decision-1",
+      keyHeader: BEARER
+    }
+  }
+};
+
 // src/core/scoring/formats/openai-decisions.ts
 function listAnswer(answers, key) {
   if (!Array.isArray(answers)) return void 0;
@@ -844,14 +877,22 @@ var OPENAI_DECISIONS = {
   read: replyReader(listAnswer, usageNamed("input_tokens", "output_tokens"))
 };
 
-// src/core/scoring/formats/openrouter-decisions.ts
-var OPENROUTER_DECISIONS = {
-  body: (parts, state, model) => JSON.stringify({
-    state: stateText(state),
-    model,
-    questions: questionMap(parts)
-  }),
-  read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
+// src/core/scoring/makers/openai.ts
+var openai = {
+  paths: {
+    direct: {
+      url: "https://api.openai.com/v1/decisions",
+      format: OPENAI_DECISIONS,
+      model: "gpt-6-luna",
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: OPENROUTER_DECISIONS_URL,
+      format: OPENROUTER_DECISIONS,
+      model: "openai/gpt-6-luna-decisions",
+      keyHeader: BEARER
+    }
+  }
 };
 
 // src/core/scoring/formats/system-one.ts
@@ -860,12 +901,10 @@ var SYSTEM_ONE = {
   read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
 };
 
-// src/core/scoring/endpoints.ts
-var BEARER = { name: "Authorization", prefix: "Bearer " };
-var GOOGLE_KEY = { name: "x-goog-api-key", prefix: "" };
+// src/core/scoring/makers/typesafe.ts
 var JEV = "jev-latest";
-var ENDPOINTS = {
-  typesafe: {
+var typesafe = {
+  paths: {
     direct: {
       url: "https://api.typesafe.ai/v1/systemone",
       format: SYSTEM_ONE,
@@ -878,40 +917,19 @@ var ENDPOINTS = {
       model: JEV,
       keyHeader: BEARER
     }
-  },
-  openai: {
-    direct: {
-      url: "https://api.openai.com/v1/decisions",
-      format: OPENAI_DECISIONS,
-      model: "gpt-6-luna",
-      keyHeader: BEARER
-    },
-    openrouter: {
-      url: "https://openrouter.ai/api/alpha/decisions",
-      format: OPENROUTER_DECISIONS,
-      model: "openai/gpt-6-luna-decisions",
-      keyHeader: BEARER
-    }
-  },
-  google: {
-    direct: {
-      url: "https://generativelanguage.googleapis.com/v1beta/decisions",
-      format: GEMINI_DECISIONS,
-      model: "gemini-decision-1",
-      keyHeader: GOOGLE_KEY
-    },
-    openrouter: {
-      url: "https://openrouter.ai/api/alpha/decisions",
-      format: OPENROUTER_DECISIONS,
-      model: "google/gemini-decision-1",
-      keyHeader: BEARER
-    }
   }
 };
+
+// src/core/scoring/makers/registry.ts
+var MODULES = {
+  typesafe,
+  openai,
+  google
+};
 function endpointOf(attempt) {
-  if (!Object.hasOwn(ENDPOINTS, attempt.maker)) return void 0;
-  const rows = ENDPOINTS[attempt.maker];
-  return Object.hasOwn(rows, attempt.path) ? rows[attempt.path] : void 0;
+  if (!Object.hasOwn(MODULES, attempt.maker)) return void 0;
+  const { paths } = MODULES[attempt.maker];
+  return Object.hasOwn(paths, attempt.path) ? paths[attempt.path] : void 0;
 }
 
 // src/core/scoring/reply.ts
