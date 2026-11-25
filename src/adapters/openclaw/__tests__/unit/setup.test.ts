@@ -49,6 +49,7 @@ describe("the config migration", () => {
 		const before = structuredClone(FIXTURE);
 		const first = migrateConfig(FIXTURE);
 		assert.deepEqual(first, { config: before, changes: [] });
+		assert.equal(first.config, FIXTURE);
 		assert.deepEqual(FIXTURE, before);
 		assert.deepEqual(migrateConfig(first.config), first);
 	});
@@ -60,8 +61,10 @@ describe("the config migration", () => {
 			{ plugins: { entries: { other: {} } } },
 			{ plugins: { entries: { [PLUGIN_ID]: { hooks: {} } } } },
 			{ plugins: { entries: { [PLUGIN_ID]: { config: "text" } } } },
-		] as unknown as OpenClawConfig[])
+		] as unknown as OpenClawConfig[]) {
 			assert.deepEqual(migrateConfig(config), { config, changes: [] });
+			assert.equal(migrateConfig(config).config, config);
+		}
 	});
 
 	it("writes what the ladder changes into the plugin's settings and nothing else", () => {
