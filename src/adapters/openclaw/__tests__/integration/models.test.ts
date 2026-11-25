@@ -28,7 +28,7 @@ function routing(settings: Record<string, unknown>) {
 	const sent: string[] = [];
 	const fetchFn: Fetch = async (url, init) => {
 		sent.push(JSON.parse(String(init.body)).model);
-		return url.includes("openai.com")
+		return new URL(url).hostname === "api.openai.com"
 			? scoringReply(200, JSON.parse(OPENAI_REPLY))
 			: scoringReply(200, systemOneAnswer(1, 1));
 	};

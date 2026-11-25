@@ -477,7 +477,6 @@ function endpointOf(attempt) {
 var errorText = (err) => err instanceof Error ? err.message : String(err);
 
 // src/core/options/models.ts
-var QUOTED_KEY = /"(?:[^"\\]|\\.)*"(?=\s*:)/g;
 var JSON_CHARS = /["{}]/;
 var makerOf = (name) => MAKERS.find((maker) => maker === name);
 function accept(named, provider, model) {
@@ -499,7 +498,19 @@ function readObject(object) {
 }
 function repeatedKey(text) {
   const seen = /* @__PURE__ */ new Set();
-  for (const [token] of text.matchAll(QUOTED_KEY)) {
+  let at2 = 0;
+  while (at2 < text.length) {
+    if (text[at2] !== '"') {
+      at2 += 1;
+      continue;
+    }
+    let end = at2 + 1;
+    while (end < text.length && text[end] !== '"')
+      end += text[end] === "\\" ? 2 : 1;
+    const token = text.slice(at2, end + 1);
+    at2 = end + 1;
+    while (/\s/.test(text[at2] ?? "")) at2 += 1;
+    if (text[at2] !== ":") continue;
     const key = String(JSON.parse(token));
     if (seen.has(key)) return key;
     seen.add(key);
