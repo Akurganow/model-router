@@ -13,7 +13,7 @@ or {
 	`import($specifier)`,
 	TsImportType() as $specifier
 } where {
-	$specifier <: r"[\s\S]*/(?:formats/|transport/|endpoints\.)[\s\S]*",
+	$specifier <: r"[\s\S]*/(?:formats/|transport/|makers/)[\s\S]*",
 	$filename <: r".*/src/core/scoring/route\.ts",
-	register_diagnostic(span=$specifier, message="route.ts imports no wire format, nothing from transport/ and not the endpoint table.", severity="error")
+	register_diagnostic(span=$specifier, message="route.ts imports no wire format, nothing from transport/ and nothing from makers/.", severity="error")
 }

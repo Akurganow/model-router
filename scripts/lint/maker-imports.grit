@@ -1,0 +1,22 @@
+language js
+
+// A plugin and not an override, for the reason route-imports.grit gives.
+// A sibling is a ./ specifier or the #core/scoring/makers/ alias; the not
+// clause keeps shared.ts, and the filename test leaves registry.ts and
+// shared.ts free, because Grit's regex has no lookahead.
+// JsModuleSource is the specifier of a static import, a bare import and an
+// export … from. An import() call holds its argument as an expression.
+// TsImportType is an import in a type position: typeof import("…") and
+// import("…").X.
+// src-outside.grit explains the [^"']* before the quote.
+or {
+	JsModuleSource() as $specifier,
+	`import($specifier)`,
+	TsImportType() as $specifier
+} where {
+	$specifier <: r"[^\"']*[\"'](?:\./|#core/scoring/makers/)[\s\S]*",
+	$specifier <: not r"[\s\S]*/shared\.ts[\s\S]*",
+	$filename <: r".*/src/core/scoring/makers/[^/]*\.ts",
+	$filename <: not r".*/(?:registry|shared)\.ts",
+	register_diagnostic(span=$specifier, message="A provider module imports no other module, only makers/shared.ts.", severity="error")
+}

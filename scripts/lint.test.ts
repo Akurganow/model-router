@@ -52,7 +52,11 @@ const SCORING = "A scoring/ file imports nothing from decision/ or options/";
 const FORMAT =
 	"A wire format imports only its own folder, scoring/failure.ts, scoring/reply.ts, parts/part.ts, brief/brief.ts and utils/";
 const ROUTE =
-	"route.ts imports no wire format, nothing from transport/ and not the endpoint table";
+	"route.ts imports no wire format, nothing from transport/ and nothing from makers/";
+const MAKER_MODULE =
+	"A provider module imports no other module, only makers/shared.ts";
+const ASK =
+	"ask.ts reaches the provider modules only through makers/registry.ts";
 const TESTS_IMPORT = "A source file imports nothing from a __tests__ folder";
 const ENTRY_OPENCLAW = "The bundle entry imports nothing from OpenClaw";
 const ENTRY_ADAPTER = "The bundle entry imports no other adapter";
@@ -175,7 +179,7 @@ const faults: Fault[] = [
 	{
 		form: "a format imports a scoring file outside its list",
 		file: "src/core/scoring/formats/layers.ts",
-		code: 'import { e } from "#core/scoring/endpoints.ts";',
+		code: 'import { e } from "#core/scoring/makers/registry.ts";',
 		category: RESTRICTED,
 		message: FORMAT,
 	},
@@ -257,11 +261,53 @@ const faults: Fault[] = [
 		message: ROUTE,
 	},
 	{
-		form: "route.ts names a type of the endpoint table with import().X",
+		form: "route.ts names a type of the registry with import().X",
 		file: "src/core/scoring/route.ts",
-		code: 'export type E = import("./endpoints.ts").Endpoint;',
+		code: 'export type E = import("./makers/registry.ts").Endpoint;',
 		category: PLUGIN,
 		message: ROUTE,
+	},
+	{
+		form: "route.ts imports a provider module through an alias",
+		file: "src/core/scoring/route.ts",
+		code: 'import { o } from "#core/scoring/makers/openai.ts";',
+		category: PLUGIN,
+		message: ROUTE,
+	},
+	{
+		form: "a provider module imports another module with ./",
+		file: "src/core/scoring/makers/openai.ts",
+		code: 'import { g } from "./google.ts";',
+		category: PLUGIN,
+		message: MAKER_MODULE,
+	},
+	{
+		form: "a provider module imports another module through an alias",
+		file: "src/core/scoring/makers/openai.ts",
+		code: 'import { t } from "#core/scoring/makers/typesafe.ts";',
+		category: PLUGIN,
+		message: MAKER_MODULE,
+	},
+	{
+		form: "the registry imports decision",
+		file: "src/core/scoring/makers/registry.ts",
+		code: 'import { l } from "#core/decision/ladder.ts";',
+		category: RESTRICTED,
+		message: SCORING,
+	},
+	{
+		form: "ask.ts imports a provider module with ./",
+		file: "src/core/scoring/ask.ts",
+		code: 'import { o } from "./makers/openai.ts";',
+		category: PLUGIN,
+		message: ASK,
+	},
+	{
+		form: "ask.ts names a type of a shared file with import()",
+		file: "src/core/scoring/ask.ts",
+		code: 'export type S = import("#core/scoring/makers/shared.ts").Endpoint;',
+		category: PLUGIN,
+		message: ASK,
 	},
 	{
 		form: "route.ts imports transport code through an alias",
@@ -650,8 +696,22 @@ const clean: Record<string, string[]> = {
 		'import { r } from "#core/output/reasons.ts";',
 		'import { q } from "#core/parts/part.ts";',
 		'import { k } from "./ask.ts";',
-		'import { e } from "./endpoints.ts";',
+		'import { e } from "./makers/registry.ts";',
 		"export const v = [p, r, q, k, e];",
+	],
+	"src/core/scoring/makers/openai.ts": [
+		'import { s } from "./shared.ts";',
+		'import { f } from "#core/scoring/formats/system-one.ts";',
+		"export const v = [s, f];",
+	],
+	"src/core/scoring/makers/registry.ts": [
+		'import { o } from "./openai.ts";',
+		'import { g } from "#core/scoring/makers/google.ts";',
+		"export const v = [o, g];",
+	],
+	"src/core/scoring/ask.ts": [
+		'import { e } from "./makers/registry.ts";',
+		"export const v = e;",
 	],
 	"src/core/scoring/route.ts": [
 		'import { a } from "./ask.ts";',
