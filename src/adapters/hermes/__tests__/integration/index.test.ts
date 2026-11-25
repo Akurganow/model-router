@@ -446,10 +446,9 @@ describe("the models setting of a request", () => {
 				line: "model-router skipped, models not valid: run setup",
 			});
 			assert.deepEqual(scoring.hosts, []);
-			assert.equal(
-				modelsReport({ command: "modelsLines", models }).lines[0],
-				shown,
-			);
+			const report = modelsReport({ command: "modelsLines", models });
+			assert.equal(report.lines[0], shown);
+			assert.equal(report.valid, false);
 		});
 });
 
@@ -473,16 +472,17 @@ describe("the models lines for the config tool", () => {
 					DEFAULTS[1],
 					DEFAULTS[2],
 				],
+				valid: true,
 			},
 		);
 	});
 
 	for (const models of [undefined, null, "", "   "])
 		it(`prints unset and the default models for ${JSON.stringify(models)}`, () => {
-			assert.deepEqual(modelsReport({ command: "modelsLines", models }).lines, [
-				"models: unset",
-				...DEFAULTS,
-			]);
+			assert.deepEqual(modelsReport({ command: "modelsLines", models }), {
+				lines: ["models: unset", ...DEFAULTS],
+				valid: true,
+			});
 		});
 });
 
@@ -616,7 +616,15 @@ describe("the entry", () => {
 				"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 				"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
 			],
+			valid: true,
 		});
+	});
+
+	it("answers the verdict false for a models value that is not valid", () => {
+		const result = call(
+			JSON.stringify({ command: "modelsLines", models: "{typesafe:a/b}" }),
+		);
+		assert.equal(JSON.parse(result.stdout).valid, false);
 	});
 
 	for (const input of ["", "not json", "[1"])

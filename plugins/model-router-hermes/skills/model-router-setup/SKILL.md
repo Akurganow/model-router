@@ -130,7 +130,7 @@ When the person wants another scoring model for one provider, follow these steps
 
 - `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, a JSON object, or a native object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults, the OpenRouter names and when a value is not valid.
 - The person sets `models` in the settings form in Hermes Desktop, or with `hermes config set plugins.entries.model-router-hermes.settings.models '<text>'`. Run the command only on the person's word.
-- The Python passes the stored value to the Node step, which decides whether it is valid. A value that is not valid skips every scored task with `models not valid: run setup`.
+- The Python passes the stored value to the Node step, which decides whether it is valid. A value that is not valid skips every task, a task with a level too, with `models not valid: run setup`.
 - A model name goes as written on the provider's own API, and that API's documentation lists the names. [The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path) says what OpenRouter does with a name.
 - The plugin writes no setting when it loads.
 

@@ -1,6 +1,7 @@
 // src/core/output/reasons.ts
 var CALLER_EFFORT = "caller effort";
 var CONFIG_EFFORT = "config effort";
+var SUBAGENT_MODEL_SET = "subagent model set";
 var KEY_UNSET = "key unset";
 var BAD_REPLY = "bad reply";
 var TIMEOUT = "timeout";
@@ -54,6 +55,117 @@ function plan(choice, keys) {
   return attempts.map(
     (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt
   );
+}
+
+// src/utils/text.ts
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+var textOf = (value) => {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+};
+
+// src/utils/guards.ts
+var isRecord = (v) => typeof v === "object" && v !== null;
+var isPlainObject = (value) => {
+  if (typeof value !== "object" || value === null) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+};
+var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
+
+// src/core/options/models.ts
+var QUOTED_KEY = /"(?:[^"\\]|\\.)*"(?=\s*:)/g;
+var JSON_CHARS = /["{}]/;
+var makerOf = (name) => MAKERS.find((maker) => maker === name);
+function accept(named, provider, model) {
+  const maker = makerOf(provider.trim());
+  const name = model.trim();
+  if (maker === void 0 || name === "" || name.includes("/") || Object.hasOwn(named, maker))
+    return false;
+  named[maker] = name;
+  return true;
+}
+function readObject(object) {
+  const named = {};
+  for (const [provider, model] of Object.entries(object)) {
+    if (typeof model !== "string") return { invalid: provider.trim() };
+    if (!accept(named, provider, model))
+      return { invalid: `${provider.trim()}:${model.trim()}` };
+  }
+  return { models: named };
+}
+function repeatedKey(text) {
+  const seen = /* @__PURE__ */ new Set();
+  for (const [token] of text.matchAll(QUOTED_KEY)) {
+    const key = String(JSON.parse(token));
+    if (seen.has(key)) return key;
+    seen.add(key);
+  }
+  return void 0;
+}
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return void 0;
+  }
+}
+function readOwnerForm(text) {
+  if (text.startsWith("{") !== text.endsWith("}")) return { invalid: text };
+  const inner = (text.startsWith("{") ? text.slice(1, -1) : text).trim();
+  if (inner === "") return { models: {} };
+  const named = {};
+  for (const part of (inner.endsWith(",") ? inner.slice(0, -1) : inner).split(
+    ","
+  )) {
+    const entry = part.trim();
+    const colon = entry.indexOf(":");
+    if (colon < 0 || JSON_CHARS.test(entry.slice(colon + 1)) || !accept(named, entry.slice(0, colon), entry.slice(colon + 1)))
+      return { invalid: entry === "" ? text : entry };
+  }
+  return { models: named };
+}
+var isSilentModels = (stored) => stored === void 0 || stored === null || typeof stored === "string" && stored.trim() === "";
+function readModels(stored) {
+  if (isSilentModels(stored)) return { models: {} };
+  if (isPlainObject(stored)) return readObject(stored);
+  if (typeof stored !== "string") return { invalid: textOf(stored) };
+  const text = stored.trim();
+  if (text.startsWith("{")) {
+    const parsed = parseJson(text);
+    if (isPlainObject(parsed)) {
+      const read = readObject(parsed);
+      if ("invalid" in read) return read;
+      const repeated = repeatedKey(text);
+      return repeated === void 0 ? read : { invalid: repeated };
+    }
+  }
+  return readOwnerForm(text);
+}
+var formatModels = (names) => `{${MAKERS.flatMap((maker) => {
+  const name = names[maker];
+  return name === void 0 ? [] : [`${maker}:${name}`];
+}).join(", ")}}`;
+var sameNames = (a, b) => MAKERS.every((maker) => a[maker] === b[maker]);
+function withModel(models, maker, name) {
+  const read = readModels(models);
+  if ("invalid" in read || read.models[maker] !== void 0) return void 0;
+  const text = typeof models === "string" ? models.trim() : void 0;
+  const parsed = text?.startsWith("{") ? parseJson(text) : void 0;
+  let added;
+  if (isPlainObject(models)) added = { ...models, [maker]: name };
+  else if (isPlainObject(parsed))
+    added = JSON.stringify({ ...parsed, [maker]: name });
+  else added = formatModels({ ...read.models, [maker]: name });
+  const back = readModels(added);
+  return "models" in back && sameNames(back.models, { ...read.models, [maker]: name }) ? added : void 0;
 }
 
 // src/core/parts/part.ts
@@ -114,29 +226,6 @@ function fallsBack(failure) {
   }
 }
 
-// src/utils/text.ts
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
-};
-var textOf = (value) => {
-  if (typeof value === "string") return value;
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    return String(value);
-  }
-};
-
-// src/utils/guards.ts
-var isRecord = (v) => typeof v === "object" && v !== null;
-var isPlainObject = (value) => {
-  if (typeof value !== "object" || value === null) return false;
-  const proto = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
-};
-var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
-
 // src/core/scoring/formats/shared.ts
 var stateText = (state) => JSON.stringify(state);
 var questionMap = (parts) => Object.fromEntries(parts.map((p) => [p.key, p.question]));
@@ -163,7 +252,7 @@ var mapAnswer = (answers, key) => {
   const { 0: p0, 1: p1, 2: p2 } = probabilities;
   return levelProbabilities(p0, p1, p2);
 };
-function parseJson(text) {
+function parseJson2(text) {
   try {
     return JSON.parse(text);
   } catch {
@@ -171,7 +260,7 @@ function parseJson(text) {
   }
 }
 var replyReader = (probabilitiesOf, usageOf) => (parts, text) => {
-  const reply = parseJson(text);
+  const reply = parseJson2(text);
   const { answers, model, usage } = isRecord(reply) ? reply : {};
   const pairs = [];
   for (const part of parts) {
@@ -342,94 +431,6 @@ function endpointOf(attempt) {
   };
 }
 
-// src/core/options/models.ts
-var QUOTED_KEY = /"(?:[^"\\]|\\.)*"(?=\s*:)/g;
-var JSON_CHARS = /["{}]/;
-var makerOf = (name) => MAKERS.find((maker) => maker === name);
-function accept(named, provider, model) {
-  const maker = makerOf(provider.trim());
-  const name = model.trim();
-  if (maker === void 0 || name === "" || name.includes("/") || Object.hasOwn(named, maker))
-    return false;
-  named[maker] = name;
-  return true;
-}
-function readObject(object) {
-  const named = {};
-  for (const [provider, model] of Object.entries(object)) {
-    if (typeof model !== "string") return { invalid: provider.trim() };
-    if (!accept(named, provider, model))
-      return { invalid: `${provider.trim()}:${model.trim()}` };
-  }
-  return { models: named };
-}
-function repeatedKey(text) {
-  const seen = /* @__PURE__ */ new Set();
-  for (const [token] of text.matchAll(QUOTED_KEY)) {
-    const key = String(JSON.parse(token));
-    if (seen.has(key)) return key;
-    seen.add(key);
-  }
-  return void 0;
-}
-function parseJson2(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return void 0;
-  }
-}
-function readOwnerForm(text) {
-  if (text.startsWith("{") !== text.endsWith("}")) return { invalid: text };
-  const inner = (text.startsWith("{") ? text.slice(1, -1) : text).trim();
-  if (inner === "") return { models: {} };
-  const named = {};
-  for (const part of (inner.endsWith(",") ? inner.slice(0, -1) : inner).split(
-    ","
-  )) {
-    const entry = part.trim();
-    const colon = entry.indexOf(":");
-    if (colon < 0 || JSON_CHARS.test(entry.slice(colon + 1)) || !accept(named, entry.slice(0, colon), entry.slice(colon + 1)))
-      return { invalid: entry === "" ? text : entry };
-  }
-  return { models: named };
-}
-var isSilentModels = (stored) => stored === void 0 || stored === null || typeof stored === "string" && stored.trim() === "";
-function readModels(stored) {
-  if (isSilentModels(stored)) return { models: {} };
-  if (isPlainObject(stored)) return readObject(stored);
-  if (typeof stored !== "string") return { invalid: textOf(stored) };
-  const text = stored.trim();
-  if (text.startsWith("{")) {
-    const parsed = parseJson2(text);
-    if (isPlainObject(parsed)) {
-      const read = readObject(parsed);
-      if ("invalid" in read) return read;
-      const repeated = repeatedKey(text);
-      return repeated === void 0 ? read : { invalid: repeated };
-    }
-  }
-  return readOwnerForm(text);
-}
-var formatModels = (names) => `{${MAKERS.flatMap((maker) => {
-  const name = names[maker];
-  return name === void 0 ? [] : [`${maker}:${name}`];
-}).join(", ")}}`;
-var sameNames = (a, b) => MAKERS.every((maker) => a[maker] === b[maker]);
-function withModel(models, maker, name) {
-  const read = readModels(models);
-  if ("invalid" in read || read.models[maker] !== void 0) return void 0;
-  const text = typeof models === "string" ? models.trim() : void 0;
-  const parsed = text?.startsWith("{") ? parseJson2(text) : void 0;
-  let added;
-  if (isPlainObject(models)) added = { ...models, [maker]: name };
-  else if (isPlainObject(parsed))
-    added = JSON.stringify({ ...parsed, [maker]: name });
-  else added = formatModels({ ...read.models, [maker]: name });
-  const back = readModels(added);
-  return "models" in back && sameNames(back.models, { ...read.models, [maker]: name }) ? added : void 0;
-}
-
 // src/core/options/migrate.ts
 var typesafeFromModel = (stored) => {
   const { model, models } = stored;
@@ -560,6 +561,20 @@ var effortFor = (tier2, work2) => EFFORT_BY_TIER[tier2][work2];
 // src/adapters/hermes/texts.ts
 var MODELS_SETTING = "models";
 var MODELS_COMMAND = "modelsLines";
+var NODE_NOT_FOUND = "node not found";
+var GRACE_MS = 1e3;
+var HERMES_TEXTS = {
+  graceMs: GRACE_MS,
+  // The reasons Python gives for a task before Node runs, or when Node cannot answer.
+  reasons: {
+    modelsNotValid: notValid(MODELS_SETTING),
+    keyUnset: KEY_UNSET,
+    subagentModelSet: SUBAGENT_MODEL_SET,
+    nodeNotFound: NODE_NOT_FOUND,
+    timeout: TIMEOUT,
+    failed: FAILED
+  }
+};
 
 // src/adapters/hermes/report.ts
 function isModelsCommand(raw) {
@@ -568,7 +583,8 @@ function isModelsCommand(raw) {
   return command === MODELS_COMMAND;
 }
 var modelsReport = (command) => ({
-  lines: modelsLines({ [MODELS_SETTING]: command[MODELS_SETTING] })
+  lines: modelsLines({ [MODELS_SETTING]: command[MODELS_SETTING] }),
+  valid: !("invalid" in readModels(command[MODELS_SETTING]))
 });
 
 // src/core/brief/brief.ts

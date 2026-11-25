@@ -261,5 +261,7 @@ class RouterCase(unittest.TestCase):
         router = make_router(settings=settings, script=stub.script, **router_args)
         return router.route(task(), {} if config is None else config), stub
 
-    def assertNodeNotRun(self, stub):
-        self.assertFalse(stub.capture.exists())
+    def assertRoutingNotRun(self, stub):
+        """Node may answer the models verdict, which has a `command`, but never a routing request."""
+        if stub.capture.exists():
+            self.assertIn("command", json.loads(stub.captured()["stdin"]))

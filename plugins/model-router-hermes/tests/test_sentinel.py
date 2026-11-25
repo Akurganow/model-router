@@ -85,7 +85,8 @@ class SentinelTest(unittest.TestCase):
     def test_config_api_key_never_reaches_node_or_a_log(self):
         config = {"api_key": CONFIG_API_SENTINEL, "api_mode": "chat"}
         route, stub, logs = self.route(config, route_reply("small", "low"))
-        self.assertFalse(stub.capture.exists())  # the subagent-model gate answers first
+        # The subagent-model gate answers before any routing request: only the models verdict ran.
+        self.assertEqual(set(json.loads(stub.captured()["stdin"])), {"command", "models"})
         self.assertNotIn(CONFIG_API_SENTINEL, logs)
         self.assertNotIn(TASK_SENTINEL, logs)
         # The default route carries the user's own api_key back to Hermes, as Hermes's default does.

@@ -1,3 +1,4 @@
+import { readModels } from "#core/options/models.ts";
 import { modelsLines } from "#core/options/settings.ts";
 import { isRecord } from "#utils/guards.ts";
 import { MODELS_COMMAND, MODELS_SETTING } from "./texts.ts";
@@ -17,10 +18,12 @@ export function isModelsCommand(raw: unknown): raw is ModelsCommand {
 /**
  * Returns the lines the config tool prints for the `models` setting, the same
  * lines every harness prints: the stored value, then the model of each provider,
- * or the part of the value that is not valid. Never throws.
+ * or the part of the value that is not valid. `valid` is the verdict the Python
+ * gate reads, so Python parses nothing about the value. Never throws.
  */
 export const modelsReport = (
 	command: ModelsCommand,
-): { readonly lines: string[] } => ({
+): { readonly lines: string[]; readonly valid: boolean } => ({
 	lines: modelsLines({ [MODELS_SETTING]: command[MODELS_SETTING] }),
+	valid: !("invalid" in readModels(command[MODELS_SETTING])),
 });

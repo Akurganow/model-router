@@ -16,6 +16,7 @@ from .settings import (
     choice,
     first_not_valid,
     found_keys,
+    models_request,
     read_models,
     read_slot,
     read_texts,
@@ -96,10 +97,13 @@ class Router:
 
     def _decide(self, task, config, base, window):
         # A setting that is not valid skips every task, a pinned level too, before any secret or Node.
+        # Then Node's verdict on `models` does the same, before any secret.
         stored = read_texts(self._ctx, self._constants)
         not_valid = first_not_valid(self._constants, stored)
         if not_valid is not None:
             return {**base, "label": not_valid["skip"]}
+        if not self._models_valid(stored, window):
+            return self._skip(base, "modelsNotValid")
         slot_settings = {
             name: read_slot(self._ctx, spec["setting"])
             for name, spec in self._constants["slots"].items()
@@ -131,6 +135,22 @@ class Router:
             "description": params.description(task),
         }
         return self._ask_node(node_path, request, base, slot_settings)
+
+    def _models_valid(self, stored, window):
+        """Node's verdict on the stored `models` value, which Python does not read.
+
+        Without a verdict, from no Node or a failed run, the value counts as valid: a scored task then meets
+        the same failure in its own run, and a pinned task needs no Node."""
+        node_path = self._api.find_node()
+        if not node_path:
+            return True
+        timeout_s = (max(window.remaining_ms(), 0) + self._constants["graceMs"]) / MS_PER_SECOND
+        try:
+            return node.run_models(
+                [node_path, self._script], models_request(self._ctx, self._constants), timeout_s
+            ).valid
+        except (node.NodeTimeout, node.NodeFailed):
+            return True
 
     def _pinned(self, level, config, base, slot_settings):
         """The pass-through of a pinned level: no Jev call, and a label only when its slot has no model."""

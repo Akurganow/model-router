@@ -7,7 +7,7 @@ import json
 from . import node
 from .constants import CONSTANTS, MS_PER_SECOND, SCRIPT
 from .hermes_api import live_api
-from .settings import choice, found_keys, read_models, read_slot, read_texts, setting_lines
+from .settings import choice, found_keys, models_request, read_slot, read_texts, setting_lines
 
 
 def _slot_line(texts, name, slot):
@@ -18,22 +18,19 @@ def _slot_line(texts, name, slot):
     )
 
 
-def _models_lines(ctx, api, constants, script):
-    """Node's lines for the stored models value, which Python does not read; one line when Node cannot answer."""
-    texts = constants["texts"]
+def _models(ctx, api, constants, script):
+    """Node's lines and verdict for the stored models value, which Python does not read; None when Node cannot answer."""
     node_path = api.find_node()
     if not node_path:
-        return [texts["modelsUnavailable"]]
-    request = {
-        "command": texts["modelsCommand"],
-        constants["modelsSetting"]: read_models(ctx, constants),
-    }
+        return None
     try:
-        return node.run_lines(
-            [node_path, script], request, constants["routingLimitMs"] / MS_PER_SECOND
+        return node.run_models(
+            [node_path, script],
+            models_request(ctx, constants),
+            constants["routingLimitMs"] / MS_PER_SECOND,
         )
     except (node.NodeTimeout, node.NodeFailed):
-        return [texts["modelsUnavailable"]]
+        return None
 
 
 def _read_all(ctx, api, constants, script):
@@ -42,10 +39,12 @@ def _read_all(ctx, api, constants, script):
     stored = read_texts(ctx, constants)
     leaf = choice(constants, stored)
     lines = setting_lines(constants, stored)
-    lines += _models_lines(ctx, api, constants, script)
+    models = _models(ctx, api, constants, script)
+    lines += [texts["modelsUnavailable"]] if models is None else models.lines
     lines += [_slot_line(texts, name, read_slot(ctx, name)) for name in settings]
-    # While a setting is not valid, no holder is known, so no key is looked up or listed.
-    holders = leaf["holders"] if leaf is not None else []
+    # While a setting or the models value is not valid, no key is looked up or listed.
+    # With no answer from Node the verdict is unknown, and the keys are listed.
+    holders = leaf["holders"] if leaf is not None and (models is None or models.valid) else []
     keys = found_keys(api, constants, holders)
     lines += [texts["keyLines"][name]["set" if name in keys else "unset"] for name in holders]
     return texts["lineBreak"].join(lines)

@@ -91,7 +91,9 @@ no request. That list is the whole request, and
 
 ## The program the plugin starts
 
-The plugin starts one Node program, `route.mjs`, for each task it routes. It
+The plugin starts one Node program, `route.mjs`, for each task it routes. It also
+starts it once for each task to read the verdict on `models`. That run gets only the
+stored `models` value, sends no key and makes no request. It
 uses Hermes's own Node and never the Node on `PATH`. The program makes the
 requests above.
 

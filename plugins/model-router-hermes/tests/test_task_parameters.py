@@ -173,7 +173,7 @@ class LevelTest(RouterCase):
         route = router.route(item(**params), {} if config is None else config)
         return route, stub
 
-    def test_a_set_level_sets_its_slot_without_node_or_label(self):
+    def test_a_set_level_sets_its_slot_without_a_scoring_run_or_label(self):
         settings = good_settings(middle_model={"provider": "openrouter", "model": "middle-model"})
         for level, model in ((0, "small-model"), (1, "middle-model"), (2, "large-model")):
             with self.subTest(level):
@@ -183,7 +183,7 @@ class LevelTest(RouterCase):
                 self.assertEqual(
                     route, {"api_mode": "chat", "model": model, "provider": "openrouter"}
                 )
-                self.assertNodeNotRun(stub)
+                self.assertRoutingNotRun(stub)
 
     def test_the_middle_level_with_no_middle_model_passes_through_with_its_label(self):
         route, stub = self.pinned({"api_mode": "chat", "reasoning_effort": "low"}, level=1)
@@ -195,14 +195,14 @@ class LevelTest(RouterCase):
                 "label": "model-router L1 middle model unset",
             },
         )
-        self.assertNodeNotRun(stub)
+        self.assertRoutingNotRun(stub)
 
     def test_a_pinned_level_needs_no_key_and_no_other_slot(self):
         route, stub = self.pinned(
             api=fake_api(secrets={}), settings=good_settings(small_model=None), level=2
         )
         self.assertEqual(route, {"model": "large-model", "provider": "openrouter"})
-        self.assertNodeNotRun(stub)
+        self.assertRoutingNotRun(stub)
 
     def test_the_caller_effort_joins_a_pinned_level(self):
         route, _ = self.pinned(level=0, reasoning_effort="xhigh")
@@ -229,7 +229,7 @@ class LevelTest(RouterCase):
                         route,
                         {"api_mode": "chat", "reasoning_effort": "high", "label": labels[slot]},
                     )
-                    self.assertNodeNotRun(stub)
+                    self.assertRoutingNotRun(stub)
 
     def test_a_set_subagent_model_wins(self):
         route, stub = self.pinned({"model": "m"}, level=2, reasoning_effort="high")
@@ -237,7 +237,7 @@ class LevelTest(RouterCase):
             route,
             {"model": "m", "reasoning_effort": "high", "label": skipped_label("subagentModelSet")},
         )
-        self.assertNodeNotRun(stub)
+        self.assertRoutingNotRun(stub)
 
     def test_a_value_that_is_not_a_level_is_absent(self):
         for value in (True, False, 2.0, "2", 3, -1, None, [2]):

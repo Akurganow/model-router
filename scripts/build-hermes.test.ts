@@ -166,6 +166,7 @@ test("the constants hold the values src/ gives", () => {
 	);
 	assert.deepEqual(constants.keyVariables, KEY_VARIABLES);
 	assert.deepEqual(constants.skips, {
+		modelsNotValid: "model-router skipped, models not valid: run setup",
 		keyUnset: "model-router skipped, key unset",
 		subagentModelSet: "model-router skipped, subagent model set",
 		nodeNotFound: "model-router skipped, node not found",

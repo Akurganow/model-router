@@ -31,7 +31,7 @@ _stub_count = [0]
 
 def stub_node(**kwargs):
     _stub_count[0] += 1
-    kwargs.setdefault("reply", {"lines": STUB_LINES})
+    kwargs.setdefault("reply", {"lines": STUB_LINES, "valid": True})
     return make_node_stub(Path(_STUBS.name), name=f"stub{_stub_count[0]}", **kwargs)
 
 
@@ -158,7 +158,7 @@ class ReadAllTest(unittest.TestCase):
 class ModelsLinesTest(unittest.TestCase):
     def test_the_lines_node_gives_follow_the_settings_and_come_before_the_slots(self):
         lines = ["models: {typesafe:jev-preview}", "typesafe model: jev-preview (OpenRouter: x)"]
-        handler = handler_for(stub=stub_node(reply={"lines": lines}))
+        handler = handler_for(stub=stub_node(reply={"lines": lines, "valid": True}))
         self.assertEqual(
             call(handler).split(LINES)[2:5],
             [*lines, "small_model: openrouter small-model"],
@@ -180,13 +180,37 @@ class ModelsLinesTest(unittest.TestCase):
         self.assertIn("models: unset", text)
         self.assertTrue(stub.capture.exists())
 
+    def test_a_models_value_that_is_not_valid_lists_no_key(self):
+        looked_up = []
+        shown = "models: {typesafe:a/b} (not valid: typesafe:a/b)"
+        stub = stub_node(reply={"lines": [shown], "valid": False})
+        handler = handler_for(good_settings(), SECRETS, stub=stub, get_secret=looked_up.append)
+        self.assertEqual(
+            call(handler),
+            LINES.join(
+                [
+                    "provider: typesafe",
+                    "gateway: direct (typesafe)",
+                    shown,
+                    "small_model: openrouter small-model",
+                    "middle_model: unset",
+                    "large_model: openrouter large-model",
+                ]
+            ),
+        )
+        self.assertEqual(looked_up, [])
+
     def test_no_node_or_a_failed_run_gives_the_unavailable_line(self):
         for name, handler in (
             ("no node", handler_for(find_node=lambda: None)),
             ("exit code", handler_for(stub=stub_node(exit_code=1))),
             ("not json", handler_for(stub=stub_node(raw="no\n"))),
-            ("no lines", handler_for(stub=stub_node(reply={"lines": "models: unset"}))),
-            ("no line text", handler_for(stub=stub_node(reply={"lines": [3]}))),
+            (
+                "no lines",
+                handler_for(stub=stub_node(reply={"lines": "models: unset", "valid": True})),
+            ),
+            ("no line text", handler_for(stub=stub_node(reply={"lines": [3], "valid": True}))),
+            ("no verdict", handler_for(stub=stub_node(reply={"lines": ["models: unset"]}))),
         ):
             with self.subTest(name):
                 lines = call(handler).split(LINES)
@@ -212,6 +236,10 @@ class RealBundleTest(unittest.TestCase):
                 self.assertEqual(
                     lines[3], "typesafe model: jev-preview (OpenRouter: jev-preview)"
                 )
+
+    def test_a_value_that_is_not_valid_lists_no_key(self):
+        self.assertNotIn("key:", "\n".join(self.lines("{typesafe:a/b}")))
+        self.assertIn("typesafe key: unset", "\n".join(self.lines("{typesafe:a}")))
 
     def test_an_entry_that_is_not_valid_is_named(self):
         self.assertEqual(

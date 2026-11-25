@@ -46,6 +46,16 @@ class Route:
     line: str
 
 
+@dataclass(frozen=True)
+class Models:
+    """Node's answer to the models command: the lines to print and its verdict on the stored value.
+
+    Python reads the verdict and nothing else about `models`."""
+
+    lines: list
+    valid: bool
+
+
 # Node's fetch reads the proxy variables only when this switch is set.
 PROXY_SWITCH = "NODE_USE_ENV_PROXY"
 _PROXY_TARGETS = ("HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy")
@@ -89,13 +99,15 @@ def parse_response(text):
     return _checked(_json(text))
 
 
-def parse_lines(text):
-    """Reads Node's stdout for the models command. Raises NodeFailed unless it is a list of lines."""
+def parse_models(text):
+    """Reads Node's stdout for the models command. Raises NodeFailed unless it holds lines and a verdict."""
     reply = _json(text)
     lines = reply.get("lines") if isinstance(reply, dict) else None
     if not isinstance(lines, list) or not all(isinstance(line, str) for line in lines):
         raise NodeFailed("reply has no lines")
-    return lines
+    if not isinstance(reply.get("valid"), bool):
+        raise NodeFailed("reply has no verdict")
+    return Models(lines, reply["valid"])
 
 
 def _stdout(command, request, timeout_s):
@@ -127,6 +139,6 @@ def run_node(command, request, timeout_s):
     return parse_response(_stdout(command, request, timeout_s))
 
 
-def run_lines(command, request, timeout_s):
-    """Runs the models command; returns the lines Node answers."""
-    return parse_lines(_stdout(command, request, timeout_s))
+def run_models(command, request, timeout_s):
+    """Runs the models command; returns Node's lines and verdict."""
+    return parse_models(_stdout(command, request, timeout_s))

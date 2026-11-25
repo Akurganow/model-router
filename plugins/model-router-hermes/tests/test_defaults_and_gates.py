@@ -1,3 +1,4 @@
+import json
 import sys
 import unittest
 
@@ -54,7 +55,7 @@ class GateTest(RouterCase):
     def assertSkipped(self, reason, config=None, **router_args):
         route, stub = self.route(config, **router_args)
         self.assertEqual(route["label"], skipped_label(reason))
-        self.assertNodeNotRun(stub)
+        self.assertRoutingNotRun(stub)
         return route
 
     def test_key_unset_for_each_gateway_value(self):
@@ -97,7 +98,7 @@ class GateTest(RouterCase):
         ):
             route, stub = self.route(api=api, settings=good_settings(**stored))
             self.assertEqual(route["label"], label)
-            self.assertNodeNotRun(stub)
+            self.assertRoutingNotRun(stub)
         self.assertEqual(calls, [])
 
     def test_a_setting_that_is_not_valid_skips_a_task_with_a_level_too(self):
@@ -105,6 +106,43 @@ class GateTest(RouterCase):
         router = make_router(script=stub.script, settings=good_settings(gateway="fast"))
         route = router.route({"goal": "g", "index": 0, "level": 1}, {})
         self.assertEqual(route, {"label": "model-router skipped, gateway not valid: run setup"})
+
+    def test_a_models_value_that_is_not_valid_skips_every_task_before_any_secret(self):
+        calls = []
+        api = fake_api(get_secret=calls.append)
+        verdict = {"lines": ["models: x (not valid: x)"], "valid": False}
+        for name, params in (("scored", {}), ("pinned", {"level": 1}), ("effort", {"reasoning_effort": "low"})):
+            with self.subTest(name):
+                stub = self.stub(reply=verdict)
+                router = make_router(script=stub.script, api=api)
+                route = router.route({**task(), **params}, {"api_mode": "chat"})
+                self.assertEqual(
+                    route["label"], "model-router skipped, models not valid: run setup"
+                )
+                self.assertRoutingNotRun(stub)
+        self.assertEqual(calls, [])
+
+    def test_a_valid_verdict_lets_a_pinned_task_pass(self):
+        stub = self.stub(reply={"lines": ["models: unset"], "valid": True})
+        router = make_router(script=stub.script)
+        route = router.route({**task(), "level": 0}, {})
+        self.assertEqual(route, {"model": "small-model", "provider": "openrouter"})
+
+    def test_the_models_value_goes_to_node_as_stored_for_the_verdict(self):
+        stub = self.stub(reply={"lines": [], "valid": True})
+        router = make_router(script=stub.script, settings=good_settings(models="{typesafe:x}"))
+        router.route({**task(), "level": 0}, {})
+        self.assertEqual(
+            json.loads(stub.captured()["stdin"]),
+            {"command": "modelsLines", "models": "{typesafe:x}"},
+        )
+
+    def test_no_verdict_from_node_leaves_a_pinned_task_routed(self):
+        stub = self.stub(raw="no\n")
+        for api in (fake_api(find_node=lambda: None), fake_api()):
+            router = make_router(script=stub.script, api=api)
+            route = router.route({**task(), "level": 0}, {})
+            self.assertEqual(route, {"model": "small-model", "provider": "openrouter"})
 
     def test_blank_key_counts_as_unset(self):
         self.assertSkipped("keyUnset", api=fake_api(secrets={"TYPESAFE_API_KEY": "  "}))
@@ -178,7 +216,7 @@ class GateTest(RouterCase):
         for reason, fix in steps:
             route, stub = self.route(dict(config), api=build(), clock=clock)
             self.assertEqual(route["label"], skipped_label(reason))
-            self.assertNodeNotRun(stub)
+            self.assertRoutingNotRun(stub)
             fix()
 
 

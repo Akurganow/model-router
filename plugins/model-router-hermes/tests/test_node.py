@@ -76,6 +76,33 @@ class ResponseTest(unittest.TestCase):
                 node.parse_response(text)
 
 
+class ModelsReplyTest(unittest.TestCase):
+    def parse(self, value):
+        return node.parse_models(json.dumps(value) + "\n")
+
+    def test_the_lines_and_the_verdict(self):
+        for valid in (True, False):
+            self.assertEqual(
+                self.parse({"lines": ["models: unset"], "valid": valid}),
+                node.Models(["models: unset"], valid),
+            )
+
+    def test_a_reply_without_lines_or_a_boolean_verdict_fails(self):
+        for value in (
+            {},
+            [],
+            {"valid": True},
+            {"lines": "models: unset", "valid": True},
+            {"lines": [3], "valid": True},
+            {"lines": []},
+            {"lines": [], "valid": "yes"},
+            {"lines": [], "valid": 1},
+            {"lines": [], "valid": None},
+        ):
+            with self.assertRaises(node.NodeFailed, msg=value):
+                self.parse(value)
+
+
 class EnvironmentTest(unittest.TestCase):
     def test_only_the_allowlist_passes(self):
         environ = {

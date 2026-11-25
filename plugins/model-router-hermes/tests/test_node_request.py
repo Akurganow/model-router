@@ -180,7 +180,7 @@ class BudgetHandoffTest(RouterCase):
                 clock.advance(wait)
                 route = router.route({"goal": "g", "index": 1}, {})
                 self.assertEqual(route["label"], skipped_label("timeout"))
-                self.assertNodeNotRun(stub)
+                self.assertRoutingNotRun(stub)
 
     def test_task_zero_opens_a_new_record(self):
         clock = FakeClock()

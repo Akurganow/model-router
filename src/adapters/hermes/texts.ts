@@ -3,6 +3,7 @@ import type { Stored } from "#core/options/settings.ts";
 import {
 	FAILED,
 	KEY_UNSET,
+	notValid,
 	SUBAGENT_MODEL_SET,
 	TIMEOUT,
 } from "#core/output/reasons.ts";
@@ -32,6 +33,7 @@ export const HERMES_TEXTS = {
 	graceMs: GRACE_MS,
 	// The reasons Python gives for a task before Node runs, or when Node cannot answer.
 	reasons: {
+		modelsNotValid: notValid(MODELS_SETTING),
 		keyUnset: KEY_UNSET,
 		subagentModelSet: SUBAGENT_MODEL_SET,
 		nodeNotFound: NODE_NOT_FOUND,

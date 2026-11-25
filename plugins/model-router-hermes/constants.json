@@ -136,6 +136,7 @@
 	},
 	"efforts": ["low", "medium", "high", "xhigh"],
 	"skips": {
+		"modelsNotValid": "model-router skipped, models not valid: run setup",
 		"keyUnset": "model-router skipped, key unset",
 		"subagentModelSet": "model-router skipped, subagent model set",
 		"nodeNotFound": "model-router skipped, node not found",
