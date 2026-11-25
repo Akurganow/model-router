@@ -3,30 +3,17 @@ import {
 	type Maker,
 	type ModelNames,
 } from "#core/providers/provider.ts";
+import { isPlainObject } from "#utils/guards.ts";
+import { textOf } from "#utils/text.ts";
 
 type ModelsRead =
 	| { readonly models: ModelNames }
 	| { readonly invalid: string };
 
-const QUOTED = /"(?:[^"\\]|\\.)*"/g;
-
-export const isPlainObject = (
-	value: unknown,
-): value is Record<string, unknown> => {
-	if (typeof value !== "object" || value === null) return false;
-	const proto = Object.getPrototypeOf(value);
-	return proto === Object.prototype || proto === null;
-};
-
-/** Returns a stored value as the person would read it: a text as written, anything else as JSON. */
-export const textOf = (value: unknown): string => {
-	if (typeof value === "string") return value;
-	try {
-		return JSON.stringify(value) ?? String(value);
-	} catch {
-		return String(value);
-	}
-};
+// A quoted token is a key when a colon follows it.
+const QUOTED_KEY = /"(?:[^"\\]|\\.)*"(?=\s*:)/g;
+// The short form cannot hold these in a name: they belong to the JSON form.
+const JSON_CHARS = /["{}]/;
 
 const makerOf = (name: string): Maker | undefined =>
 	MAKERS.find((maker) => maker === name);
@@ -61,13 +48,11 @@ function readObject(object: Record<string, unknown>): ModelsRead {
 	return { models: named };
 }
 
-// JSON.parse keeps the last of two equal keys. With every value a string, the string tokens
-// alternate key and value, so the keys are the even tokens of the raw text.
+// JSON.parse keeps the last of two equal keys, so the raw text is the only place that shows a repeat.
 function repeatedKey(text: string): string | undefined {
 	const seen = new Set<string>();
-	const tokens = text.match(QUOTED) ?? [];
-	for (let i = 0; i < tokens.length; i += 2) {
-		const key = String(JSON.parse(tokens[i] ?? '""')).trim();
+	for (const [token] of text.matchAll(QUOTED_KEY)) {
+		const key = String(JSON.parse(token));
 		if (seen.has(key)) return key;
 		seen.add(key);
 	}
@@ -95,6 +80,7 @@ function readOwnerForm(text: string): ModelsRead {
 		const colon = entry.indexOf(":");
 		if (
 			colon < 0 ||
+			JSON_CHARS.test(entry.slice(colon + 1)) ||
 			!accept(named, entry.slice(0, colon), entry.slice(colon + 1))
 		)
 			return { invalid: entry === "" ? text : entry };
@@ -102,17 +88,32 @@ function readOwnerForm(text: string): ModelsRead {
 	return { models: named };
 }
 
+/** Tells whether a stored `models` names nothing: unset, null, or text of spaces alone. */
+export const isSilentModels = (stored: unknown): boolean =>
+	stored === undefined ||
+	stored === null ||
+	(typeof stored === "string" && stored.trim() === "");
+
 /**
  * Returns the scoring model each maker names in a stored `models` value, or the failing part of
  * it. A silent value names none. A text is the short form `{typesafe:jev-preview, openai:gpt-6-luna}`
  * with optional braces, or a JSON object; a native object is read the same way. Never throws.
+ *
+ * The failing part names:
+ * - `provider:model` (trimmed) for an entry of a known form that fails: a provider that is not a
+ *   maker, an empty model, a model with a slash, a provider named twice, or a short-form model that
+ *   holds a quote or a brace;
+ * - the entry as written for an entry with no colon, or that holds a quote or a brace after it;
+ * - the provider alone for a JSON or object value that is not text, and for a JSON key that
+ *   repeats;
+ * - the whole text for a text with an unpaired brace, an empty entry between two commas, or a
+ *   value that is neither a text nor an object, shown as JSON.
  */
 export function readModels(stored: unknown): ModelsRead {
-	if (stored === undefined || stored === null) return { models: {} };
+	if (isSilentModels(stored)) return { models: {} };
 	if (isPlainObject(stored)) return readObject(stored);
 	if (typeof stored !== "string") return { invalid: textOf(stored) };
 	const text = stored.trim();
-	if (text === "") return { models: {} };
 	if (text.startsWith("{")) {
 		const parsed = parseJson(text);
 		if (isPlainObject(parsed)) {
@@ -131,3 +132,33 @@ export const formatModels = (names: ModelNames): string =>
 		const name = names[maker];
 		return name === undefined ? [] : [`${maker}:${name}`];
 	}).join(", ")}}`;
+
+const sameNames = (a: ModelNames, b: ModelNames): boolean =>
+	MAKERS.every((maker) => a[maker] === b[maker]);
+
+/**
+ * Returns `models` with the maker's entry added in the form `models` already has: a native object
+ * stays an object, a JSON text stays JSON, any other text stays the short form. Returns undefined
+ * when `models` is not valid, names the maker already, or the result would not read back as the
+ * old names plus this one.
+ */
+export function withModel(
+	models: unknown,
+	maker: Maker,
+	name: string,
+): string | Record<string, unknown> | undefined {
+	const read = readModels(models);
+	if ("invalid" in read || read.models[maker] !== undefined) return undefined;
+	const text = typeof models === "string" ? models.trim() : undefined;
+	const parsed = text?.startsWith("{") ? parseJson(text) : undefined;
+	let added: string | Record<string, unknown>;
+	if (isPlainObject(models)) added = { ...models, [maker]: name };
+	else if (isPlainObject(parsed))
+		added = JSON.stringify({ ...parsed, [maker]: name });
+	else added = formatModels({ ...read.models, [maker]: name });
+	const back = readModels(added);
+	return "models" in back &&
+		sameNames(back.models, { ...read.models, [maker]: name })
+		? added
+		: undefined;
+}

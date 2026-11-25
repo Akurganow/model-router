@@ -1,3 +1,17 @@
+// src/utils/text.ts
+var nonEmpty = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text === "" ? void 0 : text;
+};
+var textOf = (value) => {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+};
+
 // src/core/providers/provider.ts
 var MAKERS = ["typesafe", "openai", "google"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
@@ -8,21 +22,17 @@ var GATEWAYS = [
   "openrouter"
 ];
 
-// src/core/options/models.ts
-var QUOTED = /"(?:[^"\\]|\\.)*"/g;
+// src/utils/guards.ts
+var isRecord = (v) => typeof v === "object" && v !== null;
 var isPlainObject = (value) => {
   if (typeof value !== "object" || value === null) return false;
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 };
-var textOf = (value) => {
-  if (typeof value === "string") return value;
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    return String(value);
-  }
-};
+
+// src/core/options/models.ts
+var QUOTED_KEY = /"(?:[^"\\]|\\.)*"(?=\s*:)/g;
+var JSON_CHARS = /["{}]/;
 var makerOf = (name) => MAKERS.find((maker) => maker === name);
 function accept(named, provider, model) {
   const maker = makerOf(provider.trim());
@@ -43,9 +53,8 @@ function readObject(object) {
 }
 function repeatedKey(text) {
   const seen = /* @__PURE__ */ new Set();
-  const tokens = text.match(QUOTED) ?? [];
-  for (let i = 0; i < tokens.length; i += 2) {
-    const key = String(JSON.parse(tokens[i] ?? '""')).trim();
+  for (const [token] of text.matchAll(QUOTED_KEY)) {
+    const key = String(JSON.parse(token));
     if (seen.has(key)) return key;
     seen.add(key);
   }
@@ -68,17 +77,17 @@ function readOwnerForm(text) {
   )) {
     const entry = part.trim();
     const colon = entry.indexOf(":");
-    if (colon < 0 || !accept(named, entry.slice(0, colon), entry.slice(colon + 1)))
+    if (colon < 0 || JSON_CHARS.test(entry.slice(colon + 1)) || !accept(named, entry.slice(0, colon), entry.slice(colon + 1)))
       return { invalid: entry === "" ? text : entry };
   }
   return { models: named };
 }
+var isSilentModels = (stored) => stored === void 0 || stored === null || typeof stored === "string" && stored.trim() === "";
 function readModels(stored) {
-  if (stored === void 0 || stored === null) return { models: {} };
+  if (isSilentModels(stored)) return { models: {} };
   if (isPlainObject(stored)) return readObject(stored);
   if (typeof stored !== "string") return { invalid: textOf(stored) };
   const text = stored.trim();
-  if (text === "") return { models: {} };
   if (text.startsWith("{")) {
     const parsed = parseJson(text);
     if (isPlainObject(parsed)) {
@@ -94,23 +103,35 @@ var formatModels = (names) => `{${MAKERS.flatMap((maker) => {
   const name = names[maker];
   return name === void 0 ? [] : [`${maker}:${name}`];
 }).join(", ")}}`;
+var sameNames = (a, b) => MAKERS.every((maker) => a[maker] === b[maker]);
+function withModel(models, maker, name) {
+  const read = readModels(models);
+  if ("invalid" in read || read.models[maker] !== void 0) return void 0;
+  const text = typeof models === "string" ? models.trim() : void 0;
+  const parsed = text?.startsWith("{") ? parseJson(text) : void 0;
+  let added;
+  if (isPlainObject(models)) added = { ...models, [maker]: name };
+  else if (isPlainObject(parsed))
+    added = JSON.stringify({ ...parsed, [maker]: name });
+  else added = formatModels({ ...read.models, [maker]: name });
+  const back = readModels(added);
+  return "models" in back && sameNames(back.models, { ...read.models, [maker]: name }) ? added : void 0;
+}
 
 // src/core/options/migrate.ts
 var typesafeFromModel = (stored) => {
   const { model, models } = stored;
-  if (typeof model !== "string" || model.trim() === "") return void 0;
-  const read = readModels(models);
-  if ("invalid" in read || read.models.typesafe !== void 0) return void 0;
-  const typesafe2 = model.trim();
+  const name = nonEmpty(model);
+  if (name === void 0) return void 0;
+  const added = withModel(models, "typesafe", name);
+  if (added === void 0) return void 0;
   return {
-    stored: {
-      ...stored,
-      models: isPlainObject(models) ? { ...models, typesafe: typesafe2 } : formatModels({ ...read.models, typesafe: typesafe2 })
-    },
+    stored: { ...stored, models: added },
     change: "models: typesafe from the removed model option"
   };
 };
 var STEPS = [typesafeFromModel];
+var SETTINGS_VERSION = STEPS.length;
 function migrate(stored) {
   let current = stored;
   const changes = [];
@@ -122,9 +143,6 @@ function migrate(stored) {
   }
   return { stored: current, changes };
 }
-
-// src/utils/guards.ts
-var isRecord = (v) => typeof v === "object" && v !== null;
 
 // src/core/decision/slots.ts
 var SLOTS = ["small", "middle", "large"];

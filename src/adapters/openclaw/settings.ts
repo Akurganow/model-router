@@ -1,5 +1,4 @@
 import { type Slot, slotRecord, slotSetting } from "#core/decision/slots.ts";
-import { isPlainObject } from "#core/options/models.ts";
 import {
 	type Settings as CheckedSettings,
 	isSilent,
@@ -14,7 +13,7 @@ import {
 	type Keys,
 	type NoChoice,
 } from "#core/providers/provider.ts";
-import { isRecord } from "#utils/guards.ts";
+import { isPlainObject, isRecord } from "#utils/guards.ts";
 import { nonEmpty } from "#utils/text.ts";
 import type { OpenClawApi, OpenClawConfig } from "./types.ts";
 

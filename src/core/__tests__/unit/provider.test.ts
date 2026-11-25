@@ -222,8 +222,8 @@ test("plan sets the model of the choice's maker on every attempt, on both paths"
 		models: { openai: "gpt-7-sol", google: "gemini-decision-2" },
 	};
 	assert.deepEqual(plan(choice, { openai: "oa-key", openrouter: "or-key" }), [
-		{ ...A, ...FIRST, model: "gpt-7-sol" },
-		{ ...AO, model: "gpt-7-sol" },
+		{ ...A, ...FIRST, storedModel: "gpt-7-sol" },
+		{ ...AO, storedModel: "gpt-7-sol" },
 	]);
 });
 

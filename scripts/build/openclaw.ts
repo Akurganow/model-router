@@ -64,7 +64,7 @@ const uiHints = (source: Source): JsonObject => ({
 	),
 	models: {
 		label: source.models.title,
-		help: source.models.descriptions.openclaw,
+		help: source.models.description,
 	},
 	...source.openclaw.uiHints,
 	...keyEntries(source.openclaw.keys),

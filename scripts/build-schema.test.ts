@@ -128,16 +128,16 @@ test("a type may list several kinds, and a value of another kind names them", ()
 	]);
 });
 
-test("the models record is required, and so are its four harness texts", () => {
+test("the models record is required, and so is its one text", () => {
 	const missing = source();
 	delete missing.models;
 	assert.deepEqual(validate(schema, missing), [
 		"$.models: required key is missing",
 	]);
 	const partial = source();
-	delete partial.models.descriptions.hermes;
+	delete partial.models.description;
 	assert.deepEqual(validate(schema, partial), [
-		"$.models.descriptions.hermes: required key is missing",
+		"$.models.description: required key is missing",
 	]);
 });
 
@@ -149,12 +149,9 @@ test("the removed Claude Code model option is required", () => {
 	]);
 });
 
-test("the models record holds the shared title and one identical text for each harness", () => {
+test("the models record holds the shared title and one text", () => {
 	const { models } = loadSource(ROOT);
 	const text =
 		"The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.";
-	assert.deepEqual(models, {
-		title: "Scoring models",
-		descriptions: { claude: text, omp: text, openclaw: text, hermes: text },
-	});
+	assert.deepEqual(models, { title: "Scoring models", description: text });
 });

@@ -417,15 +417,34 @@ test("the text already stored is unchanged, unless a removed model option is lef
 	);
 	assert.deepEqual(same.log, ["check"]);
 	const left = answeringEngine(async () => "unused");
-	await configCall(left.$, modelsCall(MODELS), {
-		models: MODELS,
-		model: "jev-preview",
-	});
-	assert.deepEqual(left.log, [
-		"check",
-		{ set: { key: MODELS_KEY, value: MODELS } },
-		{ set: { key: MODEL_KEY, value: "" } },
-	]);
+	assert.deepEqual(
+		await configCall(left.$, modelsCall(MODELS), {
+			models: MODELS,
+			model: "jev-preview",
+		}),
+		{ result: MODELS_LINES },
+	);
+	assert.deepEqual(left.log, ["check", { set: { key: MODEL_KEY, value: "" } }]);
+});
+
+test("the text the report shows, with a removed model option stored, erases it and writes no models", async () => {
+	resetConfig();
+	const { $, log } = answeringEngine(async () => "unused");
+	assert.deepEqual(
+		await configCall($, modelsCall("{typesafe:jev-latest}"), {
+			model: "jev-preview",
+			models: "{typesafe:jev-latest}",
+		}),
+		{
+			result: [
+				"models: {typesafe:jev-latest}",
+				"typesafe model: jev-latest (OpenRouter: jev-latest)",
+				"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
+				"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+			].join("\n"),
+		},
+	);
+	assert.deepEqual(log, ["check", { set: { key: MODEL_KEY, value: "" } }]);
 });
 
 test("a models write is remembered, so the same text again is unchanged", async () => {
@@ -496,7 +515,9 @@ test("an erase that fails leaves the models written and names the model option",
 	);
 	assert.deepEqual(
 		await configCall($, modelsCall(MODELS), { model: "jev-preview" }),
-		{ result: `${MODELS_LINES}\nmodel unchanged: read only` },
+		{
+			result: `${MODELS_LINES.replace(MODELS, `${MODELS} (not stored yet: run setup)`)}\nmodel unchanged: read only`,
+		},
 	);
 });
 
@@ -524,6 +545,22 @@ test("a provider pick writes the models text the removed model option makes, the
 	assert.deepEqual(log.slice(2), [
 		{ set: { key: "model-router.provider", value: "openai" } },
 		{ set: { key: MODELS_KEY, value: "{typesafe:jev-preview}" } },
+		{ set: { key: MODEL_KEY, value: "" } },
+	]);
+});
+
+test("a provider pick erases the removed model option though the ladder changes nothing, and writes no models text", async () => {
+	resetConfig();
+	const { $, log } = answeringEngine(async () => OPENAI);
+	assert.deepEqual(
+		await configCall($, call("provider"), {
+			model: "jev-preview",
+			models: "{typesafe:jev-latest}",
+		}),
+		{ result: "provider: openai" },
+	);
+	assert.deepEqual(log.slice(2), [
+		{ set: { key: "model-router.provider", value: "openai" } },
 		{ set: { key: MODEL_KEY, value: "" } },
 	]);
 });

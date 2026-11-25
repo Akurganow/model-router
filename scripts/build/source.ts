@@ -64,11 +64,8 @@ export type Source = {
 		readonly hermes: { readonly manifest: string };
 	};
 	readonly options: Readonly<Record<ValueSetting, Option>>;
-	// The scoring model of each provider. Every harness stores it, so each has its own text, and the schema requires all four.
-	readonly models: {
-		readonly title: string;
-		readonly descriptions: Readonly<Record<Harness, string>>;
-	};
+	// The scoring model of each provider. Every harness stores it and shows this one text.
+	readonly models: { readonly title: string; readonly description: string };
 	readonly claude: {
 		readonly skills: readonly string[];
 		readonly commandContents: Readonly<Record<ValueSetting, string>>;

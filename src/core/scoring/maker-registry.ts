@@ -42,6 +42,6 @@ export function endpointOf(attempt: Attempt): Endpoint | undefined {
 	if (!Object.hasOwn(paths, attempt.path)) return undefined;
 	return {
 		...paths[attempt.path],
-		model: modelOf(attempt.maker, attempt.path, attempt.model),
+		model: modelOf(attempt.maker, attempt.path, attempt.storedModel),
 	};
 }

@@ -99,7 +99,7 @@ function run(
 				path: "direct",
 				holder: "typesafe",
 				key: KEY,
-				model: MODEL,
+				storedModel: MODEL,
 			},
 		],
 		fetchFn,
