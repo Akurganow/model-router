@@ -423,6 +423,6 @@ test("the manifest says the effort is set unless the user sets one, and the midd
 	);
 	assert.equal(
 		schema.middle_model.description,
-		"The model a task rated middle gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort.",
+		"The model a task rated middle gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one.",
 	);
 });

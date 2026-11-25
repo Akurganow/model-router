@@ -40,17 +40,17 @@
     "small_model": {
       "type": "dict",
       "label": "Small model",
-      "description": "The model a task rated small gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
+      "description": "The model a task rated small gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
     },
     "middle_model": {
       "type": "dict",
       "label": "Middle model",
-      "description": "The model a task rated middle gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
+      "description": "The model a task rated middle gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
     },
     "large_model": {
       "type": "dict",
       "label": "Large model",
-      "description": "The model a task rated large gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
+      "description": "The model a task rated large gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
     },
     "api_key": {
       "type": "secret",

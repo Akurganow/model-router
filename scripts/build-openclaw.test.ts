@@ -226,6 +226,6 @@ test("the manifest says the effort is set unless the user sets one, and the midd
 	);
 	assert.equal(
 		manifest.uiHints.middle_model.help,
-		"The model a task rated middle gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort.",
+		"The model a task rated middle gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one.",
 	);
 });

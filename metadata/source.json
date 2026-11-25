@@ -141,15 +141,15 @@
 		"uiHints": {
 			"small_model": {
 				"label": "Small model",
-				"help": "The model a task rated small gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
+				"help": "The model a task rated small gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
 			},
 			"middle_model": {
 				"label": "Middle model",
-				"help": "The model a task rated middle gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
+				"help": "The model a task rated middle gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
 			},
 			"large_model": {
 				"label": "Large model",
-				"help": "The model a task rated large gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
+				"help": "The model a task rated large gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
 			}
 		},
 		"install": {
@@ -176,15 +176,15 @@
 		"settings": {
 			"small_model": {
 				"label": "Small model",
-				"help": "The model a task rated small gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
+				"help": "The model a task rated small gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
 			},
 			"middle_model": {
 				"label": "Middle model",
-				"help": "The model a task rated middle gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
+				"help": "The model a task rated middle gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
 			},
 			"large_model": {
 				"label": "Large model",
-				"help": "The model a task rated large gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
+				"help": "The model a task rated large gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
 			}
 		},
 		"install": {
