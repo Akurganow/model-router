@@ -51,8 +51,15 @@ export const narrowsGateway = (narrowed: Gateway, wider: Gateway): boolean =>
 	GATEWAY_PATHS[narrowed].length < GATEWAY_PATHS[wider].length &&
 	GATEWAY_PATHS[narrowed].every((path) => GATEWAY_PATHS[wider].includes(path));
 
-// The two settings that decide who is asked.
-export type Choice = { readonly provider: Maker; readonly gateway: Gateway };
+// The scoring model a user named per maker. A maker with no entry uses its module's default for the path.
+export type ModelNames = Readonly<Partial<Record<Maker, string>>>;
+
+// The settings that decide who is asked, and with which model name.
+export type Choice = {
+	readonly provider: Maker;
+	readonly gateway: Gateway;
+	readonly models?: ModelNames;
+};
 // Stands in for a choice when a stored setting is not valid. It carries the skip reason, and nobody is asked.
 export type NoChoice = { readonly skipped: string };
 
@@ -64,13 +71,19 @@ export type Attempt = {
 	readonly holder: KeyHolder;
 	// Reaches only the request's key header; never print it.
 	readonly key: string;
-	// Replaces the model of the module's endpoint for the path. `plan` never sets it.
+	// The name the user stored for the maker, as written; the registry translates it for the path.
+	// Unset when the user named none.
 	readonly model?: string;
 	readonly timeout?: number;
 	readonly retries?: number;
 };
 
 type Step = Pick<Attempt, "maker" | "path" | "holder">;
+
+const modelOfChoice = (choice: Choice): { readonly model?: string } => {
+	const model = choice.models?.[choice.provider];
+	return typeof model === "string" ? { model } : {};
+};
 
 // A maker holds the key of its own API. Any other path is named after the holder of its key,
 // so a path with no key holder of its name fails the type check.
@@ -125,7 +138,8 @@ export function collectKeysSync(
 
 /**
  * Returns one attempt for each path of the choice whose key holder's key is a
- * non-empty string, carrying that key. Every attempt but the last gives up
+ * non-empty string, carrying that key and the model name the choice stores for
+ * its maker. Every attempt but the last gives up
  * fast, so the next one gets the rest of the routing limit. Returns no attempts
  * when no key is set. Never throws.
  */
@@ -133,7 +147,7 @@ export function plan(choice: Choice, keys: Readonly<Keys>): Attempt[] {
 	const attempts: Attempt[] = [];
 	for (const step of steps(choice)) {
 		const key = keys[step.holder];
-		if (key) attempts.push({ ...step, key });
+		if (key) attempts.push({ ...step, key, ...modelOfChoice(choice) });
 	}
 	return attempts.map((attempt, i) =>
 		i < attempts.length - 1

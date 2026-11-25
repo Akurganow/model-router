@@ -9,6 +9,9 @@ import {
 const GOOGLE_KEY: KeyHeader = { name: "x-goog-api-key", prefix: "" };
 
 export const google: MakerModule = {
+	vendor: "google",
+	openrouterRoute: "decisions",
+	openrouterNames: { "gemini-decision-1": "google/gemini-decision-1" },
 	paths: {
 		direct: {
 			url: "https://generativelanguage.googleapis.com/v1beta/decisions",

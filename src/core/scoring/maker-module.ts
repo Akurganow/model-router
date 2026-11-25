@@ -10,7 +10,17 @@ export type Endpoint = {
 	readonly keyHeader: KeyHeader;
 };
 
-// A provider's module: one endpoint for each path. `paths` leaves room for later fields of the module, such as its OpenRouter vendor.
-export type MakerModule = { readonly paths: Readonly<Record<Path, Endpoint>> };
+// A provider's module: one endpoint for each path, and what the registry needs to translate a model name
+// the user stored into the name each path takes.
+export type MakerModule = {
+	readonly paths: Readonly<Record<Path, Endpoint>>;
+	// The company that OpenRouter names in this maker's slugs.
+	readonly vendor: string;
+	// How OpenRouter's route for this maker takes a name outside `openrouterNames`: "system-one" takes
+	// it as written, because that route maps bare names itself; "decisions" takes it as `vendor/name`.
+	readonly openrouterRoute: "system-one" | "decisions";
+	// The OpenRouter slug of each known name.
+	readonly openrouterNames: Readonly<Record<string, string>>;
+};
 
 export const BEARER: KeyHeader = { name: "Authorization", prefix: "Bearer " };

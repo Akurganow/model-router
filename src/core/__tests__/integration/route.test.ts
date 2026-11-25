@@ -578,6 +578,46 @@ for (const [
 		assert.deepEqual(decision.usage, usage);
 	});
 
+// A stored name reaches the request translated for the path: a name in the module's table maps to
+// its OpenRouter slug, any other name goes as written on the direct path and with the vendor on OpenRouter.
+const STORED_NAMES: readonly [
+	gateway: Gateway,
+	stored: string,
+	sentModel: string,
+][] = [
+	["openrouter", "gpt-6-luna", "openai/gpt-6-luna-decisions"],
+	["openrouter", "gpt-7-sol", "openai/gpt-7-sol"],
+	["direct", "gpt-7-sol", "gpt-7-sol"],
+];
+
+for (const [gateway, stored, sentModel] of STORED_NAMES)
+	test(`openai through ${gateway} with the stored name ${stored} sends ${sentModel}`, async () => {
+		const { bodies, fetchFn } = answering(JSON.parse(OPENROUTER_REPLY));
+		const attempts = plan(
+			{ provider: "openai", gateway, models: { openai: stored } },
+			KEYS,
+		);
+		await run(fetchFn, { attempts });
+		assert.equal(JSON.parse(bodies[0] ?? "").model, sentModel);
+	});
+
+test("a stored name that OpenRouter does not know ends the call at HTTP 400 and the direct path is not asked", async () => {
+	const { sent, fetchFn } = stub(async () =>
+		scoringReply(400, "unknown model"),
+	);
+	const attempts = plan(
+		{
+			provider: "openai",
+			gateway: "openrouter-first",
+			models: { openai: "gpt-7-sol" },
+		},
+		KEYS,
+	);
+	assert.deepEqual(await run(fetchFn, { attempts }), { skipped: "HTTP 400" });
+	assert.equal(sent.length, 1);
+	assert.match(sent[0] ?? "", /^https:\/\/openrouter\.ai\//);
+});
+
 test("a status gives HTTP n after one request, or after three when it is retried", async (t) => {
 	const time = fakeTime(t);
 	const cases: [number, string, number][] = [

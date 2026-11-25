@@ -459,6 +459,9 @@ var BEARER = { name: "Authorization", prefix: "Bearer " };
 // src/core/scoring/makers/google.ts
 var GOOGLE_KEY = { name: "x-goog-api-key", prefix: "" };
 var google = {
+  vendor: "google",
+  openrouterRoute: "decisions",
+  openrouterNames: { "gemini-decision-1": "google/gemini-decision-1" },
   paths: {
     direct: {
       url: "https://generativelanguage.googleapis.com/v1beta/decisions",
@@ -510,6 +513,9 @@ var OPENAI_DECISIONS = {
 
 // src/core/scoring/makers/openai.ts
 var openai = {
+  vendor: "openai",
+  openrouterRoute: "decisions",
+  openrouterNames: { "gpt-6-luna": "openai/gpt-6-luna-decisions" },
   paths: {
     direct: {
       url: "https://api.openai.com/v1/decisions",
@@ -535,6 +541,14 @@ var SYSTEM_ONE = {
 // src/core/scoring/makers/typesafe.ts
 var JEV = "jev-latest";
 var typesafe = {
+  vendor: "typesafe",
+  openrouterRoute: "system-one",
+  openrouterNames: {
+    "jev-latest": "jev-latest",
+    "jev-preview": "jev-preview",
+    "jev-1.14.0": "typesafe/jev-1.14",
+    "jev-1.13.0": "typesafe/jev-1.13"
+  },
   paths: {
     direct: {
       url: "https://api.typesafe.ai/v1/systemone",
@@ -557,10 +571,22 @@ var MODULES = {
   openai,
   google
 };
+function modelOf(maker, path, stored) {
+  const made = MODULES[maker];
+  if (stored === void 0) return made.paths[path].model;
+  if (path === "direct") return stored;
+  if (Object.hasOwn(made.openrouterNames, stored))
+    return made.openrouterNames[stored] ?? stored;
+  return made.openrouterRoute === "system-one" ? stored : `${made.vendor}/${stored}`;
+}
 function endpointOf(attempt) {
   if (!Object.hasOwn(MODULES, attempt.maker)) return void 0;
   const { paths } = MODULES[attempt.maker];
-  return Object.hasOwn(paths, attempt.path) ? paths[attempt.path] : void 0;
+  if (!Object.hasOwn(paths, attempt.path)) return void 0;
+  return {
+    ...paths[attempt.path],
+    model: modelOf(attempt.maker, attempt.path, attempt.model)
+  };
 }
 
 // src/core/scoring/reply.ts
@@ -686,7 +712,7 @@ async function askOnce(input, attempt) {
   const endpoint = endpointOf(attempt);
   if (!endpoint) return UNKNOWN;
   const { url, format, model, keyHeader } = endpoint;
-  const body = format.body(parts, state, attempt.model ?? model);
+  const body = format.body(parts, state, model);
   const received = await send(
     fetchFn,
     url,
@@ -898,6 +924,10 @@ var GATEWAY_PATHS = {
   "openrouter-first": ["openrouter", "direct"],
   openrouter: ["openrouter"]
 };
+var modelOfChoice = (choice) => {
+  const model = choice.models?.[choice.provider];
+  return typeof model === "string" ? { model } : {};
+};
 var holderOf = (maker, path) => path === "direct" ? maker : path;
 var steps = (choice) => GATEWAY_PATHS[choice.gateway].map((path) => ({
   maker: choice.provider,
@@ -908,11 +938,126 @@ function plan(choice, keys) {
   const attempts = [];
   for (const step of steps(choice)) {
     const key = keys[step.holder];
-    if (key) attempts.push({ ...step, key });
+    if (key) attempts.push({ ...step, key, ...modelOfChoice(choice) });
   }
   return attempts.map(
     (attempt, i) => i < attempts.length - 1 ? { ...attempt, timeout: FIRST_ATTEMPT_TIMEOUT_MS, retries: 0 } : attempt
   );
+}
+
+// src/core/options/models.ts
+var QUOTED = /"(?:[^"\\]|\\.)*"/g;
+var isPlainObject = (value) => {
+  if (typeof value !== "object" || value === null) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+};
+var textOf = (value) => {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+};
+var makerOf = (name) => MAKERS.find((maker) => maker === name);
+function accept(named, provider, model) {
+  const maker = makerOf(provider.trim());
+  const name = model.trim();
+  if (maker === void 0 || name === "" || name.includes("/") || Object.hasOwn(named, maker))
+    return false;
+  named[maker] = name;
+  return true;
+}
+function readObject(object) {
+  const named = {};
+  for (const [provider, model] of Object.entries(object)) {
+    if (typeof model !== "string") return { invalid: provider.trim() };
+    if (!accept(named, provider, model))
+      return { invalid: `${provider.trim()}:${model.trim()}` };
+  }
+  return { models: named };
+}
+function repeatedKey(text) {
+  const seen = /* @__PURE__ */ new Set();
+  const tokens = text.match(QUOTED) ?? [];
+  for (let i = 0; i < tokens.length; i += 2) {
+    const key = String(JSON.parse(tokens[i] ?? '""')).trim();
+    if (seen.has(key)) return key;
+    seen.add(key);
+  }
+  return void 0;
+}
+function parseJson2(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return void 0;
+  }
+}
+function readOwnerForm(text) {
+  if (text.startsWith("{") !== text.endsWith("}")) return { invalid: text };
+  const inner = (text.startsWith("{") ? text.slice(1, -1) : text).trim();
+  if (inner === "") return { models: {} };
+  const named = {};
+  for (const part of (inner.endsWith(",") ? inner.slice(0, -1) : inner).split(
+    ","
+  )) {
+    const entry = part.trim();
+    const colon = entry.indexOf(":");
+    if (colon < 0 || !accept(named, entry.slice(0, colon), entry.slice(colon + 1)))
+      return { invalid: entry === "" ? text : entry };
+  }
+  return { models: named };
+}
+function readModels(stored) {
+  if (stored === void 0 || stored === null) return { models: {} };
+  if (isPlainObject(stored)) return readObject(stored);
+  if (typeof stored !== "string") return { invalid: textOf(stored) };
+  const text = stored.trim();
+  if (text === "") return { models: {} };
+  if (text.startsWith("{")) {
+    const parsed = parseJson2(text);
+    if (isPlainObject(parsed)) {
+      const read = readObject(parsed);
+      if ("invalid" in read) return read;
+      const repeated = repeatedKey(text);
+      return repeated === void 0 ? read : { invalid: repeated };
+    }
+  }
+  return readOwnerForm(text);
+}
+var formatModels = (names) => `{${MAKERS.flatMap((maker) => {
+  const name = names[maker];
+  return name === void 0 ? [] : [`${maker}:${name}`];
+}).join(", ")}}`;
+
+// src/core/options/migrate.ts
+var typesafeFromModel = (stored) => {
+  const { model, models } = stored;
+  if (typeof model !== "string" || model.trim() === "") return void 0;
+  const read = readModels(models);
+  if ("invalid" in read || read.models.typesafe !== void 0) return void 0;
+  const typesafe2 = model.trim();
+  return {
+    stored: {
+      ...stored,
+      models: isPlainObject(models) ? { ...models, typesafe: typesafe2 } : formatModels({ ...read.models, typesafe: typesafe2 })
+    },
+    change: "models: typesafe from the removed model option"
+  };
+};
+var STEPS = [typesafeFromModel];
+function migrate(stored) {
+  let current = stored;
+  const changes = [];
+  for (const step of STEPS) {
+    const done = step(current);
+    if (done === void 0) continue;
+    current = done.stored;
+    changes.push(done.change);
+  }
+  return { stored: current, changes };
 }
 
 // src/core/options/scope.ts
@@ -965,7 +1110,10 @@ function settingsOf(stored) {
   if (gateway === void 0) return { skipped: notValid("gateway") };
   const scope = readScope(stored.scope);
   if (scope === void 0) return { skipped: notValid("scope") };
-  return { provider, gateway, scope };
+  const { models } = migrate(stored).stored;
+  const read = readModels(models);
+  if ("invalid" in read) return { skipped: notValid("models") };
+  return { provider, gateway, scope, models: read.models };
 }
 function describeCommand(setting) {
   const { about, values } = TEXTS[setting];
@@ -985,7 +1133,7 @@ var readKeys = (value) => Object.fromEntries(
     return key === void 0 ? [] : [[holder, key]];
   })
 );
-var readModels = (value) => slotRecord((slot) => isRecord(value) ? nonEmpty(value[slot]) : void 0);
+var readModels2 = (value) => slotRecord((slot) => isRecord(value) ? nonEmpty(value[slot]) : void 0);
 var readBudget = (value) => isPositiveNumber(value) ? value : void 0;
 function readRequest(raw) {
   if (!isRecord(raw) || Array.isArray(raw)) return void 0;
@@ -998,7 +1146,7 @@ function readRequest(raw) {
     ),
     keys: readKeys(keys),
     budgetMs: readBudget(budgetMs),
-    models: readModels(models),
+    models: readModels2(models),
     keptEffort: KEPT_EFFORTS.find((source) => source === keptEffort),
     description: typeof description === "string" ? description : ""
   };

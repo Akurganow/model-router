@@ -298,27 +298,27 @@ test("the settings report lists the values and each key the gateway allows", asy
 		[
 			{},
 			[],
-			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\ntypesafe key: unset",
+			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset",
 		],
 		[
 			{ gateway: "auto", scope: "extended", api_key: "k-1" },
 			["OPENROUTER_API_KEY"],
-			"provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: extended\ntypesafe key: set\nopenrouter key: set",
+			"provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: extended\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: set\nopenrouter key: set",
 		],
 		[
 			{ gateway: "openrouter-first" },
 			["TYPESAFE_API_KEY"],
-			"provider: typesafe\ngateway: openrouter-first (openrouter, then typesafe)\nscope: core\nopenrouter key: unset\ntypesafe key: set",
+			"provider: typesafe\ngateway: openrouter-first (openrouter, then typesafe)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nopenrouter key: unset\ntypesafe key: set",
 		],
 		[
 			{ gateway: "openrouter", openrouter_api_key: "k-2", api_key: "k-1" },
 			[],
-			"provider: typesafe\ngateway: openrouter (openrouter)\nscope: core\nopenrouter key: set",
+			"provider: typesafe\ngateway: openrouter (openrouter)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nopenrouter key: set",
 		],
 		[
 			{ gateway: "auto", api_key: "  ", openrouter_api_key: "" },
 			[],
-			"provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: core\ntypesafe key: unset\nopenrouter key: unset",
+			"provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset\nopenrouter key: unset",
 		],
 	];
 	for (const [options, env, text] of cases) {

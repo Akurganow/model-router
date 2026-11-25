@@ -44,13 +44,13 @@ test("a new registration forgets the offers made before it", async () => {
 	assert.deepEqual(logs, [skippedLine(KEY_UNSET)]);
 });
 
-test("a stored model option is ignored and jev-latest is sent", async () => {
+test("a stored model option is read as the typesafe model and sent", async () => {
 	const { requests } = await routedCall({
 		options: { api_key: "ts-key", model: "jev-preview" },
 	});
 	assert.deepEqual(
 		requests.map((r) => r.model),
-		["jev-latest"],
+		["jev-preview"],
 	);
 });
 

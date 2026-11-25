@@ -32,6 +32,13 @@ function registerConfig(api: OpenClawApi, env: Environment) {
 const TYPESAFE_KEY = "ts-live-key-8f3a91c2d7e4b605";
 const OPENROUTER_KEY = "or-live-key-1d6e77a0c9b3f248";
 const ADMIN = "operator.admin";
+// The models lines of the report when the models setting is unset.
+const UNSET_MODELS = [
+	"models: unset",
+	"typesafe model: jev-latest (OpenRouter: jev-latest)",
+	"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
+	"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+];
 const NO_ENV = { TYPESAFE_API_KEY: "", OPENROUTER_API_KEY: "" };
 
 const live = (config: Record<string, unknown>): OpenClawConfig => ({
@@ -179,6 +186,7 @@ describe("the tool reads", () => {
 					"provider: typesafe",
 					"gateway: direct (typesafe)",
 					"scope: core",
+					...UNSET_MODELS,
 					"small_model: unset",
 					"middle_model: unset",
 					"large_model: unset",
@@ -223,6 +231,7 @@ describe("the tool reads", () => {
 				"provider: typesafe",
 				"gateway: auto (typesafe, then openrouter)",
 				"scope: extended",
+				...UNSET_MODELS,
 				"small_model: openai/gpt-5-mini",
 				"middle_model: openai/gpt-5",
 				"large_model: anthropic/claude-opus-5-5",
@@ -244,6 +253,7 @@ describe("the tool reads", () => {
 			"provider: typesafe",
 			"gateway: openrouter-first (openrouter, then typesafe)",
 			"scope: core",
+			...UNSET_MODELS,
 		];
 		const keys = [keyLine("openrouter", "unset"), keyLine("typesafe", "set")];
 		assert.equal(
@@ -290,6 +300,7 @@ describe("the tool reads", () => {
 				"provider: typesafe",
 				"gateway: direct (typesafe)",
 				"scope: core",
+				...UNSET_MODELS,
 				"small_model: openai/gpt-5-mini",
 				"middle_model: openai/gpt-5",
 				"large_model: unset",

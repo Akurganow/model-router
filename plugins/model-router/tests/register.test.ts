@@ -125,11 +125,11 @@ test(
 );
 
 test(
-	"a stored model option is ignored and jev-latest is sent",
+	"a stored model option is read as the typesafe model and sent",
 	{ options: { api_key: "test-key", model: "jev-preview" } },
 	async ($, on) => {
 		const { h } = await callOnce($, on);
-		expect(JSON.parse(h.sent ?? "").model).toBe("jev-latest");
+		expect(JSON.parse(h.sent ?? "").model).toBe("jev-preview");
 	},
 );
 

@@ -32,6 +32,7 @@ test("a global gateway of nothing reads as direct", async () => {
 			provider: "typesafe",
 			gateway: "direct",
 			scope: "core",
+			models: {},
 		});
 	}
 });
@@ -62,6 +63,7 @@ const ok = (gateway: string) => ({
 	provider: "typesafe",
 	gateway,
 	scope: "core",
+	models: {},
 });
 const provider = { skipped: "provider not valid: run setup" };
 const rules: [string, object, object, object][] = [

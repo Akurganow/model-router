@@ -34,7 +34,7 @@ async function askOnce(
 	const endpoint = endpointOf(attempt);
 	if (!endpoint) return UNKNOWN;
 	const { url, format, model, keyHeader } = endpoint;
-	const body = format.body(parts, state, attempt.model ?? model);
+	const body = format.body(parts, state, model);
 	const received = await send(
 		fetchFn,
 		url,
