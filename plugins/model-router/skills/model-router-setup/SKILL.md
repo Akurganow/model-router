@@ -29,11 +29,13 @@ The person may also choose:
 
 Find out which of these already hold, with the `mcp__model-router__config` tool and Claude Code's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool Claude Code gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
 
+When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
+
 When the person wants to choose the provider, follow these steps in order:
 
 1. Call the tool with no setting, and read the settings and the key lines.
-2. Ask which provider's model scores, and give the three labels from the Settings facts.
-3. Ask how OpenRouter is used, before any write.
+2. Ask which provider's model scores, and give the labels from the Settings facts.
+3. Ask how OpenRouter is used, before any write, and give the labels from the Settings facts.
 4. On the person's word, call the tool once with `setting` set to `gateway` and once with `provider`. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
    - Make the second call only after the first setting's line shows the agreed value. If it does not, stop and tell the person.
    - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
@@ -88,19 +90,21 @@ When the person wants another scoring model for one provider, follow these steps
 ### Settings
 
 - `provider` takes `typesafe` (the default), `openai` or `google`.
-  - `typesafe`: Jev from TypeSafe, the model the plugin's questions are fitted to.
-  - `openai`: OpenAI's decision model; costs more than Jev and its answers are not fitted.
-  - `google`: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.
+  - `typesafe - Jev from TypeSafe`
+  - `openai - OpenAI's decision model`
+  - `google - Google's decision model`
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
 - `gateway` takes `direct` (the default), `auto`, `openrouter-first` or `openrouter`.
-  - `direct` scores on the provider's own API only.
-  - `auto` tries the provider's own API, then OpenRouter when it fails.
-  - `openrouter-first` tries OpenRouter, then the provider's own API when OpenRouter fails.
-  - `openrouter` scores on OpenRouter only.
+  - `direct - the provider's own API only`
+  - `auto - the provider's own API, then OpenRouter if it fails`
+  - `openrouter-first - OpenRouter, then the provider's own API if it fails`
+  - `openrouter - OpenRouter only`
   - With `auto` or `openrouter-first` and only one key set, that key's path scores alone.
   - Only some failures reach the second path: [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists them.
 - Claude Code hands the plugin an option's default in place of a stored value outside the option's list. So the tool then prints the default, and no setup line shows.
 - `scope` takes `core` (the default) or `extended`.
+  - `core - the default agents only`
+  - `extended - also other agents, as the README lists`
   - Under `core`, the plugin routes a call to the built-in agents `general-purpose`, `claude`, `Explore` and `Plan`. A call with no `subagent_type` counts as `general-purpose`.
   - Under `extended`, it routes every Agent call that passes no `model` and no `name`, a fork excepted. That includes user, project and plugin agents.
   - Under `extended`, the routed model and effort replace the ones an agent's definition sets, and the agent's description and task text go to the company that scores.

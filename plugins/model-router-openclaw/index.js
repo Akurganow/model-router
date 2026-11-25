@@ -616,9 +616,9 @@ var TEXTS = {
     about: "whose model scores subagent calls",
     question: "Which provider's model should score subagent calls?",
     consequences: {
-      typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to",
-      openai: "OpenAI's decision model; costs more than Jev and its answers are not fitted",
-      google: "Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text"
+      typesafe: "Jev from TypeSafe",
+      openai: "OpenAI's decision model",
+      google: "Google's decision model"
     }
   },
   gateway: {
@@ -637,8 +637,8 @@ var TEXTS = {
     about: "which agent calls the router routes",
     question: "Which agent calls should the router route?",
     consequences: {
-      core: "built-in general agents only",
-      extended: "also routes other agents that pass no model"
+      core: "the default agents only",
+      extended: "also other agents, as the README lists"
     }
   }
 };
@@ -666,6 +666,8 @@ var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var keyLine = (holder, state) => `${holder} key: ${state}`;
+var PAGE_MAX = 4;
+var PAGE_VALUES = PAGE_MAX - 1;
 var valueLineFrom = (setting, record) => {
   const shown = record[setting];
   const value = valueFor(setting, shown);

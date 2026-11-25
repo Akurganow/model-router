@@ -16,6 +16,7 @@
 		"descriptions",
 		"options",
 		"models",
+		"keys",
 		"claude",
 		"omp",
 		"openclaw",
@@ -65,7 +66,12 @@
 				"scope": { "$ref": "#/$defs/option" }
 			}
 		},
-		"models": { "$ref": "#/$defs/modelsOption" },
+		"models": { "$ref": "#/$defs/option" },
+		"keys": {
+			"type": "object",
+			"description": "The title and the one text of each key holder's key field, shown in every harness that has the field.",
+			"additionalProperties": { "$ref": "#/$defs/option" }
+		},
 		"claude": {
 			"type": "object",
 			"additionalProperties": false,
@@ -95,14 +101,10 @@
 				"userConfig": {
 					"type": "object",
 					"additionalProperties": false,
-					"required": ["optionType", "keys", "model"],
+					"required": ["optionType", "model"],
 					"properties": {
 						"optionType": { "$ref": "#/$defs/text" },
-						"keys": {
-							"type": "object",
-							"additionalProperties": { "$ref": "#/$defs/secret" }
-						},
-						"model": { "$ref": "#/$defs/removedOption" }
+						"model": { "$ref": "#/$defs/option" }
 					}
 				},
 				"catalogueSource": { "$ref": "#/$defs/text" },
@@ -158,7 +160,6 @@
 				"skills",
 				"hostFloor",
 				"uiHints",
-				"keys",
 				"install"
 			],
 			"properties": {
@@ -186,10 +187,6 @@
 						"large_model": { "$ref": "#/$defs/hint" }
 					}
 				},
-				"keys": {
-					"type": "object",
-					"additionalProperties": { "$ref": "#/$defs/secretHint" }
-				},
 				"install": { "$ref": "#/$defs/install" }
 			}
 		},
@@ -202,7 +199,6 @@
 				"backendName",
 				"requiresHermes",
 				"settings",
-				"keys",
 				"install"
 			],
 			"properties": {
@@ -218,10 +214,6 @@
 						"middle_model": { "$ref": "#/$defs/hint" },
 						"large_model": { "$ref": "#/$defs/hint" }
 					}
-				},
-				"keys": {
-					"type": "object",
-					"additionalProperties": { "$ref": "#/$defs/hint" }
 				},
 				"install": { "$ref": "#/$defs/install" }
 			}
@@ -288,16 +280,6 @@
 				"help": { "$ref": "#/$defs/text" }
 			}
 		},
-		"secretHint": {
-			"type": "object",
-			"additionalProperties": false,
-			"required": ["label", "help", "sensitive"],
-			"properties": {
-				"label": { "$ref": "#/$defs/text" },
-				"help": { "$ref": "#/$defs/text" },
-				"sensitive": { "type": "boolean" }
-			}
-		},
 		"harnessDescriptions": {
 			"type": "object",
 			"additionalProperties": false,
@@ -310,36 +292,7 @@
 		"option": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["title", "descriptions"],
-			"properties": {
-				"title": { "$ref": "#/$defs/text" },
-				"descriptions": {
-					"type": "object",
-					"description": "One text for each harness that stores the setting. A harness that lacks the setting has no text.",
-					"additionalProperties": false,
-					"properties": {
-						"claude": { "$ref": "#/$defs/text" },
-						"omp": { "$ref": "#/$defs/text" },
-						"openclaw": { "$ref": "#/$defs/text" },
-						"hermes": { "$ref": "#/$defs/text" }
-					}
-				}
-			}
-		},
-		"modelsOption": {
-			"type": "object",
-			"description": "The setting that holds the scoring model per provider. Every harness stores it and shows one text.",
-			"additionalProperties": false,
-			"required": ["title", "description"],
-			"properties": {
-				"title": { "$ref": "#/$defs/text" },
-				"description": { "$ref": "#/$defs/text" }
-			}
-		},
-		"removedOption": {
-			"type": "object",
-			"description": "An option the Claude Code manifest still declares, so a stored value reaches the plugin and can be migrated. It has no default and no options list.",
-			"additionalProperties": false,
+			"description": "A title and the one text that every harness showing the setting displays.",
 			"required": ["title", "description"],
 			"properties": {
 				"title": { "$ref": "#/$defs/text" },
@@ -374,17 +327,6 @@
 				},
 				"ciLine": { "$ref": "#/$defs/text" },
 				"note": { "$ref": "#/$defs/text" }
-			}
-		},
-		"secret": {
-			"type": "object",
-			"additionalProperties": false,
-			"required": ["type", "title", "description", "sensitive"],
-			"properties": {
-				"type": { "$ref": "#/$defs/text" },
-				"title": { "$ref": "#/$defs/text" },
-				"description": { "$ref": "#/$defs/text" },
-				"sensitive": { "type": "boolean" }
 			}
 		}
 	}

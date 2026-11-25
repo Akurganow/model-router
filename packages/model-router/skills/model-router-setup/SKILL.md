@@ -30,11 +30,13 @@ The person may also choose:
 
 Find out which of these already hold, with the `model_router_config` tool and omp's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool omp gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
 
+When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
+
 When the person wants to choose the provider, follow these steps in order:
 
 1. Call `model_router_config` with no setting, and read the settings and the key lines.
-2. Ask which provider's model scores, and give the three labels from the Provider and gateway facts.
-3. Ask how OpenRouter is used, before any write.
+2. Ask which provider's model scores, and give the labels from the Provider and gateway facts.
+3. Ask how OpenRouter is used, before any write, and give the labels from the Provider and gateway facts.
 4. On the person's word, call `model_router_config` once with `setting` set to `gateway` and once with `provider`. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
    - Make the second call only after the first setting's line shows the agreed value. If it does not, stop and tell the person.
    - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
@@ -99,15 +101,15 @@ When the person wants another scoring model for one provider, follow these steps
 ### Provider and gateway
 
 - `provider` has three values. `typesafe` is the default.
-  - `typesafe`: Jev from TypeSafe, the model the plugin's questions are fitted to.
-  - `openai`: OpenAI's decision model; costs more than Jev and its answers are not fitted.
-  - `google`: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.
+  - `typesafe - Jev from TypeSafe`
+  - `openai - OpenAI's decision model`
+  - `google - Google's decision model`
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
 - `gateway` has four values. `direct` is the default.
-  - `direct` uses the provider's own API only.
-  - `auto` uses the provider's own API, then OpenRouter if that fails.
-  - `openrouter-first` uses OpenRouter, then the provider's own API if that fails.
-  - `openrouter` uses OpenRouter only.
+  - `direct - the provider's own API only`
+  - `auto - the provider's own API, then OpenRouter if it fails`
+  - `openrouter-first - OpenRouter, then the provider's own API if it fails`
+  - `openrouter - OpenRouter only`
 - With `auto` or `openrouter-first` and one key, the path with that key scores alone.
 - Only some failures reach the second path: [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists them.
 
@@ -158,6 +160,9 @@ To move a retired value, follow these steps in order:
 
 ### Scope
 
+- `scope` has two values. `core` is the default.
+  - `core - the default agents only`
+  - `extended - also other agents, as the README lists`
 - `core` is the default and routes the bundled `task` agent only.
 - `extended` routes every agent whose model the person did not set, bundled agents included.
 

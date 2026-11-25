@@ -45,34 +45,38 @@
 	"options": {
 		"provider": {
 			"title": "Scoring provider",
-			"descriptions": {
-				"claude": "Whose model scores a subagent call. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to. openai: OpenAI's decision model; costs more than Jev and its answers are not fitted. google: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.",
-				"omp": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to. openai: OpenAI's decision model; costs more than Jev and its answers are not fitted. google: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.",
-				"openclaw": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to. openai: OpenAI's decision model; costs more than Jev and its answers are not fitted. google: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.",
-				"hermes": "Whose model scores each task. typesafe: Jev from TypeSafe, the model the plugin's questions are fitted to. openai: OpenAI's decision model; costs more than Jev and its answers are not fitted. google: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text."
-			}
+			"description": "Whose model scores each subagent task: typesafe, openai or google."
 		},
 		"gateway": {
 			"title": "OpenRouter gateway",
-			"descriptions": {
-				"claude": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one call may reach both companies.",
-				"omp": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies.",
-				"openclaw": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies.",
-				"hermes": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies."
-			}
+			"description": "How the provider is reached: direct (its own API only), auto (its own API, then OpenRouter), openrouter-first (OpenRouter, then its own API) or openrouter (OpenRouter only)."
 		},
 		"scope": {
 			"title": "Routing scope",
-			"descriptions": {
-				"claude": "Which Agent calls the plugin routes. core: the built-in agents general-purpose, claude, Explore and Plan only. extended: also any Agent call that passes no model, including plugin and user agents, replacing the model and effort their definition sets. Forks and named calls stay unrouted.",
-				"omp": "Which subagents are routed. core: the task agent only. extended: every agent whose model you did not set, bundled agents included.",
-				"openclaw": "Which spawns are routed. core: the spawn of the requesting agent itself. extended: also the spawns of other agents that set no model."
-			}
+			"description": "Which subagents are routed: core (the default agents only) or extended (also other agents, as the README lists)."
 		}
 	},
 	"models": {
 		"title": "Scoring models",
-		"description": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model."
+		"description": "The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default."
+	},
+	"keys": {
+		"typesafe": {
+			"title": "TypeSafe API key",
+			"description": "The plugin sends it to TypeSafe when provider is typesafe and gateway is not openrouter."
+		},
+		"openai": {
+			"title": "OpenAI API key",
+			"description": "The plugin sends it to OpenAI when provider is openai and gateway is not openrouter."
+		},
+		"google": {
+			"title": "Google API key",
+			"description": "The plugin sends it to Google when provider is google and gateway is not openrouter."
+		},
+		"openrouter": {
+			"title": "OpenRouter API key",
+			"description": "The plugin sends it to OpenRouter when gateway is not direct."
+		}
 	},
 	"claude": {
 		"skills": ["."],
@@ -83,32 +87,6 @@
 		},
 		"userConfig": {
 			"optionType": "string",
-			"keys": {
-				"typesafe": {
-					"type": "string",
-					"title": "TypeSafe API key",
-					"description": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider option is typesafe and the gateway option allows TypeSafe's own API. The README says where to get one.",
-					"sensitive": true
-				},
-				"openai": {
-					"type": "string",
-					"title": "OpenAI API key",
-					"description": "Your OpenAI API key. The plugin sends it to OpenAI only, as the bearer token of the scoring request, and only when the provider option is openai and the gateway option allows OpenAI's own API. The README says where to get one.",
-					"sensitive": true
-				},
-				"google": {
-					"type": "string",
-					"title": "Google API key",
-					"description": "Your Google API key. The plugin sends it to Google only, in the x-goog-api-key header of the scoring request, and only when the provider option is google and the gateway option allows Google's own API. The README says where to get one.",
-					"sensitive": true
-				},
-				"openrouter": {
-					"type": "string",
-					"title": "OpenRouter API key",
-					"description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the gateway option allows OpenRouter.",
-					"sensitive": true
-				}
-			},
 			"model": {
 				"title": "Jev model",
 				"description": "Removed: the setup skill moves it into models."
@@ -163,37 +141,15 @@
 		"uiHints": {
 			"small_model": {
 				"label": "Small model",
-				"help": "The model a spawn gets when the scoring model rates its task small, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one."
+				"help": "The model a task rated small gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
 			},
 			"middle_model": {
 				"label": "Middle model",
-				"help": "The model a spawn gets when the scoring model rates its task middle, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one."
+				"help": "The model a task rated middle gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
 			},
 			"large_model": {
 				"label": "Large model",
-				"help": "The model a spawn gets when the scoring model rates its task large, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one."
-			}
-		},
-		"keys": {
-			"typesafe": {
-				"label": "TypeSafe API key",
-				"help": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider setting is typesafe and the gateway setting allows TypeSafe's own API. Unset: the plugin reads TYPESAFE_API_KEY from the environment.",
-				"sensitive": true
-			},
-			"openai": {
-				"label": "OpenAI API key",
-				"help": "Your OpenAI API key. The plugin sends it to OpenAI only, as the bearer token of the scoring request, and only when the provider setting is openai and the gateway setting allows OpenAI's own API. Unset: the plugin reads OPENAI_API_KEY from the environment.",
-				"sensitive": true
-			},
-			"google": {
-				"label": "Google API key",
-				"help": "Your Google API key. The plugin sends it to Google only, in the x-goog-api-key header of the scoring request, and only when the provider setting is google and the gateway setting allows Google's own API. Unset: the plugin reads GEMINI_API_KEY from the environment, and never GOOGLE_API_KEY.",
-				"sensitive": true
-			},
-			"openrouter": {
-				"label": "OpenRouter API key",
-				"help": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the gateway setting allows OpenRouter. Unset: the plugin reads OPENROUTER_API_KEY from the environment.",
-				"sensitive": true
+				"help": "The model a task rated large gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
 			}
 		},
 		"install": {
@@ -220,33 +176,15 @@
 		"settings": {
 			"small_model": {
 				"label": "Small model",
-				"help": "The model a delegated task gets when the scoring model rates its task small, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
+				"help": "The model a task rated small gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
 			},
 			"middle_model": {
 				"label": "Middle model",
-				"help": "The model a delegated task gets when the scoring model rates its task middle, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
+				"help": "The model a task rated middle gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
 			},
 			"large_model": {
 				"label": "Large model",
-				"help": "The model a delegated task gets when the scoring model rates its task large, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one."
-			}
-		},
-		"keys": {
-			"typesafe": {
-				"label": "TypeSafe API key",
-				"help": "Your TypeSafe API key. The plugin sends it to TypeSafe only, as the bearer token of the scoring request, and only when the provider setting is typesafe and the gateway setting allows TypeSafe's own API."
-			},
-			"openai": {
-				"label": "OpenAI API key",
-				"help": "Your OpenAI API key. The plugin sends it to OpenAI only, as the bearer token of the scoring request, and only when the provider setting is openai and the gateway setting allows OpenAI's own API. Hermes's own OpenAI provider reads the same key and may use it for your own session. Set model.provider to keep another provider. The README, section Keys, says more."
-			},
-			"google": {
-				"label": "Google API key",
-				"help": "Your Google API key. The plugin sends it to Google only, in the x-goog-api-key header of the scoring request, and only when the provider setting is google and the gateway setting allows Google's own API. Hermes's own Gemini provider reads the same key, after GOOGLE_API_KEY, and may use it for your own session. Set model.provider to keep another provider. The README, section Keys, says more."
-			},
-			"openrouter": {
-				"label": "OpenRouter API key",
-				"help": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the gateway setting allows OpenRouter. Hermes's own OpenRouter provider reads the same key and may use it for your own session. Set model.provider to keep another provider. The README, section Keys, says more."
+				"help": "The model a task rated large gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one."
 			}
 		},
 		"install": {

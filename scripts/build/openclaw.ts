@@ -1,6 +1,6 @@
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { OPENCLAW_OUTPUTS } from "./outputs.ts";
-import { optionText, type Source } from "./source.ts";
+import type { Source } from "./source.ts";
 import {
 	defaultOf,
 	KEY_FIELDS,
@@ -57,7 +57,7 @@ const uiHints = (source: Source): JsonObject => ({
 			setting,
 			{
 				label: source.options[setting].title,
-				help: optionText(source, "openclaw", setting),
+				help: source.options[setting].description,
 			},
 		]),
 	),
@@ -66,7 +66,11 @@ const uiHints = (source: Source): JsonObject => ({
 		help: source.models.description,
 	},
 	...source.openclaw.uiHints,
-	...keyEntries(source.openclaw.keys),
+	...keyEntries((holder) => ({
+		label: source.keys[holder].title,
+		help: source.keys[holder].description,
+		sensitive: true,
+	})),
 });
 
 // manifest/config-and-secrets.md, "secretInputs paths": the only accepted `expected` is "string".

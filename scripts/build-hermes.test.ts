@@ -92,14 +92,16 @@ test("the provider and gateway settings offer the values the code accepts, with 
 		choices: ["typesafe", "openai", "google"],
 		default: "typesafe",
 		label: source.options.provider.title,
-		description: source.options.provider.descriptions.hermes,
+		description:
+			"Whose model scores each subagent task: typesafe, openai or google.",
 	});
 	assert.deepEqual(shown("gateway"), {
 		type: "str",
 		choices: ["direct", "auto", "openrouter-first", "openrouter"],
 		default: "direct",
 		label: source.options.gateway.title,
-		description: source.options.gateway.descriptions.hermes,
+		description:
+			"How the provider is reached: direct (its own API only), auto (its own API, then OpenRouter), openrouter-first (OpenRouter, then its own API) or openrouter (OpenRouter only).",
 	});
 });
 
@@ -108,7 +110,7 @@ test("the models setting is a plain string with the shared label and text, and n
 		type: "str",
 		label: "Scoring models",
 		description:
-			"The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.",
+			"The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.",
 	});
 });
 
@@ -413,7 +415,7 @@ test("the committed bundle answers a request on stdin with one JSON line", () =>
 	);
 });
 
-test("the manifest and the middle setting say the effort is set unless the user sets one", () => {
+test("the manifest says the effort is set unless the user sets one, and the middle setting says what unset means", () => {
 	assert.ok(
 		manifest.description.includes(
 			"It scores a task even when you set no model, and sets the effort unless you set one.",
@@ -421,6 +423,6 @@ test("the manifest and the middle setting say the effort is set unless the user 
 	);
 	assert.equal(
 		schema.middle_model.description,
-		"The model a delegated task gets when the scoring model rates its task middle, given as a dict that names a provider and a model. Unset: such a task keeps the model Hermes would give it, and the plugin still sets its effort unless you set one.",
+		"The model a task rated middle gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort unless the task or your config sets one.",
 	);
 });

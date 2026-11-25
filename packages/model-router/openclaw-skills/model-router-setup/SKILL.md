@@ -26,11 +26,13 @@ The person may also choose these, and each has a default:
 
 Find out which of these already hold, with the `model_router_config` tool and OpenClaw's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool OpenClaw gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
 
+When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
+
 When the person wants to choose the provider, follow these steps in order:
 
 1. Call `model_router_config` with no input, and read the settings and the key lines.
-2. Ask which provider's model scores, and give the three labels from the Provider and gateway facts.
-3. Ask how OpenRouter is used, before any write.
+2. Ask which provider's model scores, and give the labels from the Provider and gateway facts.
+3. Ask how OpenRouter is used, before any write, and give the labels from the Provider and gateway facts.
 4. On the person's word, have the owner type `/model-router-gateway <value>` and `/model-router-provider <value>`, one command at a time. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
    - Ask for the second command only after OpenClaw has replaced the plugin and `model_router_config` shows the agreed value of the first setting. If it does not, stop and tell the person.
    - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
@@ -80,15 +82,15 @@ openrouter key: unset
 ### Provider and gateway
 
 - `provider` has three values. `typesafe` is the default.
-  - `typesafe`: Jev from TypeSafe, the model the plugin's questions are fitted to.
-  - `openai`: OpenAI's decision model; costs more than Jev and its answers are not fitted.
-  - `google`: Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text.
+  - `typesafe - Jev from TypeSafe`
+  - `openai - OpenAI's decision model`
+  - `google - Google's decision model`
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
-- `gateway` has four values:
-  - `direct`, the default: the provider's own API only.
-  - `auto`: the provider's own API, then OpenRouter.
-  - `openrouter-first`: OpenRouter, then the provider's own API.
-  - `openrouter`: OpenRouter only.
+- `gateway` has four values. `direct` is the default.
+  - `direct - the provider's own API only`
+  - `auto - the provider's own API, then OpenRouter if it fails`
+  - `openrouter-first - OpenRouter, then the provider's own API if it fails`
+  - `openrouter - OpenRouter only`
 - Only some failures reach the second path: [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists them.
 - The `gateway` setting is not OpenClaw's Gateway, the process that loads the plugin.
 - The person changes `provider` with the chat command `/model-router-provider <value>`, and `gateway` with `/model-router-gateway <value>`.
@@ -124,6 +126,9 @@ openrouter key: unset
 
 ### Scope
 
+- `scope` has two values. `core` is the default.
+  - `core - the default agents only`
+  - `extended - also other agents, as the README lists`
 - `core` routes the spawn of the requesting agent itself: a spawn with no `agentId`, or with the requester's own id, and a `runtime` that is absent or `subagent`.
 - `extended` also routes the spawn of any other configured agent that does not set its own model.
 - The person changes it with `/model-router-scope <value>`. The replies and the timing match `provider`.

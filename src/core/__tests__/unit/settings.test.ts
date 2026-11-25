@@ -6,12 +6,15 @@ import { SCOPE_VALUES } from "#core/options/scope.ts";
 import {
 	alreadyValue,
 	ask,
+	askPaged,
 	badCall,
 	COMMAND_DESCRIPTIONS,
 	chooseValue,
+	currentFirst,
 	isValue,
 	isValueSetting,
 	keyLine,
+	MORE,
 	modelCarry,
 	modelsAlready,
 	modelsCallOf,
@@ -19,6 +22,7 @@ import {
 	modelsWrite,
 	NO_ANSWER,
 	NOT_OFFERED,
+	pagesOf,
 	pick,
 	readOnlyToolDescription,
 	scopeOf,
@@ -209,9 +213,9 @@ test("every label is a value, a dash and a one-line consequence, never recommend
 
 test("labels carry the consequences of each value", () => {
 	assert.deepEqual(ask("provider", "typesafe").options, [
-		"typesafe - Jev from TypeSafe, the model the plugin's questions are fitted to",
-		"openai - OpenAI's decision model; costs more than Jev and its answers are not fitted",
-		"google - Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text",
+		"typesafe - Jev from TypeSafe",
+		"openai - OpenAI's decision model",
+		"google - Google's decision model",
 	]);
 	assert.deepEqual(ask("gateway", "direct").options, [
 		"direct - the provider's own API only",
@@ -220,8 +224,8 @@ test("labels carry the consequences of each value", () => {
 		"openrouter - OpenRouter only",
 	]);
 	assert.deepEqual(ask("scope", "core").options, [
-		"core - built-in general agents only",
-		"extended - also routes other agents that pass no model",
+		"core - the default agents only",
+		"extended - also other agents, as the README lists",
 	]);
 });
 
@@ -669,4 +673,54 @@ test("modelsAlready names the text only when it equals what is stored", () => {
 	assert.equal(modelsAlready("{openai:a}", "{openai:b}"), undefined);
 	assert.equal(modelsAlready(undefined, ""), undefined);
 	assert.equal(modelsAlready({ openai: "a" }, '{"openai":"a"}'), undefined);
+});
+
+test("six or five values give two pages with more last, the current value first, and more wraps", async () => {
+	const labels = ["a", "b", "c", "d", "e", "f"];
+	assert.deepEqual(currentFirst(labels, "e"), ["e", "a", "b", "c", "d", "f"]);
+	assert.deepEqual(currentFirst(labels, undefined), labels);
+	assert.equal(MORE, "more");
+	assert.deepEqual(pagesOf(currentFirst(labels, "e")), [
+		["e", "a", "b", "more"],
+		["c", "d", "f", "more"],
+	]);
+	assert.deepEqual(pagesOf(["a", "b", "c", "d", "e"]), [
+		["a", "b", "c", "more"],
+		["d", "e", "more"],
+	]);
+	const shown: string[][] = [];
+	const answers = ["more", "more", "b"];
+	const answer = await askPaged(
+		"q",
+		currentFirst(labels, "e"),
+		async (_question, page) => {
+			shown.push(page);
+			return answers.shift();
+		},
+	);
+	assert.deepEqual(shown, [
+		["e", "a", "b", "more"],
+		["c", "d", "f", "more"],
+		["e", "a", "b", "more"],
+	]);
+	assert.equal(answer, "b");
+});
+
+test("four values give one page with no more", () => {
+	assert.deepEqual(pagesOf(["a", "b", "c", "d"]), [["a", "b", "c", "d"]]);
+});
+
+test("chooseValue refuses more from a choice of one page as not offered", async () => {
+	let applied = false;
+	const text = await chooseValue(
+		"scope",
+		"core",
+		async () => MORE,
+		async () => {
+			applied = true;
+			return "applied";
+		},
+	);
+	assert.equal(text, `scope unchanged: ${NOT_OFFERED}`);
+	assert.equal(applied, false);
 });

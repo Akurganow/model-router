@@ -9,31 +9,17 @@ import {
 	keyHolderProblems,
 	loadSchema,
 	loadSource,
-	optionTextProblems,
 	type Source,
 } from "./build/source.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const schema = loadSchema(ROOT);
 
-const OPTION: Source["options"]["scope"] = {
-	title: "t",
-	descriptions: { claude: "c", omp: "o", openclaw: "w" },
-};
-const SECRET: Source["claude"]["userConfig"]["keys"]["typesafe"] = {
-	type: "t",
-	title: "t",
-	description: "d",
-	sensitive: true,
-};
+const OPTION: Source["options"]["scope"] = { title: "t", description: "d" };
+const KEY: Source["keys"]["typesafe"] = { title: "t", description: "d" };
 const HINT: Source["openclaw"]["uiHints"]["small_model"] = {
 	label: "l",
 	help: "h",
-};
-const SECRET_HINT: Source["openclaw"]["keys"]["typesafe"] = {
-	label: "l",
-	help: "h",
-	sensitive: true,
 };
 const INSTALL: Install = {
 	heading: "h",
@@ -62,17 +48,12 @@ const FIXTURE: Source = {
 	},
 	options: { provider: OPTION, gateway: OPTION, scope: OPTION },
 	models: MODELS,
+	keys: { typesafe: KEY, openai: KEY, google: KEY, openrouter: KEY },
 	claude: {
 		skills: ["s"],
 		commandContents: { provider: "p", gateway: "g", scope: "s" },
 		userConfig: {
 			optionType: "t",
-			keys: {
-				typesafe: SECRET,
-				openai: SECRET,
-				google: SECRET,
-				openrouter: SECRET,
-			},
 			model: { title: "t", description: "d" },
 		},
 		catalogueSource: "c",
@@ -97,12 +78,6 @@ const FIXTURE: Source = {
 			middle_model: HINT,
 			large_model: HINT,
 		},
-		keys: {
-			typesafe: SECRET_HINT,
-			openai: SECRET_HINT,
-			google: SECRET_HINT,
-			openrouter: SECRET_HINT,
-		},
 		install: INSTALL,
 	},
 	hermes: {
@@ -114,7 +89,6 @@ const FIXTURE: Source = {
 			middle_model: HINT,
 			large_model: HINT,
 		},
-		keys: { typesafe: HINT, openai: HINT, google: HINT, openrouter: HINT },
 		install: INSTALL,
 	},
 	npm: {
@@ -166,19 +140,13 @@ function keyPaths(value: unknown, prefix = ""): string[] {
 
 const unique = (paths: string[]) => [...new Set(paths)].sort();
 
-// A harness's option text is optional in the schema, so the comparison leaves those keys out. loadSource checks them against HARNESS_SETTINGS.
-const OPTIONAL_TEXT = /^\.options\.\w+\.descriptions\./;
-// A key record is keyed by key holder, and the schema names no holder. loadSource checks the members against KEY_HOLDERS.
-const HOLDER_TEXT = /^\.(claude\.userConfig|openclaw|hermes)\.keys\./;
+// The key record is keyed by key holder, and the schema names no holder. loadSource checks the members against KEY_HOLDERS.
+const HOLDER_TEXT = /^\.keys\./;
 
 test("the schema requires exactly the keys of the Source type", () => {
 	assert.deepEqual(
 		unique(requiredPaths(schema)),
-		unique(
-			keyPaths(FIXTURE).filter(
-				(path) => !OPTIONAL_TEXT.test(path) && !HOLDER_TEXT.test(path),
-			),
-		),
+		unique(keyPaths(FIXTURE).filter((path) => !HOLDER_TEXT.test(path))),
 	);
 });
 
@@ -212,39 +180,15 @@ test("the source names a hint for each slot setting of OpenClaw and Hermes", () 
 	assert.deepEqual(SLOT_SETTINGS, EXPECTED);
 });
 
-test("optionTextProblems names a missing text and a text for a setting the harness does not store", () => {
-	const source = loadSource(ROOT);
-	const { hermes: _dropped, ...gateway } = source.options.gateway.descriptions;
-	const broken: Source = {
-		...source,
-		options: {
-			...source.options,
-			gateway: { ...source.options.gateway, descriptions: gateway },
-			scope: {
-				...source.options.scope,
-				descriptions: { ...source.options.scope.descriptions, hermes: "h" },
-			},
-		},
-	};
-	assert.deepEqual(optionTextProblems(broken), [
-		"$.options.gateway.descriptions.hermes: hermes stores gateway, so the text is required",
-		"$.options.scope.descriptions.hermes: hermes does not store scope, so the text is not allowed",
-	]);
-});
-
 test("keyHolderProblems names a missing key holder and a member that names none", () => {
 	const source = loadSource(ROOT);
-	const { openrouter: _dropped, ...hermesKeys } = source.hermes.keys;
+	const { openrouter: _dropped, ...keys } = source.keys;
 	const broken = {
 		...source,
-		openclaw: {
-			...source.openclaw,
-			keys: { ...source.openclaw.keys, nobody: SECRET_HINT },
-		},
-		hermes: { ...source.hermes, keys: hermesKeys },
+		keys: { ...keys, nobody: KEY },
 	} as unknown as Source;
 	assert.deepEqual(keyHolderProblems(broken), [
-		"$.openclaw.keys.nobody: nobody is not a key holder, so the text is not allowed",
-		"$.hermes.keys.openrouter: openrouter is a key holder, so the text is required",
+		"$.keys.openrouter: openrouter is a key holder, so the text is required",
+		"$.keys.nobody: nobody is not a key holder, so the text is not allowed",
 	]);
 });

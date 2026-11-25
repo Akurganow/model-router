@@ -46,19 +46,14 @@ export const HARNESS_SETTINGS = {
 	hermes: ["provider", "gateway"],
 } as const satisfies Readonly<Record<Harness, readonly ValueSetting[]>>;
 
-export const storesSetting = (
-	harness: Harness,
-	setting: ValueSetting,
-): boolean => HARNESS_SETTINGS[harness].some((stored) => stored === setting);
-
 // The value a setting reads as when nothing is stored.
 export const defaultOf = (setting: ValueSetting): string | null =>
 	valueFor(setting, undefined) ?? null;
 
 // One entry per key holder, in KEY_HOLDERS order, under the setting name that holds its key.
 export const keyEntries = <T>(
-	record: Readonly<Record<KeyHolder, T>>,
+	entry: (holder: KeyHolder) => T,
 ): Record<string, T> =>
 	Object.fromEntries(
-		KEY_HOLDERS.map((holder) => [KEY_FIELDS[holder], record[holder]]),
+		KEY_HOLDERS.map((holder) => [KEY_FIELDS[holder], entry(holder)]),
 	);

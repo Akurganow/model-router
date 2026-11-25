@@ -28,15 +28,14 @@ const typed = (args: string): CommandRun => ({
 });
 
 const CALL = { tool: "mcp__model-router__config" };
-const CORE = "core - built-in general agents only";
-const EXTENDED = "extended - also routes other agents that pass no model";
+const CORE = "core - the default agents only";
+const EXTENDED = "extended - also other agents, as the README lists";
 const DIRECT = "direct - the provider's own API only";
 const AUTO = "auto - the provider's own API, then OpenRouter if it fails";
 const OPENROUTER_FIRST =
 	"openrouter-first - OpenRouter, then the provider's own API if it fails";
 const OPENROUTER = "openrouter - OpenRouter only";
-const TYPESAFE =
-	"typesafe - Jev from TypeSafe, the model the plugin's questions are fitted to";
+const TYPESAFE = "typesafe - Jev from TypeSafe";
 
 const call = (setting: string): ConfigCall => ({ ...CALL, setting });
 
@@ -358,8 +357,7 @@ const MODELS_LINES = [
 ].join("\n");
 const MODELS_KEY = "model-router.models";
 const MODEL_KEY = "model-router.model";
-const OPENAI =
-	"openai - OpenAI's decision model; costs more than Jev and its answers are not fitted";
+const OPENAI = "openai - OpenAI's decision model";
 
 const modelsCall = (models: unknown, setting?: unknown): ConfigCall => ({
 	...CALL,

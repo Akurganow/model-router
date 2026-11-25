@@ -22,19 +22,15 @@ import {
 import { LINE_PREFIX, pinnedLine, skippedLine } from "#core/output/line.ts";
 import { notValid } from "#core/output/reasons.ts";
 import { LEVELS, type Level } from "#core/parts/part.ts";
-import {
-	holders,
-	KEY_FIELDS,
-	KEY_HOLDERS,
-	KEY_VARIABLES,
-} from "#core/providers/provider.ts";
+import { holders, KEY_VARIABLES } from "#core/providers/provider.ts";
 import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { type JsonObject, type Rendered, serialize } from "./json.ts";
 import { HERMES_OUTPUTS } from "./outputs.ts";
-import { optionText, type Source } from "./source.ts";
+import type { Source } from "./source.ts";
 import {
 	defaultOf,
 	HARNESS_SETTINGS,
+	keyEntries,
 	SETTING_VALUES,
 	TOOL_NAME,
 } from "./values.ts";
@@ -50,16 +46,12 @@ const describe = (hint: { label: string; help: string }) => ({
 });
 
 const keySettings = (source: Source): JsonObject =>
-	Object.fromEntries(
-		KEY_HOLDERS.map((holder) => [
-			KEY_FIELDS[holder],
-			{
-				type: "secret",
-				env: KEY_VARIABLES[holder],
-				...describe(source.hermes.keys[holder]),
-			},
-		]),
-	);
+	keyEntries((holder) => ({
+		type: "secret",
+		env: KEY_VARIABLES[holder],
+		label: source.keys[holder].title,
+		description: source.keys[holder].description,
+	}));
 
 // config_schema follows the Hermes plugin manifest: a type per setting, choices on a str, and an env name on a secret.
 const configSchema = (source: Source): JsonObject => ({
@@ -71,7 +63,7 @@ const configSchema = (source: Source): JsonObject => ({
 				choices: [...SETTING_VALUES[setting]],
 				default: defaultOf(setting),
 				label: source.options[setting].title,
-				description: optionText(source, "hermes", setting),
+				description: source.options[setting].description,
 			},
 		]),
 	),

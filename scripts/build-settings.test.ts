@@ -14,19 +14,19 @@ const claude = rendered(renderClaude(source), CLAUDE_OUTPUTS.manifest);
 const omp = rendered(renderOmp(source), OMP_OUTPUTS.manifest);
 
 const MODELS_TEXT =
-	"The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.";
+	"The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.";
 
-test("Claude Code lists the keys, the three options, models and the removed model, in that order", () => {
+test("Claude Code lists the three options, models, the removed model and the keys, in that order", () => {
 	assert.deepEqual(Object.keys(claude.userConfig), [
-		"api_key",
-		"openai_api_key",
-		"google_api_key",
-		"openrouter_api_key",
 		"provider",
 		"gateway",
 		"scope",
 		"models",
 		"model",
+		"api_key",
+		"openai_api_key",
+		"google_api_key",
+		"openrouter_api_key",
 	]);
 });
 

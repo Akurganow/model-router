@@ -771,9 +771,9 @@ var TEXTS = {
     about: "whose model scores subagent calls",
     question: "Which provider's model should score subagent calls?",
     consequences: {
-      typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to",
-      openai: "OpenAI's decision model; costs more than Jev and its answers are not fitted",
-      google: "Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text"
+      typesafe: "Jev from TypeSafe",
+      openai: "OpenAI's decision model",
+      google: "Google's decision model"
     }
   },
   gateway: {
@@ -792,8 +792,8 @@ var TEXTS = {
     about: "which agent calls the router routes",
     question: "Which agent calls should the router route?",
     consequences: {
-      core: "built-in general agents only",
-      extended: "also routes other agents that pass no model"
+      core: "the default agents only",
+      extended: "also other agents, as the README lists"
     }
   }
 };
@@ -829,11 +829,33 @@ var NO_ANSWER = "no answer from the dialog";
 var NOT_OFFERED = "the answer was not one of the offered values";
 var keyLine = (holder, state) => `${holder} key: ${state}`;
 var label = (setting, value) => `${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
+var MORE = "more";
+var PAGE_MAX = 4;
+var PAGE_VALUES = PAGE_MAX - 1;
+var currentFirst = (values, current) => current === void 0 ? [...values] : [current, ...values.filter((value) => value !== current)];
+function pagesOf(options) {
+  if (options.length <= PAGE_MAX) return [[...options]];
+  const pages = [];
+  for (let at = 0; at < options.length; at += PAGE_VALUES)
+    pages.push([...options.slice(at, at + PAGE_VALUES), MORE]);
+  return pages;
+}
+async function askPaged(question, options, select) {
+  const pages = pagesOf(options);
+  for (; ; )
+    for (const page of pages) {
+      const answer = await select(question, page);
+      if (answer !== MORE || pages.length === 1) return answer;
+    }
+}
 function ask(setting, current) {
   const { values, question } = TEXTS[setting];
-  const first = valueFor(setting, current);
-  const sorted = first === void 0 ? values : [first, ...values.filter((value) => value !== first)];
-  return { question, options: sorted.map((value) => label(setting, value)) };
+  return {
+    question,
+    options: currentFirst(values, valueFor(setting, current)).map(
+      (value) => label(setting, value)
+    )
+  };
 }
 function pick(setting, answer) {
   return TEXTS[setting].values.find(
@@ -844,7 +866,7 @@ async function chooseValue(setting, current, select, apply2) {
   const { question, options } = ask(setting, current);
   let answer;
   try {
-    answer = await select(question, options);
+    answer = await askPaged(question, options, select);
   } catch {
     answer = void 0;
   }
