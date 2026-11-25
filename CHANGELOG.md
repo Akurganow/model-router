@@ -3,6 +3,60 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.26.0 - 2026-11-25
+#### Features
+- (**build**) declare the models setting in every manifest (1b6d130)
+- (**claude**) read and write the models setting (2581ae4)
+- (**core**) export the models lines for the config tools (5b3eaca)
+- (**core**) read a models setting per provider and migrate the removed model option (3cade4c)
+- (**hermes**) read the models setting and print its lines (675a854)
+- (**omp**) read and write the models setting (c8d135f)
+- (**openclaw**) read the models setting and migrate the config on update (212c12a)
+- (**setup**) say in PRIVACY that the plugins write models, and call the text form short (cf714d3)
+- (**setup**) document the models setting in the guides and the setup skills (8efcfcc)
+#### Bug Fixes
+- (**claude**) erase the removed model option when the models text equals the stored one (ca9ec37)
+- (**claude**) erase the removed model option on every provider change (2bec73d)
+- (**core**) reject a repeated JSON key behind a non-text value and a quote in a short-form name (9673b2c)
+- (**core**) keep the form of models and copy only a valid model option (3259593)
+- (**hermes**) ask Node for the models verdict only for a pinned level (0b7ac01)
+- (**hermes**) skip every task while the models value is not valid (a13f189)
+- (**models**) find a repeated JSON key in linear time (ce3f56a)
+- (**openclaw**) leave requiresRuntime out of the setup manifest (cd74c26)
+- (**openclaw**) rebuild the bundles with the models silence rule (948ca50)
+- (**openclaw**) skip a stored models number or array as not valid (cbb79fd)
+- (**setup**) say which omp and Claude Code calls get the models skip (0412ebc)
+- (**setup**) write JSON for a name with a comma, and state where Hermes checks models (af3d422)
+- (**setup**) split the models steps into migrate, repair and change, and link the shared text (5d2414f)
+- never throw when a stored value has no toString (3c5f87f)
+#### Documentation
+- (**claude**) list the models input and the hidden model row (698557d)
+- link the evidence of the OpenClaw setup entry (2d6ef20)
+- drop the OpenRouter name table and say when the models line shows the migrated text (6fdb83d)
+- describe the models setting, the migration ladder and the OpenRouter names (a112aba)
+- keep the module rules in one place and order the add-provider steps (3d91b0f)
+- describe the provider modules in the layout and the add-provider skill (f105269)
+#### Tests
+- (**core**) pin the OpenRouter default of each module and split the vendor rule (8e9d367)
+- (**core**) read the migrated models by name (3f9f573)
+- (**hermes**) name non-default models where a test proves models is read (15b7f31)
+- (**openclaw**) pin that an unchanged config comes back as the same object (d26926f)
+- match the OpenAI host exactly in the fake fetch (a3f84c7)
+- name non-default models where a test proves models is read (4a56568)
+#### Build system
+- rebuild the OpenClaw setup entry with the textOf fallback (c3f64e0)
+#### Refactoring
+- (**build**) hold one models description in the source for every harness (6bac67b)
+- (**core**) derive the settings version from the ladder and document adding a step (caaf3d9)
+- (**scoring**) keep only provider modules in makers/ (9757359)
+- (**scoring**) give each provider its own module (ecac710)
+- name the stored model of an attempt and the slot models, and move two helpers to utils (abf5564)
+- share the bad models call and the model unchanged line (715d6a2)
+- hold the provider module boundary in Biome (191ab26)
+
+- - -
+
+
 ## v0.25.2 - 2026-11-22
 #### Bug Fixes
 - (**metadata**) link each install to its guide and stop overstating (2046329)
