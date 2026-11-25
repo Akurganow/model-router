@@ -44,11 +44,10 @@ const configSchema = (source: Source): JsonObject => ({
 	},
 });
 
-// manifest/setup-and-auth.md, "setup fields": `configMigrations` holds the ids of the migrations the setup entry registers,
-// and `requiresRuntime: true` keeps the setup entry, `setup-api.js` at the plugin root, in use.
+// manifest/setup-and-auth.md, "setup fields": `configMigrations` holds the ids of the migrations the setup entry registers.
+// Only an explicit `requiresRuntime: false` disables the setup entry, so leaving the field out keeps `setup-api.js` in use.
 const setup = (): JsonObject => ({
 	configMigrations: [`settings-v${SETTINGS_VERSION}`],
-	requiresRuntime: true,
 });
 
 // manifest/setup-and-auth.md, "uiHints reference": label, help and sensitive.

@@ -44,11 +44,8 @@ test("the manifest names the plugin, its version, its tool and its skills", () =
 	assert.deepEqual(manifest.skills, source.openclaw.skills);
 });
 
-test("the manifest names the setup entry's migration and asks for the setup runtime", () => {
-	assert.deepEqual(manifest.setup, {
-		configMigrations: ["settings-v1"],
-		requiresRuntime: true,
-	});
+test("the manifest names the setup entry's migration and leaves requiresRuntime out", () => {
+	assert.deepEqual(manifest.setup, { configMigrations: ["settings-v1"] });
 });
 
 test("the config schema holds the eleven settings and refuses any other key", () => {
