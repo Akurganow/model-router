@@ -8,7 +8,11 @@ import {
 	unreadable,
 	useWorld,
 } from "#adapters/omp/__tests__/support/fakes.ts";
-import { findAttempts, readSettings } from "#adapters/omp/settings.ts";
+import {
+	findAttempts,
+	readGlobalSettings,
+	readSettings,
+} from "#adapters/omp/settings.ts";
 import { settingsOf } from "#core/options/settings.ts";
 import { KEY_VARIABLES } from "#core/providers/provider.ts";
 
@@ -25,6 +29,21 @@ test("the adapter passes the stored text of both settings to the core", async ()
 	assert.deepEqual(await gives(), { skipped: "provider not valid: run setup" });
 });
 
+test("models passes from the global settings, and a project's never applies", async () => {
+	world.lockfile = lockfileWith({ models: "{typesafe:jev-preview}" });
+	world.project = { models: "{typesafe:jev-1.14.0}" };
+	assert.equal(
+		(await readSettings(world.imports, "/work"))?.models,
+		"{typesafe:jev-preview}",
+	);
+	assert.equal(
+		(await readGlobalSettings(world.imports))?.models,
+		"{typesafe:jev-preview}",
+	);
+	world.lockfile = lockfileWith({});
+	assert.equal((await readSettings(world.imports, "/work"))?.models, undefined);
+});
+
 test("a global gateway of nothing reads as direct", async () => {
 	for (const gateway of ["", "   ", null]) {
 		world.lockfile = lockfileWith({ gateway });
@@ -32,6 +51,7 @@ test("a global gateway of nothing reads as direct", async () => {
 			provider: "typesafe",
 			gateway: "direct",
 			scope: "core",
+			models: {},
 		});
 	}
 });
@@ -62,6 +82,7 @@ const ok = (gateway: string) => ({
 	provider: "typesafe",
 	gateway,
 	scope: "core",
+	models: {},
 });
 const provider = { skipped: "provider not valid: run setup" };
 const rules: [string, object, object, object][] = [

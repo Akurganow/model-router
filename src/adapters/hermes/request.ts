@@ -4,6 +4,7 @@ import { type Stored, VALUE_SETTINGS } from "#core/options/settings.ts";
 import { KEY_HOLDERS, type Keys } from "#core/providers/provider.ts";
 import { isPositiveNumber, isRecord } from "#utils/guards.ts";
 import { nonEmpty } from "#utils/text.ts";
+import { MODELS_SETTING } from "./texts.ts";
 
 // Whose effort replaces the ladder's. Python ranks the delegation section above the caller.
 const KEPT_EFFORTS = ["config", "caller"] as const;
@@ -13,13 +14,13 @@ export type KeptEffort = (typeof KEPT_EFFORTS)[number];
 export type HermesRequest = {
 	readonly task: string;
 	readonly context: string;
-	// What the shim read for each setting Hermes stores, unchecked: `settingsOf` checks it.
+	// What the shim read for each setting Hermes stores, and for `models`, unchecked: `settingsOf` checks it.
 	readonly stored: Stored;
 	readonly keys: Keys;
 	// Undefined unless the budget is a positive finite number.
 	readonly budgetMs: number | undefined;
-	// A blank or missing model is undefined.
-	readonly models: Readonly<Record<Slot, string | undefined>>;
+	// The model of each slot setting. A blank or missing model is undefined.
+	readonly slotModels: Readonly<Record<Slot, string | undefined>>;
 	// Undefined when the ladder's effort applies.
 	readonly keptEffort: KeptEffort | undefined;
 	// The task's description parameter, or empty text.
@@ -34,7 +35,7 @@ const readKeys = (value: unknown): Keys =>
 		}),
 	);
 
-const readModels = (value: unknown): HermesRequest["models"] =>
+const readSlotModels = (value: unknown): HermesRequest["slotModels"] =>
 	slotRecord((slot) => (isRecord(value) ? nonEmpty(value[slot]) : undefined));
 
 const readBudget = (value: unknown): number | undefined =>
@@ -47,17 +48,20 @@ const readBudget = (value: unknown): number | undefined =>
  */
 export function readRequest(raw: unknown): HermesRequest | undefined {
 	if (!isRecord(raw) || Array.isArray(raw)) return undefined;
-	const { task, context, keys, budgetMs, models, keptEffort, description } =
+	const { task, context, keys, budgetMs, slotModels, keptEffort, description } =
 		raw;
 	return {
 		task: typeof task === "string" ? task : "",
 		context: contextText(context),
 		stored: Object.fromEntries(
-			VALUE_SETTINGS.map((setting) => [setting, raw[setting]]),
+			[...VALUE_SETTINGS, MODELS_SETTING].map((setting) => [
+				setting,
+				raw[setting],
+			]),
 		),
 		keys: readKeys(keys),
 		budgetMs: readBudget(budgetMs),
-		models: readModels(models),
+		slotModels: readSlotModels(slotModels),
 		keptEffort: KEPT_EFFORTS.find((source) => source === keptEffort),
 		description: typeof description === "string" ? description : "",
 	};

@@ -34,9 +34,10 @@ class NodeRequestTest(RouterCase):
                 "context": "the context",
                 "provider": "typesafe",
                 "gateway": None,
+                "models": None,
                 "keys": {"typesafe": "typesafe-secret-one"},
                 "budgetMs": 1000,
-                "models": {"small": "small-model", "middle": None, "large": "large-model"},
+                "slotModels": {"small": "small-model", "middle": None, "large": "large-model"},
                 "keptEffort": None,
                 "description": "",
             },
@@ -73,7 +74,23 @@ class NodeRequestTest(RouterCase):
         request = self.request(settings=good_settings(gateway="auto"))
         self.assertEqual((request["provider"], request["gateway"]), ("typesafe", "auto"))
 
-    def test_models(self):
+    def test_the_stored_models_value_goes_to_node_as_read(self):
+        dict_value = {"typesafe": "jev-preview", "openai": "gpt-6-luna"}
+        for value in (dict_value, "{typesafe:jev-preview}", '{"typesafe": 3}', "", "   ", 7, None):
+            with self.subTest(value):
+                request = self.request(settings=good_settings(models=value))
+                self.assertEqual(request["models"], value)
+
+    def test_python_does_not_judge_a_models_value(self):
+        for value in ("{typesafe}", "{typesafe:a/b}", "not models at all"):
+            with self.subTest(value):
+                stub = self.stub(reply=skip_reply())
+                router = make_router(script=stub.script, settings=good_settings(models=value))
+                route = router.route({"goal": "g", "index": 0}, {})
+                self.assertEqual(route["label"], PREFIX + "skipped, test")
+                self.assertTrue(stub.capture.exists())
+
+    def test_the_slot_models(self):
         request = self.request(
             settings=good_settings(
                 small_model={"provider": "p", "model": " "},
@@ -81,14 +98,14 @@ class NodeRequestTest(RouterCase):
                 large_model={"provider": "p", "model": " l "},
             )
         )
-        self.assertEqual(request["models"], {"small": None, "middle": "m", "large": "l"})
+        self.assertEqual(request["slotModels"], {"small": None, "middle": "m", "large": "l"})
 
     def test_a_blank_spaces_or_missing_model_is_sent_as_none_in_every_slot(self):
         for slot in ("small", "middle", "large"):
             for value in ({"provider": "p", "model": ""}, {"model": "   "}, None):
                 with self.subTest(slot=slot, value=value):
                     request = self.request(settings=good_settings(**{f"{slot}_model": value}))
-                    self.assertIsNone(request["models"][slot])
+                    self.assertIsNone(request["slotModels"][slot])
 
     def test_a_config_effort_is_kept_by_config(self):
         for value, kept in (

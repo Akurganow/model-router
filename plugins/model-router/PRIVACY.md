@@ -144,14 +144,17 @@ A project can set any of these variables in the `env` block of its Claude Code
 project settings. When the matching key option is empty, the plugin then sends
 the task text to the account that project key belongs to.
 
-The provider, gateway and scope choices live in your Claude Code settings, as
-the plugin options `provider`, `gateway` and `scope`. The plugin writes them in
-two cases only. You pick a value in the dialog that the `config` tool opens. Or
-you type `/model-router:provider`, `/model-router:gateway` or
-`/model-router:scope` with a value at your own prompt. A command from any other
-origin writes nothing. The plugin writes no other option and no file. Claude
+The provider, gateway, scope and models choices live in your Claude Code
+settings, as the plugin options `provider`, `gateway`, `scope` and `models`.
+The plugin writes them in three cases only. You pick a value in the dialog that
+the `config` tool opens. Or you type `/model-router:provider`,
+`/model-router:gateway` or `/model-router:scope` with a value at your own
+prompt. Or the agent passes a `models` text to the `config` tool at your
+request. A command from any other origin writes nothing. When it writes
+`models` or changes `provider`, the plugin also empties the removed option
+`model`. The plugin writes no other option and no file. Claude
 Code ignores plugin options in project and local settings, so a project cannot
-change any of the three options.
+change any of these options.
 
 After an update, a stored `openrouter` in `provider` reaches the plugin as
 `typesafe`. Beside a TypeSafe key, the plugin then sends the task text to

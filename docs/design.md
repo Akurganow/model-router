@@ -31,7 +31,7 @@ It writes the Claude manifest, both catalogues and the omp `package.json`.
 It writes the OpenClaw manifest `plugins/model-router-openclaw/openclaw.plugin.json`.
 It writes the Hermes manifest `plugins/model-router-hermes/plugin.yaml`, which holds JSON text, and `constants.json` beside it.
 It fills the install region of the root README between `<!-- install:start -->` and `<!-- install:end -->`, with one section for each client.
-It builds the four bundles from `src/`: the Claude Code hooks module, the omp extension, the OpenClaw entry `plugins/model-router-openclaw/index.js` and the Node program `plugins/model-router-hermes/route.mjs` that the Hermes shim starts.
+It builds the bundles from `src/`: the Claude Code hooks module, the omp extension, the OpenClaw entry `plugins/model-router-openclaw/index.js` with its setup entry `plugins/model-router-openclaw/setup-api.js`, which registers the config migration, and the Node program `plugins/model-router-hermes/route.mjs` that the Hermes shim starts.
 Nobody edits a generated file by hand, and [CI](#ci-checks-the-copies-and-the-installation) fails when one differs from the builder's output.
 
 Claude Code and omp need their own files, so one file could not serve both.

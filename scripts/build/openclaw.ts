@@ -5,6 +5,7 @@ import {
 	defaultOf,
 	KEY_FIELDS,
 	keyEntries,
+	SETTINGS_VERSION,
 	SLOT_SETTINGS,
 	TOOL_NAME,
 	VALUE_SETTINGS,
@@ -29,6 +30,11 @@ const configSchema = (source: Source): JsonObject => ({
 				},
 			]),
 		),
+		// A string, or an object of provider to model, so a value typed as text and one set as a map both pass the validation.
+		models: {
+			type: ["string", "object"],
+			additionalProperties: { type: source.openclaw.settingType },
+		},
 		...Object.fromEntries(
 			[...SLOT_SETTINGS, ...SECRET_KEYS].map((name) => [
 				name,
@@ -36,6 +42,12 @@ const configSchema = (source: Source): JsonObject => ({
 			]),
 		),
 	},
+});
+
+// manifest/setup-and-auth.md, "setup fields": `configMigrations` holds the ids of the migrations the setup entry registers.
+// Only an explicit `requiresRuntime: false` disables the setup entry, so leaving the field out keeps `setup-api.js` in use.
+const setup = (): JsonObject => ({
+	configMigrations: [`settings-v${SETTINGS_VERSION}`],
 });
 
 // manifest/setup-and-auth.md, "uiHints reference": label, help and sensitive.
@@ -49,6 +61,10 @@ const uiHints = (source: Source): JsonObject => ({
 			},
 		]),
 	),
+	models: {
+		label: source.models.title,
+		help: source.models.description,
+	},
 	...source.openclaw.uiHints,
 	...keyEntries(source.openclaw.keys),
 });
@@ -70,6 +86,7 @@ const manifest = (source: Source): JsonObject => ({
 	version: source.version,
 	activation: { onStartup: true },
 	contracts: { tools: [TOOL_NAME] },
+	setup: setup(),
 	skills: [...source.openclaw.skills],
 	configContracts: { secretInputs: secretInputs() },
 	uiHints: uiHints(source),

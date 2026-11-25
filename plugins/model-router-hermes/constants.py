@@ -7,5 +7,6 @@ import json
 from pathlib import Path
 
 PLUGIN_DIR = Path(__file__).resolve().parent
+SCRIPT = PLUGIN_DIR / "route.mjs"
 MS_PER_SECOND = 1000
 CONSTANTS = json.loads((PLUGIN_DIR / "constants.json").read_text(encoding="utf-8"))

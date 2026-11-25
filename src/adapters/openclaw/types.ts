@@ -72,6 +72,18 @@ export type PluginRuntime = {
 	};
 };
 
+// src/plugins/setup-registry.ts: the setup pass records the function and calls it with the whole config
+// as `entry.migrate(cfg) ?? { config: cfg, changes: [] }`, so nothing returned reads as no change.
+export type ConfigMigration = (
+	config: OpenClawConfig,
+) => { config: OpenClawConfig; changes: string[] } | null | undefined;
+
+// src/plugins/setup-registry.ts: the api of the setup pass, reduced to the one member the setup entry
+// uses. That pass builds the api with a runtime whose members are unavailable.
+export type SetupApi = {
+	registerConfigMigration: (migrate: ConfigMigration) => void;
+};
+
 // src/plugins/hook-types.ts: `PluginHookBeforeToolCallEvent`.
 export type BeforeToolCallEvent = {
 	toolName: string;

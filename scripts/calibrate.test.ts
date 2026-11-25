@@ -201,7 +201,7 @@ test("main sends every case to the named provider's host with the named model", 
 	assert.ok(seen.length > 0);
 	for (const { url, body } of seen) {
 		assert.match(url, /^https:\/\/openrouter\.ai\/api\/v1\/systemone/);
-		assert.match(body, /"model":"jev-1\.14\.0"/);
+		assert.match(body, /"model":"typesafe\/jev-1\.14"/);
 	}
 });
 

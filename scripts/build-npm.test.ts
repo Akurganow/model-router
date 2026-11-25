@@ -115,12 +115,13 @@ test("every copy equals its source byte for byte", () => {
 		);
 });
 
-test("the copies cover the licence, both bundles, the manifest and both skill folders", () => {
+test("the copies cover the licence, the bundles, the setup entry, the manifest and both skill folders", () => {
 	const targets = listCopies(ROOT).map(({ to }) => to);
 	for (const path of [
 		`${NPM_ROOT}/LICENSE`,
 		`${NPM_ROOT}/extension/index.js`,
 		`${NPM_ROOT}/index.js`,
+		`${NPM_ROOT}/setup-api.js`,
 		`${NPM_ROOT}/openclaw.plugin.json`,
 		`${NPM_ROOT}/skills/model-router/SKILL.md`,
 		`${NPM_ROOT}/openclaw-skills/model-router-setup/SKILL.md`,
@@ -135,6 +136,8 @@ test("the generated paths list every rendered file, copy and bundle of the tree"
 		NPM_OUTPUTS.readme,
 		OPENCLAW_OUTPUTS.manifest,
 		OPENCLAW_OUTPUTS.bundle,
+		OPENCLAW_OUTPUTS.setup,
+		`${NPM_ROOT}/setup-api.js`,
 		`${NPM_ROOT}/openclaw.plugin.json`,
 		`${NPM_ROOT}/index.js`,
 		`${NPM_ROOT}/extension/index.js`,
@@ -218,6 +221,7 @@ const box = useTempRoot("build-npm-", (put) => {
 	put(OMP_OUTPUTS.bundle, "omp bundle\n");
 	put(OPENCLAW_OUTPUTS.manifest, "{}\n");
 	put(OPENCLAW_OUTPUTS.bundle, "claw bundle\n");
+	put(OPENCLAW_OUTPUTS.setup, "claw setup\n");
 	put("plugins/model-router-omp/skills/a/SKILL.md", "omp a\n");
 	put("plugins/model-router-openclaw/openclaw-skills/b/SKILL.md", "claw b\n");
 });
@@ -239,4 +243,5 @@ test("a file removed from a plugin folder disappears from the tree on the next c
 	);
 	assert.equal(box.read(`${NPM_ROOT}/skills/c/SKILL.md`), "omp c\n");
 	assert.equal(box.read(`${NPM_ROOT}/extension/index.js`), "omp bundle\n");
+	assert.equal(box.read(`${NPM_ROOT}/setup-api.js`), "claw setup\n");
 });

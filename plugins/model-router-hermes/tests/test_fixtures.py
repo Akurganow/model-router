@@ -20,7 +20,7 @@ class FixtureReplayTest(RouterCase):
     def settings_for(fixture):
         """A model in each slot the fixture's request names one for."""
         request = fixture["request"]
-        models = request.get("models") if isinstance(request, dict) else None
+        models = request.get("slotModels") if isinstance(request, dict) else None
         models = models if isinstance(models, dict) else {}
         return good_settings(
             **{

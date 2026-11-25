@@ -1,6 +1,6 @@
 ---
 name: model-router-setup
-description: Use to check or change the model-router setup in OpenClaw, such as its scoring keys, provider, gateway, scope, the small, middle and large models, or why routing is off.
+description: Use to check or change the model-router setup in OpenClaw, such as its scoring keys, provider, gateway, scope, the scoring models, the small, middle and large models, or why routing is off.
 ---
 
 # model-router setup for OpenClaw
@@ -19,6 +19,7 @@ The person may also choose these, and each has a default:
 - `provider`: whose model scores tasks. It takes `typesafe` (the default), `openai` or `google`.
 - `gateway`: how OpenRouter is used to reach the provider. The default is `direct`.
 - `scope`: which spawns the plugin routes. The default is `core`.
+- `models`: the scoring model of each provider. A provider with no entry uses its default model.
 - A model for each of the three levels: `small_model` for lookup work, `middle_model` for bounded judgment, `large_model` for open judgment. A level with no model keeps OpenClaw's model and still gets the effort for a task the plugin scores.
 
 ## Your job
@@ -36,18 +37,35 @@ When the person wants to choose the provider, follow these steps in order:
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. After OpenClaw replaces the plugin, call `model_router_config` again and confirm the lines.
 
+When the `models` line ends with `(not valid: <entry>)`, repair it. Follow these steps in order:
+
+1. Call `model_router_config` with no input, and read the `models` line.
+2. Name the entry to the person, and ask for a corrected text.
+3. On the person's word, run `openclaw config set plugins.entries.model-router-openclaw.config.models '<corrected text>'`, with the text in the short form and the entries in the order the line shows them. When a kept name holds a comma, a quote or a brace, write the whole value as a JSON object.
+4. After OpenClaw replaces the plugin, call `model_router_config` again, and confirm the `models` line.
+
+When the person wants another scoring model for one provider, follow these steps in order:
+
+1. Call `model_router_config` with no input, and read the `models` line and the lines under it.
+2. Ask the person for the provider and the model name. Model names come from the provider's API documentation.
+3. Take the text the line shows, keep every other entry, and set or replace that provider's entry. Write the short form, with the entries in the order the line shows them. When a kept name holds a comma, a quote or a brace, write the whole value as a JSON object.
+4. On the person's word, run `openclaw config set plugins.entries.model-router-openclaw.config.models '<whole text>'`.
+5. After OpenClaw replaces the plugin, call `model_router_config` again, and confirm the `models` line.
+
 ## Facts
 
 ### The tool
 
-- `model_router_config` with no input prints the `provider`, `gateway`, `scope`, `small_model`, `middle_model` and `large_model` lines, then one key line for each path the `gateway` setting allows.
+- `model_router_config` with no input prints the `provider`, `gateway`, `scope`, `models`, `small_model`, `middle_model` and `large_model` lines, then one key line for each path the `gateway` setting allows.
 - A model line shows the slot string as written, or `unset`. A key line reads `typesafe key: set`, `openai key: unset` or `openrouter key: unset`, after the key's holder.
-- Example output:
+- Example output, with the model line of one provider. [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each:
 
 ```text
 provider: typesafe
 gateway: auto (typesafe, then openrouter)
 scope: core
+models: unset
+typesafe model: jev-latest (OpenRouter: jev-latest)
 small_model: acme/small
 middle_model: unset
 large_model: unset
@@ -56,6 +74,7 @@ openrouter key: unset
 ```
 
 - A setting that is not valid prints as `<setting>: <stored text> (not valid: use one of <values>)`. The gateway line then names no company, and no key line prints.
+- A `models` value that is not valid prints as `models: <text> (not valid: <entry>)`, and no provider model line prints.
 - The tool only reads and writes nothing.
 
 ### Provider and gateway
@@ -92,7 +111,16 @@ openrouter key: unset
   4. After OpenClaw has replaced the plugin, call `model_router_config` again. Go on only when the `gateway` line shows the agreed value.
   5. Ask them to type `/model-router-provider typesafe`.
   6. After OpenClaw has replaced the plugin, call `model_router_config` again and check the `provider` and `gateway` lines.
-- OpenClaw gives you no way to write a setting. Only the owner can change a setting with these commands.
+- OpenClaw gives you no way to write `provider`, `gateway` or `scope`. Only the owner can change them with these commands.
+
+### Scoring models
+
+- `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, a JSON object, or a native object in the config. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults, the OpenRouter names and when a value is not valid.
+- The person sets `models` on the plugin's page in the Control UI, or with `openclaw config set plugins.entries.model-router-openclaw.config.models '<text>'`. Run the command only on the person's word.
+- A change applies once OpenClaw replaces the plugin, after running work drains, up to 60 s. The tool can show the old value until then.
+- A model name goes as written on the provider's own API, and that API's documentation lists the names. [The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path) says what OpenRouter does with a name.
+- A stored `models` makes an older plugin version fail OpenClaw's config check, because the schema allows no unknown key. Tell the person to remove the setting before an older install.
+- The plugin registers its migration ladder with OpenClaw. `openclaw doctor --fix` and an update run it. Today it changes nothing.
 
 ### Scope
 
@@ -157,7 +185,7 @@ A spawn with no `model-router` line at all has one of these causes:
 
 Skip reasons, checked in this order, with the fix:
 
-- `<setting> not valid: run setup`: the setting holds a value outside its list. With more than one, the reason names the first of `provider`, `gateway` and `scope`. Set a valid value with that setting's command. For a retired `provider` value, follow the steps under "A retired provider value" above.
+- `<setting> not valid: run setup`: the setting holds a value outside its list, or `models` is not valid. With more than one, the reason names the first of `provider`, `gateway`, `scope` and `models`. Set a valid value with that setting's command, or write `models` as the steps above say. For a retired `provider` value, follow the steps under "A retired provider value" above.
 - `key unset`: no path the `provider` and `gateway` settings allow has a key. Add a key.
 - `<id> is outside the core scope`: under `core`, the spawn names another agent. Set `scope` to `extended` to route it.
 - `subagent model set`: `agents.defaults.subagents.model`, or the target agent's `subagents.model`, is set. OpenClaw's own choice decides. Clear that setting to route the spawn.
@@ -167,7 +195,7 @@ Skip reasons, checked in this order, with the fix:
 - `settings unreadable`: the plugin cannot read OpenClaw's live config.
 - `timeout`: the first of two attempts got no answer in 5 s, or the 10 s routing limit expired. The limit shrinks to the hook timeout minus 2 s when that is smaller.
 - `cancelled`: OpenClaw cancelled the `sessions_spawn` call before routing finished.
-- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score. Look at the company that failed, its key and the network. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says.
+- `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score. Look at the company that failed, its key and the network. `HTTP 400` can also mean that OpenRouter does not know the model name in `models`. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says.
 
 ### Checking routing
 
@@ -180,6 +208,7 @@ For the person: the plugin's README, `plugins/model-router-openclaw/README.md` i
 
 - Never take, show or repeat a key. If a key arrives in chat, do not repeat or store it, and tell the person to rotate it.
 - Change a setting only when the person asked for it or agreed.
+- Run the `models` command only on the person's word, with every entry the person keeps.
 - Only the owner can change a setting with `/model-router-provider`, `/model-router-gateway` and `/model-router-scope`.
 - A routing check spawns one small task and spends a little usage, so ask before it.
 

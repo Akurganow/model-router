@@ -11,9 +11,9 @@ A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks
 - It sets only a model you assigned.
 - It never overrides a model you chose, nor an effort the `delegation` section sets. [Precedence](#precedence) gives the whole order for the model and the effort.
 - The delegating model can describe each task, and can set a task's effort or level to escalate it. [Parameters of `delegate_task`](#parameters-of-delegate_task) lists them.
-- It starts Hermes's own Node once for each task it scores. [Node](#node) says how.
+- It starts Hermes's own Node once for each task it scores, and once for a task that sets a `level`, to check `models`. [Node](#node) says how.
 - It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what Hermes can still do.
-- The plugin changes a setting only when you type `/model-router-provider` or `/model-router-gateway`. It never writes `delegation.backend`.
+- The plugin changes a setting only when you type `/model-router-provider` or `/model-router-gateway`. It never writes `models` or `delegation.backend`.
 
 ## Install
 
@@ -96,6 +96,24 @@ Switch them with `/model-router-provider <value>` and `/model-router-gateway <va
 
 [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says what a value outside a setting's list does, and lists the retired values of `provider`. Hermes passes such a stored value on as stored. The Desktop settings form refuses to save a value outside the choices, and it leaves such a stored value alone when it saves another field.
 
+### The scoring model of each provider
+
+The `models` setting names the scoring model of each provider. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists its forms, its defaults, the OpenRouter names, when a value is not valid and the lines of the config tool. Hermes also takes a native object.
+
+`plugin.yaml` declares `models` as `str`, because the settings form edits it as text, as the Claude Code and omp forms do. A mapping set in `config.yaml` still reads.
+
+The tool is read-only, so you, or the agent on your word, set `models`. Use the plugin's settings form in Hermes Desktop, `config.yaml` under `plugins.entries.model-router-hermes.settings`, or run:
+
+```bash
+hermes config set plugins.entries.model-router-hermes.settings.models '<text>'
+```
+
+The plugin reads `models` at each task. The Python passes the stored value to the Node step, which decides whether it is valid and answers with its verdict. The Python reads the verdict and nothing else about the value. The plugin sends only the entry of the provider in force, so one value serves every `provider` setting.
+
+A `models` value that is not valid stops routing, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says. [The gates](#the-gates) say where each task meets that check, so a task without a `level` can skip with an earlier reason, such as `key unset`.
+
+The plugin writes no setting when it loads. The setup skill writes a migrated shape when you agree.
+
 [Facts behind the settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#hermes-registration-and-settings)
 
 ## Scope
@@ -106,11 +124,13 @@ Hermes Agent has no `scope` setting. The plugin considers every task of `delegat
 
 `/model-router-provider [typesafe|openai|google]` shows or changes the provider, and `/model-router-gateway [direct|auto|openrouter-first|openrouter]` shows or changes the gateway. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. Each command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, a valid value prints `<setting> unchanged: only a local session can change it` and the current line.
 
-The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the three model lines and the key lines. A model line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
+The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `models` lines, the three slot lines and the key lines. The `models` lines come from the plugin's Node step, which reads the stored value. When Hermes has no Node or the step fails, they are the one line `models: unavailable, no answer from node`. While the `models` value is not valid, the tool prints no key lines, as it prints none while a setting is not valid. The example shows the model line of one provider, and [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each. A slot line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
 
 ```text
 provider: typesafe
 gateway: auto (typesafe, then openrouter)
+models: unset
+typesafe model: jev-latest (OpenRouter: jev-latest)
 small_model: openrouter <model>
 middle_model: unset
 large_model: unset
@@ -173,7 +193,7 @@ Hermes refuses a task whose `reasoning_effort` or `level` is off these lists, be
 
 A task that sets `level`:
 
-- Meets two gates: `<setting> not valid: run setup` first, then `subagent model set`. It needs no key and no Node.
+- Meets three gates: `<setting> not valid: run setup`, then `models not valid: run setup`, then `subagent model set`. It needs no key. Node answers the `models` verdict only, and scores nothing.
 - Gets its slot's model, as [the two fields of a slot](#models) give it. An unset slot runs the task on Hermes's own route, with the label `model-router L<level> <slot> model unset`.
 - Carries no `route.label` and writes no log line when it passes both gates and its model is set. The task's result still names the model and provider it ran on.
 
@@ -185,7 +205,7 @@ The parameters are part of the session's tool list. After an install or an updat
 
 ### Node
 
-The plugin runs the scoring step in Node. It uses only Hermes's own Node. It never uses a Node on `PATH`, and it reports `node not found` when Hermes has none. It starts the program `route.mjs` once for each task it scores. It writes the request to the program's standard input and reads one line of JSON back. Keys travel on standard input only.
+The plugin runs the scoring step in Node. It uses only Hermes's own Node. It never uses a Node on `PATH`, and it reports `node not found` when Hermes has none. It starts the program `route.mjs` once for each task it scores, and once for the `models` verdict of a task that sets a `level`, which is not scored. When Hermes has no Node or that run fails, the plugin has no verdict and the task with a `level` is routed. It writes the request to the program's standard input and reads one line of JSON back. Keys travel on standard input only.
 
 The program sees a short list of environment variables. [The program the plugin starts](PRIVACY.md#the-program-the-plugin-starts) lists them. The list holds the proxy variables. Node's `fetch` reads `HTTPS_PROXY` and `HTTP_PROXY` only when `NODE_USE_ENV_PROXY=1` is set. When `HTTPS_PROXY` or `HTTP_PROXY` is present, in either case, the plugin sets that switch, unless the environment sets it already. `NO_PROXY` alone turns nothing on.
 
@@ -203,7 +223,7 @@ The routed effort replaces the effort of the calling session. Hermes ranks a rou
 
 ### The gates
 
-Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets the first gate and the third.
+Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets gate 1, then `models not valid: run setup`, then gate 3. For that task Node answers a verdict on `models` and scores nothing; with no Node, or when that run fails, the task goes on.
 
 1. `<setting> not valid: run setup`: a stored `provider` or `gateway` holds a value outside its list. [Not valid: run setup](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names.
 2. `key unset`: no path the `gateway` setting allows has a key.
@@ -215,6 +235,7 @@ Every task without a `level` meets these gates in order. The first that fails sk
 
 A scored task can still skip:
 
+- `models not valid: run setup`: the stored `models` value is not valid. Only Node reads that value, so the scored task's own Node run skips it, after gates 2 to 5 have passed.
 - `timeout`: a first attempt got no answer in 5 s, or the budget ran out.
 - `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score, or the Node step failed. [A failed attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-failed-attempt) explains each. [The fallback rule of the line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says how the line names two of them. `failed` also covers any error in the plugin.
 

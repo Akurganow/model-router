@@ -15,6 +15,7 @@
 		"privacyPolicyUrls",
 		"descriptions",
 		"options",
+		"models",
 		"claude",
 		"omp",
 		"openclaw",
@@ -64,6 +65,7 @@
 				"scope": { "$ref": "#/$defs/option" }
 			}
 		},
+		"models": { "$ref": "#/$defs/modelsOption" },
 		"claude": {
 			"type": "object",
 			"additionalProperties": false,
@@ -93,13 +95,14 @@
 				"userConfig": {
 					"type": "object",
 					"additionalProperties": false,
-					"required": ["optionType", "keys"],
+					"required": ["optionType", "keys", "model"],
 					"properties": {
 						"optionType": { "$ref": "#/$defs/text" },
 						"keys": {
 							"type": "object",
 							"additionalProperties": { "$ref": "#/$defs/secret" }
-						}
+						},
+						"model": { "$ref": "#/$defs/removedOption" }
 					}
 				},
 				"catalogueSource": { "$ref": "#/$defs/text" },
@@ -321,6 +324,26 @@
 						"hermes": { "$ref": "#/$defs/text" }
 					}
 				}
+			}
+		},
+		"modelsOption": {
+			"type": "object",
+			"description": "The setting that holds the scoring model per provider. Every harness stores it and shows one text.",
+			"additionalProperties": false,
+			"required": ["title", "description"],
+			"properties": {
+				"title": { "$ref": "#/$defs/text" },
+				"description": { "$ref": "#/$defs/text" }
+			}
+		},
+		"removedOption": {
+			"type": "object",
+			"description": "An option the Claude Code manifest still declares, so a stored value reaches the plugin and can be migrated. It has no default and no options list.",
+			"additionalProperties": false,
+			"required": ["title", "description"],
+			"properties": {
+				"title": { "$ref": "#/$defs/text" },
+				"description": { "$ref": "#/$defs/text" }
 			}
 		},
 		"install": {

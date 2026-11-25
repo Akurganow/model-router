@@ -9,6 +9,9 @@
 	"contracts": {
 		"tools": ["model_router_config"]
 	},
+	"setup": {
+		"configMigrations": ["settings-v1"]
+	},
 	"skills": ["./openclaw-skills"],
 	"configContracts": {
 		"secretInputs": {
@@ -44,6 +47,10 @@
 		"scope": {
 			"label": "Routing scope",
 			"help": "Which spawns are routed. core: the spawn of the requesting agent itself. extended: also the spawns of other agents that set no model."
+		},
+		"models": {
+			"label": "Scoring models",
+			"help": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model."
 		},
 		"small_model": {
 			"label": "Small model",
@@ -93,6 +100,12 @@
 			"scope": {
 				"type": "string",
 				"default": "core"
+			},
+			"models": {
+				"type": ["string", "object"],
+				"additionalProperties": {
+					"type": "string"
+				}
 			},
 			"small_model": {
 				"type": "string"

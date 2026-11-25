@@ -3,8 +3,8 @@ import { OMP_OUTPUTS } from "./outputs.ts";
 import { optionText, type Source } from "./source.ts";
 import { defaultOf, SETTING_VALUES, VALUE_SETTINGS } from "./values.ts";
 
-export const ompSettings = (source: Source): JsonObject =>
-	Object.fromEntries(
+export const ompSettings = (source: Source): JsonObject => ({
+	...Object.fromEntries(
 		VALUE_SETTINGS.map((setting) => [
 			setting,
 			{
@@ -14,7 +14,9 @@ export const ompSettings = (source: Source): JsonObject =>
 				default: defaultOf(setting),
 			},
 		]),
-	);
+	),
+	models: { type: "string", description: source.models.description },
+});
 
 const manifest = (source: Source): JsonObject => ({
 	name: source.omp.package.name,

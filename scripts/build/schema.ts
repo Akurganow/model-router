@@ -25,7 +25,7 @@ const DEFS_PREFIX = "#/$defs/";
 export type Schema = {
 	readonly $ref?: string;
 	readonly $defs?: Readonly<Record<string, Schema>>;
-	readonly type?: string;
+	readonly type?: string | readonly string[];
 	readonly properties?: Readonly<Record<string, Schema>>;
 	readonly required?: readonly string[];
 	readonly additionalProperties?: boolean | Schema;
@@ -92,8 +92,9 @@ function check(walk: Walk, schema: Schema, path: string, value: unknown): void {
 		return;
 	}
 	const kind = kindOf(value);
-	if (schema.type !== undefined && schema.type !== kind) {
-		walk.problems.push(`${path}: expected ${schema.type}, got ${kind}`);
+	const kinds = schema.type === undefined ? [] : [schema.type].flat();
+	if (kinds.length > 0 && !kinds.includes(kind)) {
+		walk.problems.push(`${path}: expected ${kinds.join(" or ")}, got ${kind}`);
 		return;
 	}
 	if (schema.enum !== undefined && !schema.enum.includes(value))

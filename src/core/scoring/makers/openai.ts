@@ -3,6 +3,9 @@ import { OPENROUTER_DECISIONS } from "#core/scoring/formats/openrouter-decisions
 import { BEARER, type MakerModule } from "#core/scoring/maker-module.ts";
 
 export const openai: MakerModule = {
+	vendor: "openai",
+	openrouterRoute: "decisions",
+	openrouterNames: { "gpt-6-luna": "openai/gpt-6-luna-decisions" },
 	paths: {
 		direct: {
 			url: "https://api.openai.com/v1/decisions",

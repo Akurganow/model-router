@@ -32,6 +32,11 @@
       "label": "OpenRouter gateway",
       "description": "How OpenRouter is used to reach the provider. direct: the provider's own API only. auto: the provider's own API, then OpenRouter if it fails. openrouter-first: OpenRouter, then the provider's own API if it fails. openrouter: OpenRouter only. With auto or openrouter-first and both keys set, one task may reach both companies."
     },
+    "models": {
+      "type": "str",
+      "label": "Scoring models",
+      "description": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model."
+    },
     "small_model": {
       "type": "dict",
       "label": "Small model",
