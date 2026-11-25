@@ -105,7 +105,7 @@ When the person wants another scoring model for one provider, follow these steps
   - Under `extended`, it routes every Agent call that passes no `model` and no `name`, a fork excepted. That includes user, project and plugin agents.
   - Under `extended`, the routed model and effort replace the ones an agent's definition sets, and the agent's description and task text go to the company that scores.
 - `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, or a JSON object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults, the OpenRouter names and when a value is not valid.
-- A `models` value that is not valid prints as `models: <text> (not valid: <entry>)`, and every call skips with `models not valid: run setup`.
+- A `models` value that is not valid prints as `models: <text> (not valid: <entry>)`, and it stops routing. A call the scope routes skips with `models not valid: run setup`. A call that passes through, as [Which calls are routed](https://github.com/Akurganow/model-router/blob/main/plugins/model-router/README.md#which-calls-are-routed) lists, shows no line.
 - The removed option `model` moves into `models` as the `typesafe` entry when `models` names none. While a `model` that is not blank is stored, the `models` line shows the migrated text and ends with `(not stored yet: run setup)`.
 - A write of `models` and a change of `provider` through the dialog each erase a stored `model`, after the write of the migrated `models` when the migration changed it.
 - A model name goes as written on the provider's own API, and that API's documentation lists the names. [The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path) says what OpenRouter does with a name.
@@ -139,7 +139,7 @@ More than one can hold. Report every one that holds.
 - The environment variable `CLAUDE_CODE_EFFORT_LEVEL` is set. It outranks the plugin's effort, and the line shows `env effort`.
 - The person's organization `availableModels` list can replace the pick with another model.
 - The call passes `effort`. The plugin keeps it, and the line shows `caller effort`.
-- `models` is not valid. Every call skips with `models not valid: run setup`.
+- `models` is not valid. A call the scope routes skips with `models not valid: run setup`.
 - A routed call skips and logs `skipped, <reason>`. The reasons are below.
 
 ### The routed line

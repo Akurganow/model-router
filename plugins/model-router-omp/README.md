@@ -93,7 +93,7 @@ The plugin reads `models` from your global settings only. A project's value neve
 
 The config tool takes a `models` string and writes the global setting at once, at your request. A text that is not valid is refused with `models unchanged: not valid: <entry>`. You can also set it in `/settings` → Plugins.
 
-A `models` value that is not valid skips every task with `models not valid: run setup`, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says.
+A `models` value that is not valid stops routing, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says. An item the scope covers skips with `models not valid: run setup`, unless an earlier gate of [the gate list](#gate-reasons) skips it first.
 
 The plugin writes no setting when it loads. The setup skill writes the migrated shape when you agree.
 

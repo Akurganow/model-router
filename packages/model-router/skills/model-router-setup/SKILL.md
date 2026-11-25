@@ -151,7 +151,7 @@ To move a retired value, follow these steps in order:
 ### Scoring models
 
 - `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, or a JSON object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults, the OpenRouter names and when a value is not valid.
-- A `models` value that is not valid prints as `models: <text> (not valid: <entry>)`, and every task skips with `models not valid: run setup`.
+- A `models` value that is not valid prints as `models: <text> (not valid: <entry>)`, and it stops routing. An item the scope covers skips with `models not valid: run setup`, unless an earlier gate skips it first. [Gate reasons](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#gate-reasons) lists the order.
 - The plugin reads `models` from the global settings only. A project's value never applies.
 - A model name goes as written on the provider's own API, and that API's documentation lists the names. [The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path) says what OpenRouter does with a name.
 - The plugin writes no setting when it loads. The `models` line ends with `(not stored yet: run setup)` when the migration changed a stored value, and then it shows the migrated text.
