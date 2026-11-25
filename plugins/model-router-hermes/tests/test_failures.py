@@ -56,7 +56,7 @@ class FailureTest(RouterCase):
 
         route, stub = self.route({"a": 1}, api=fake_api(get_secret=broken))
         self.assertEqual(route, {"a": 1, "label": skipped_label("failed")})
-        self.assertRoutingNotRun(stub)
+        self.assertNodeNotRun(stub)
 
     def test_settings_error_gives_failed(self):
         class Ctx:

@@ -11,7 +11,7 @@ A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks
 - It sets only a model you assigned.
 - It never overrides a model you chose, nor an effort the `delegation` section sets. [Precedence](#precedence) gives the whole order for the model and the effort.
 - The delegating model can describe each task, and can set a task's effort or level to escalate it. [Parameters of `delegate_task`](#parameters-of-delegate_task) lists them.
-- It starts Hermes's own Node once for each task it scores, and once more for each task to check `models`. [Node](#node) says how.
+- It starts Hermes's own Node once for each task it scores, and once for a task that sets a `level`, to check `models`. [Node](#node) says how.
 - It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what Hermes can still do.
 - The plugin changes a setting only when you type `/model-router-provider` or `/model-router-gateway`. It never writes `models` or `delegation.backend`.
 
@@ -110,7 +110,7 @@ hermes config set plugins.entries.model-router-hermes.settings.models '<text>'
 
 The plugin reads `models` at each task. The Python passes the stored value to the Node step, which decides whether it is valid and answers with its verdict. The Python reads the verdict and nothing else about the value. The plugin sends only the entry of the provider in force, so one value serves every `provider` setting.
 
-A `models` value that is not valid skips every task, a task with a `level` too, with `models not valid: run setup`, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says.
+A `models` value that is not valid skips every task with `models not valid: run setup`, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says.
 
 The plugin writes no setting when it loads. The setup skill writes a migrated shape when you agree.
 
@@ -205,7 +205,7 @@ The parameters are part of the session's tool list. After an install or an updat
 
 ### Node
 
-The plugin runs the scoring step in Node. It uses only Hermes's own Node. It never uses a Node on `PATH`, and it reports `node not found` when Hermes has none. It starts the program `route.mjs` once for each task it scores, and once for the `models` verdict of each task, a task with a `level` too. When Hermes has no Node or that run fails, the plugin has no verdict and goes on: a scored task then meets the failure in its own run, and a task with a `level` is routed. It writes the request to the program's standard input and reads one line of JSON back. Keys travel on standard input only.
+The plugin runs the scoring step in Node. It uses only Hermes's own Node. It never uses a Node on `PATH`, and it reports `node not found` when Hermes has none. It starts the program `route.mjs` once for each task it scores, and once for the `models` verdict of a task that sets a `level`, which is not scored. When Hermes has no Node or that run fails, the plugin has no verdict and the task with a `level` is routed. It writes the request to the program's standard input and reads one line of JSON back. Keys travel on standard input only.
 
 The program sees a short list of environment variables. [The program the plugin starts](PRIVACY.md#the-program-the-plugin-starts) lists them. The list holds the proxy variables. Node's `fetch` reads `HTTPS_PROXY` and `HTTP_PROXY` only when `NODE_USE_ENV_PROXY=1` is set. When `HTTPS_PROXY` or `HTTP_PROXY` is present, in either case, the plugin sets that switch, unless the environment sets it already. `NO_PROXY` alone turns nothing on.
 
@@ -223,19 +223,19 @@ The routed effort replaces the effort of the calling session. Hermes ranks a rou
 
 ### The gates
 
-Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets gates 1, 2 and 4.
+Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets gate 1, then `models not valid: run setup`, then gate 3. For that task Node answers a verdict on `models` and scores nothing; with no Node, or when that run fails, the task goes on.
 
 1. `<setting> not valid: run setup`: a stored `provider` or `gateway` holds a value outside its list. [Not valid: run setup](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names.
-2. `models not valid: run setup`: the stored `models` value is not valid. Only Node reads that value, so the plugin asks Node for its verdict before it reads any key. With no Node, or when that run fails, the plugin has no verdict and goes on.
-3. `key unset`: no path the `gateway` setting allows has a key.
-4. `subagent model set`: the `delegation` section sets `model`, `provider`, `base_url` or `api_key`. Hermes's own choice decides.
-5. `node not found`: Hermes has no Node. [The Node step](#node) says why.
-6. `timeout`: the routing limit was used up before this task started. [Sequential routing and the shared budget](#sequential-routing-and-the-shared-budget) says when.
+2. `key unset`: no path the `gateway` setting allows has a key.
+3. `subagent model set`: the `delegation` section sets `model`, `provider`, `base_url` or `api_key`. Hermes's own choice decides.
+4. `node not found`: Hermes has no Node. [The Node step](#node) says why.
+5. `timeout`: the routing limit was used up before this task started. [Sequential routing and the shared budget](#sequential-routing-and-the-shared-budget) says when.
 
 ### After the gates
 
 A scored task can still skip:
 
+- `models not valid: run setup`: the stored `models` value is not valid. Only Node reads that value, so the scored task's own Node run skips it, after gates 2 to 5 have passed.
 - `timeout`: a first attempt got no answer in 5 s, or the budget ran out.
 - `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score, or the Node step failed. [A failed attempt](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-failed-attempt) explains each. [The fallback rule of the line](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-routing-line) says how the line names two of them. `failed` also covers any error in the plugin.
 
