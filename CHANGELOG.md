@@ -3,6 +3,20 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.27.0 - 2026-11-25
+#### Features
+- (**options**) page choices of more than four values (595550e)
+- (**settings**) one short text per setting, key fields last (7815f19)
+#### Bug Fixes
+- (**options**) scope labels that hold in every harness (ddd4be2)
+- (**settings**) slot texts keep the effort a task or the config sets (614613a)
+- (**settings**) true scope and key texts, every label in the setup skills (d562ade)
+#### Documentation
+- (**clients**) config writes across a reload, and OpenClaw migration paths (68902eb)
+
+- - -
+
+
 ## v0.26.0 - 2026-11-25
 #### Features
 - (**build**) declare the models setting in every manifest (1b6d130)
