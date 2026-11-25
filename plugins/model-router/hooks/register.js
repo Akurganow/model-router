@@ -740,10 +740,10 @@ async function storeModels($, models, eraseModel) {
     if (refused !== void 0)
       return { stored: false, lines: [unchanged("models", refused)] };
   }
-  if (!eraseModel) return { stored: models !== void 0, lines: [] };
+  if (!eraseModel) return { stored: true, lines: [] };
   const kept = await put($, "model", "");
   return {
-    stored: models !== void 0,
+    stored: true,
     lines: kept === void 0 ? [] : [unchanged("model", kept)]
   };
 }
@@ -766,7 +766,7 @@ async function writeModels($, options, text) {
   if (already !== void 0 && !eraseModel) return already;
   const { stored: done, lines } = await storeModels(
     $,
-    planned.models,
+    already === void 0 ? planned.models : void 0,
     eraseModel
   );
   return [...done ? modelsLines(storedOf(options)) : [], ...lines].join("\n");

@@ -417,15 +417,34 @@ test("the text already stored is unchanged, unless a removed model option is lef
 	);
 	assert.deepEqual(same.log, ["check"]);
 	const left = answeringEngine(async () => "unused");
-	await configCall(left.$, modelsCall(MODELS), {
-		models: MODELS,
-		model: "jev-preview",
-	});
-	assert.deepEqual(left.log, [
-		"check",
-		{ set: { key: MODELS_KEY, value: MODELS } },
-		{ set: { key: MODEL_KEY, value: "" } },
-	]);
+	assert.deepEqual(
+		await configCall(left.$, modelsCall(MODELS), {
+			models: MODELS,
+			model: "jev-preview",
+		}),
+		{ result: MODELS_LINES },
+	);
+	assert.deepEqual(left.log, ["check", { set: { key: MODEL_KEY, value: "" } }]);
+});
+
+test("the text the report shows, with a removed model option stored, erases it and writes no models", async () => {
+	resetConfig();
+	const { $, log } = answeringEngine(async () => "unused");
+	assert.deepEqual(
+		await configCall($, modelsCall("{typesafe:jev-latest}"), {
+			model: "jev-preview",
+			models: "{typesafe:jev-latest}",
+		}),
+		{
+			result: [
+				"models: {typesafe:jev-latest}",
+				"typesafe model: jev-latest (OpenRouter: jev-latest)",
+				"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
+				"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+			].join("\n"),
+		},
+	);
+	assert.deepEqual(log, ["check", { set: { key: MODEL_KEY, value: "" } }]);
 });
 
 test("a models write is remembered, so the same text again is unchanged", async () => {

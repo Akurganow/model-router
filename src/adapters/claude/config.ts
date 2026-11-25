@@ -120,7 +120,7 @@ async function put(
 
 // Writes `models` when there is a text, then erases the removed `model` when asked, in that order.
 // A refused `models` stops there. Returns the lines of the writes that failed, and whether `models`
-// was written.
+// was not refused.
 async function storeModels(
 	$: Engine,
 	models: string | undefined,
@@ -131,10 +131,10 @@ async function storeModels(
 		if (refused !== undefined)
 			return { stored: false, lines: [unchanged("models", refused)] };
 	}
-	if (!eraseModel) return { stored: models !== undefined, lines: [] };
+	if (!eraseModel) return { stored: true, lines: [] };
 	const kept = await put($, "model", "");
 	return {
-		stored: models !== undefined,
+		stored: true,
 		lines: kept === undefined ? [] : [unchanged("model", kept)],
 	};
 }
@@ -169,9 +169,10 @@ async function writeModels(
 	const { eraseModel } = modelCarry(stored);
 	const already = modelsAlready(stored.models, planned.models);
 	if (already !== undefined && !eraseModel) return already;
+	// A text that is stored already is not written again, but a removed `model` is still erased.
 	const { stored: done, lines } = await storeModels(
 		$,
-		planned.models,
+		already === undefined ? planned.models : undefined,
 		eraseModel,
 	);
 	return [...(done ? modelsLines(storedOf(options)) : []), ...lines].join("\n");
