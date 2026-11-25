@@ -51,7 +51,7 @@ An entry such as `L1 middle model unset` is no error: the level ran on the agent
 
 For each key holder the [`provider` and `gateway` settings](#provider-and-gateway) allow, the plugin checks two places, in this order: omp's credential for the holder, then the holder's environment variable.
 
-omp has no setting for a key. The plugin asks omp's credential lookup by the id `typesafe`, `openai`, `google`, `perplexity` or `openrouter`, and sends the credential omp returns for the id. [omp model roles](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#omp-model-roles) has what omp does with such an id.
+omp has no setting for a key. The plugin asks omp's credential lookup by the id `typesafe`, `openai`, `google`, `perplexity` or `openrouter`, and sends the API key omp returns for the id. [omp model roles](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#omp-model-roles) has what omp does with such an id.
 
 | Key holder | omp credential id | Variable |
 | --- | --- | --- |
@@ -65,11 +65,10 @@ omp has no setting for a key. The plugin asks omp's credential lookup by the id 
 
 Add a key in one of two ways:
 
-- Store the credential omp holds for the id: run `/login typesafe` or `/login openrouter`, or run `omp login typesafe` or `omp login openrouter` outside a session. For `openai`, `google` and `perplexity`, store it the way omp stores a credential for that provider.
+- Store the credential omp holds for the id: run `/login typesafe` or `/login openrouter`, or run `omp login typesafe` or `omp login openrouter` outside a session. For `openai` and `google`, store it the way omp stores a credential for that provider.
 - Set the environment variable where omp reads it. The variable is visible to every process omp starts. [What the plugin stores](PRIVACY.md#what-the-plugin-stores) says more.
 
-To score with Perplexity, give an API key, as a credential or as the variable.
-A stored Perplexity login takes its place: omp's lookup for `perplexity` then returns the login's session token, which `api.perplexity.ai` rejects with HTTP 401.
+Scoring takes an API key. A login stored for the same id is skipped, and the plugin reads the holder's variable instead.
 
 ## Provider and gateway
 
@@ -77,7 +76,7 @@ The `provider` and `gateway` settings decide who receives each task. By default,
 
 [The model of each request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request) also says when the `jev-latest` alias moves.
 
-Switch them with `/model-router:provider` or `/model-router:gateway`, or in omp's `/settings` → Plugins, under the name omp installed it with: `model-router-omp` from the git catalogue, `@akurganow/model-router` from npm. The plugin reads both settings on every batch, so a change reaches the next batch with no reload.
+Switch them with `/model-router:provider` or `/model-router:gateway`, or in omp's `/settings` → Plugins, under the name omp installed it with: `model-router-omp` from the git catalogue, `@akurganow/model-router` from npm. The plugin reads these settings on every batch, so a change reaches the next batch with no reload.
 
 [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says what a value outside a setting's list does, and lists the retired values of `provider`. omp passes such a stored value on as stored, as [omp manifest and settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#omp-manifest-and-settings) says.
 
@@ -110,7 +109,7 @@ The `scope` plugin setting picks which agents the plugin routes:
 | `core` (default) | The bundled `task` agent only |
 | `extended` | Every agent whose model you did not set, bundled agents included |
 
-A value outside the two is not valid, as [the rule for a value outside the list](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says.
+A value outside this list is not valid, as [the rule for a value outside the list](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says.
 
 Under `extended`, the plugin judges each batch item on its own. Bundled agents route: `task`, `scout`, `sonic`, `reviewer` and `security-reviewer`, on omp 18.12.6 and 18.18.9. A bundled agent's default model is not your choice. The bundled `seance` agent is the exception: omp gives it no spawn hook, so the plugin skips it.
 

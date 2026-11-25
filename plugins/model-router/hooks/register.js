@@ -1105,7 +1105,9 @@ var work = {
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
-var cleanModel = (model) => typeof model === "string" ? model.replace(/[^A-Za-z0-9._/:-]/g, "").slice(0, MODEL_CHARS_MAX) : "";
+var MODEL_NAME_CHARS = "A-Za-z0-9._/:-";
+var UNSAFE = new RegExp(`[^${MODEL_NAME_CHARS}]`, "g");
+var cleanModel = (model) => typeof model === "string" ? model.replace(UNSAFE, "").slice(0, MODEL_CHARS_MAX) : "";
 
 // src/core/scoring/transport/retry.ts
 var RETRIES = 2;

@@ -28,18 +28,22 @@ Find out which of these already hold, with the `model_router_config` tool and Op
 
 When you find what already holds, also check the stored field names. Follow these steps in order:
 
-1. Read only the field names stored under `plugins.entries.model-router-openclaw.config` in OpenClaw's configuration.
+1. Read the field names stored under `plugins.entries.model-router-openclaw.config` in OpenClaw's configuration.
 2. Compare them with the fields the plugin declares: `provider`, `gateway`, `scope`, `models`, `small_model`, `middle_model`, `large_model`, `api_key`, `openai_api_key`, `google_api_key`, `perplexity_api_key` and `openrouter_api_key`.
 3. Tell the person each stored field that the plugin does not declare.
-4. Never print the value of a key field, or of an unknown field named like a key or a secret.
-5. Say only that such a field holds a value.
-6. When an unknown field's name resembles a declared one and holds a value, propose the move.
-7. Name the declared field and the text it would write, for example `model` against `models`.
-8. For a key field, name the declared field and ask the person to enter the key there.
-9. On the person's word, write the declared field, then remove the old field.
-10. Write a field with `openclaw config set plugins.entries.model-router-openclaw.config.<field> '<text>'`.
-11. On the person's word, remove only an unknown field that resembles no declared one.
-12. Write nothing else in the file.
+4. Read a value only of a field that is not a key field and not named like a key or a secret.
+5. Never print the value of a key field, or of a field named like a key or a secret. Say only that it holds a value.
+6. On the person's word, remove only a field that resembles no declared field.
+7. For a look-alike field that is not a key field and holds a value, propose the move.
+8. Name the declared field and the exact text to write, for example `middle_modle` against `middle_model`.
+9. On the person's word, remove the old field, then write the declared field.
+10. For a look-alike key field, never move or copy its value.
+11. On the person's word, remove the old field.
+12. Ask the person to enter the key in the declared key field, as the Keys facts say.
+13. Write a field with `openclaw config set plugins.entries.model-router-openclaw.config.<field> '<text>'`.
+14. Remove a field by editing OpenClaw's configuration so that it drops only that field.
+    - Remove first: OpenClaw declines every `openclaw config set` while the config holds an undeclared field.
+15. Write nothing else in the file.
 
 When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
 
@@ -96,13 +100,13 @@ openrouter key: unset
 
 ### Provider and gateway
 
-- `provider` has four values. `typesafe` is the default.
+- `provider` takes these values. `typesafe` is the default.
   - `typesafe - Jev from TypeSafe`
   - `openai - OpenAI's decision model`
   - `google - Google's decision model`
   - `perplexity - Perplexity's decision model`
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
-- `gateway` has four values. `direct` is the default.
+- `gateway` takes these values. `direct` is the default.
   - `direct - the provider's own API only`
   - `auto - the provider's own API, then OpenRouter if it fails`
   - `openrouter-first - OpenRouter, then the provider's own API if it fails`
@@ -142,7 +146,7 @@ openrouter key: unset
 
 ### Scope
 
-- `scope` has two values. `core` is the default.
+- `scope` takes these values. `core` is the default.
   - `core - the default agents only`
   - `extended - also other agents, as the README lists`
 - `core` routes the spawn of the requesting agent itself: a spawn with no `agentId`, or with the requester's own id, and a `runtime` that is absent or `subagent`.

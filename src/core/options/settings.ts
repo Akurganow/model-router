@@ -129,8 +129,7 @@ function settingsFrom(record: StoredRecord): Settings | NoChoice {
 /**
  * Returns the typed settings, or the skip reason of the first setting, in
  * VALUE_SETTINGS order and then `models`, whose stored text is not valid. The
- * migration ladder runs first on the whole record, so a stored removed option
- * counts as its new form.
+ * migration ladder runs first on the whole record.
  */
 export const settingsOf = (stored: Stored): Settings | NoChoice =>
 	settingsFrom(migrate(stored).stored);

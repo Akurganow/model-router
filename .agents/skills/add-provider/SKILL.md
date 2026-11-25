@@ -55,7 +55,7 @@ The stop below holds with or without a request.
 
 ## Look up what the harnesses need
 
-`findKey` in `src/adapters/omp/settings.ts` passes each key holder's name to omp's `getApiKeyForProvider`.
+`findKey` in `src/adapters/omp/settings.ts` passes each key holder's name to omp's `getApiKeyWithCredentialForProvider`.
 So the maker's name must be the id that omp gives the provider.
 
 18. Find that id in omp's source or documentation.

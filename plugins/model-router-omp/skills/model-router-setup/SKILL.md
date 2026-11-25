@@ -32,18 +32,21 @@ Find out which of these already hold, with the `model_router_config` tool and om
 
 When you find what already holds, also check the stored field names. Follow these steps in order:
 
-1. Read only the field names stored under `settings`, for the package name `model-router-omp` or `@akurganow/model-router`, in omp's plugins lockfile `omp-plugins.lock.json`.
+1. Read the field names stored under `settings`, for the package name `model-router-omp` or `@akurganow/model-router`, in omp's plugins lockfile `omp-plugins.lock.json`.
 2. Compare them with the fields the plugin declares: `provider`, `gateway`, `scope` and `models`.
 3. Tell the person each stored field that the plugin does not declare.
-4. Never print the value of a key field, or of an unknown field named like a key or a secret.
-5. Say only that such a field holds a value.
-6. When an unknown field's name resembles a declared one and holds a value, propose the move.
-7. Name the declared field and the text it would write, for example `model` against `models`.
-8. For a key field, name the declared field and ask the person to enter the key there.
+4. Read a value only of a field that is not a key field and not named like a key or a secret.
+5. Never print the value of a key field, or of a field named like a key or a secret. Say only that it holds a value.
+6. On the person's word, remove only a field that resembles no declared field.
+7. For a look-alike field that is not a key field and holds a value, propose the move.
+8. Name the declared field and the exact text to write, for example `gatway` against `gateway`.
 9. On the person's word, write the declared field, then remove the old field.
-10. Write `models` with `model_router_config`, and any other field with `omp plugin config set`.
-11. On the person's word, remove only an unknown field that resembles no declared one.
-12. Write nothing else in the file.
+10. For a stored field named like a key, never move or copy its value, since omp declares no key field.
+11. Ask the person to store the key as the credential of its id, or in its variable, as the Keys facts say.
+12. On the person's word, remove the old field.
+13. Write `models` with `model_router_config`, and any other field with `omp plugin config set`.
+14. Remove a field by editing `omp-plugins.lock.json` so that it drops only that field.
+15. Write nothing else in the file.
 
 When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
 
@@ -108,13 +111,13 @@ When the person wants another scoring model for one provider, follow these steps
 
 ### Provider and gateway
 
-- `provider` has four values. `typesafe` is the default.
+- `provider` takes these values. `typesafe` is the default.
   - `typesafe - Jev from TypeSafe`
   - `openai - OpenAI's decision model`
   - `google - Google's decision model`
   - `perplexity - Perplexity's decision model`
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
-- `gateway` has four values. `direct` is the default.
+- `gateway` takes these values. `direct` is the default.
   - `direct - the provider's own API only`
   - `auto - the provider's own API, then OpenRouter if it fails`
   - `openrouter-first - OpenRouter, then the provider's own API if it fails`
@@ -169,7 +172,7 @@ To move a retired value, follow these steps in order:
 
 ### Scope
 
-- `scope` has two values. `core` is the default.
+- `scope` takes these values. `core` is the default.
   - `core - the default agents only`
   - `extended - also other agents, as the README lists`
 - `core` is the default and routes the bundled `task` agent only.
@@ -181,12 +184,12 @@ To move a retired value, follow these steps in order:
   - TypeSafe: the id `typesafe`, which `/login typesafe` stores, then `TYPESAFE_API_KEY`. Get a key at https://console.typesafe.ai/keys.
   - OpenAI: the id `openai`, then `OPENAI_API_KEY`. Get a key at https://platform.openai.com/api-keys.
   - Google: the id `google`, then `GEMINI_API_KEY`. Get a key at https://aistudio.google.com/docs/api-key. The plugin does not read `GOOGLE_API_KEY`.
-  - Perplexity: the id `perplexity`, then `PERPLEXITY_API_KEY`. Get a key at https://console.perplexity.ai. [Keys](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#keys) says why a stored Perplexity login does not serve.
+  - Perplexity: the id `perplexity`, then `PERPLEXITY_API_KEY`. Get a key at https://console.perplexity.ai. Scoring takes an API key: [a stored login is skipped](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#keys), and the variable is read.
   - OpenRouter: the id `openrouter`, which `/login openrouter` stores, then `OPENROUTER_API_KEY`. Get a key at https://openrouter.ai.
 - The key of the chosen provider serves the direct path, and the OpenRouter key serves the gateway path.
 - A key counts as set when either place holds a non-blank value.
 - A key variable reaches the environment of every process omp starts.
-- The person adds a key with `/login typesafe` or `/login openrouter`, or with `omp login <provider>` outside a session. For OpenAI, Google or Perplexity, the person stores the credential the way omp stores one for that provider, or sets the variable. The plugin never asks for a key.
+- The person adds a key with `/login typesafe` or `/login openrouter`, or with `omp login <provider>` outside a session. For OpenAI or Google, the person stores the credential the way omp stores one for that provider, or sets the variable. Scoring takes an API key, so the person gives one. The plugin never asks for a key.
 - With no key for any path the `provider` and `gateway` settings allow, every call skips with `key unset`.
 
 ### Models

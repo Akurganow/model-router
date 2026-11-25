@@ -51,8 +51,7 @@ asks six questions. The answers for this mod:
   describe it. It reads the spawn of each subagent and the requests the
   subagent then makes. Between calls it keeps only the latest source and
   description of each agent name, in memory.
-- **Changes your session?** Two settings of the subagent: its `model` and its
-  `effort`. The mod sets the `model` when the subagent spawns, and the Agent
+- **Changes your session?** The `model` and the `effort` of the subagent. The mod sets the `model` when the subagent spawns, and the Agent
   call stays as written. It sets `effort` on the subagent's own requests only
   when the call names none and `CLAUDE_CODE_EFFORT_LEVEL` is unset, or, under
   the [rules of the extended scope](#which-calls-are-routed), replaces the one the agent's
@@ -355,8 +354,8 @@ The `scope` option says which Agent calls the mod routes:
 
 ## Change the options
 
-The plugin has nine options: `provider`, `gateway`, `scope`, `models` and
-the five keys.
+The plugin has these options: `provider`, `gateway`, `scope`, `models` and
+the key of each provider and of OpenRouter.
 Set them in the install dialog. `/config` also changes `provider`, `gateway`,
 `scope` and `models`.
 
@@ -408,8 +407,8 @@ dialog closes.
 
 To be guided through the choices, ask Claude to run the `model-router-setup`
 skill. It reads the settings and the key status through the tool, then asks
-about the provider, the gateway, any missing key and the scope, and it moves a
-retired `provider` value into `models`. It lists the reasons routing
+about the provider, the gateway, any missing key and the scope. For a retired
+`provider` value, it proposes values of `gateway` and `provider`. It lists the reasons routing
 is off and ends with a routing check. The skill lives in
 [skills/model-router-setup/SKILL.md](skills/model-router-setup/SKILL.md).
 
@@ -442,7 +441,7 @@ parameter, which Claude Code otherwise ranks above an agent definition's
 `model` and `CLAUDE_CODE_SUBAGENT_MODEL`. So a routed model outranks
 `CLAUDE_CODE_SUBAGENT_MODEL`.
 
-Two settings outrank the mod:
+These variables outrank the mod:
 
 - `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` makes Claude Code ignore the model a call
   or a mod passes, so the forced model wins.
@@ -496,7 +495,7 @@ that an agent definition sets, as
 
 ## Which calls are routed
 
-Two scopes decide which Agent calls the mod routes. Both skip a call that sets
+The `scope` option decides which Agent calls the mod routes. Each scope skips a call that sets
 a `model` or a `name`, a fork, and a call your permission rules deny.
 
 Under `core`, the default, the mod routes a call to one of the built-in agents
@@ -524,7 +523,7 @@ definition sets. A plugin agent that pins a strong model can therefore run on
 a lower tier. A caller's own `effort` is kept, as under `core`. Keep `core`
 for agents whose model or effort you chose on purpose.
 
-Under both scopes, agents that a workflow script starts, teammates, resumed
+Under each scope, agents that a workflow script starts, teammates, resumed
 agents, and agents that another plugin starts with its own `$.agent.spawn`
 pass through. The mod routes only a spawn that the Agent tool makes.
 
@@ -548,7 +547,7 @@ Claude Code then refuses adds a second line, `denied`.
 
 - No log line appears: the plugin is disabled, the call passed through, or
   your permission rules deny the Agent call. Forks, named agents and calls
-  that name a model pass through under both scopes. Under `core`, agents other
+  that name a model pass through under each scope. Under `core`, agents other
   than the four built-ins pass through too. Run `/model-router:scope` to see
   the scope, and [the cases of each scope](#which-calls-are-routed) list them. Enable the plugin in `/plugin`.
 - A routed call logs `skipped, <cause>` and runs unchanged. The causes are:

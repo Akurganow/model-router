@@ -11,10 +11,10 @@ A path is one way to the provider: the direct path is the provider's own API, an
 
 ## The provider and the gateway
 
-Two settings decide who receives a task.
+The `provider` and `gateway` settings decide who receives a task.
 
 The `provider` setting says whose model scores.
-It has four values, and `typesafe` is the default:
+It takes the values below, and `typesafe` is the default:
 
 | `provider` | The model that scores |
 | :-- | :-- |
@@ -37,7 +37,7 @@ The `gateway` setting says how OpenRouter is used to reach the provider:
 The direct path takes the key of the provider you chose, and the gateway path takes the OpenRouter key.
 A path whose key is not set is left out.
 So with `auto` or `openrouter-first` and one key set, the plugin uses that key's path alone.
-With both keys set, one task may reach both the provider and OpenRouter.
+With the provider's key and the OpenRouter key set, one task may reach both the provider and OpenRouter.
 The second path gets the task only when the first fails.
 The failures that count are a `network error`, a timeout of the request (it prints `timeout`), and HTTP status 401, 402, 403, 404, 408, 429 or 5xx.
 It never gets the task after 400, 422, `cancelled`, the routing limit (which also prints `timeout`), a bad reply or `failed`.
@@ -49,9 +49,8 @@ A bad key gets HTTP 401 from OpenAI and from OpenRouter, and HTTP 400 from Googl
 So under `auto`, a bad Google key does not reach OpenRouter, and the task skips with `HTTP 400`.
 
 Under `perplexity`, the OpenRouter path asks the `:free` variant of the decision model by default.
-OpenRouter rate limits every `:free` variant to 20 requests a minute.
-It also allows 50 requests a day to an account that bought fewer than 10 credits in all, and 1000 a day to an account that bought 10 or more.
-A 429 from either limit is a failure that counts, so under `auto` or `openrouter-first` the task reaches the second path.
+OpenRouter rate limits every `:free` variant.
+A 429 from that limit is a failure that counts, so under `auto` or `openrouter-first` the task reaches the second path.
 [OpenRouter's limits page](https://openrouter.ai/docs/api-reference/limits) holds the figures.
 
 ## A setting that is not valid
@@ -80,7 +79,7 @@ The skip line shows for these tasks:
 - In Hermes Agent, every task.
 
 Claude Code keeps such a value from the plugin.
-It hands the plugin an option's default in place of any stored value that the option's list does not hold, for each of the three options.
+It hands the plugin an option's default in place of any stored value that the option's list does not hold, for `provider`, `gateway` and `scope`.
 So in Claude Code the plugin routes by the default, and no setup line shows.
 `models` is a free string with no list, so Claude Code hands it on as stored and the setup line shows.
 [A stored value outside an option's list](../plugins/model-router/README.md#a-stored-value-outside-an-options-list) says what that changes after an update.
@@ -192,7 +191,7 @@ The setup skill cleans up stored fields: it compares their names with the declar
 ## Keys
 
 Each provider has its own key, and OpenRouter has one for the gateway to all of them.
-The plugin reads five keys, each from one variable:
+The plugin reads these keys, each from one variable:
 
 | Key holder | Variable | Get a key from |
 | :-- | :-- | :-- |
@@ -292,11 +291,15 @@ So with a key set and no model set, the plugin still sends each task it scores t
 
 The request is an HTTPS POST.
 Its JSON body names the model of its endpoint and the scoring questions, with three descriptions each.
-The Decisions endpoints in the table below carry the routing state as JSON text, where the System One endpoints take an object.
 These texts ship with the plugin.
 The question `tier` asks how much judgment the task needs.
 The question `work` asks how much work the task takes.
 Each plugin's README lists the questions it asks.
+
+The System One format takes the routing state as an object.
+TypeSafe's two paths and Perplexity's direct path use it.
+The Decisions formats carry the state as JSON text.
+OpenAI's and Google's own APIs and OpenRouter's Decisions route use them.
 
 Each provider and path has its own address and model:
 
@@ -310,6 +313,8 @@ Each provider and path has its own address and model:
 | `google` | OpenRouter | `https://openrouter.ai/api/alpha/decisions` | `google/gemini-decision-1` |
 | `perplexity` | direct | `https://api.perplexity.ai/v1/decisions` | `pplx-decider-latest` |
 | `perplexity` | OpenRouter | `https://openrouter.ai/api/alpha/decisions` | `perplexity/pplx-decider-v1.3:free` |
+
+[Perplexity's Decisions API reference](https://docs.perplexity.ai/api-reference/decisions-post.md) documents its direct path.
 
 Under `typesafe`, both paths get the alias `jev-latest`.
 TypeSafe points it at the most recent official Jev release, and OpenRouter routes it to its own alias for the newest Jev release.
@@ -395,7 +400,7 @@ A first request the plugin gave up on may still be billed, on top of the second 
 
 ## What each company does with the text
 
-The `provider` and `gateway` settings pick the company that receives the text, as [the values of both settings](#the-provider-and-the-gateway) say.
+The `provider` and `gateway` settings pick the company that receives the text, as [the values of these settings](#the-provider-and-the-gateway) say.
 Each company processes the request to answer the scoring questions.
 The plugin author has no access to those requests.
 Each company's own page sets what it does with the text:
@@ -413,14 +418,14 @@ Each company's own page sets what it does with the text:
   Without a written zero-retention agreement, Perplexity may keep it for an unstated period.
   Its pages are the [Perplexity API Terms of Service](https://www.perplexity.ai/hub/legal/perplexity-api-terms-of-service) and [Privacy and security](https://docs.perplexity.ai/docs/resources/privacy-security).
   Perplexity's consumer privacy policy says it does not apply to API offerings.
-- OpenRouter, the gateway for all four: the text reaches OpenRouter, which passes it to the provider.
+- OpenRouter, the gateway for each provider: the text reaches OpenRouter, which passes it to the provider.
   OpenRouter says it stores a prompt only when you opt in, with the exceptions its page lists.
   Each provider behind it has its own data policy, and the plugin cannot see which endpoint answered.
   For TypeSafe's System One route, OpenRouter does not document retention or training.
   For the free Perplexity endpoint, OpenRouter stores no prompt unless you opt in or child-safety screening flags it, and it lists that endpoint as [zero retention](https://openrouter.ai/api/v1/endpoints/zdr).
   Its pages are the [OpenRouter privacy policy](https://openrouter.ai/privacy), [provider logging](https://openrouter.ai/docs/guides/privacy/provider-logging) and [data collection](https://openrouter.ai/docs/guides/privacy/data-collection).
 
-With `auto` or `openrouter-first` and both keys set, one task can reach the provider directly and through OpenRouter.
+With `auto` or `openrouter-first` and the provider's key and the OpenRouter key set, one task can reach the provider directly and through OpenRouter.
 
 ## Descriptions and private names
 

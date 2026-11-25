@@ -328,12 +328,17 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
 - A child's retry fallback chain is `retry.fallbackChains` at the spawn's own model role, kept from before the role's expansion, and otherwise at `default`.
   A role that a spawn hook returns does not change the spawn's role, so `retry.fallbackChains` at that role does not reach the spawn.
 - omp's provider ids for OpenAI and Google are `openai` and `google`.
-  `getApiKeyForProvider` hands the id it is given to omp's credential lookup unchanged.
+  `getApiKeyForProvider` and `getApiKeyWithCredentialForProvider`, which the first calls, hand the id they are given to omp's credential lookup unchanged.
   The environment variable of `openai` is `OPENAI_API_KEY`. That of `google` is `GEMINI_API_KEY`, and `GOOGLE_API_KEY` is not read for it.
 - omp's provider id for Perplexity is `perplexity`, an auth provider for web search with the environment variable `PERPLEXITY_API_KEY`.
   omp has no Perplexity model provider.
 - While omp stores a Perplexity login, its credential lookup for `perplexity` returns that login's session token, not an API key.
   `api.perplexity.ai` rejects the token with HTTP 401.
+- In omp's credential lookup a stored OAuth login wins over the environment variable.
+- An extension's `ctx.modelRegistry` is omp's full model registry.
+  Its `getApiKeyWithCredentialForProvider(id)` returns the key with `oauthAccess` set only when the key came from a stored OAuth login.
+- Of the ids `typesafe`, `openai`, `google`, `perplexity` and `openrouter`, only `perplexity` has a built-in login that stores an OAuth credential.
+  omp's OpenRouter login stores a plain API key.
 
 ### omp thinking levels
 

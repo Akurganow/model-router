@@ -31,18 +31,23 @@ Find out which of these already hold, with the `mcp__model-router__config` tool 
 
 When you find what already holds, also check the stored field names. Follow these steps in order:
 
-1. Read only the field names stored under `pluginConfigs["model-router@<marketplace>"].options` in the user `settings.json`.
+1. Read the field names stored under `pluginConfigs["model-router@<marketplace>"].options` in the user `settings.json`.
 2. Compare them with the fields the plugin declares: `provider`, `gateway`, `scope`, `models`, `api_key`, `openai_api_key`, `google_api_key`, `perplexity_api_key` and `openrouter_api_key`.
 3. Tell the person each stored field that the plugin does not declare.
-4. Never print the value of a key field, or of an unknown field named like a key or a secret.
-5. Say only that such a field holds a value.
-6. When an unknown field's name resembles a declared one and holds a value, propose the move.
-7. Name the declared field and the text it would write, for example `model` against `models`.
-8. For a key field, name the declared field and ask the person to enter the key there.
-9. On the person's word, write the declared field, then remove the old field.
-10. Write `models` with `mcp__model-router__config`, and any other field in `settings.json`.
-11. On the person's word, remove only an unknown field that resembles no declared one.
-12. Write nothing else in the file.
+4. Read a value only of a field that is not a key field and not named like a key or a secret.
+5. Never print the value of a key field, or of a field named like a key or a secret. Say only that it holds a value.
+6. On the person's word, remove only a field that resembles no declared field.
+7. For a look-alike field that is not a key field and holds a value, propose the move.
+8. Name the declared field and the exact text to write, for example `model` against `models`.
+9. A stored `model` named the TypeSafe model: propose adding `typesafe:<value>` to `models`.
+10. Skip the addition, and only remove `model`, when `models` already names typesafe.
+11. On the person's word, write the declared field, then remove the old field.
+12. For a look-alike key field, never move or copy its value.
+13. Ask the person to enter the key in the declared plugin option or its variable, as the Keys facts say.
+14. On the person's word, remove the old field.
+15. Write `models` with `mcp__model-router__config`, and any other field in `settings.json`.
+16. Remove a field by editing the user `settings.json` so that it drops only that field.
+17. Write nothing else in the file.
 
 When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
 

@@ -25,7 +25,7 @@ model. These companies can receive the task text:
 | OpenAI | `api.openai.com` | `provider` is `openai` and `gateway` allows the direct path | the OpenAI key, as a bearer token |
 | Google | `generativelanguage.googleapis.com` | `provider` is `google` and `gateway` allows the direct path | the Google key, in the `x-goog-api-key` header |
 | Perplexity | `api.perplexity.ai` | `provider` is `perplexity` and `gateway` allows the direct path | the Perplexity key, as a bearer token |
-| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each of the four | the OpenRouter key, as a bearer token |
+| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each provider | the OpenRouter key, as a bearer token |
 
 The `gateway` setting decides which paths are open:
 
@@ -36,7 +36,7 @@ The `gateway` setting decides which paths are open:
 | `openrouter-first` | OpenRouter, with the OpenRouter key | the provider, with its key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
 
-A path with no key is left out. With both keys under `auto` or `openrouter-first`, one spawn may reach both the provider and OpenRouter.
+A path with no key is left out. With the provider's key and the OpenRouter key set under `auto` or `openrouter-first`, one spawn may reach both the provider and OpenRouter.
 
 A model setting does not decide whether a request leaves: with a key set and
 no model set, each routed spawn is still sent for scoring, as
@@ -167,7 +167,7 @@ and, under `extended`, the target agent, `description`, `model`,
 named in the slot. Nothing from these reads leaves your machine, except the
 role text the request carries as described above.
 
-The plugin reads no credential of a model's provider except the five keys that
+The plugin reads no credential of a model's provider except the keys that
 [Keys](README.md#keys) lists. It says there which of them OpenClaw's own
 OpenRouter provider shares.
 
@@ -194,7 +194,7 @@ Every plugin offers the choices in
 [Your choices](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#your-choices).
 Here, keep `scope` at `core` to route only
 [the spawn of the requesting agent itself](README.md#the-spawn-of-the-requesting-agent-itself).
-Remove the keys from the plugin's settings and from the five variables. Disable the
+Remove the keys from the plugin's settings and from these variables. Disable the
 plugin, as [Turn it off](README.md#turn-it-off) says, and nothing is sent.
 
 ## Children

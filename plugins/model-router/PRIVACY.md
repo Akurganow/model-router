@@ -24,7 +24,7 @@ model. These companies can receive the task text:
 | OpenAI | `api.openai.com` | `provider` is `openai` and `gateway` allows the direct path | the OpenAI key, as a bearer token |
 | Google | `generativelanguage.googleapis.com` | `provider` is `google` and `gateway` allows the direct path | the Google key, in the `x-goog-api-key` header |
 | Perplexity | `api.perplexity.ai` | `provider` is `perplexity` and `gateway` allows the direct path | the Perplexity key, as a bearer token |
-| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each of the four | the OpenRouter key, as a bearer token |
+| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each provider | the OpenRouter key, as a bearer token |
 
 The `gateway` option decides which paths are open:
 
@@ -35,7 +35,7 @@ The `gateway` option decides which paths are open:
 | `openrouter-first` | OpenRouter, with the OpenRouter key | the provider, with its key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
 
-A path with no key is left out. With both keys under `auto` or `openrouter-first`, one call may reach both the provider and OpenRouter.
+A path with no key is left out. With the provider's key and the OpenRouter key set under `auto` or `openrouter-first`, one call may reach both the provider and OpenRouter.
 
 [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
 gives the fallback rules.
@@ -169,7 +169,7 @@ The lines the plugin prints per call go to your own transcript and, with
 Every plugin offers the choices in
 [Your choices](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#your-choices).
 Here, keep `scope` at `core` to route the four built-in agents only. Remove the
-keys from the plugin's configuration and from the five variables. Disable the plugin
+keys from the plugin's configuration and from these variables. Disable the plugin
 and nothing is sent.
 
 ## Children

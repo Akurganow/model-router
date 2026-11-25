@@ -121,7 +121,7 @@ The `scope` setting picks which spawns the plugin routes:
 | `core` (default) | The spawn of the requesting agent itself |
 | `extended` | That spawn, and the spawn of any other configured agent that does not set its own model |
 
-A value outside the two is not valid, as [the notes on a setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) say.
+A value outside this list is not valid, as [the notes on a setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) say.
 
 Under `extended`, the plugin judges each spawn on its own. [The extended scope](PRIVACY.md#the-extended-scope) says what `extended` sends.
 
@@ -146,7 +146,7 @@ A Gateway client without `operator.admin` gets OpenClaw's own `This command requ
 
 Only the owner can write. For anyone else, a command with a valid value prints `<setting> unchanged: only the owner can change it` and the setting's current line.
 
-The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `scope` line, the `models` lines, the three slot lines and the key lines. The example shows the model line of one provider, and [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each. A slot line shows the slot string as you wrote it, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid.
+The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `scope` line, the `models` lines, the slot lines and the key lines. The example shows the model line of one provider, and [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each. A slot line shows the slot string as you wrote it, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid.
 
 ```text
 provider: typesafe
