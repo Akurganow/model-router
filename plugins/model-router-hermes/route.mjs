@@ -1049,15 +1049,17 @@ function withModel(models, maker, name) {
 // src/core/options/migrate.ts
 var typesafeFromModel = (stored) => {
   const { model, models } = stored;
-  if (typeof model !== "string") return void 0;
-  const added = withModel(models, "typesafe", model.trim());
-  if (added === void 0 || model.trim() === "") return void 0;
+  const name = nonEmpty(model);
+  if (name === void 0) return void 0;
+  const added = withModel(models, "typesafe", name);
+  if (added === void 0) return void 0;
   return {
     stored: { ...stored, models: added },
     change: "models: typesafe from the removed model option"
   };
 };
 var STEPS = [typesafeFromModel];
+var SETTINGS_VERSION = STEPS.length;
 function migrate(stored) {
   let current = stored;
   const changes = [];
