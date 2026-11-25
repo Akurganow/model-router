@@ -2,7 +2,7 @@
 name: model-router-setup
 description: >
   Use when the user wants to set up or configure model-router in Claude Code,
-  to choose its provider, gateway or scope, to add a TypeSafe, OpenAI, Google or OpenRouter key, to find
+  to choose its provider, gateway, scope or scoring models, to add a TypeSafe, OpenAI, Google or OpenRouter key, to find
   out why routing is off, or to check that routing works. It finds what already
   holds and does only what is missing.
 ---
@@ -23,6 +23,7 @@ The person may also choose:
 - `provider`: whose model scores a call. It takes `typesafe`, `openai` or `google`.
 - `gateway`: how OpenRouter is used to reach the provider.
 - `scope`: which Agent calls the plugin routes.
+- `models`: the scoring model of each provider. A provider with no entry uses its default model.
 
 ## Your job
 
@@ -39,18 +40,34 @@ When the person wants to choose the provider, follow these steps in order:
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. Call the tool with no setting, and confirm the lines.
 
+When the `models` line needs a write, or the person wants another scoring model, follow these steps in order:
+
+1. Call the tool with no input, and read the `models` line and the lines under it.
+2. When the line ends with `(not stored yet: run setup)`, call the tool with `models` set to the text shown before that note.
+   - The write also erases the stored `model`.
+3. When the line ends with `(not valid: <entry>)`, name the entry to the person, and ask for a corrected text.
+4. To change one provider's model, ask the person for the provider and the model name as written on the provider's API.
+5. Take the text the line shows, keep every other entry, and set or replace that provider's entry.
+6. On the person's word, call the tool with `models` set to the whole new text.
+7. Read the reply. `models unchanged: not valid: <entry>` means nothing was written. Name the entry to the person.
+8. Call the tool with no input, and confirm the `models` line.
+9. When an entry is `jev-preview` and `gateway` is `openrouter` or `openrouter-first`, tell the person that OpenRouter has no such model.
+
 ## Facts
 
 ### The config tool
 
 - The tool is `mcp__model-router__config`. It takes one optional input, `setting`.
-- With no input it prints a `provider` line, a `gateway` line, a `scope` line, and one key line for each path the `gateway` value allows, in order, as in `typesafe key: set`, `openai key: unset` or `openrouter key: unset`.
+- With no input it prints a `provider` line, a `gateway` line, a `scope` line, the `models` lines, and one key line for each path the `gateway` value allows, in order, as in `typesafe key: set`, `openai key: unset` or `openrouter key: unset`.
 - A provider line looks like `provider: typesafe`. A gateway line looks like `gateway: auto (typesafe, then openrouter)`. A scope line looks like `scope: core`.
 - A key counts as set when its plugin option or its environment variable holds a non-blank value.
 - The tool never returns a key, its length or any part of it.
+- The tool takes two optional inputs: `setting` and `models`.
 - With `setting` set to `provider`, `gateway` or `scope`, the plugin opens its own dialog. The person picks a value, and the plugin writes it. The reply is the new setting line.
-- Pass no value to the tool. The person chooses in the dialog.
+- Pass no value with `setting`. The person chooses in the dialog.
+- With `models` set to a string, the plugin writes that text at once, with no dialog. Do this only at the person's request.
 - The dialog writes nothing for the current value, a dismissed dialog or free text. It also writes nothing where no dialog can open, such as `claude -p`.
+- Reply `models unchanged: not valid: <entry>` means the text is not valid, and nothing was written.
 - Reply `<setting> unchanged: already <value>` means the person kept the current value.
 - Reply `<setting> unchanged: no answer from the dialog` means no dialog answered. The person can type `/model-router:provider <value>`, `/model-router:gateway <value>` or `/model-router:scope <value>` at their own prompt. A command writes only when typed there.
 - Reply `<setting> unchanged: the answer was not one of the offered values` means the dialog returned something else. Nothing was written.
@@ -76,6 +93,10 @@ When the person wants to choose the provider, follow these steps in order:
   - Under `core`, the plugin routes a call to the built-in agents `general-purpose`, `claude`, `Explore` and `Plan`. A call with no `subagent_type` counts as `general-purpose`.
   - Under `extended`, it routes every Agent call that passes no `model` and no `name`, a fork excepted. That includes user, project and plugin agents.
   - Under `extended`, the routed model and effort replace the ones an agent's definition sets, and the agent's description and task text go to the company that scores.
+- `models` takes the owner's form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, or a JSON object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults and the OpenRouter names.
+- A `models` value is not valid for an unknown provider, an empty model, an entry with no colon, a provider named twice, a model with a slash, a JSON value that is not a string, or text that is neither form. The tool then prints `models: <text> (not valid: <entry>)`, and every call skips with `models not valid: run setup`.
+- The removed option `model` moves into `models` as the `typesafe` entry. The `models` line then ends with `(not stored yet: run setup)`. A write of `models` erases the stored `model`, and so does a change of `provider` through the dialog.
+- A model name goes as written on the provider's own API. OpenRouter answers a name it does not know with `HTTP 400`, which gets no second attempt.
 - Claude Code has no per-level model setting. The plugin picks haiku for level 0, sonnet for level 1 and opus for level 2.
 - Claude Code ignores plugin options in project and local settings. Only the user's own settings and commands change `provider`, `gateway` and `scope`.
 
@@ -106,6 +127,7 @@ More than one can hold. Report every one that holds.
 - The environment variable `CLAUDE_CODE_EFFORT_LEVEL` is set. It outranks the plugin's effort, and the line shows `env effort`.
 - The person's organization `availableModels` list can replace the pick with another model.
 - The call passes `effort`. The plugin keeps it, and the line shows `caller effort`.
+- `models` is not valid. Every call skips with `models not valid: run setup`.
 - A routed call skips and logs `skipped, <reason>`. The reasons are below.
 
 ### The routed line
@@ -122,11 +144,12 @@ More than one can hold. Report every one that holds.
 ### Skip reasons
 
 - `key unset`: no path the `gateway` value allows has a key. Add one as the Keys facts say.
+- `models not valid: run setup`: the stored `models` is not valid. Write a valid text, as the steps above say.
 - `bad reply`: the company answered without a valid score for one of the two questions.
 - `timeout`: a first attempt got no answer in 5 s, or the call got no decision in the 10 s limit. The network or the company is slow.
 - `cancelled`: Claude Code abandoned the call before the answer came, for example after an interrupt.
 - `network error`: every attempt failed before an answer came. An organization fetch policy that refuses openrouter.ai shows as this too.
-- `HTTP <status>`: the company answered with that status. `HTTP 401` means the company rejected the key. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says. `HTTP 429` and `HTTP 503` mean the company refused or failed on every attempt.
+- `HTTP <status>`: the company answered with that status. `HTTP 401` means the company rejected the key. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says. `HTTP 429` and `HTTP 503` mean the company refused or failed on every attempt. `HTTP 400` can also mean that OpenRouter does not know the model name in `models`, `jev-preview` included. Under `openrouter-first` the provider's own API is then not asked.
 - `failed`: any other error.
 
 ### A retired provider value
@@ -161,7 +184,8 @@ For the person: the plugin README at plugins/model-router/README.md has the same
 - Never take, show or repeat a key. If a key arrives in the chat, do not store it, and tell the person to rotate it.
 - Change a setting only when the person asked for it or agreed.
 - A routing check spawns one small task and spends a little usage, so ask before it.
-- Never pass a value to the config tool. The person's choice comes from its dialog or their own command.
+- Never pass a value with `setting`. The person's choice comes from its dialog or their own command.
+- Pass `models` only at the person's request, with every entry the person keeps.
 
 ## When you finish
 

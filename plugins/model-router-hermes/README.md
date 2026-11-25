@@ -13,7 +13,7 @@ A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks
 - The delegating model can describe each task, and can set a task's effort or level to escalate it. [Parameters of `delegate_task`](#parameters-of-delegate_task) lists them.
 - It starts Hermes's own Node once for each task it scores. [Node](#node) says how.
 - It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what Hermes can still do.
-- The plugin changes a setting only when you type `/model-router-provider` or `/model-router-gateway`. It never writes `delegation.backend`.
+- The plugin changes a setting only when you type `/model-router-provider` or `/model-router-gateway`. It never writes `models` or `delegation.backend`.
 
 ## Install
 
@@ -96,6 +96,22 @@ Switch them with `/model-router-provider <value>` and `/model-router-gateway <va
 
 [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says what a value outside a setting's list does, and lists the retired values of `provider`. Hermes passes such a stored value on as stored. The Desktop settings form refuses to save a value outside the choices, and it leaves such a stored value alone when it saves another field.
 
+### The scoring model of each provider
+
+The `models` setting names the scoring model of each provider. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists its forms, its defaults, the OpenRouter names and the lines of the config tool. Hermes also takes a native object.
+
+The tool is read-only, so you, or the agent on your word, set `models`. Use the plugin's settings form in Hermes Desktop, `config.yaml` under `plugins.entries.model-router-hermes.settings`, or run:
+
+```bash
+hermes config set plugins.entries.model-router-hermes.settings.models '<text>'
+```
+
+The plugin reads `models` at each task. The Python passes the stored value to the Node step, which decides whether it is valid.
+
+A `models` value that is not valid skips every task the plugin scores with `models not valid: run setup`, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says.
+
+The plugin writes no setting when it loads. The setup skill writes a migrated shape when you agree.
+
 [Facts behind the settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#hermes-registration-and-settings)
 
 ## Scope
@@ -106,7 +122,7 @@ Hermes Agent has no `scope` setting. The plugin considers every task of `delegat
 
 `/model-router-provider [typesafe|openai|google]` shows or changes the provider, and `/model-router-gateway [direct|auto|openrouter-first|openrouter]` shows or changes the gateway. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. Each command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, a valid value prints `<setting> unchanged: only a local session can change it` and the current line.
 
-The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `models` lines, the three model lines and the key lines. The `models` lines come from the plugin's Node step, which reads the stored value. When Hermes has no Node or the step fails, they are the one line `models: unavailable, no answer from node`. A model line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
+The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `models` lines, the three slot lines and the key lines. The `models` lines come from the plugin's Node step, which reads the stored value. When Hermes has no Node or the step fails, they are the one line `models: unavailable, no answer from node`. A slot line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
 
 ```text
 provider: typesafe

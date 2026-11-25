@@ -2,7 +2,7 @@
 name: model-router-setup
 description: >
   Use when the user wants to set up or check model-router in Oh My Pi (omp): to
-  choose its provider, gateway, scope or level models, to add a TypeSafe,
+  choose its provider, gateway, scope, scoring models or level models, to add a TypeSafe,
   OpenAI, Google or OpenRouter key, to find out why routing is off, or to check that routing works.
 ---
 
@@ -23,6 +23,7 @@ The person may also choose:
 - The `provider` setting, which says whose model scores. It takes `typesafe`, `openai` or `google`.
 - The `gateway` setting, which says how OpenRouter is used to reach the provider.
 - The `scope` setting, which picks the routed agents.
+- The `models` setting, which names the scoring model of each provider. A provider with no entry uses its default model.
 - A model for each of the three levels, as an omp model role. A level with no model keeps the agent's model. It still gets the effort for a task the plugin scores.
 
 ## Your job
@@ -40,16 +41,30 @@ When the person wants to choose the provider, follow these steps in order:
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. Call `model_router_config` with no setting, and confirm the lines.
 
+When the person wants another scoring model, follow these steps in order:
+
+1. Call `model_router_config` with no input, and read the `models` line and the lines under it.
+2. When the line ends with `(not valid: <entry>)`, name the entry to the person, and ask for a corrected text.
+3. Ask the person for the provider and the model name as written on the provider's API.
+4. Take the text the line shows, keep every other entry, and set or replace that provider's entry.
+5. On the person's word, call `model_router_config` with `models` set to the whole new text.
+6. Read the reply. `models unchanged: not valid: <entry>` means nothing was written. Name the entry to the person.
+7. Call `model_router_config` with no input, and confirm the `models` line.
+
 ## Facts
 
 ### The tool
 
-- Called with no input, `model_router_config` prints the `provider` line, the `gateway` line, the `scope` line, and one key line for each path the `gateway` value allows, in order:
+- Called with no input, `model_router_config` prints the `provider` line, the `gateway` line, the `scope` line, the `models` lines, and one key line for each path the `gateway` value allows, in order:
 
   ```text
   provider: typesafe
   gateway: auto (typesafe, then openrouter)
   scope: core
+  models: unset
+  typesafe model: jev-latest (OpenRouter: jev-latest)
+  openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)
+  google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)
   typesafe key: set
   openrouter key: unset
   ```
@@ -58,8 +73,10 @@ When the person wants to choose the provider, follow these steps in order:
 - A stored value outside its setting's list is not valid. The plugin then routes no task, and each task skips with `<setting> not valid: run setup`.
 - The tool prints `<setting>: <stored text> (not valid: use one of <values>)` for that setting, and each valid setting as `<setting>: <value>`, in the usual order. The gateway line names nobody, and no key line prints.
 - omp passes a stored value on as stored, so the skip line shows in omp, as [omp manifest and settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#omp-manifest-and-settings) says.
-- The tool takes one optional input, `setting`: `provider`, `gateway` or `scope`.
-- With `provider`, `gateway` or `scope`, the plugin asks the person in its own dialog and writes the value the person picks. The tool takes no value from the agent.
+- The tool takes two optional inputs: `setting`, which is `provider`, `gateway` or `scope`, and `models`.
+- With `provider`, `gateway` or `scope`, the plugin asks the person in its own dialog and writes the value the person picks. The tool takes no value from the agent for these.
+- With `models` set to a string, the plugin writes that text to the global setting at once, with no dialog. Do this only at the person's request.
+- A `models` text that is not valid is refused with `models unchanged: not valid: <entry>`, and nothing is written.
 - A call that picks a value the global setting already holds, with no project value in the way, returns `<setting> unchanged: already <value>`.
 - A call with no dialog answer returns `<setting> unchanged: no answer from the dialog`. It appears when omp has no UI too. The person can type `/model-router:provider <value>`, `/model-router:gateway <value>` or `/model-router:scope <value>` instead.
 - The tool writes the global plugin settings only. When a project value wins, the output adds `A project value for <setting> overrides it.`
@@ -118,6 +135,15 @@ To move a retired value, follow these steps in order:
    - The person picks `typesafe` in the dialog. Where no dialog answers, the person types `/model-router:provider typesafe`.
 6. Call `model_router_config` with no setting, and check the `provider` and `gateway` lines.
 
+### Scoring models
+
+- `models` takes the owner's form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, or a JSON object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults and the OpenRouter names.
+- A `models` value is not valid for an unknown provider, an empty model, an entry with no colon, a provider named twice, a model with a slash, a JSON value that is not a string, or text that is neither form.
+- The tool then prints `models: <text> (not valid: <entry>)`, and every task skips with `models not valid: run setup`.
+- The plugin reads `models` from the global settings only. A project's value never applies.
+- A model name goes as written on the provider's own API. OpenRouter answers a name it does not know with `HTTP 400`, which gets no second attempt.
+- The plugin writes no setting when it loads. The `models` line ends with `(not stored yet: run setup)` when the migration changed a stored value. Write the shown text then, on the person's word.
+
 ### Scope
 
 - `core` is the default and routes the bundled `task` agent only.
@@ -164,6 +190,7 @@ A closed gate skips every item the scope covers with the same reason:
 - `tool call timeout <n> ms leaves <m> ms to route`: omp's tool call timeout leaves under 1 s to score. Set `extensionHandlers.toolCallTimeoutMs` to 3000 or more.
 - `settings unreadable`: the plugin cannot read its settings, omp's model roles, task model overrides or disabled agents.
 - `<setting> not valid: run setup`: a stored `provider`, `gateway` or `scope` holds a value outside its list. Set it again with the tool or its command.
+- `models not valid: run setup`: the stored `models` is not valid. Write a valid text with the tool's `models` input.
 - `key unset`: no path the `provider` and `gateway` settings allow has a key.
 
 An item check skips one item:
@@ -181,7 +208,7 @@ An item check skips one item:
 A scored item can skip for these reasons:
 
 - `timeout`: the company gave no answer in time. Scoring has 10 s per batch.
-- `HTTP <status>`: the company returned an error. `HTTP 401` means it refused the key. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says.
+- `HTTP <status>`: the company returned an error. `HTTP 400` can mean that OpenRouter does not know the model name in `models`. `HTTP 401` means it refused the key. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says.
 - `network error`: the request could not connect.
 - `bad reply`: the reply held no valid score.
 - `failed`: any other error.
@@ -198,6 +225,7 @@ These last reasons point to the company, its key or the network.
 - Never take, show or repeat a key. If a key reaches the chat, do not store it, and tell the person to rotate it.
 - Change a setting only when the person asked for it or agreed.
 - A routing check spawns one small task and spends a little usage, so ask before it.
+- Pass `models` only at the person's request, with every entry the person keeps.
 
 ## When you finish
 

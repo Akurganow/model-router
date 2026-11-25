@@ -12,7 +12,7 @@ An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model an
   Under `extended`, [rule 4](#efforts-the-plugin-keeps) replaces the requester's `subagents.thinking`, which OpenClaw applies to a cross-agent spawn.
 - Under the default `core` scope, it routes only [the spawn of the requesting agent itself](#the-spawn-of-the-requesting-agent-itself). [Scope](#scope) defines the term.
 - It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what OpenClaw can still do.
-- The plugin changes a setting only when the owner types one of its three commands. [Change the options](#change-the-options) lists them.
+- The plugin changes a setting only when the owner types one of its three commands. It never writes `models`. [Change the options](#change-the-options) lists the commands.
 
 ## Install
 
@@ -93,6 +93,24 @@ Switch them with `/model-router-provider <value>` and `/model-router-gateway <va
 
 [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says what a value outside a setting's list does, and lists the retired values of `provider`.
 
+### The scoring model of each provider
+
+The `models` setting names the scoring model of each provider. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists its forms, its defaults, the OpenRouter names and the lines of the config tool. OpenClaw also takes a native object.
+
+The tool is read-only, so the owner or the agent, on the owner's word, sets `models`. Use the Control UI page `/settings/plugins/model-router-openclaw`, or run:
+
+```bash
+openclaw config set plugins.entries.model-router-openclaw.config.models '<text>'
+```
+
+A change applies once OpenClaw replaces the plugin, after running work drains, up to 60 s. A spawn in that window uses the old value.
+
+A `models` value that is not valid skips every spawn that does not pass through unchanged with `models not valid: run setup`.
+
+The plugin registers [the migration ladder](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-migration-ladder) through OpenClaw's config migration. `openclaw doctor --fix` and an update run it. Today it changes nothing.
+
+A stored `models` makes an older plugin version fail OpenClaw's config check, because the schema allows no unknown key. Remove the `models` setting before you install an older version.
+
 ## Scope
 
 The `scope` setting picks which spawns the plugin routes:
@@ -127,12 +145,16 @@ A Gateway client without `operator.admin` gets OpenClaw's own `This command requ
 
 Only the owner can write. For anyone else, a command with a valid value prints `<setting> unchanged: only the owner can change it` and the setting's current line.
 
-The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `scope` line, the three model lines and the key lines. A model line shows the slot string as you wrote it, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid.
+The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `scope` line, the `models` lines, the three slot lines and the key lines. A slot line shows the slot string as you wrote it, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid.
 
 ```text
 provider: typesafe
 gateway: auto (typesafe, then openrouter)
 scope: core
+models: unset
+typesafe model: jev-latest (OpenRouter: jev-latest)
+openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)
+google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)
 small_model: acme/small
 middle_model: unset
 large_model: unset
@@ -218,7 +240,7 @@ These spawns pass through unchanged, and the plugin logs nothing:
 
 For every other spawn, the gates run in this order. The first that fails skips the spawn with its reason, and OpenClaw runs the spawn as it would without the plugin. A tag says which spawns the gate can stop: "(every spawn)" includes [the requesting agent's own spawn](#the-spawn-of-the-requesting-agent-itself), "(another agent)" does not, and "(requesting agent)" stops only that spawn.
 
-1. (every spawn) `<setting> not valid: run setup`: a stored `provider`, `gateway` or `scope` holds a value outside its list. [Not valid: run setup](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names and how to set a valid value.
+1. (every spawn) `<setting> not valid: run setup`: a stored `provider`, `gateway` or `scope` holds a value outside its list, or `models` is not valid. [Not valid: run setup](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names and how to set a valid value.
 2. (every spawn) `key unset`: no path the `gateway` setting allows has a key.
 3. (another agent) `<id> is outside the core scope`: under `core`, the spawn names another agent.
 4. (every spawn) `subagent model set`: `agents.defaults.subagents.model`, or the target agent's `subagents.model`, is set. OpenClaw's own choice decides.
