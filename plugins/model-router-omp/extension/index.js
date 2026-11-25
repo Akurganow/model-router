@@ -854,6 +854,17 @@ var settingsReport = (stored, extra, keys) => {
     ...keyLines
   ].join("\n");
 };
+var hasModel = (stored) => typeof stored.model === "string" && stored.model.trim() !== "";
+function modelsWrite(stored, text) {
+  const read2 = readModels(text);
+  if ("invalid" in read2)
+    return { refused: unchanged("models", `not valid: ${read2.invalid}`) };
+  const { models } = migrate({ ...stored, models: text }).stored;
+  return {
+    models: typeof models === "string" ? models : text,
+    eraseModel: hasModel(stored)
+  };
+}
 var toolDescription = () => `Reads the router's settings. With no input it returns the provider, gateway, scope and models, and whether each key the settings allow is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice; never pass a value for these. With models and a string, the tool writes that string as the models setting at the person's request, for example {typesafe:jev-latest, openai:gpt-6-luna}. Never pass a key.`;
 var TOOL_LABEL = "Model Router settings";
 var badCall = () => `Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
@@ -911,12 +922,13 @@ import { readFile } from "node:fs/promises";
 var gatewayOf = (text) => GATEWAYS.find((gateway) => gateway === text);
 var namesNoValue = (setting, text) => valueFor(setting, text) === void 0;
 function applied(global, effective) {
-  const { provider: fromGlobal, gateway: gatewayFromGlobal } = global;
+  const { provider: fromGlobal, gateway: gatewayFromGlobal, models } = global;
   const { provider, gateway, scope } = effective;
   return {
     provider: namesNoValue("provider", provider) ? provider : fromGlobal,
     gateway: gatewayText(gatewayFromGlobal, gateway),
-    scope
+    scope,
+    models
   };
 }
 function gatewayText(global, effective) {
@@ -941,11 +953,11 @@ async function readSettings(omp, cwd) {
 async function readGlobalSettings(omp) {
   const plugin = omp.plugin ?? FALLBACK_NAME;
   try {
-    const { provider, gateway, scope } = await readGlobal(
+    const { provider, gateway, scope, models } = await readGlobal(
       omp.getPluginsLockfile(),
       plugin
     );
-    return { provider, gateway, scope };
+    return { provider, gateway, scope, models };
   } catch {
     return void 0;
   }
@@ -997,6 +1009,7 @@ function readConfig(lookup2, settings) {
 // src/adapters/omp/config.ts
 var COMMAND_PREFIX = "model-router:";
 var LINE_BREAK = "\n";
+var BAD_MODELS_CALL = "Pass setting alone, or models as a text alone.";
 var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
 function say(ctx, text) {
   try {
@@ -1040,6 +1053,26 @@ async function apply(omp, ctx, setting, value) {
   const line = valueLine(setting, after);
   return after[setting] === value ? line : [line, projectOverrides(setting)].join(LINE_BREAK);
 }
+async function applyModels(omp, ctx, text) {
+  const { plugin } = omp;
+  const global = await readGlobalSettings(omp);
+  if (global === void 0 || plugin === void 0)
+    return unchanged("models", UNREADABLE);
+  const write = modelsWrite(global, text);
+  if ("refused" in write) return write.refused;
+  if (global.models === write.models)
+    return unchanged("models", alreadyValue(write.models));
+  try {
+    await omp.writeSetting(ctx.cwd, plugin, "models", write.models);
+  } catch (err) {
+    return unchanged("models", errorText(err));
+  }
+  const after = await readSettings(omp, ctx.cwd) ?? {
+    ...global,
+    models: write.models
+  };
+  return modelsLines(after).join(LINE_BREAK);
+}
 async function dialog(omp, ctx, setting) {
   if (!ctx.hasUI) return unchanged(setting, NO_ANSWER);
   const shown = await readSettings(omp, ctx.cwd);
@@ -1051,7 +1084,9 @@ async function dialog(omp, ctx, setting) {
   );
 }
 async function runTool(omp, ctx, params) {
-  const { setting } = isRecord(params) ? params : {};
+  const { setting, models } = isRecord(params) ? params : {};
+  if (models !== void 0)
+    return setting === void 0 && typeof models === "string" ? applyModels(omp, ctx, models) : BAD_MODELS_CALL;
   if (setting === void 0) return readAll(omp, ctx);
   return isValueSetting(setting) ? dialog(omp, ctx, setting) : badCall();
 }
@@ -1074,7 +1109,8 @@ function registerConfig(omp, pi) {
     label: TOOL_LABEL,
     description: toolDescription(),
     parameters: pi.zod.object({
-      setting: pi.zod.enum(VALUE_SETTINGS).optional()
+      setting: pi.zod.enum(VALUE_SETTINGS).optional(),
+      models: pi.zod.string().optional()
     }),
     loadMode: "essential",
     approval: "write",

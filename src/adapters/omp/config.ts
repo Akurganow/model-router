@@ -5,6 +5,8 @@ import {
 	chooseValue,
 	isValue,
 	isValueSetting,
+	modelsLines,
+	modelsWrite,
 	NO_ANSWER,
 	type Stored,
 	settingsOf,
@@ -21,6 +23,7 @@ import {
 } from "#core/options/settings.ts";
 import { UNREADABLE } from "#core/output/reasons.ts";
 import { collectKeys } from "#core/providers/provider.ts";
+import { errorText } from "#utils/error.ts";
 import { isRecord } from "#utils/guards.ts";
 import { serializer } from "#utils/serializer.ts";
 import { findKey, readGlobalSettings, readSettings } from "./settings.ts";
@@ -28,6 +31,7 @@ import type { Context, OmpImports, Pi, ToolReply } from "./types.ts";
 
 const COMMAND_PREFIX = "model-router:";
 const LINE_BREAK = "\n";
+export const BAD_MODELS_CALL = "Pass setting alone, or models as a text alone.";
 
 export const projectOverrides = (setting: ValueSetting): string =>
 	`A project value for ${setting} overrides it.`;
@@ -101,6 +105,37 @@ async function apply(
 		: [line, projectOverrides(setting)].join(LINE_BREAK);
 }
 
+/**
+ * Writes the models text to the global settings and returns the models lines. A project's value
+ * never applies, so no override line follows. Returns the refusal line for a text that is not
+ * valid, and an unchanged line when the text is stored already, the settings are unreadable, omp
+ * gave no installed name, or the write fails. Never throws.
+ */
+async function applyModels(
+	omp: OmpImports,
+	ctx: Context,
+	text: string,
+): Promise<string> {
+	const { plugin } = omp;
+	const global = await readGlobalSettings(omp);
+	if (global === undefined || plugin === undefined)
+		return unchanged("models", UNREADABLE);
+	const write = modelsWrite(global, text);
+	if ("refused" in write) return write.refused;
+	if (global.models === write.models)
+		return unchanged("models", alreadyValue(write.models));
+	try {
+		await omp.writeSetting(ctx.cwd, plugin, "models", write.models);
+	} catch (err) {
+		return unchanged("models", errorText(err));
+	}
+	const after = (await readSettings(omp, ctx.cwd)) ?? {
+		...global,
+		models: write.models,
+	};
+	return modelsLines(after).join(LINE_BREAK);
+}
+
 async function dialog(
 	omp: OmpImports,
 	ctx: Context,
@@ -121,7 +156,11 @@ async function runTool(
 	ctx: Context,
 	params: unknown,
 ): Promise<string> {
-	const { setting } = isRecord(params) ? params : {};
+	const { setting, models } = isRecord(params) ? params : {};
+	if (models !== undefined)
+		return setting === undefined && typeof models === "string"
+			? applyModels(omp, ctx, models)
+			: BAD_MODELS_CALL;
 	if (setting === undefined) return readAll(omp, ctx);
 	return isValueSetting(setting) ? dialog(omp, ctx, setting) : badCall();
 }
@@ -156,6 +195,7 @@ export function registerConfig(omp: OmpImports, pi: Pi): void {
 		description: toolDescription(),
 		parameters: pi.zod.object({
 			setting: pi.zod.enum(VALUE_SETTINGS).optional(),
+			models: pi.zod.string().optional(),
 		}),
 		loadMode: "essential",
 		approval: "write",

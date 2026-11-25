@@ -80,7 +80,7 @@ test("the commands and the tool register under their names", () => {
 	assert.deepEqual(Object.keys(world.tools), [TOOL_NAME]);
 });
 
-test("the tool is essential, needs the write tier and takes an optional setting enum", () => {
+test("the tool is essential, needs the write tier and takes an optional setting enum and models text", () => {
 	install();
 	const tool = world.tools[TOOL_NAME];
 	assert.equal(
@@ -93,6 +93,7 @@ test("the tool is essential, needs the write tier and takes an optional setting 
 	assert.deepEqual(tool?.parameters, {
 		shape: {
 			setting: { values: ["provider", "gateway", "scope"], optional: true },
+			models: { type: "string", optional: true },
 		},
 	});
 });
