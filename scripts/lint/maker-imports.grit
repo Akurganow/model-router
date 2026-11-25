@@ -1,0 +1,21 @@
+language js
+
+// A plugin and not an override: a noRestrictedImports override replaces the
+// scoring/** one for the same files.
+// A file of makers/ names a sibling by a ./ specifier or by the
+// #core/scoring/makers/ alias. Every file of makers/ is a provider module, so
+// the rule needs no exception.
+// JsModuleSource is the specifier of a static import, a bare import and an
+// export … from. An import() call holds its argument as an expression.
+// TsImportType is an import in a type position: typeof import("…") and
+// import("…").X.
+// src-outside.grit explains the [^"']* before the quote.
+or {
+	JsModuleSource() as $specifier,
+	`import($specifier)`,
+	TsImportType() as $specifier
+} where {
+	$specifier <: r"[^\"']*[\"'](?:\./|#core/scoring/makers/)[\s\S]*",
+	$filename <: r".*/src/core/scoring/makers/[^/]*\.ts",
+	register_diagnostic(span=$specifier, message="A file of makers/ imports no other file of makers/.", severity="error")
+}

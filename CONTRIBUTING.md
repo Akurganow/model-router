@@ -89,17 +89,29 @@ every commit as a [conventional commit](#commits).
     plugin's `settings.py` walks the same order in Python, over the generated
     constants. It imports nothing from `scoring/`.
   - `scoring/`: the call. `route` asks the attempts in order and picks each
-    part's level, `ask` sends one request, `endpoints.ts` holds one table
-    with a row for each maker and path: the URL, the wire format, the model
-    name and the key header. `formats/` holds the wire
-    formats, `transport/` the request and its retries. `limit.ts` holds the
-    routing limit: its duration, the signal that the clock aborts when it
+    part's level, `ask` sends one request. `makers/` holds only provider
+    modules, one for each maker. Each exports one `MakerModule` constant
+    named after the maker, with an `Endpoint` for each path, `direct` and
+    `openrouter`. An `Endpoint` holds the `url`, the wire `format`, the
+    `model` and the `keyHeader` of its path. Each module writes its own
+    addresses as literals, its OpenRouter address included.
+    `maker-module.ts` holds the `KeyHeader`, `Endpoint` and `MakerModule`
+    types and `BEARER`, the key header that several modules use.
+    `maker-registry.ts` holds `MODULES`, typed `Record<Maker, MakerModule>`
+    so that a maker without a module fails the type check, and `endpointOf`,
+    which `ask.ts` and `scripts/calibrate.ts` read. `formats/` holds the
+    wire formats, `transport/` the request and its retries. `limit.ts` holds
+    the routing limit: its duration, the signal that the clock aborts when it
     runs out, and the race of a handler's work against a deadline.
     `handler-deadline.ts` holds a handler's deadline. It imports nothing from
     `decision/` or `options/`. `formats/` imports only its own folder,
     `scoring/failure.ts`, `scoring/reply.ts`, `parts/part.ts`,
-    `brief/brief.ts` and `utils/`. `route.ts` imports no wire format,
-    nothing from `transport/` and not `endpoints.ts`.
+    `brief/brief.ts` and `utils/`. A file of `makers/` imports no other file
+    of `makers/`. Only `maker-registry.ts` imports from `makers/`. `route.ts`
+    imports no wire format, nothing from `transport/`, nothing from
+    `makers/`, and neither `maker-registry.ts` nor `maker-module.ts`. No
+    shared code branches on a provider's name: a difference that a provider's
+    API forces is a field of `Endpoint`.
   - `decision/`: `scoreWork`, the entry every adapter calls, which reads the
     tier and work levels; the effort ladder; the slots; `outcomeOf`, which
     gives the slot, its model, the effort to set and the routing line of a
