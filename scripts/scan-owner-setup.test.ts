@@ -29,6 +29,7 @@ const WINDOWS_SLASH_HOME = ["D:", "Users", "dave"].join("/");
 // JSON and TypeScript strings double each backslash of a Windows path.
 const ESCAPED_WINDOWS_HOME = ["C:", "Users", "bob"].join("\\\\");
 const SK_KEY = ["sk", "a1B2c3D4e5F6"].join("-");
+const PPLX_KEY = ["pplx", "A1b2".repeat(12)].join("-");
 const BEARER_TOKEN = `${["Bearer", "abcd1234efgh5678ijkl"].join(" ")}`;
 
 test("each marker kind hits", () => {
@@ -47,6 +48,7 @@ test("each marker kind hits", () => {
 		"absolute home path",
 	]);
 	assert.deepEqual(findMarkers(`key ${SK_KEY}`), ["sk- key"]);
+	assert.deepEqual(findMarkers(`key ${PPLX_KEY}`), ["pplx- key"]);
 	assert.deepEqual(findMarkers(`Authorization: ${BEARER_TOKEN}`), [
 		"Bearer token",
 	]);
@@ -79,6 +81,16 @@ test("the bearer rule ignores case, as the redaction in src/core/brief/brief.ts 
 	assert.deepEqual(findMarkers(`Authorization: ${lower}`), ["Bearer token"]);
 	const bearer = MARKERS.find(({ kind }) => kind === "Bearer token");
 	assert.ok(bearer?.pattern.flags.includes("i"));
+});
+
+test("a key after an underscore, as in emphasis, is still found", () => {
+	assert.deepEqual(findMarkers(`_${SK_KEY}_`), ["sk- key"]);
+	assert.deepEqual(findMarkers(`_${PPLX_KEY}_`), ["pplx- key"]);
+});
+
+test("a short pplx- word passes", () => {
+	assert.deepEqual(findMarkers("pplx-decider-latest"), []);
+	assert.deepEqual(findMarkers(`pplx-${"a".repeat(47)}`), []);
 });
 
 test("a short sk- word passes", () => {

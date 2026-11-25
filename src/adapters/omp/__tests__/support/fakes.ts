@@ -245,9 +245,10 @@ const buildCtx = (state: State) => (): Context => ({
 		},
 	},
 	modelRegistry: {
-		getApiKeyForProvider: (provider) => {
+		getApiKeyWithCredentialForProvider: async (provider) => {
 			state.asked.push(provider);
-			return state.credential(provider);
+			const apiKey = await state.credential(provider);
+			return apiKey === undefined ? undefined : { apiKey };
 		},
 	},
 	models: {

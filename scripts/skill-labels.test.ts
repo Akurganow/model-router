@@ -28,3 +28,56 @@ test("each setup skill lists every dialog option of the settings its harness sto
 		}
 	}
 });
+
+const DECLARED_PHRASE = "Compare them with the fields the plugin declares: ";
+
+// Each manifest is a built file, so its own key list is the source of truth.
+// The path walks to the object whose keys are the declared fields.
+const declaredFields = (file: string, path: readonly string[]) => {
+	let node: unknown = JSON.parse(readFileSync(`${ROOT}${file}`, "utf8"));
+	for (const key of path)
+		node = (node as Record<string, unknown> | undefined)?.[key];
+	return Object.keys(node as object).sort();
+};
+
+const DECLARED: Record<keyof typeof SKILLS, string[]> = {
+	claude: declaredFields("plugins/model-router/.claude-plugin/plugin.json", [
+		"userConfig",
+	]),
+	omp: declaredFields("plugins/model-router-omp/package.json", [
+		"omp",
+		"settings",
+	]),
+	openclaw: declaredFields(
+		"plugins/model-router-openclaw/openclaw.plugin.json",
+		["configSchema", "properties"],
+	),
+	// plugin.yaml is JSON with spaces only.
+	hermes: declaredFields("plugins/model-router-hermes/plugin.yaml", [
+		"config_schema",
+	]),
+};
+
+test("each setup skill's declared-field line names exactly the fields its harness declares", () => {
+	for (const [harness, path] of Object.entries(SKILLS)) {
+		const lines = readFileSync(`${ROOT}${path}`, "utf8")
+			.split("\n")
+			.filter((line) => line.includes(DECLARED_PHRASE));
+		assert.equal(
+			lines.length,
+			1,
+			`${path} holds ${lines.length} lines with "${DECLARED_PHRASE}", not one`,
+		);
+		const listed = [...(lines[0] ?? "").matchAll(/`([^`]+)`/g)]
+			.map((match) => match[1])
+			.sort();
+		const declared = DECLARED[harness as keyof typeof SKILLS];
+		const missing = declared.filter((field) => !listed.includes(field));
+		const extra = listed.filter((field) => !declared.includes(field as string));
+		assert.deepEqual(
+			{ missing, extra },
+			{ missing: [], extra: [] },
+			`${harness} setup skill: the declared-field line misses ${missing.join(", ") || "nothing"} and names unknown ${extra.join(", ") || "nothing"}`,
+		);
+	}
+});

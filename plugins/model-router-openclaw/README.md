@@ -4,7 +4,7 @@ An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model an
 
 ## What it does
 
-- It scores each routed `sessions_spawn` call through the decision model of the `provider` setting: [Jev](https://docs.typesafe.ai) from TypeSafe, OpenAI's or Google's. One request asks two questions: how much judgment the task needs, and how much work it takes.
+- It scores each routed `sessions_spawn` call through the decision model of the `provider` setting, [Jev](https://docs.typesafe.ai) from TypeSafe by default. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A slot you leave unset keeps OpenClaw's model for its level, which then gets the effort alone, as [Models](#models) says.
 - It sets `thinking` from a fixed ladder of efforts, as [Effort](#effort) says.
 - It sets only a model you assigned.
@@ -68,6 +68,7 @@ For each key holder the [`provider` and `gateway` settings](#provider-and-gatewa
 | TypeSafe | `api_key` | `TYPESAFE_API_KEY` |
 | OpenAI | `openai_api_key` | `OPENAI_API_KEY` |
 | Google | `google_api_key` | `GEMINI_API_KEY` |
+| Perplexity | `perplexity_api_key` | `PERPLEXITY_API_KEY` |
 | OpenRouter | `openrouter_api_key` | `OPENROUTER_API_KEY` |
 
 [Where to get a key](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) also says when a key counts as set and which Google variable the plugins do not read. OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in any variable of the table scores tasks when the `provider` and `gateway` settings allow its holder and the plugin's setting for that holder holds none. No other credential of OpenClaw serves as a scoring key.
@@ -120,7 +121,7 @@ The `scope` setting picks which spawns the plugin routes:
 | `core` (default) | The spawn of the requesting agent itself |
 | `extended` | That spawn, and the spawn of any other configured agent that does not set its own model |
 
-A value outside the two is not valid, as [the notes on a setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) say.
+A value outside this list is not valid, as [the notes on a setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) say.
 
 Under `extended`, the plugin judges each spawn on its own. [The extended scope](PRIVACY.md#the-extended-scope) says what `extended` sends.
 
@@ -135,7 +136,7 @@ The requester is the agent that makes the `sessions_spawn` call. The target agen
 
 Three commands show or change an option:
 
-- `/model-router-provider [typesafe|openai|google]`
+- `/model-router-provider [typesafe|openai|google|perplexity]`
 - `/model-router-gateway [direct|auto|openrouter-first|openrouter]`
 - `/model-router-scope [core|extended]`
 
@@ -145,7 +146,7 @@ A Gateway client without `operator.admin` gets OpenClaw's own `This command requ
 
 Only the owner can write. For anyone else, a command with a valid value prints `<setting> unchanged: only the owner can change it` and the setting's current line.
 
-The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `scope` line, the `models` lines, the three slot lines and the key lines. The example shows the model line of one provider, and [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each. A slot line shows the slot string as you wrote it, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid.
+The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `scope` line, the `models` lines, the slot lines and the key lines. The example shows the model line of one provider, and [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each. A slot line shows the slot string as you wrote it, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid.
 
 ```text
 provider: typesafe

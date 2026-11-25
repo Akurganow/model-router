@@ -141,17 +141,9 @@ test("the models record is required, and so is its one text", () => {
 	]);
 });
 
-test("the removed Claude Code model option is required", () => {
-	const broken = source();
-	delete broken.claude.userConfig.model;
-	assert.deepEqual(validate(schema, broken), [
-		"$.claude.userConfig.model: required key is missing",
-	]);
-});
-
 test("the models record holds the shared title and one text", () => {
 	const { models } = loadSource(ROOT);
 	const text =
-		"The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.";
+		"The scoring model per provider as provider:model entries for typesafe, openai, google or perplexity, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.";
 	assert.deepEqual(models, { title: "Scoring models", description: text });
 });

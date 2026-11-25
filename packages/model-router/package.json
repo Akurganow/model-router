@@ -21,6 +21,7 @@
 		"jev",
 		"openai",
 		"gemini",
+		"perplexity",
 		"openrouter",
 		"openclaw-plugin",
 		"model-router",
@@ -44,11 +45,12 @@
 		"settings": {
 			"provider": {
 				"type": "enum",
-				"description": "Whose model scores each subagent task: typesafe, openai or google.",
+				"description": "Whose model scores each subagent task: typesafe, openai, google or perplexity.",
 				"values": [
 					"typesafe",
 					"openai",
-					"google"
+					"google",
+					"perplexity"
 				],
 				"default": "typesafe"
 			},
@@ -74,7 +76,7 @@
 			},
 			"models": {
 				"type": "string",
-				"description": "The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default."
+				"description": "The scoring model per provider as provider:model entries for typesafe, openai, google or perplexity, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default."
 			}
 		}
 	},

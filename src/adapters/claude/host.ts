@@ -85,14 +85,6 @@ export type ConfigCall = ReservedKeys & {
 	setting?: unknown;
 	models?: unknown;
 };
-// One /config row as the menu lists it, and what a hook answers to change it.
-export type ConfigRow = {
-	key: string;
-	label: string;
-	description?: string;
-	isHidden: boolean;
-};
-export type RowShown = Omit<ConfigRow, "key">;
 type AgentOffer = { agent: string; source: string; description: string };
 // The keys every tool.call carries beside the tool's own arguments.
 type ReservedKeys = {
@@ -143,11 +135,6 @@ export type On = {
 		matcher: { command: string },
 		hook: Hook<CommandRun, CommandOutput>,
 	): { catch(handler: Hook<unknown>): unknown };
-	(
-		event: "config.describe",
-		matcher: { key: string },
-		hook: Hook<ConfigRow, RowShown>,
-	): { catch(handler: Hook<unknown>): unknown };
 };
 export type Options = {
 	readonly [Field in (typeof KEY_FIELDS)[KeyHolder]]?: unknown;
@@ -156,8 +143,6 @@ export type Options = {
 	readonly gateway?: unknown;
 	readonly scope?: unknown;
 	readonly models?: unknown;
-	// The removed Jev model option: the core reads it as the typesafe entry of `models`.
-	readonly model?: unknown;
 };
 
 export function passOn(_: Engine, e: unknown, next: Next): Promise<Outcome> {

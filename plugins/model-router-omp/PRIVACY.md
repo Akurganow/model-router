@@ -14,16 +14,17 @@ paths:
 - the direct path: the provider's own API, with the provider's key
 - the gateway path: OpenRouter, with your OpenRouter key.
 
-The `provider` setting says whose model scores: `typesafe`, `openai` or
-`google`. OpenRouter is a gateway that passes the request to that provider's
-model. These companies can receive the task text:
+The `provider` setting says whose model scores: `typesafe`, `openai`, `google` or
+`perplexity`. OpenRouter is a gateway that passes the request to that
+provider's model. These companies can receive the task text:
 
 | Company | Host | It receives the text when | Key it takes |
 | :-- | :-- | :-- | :-- |
 | TypeSafe | `api.typesafe.ai` | `provider` is `typesafe` and `gateway` allows the direct path | the credential omp holds for `typesafe`, as a bearer token |
 | OpenAI | `api.openai.com` | `provider` is `openai` and `gateway` allows the direct path | the credential omp holds for `openai`, as a bearer token |
 | Google | `generativelanguage.googleapis.com` | `provider` is `google` and `gateway` allows the direct path | the credential omp holds for `google`, in the `x-goog-api-key` header |
-| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each of the three | the credential omp holds for `openrouter`, as a bearer token |
+| Perplexity | `api.perplexity.ai` | `provider` is `perplexity` and `gateway` allows the direct path | the credential omp holds for `perplexity`, as a bearer token |
+| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each provider | the credential omp holds for `openrouter`, as a bearer token |
 
 The `gateway` setting decides which paths are open:
 
@@ -47,7 +48,7 @@ role set, each routed item is still sent for scoring, as
 [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
 gives the fallback rules.
 
-A project can set two plugin settings, `gateway` and `scope`. For `gateway`, its
+A project can set the plugin settings `gateway` and `scope`. For `gateway`, its
 value may only narrow `auto` or `openrouter-first` to `direct` or `openrouter`.
 It cannot add a path, swap one or change the order. A project never changes the
 provider, as [What a project can change](README.md#what-a-project-can-change)
@@ -152,8 +153,9 @@ or when newer decisions push it out.
 It holds a key in memory only while it checks whether to route and while it
 sends a request. It reads a key only for a company that the `provider` and
 `gateway` settings allow. It reads the credential omp holds for that company's
-id, `typesafe`, `openai`, `google` or `openrouter`, and when that is empty, the
-environment variable `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or
+id, `typesafe`, `openai`, `google`, `perplexity` or `openrouter`. When that is
+empty or, from omp 18.13.2, a stored login, it reads the environment variable
+`TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY` or
 `OPENROUTER_API_KEY`. It sends each key only to its own company's host above.
 It does not read `GOOGLE_API_KEY`. It reads no other environment variable, and
 it runs no program.
@@ -166,7 +168,7 @@ plugin writes your global `models` setting. It writes no project setting.
 A key you set as an environment variable is visible to every process omp
 starts.
 
-A project can set any of these four variables in its `.env` file. When omp's
+A project can set any of these variables in its `.env` file. When omp's
 credential for that company is empty, the plugin then sends the task text to
 the account that project key belongs to. With the narrowing above, a project
 can also pick which of your allowed paths receives it.
@@ -202,7 +204,7 @@ Every plugin offers the choices in
 Here, set `provider`, `gateway` or `scope` in `/settings`, under Plugins. To route the `task` agent
 only, the effective `scope` must stay `core`. A project's `scope` overrides
 yours, as [The extended scope](#the-extended-scope) says. Remove the keys from
-omp's credential store and from the four variables. Disable the plugin and nothing
+omp's credential store and from these variables. Disable the plugin and nothing
 is sent.
 
 ## Children

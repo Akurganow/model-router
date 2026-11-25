@@ -11,7 +11,7 @@ var notValid = (setting) => `${setting} not valid: run setup`;
 var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
 
 // src/core/providers/provider.ts
-var MAKERS = ["typesafe", "openai", "google"];
+var MAKERS = ["typesafe", "openai", "google", "perplexity"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
 var GATEWAYS = [
   "direct",
@@ -23,6 +23,7 @@ var KEY_FIELDS = {
   typesafe: "api_key",
   openai: "openai_api_key",
   google: "google_api_key",
+  perplexity: "perplexity_api_key",
   openrouter: "openrouter_api_key"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 5e3;
@@ -302,6 +303,35 @@ var SYSTEM_ONE = {
   read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
 };
 
+// src/core/scoring/makers/perplexity.ts
+var perplexity = {
+  vendor: "perplexity",
+  openrouterRoute: "decisions",
+  // The aliases and the paid v1.3 slugs have no OpenRouter endpoint, so the aliases and the v1.3 ids map to the `:free` slugs.
+  openrouterNames: {
+    "pplx-decider-latest": "perplexity/pplx-decider-v1.3:free",
+    "pplx-decider-v1.3": "perplexity/pplx-decider-v1.3:free",
+    "pplx-decider-flash-latest": "perplexity/pplx-decider-flash-v1.3:free",
+    "pplx-decider-flash-v1.3": "perplexity/pplx-decider-flash-v1.3:free",
+    "pplx-decider-v1.2": "perplexity/pplx-decider-v1.2",
+    "pplx-decider-flash-v1.2": "perplexity/pplx-decider-flash-v1.2"
+  },
+  paths: {
+    direct: {
+      url: "https://api.perplexity.ai/v1/decisions",
+      format: SYSTEM_ONE,
+      model: "pplx-decider-latest",
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "perplexity/pplx-decider-v1.3:free",
+      keyHeader: BEARER
+    }
+  }
+};
+
 // src/core/scoring/makers/typesafe.ts
 var JEV = "jev-latest";
 var typesafe = {
@@ -334,7 +364,8 @@ var typesafe = {
 var MODULES = {
   typesafe,
   openai,
-  google
+  google,
+  perplexity
 };
 function modelOf(maker, path, stored) {
   const made = MODULES[maker];
@@ -356,6 +387,20 @@ function endpointOf(attempt) {
 
 // src/utils/error.ts
 var errorText = (err) => err instanceof Error ? err.message : String(err);
+
+// src/core/options/migrate.ts
+var STEPS = [];
+function migrate(stored) {
+  let current2 = stored;
+  const changes = [];
+  for (const step of STEPS) {
+    const done = step(current2);
+    if (done === void 0) continue;
+    current2 = done.stored;
+    changes.push(done.change);
+  }
+  return { stored: current2, changes };
+}
 
 // src/core/options/models.ts
 var JSON_CHARS = /["{}]/;
@@ -437,50 +482,6 @@ function readModels(stored) {
   }
   return readOwnerForm(text);
 }
-var formatModels = (names) => `{${MAKERS.flatMap((maker) => {
-  const name = names[maker];
-  return name === void 0 ? [] : [`${maker}:${name}`];
-}).join(", ")}}`;
-var sameNames = (a, b) => MAKERS.every((maker) => a[maker] === b[maker]);
-function withModel(models, maker, name) {
-  const read2 = readModels(models);
-  if ("invalid" in read2 || read2.models[maker] !== void 0) return void 0;
-  const text = typeof models === "string" ? models.trim() : void 0;
-  const parsed = text?.startsWith("{") ? parseJson2(text) : void 0;
-  let added;
-  if (isPlainObject(models)) added = { ...models, [maker]: name };
-  else if (isPlainObject(parsed))
-    added = JSON.stringify({ ...parsed, [maker]: name });
-  else added = formatModels({ ...read2.models, [maker]: name });
-  const back = readModels(added);
-  return "models" in back && sameNames(back.models, { ...read2.models, [maker]: name }) ? added : void 0;
-}
-
-// src/core/options/migrate.ts
-var typesafeFromModel = (stored) => {
-  const { model, models } = stored;
-  const name = nonEmpty(model);
-  if (name === void 0) return void 0;
-  const added = withModel(models, "typesafe", name);
-  if (added === void 0) return void 0;
-  return {
-    stored: { ...stored, models: added },
-    change: "models: typesafe from the removed model option"
-  };
-};
-var STEPS = [typesafeFromModel];
-var SETTINGS_VERSION = STEPS.length;
-function migrate(stored) {
-  let current2 = stored;
-  const changes = [];
-  for (const step of STEPS) {
-    const done = step(current2);
-    if (done === void 0) continue;
-    current2 = done.stored;
-    changes.push(done.change);
-  }
-  return { stored: current2, changes };
-}
 
 // src/core/options/scope.ts
 var SCOPE_VALUES = ["core", "extended"];
@@ -497,7 +498,8 @@ var TEXTS = {
     consequences: {
       typesafe: "Jev from TypeSafe",
       openai: "OpenAI's decision model",
-      google: "Google's decision model"
+      google: "Google's decision model",
+      perplexity: "Perplexity's decision model"
     }
   },
   gateway: {
@@ -608,53 +610,38 @@ var valueLineFrom = (setting, record) => {
   return `${setting}: ${value}`;
 };
 var valueLine = (setting, stored) => valueLineFrom(setting, migrate(stored).stored);
-var NOT_STORED = " (not stored yet: run setup)";
-var modelsLinesFrom = (record, pending) => {
+var modelsLinesFrom = (record) => {
   const { models } = record;
   const shown = isSilentModels(models) ? "unset" : textOf(models);
   const read2 = readModels(models);
   if ("invalid" in read2)
     return [`models: ${shown} (not valid: ${read2.invalid})`];
   return [
-    `models: ${shown}${pending ? NOT_STORED : ""}`,
+    `models: ${shown}`,
     ...MAKERS.map(
       (maker) => `${maker} model: ${modelOf(maker, "direct", read2.models[maker])} (OpenRouter: ${modelOf(maker, "openrouter", read2.models[maker])})`
     )
   ];
 };
-var hasModel = (stored) => nonEmpty(stored.model) !== void 0;
-var carryFrom = (stored, { stored: { models }, changes }) => ({
-  ...changes.length > 0 ? { models: textOf(models) } : {},
-  eraseModel: hasModel(stored)
-});
-var isPending = (carry) => carry.models !== void 0 || carry.eraseModel;
-var modelsLines = (stored) => {
-  const migrated = migrate(stored);
-  return modelsLinesFrom(
-    migrated.stored,
-    isPending(carryFrom(stored, migrated))
-  );
-};
+var modelsLines = (stored) => modelsLinesFrom(migrate(stored).stored);
 var settingsReport = (stored, extra, keys) => {
-  const migrated = migrate(stored);
-  const { stored: record } = migrated;
+  const { stored: record } = migrate(stored);
   const settings = settingsFrom(record);
   const keyLines = "skipped" in settings ? [] : holders(settings).map(
     (holder) => keyLine(holder, keys[holder] === void 0 ? "unset" : "set")
   );
   return [
     ...VALUE_SETTINGS.map((setting) => valueLineFrom(setting, record)),
-    ...modelsLinesFrom(record, isPending(carryFrom(stored, migrated))),
+    ...modelsLinesFrom(record),
     ...extra,
     ...keyLines
   ].join("\n");
 };
-var modelCarry = (stored) => carryFrom(stored, migrate(stored));
-function modelsWrite(stored, text) {
+function modelsWrite(text) {
   const read2 = readModels(text);
   if ("invalid" in read2)
     return { refused: unchanged("models", `not valid: ${read2.invalid}`) };
-  return { models: modelCarry({ ...stored, models: text }).models ?? text };
+  return { models: text };
 }
 var modelsCallOf = (setting, models) => typeof models === "string" && setting === void 0 ? { text: models } : { refused: BAD_MODELS_CALL };
 var modelsAlready = (held, text) => held === text ? unchanged("models", alreadyValue(text)) : void 0;
@@ -715,6 +702,8 @@ function keyVariable($, holder) {
       return $.env.get("OPENAI_API_KEY");
     case "google":
       return $.env.get("GEMINI_API_KEY");
+    case "perplexity":
+      return $.env.get("PERPLEXITY_API_KEY");
     case "openrouter":
       return $.env.get("OPENROUTER_API_KEY");
   }
@@ -735,7 +724,7 @@ var TOOL_SPEC = {
     }
   }
 };
-var ROWS = [...VALUE_SETTINGS, "models", "model"];
+var ROWS = [...VALUE_SETTINGS, "models"];
 var written = {};
 var serial = serializer();
 function resetConfig() {
@@ -747,19 +736,11 @@ var storedOf = (options) => ({
   provider: current(options, "provider"),
   gateway: current(options, "gateway"),
   scope: current(options, "scope"),
-  models: current(options, "models"),
-  model: current(options, "model")
+  models: current(options, "models")
 });
 async function registerConfigTool($, e, next) {
   await $.tool.register(TOOL_SPEC);
   return next(e);
-}
-async function hideRow(_, row) {
-  return {
-    label: row.label,
-    ...row.description === void 0 ? {} : { description: row.description },
-    isHidden: true
-  };
 }
 async function put($, row, value) {
   try {
@@ -774,42 +755,19 @@ async function put($, row, value) {
     return errorText(err);
   }
 }
-async function storeModels($, models, eraseModel) {
-  if (models !== void 0) {
-    const refused = await put($, "models", models);
-    if (refused !== void 0)
-      return { stored: false, lines: [unchanged("models", refused)] };
-  }
-  if (!eraseModel) return { stored: true, lines: [] };
-  const kept = await put($, "model", "");
-  return {
-    stored: true,
-    lines: kept === void 0 ? [] : [unchanged("model", kept)]
-  };
-}
-async function carryModel($, options) {
-  const { models, eraseModel } = modelCarry(storedOf(options));
-  return (await storeModels($, models, eraseModel)).lines;
-}
 async function write($, options, setting, value) {
   const refused = await put($, setting, value);
   if (refused !== void 0) return unchanged(setting, refused);
-  const rest = setting === "provider" ? await carryModel($, options) : [];
-  return [valueLine(setting, storedOf(options)), ...rest].join("\n");
+  return valueLine(setting, storedOf(options));
 }
 async function writeModels($, options, text) {
-  const stored = storedOf(options);
-  const planned = modelsWrite(stored, text);
+  const planned = modelsWrite(text);
   if ("refused" in planned) return planned.refused;
-  const { eraseModel } = modelCarry(stored);
-  const already = modelsAlready(stored.models, planned.models);
-  if (already !== void 0 && !eraseModel) return already;
-  const { stored: done, lines } = await storeModels(
-    $,
-    already === void 0 ? planned.models : void 0,
-    eraseModel
-  );
-  return [...done ? modelsLines(storedOf(options)) : [], ...lines].join("\n");
+  const already = modelsAlready(storedOf(options).models, planned.models);
+  if (already !== void 0) return already;
+  const refused = await put($, "models", planned.models);
+  if (refused !== void 0) return unchanged("models", refused);
+  return modelsLines(storedOf(options)).join("\n");
 }
 async function choose($, setting, options) {
   return chooseValue(
@@ -901,7 +859,8 @@ var TOKEN_PREFIXES = {
   "Stripe key": "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
   "npm token": "npm_[A-Za-z0-9]{36,}",
   "Hugging Face token": "hf_[A-Za-z]{34,}",
-  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
+  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}",
+  "Perplexity API key": "pplx-[A-Za-z0-9]{48,}"
 };
 var REDACTIONS = [
   {
@@ -1146,7 +1105,9 @@ var work = {
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
-var cleanModel = (model) => typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "";
+var MODEL_NAME_CHARS = "A-Za-z0-9._/:-";
+var UNSAFE = new RegExp(`[^${MODEL_NAME_CHARS}]`, "g");
+var cleanModel = (model) => typeof model === "string" ? model.replace(UNSAFE, "").slice(0, MODEL_CHARS_MAX) : "";
 
 // src/core/scoring/transport/retry.ts
 var RETRIES = 2;
@@ -1652,7 +1613,6 @@ function register(on, options) {
     { tool: "mcp__model-router__config" },
     ($, e) => configCall($, e, options)
   );
-  on("config.describe", { key: "model-router.model" }, hideRow);
   on(
     "command.run",
     { command: "model-router:gateway" },

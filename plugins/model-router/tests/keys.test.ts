@@ -5,10 +5,12 @@ const VARIABLE_KEY = "typesafe-var-key";
 const OPENROUTER_VARIABLE_KEY = "openrouter-var-key";
 const OPENAI_VARIABLE_KEY = "openai-var-key";
 const GOOGLE_VARIABLE_KEY = "google-var-key";
+const PERPLEXITY_VARIABLE_KEY = "perplexity-var-key";
 const TYPESAFE_URL = "https://api.typesafe.ai/v1/systemone";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/systemone";
 const OPENAI_URL = "https://api.openai.com/v1/decisions";
 const GOOGLE_URL = "https://generativelanguage.googleapis.com/v1beta/decisions";
+const PERPLEXITY_URL = "https://api.perplexity.ai/v1/decisions";
 
 // OpenAI's own API answers a list of answers; the harness's default reply is System One's map.
 const level = (value: number, probability: number) => ({ value, probability });
@@ -123,6 +125,20 @@ for (const [name, options, env, key, address] of [
 		{ GEMINI_API_KEY: GOOGLE_VARIABLE_KEY },
 		GOOGLE_VARIABLE_KEY,
 		GOOGLE_URL,
+	],
+	[
+		"the Perplexity option is the key under provider perplexity",
+		{ provider: "perplexity", perplexity_api_key: "perplexity-option-key" },
+		{},
+		"perplexity-option-key",
+		PERPLEXITY_URL,
+	],
+	[
+		"PERPLEXITY_API_KEY is the key under provider perplexity when the option is empty",
+		{ provider: "perplexity", perplexity_api_key: "" },
+		{ PERPLEXITY_API_KEY: PERPLEXITY_VARIABLE_KEY },
+		PERPLEXITY_VARIABLE_KEY,
+		PERPLEXITY_URL,
 	],
 ] as const)
 	test(name, { options }, async ($, on) => {

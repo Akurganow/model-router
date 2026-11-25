@@ -3,8 +3,6 @@ import {
 	CONFIG_TOOL,
 	config,
 	configTool,
-	describedRow,
-	drawRows,
 	harness,
 	modelsTool,
 	sessionStart,
@@ -58,6 +56,7 @@ test(
 				"typesafe model: jev-latest (OpenRouter: jev-latest)",
 				"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 				"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+				"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 				"typesafe key: set",
 				"openrouter key: set",
 			].join("\n"),
@@ -70,7 +69,7 @@ test(
 test("a key that is empty in both places reads as unset", async ($, on) => {
 	const h = harness(on, { env: { TYPESAFE_API_KEY: "" } });
 	expect((await configTool($)).result).toBe(
-		"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset",
+		"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nperplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\ntypesafe key: unset",
 	);
 	expect(h.envReads).toEqual(["TYPESAFE_API_KEY"]);
 });
@@ -82,7 +81,7 @@ test(
 		const h = harness(on, { env: { TYPESAFE_API_KEY: "never-read" } });
 		const { result } = await configTool($);
 		expect(result).toBe(
-			"provider: typesafe\ngateway: openrouter (openrouter)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nopenrouter key: unset",
+			"provider: typesafe\ngateway: openrouter (openrouter)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nperplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\nopenrouter key: unset",
 		);
 		expect(h.envReads).toEqual(["OPENROUTER_API_KEY"]);
 	},
@@ -107,7 +106,7 @@ test("a write opens the dialog with the current value first", async ($, on) => {
 	]);
 });
 
-test("the provider dialog offers the three makers", async ($, on) => {
+test("the provider dialog offers the four makers", async ($, on) => {
 	const h = harness(on, { dialog: () => undefined });
 	config(on, (e) => ({ value: e.value }));
 	await configTool($, "provider");
@@ -115,6 +114,7 @@ test("the provider dialog offers the three makers", async ($, on) => {
 		"typesafe",
 		"openai",
 		"google",
+		"perplexity",
 	]);
 });
 
@@ -261,6 +261,7 @@ const MODELS_LINES = [
 	"typesafe model: jev-preview (OpenRouter: jev-preview)",
 	"openai model: gpt-7-sol (OpenRouter: openai/gpt-7-sol)",
 	"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+	"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 ].join("\n");
 
 test(
@@ -281,27 +282,23 @@ test(
 	},
 );
 
-test(
-	"a models write needs no dialog, and the removed model option is erased after it",
-	{ options: { model: "jev-preview" } },
-	async ($, on) => {
-		const h = harness(on);
-		const writes = config(on, (e) => ({ value: e.value }));
-		expect((await modelsTool($, "{openai:gpt-6-luna}")).result).toBe(
-			[
-				"models: {typesafe:jev-preview, openai:gpt-6-luna}",
-				"typesafe model: jev-preview (OpenRouter: jev-preview)",
-				"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
-				"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
-			].join("\n"),
-		);
-		expect(writes.map((e) => [e.key, e.value])).toEqual([
-			["model-router.models", "{typesafe:jev-preview, openai:gpt-6-luna}"],
-			["model-router.model", ""],
-		]);
-		expect(h.asked).toEqual([]);
-	},
-);
+test("a models write needs no dialog", async ($, on) => {
+	const h = harness(on);
+	const writes = config(on, (e) => ({ value: e.value }));
+	expect((await modelsTool($, "{openai:gpt-6-luna}")).result).toBe(
+		[
+			"models: {openai:gpt-6-luna}",
+			"typesafe model: jev-latest (OpenRouter: jev-latest)",
+			"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
+			"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+			"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
+		].join("\n"),
+	);
+	expect(writes.map((e) => [e.key, e.value])).toEqual([
+		["model-router.models", "{openai:gpt-6-luna}"],
+	]);
+	expect(h.asked).toEqual([]);
+});
 
 test("a models text that is not valid names its entry and writes nothing", async ($, on) => {
 	harness(on);
@@ -312,20 +309,16 @@ test("a models text that is not valid names its entry and writes nothing", async
 	expect(writes).toEqual([]);
 });
 
-test(
-	"a refused models write stops before the erase",
-	{ options: { model: "jev-preview" } },
-	async ($, on) => {
-		harness(on);
-		const writes = config(on, () => ({
-			deny: "managed settings own this row",
-		}));
-		expect((await modelsTool($, MODELS)).result).toBe(
-			"models unchanged: managed settings own this row",
-		);
-		expect(writes.map((e) => e.key)).toEqual(["model-router.models"]);
-	},
-);
+test("a refused models write names the refusal", async ($, on) => {
+	harness(on);
+	const writes = config(on, () => ({
+		deny: "managed settings own this row",
+	}));
+	expect((await modelsTool($, MODELS)).result).toBe(
+		"models unchanged: managed settings own this row",
+	);
+	expect(writes.map((e) => e.key)).toEqual(["model-router.models"]);
+});
 
 test("a setting with models is a bad call", async ($, on) => {
 	harness(on);
@@ -339,32 +332,11 @@ test("a setting with models is a bad call", async ($, on) => {
 	expect(writes).toEqual([]);
 });
 
-test(
-	"a provider change by the dialog writes the models the removed model option makes, then erases it",
-	{ options: { model: "jev-preview" } },
-	async ($, on) => {
-		harness(on, { dialog: choose("openai") });
-		const writes = config(on, (e) => ({ value: e.value }));
-		expect((await configTool($, "provider")).result).toBe("provider: openai");
-		expect(writes.map((e) => [e.key, e.value])).toEqual([
-			["model-router.provider", "openai"],
-			["model-router.models", "{typesafe:jev-preview}"],
-			["model-router.model", ""],
-		]);
-	},
-);
-
-test("only the row of the removed model option is hidden from /config", async ($, on) => {
-	harness(on);
-	drawRows(on);
-	expect(await describedRow($, "model-router.model")).toEqual({
-		label: "A row",
-		description: "Its help text.",
-		isHidden: true,
-	});
-	expect(await describedRow($, "model-router.models")).toEqual({
-		label: "A row",
-		description: "Its help text.",
-		isHidden: false,
-	});
+test("a provider change by the dialog writes the provider alone", async ($, on) => {
+	harness(on, { dialog: choose("openai") });
+	const writes = config(on, (e) => ({ value: e.value }));
+	expect((await configTool($, "provider")).result).toBe("provider: openai");
+	expect(writes.map((e) => [e.key, e.value])).toEqual([
+		["model-router.provider", "openai"],
+	]);
 });

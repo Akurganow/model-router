@@ -16,7 +16,7 @@ Routing works when both of these hold:
 
 The person's optional choices:
 
-- `provider`: whose model scores tasks. It takes `typesafe`, `openai` or `google`.
+- `provider`: whose model scores tasks.
 - `gateway`: how OpenRouter is used to reach the provider.
 - `models`: the scoring model of each provider. A provider with no entry uses its default model.
 - `small_model`, `middle_model` and `large_model`: the model for each of the three levels. A level with no model keeps the model Hermes gives it. It still gets the effort for a task the plugin scores.
@@ -24,6 +24,19 @@ The person's optional choices:
 ## Your job
 
 Find out which of these already hold, with the `model_router_config` tool and Hermes's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool Hermes gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
+
+When you find what already holds, also check the stored field names. Follow these steps in order:
+
+1. Read the field names, not the values, stored under `plugins.entries.model-router-hermes.settings` in Hermes's `config.yaml`.
+2. Compare them with the fields the plugin declares: `provider`, `gateway`, `models`, `small_model`, `middle_model`, `large_model`, `api_key`, `openai_api_key`, `google_api_key`, `perplexity_api_key` and `openrouter_api_key`.
+3. Tell the person each stored field that the plugin does not declare.
+4. Read a value only of a non-key field not named like a key or a secret. Never print or copy any other field's value.
+5. On the person's word, remove a field that resembles no declared field.
+6. For a look-alike field that is not a key, propose the declared field and the exact text to write, for example `middle_modle` against `middle_model`.
+7. On the person's word, write the proposed text, then remove the old field.
+8. For a look-alike key field, ask the person to enter the key where the keys facts say, then, on their word, remove the old field.
+9. Write a field with `hermes config set plugins.entries.model-router-hermes.settings.<field> '<text>'`, a slot field as the JSON object that The models facts show.
+10. Remove a field by editing the plugin's `settings` in Hermes's `config.yaml` so that only that field goes. Write nothing else.
 
 When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
 
@@ -58,10 +71,10 @@ When the person wants another scoring model for one provider, follow these steps
 ### The tool
 
 - `model_router_config` only reads. It sits in the `model_router` toolset, which is on once the plugin is enabled.
-- With no input it returns the `provider` line, the `gateway` line, the `models` lines, one line for each of the three slot models, then one key line for each path the `gateway` value allows. Hermes has no `scope` setting, so no scope line prints.
-- The provider line reads `provider: typesafe`, `provider: openai` or `provider: google`. The gateway line reads `gateway: <value> (<who the plugin asks>)`, such as `gateway: auto (typesafe, then openrouter)`.
+- With no input it returns the `provider` line, the `gateway` line, the `models` lines, one line for each slot model, then one key line for each path the `gateway` value allows. Hermes has no `scope` setting, so no scope line prints.
+- The provider line reads `provider: <value>`. The gateway line reads `gateway: <value> (<who the plugin asks>)`, such as `gateway: auto (typesafe, then openrouter)`.
 - A model line reads `<name>: <provider> <model>` or `<name>: unset`. The names are `small_model`, `middle_model` and `large_model`. Here `<provider>` is a Hermes provider id.
-- A key line reads `typesafe key: set`, `openai key: unset` or `openrouter key: unset`, after the key's holder. It never shows a key, its length or any part of it.
+- A key line reads `<holder> key: set` or `<holder> key: unset`. It never shows a key, its length or any part of it.
 - A setting that is not valid prints `<setting>: <stored text> (not valid: use one of <values>)`. Every valid setting then prints as `<setting>: <value>`, the gateway line names nobody, and no key line prints.
 - A `models` value that is not valid prints as `models: <text> (not valid: <entry>)`, and no provider model line prints.
 - A failure returns `error: <message>`.
@@ -73,12 +86,13 @@ When the person wants another scoring model for one provider, follow these steps
 
 ### The provider and the gateway
 
-- `provider` names whose model scores. It has three values, and `typesafe` is the default:
+- `provider` names whose model scores. It takes these values, and `typesafe` is the default:
   - `typesafe - Jev from TypeSafe`
   - `openai - OpenAI's decision model`
   - `google - Google's decision model`
+  - `perplexity - Perplexity's decision model`
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
-- `gateway` says how OpenRouter is used to reach the provider. OpenRouter is a gateway, never a provider. It has four values, and `direct` is the default:
+- `gateway` says how OpenRouter is used to reach the provider. OpenRouter is a gateway, never a provider. It takes these values, and `direct` is the default:
   - `direct - the provider's own API only`
   - `auto - the provider's own API, then OpenRouter if it fails`
   - `openrouter-first - OpenRouter, then the provider's own API if it fails`
@@ -86,10 +100,10 @@ When the person wants another scoring model for one provider, follow these steps
 - The `gateway` setting is not Hermes's gateway, the process that owns a session.
 - With `auto` or `openrouter-first` and one key, the path with that key scores alone.
 - Only some failures reach the second path: [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists them.
-- Each setting changes only with its command: `/model-router-provider <value>` and `/model-router-gateway <value>`. The plugin reads both at each task.
+- Each setting changes only with its command: `/model-router-provider <value>` and `/model-router-gateway <value>`. The plugin reads them at each task.
 - With no value a command prints the current line, such as `gateway: auto (typesafe, then openrouter)`.
 - With a valid value it writes the value and prints the new line. It replaces a stored value that is not valid.
-- An invalid value prints `provider: use one of typesafe, openai, google` or `gateway: use one of direct, auto, openrouter-first, openrouter`.
+- An invalid value prints `<setting>: use one of <values>`.
 - The value already stored prints `<setting> unchanged: already <value>`. A value over nothing stored is written, even when it is the default.
 - A valid value from a session on a messaging platform prints `<setting> unchanged: only a local session can change it`, then the current line. Hermes CLI, TUI and Desktop sessions are local.
 - A failed write prints `<setting> unchanged: <reason>`.
@@ -99,11 +113,8 @@ When the person wants another scoring model for one provider, follow these steps
 ### A retired provider value
 
 - Earlier versions took `auto`, `openrouter-first` and `openrouter` as values of `provider`. A stored one is not valid. A stored `typesafe` needs no change.
-- The tool shows a retired value as `provider: <stored text> (not valid: use one of typesafe, openai, google)`.
-- The pairs that give the same requests as before:
-  - stored `auto`: `gateway` `auto` and `provider` `typesafe`.
-  - stored `openrouter-first`: `gateway` `openrouter-first` and `provider` `typesafe`.
-  - stored `openrouter`: `gateway` `openrouter` and `provider` `typesafe`.
+- The tool shows a retired value as `provider: <stored text> (not valid: use one of <values>)`.
+- Each becomes `provider` `typesafe` with that value for `gateway`, which gives the same requests as before.
 - Hermes gives you no way to write `provider` or `gateway`. The person types the commands.
 - The order is `gateway` first, then `provider`. In that order no task takes a path they did not choose.
 
@@ -121,9 +132,10 @@ When the person wants another scoring model for one provider, follow these steps
   - TypeSafe: `TYPESAFE_API_KEY`, form secret `api_key`. Get a key at https://console.typesafe.ai/keys.
   - OpenAI: `OPENAI_API_KEY`, form secret `openai_api_key`. Get a key at https://platform.openai.com/api-keys.
   - Google: `GEMINI_API_KEY`, form secret `google_api_key`. Get a key at https://aistudio.google.com/docs/api-key. The plugin does not read `GOOGLE_API_KEY`.
+  - Perplexity: `PERPLEXITY_API_KEY`, form secret `perplexity_api_key`. Get a key at https://console.perplexity.ai.
   - OpenRouter: `OPENROUTER_API_KEY`, form secret `openrouter_api_key`. Get a key at https://openrouter.ai.
 - The plugin's settings form in Hermes Desktop also sets each key, and Hermes stores it under that variable.
-- Hermes's own OpenRouter, OpenAI and Gemini providers read the same keys, and a key saved for the plugin may serve the person's own Hermes session too. Setting `model.provider` keeps another provider. [Keys](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#keys) gives the facts, including the `GOOGLE_API_KEY` order and the `model.key_env` limit.
+- Hermes's own OpenRouter, OpenAI and Gemini providers and its Perplexity web search read the same keys, and a key saved for the plugin may serve the person's own Hermes session too. Setting `model.provider` keeps another provider. [Keys](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#keys) gives the facts, including the `GOOGLE_API_KEY` order and the `model.key_env` limit.
 - No other credential of Hermes serves as a scoring key.
 - A key in the environment is visible to every process Hermes starts.
 - With no key for any path the `gateway` setting allows, every task without a `level` skips with `key unset`.
@@ -140,7 +152,7 @@ When the person wants another scoring model for one provider, follow these steps
 
 - Each model setting is a mapping with two fields. `provider` is a Hermes provider id, such as `openrouter`. `model` is a model id as Hermes lists it for that provider.
 - A mapping with no `model` counts as unset.
-- The three settings are the plugin's own settings in Hermes's config, under `plugins.entries.model-router-hermes.settings`. The person sets one in the settings form in Hermes Desktop, or with `hermes config set plugins.entries.model-router-hermes.settings.<slot> '{"provider": "<provider>", "model": "<model>"}'`.
+- The slot settings are the plugin's own settings in Hermes's config, under `plugins.entries.model-router-hermes.settings`. The person sets one in the settings form in Hermes Desktop, or with `hermes config set plugins.entries.model-router-hermes.settings.<slot> '{"provider": "<provider>", "model": "<model>"}'`.
 - For a scored task, level 0 sets the `small_model`, level 1 the `middle_model` and level 2 the `large_model`. The task gets that slot's `model` and `provider`.
 - A delegating model can pin `level` on a task. The task then gets that level's model with no scoring, and carries no `route.label` while the model is set.
 - A pinned task whose slot has no model runs on Hermes's model, with the label `model-router L<level> <slot> model unset`.
@@ -160,7 +172,7 @@ When the person wants another scoring model for one provider, follow these steps
 - Hermes also logs the line at INFO in `agent.log`, once for each distinct line. Under `plugins.isolation: host` that log drops INFO lines, so only `route.label` shows it.
 - A routed line reads `model-router L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`.
 - The slot state is `<slot> model unset`. The kept label is `config effort` or `caller effort`.
-- Who answered follows, `typesafe`, `openai`, `google` or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
+- Who answered follows, the provider's name or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
 - After a fallback, the line ends with the attempt that failed and its reason, as in ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429`.
 - A skipped line reads `model-router skipped, <reason>`. The task then runs on Hermes's own route.
 
@@ -190,7 +202,7 @@ For the person: the plugin's README in the model-router repository holds the ful
 - Never take, show or repeat a key. If a key arrives in chat, do not store it, and tell the person to rotate it.
 - Change a setting only when the person asked for it or agreed.
 - A routing check spawns one small task and spends a little usage, so ask before it.
-- Only a local Hermes session can run `/model-router-provider` and `/model-router-gateway` to change a setting.
+- Only a local Hermes session can change a setting with its command.
 
 ## When you finish
 

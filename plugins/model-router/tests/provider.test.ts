@@ -147,11 +147,11 @@ test("a change that throws prints the error", async ($, on) => {
 	expect(text).toContain("config.set");
 });
 
-test("any other argument lists the three values", async ($, on) => {
+test("any other argument lists the four values", async ($, on) => {
 	harness(on);
 	const writes = config(on, (e) => ({ value: e.value }));
 	expect(await provider($, "anthropic")).toBe(
-		"provider: use one of typesafe, openai, google",
+		"provider: use one of typesafe, openai, google, perplexity",
 	);
 	expect(writes).toEqual([]);
 });
@@ -172,7 +172,7 @@ test(
 test("a bad value is refused before the origin is read", async ($, on) => {
 	harness(on);
 	expect(await runCommand($, COMMAND, "anthropic", { kind: "sdk" })).toBe(
-		"provider: use one of typesafe, openai, google",
+		"provider: use one of typesafe, openai, google, perplexity",
 	);
 });
 
@@ -226,15 +226,6 @@ for (const models of ["", "   "])
 			expect(JSON.parse(h.sent ?? "").model).toBe("jev-latest");
 		},
 	);
-
-test(
-	"a stored model option with no models is the TypeSafe model",
-	{ options: { api_key: "typesafe-key", model: "jev-preview" } },
-	async ($, on) => {
-		const { h } = await callOnce($, on);
-		expect(JSON.parse(h.sent ?? "").model).toBe("jev-preview");
-	},
-);
 
 test(
 	"a models text that is not valid skips the call with the setup line",

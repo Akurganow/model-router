@@ -55,7 +55,7 @@ The stop below holds with or without a request.
 
 ## Look up what the harnesses need
 
-`findKey` in `src/adapters/omp/settings.ts` passes each key holder's name to omp's `getApiKeyForProvider`.
+`findKey` in `src/adapters/omp/settings.ts` passes each key holder's name to omp's `getApiKeyWithCredentialForProvider`.
 So the maker's name must be the id that omp gives the provider.
 
 18. Find that id in omp's source or documentation.
@@ -208,6 +208,9 @@ The failures name each place. They do not say this:
 - Hermes asks a new maker like the other three harnesses, once a user stores it as `provider`.
 - Biome reports no place that lacks the provider. It checks the format, so run `npm run fix` after a hand edit.
 - A test that stands in for a value that is not valid with a company's name breaks when that company becomes a maker, as `src/adapters/omp/__tests__/unit/settings.test.ts` did with `"openai"`. Pick a stand-in that no maker will take.
+- `scripts/skill-labels.test.ts` fails until each of the four `model-router-setup/SKILL.md` lists the new value with its label.
+- A test title that counts settings, such as "eleven settings", takes the new count.
+- `cleanModel` in `src/core/scoring/reply.ts` keeps only the characters it lists in a reply's model name. Check that it keeps every character of the new slugs.
 
 Each test below holds a rule that every maker shares in one row, so a new maker adds no row to it:
 
@@ -272,6 +275,7 @@ The next four steps hold only when the evals score through the new provider.
 [The task text](../../../docs/providers.md#the-task-text) lists the shapes of the masking and changes with it.
 
 74. Check that both know the shape of the new provider's keys, and add a missing shape to each.
+    Each new shape takes a planted-key row and an adversarial row in `src/core/__tests__/unit/brief.test.ts` and `scripts/scan-owner-setup.test.ts`.
 
 ## The texts that name the provider
 
@@ -295,7 +299,7 @@ Each search below reads every Markdown file, `metadata/source.json` and `scripts
     - the table of [The request](../../../docs/providers.md#the-request), with a row for each path, and its sentences on the key header and on who accepts an image reference;
     - the example of [The report lines](../../../docs/providers.md#the-report-lines), which holds a line for each provider.
 83. Change the plugin descriptions under `descriptions` in `metadata/source.json`: they name the hosts of the providers' own APIs. In `scripts/build/npm.ts`, change the lead of the npm README: it names every provider.
-84. Write the key's text in `keys.<holder>` of `metadata/source.json` in the one shape of every holder: "Sent to <company> only, when provider is <maker> and gateway is not openrouter."
+84. Write the key's text in `keys.<holder>` of `metadata/source.json` in the one shape of every maker: "The plugin sends it to <company> when provider is <maker> and gateway is not openrouter."
 
 A line that counts providers, keys or variables names none of them, so the first search misses it.
 

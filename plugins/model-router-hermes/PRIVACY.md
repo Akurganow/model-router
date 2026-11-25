@@ -12,16 +12,17 @@ It never scores the main turn. The model answers on one or two paths:
 - the direct path: the provider's own API, with the provider's key
 - the gateway path: OpenRouter, with your OpenRouter key.
 
-The `provider` setting says whose model scores: `typesafe`, `openai` or
-`google`. OpenRouter is a gateway that passes the request to that provider's
-model. These companies can receive the task text:
+The `provider` setting says whose model scores: `typesafe`, `openai`, `google` or
+`perplexity`. OpenRouter is a gateway that passes the request to that
+provider's model. These companies can receive the task text:
 
 | Company | Host | It receives the text when | Key it takes |
 | :-- | :-- | :-- | :-- |
 | TypeSafe | `api.typesafe.ai` | `provider` is `typesafe` and `gateway` allows the direct path | the TypeSafe key, as a bearer token |
 | OpenAI | `api.openai.com` | `provider` is `openai` and `gateway` allows the direct path | the OpenAI key, as a bearer token |
 | Google | `generativelanguage.googleapis.com` | `provider` is `google` and `gateway` allows the direct path | the Google key, in the `x-goog-api-key` header |
-| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each of the three | the OpenRouter key, as a bearer token |
+| Perplexity | `api.perplexity.ai` | `provider` is `perplexity` and `gateway` allows the direct path | the Perplexity key, as a bearer token |
+| OpenRouter | `openrouter.ai` | `gateway` allows its path, as the gateway to each provider | the OpenRouter key, as a bearer token |
 
 The `gateway` setting decides which paths are open:
 
@@ -136,8 +137,8 @@ distinct log lines. Both leave when the gateway or the plugin host stops.
 
 It reads a key only for a company that the `provider` and `gateway` settings
 allow. It reads the key through Hermes's own secret reader, from the variable
-`TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or `OPENROUTER_API_KEY`.
-It does not read `GOOGLE_API_KEY`. [Keys](README.md#keys) says where Hermes
+`TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY` or
+`OPENROUTER_API_KEY`. It does not read `GOOGLE_API_KEY`. [Keys](README.md#keys) says where Hermes
 holds them. The
 plugin holds a key in memory only while it routes a task, and it passes the key
 to the program above on standard input.
@@ -147,8 +148,8 @@ and of the plugin host. Like any key in the environment, it is
 visible to the programs Hermes starts. Keep a key out of the environment of
 programs you do not trust.
 
-At each task the plugin reads five of its own settings through Hermes:
-`provider`, `gateway`, `small_model`, `middle_model` and `large_model`. It reads the task's
+At each task the plugin reads its own settings through Hermes: `provider`,
+`gateway`, `models`, `small_model`, `middle_model` and `large_model`. It reads the task's
 `description`, `reasoning_effort` and `level` parameters. Of those, only the
 description leaves your machine, in the request. It also reads the `delegation`
 section of Hermes's configuration, which Hermes passes with the task. It uses
@@ -160,10 +161,11 @@ as Hermes's own default backend does, with a model, a provider and an effort
 changed when it routes. When the section sets no effort, every route carries
 the task's `reasoning_effort` parameter.
 
-The plugin reads no credential of a model's provider except the four keys above.
-Hermes's own OpenRouter, OpenAI and Gemini providers read the same keys, and a
-key you save for the plugin may serve your own Hermes session too.
-[Keys](README.md#keys) says how, and how to keep another provider. The plugin sets the model and provider you named in a slot on the task. Of the
+The plugin reads no credential of a model's provider except the keys above.
+Hermes's own OpenRouter, OpenAI and Gemini providers and its Perplexity web
+search read the same keys, and a key you save for the plugin may serve your own
+Hermes session too. [Keys](README.md#keys) says how, and how to keep another
+provider. The plugin sets the model and provider you named in a slot on the task. Of the
 settings, the task parameters and the `delegation` section, only the role text
 leaves your machine, in the request, as described above.
 

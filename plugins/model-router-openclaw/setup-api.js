@@ -1,155 +1,5 @@
-// src/utils/text.ts
-var nonEmpty = (value) => {
-  const text = typeof value === "string" ? value.trim() : "";
-  return text === "" ? void 0 : text;
-};
-var textOf = (value) => {
-  if (typeof value === "string") return value;
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    return plainText(value);
-  }
-};
-function plainText(value) {
-  try {
-    return String(value);
-  } catch {
-    return Object.prototype.toString.call(value);
-  }
-}
-
-// src/core/providers/provider.ts
-var MAKERS = ["typesafe", "openai", "google"];
-var KEY_HOLDERS = [...MAKERS, "openrouter"];
-var GATEWAYS = [
-  "direct",
-  "auto",
-  "openrouter-first",
-  "openrouter"
-];
-
-// src/utils/guards.ts
-var isRecord = (v) => typeof v === "object" && v !== null;
-var isPlainObject = (value) => {
-  if (typeof value !== "object" || value === null) return false;
-  const proto = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
-};
-
-// src/core/options/models.ts
-var JSON_CHARS = /["{}]/;
-var makerOf = (name) => MAKERS.find((maker) => maker === name);
-function accept(named, provider, model) {
-  const maker = makerOf(provider.trim());
-  const name = model.trim();
-  if (maker === void 0 || name === "" || name.includes("/") || Object.hasOwn(named, maker))
-    return false;
-  named[maker] = name;
-  return true;
-}
-function readObject(object) {
-  const named = {};
-  for (const [provider, model] of Object.entries(object)) {
-    if (typeof model !== "string") return { invalid: provider.trim() };
-    if (!accept(named, provider, model))
-      return { invalid: `${provider.trim()}:${model.trim()}` };
-  }
-  return { models: named };
-}
-function repeatedKey(text) {
-  const seen = /* @__PURE__ */ new Set();
-  let at = 0;
-  while (at < text.length) {
-    if (text[at] !== '"') {
-      at += 1;
-      continue;
-    }
-    let end = at + 1;
-    while (end < text.length && text[end] !== '"')
-      end += text[end] === "\\" ? 2 : 1;
-    const token = text.slice(at, end + 1);
-    at = end + 1;
-    while (/\s/.test(text[at] ?? "")) at += 1;
-    if (text[at] !== ":") continue;
-    const key = String(JSON.parse(token));
-    if (seen.has(key)) return key;
-    seen.add(key);
-  }
-  return void 0;
-}
-function parseJson(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return void 0;
-  }
-}
-function readOwnerForm(text) {
-  if (text.startsWith("{") !== text.endsWith("}")) return { invalid: text };
-  const inner = (text.startsWith("{") ? text.slice(1, -1) : text).trim();
-  if (inner === "") return { models: {} };
-  const named = {};
-  for (const part of (inner.endsWith(",") ? inner.slice(0, -1) : inner).split(
-    ","
-  )) {
-    const entry = part.trim();
-    const colon = entry.indexOf(":");
-    if (colon < 0 || JSON_CHARS.test(entry.slice(colon + 1)) || !accept(named, entry.slice(0, colon), entry.slice(colon + 1)))
-      return { invalid: entry === "" ? text : entry };
-  }
-  return { models: named };
-}
-var isSilentModels = (stored) => stored === void 0 || stored === null || typeof stored === "string" && stored.trim() === "";
-function readModels(stored) {
-  if (isSilentModels(stored)) return { models: {} };
-  if (isPlainObject(stored)) return readObject(stored);
-  if (typeof stored !== "string") return { invalid: textOf(stored) };
-  const text = stored.trim();
-  if (text.startsWith("{")) {
-    const parsed = parseJson(text);
-    if (isPlainObject(parsed)) {
-      const read = readObject(parsed);
-      if ("invalid" in read) return read;
-      const repeated = repeatedKey(text);
-      return repeated === void 0 ? read : { invalid: repeated };
-    }
-  }
-  return readOwnerForm(text);
-}
-var formatModels = (names) => `{${MAKERS.flatMap((maker) => {
-  const name = names[maker];
-  return name === void 0 ? [] : [`${maker}:${name}`];
-}).join(", ")}}`;
-var sameNames = (a, b) => MAKERS.every((maker) => a[maker] === b[maker]);
-function withModel(models, maker, name) {
-  const read = readModels(models);
-  if ("invalid" in read || read.models[maker] !== void 0) return void 0;
-  const text = typeof models === "string" ? models.trim() : void 0;
-  const parsed = text?.startsWith("{") ? parseJson(text) : void 0;
-  let added;
-  if (isPlainObject(models)) added = { ...models, [maker]: name };
-  else if (isPlainObject(parsed))
-    added = JSON.stringify({ ...parsed, [maker]: name });
-  else added = formatModels({ ...read.models, [maker]: name });
-  const back = readModels(added);
-  return "models" in back && sameNames(back.models, { ...read.models, [maker]: name }) ? added : void 0;
-}
-
 // src/core/options/migrate.ts
-var typesafeFromModel = (stored) => {
-  const { model, models } = stored;
-  const name = nonEmpty(model);
-  if (name === void 0) return void 0;
-  const added = withModel(models, "typesafe", name);
-  if (added === void 0) return void 0;
-  return {
-    stored: { ...stored, models: added },
-    change: "models: typesafe from the removed model option"
-  };
-};
-var STEPS = [typesafeFromModel];
-var SETTINGS_VERSION = STEPS.length;
+var STEPS = [];
 function migrate(stored) {
   let current = stored;
   const changes = [];
@@ -162,10 +12,23 @@ function migrate(stored) {
   return { stored: current, changes };
 }
 
+// src/utils/guards.ts
+var isRecord = (v) => typeof v === "object" && v !== null;
+
 // src/core/decision/slots.ts
 var SLOTS = ["small", "middle", "large"];
 var slotSetting = (slot) => `${slot}_model`;
 var SLOT_SETTINGS = SLOTS.map(slotSetting);
+
+// src/core/providers/provider.ts
+var MAKERS = ["typesafe", "openai", "google", "perplexity"];
+var KEY_HOLDERS = [...MAKERS, "openrouter"];
+var GATEWAYS = [
+  "direct",
+  "auto",
+  "openrouter-first",
+  "openrouter"
+];
 
 // src/core/parts/part.ts
 var LEVELS = [0, 1, 2];
@@ -199,7 +62,7 @@ var mapAnswer = (answers, key) => {
   const { 0: p0, 1: p1, 2: p2 } = probabilities;
   return levelProbabilities(p0, p1, p2);
 };
-function parseJson2(text) {
+function parseJson(text) {
   try {
     return JSON.parse(text);
   } catch {
@@ -207,7 +70,7 @@ function parseJson2(text) {
   }
 }
 var replyReader = (probabilitiesOf, usageOf) => (parts, text) => {
-  const reply = parseJson2(text);
+  const reply = parseJson(text);
   const { answers, model, usage } = isRecord(reply) ? reply : {};
   const pairs = [];
   for (const part of parts) {
@@ -293,7 +156,8 @@ var TEXTS = {
     consequences: {
       typesafe: "Jev from TypeSafe",
       openai: "OpenAI's decision model",
-      google: "Google's decision model"
+      google: "Google's decision model",
+      perplexity: "Perplexity's decision model"
     }
   },
   gateway: {

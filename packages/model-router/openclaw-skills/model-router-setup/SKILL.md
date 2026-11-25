@@ -16,7 +16,7 @@ Routing works when both of these hold:
 
 The person may also choose these, and each has a default:
 
-- `provider`: whose model scores tasks. It takes `typesafe` (the default), `openai` or `google`.
+- `provider`: whose model scores tasks. The default is `typesafe`.
 - `gateway`: how OpenRouter is used to reach the provider. The default is `direct`.
 - `scope`: which spawns the plugin routes. The default is `core`.
 - `models`: the scoring model of each provider. A provider with no entry uses its default model.
@@ -25,6 +25,21 @@ The person may also choose these, and each has a default:
 ## Your job
 
 Find out which of these already hold, with the `model_router_config` tool and OpenClaw's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool OpenClaw gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
+
+When you find what already holds, also check the stored field names. Follow these steps in order:
+
+1. Read the field names, not the values, stored under `plugins.entries.model-router-openclaw.config` in OpenClaw's configuration.
+2. Compare them with the fields the plugin declares: `provider`, `gateway`, `scope`, `models`, `small_model`, `middle_model`, `large_model`, `api_key`, `openai_api_key`, `google_api_key`, `perplexity_api_key` and `openrouter_api_key`.
+3. Tell the person each stored field that the plugin does not declare.
+4. Read a value only of a non-key field not named like a key or a secret. Never print or copy any other field's value.
+5. For a look-alike field that is not a key, propose the declared field and the exact text to write, for example `middle_modle` against `middle_model`.
+6. Ask the person which undeclared fields to remove or move, and agree each move.
+7. Note each agreed move and its text, never a key value.
+8. On the person's word, edit OpenClaw's configuration so that it drops every agreed undeclared field, and nothing else.
+    - Remove all of them first: OpenClaw declines every `openclaw config set` while the config holds an undeclared field.
+9. Write each moved field with `openclaw config set plugins.entries.model-router-openclaw.config.<field> '<text>'`.
+10. For a look-alike key field, ask the person to enter the key where the Keys facts say.
+11. Read the field names again, and confirm that no undeclared field remains. Write nothing else.
 
 When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
 
@@ -58,8 +73,8 @@ When the person wants another scoring model for one provider, follow these steps
 
 ### The tool
 
-- `model_router_config` with no input prints the `provider`, `gateway`, `scope`, `models`, `small_model`, `middle_model` and `large_model` lines, then one key line for each path the `gateway` setting allows.
-- A model line shows the slot string as written, or `unset`. A key line reads `typesafe key: set`, `openai key: unset` or `openrouter key: unset`, after the key's holder.
+- `model_router_config` with no input prints a line for each setting, then one key line for each path the `gateway` setting allows.
+- A model line shows the slot string as written, or `unset`. A key line reads `<holder> key: set` or `<holder> key: unset`.
 - Example output, with the model line of one provider. [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each:
 
 ```text
@@ -81,12 +96,13 @@ openrouter key: unset
 
 ### Provider and gateway
 
-- `provider` has three values. `typesafe` is the default.
+- `provider` takes these values. `typesafe` is the default.
   - `typesafe - Jev from TypeSafe`
   - `openai - OpenAI's decision model`
   - `google - Google's decision model`
+  - `perplexity - Perplexity's decision model`
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
-- `gateway` has four values. `direct` is the default.
+- `gateway` takes these values. `direct` is the default.
   - `direct - the provider's own API only`
   - `auto - the provider's own API, then OpenRouter if it fails`
   - `openrouter-first - OpenRouter, then the provider's own API if it fails`
@@ -102,13 +118,10 @@ openrouter key: unset
 
 - `auto`, `openrouter-first` and `openrouter` are retired `provider` values. They are `gateway` values now, so a stored `provider` that holds one is not valid.
 - The tool shows a retired value as `provider: <stored text> (not valid: use one of <values>)`.
-- The pairs that give the same requests as before:
-  - `auto`: `provider` `typesafe`, `gateway` `auto`.
-  - `openrouter-first`: `provider` `typesafe`, `gateway` `openrouter-first`.
-  - `openrouter`: `provider` `typesafe`, `gateway` `openrouter`.
+- Each becomes `provider` `typesafe` with that value for `gateway`, which gives the same requests as before.
 - Take these steps in this order. Set `gateway` first. While `provider` is not valid, nothing routes, so no task takes an unchosen path.
   1. Read the stored `provider` and `gateway` with `model_router_config`.
-  2. Propose the pair above that matches the stored value.
+  2. Propose the pair that matches the stored value.
   3. Once the person agrees, ask them to type `/model-router-gateway <value>`.
   4. After OpenClaw has replaced the plugin, call `model_router_config` again. Go on only when the `gateway` line shows the agreed value.
   5. Ask them to type `/model-router-provider typesafe`.
@@ -126,7 +139,7 @@ openrouter key: unset
 
 ### Scope
 
-- `scope` has two values. `core` is the default.
+- `scope` takes these values. `core` is the default.
   - `core - the default agents only`
   - `extended - also other agents, as the README lists`
 - `core` routes the spawn of the requesting agent itself: a spawn with no `agentId`, or with the requester's own id, and a `runtime` that is absent or `subagent`.
@@ -139,13 +152,14 @@ openrouter key: unset
   - TypeSafe: the setting `api_key`, else `TYPESAFE_API_KEY`. Get a key at https://console.typesafe.ai/keys.
   - OpenAI: the setting `openai_api_key`, else `OPENAI_API_KEY`. Get a key at https://platform.openai.com/api-keys.
   - Google: the setting `google_api_key`, else `GEMINI_API_KEY`. Get a key at https://aistudio.google.com/docs/api-key.
+  - Perplexity: the setting `perplexity_api_key`, else `PERPLEXITY_API_KEY`. Get a key at https://console.perplexity.ai.
   - OpenRouter: the setting `openrouter_api_key`, else `OPENROUTER_API_KEY`. Get a key at https://openrouter.ai.
 - The key of the chosen provider serves the direct path, and the OpenRouter key serves the gateway path.
 - The person adds a key in the secret field of the plugin's page in the Control UI, or sets the variable in the Gateway's environment and restarts the Gateway.
 - A key counts as set when either place holds a non-blank value.
 - OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in any of these variables scores tasks when the `provider` and `gateway` settings allow its holder and the plugin's setting for that holder holds none.
 - No other credential of OpenClaw serves as a scoring key.
-- A workspace `.env` is a lower-trust source: OpenClaw drops `OPENROUTER_API_KEY`, `OPENAI_API_KEY` and `GEMINI_API_KEY` from it, and not `TYPESAFE_API_KEY`. The global `~/.openclaw/.env` and the Gateway's environment stay trusted. Tell the person to keep a key in one of those two.
+- A workspace `.env` is a lower-trust source: OpenClaw drops each key variable from it except `TYPESAFE_API_KEY`. The global `~/.openclaw/.env` and the Gateway's environment stay trusted. Tell the person to keep a key in one of those two.
 - A key variable reaches every process the Gateway starts.
 - With `auto` or `openrouter-first` and one key, that key's path scores alone.
 
@@ -167,7 +181,7 @@ openrouter key: unset
 
 - OpenClaw shows no line in the chat. The plugin writes one line per routed or skipped spawn to the Gateway log. The line starts with `model-router`.
 - A routed line reads `L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`. The model is the slot string as written. An unset slot shows `<slot> model unset`, and that spawn keeps OpenClaw's model.
-- Who answered follows, as `typesafe`, `openai`, `google` or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
+- Who answered follows, as the provider's name or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
 - After a fallback, the line ends with the attempt that failed and its reason, as in ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429`.
 - Example lines:
 
@@ -214,7 +228,7 @@ For the person: the plugin's README, `plugins/model-router-openclaw/README.md` i
 - Never take, show or repeat a key. If a key arrives in chat, do not repeat or store it, and tell the person to rotate it.
 - Change a setting only when the person asked for it or agreed.
 - Run the `models` command only on the person's word, with every entry the person keeps.
-- Only the owner can change a setting with `/model-router-provider`, `/model-router-gateway` and `/model-router-scope`.
+- Only the owner can change a setting with its chat command.
 - A routing check spawns one small task and spends a little usage, so ask before it.
 
 ## When you finish

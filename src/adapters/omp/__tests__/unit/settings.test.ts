@@ -10,9 +10,11 @@ import {
 } from "#adapters/omp/__tests__/support/fakes.ts";
 import {
 	findAttempts,
+	findKey,
 	readGlobalSettings,
 	readSettings,
 } from "#adapters/omp/settings.ts";
+import type { Context } from "#adapters/omp/types.ts";
 import { settingsOf } from "#core/options/settings.ts";
 import { KEY_VARIABLES } from "#core/providers/provider.ts";
 
@@ -214,4 +216,81 @@ test("a credential store that throws falls through to the variable and the next 
 		},
 	]);
 	assert.deepEqual(world.asked, ["typesafe", "openrouter"]);
+});
+
+// findKey takes the result of omp's lookup as it comes. The rule names no key holder, so one holder stands for all.
+// The cast lets a row hand findKey the null that omp's types forbid.
+const lookedUp = (result: unknown): Context => ({
+	...world.ctx(),
+	modelRegistry: {
+		getApiKeyWithCredentialForProvider: async () =>
+			result as { apiKey: string } | undefined,
+	},
+});
+
+const keyRows: [string, unknown, string | undefined, string | undefined][] = [
+	[
+		"an API key is kept, trimmed",
+		{ apiKey: " stored-key " },
+		undefined,
+		"stored-key",
+	],
+	[
+		"an API key wins over the variable",
+		{ apiKey: "stored-key" },
+		"env-key",
+		"stored-key",
+	],
+	["no result falls to the variable", undefined, "env-key", "env-key"],
+	["a null result falls to the variable", null, "env-key", "env-key"],
+	["an empty key falls to the variable", { apiKey: "" }, "env-key", "env-key"],
+	[
+		"a key of spaces falls to the variable",
+		{ apiKey: "   " },
+		"env-key",
+		"env-key",
+	],
+	["a null key falls to the variable", { apiKey: null }, "env-key", "env-key"],
+	[
+		"no result and no variable gives undefined",
+		undefined,
+		undefined,
+		undefined,
+	],
+	[
+		"a key of spaces and no variable gives undefined",
+		{ apiKey: "   " },
+		undefined,
+		undefined,
+	],
+	[
+		"an OAuth login counts as no key and falls to the variable",
+		{ apiKey: "session-token", oauthAccess: "session-token" },
+		"env-key",
+		"env-key",
+	],
+	[
+		"an OAuth login and no variable gives undefined",
+		{ apiKey: "session-token", oauthAccess: "session-token" },
+		undefined,
+		undefined,
+	],
+];
+for (const [name, result, variable, expected] of keyRows)
+	test(`findKey: ${name}`, async () => {
+		setEnv(KEY_VARIABLES.typesafe, variable);
+		assert.equal(await findKey(lookedUp(result), "typesafe"), expected);
+	});
+
+test("findKey: a lookup that throws falls to the variable", async () => {
+	setEnv(KEY_VARIABLES.typesafe, "env-key");
+	const ctx = {
+		...world.ctx(),
+		modelRegistry: {
+			getApiKeyWithCredentialForProvider: async () => {
+				throw new Error("store locked");
+			},
+		},
+	};
+	assert.equal(await findKey(ctx, "typesafe"), "env-key");
 });

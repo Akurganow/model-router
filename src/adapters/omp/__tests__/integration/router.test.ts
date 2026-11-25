@@ -348,7 +348,9 @@ test("a throwing notification does not reach omp, and the decision still waits f
 				throw new Error("ui gone");
 			},
 		},
-		modelRegistry: { getApiKeyForProvider: async () => KEY },
+		modelRegistry: {
+			getApiKeyWithCredentialForProvider: async () => ({ apiKey: KEY }),
+		},
 		models: { resolve: () => ({}) },
 	};
 	const handler = world.handler("tool_call");

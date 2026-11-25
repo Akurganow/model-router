@@ -2,7 +2,7 @@
 name: model-router-setup
 description: >
   Use when the user wants to set up or configure model-router in Claude Code,
-  to choose its provider, gateway, scope or scoring models, to add a TypeSafe, OpenAI, Google or OpenRouter key, to find
+  to choose its provider, gateway, scope or scoring models, to add a TypeSafe, OpenAI, Google, Perplexity or OpenRouter key, to find
   out why routing is off, or to check that routing works. It finds what already
   holds and does only what is missing.
 ---
@@ -20,7 +20,7 @@ Routing works when all of these hold:
 
 The person may also choose:
 
-- `provider`: whose model scores a call. It takes `typesafe`, `openai` or `google`.
+- `provider`: whose model scores a call.
 - `gateway`: how OpenRouter is used to reach the provider.
 - `scope`: which Agent calls the plugin routes.
 - `models`: the scoring model of each provider. A provider with no entry uses its default model.
@@ -28,6 +28,20 @@ The person may also choose:
 ## Your job
 
 Find out which of these already hold, with the `mcp__model-router__config` tool and Claude Code's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool Claude Code gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
+
+When you find what already holds, also check the stored field names. Follow these steps in order:
+
+1. Read the field names, not the values, stored under `pluginConfigs["model-router@<marketplace>"].options` in the user `settings.json`.
+2. Compare them with the fields the plugin declares: `provider`, `gateway`, `scope`, `models`, `api_key`, `openai_api_key`, `google_api_key`, `perplexity_api_key` and `openrouter_api_key`.
+3. Tell the person each stored field that the plugin does not declare.
+4. Read a value only of a non-key field not named like a key or a secret. Never print or copy any other field's value.
+5. On the person's word, remove a field that resembles no declared field.
+6. For a look-alike field that is not a key, propose the declared field and the exact text to write, for example `model` against `models`.
+7. For a stored `model` that names the TypeSafe model, propose adding `typesafe:<value>` to `models`, unless `models` names typesafe.
+8. On the person's word, write the proposed text, then remove the old field.
+9. For a look-alike key field, ask the person to enter the key where the Keys facts say, then, on their word, remove the old field.
+10. Write `models` with `mcp__model-router__config`, and any other field in `settings.json`.
+11. Remove a field by editing the user `settings.json` so that only that field goes. Write nothing else.
 
 When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
 
@@ -41,14 +55,6 @@ When the person wants to choose the provider, follow these steps in order:
    - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. Call the tool with no setting, and confirm the lines.
-
-When the `models` line ends with `(not stored yet: run setup)`, migrate it. Follow these steps in order:
-
-1. Call the tool with no input, and read the `models` line and the lines under it.
-2. Tell the person that the line shows the migrated text, and that nothing is stored yet.
-3. Ask the person whether to write it. On the person's word, call the tool with `models` set to the text shown before the note.
-   - The write erases the stored `model`.
-4. Read the reply, call the tool with no input, and confirm the `models` line.
 
 When the `models` line ends with `(not valid: <entry>)`, repair it. Follow these steps in order:
 
@@ -72,27 +78,27 @@ When the person wants another scoring model for one provider, follow these steps
 ### The config tool
 
 - The tool is `mcp__model-router__config`. It takes two optional inputs, `setting` and `models`.
-- With no input it prints a `provider` line, a `gateway` line, a `scope` line, the `models` lines, and one key line for each path the `gateway` value allows, in order, as in `typesafe key: set`, `openai key: unset` or `openrouter key: unset`.
+- With no input it prints a `provider` line, a `gateway` line, a `scope` line, the `models` lines, and one key line for each path the `gateway` value allows, in order, as in `typesafe key: set` or `openrouter key: unset`.
 - A provider line looks like `provider: typesafe`. A gateway line looks like `gateway: auto (typesafe, then openrouter)`. A scope line looks like `scope: core`.
 - A key counts as set when its plugin option or its environment variable holds a non-blank value.
 - The tool never returns a key, its length or any part of it.
 - With `setting` set to `provider`, `gateway` or `scope`, the plugin opens its own dialog. The person picks a value, and the plugin writes it. The reply is the new setting line.
-- Pass no value with `setting`. The person chooses in the dialog.
-- With `models` set to a string, the plugin writes that text at once, with no dialog. Do this only at the person's request.
+- With `models` set to a string, the plugin writes that text at once, with no dialog.
 - The dialog writes nothing for the current value, a dismissed dialog or free text. It also writes nothing where no dialog can open, such as `claude -p`.
 - Reply `models unchanged: not valid: <entry>` means the text is not valid, and nothing was written.
 - Reply `<setting> unchanged: already <value>` means the person kept the current value.
-- Reply `<setting> unchanged: no answer from the dialog` means no dialog answered. The person can type `/model-router:provider <value>`, `/model-router:gateway <value>` or `/model-router:scope <value>` at their own prompt. A command writes only when typed there.
+- Reply `<setting> unchanged: no answer from the dialog` means no dialog answered. The person can type `/model-router:<setting> <value>` at their own prompt. A command writes only when typed there.
 - Reply `<setting> unchanged: the answer was not one of the offered values` means the dialog returned something else. Nothing was written.
 - Reply `Permission rules deny this tool, so nothing was read or changed.` means the person's permission rules deny the tool.
 - All three commands print the current value when run with no value. A value outside the list prints the allowed ones.
 
 ### Settings
 
-- `provider` takes `typesafe` (the default), `openai` or `google`.
+- `provider` takes `typesafe` (the default), `openai`, `google` or `perplexity`.
   - `typesafe - Jev from TypeSafe`
   - `openai - OpenAI's decision model`
   - `google - Google's decision model`
+  - `perplexity - Perplexity's decision model`
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
 - `gateway` takes `direct` (the default), `auto`, `openrouter-first` or `openrouter`.
   - `direct - the provider's own API only`
@@ -110,8 +116,6 @@ When the person wants another scoring model for one provider, follow these steps
   - Under `extended`, the routed model and effort replace the ones an agent's definition sets, and the agent's description and task text go to the company that scores.
 - `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, or a JSON object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults, the OpenRouter names and when a value is not valid.
 - A `models` value that is not valid prints as `models: <text> (not valid: <entry>)`, and it stops routing. A call the scope routes skips with `models not valid: run setup`. A call that passes through, as [Which calls are routed](https://github.com/Akurganow/model-router/blob/main/plugins/model-router/README.md#which-calls-are-routed) lists, shows no line.
-- The removed option `model` moves into `models` as the `typesafe` entry when `models` names none. While a `model` that is not blank is stored, the `models` line shows the migrated text and ends with `(not stored yet: run setup)`.
-- A write of `models` and a change of `provider` through the dialog each erase a stored `model`, after the write of the migrated `models` when the migration changed it.
 - A model name goes as written on the provider's own API, and that API's documentation lists the names. [The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path) says what OpenRouter does with a name.
 - Claude Code has no per-level model setting. The plugin picks haiku for level 0, sonnet for level 1 and opus for level 2.
 - Claude Code ignores plugin options in project and local settings. Only the user's own settings and commands change `provider`, `gateway` and `scope`.
@@ -122,6 +126,7 @@ When the person wants another scoring model for one provider, follow these steps
   - The TypeSafe key: the option `api_key` or the variable `TYPESAFE_API_KEY`. Get it at https://console.typesafe.ai/keys.
   - The OpenAI key: the option `openai_api_key` or the variable `OPENAI_API_KEY`. Get it at https://platform.openai.com/api-keys.
   - The Google key: the option `google_api_key` or the variable `GEMINI_API_KEY`. Get it at https://aistudio.google.com/docs/api-key. The plugin does not read `GOOGLE_API_KEY`.
+  - The Perplexity key: the option `perplexity_api_key` or the variable `PERPLEXITY_API_KEY`. Get it at https://console.perplexity.ai.
   - The OpenRouter key: the option `openrouter_api_key` or the variable `OPENROUTER_API_KEY`. Get it at https://openrouter.ai.
 - The key of the chosen provider serves the direct path, and the OpenRouter key serves the gateway path.
 - The plugin reads a key only for a holder the `provider` and `gateway` values allow. Each key goes only to the company that issued it.
@@ -152,7 +157,7 @@ More than one can hold. Report every one that holds.
 - It holds the level (`L0`, `L1` or `L2`), the model, the effort and the probability of each chosen level.
 - `caller effort` or `env effort` takes the place of the effort when a kept effort applies.
 - A call that Claude Code then refuses adds a second line, `denied`.
-- Who answered follows, `typesafe`, `openai`, `google` or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
+- Who answered follows, the provider's name or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
 - After a fallback, the line ends with the attempt that failed and its reason, as in ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429`.
 - After both attempts fail, the line names each, for example `skipped, openai HTTP 503, openrouter timeout`.
 - A skipped call runs unchanged.
@@ -176,10 +181,7 @@ Earlier versions took `auto`, `openrouter-first` and `openrouter` as values of `
 
 1. Ask the person which `provider` value they chose before the update.
    The tool cannot show the stored value, as the Settings facts say.
-2. Propose the pair that gives the same requests as before:
-   - `auto` becomes `provider` `typesafe` with `gateway` `auto`.
-   - `openrouter-first` becomes `provider` `typesafe` with `gateway` `openrouter-first`.
-   - `openrouter` becomes `provider` `typesafe` with `gateway` `openrouter`.
+2. Propose `provider` `typesafe` with the retired value as `gateway`. That pair gives the same requests as before.
 3. On the person's word, call the tool with `setting` set to `gateway`.
    The person picks the agreed value in the dialog. Where no dialog opens, the person types `/model-router:gateway <value>`.
 4. Ask the person to type `/model-router:provider typesafe` at their own prompt, so the retired value leaves the settings.

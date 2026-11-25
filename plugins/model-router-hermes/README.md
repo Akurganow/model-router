@@ -4,7 +4,7 @@ A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks
 
 ## What it does
 
-- It is a delegation backend named `model-router`. It scores each `delegate_task` task through the decision model of the `provider` setting: [Jev](https://docs.typesafe.ai) from TypeSafe, OpenAI's or Google's. One request asks two questions: how much judgment the task needs, and how much work it takes.
+- It is a delegation backend named `model-router`. It scores each `delegate_task` task through the decision model of the `provider` setting, [Jev](https://docs.typesafe.ai) from TypeSafe by default. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - It routes the tasks of `delegate_task` only. The main turn is never routed.
 - Level 0 gives the task your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A slot can be unset. Its level then keeps Hermes's model and gets the effort alone, as [Models](#models) says.
 - It sets the effort from a fixed ladder, as [Effort](#effort) says.
@@ -54,16 +54,18 @@ The plugin reads a key only for a key holder that the [`provider` and `gateway` 
 | TypeSafe | `api_key` | `TYPESAFE_API_KEY` |
 | OpenAI | `openai_api_key` | `OPENAI_API_KEY` |
 | Google | `google_api_key` | `GEMINI_API_KEY` |
+| Perplexity | `perplexity_api_key` | `PERPLEXITY_API_KEY` |
 | OpenRouter | `openrouter_api_key` | `OPENROUTER_API_KEY` |
 
 [Where to get a key](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) also says when a key counts as set and which Google variable the plugins do not read.
 
 Set a key in the `.env` file of the Hermes home or in the plugin's settings form in Hermes Desktop. Hermes stores a key from the form under its variable in that `.env` file.
 
-Some of Hermes's own providers read these variables too, so a key you save in the form can change Hermes itself:
+Some of Hermes's own providers and tools read these variables too, so a key you save in the form can change Hermes itself:
 
 - Hermes's own OpenRouter provider reads `OPENROUTER_API_KEY`. A key you save in the form becomes that provider's key: Hermes writes the variable and the copies of the old value in `config.yaml`. A key already in that variable scores tasks when the `gateway` setting allows OpenRouter.
 - A key you save in the form for OpenAI is also the key of Hermes's own OpenAI provider. A key already in `OPENAI_API_KEY` scores tasks when the plugin's settings allow OpenAI's own API.
+- Hermes's own Perplexity web search reads `PERPLEXITY_API_KEY`. A key you save in the form for Perplexity also gives that web search its key.
 - The plugin's Google secret writes `GEMINI_API_KEY`. Hermes's own Gemini provider reads `GOOGLE_API_KEY` before `GEMINI_API_KEY`, unless `model.key_env` names a variable for it. So a Google key you set for Hermes under `GOOGLE_API_KEY` is not used for scoring. Hermes's own Gemini provider prefers it over the key saved in the form, with the same `model.key_env` limit.
 
 Hermes picks the provider of your own session in this order, with the provider `auto` or none requested. The first rung that applies decides:
@@ -92,7 +94,7 @@ The `gateway` setting is not Hermes's gateway, the process that owns a session.
 
 Who receives a task under each value: [the privacy policy](PRIVACY.md). [The model of each request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request) also says when the `jev-latest` alias moves.
 
-Switch them with `/model-router-provider <value>` and `/model-router-gateway <value>`. The plugin reads both settings at each task.
+Switch them with `/model-router-provider <value>` and `/model-router-gateway <value>`. The plugin reads these settings at each task.
 
 [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says what a value outside a setting's list does, and lists the retired values of `provider`. Hermes passes such a stored value on as stored. The Desktop settings form refuses to save a value outside the choices, and it leaves such a stored value alone when it saves another field.
 
@@ -112,7 +114,7 @@ The plugin reads `models` at each task. The Python passes the stored value to th
 
 A `models` value that is not valid stops routing, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says. [The gates](#the-gates) say where each task meets that check, so a task without a `level` can skip with an earlier reason, such as `key unset`.
 
-The plugin writes no setting when it loads. The setup skill writes a migrated shape when you agree.
+The plugin writes no setting when it loads. The setup skill checks the names of the stored fields and cleans them up when you agree.
 
 [Facts behind the settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#hermes-registration-and-settings)
 
@@ -122,9 +124,9 @@ Hermes Agent has no `scope` setting. The plugin considers every task of `delegat
 
 ## Change the options
 
-`/model-router-provider [typesafe|openai|google]` shows or changes the provider, and `/model-router-gateway [direct|auto|openrouter-first|openrouter]` shows or changes the gateway. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. Each command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, a valid value prints `<setting> unchanged: only a local session can change it` and the current line.
+`/model-router-provider [typesafe|openai|google|perplexity]` shows or changes the provider, and `/model-router-gateway [direct|auto|openrouter-first|openrouter]` shows or changes the gateway. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. Each command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, a valid value prints `<setting> unchanged: only a local session can change it` and the current line.
 
-The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `models` lines, the three slot lines and the key lines. The `models` lines come from the plugin's Node step, which reads the stored value. When Hermes has no Node or the step fails, they are the one line `models: unavailable, no answer from node`. While the `models` value is not valid, the tool prints no key lines, as it prints none while a setting is not valid. The example shows the model line of one provider, and [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each. A slot line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
+The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `models` lines, the slot lines and the key lines. The `models` lines come from the plugin's Node step, which reads the stored value. When Hermes has no Node or the step fails, they are the one line `models: unavailable, no answer from node`. While the `models` value is not valid, the tool prints no key lines, as it prints none while a setting is not valid. The example shows the model line of one provider, and [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each. A slot line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
 
 ```text
 provider: typesafe

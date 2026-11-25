@@ -1,5 +1,5 @@
 // Whose model scores. Every table keyed by maker follows this list.
-export const MAKERS = ["typesafe", "openai", "google"] as const;
+export const MAKERS = ["typesafe", "openai", "google", "perplexity"] as const;
 export type Maker = (typeof MAKERS)[number];
 // Who holds a key: each maker for its own API, and OpenRouter for the gateway to every maker.
 // An attempt shows this name in every line.
@@ -22,6 +22,7 @@ export const KEY_VARIABLES: Readonly<Record<KeyHolder, string>> = {
 	typesafe: "TYPESAFE_API_KEY",
 	openai: "OPENAI_API_KEY",
 	google: "GEMINI_API_KEY",
+	perplexity: "PERPLEXITY_API_KEY",
 	openrouter: "OPENROUTER_API_KEY",
 };
 
@@ -30,6 +31,7 @@ export const KEY_FIELDS = {
 	typesafe: "api_key",
 	openai: "openai_api_key",
 	google: "google_api_key",
+	perplexity: "perplexity_api_key",
 	openrouter: "openrouter_api_key",
 } as const satisfies Readonly<Record<KeyHolder, string>>;
 

@@ -101,10 +101,9 @@
 				"userConfig": {
 					"type": "object",
 					"additionalProperties": false,
-					"required": ["optionType", "model"],
+					"required": ["optionType"],
 					"properties": {
-						"optionType": { "$ref": "#/$defs/text" },
-						"model": { "$ref": "#/$defs/option" }
+						"optionType": { "$ref": "#/$defs/text" }
 					}
 				},
 				"catalogueSource": { "$ref": "#/$defs/text" },

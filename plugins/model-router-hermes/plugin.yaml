@@ -1,7 +1,7 @@
 {
   "name": "model-router-hermes",
   "version": "0.27.0",
-  "description": "Routes Hermes Agent delegated tasks to your small, middle or large model and an effort that fits the task, judged by Jev or the decision model the provider setting names. It scores a task even when you set no model, and sets the effort unless you set one. For each routed task it sends the task text, condensed to at most 12,000 characters, and the task's context, shortened to fit, both with token-shaped strings such as keys masked, to the provider's own API (api.typesafe.ai, api.openai.com or generativelanguage.googleapis.com), to openrouter.ai or to both, as its provider and gateway settings allow, each with its own key. It sends a fixed text in place of an agent description, and the task's description parameter, masked the same way and cut to 500 characters, when the delegating model sets one. The plugin sets a model only from your small_model, middle_model and large_model settings. A key set as an environment variable is visible to every process Hermes starts.",
+  "description": "Routes Hermes Agent delegated tasks to your small, middle or large model and an effort that fits the task, judged by Jev or the decision model the provider setting names. It scores a task even when you set no model, and sets the effort unless you set one. For each routed task it sends the task text, condensed to at most 12,000 characters, and the task's context, shortened to fit, both with token-shaped strings such as keys masked, to the provider's own API (api.typesafe.ai, api.openai.com, generativelanguage.googleapis.com or api.perplexity.ai), to openrouter.ai or to both, as its provider and gateway settings allow, each with its own key. It sends a fixed text in place of an agent description, and the task's description parameter, masked the same way and cut to 500 characters, when the delegating model sets one. The plugin sets a model only from your small_model, middle_model and large_model settings. A key set as an environment variable is visible to every process Hermes starts.",
   "author": "Akurganow",
   "kind": "backend",
   "requires_hermes": ">=0.22.6",
@@ -14,11 +14,12 @@
       "choices": [
         "typesafe",
         "openai",
-        "google"
+        "google",
+        "perplexity"
       ],
       "default": "typesafe",
       "label": "Scoring provider",
-      "description": "Whose model scores each subagent task: typesafe, openai or google."
+      "description": "Whose model scores each subagent task: typesafe, openai, google or perplexity."
     },
     "gateway": {
       "type": "str",
@@ -35,7 +36,7 @@
     "models": {
       "type": "str",
       "label": "Scoring models",
-      "description": "The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default."
+      "description": "The scoring model per provider as provider:model entries for typesafe, openai, google or perplexity, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default."
     },
     "small_model": {
       "type": "dict",
@@ -69,6 +70,12 @@
       "env": "GEMINI_API_KEY",
       "label": "Google API key",
       "description": "The plugin sends it to Google when provider is google and gateway is not openrouter."
+    },
+    "perplexity_api_key": {
+      "type": "secret",
+      "env": "PERPLEXITY_API_KEY",
+      "label": "Perplexity API key",
+      "description": "The plugin sends it to Perplexity when provider is perplexity and gateway is not openrouter."
     },
     "openrouter_api_key": {
       "type": "secret",

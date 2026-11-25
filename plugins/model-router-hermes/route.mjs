@@ -21,7 +21,7 @@ var realClock = {
 };
 
 // src/core/providers/provider.ts
-var MAKERS = ["typesafe", "openai", "google"];
+var MAKERS = ["typesafe", "openai", "google", "perplexity"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
 var GATEWAYS = [
   "direct",
@@ -166,24 +166,6 @@ function readModels(stored) {
     }
   }
   return readOwnerForm(text);
-}
-var formatModels = (names) => `{${MAKERS.flatMap((maker) => {
-  const name = names[maker];
-  return name === void 0 ? [] : [`${maker}:${name}`];
-}).join(", ")}}`;
-var sameNames = (a, b) => MAKERS.every((maker) => a[maker] === b[maker]);
-function withModel(models, maker, name) {
-  const read = readModels(models);
-  if ("invalid" in read || read.models[maker] !== void 0) return void 0;
-  const text = typeof models === "string" ? models.trim() : void 0;
-  const parsed = text?.startsWith("{") ? parseJson(text) : void 0;
-  let added;
-  if (isPlainObject(models)) added = { ...models, [maker]: name };
-  else if (isPlainObject(parsed))
-    added = JSON.stringify({ ...parsed, [maker]: name });
-  else added = formatModels({ ...read.models, [maker]: name });
-  const back = readModels(added);
-  return "models" in back && sameNames(back.models, { ...read.models, [maker]: name }) ? added : void 0;
 }
 
 // src/core/parts/part.ts
@@ -397,6 +379,35 @@ var SYSTEM_ONE = {
   read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
 };
 
+// src/core/scoring/makers/perplexity.ts
+var perplexity = {
+  vendor: "perplexity",
+  openrouterRoute: "decisions",
+  // The aliases and the paid v1.3 slugs have no OpenRouter endpoint, so the aliases and the v1.3 ids map to the `:free` slugs.
+  openrouterNames: {
+    "pplx-decider-latest": "perplexity/pplx-decider-v1.3:free",
+    "pplx-decider-v1.3": "perplexity/pplx-decider-v1.3:free",
+    "pplx-decider-flash-latest": "perplexity/pplx-decider-flash-v1.3:free",
+    "pplx-decider-flash-v1.3": "perplexity/pplx-decider-flash-v1.3:free",
+    "pplx-decider-v1.2": "perplexity/pplx-decider-v1.2",
+    "pplx-decider-flash-v1.2": "perplexity/pplx-decider-flash-v1.2"
+  },
+  paths: {
+    direct: {
+      url: "https://api.perplexity.ai/v1/decisions",
+      format: SYSTEM_ONE,
+      model: "pplx-decider-latest",
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "perplexity/pplx-decider-v1.3:free",
+      keyHeader: BEARER
+    }
+  }
+};
+
 // src/core/scoring/makers/typesafe.ts
 var JEV = "jev-latest";
 var typesafe = {
@@ -429,7 +440,8 @@ var typesafe = {
 var MODULES = {
   typesafe,
   openai,
-  google
+  google,
+  perplexity
 };
 function modelOf(maker, path, stored) {
   const made = MODULES[maker];
@@ -450,19 +462,7 @@ function endpointOf(attempt) {
 }
 
 // src/core/options/migrate.ts
-var typesafeFromModel = (stored) => {
-  const { model, models } = stored;
-  const name = nonEmpty(model);
-  if (name === void 0) return void 0;
-  const added = withModel(models, "typesafe", name);
-  if (added === void 0) return void 0;
-  return {
-    stored: { ...stored, models: added },
-    change: "models: typesafe from the removed model option"
-  };
-};
-var STEPS = [typesafeFromModel];
-var SETTINGS_VERSION = STEPS.length;
+var STEPS = [];
 function migrate(stored) {
   let current = stored;
   const changes = [];
@@ -489,7 +489,8 @@ var TEXTS = {
     consequences: {
       typesafe: "Jev from TypeSafe",
       openai: "OpenAI's decision model",
-      google: "Google's decision model"
+      google: "Google's decision model",
+      perplexity: "Perplexity's decision model"
     }
   },
   gateway: {
@@ -533,33 +534,20 @@ function settingsFrom(record) {
 var settingsOf = (stored) => settingsFrom(migrate(stored).stored);
 var PAGE_MAX = 4;
 var PAGE_VALUES = PAGE_MAX - 1;
-var NOT_STORED = " (not stored yet: run setup)";
-var modelsLinesFrom = (record, pending) => {
+var modelsLinesFrom = (record) => {
   const { models } = record;
   const shown = isSilentModels(models) ? "unset" : textOf(models);
   const read = readModels(models);
   if ("invalid" in read)
     return [`models: ${shown} (not valid: ${read.invalid})`];
   return [
-    `models: ${shown}${pending ? NOT_STORED : ""}`,
+    `models: ${shown}`,
     ...MAKERS.map(
       (maker) => `${maker} model: ${modelOf(maker, "direct", read.models[maker])} (OpenRouter: ${modelOf(maker, "openrouter", read.models[maker])})`
     )
   ];
 };
-var hasModel = (stored) => nonEmpty(stored.model) !== void 0;
-var carryFrom = (stored, { stored: { models }, changes }) => ({
-  ...changes.length > 0 ? { models: textOf(models) } : {},
-  eraseModel: hasModel(stored)
-});
-var isPending = (carry) => carry.models !== void 0 || carry.eraseModel;
-var modelsLines = (stored) => {
-  const migrated = migrate(stored);
-  return modelsLinesFrom(
-    migrated.stored,
-    isPending(carryFrom(stored, migrated))
-  );
-};
+var modelsLines = (stored) => modelsLinesFrom(migrate(stored).stored);
 function describeCommand(setting) {
   const { about, values } = TEXTS[setting];
   return `Shows or changes ${about}: ${values.join(", ")}.`;
@@ -658,7 +646,8 @@ var TOKEN_PREFIXES = {
   "Stripe key": "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
   "npm token": "npm_[A-Za-z0-9]{36,}",
   "Hugging Face token": "hf_[A-Za-z]{34,}",
-  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
+  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}",
+  "Perplexity API key": "pplx-[A-Za-z0-9]{48,}"
 };
 var REDACTIONS = [
   {
@@ -907,7 +896,9 @@ var work = {
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
-var cleanModel = (model) => typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "";
+var MODEL_NAME_CHARS = "A-Za-z0-9._/:-";
+var UNSAFE = new RegExp(`[^${MODEL_NAME_CHARS}]`, "g");
+var cleanModel = (model) => typeof model === "string" ? model.replace(UNSAFE, "").slice(0, MODEL_CHARS_MAX) : "";
 
 // src/core/scoring/transport/retry.ts
 var RETRIES = 2;

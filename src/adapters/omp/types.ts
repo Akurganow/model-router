@@ -30,7 +30,9 @@ export type Context = {
 		select(title: string, options: string[]): Promise<string | undefined>;
 	};
 	modelRegistry: {
-		getApiKeyForProvider(provider: string): Promise<string | undefined>;
+		getApiKeyWithCredentialForProvider(
+			provider: string,
+		): Promise<{ apiKey: string; oauthAccess?: string } | undefined>;
 	};
 	models: { resolve(spec: string): unknown };
 };

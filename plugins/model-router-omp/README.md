@@ -4,7 +4,7 @@ An [Oh My Pi](https://github.com/can1357/oh-my-pi) (omp) plugin that picks a mod
 
 ## What it does
 
-- It scores each eligible batch item through the decision model of the `provider` setting: [Jev](https://docs.typesafe.ai) from TypeSafe, OpenAI's or Google's. One request asks two questions: how much judgment the task needs, and how much work it takes.
+- It scores each eligible batch item through the decision model of the `provider` setting, [Jev](https://docs.typesafe.ai) from TypeSafe by default. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - At spawn, it returns `@smol` for level 0, `@midl` for level 1 and `@slow` for level 2. Each role carries the effort as a thinking suffix, such as `@smol:high`. Without a set role, the spawn keeps the agent's model and gets the effort alone, as [Models](#models) says.
 - The [`scope` setting](#scope) picks the agents. Under `core`, the default, only omp's bundled `task` agent is routed. Under `extended`, every agent whose model you did not set is routed.
 - It never overrides a model you set. It keeps the item's own `effort` and a thinking level on the role it picks. Without a set role, it keeps a thinking level on the spawn's model patterns. [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the rules, and [Effort](#effort) names the exception: a level that an agent sets gives way to the ladder. It never changes the tool input.
@@ -35,7 +35,7 @@ Installing both the git plugin and the npm package is not advised. omp keeps the
 After the install commands:
 
 1. Restart omp, because omp loads extension modules at startup.
-2. Run `/login typesafe`, `/login openrouter` or both in omp to store your keys. For OpenAI or Google, set the variable that [Keys](#keys) names.
+2. Run `/login typesafe`, `/login openrouter` or both in omp to store your keys. For another provider, set the variable that [Keys](#keys) names.
 3. Ask omp to run the `model-router-setup` skill. It finds what is already set, tells you what is missing and changes a setting only when you agree. It asks the provider, the gateway and the scope with buttons and writes your choices itself. It also helps you set the `smol`, `midl` and `slow` roles. It ends with a routing check you can skip. [The skill](skills/model-router-setup/SKILL.md) holds the facts it works from.
 4. Check the routing, as [Verify](#verify) says.
 
@@ -51,13 +51,14 @@ An entry such as `L1 middle model unset` is no error: the level ran on the agent
 
 For each key holder the [`provider` and `gateway` settings](#provider-and-gateway) allow, the plugin checks two places, in this order: omp's credential for the holder, then the holder's environment variable.
 
-omp has no setting for a key. The plugin asks omp's credential lookup by the id `typesafe`, `openai`, `google` or `openrouter`, and sends the credential omp returns for the id. [omp model roles](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#omp-model-roles) has what omp does with such an id.
+omp has no setting for a key. The plugin asks omp's credential lookup by the id in the table below, and sends the API key omp returns for the id. [omp model roles](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#omp-model-roles) has what omp does with such an id.
 
 | Key holder | omp credential id | Variable |
 | --- | --- | --- |
 | TypeSafe | `typesafe`, which `/login typesafe` stores | `TYPESAFE_API_KEY` |
 | OpenAI | `openai` | `OPENAI_API_KEY` |
 | Google | `google` | `GEMINI_API_KEY` |
+| Perplexity | `perplexity` | `PERPLEXITY_API_KEY` |
 | OpenRouter | `openrouter`, which `/login openrouter` stores | `OPENROUTER_API_KEY` |
 
 [Where to get a key](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#keys) also says when a key counts as set and which Google variable the plugins do not read.
@@ -67,13 +68,15 @@ Add a key in one of two ways:
 - Store the credential omp holds for the id: run `/login typesafe` or `/login openrouter`, or run `omp login typesafe` or `omp login openrouter` outside a session. For `openai` and `google`, store it the way omp stores a credential for that provider.
 - Set the environment variable where omp reads it. The variable is visible to every process omp starts. [What the plugin stores](PRIVACY.md#what-the-plugin-stores) says more.
 
+Scoring takes an API key. From omp 18.13.2, a stored login for the id is skipped and the plugin reads the holder's variable. An earlier omp hands over the login's token.
+
 ## Provider and gateway
 
 The `provider` and `gateway` settings decide who receives each task. By default, `provider` is `typesafe` and `gateway` is `direct`. [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists the other values, says which of them cost more and tells where each sends the task. Who receives a batch item under each value: [PRIVACY.md](PRIVACY.md).
 
 [The model of each request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request) also says when the `jev-latest` alias moves.
 
-Switch them with `/model-router:provider` or `/model-router:gateway`, or in omp's `/settings` → Plugins, under the name omp installed it with: `model-router-omp` from the git catalogue, `@akurganow/model-router` from npm. The plugin reads both settings on every batch, so a change reaches the next batch with no reload.
+Switch them with `/model-router:provider` or `/model-router:gateway`, or in omp's `/settings` → Plugins, under the name omp installed it with: `model-router-omp` from the git catalogue, `@akurganow/model-router` from npm. The plugin reads these settings on every batch, so a change reaches the next batch with no reload.
 
 [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says what a value outside a setting's list does, and lists the retired values of `provider`. omp passes such a stored value on as stored, as [omp manifest and settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#omp-manifest-and-settings) says.
 
@@ -95,7 +98,7 @@ The config tool takes a `models` string and writes the global setting at once, a
 
 A `models` value that is not valid stops routing, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says. An item the scope covers skips with `models not valid: run setup`, unless an earlier gate of [the gate list](#gate-reasons) skips it first.
 
-The plugin writes no setting when it loads. The setup skill writes the migrated shape when you agree.
+The plugin writes no setting when it loads. The setup skill checks the names of the stored fields and cleans them up when you agree.
 
 ## Scope
 
@@ -106,7 +109,7 @@ The `scope` plugin setting picks which agents the plugin routes:
 | `core` (default) | The bundled `task` agent only |
 | `extended` | Every agent whose model you did not set, bundled agents included |
 
-A value outside the two is not valid, as [the rule for a value outside the list](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says.
+A value outside this list is not valid, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says.
 
 Under `extended`, the plugin judges each batch item on its own. Bundled agents route: `task`, `scout`, `sonic`, `reviewer` and `security-reviewer`, on omp 18.12.6 and 18.18.9. A bundled agent's default model is not your choice. The bundled `seance` agent is the exception: omp gives it no spawn hook, so the plugin skips it.
 
@@ -127,7 +130,7 @@ A project's plugin settings may set `scope` to either value. A project value ove
 
 Three commands show or change an option:
 
-- `/model-router:provider [typesafe|openai|google]`
+- `/model-router:provider [typesafe|openai|google|perplexity]`
 - `/model-router:gateway [direct|auto|openrouter-first|openrouter]`
 - `/model-router:scope [core|extended]`
 
@@ -349,7 +352,7 @@ Removing the key of every path the `gateway` setting allows also stops routing. 
 
 For each routed item, the plugin sends an HTTPS POST to the first path of the `gateway` setting that has a key:
 
-- The provider's own API, on the direct path: `api.typesafe.ai`, `api.openai.com` or `generativelanguage.googleapis.com`, with the key of the provider you chose.
+- The provider's own API, on the direct path: `api.typesafe.ai`, `api.openai.com`, `generativelanguage.googleapis.com` or `api.perplexity.ai`, with the key of the provider you chose.
 - OpenRouter, on the gateway path: `openrouter.ai`, with your OpenRouter key.
 
 [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request) lists the address and the model of each path and the header that carries the key. The second attempt sends a request only after the first fails, as [the batch limit](#limits) says. No environment variable changes an endpoint.

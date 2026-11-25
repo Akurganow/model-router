@@ -140,17 +140,19 @@ export async function findAttempts(
 }
 
 /**
- * Returns the trimmed key of a key holder: omp's own credential first, then the
- * key holder's variable. Returns undefined when neither holds a non-blank value.
- * Never throws.
+ * Returns the trimmed key of a key holder: omp's stored API key first, then the
+ * key holder's variable. A stored OAuth login is no key and falls to the variable.
+ * Returns undefined when neither holds a non-blank value. Never throws.
  */
 export async function findKey(
 	ctx: Context,
 	holder: KeyHolder,
 ): Promise<string | undefined> {
 	try {
-		const key = await ctx.modelRegistry.getApiKeyForProvider(holder);
-		const trimmed = nonEmpty(key);
+		const found =
+			await ctx.modelRegistry.getApiKeyWithCredentialForProvider(holder);
+		// A login's bearer is a session token, which a provider's public API rejects.
+		const trimmed = found?.oauthAccess ? undefined : nonEmpty(found?.apiKey);
 		if (trimmed !== undefined) return trimmed;
 	} catch {
 		// A broken credential store falls through to the variable.

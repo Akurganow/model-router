@@ -15,7 +15,6 @@ import {
 	isValueSetting,
 	keyLine,
 	MORE,
-	modelCarry,
 	modelsAlready,
 	modelsCallOf,
 	modelsLines,
@@ -161,7 +160,7 @@ test("the scope line shows the value, the default when none is stored, or that i
 test("use-one-of and unchanged texts name the setting", () => {
 	assert.equal(
 		useOneOf("provider"),
-		"provider: use one of typesafe, openai, google",
+		"provider: use one of typesafe, openai, google, perplexity",
 	);
 	assert.equal(useOneOf("scope"), "scope: use one of core, extended");
 	assert.equal(
@@ -216,6 +215,7 @@ test("labels carry the consequences of each value", () => {
 		"typesafe - Jev from TypeSafe",
 		"openai - OpenAI's decision model",
 		"google - Google's decision model",
+		"perplexity - Perplexity's decision model",
 	]);
 	assert.deepEqual(ask("gateway", "direct").options, [
 		"direct - the provider's own API only",
@@ -359,6 +359,7 @@ const UNSET_MODELS = [
 	"typesafe model: jev-latest (OpenRouter: jev-latest)",
 	"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 	"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+	"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 ].join("\n");
 
 test("settingsReport joins the value lines, the extra lines and the key lines in order", () => {
@@ -420,7 +421,7 @@ test("settingsReport gives key lines only when every setting is valid", () => {
 	);
 	assert.equal(
 		settingsReport({ provider: "auto" }, [], KEY),
-		"provider: auto (not valid: use one of typesafe, openai, google)\ngateway: direct\nscope: core\n" +
+		"provider: auto (not valid: use one of typesafe, openai, google, perplexity)\ngateway: direct\nscope: core\n" +
 			UNSET_MODELS,
 	);
 	assert.equal(
@@ -526,12 +527,6 @@ test("a setting checked earlier decides the reason before models does", () => {
 	});
 });
 
-test("an old model option with no models gives the typesafe name", () => {
-	const settings = settingsOf({ model: "jev-preview" });
-	assert.ok(!("skipped" in settings));
-	assert.equal(settings.models.typesafe, "jev-preview");
-});
-
 test("the report shows the models as stored and the model each path takes", () => {
 	assert.equal(
 		settingsReport(
@@ -544,6 +539,7 @@ test("the report shows the models as stored and the model each path takes", () =
 			"typesafe model: jev-1.14.0 (OpenRouter: typesafe/jev-1.14)\n" +
 			"openai model: gpt-7-sol (OpenRouter: openai/gpt-7-sol)\n" +
 			"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\n" +
+			"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\n" +
 			"typesafe key: unset",
 	);
 });
@@ -555,18 +551,6 @@ test("the report shows a models object as JSON", () => {
 	);
 });
 
-test("the report says when the ladder made the models and they are not stored yet", () => {
-	assert.equal(
-		settingsReport({ model: "jev-preview" }, [], {}),
-		"provider: typesafe\ngateway: direct (typesafe)\nscope: core\n" +
-			"models: {typesafe:jev-preview} (not stored yet: run setup)\n" +
-			"typesafe model: jev-preview (OpenRouter: jev-preview)\n" +
-			"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\n" +
-			"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\n" +
-			"typesafe key: unset",
-	);
-});
-
 test("the report names the entry that is not valid and gives no maker lines and no key lines", () => {
 	assert.equal(
 		settingsReport({ models: "{openai:a/b}" }, [], { typesafe: "key-1" }),
@@ -575,66 +559,15 @@ test("the report names the entry that is not valid and gives no maker lines and 
 });
 
 test("modelsWrite refuses a text that is not valid and names the entry", () => {
-	assert.deepEqual(modelsWrite({}, "{acme:x}"), {
+	assert.deepEqual(modelsWrite("{acme:x}"), {
 		refused: "models unchanged: not valid: acme:x",
 	});
 });
 
-test("modelsWrite gives the text as it is when the ladder changes nothing", () => {
-	assert.deepEqual(modelsWrite({}, "{openai:gpt-6-luna}"), {
+test("modelsWrite gives the text as it is", () => {
+	assert.deepEqual(modelsWrite("{openai:gpt-6-luna}"), {
 		models: "{openai:gpt-6-luna}",
 	});
-	assert.deepEqual(
-		modelsWrite({ model: "jev-preview" }, "{typesafe:jev-latest}"),
-		{ models: "{typesafe:jev-latest}" },
-	);
-});
-
-test("modelsWrite folds a stored old model into the text and says nothing of erasing it", () => {
-	assert.deepEqual(modelsWrite({ model: "jev-preview" }, "openai:gpt-6-luna"), {
-		models: "{typesafe:jev-preview, openai:gpt-6-luna}",
-	});
-});
-
-test("modelCarry gives the ladder's text only when an old model changes it", () => {
-	assert.deepEqual(modelCarry({ model: "jev-preview" }), {
-		models: "{typesafe:jev-preview}",
-		eraseModel: true,
-	});
-	assert.deepEqual(
-		modelCarry({ model: "jev-preview", models: { openai: "a" } }),
-		{ models: '{"openai":"a","typesafe":"jev-preview"}', eraseModel: true },
-	);
-	assert.deepEqual(modelCarry({}), { eraseModel: false });
-});
-
-test("modelCarry erases a stored old model even when the ladder copies nothing", () => {
-	for (const stored of [
-		{ model: "jev-preview", models: "{typesafe:jev-latest}" },
-		{ model: "jev-preview", models: "{acme:x}" },
-		{ model: "a/b" },
-	])
-		assert.deepEqual(modelCarry(stored), { eraseModel: true }, stored.model);
-});
-
-test("modelCarry erases nothing for a blank old model", () => {
-	for (const model of ["", "   ", null, undefined, 5])
-		assert.deepEqual(
-			modelCarry({ model }),
-			{ eraseModel: false },
-			String(model),
-		);
-});
-
-test("the report says a removed model is not stored yet, though the ladder copies nothing", () => {
-	assert.match(
-		settingsReport(
-			{ model: "jev-preview", models: "{typesafe:jev-latest}" },
-			[],
-			{},
-		),
-		/\nmodels: \{typesafe:jev-latest\} \(not stored yet: run setup\)\n/,
-	);
 });
 
 test("the report says a models value is unset for each silent form, and shows any other form as it is", () => {
