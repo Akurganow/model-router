@@ -1,5 +1,5 @@
 import { SYSTEM_ONE } from "#core/scoring/formats/system-one.ts";
-import { BEARER, type MakerModule } from "./shared.ts";
+import { BEARER, type MakerModule } from "#core/scoring/maker-module.ts";
 
 // Both endpoints resolve this alias to their newest Jev release.
 const JEV = "jev-latest";

@@ -1,0 +1,21 @@
+language js
+
+// A plugin and not an override, for the reason route-imports.grit gives.
+// The not clauses keep the files of makers/ and maker-registry.ts: Grit's
+// regex has no lookahead. route.ts is left to route-imports.grit, which names
+// makers/ in its own message, so one import is not reported twice.
+// JsModuleSource is the specifier of a static import, a bare import and an
+// export … from. An import() call holds its argument as an expression.
+// TsImportType is an import in a type position: typeof import("…") and
+// import("…").X.
+or {
+	JsModuleSource() as $specifier,
+	`import($specifier)`,
+	TsImportType() as $specifier
+} where {
+	$specifier <: r"[\s\S]*/makers/[\s\S]*",
+	$filename <: not r".*/src/core/scoring/makers/[^/]*",
+	$filename <: not r".*/src/core/scoring/maker-registry\.ts",
+	$filename <: not r".*/src/core/scoring/route\.ts",
+	register_diagnostic(span=$specifier, message="Only scoring/maker-registry.ts imports from makers/.", severity="error")
+}

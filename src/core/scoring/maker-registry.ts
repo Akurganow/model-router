@@ -1,8 +1,8 @@
 import type { Attempt, Maker } from "#core/providers/provider.ts";
-import { google } from "./google.ts";
-import { openai } from "./openai.ts";
-import type { Endpoint, MakerModule } from "./shared.ts";
-import { typesafe } from "./typesafe.ts";
+import type { Endpoint, MakerModule } from "./maker-module.ts";
+import { google } from "./makers/google.ts";
+import { openai } from "./makers/openai.ts";
+import { typesafe } from "./makers/typesafe.ts";
 
 // A maker in `MAKERS` with no module, or a module with no maker, fails the type check.
 const MODULES: Readonly<Record<Maker, MakerModule>> = {

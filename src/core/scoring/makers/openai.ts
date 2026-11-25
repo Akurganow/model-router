@@ -1,10 +1,6 @@
 import { OPENAI_DECISIONS } from "#core/scoring/formats/openai-decisions.ts";
 import { OPENROUTER_DECISIONS } from "#core/scoring/formats/openrouter-decisions.ts";
-import {
-	BEARER,
-	type MakerModule,
-	OPENROUTER_DECISIONS_URL,
-} from "./shared.ts";
+import { BEARER, type MakerModule } from "#core/scoring/maker-module.ts";
 
 export const openai: MakerModule = {
 	paths: {
@@ -15,7 +11,7 @@ export const openai: MakerModule = {
 			keyHeader: BEARER,
 		},
 		openrouter: {
-			url: OPENROUTER_DECISIONS_URL,
+			url: "https://openrouter.ai/api/alpha/decisions",
 			format: OPENROUTER_DECISIONS,
 			model: "openai/gpt-6-luna-decisions",
 			keyHeader: BEARER,

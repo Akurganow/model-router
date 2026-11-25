@@ -12,7 +12,7 @@ import {
 	plan,
 } from "#core/providers/provider.ts";
 import { limitSignal, ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
-import { endpointOf } from "#core/scoring/makers/registry.ts";
+import { endpointOf } from "#core/scoring/maker-registry.ts";
 import { type Decision, route, type Skipped } from "#core/scoring/route.ts";
 import type { Fetch } from "#core/scoring/transport/send.ts";
 import { realClock } from "#utils/clock.ts";

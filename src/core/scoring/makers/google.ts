@@ -4,8 +4,7 @@ import {
 	BEARER,
 	type KeyHeader,
 	type MakerModule,
-	OPENROUTER_DECISIONS_URL,
-} from "./shared.ts";
+} from "#core/scoring/maker-module.ts";
 
 const GOOGLE_KEY: KeyHeader = { name: "x-goog-api-key", prefix: "" };
 
@@ -18,7 +17,7 @@ export const google: MakerModule = {
 			keyHeader: GOOGLE_KEY,
 		},
 		openrouter: {
-			url: OPENROUTER_DECISIONS_URL,
+			url: "https://openrouter.ai/api/alpha/decisions",
 			format: OPENROUTER_DECISIONS,
 			model: "google/gemini-decision-1",
 			keyHeader: BEARER,

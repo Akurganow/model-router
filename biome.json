@@ -317,8 +317,8 @@
 		"./scripts/lint/tests-import.grit",
 		"./scripts/lint/core-adapter.grit",
 		"./scripts/lint/route-imports.grit",
-		"./scripts/lint/ask-imports.grit",
 		"./scripts/lint/maker-imports.grit",
+		"./scripts/lint/makers-outside.grit",
 		"./scripts/lint/core-node.grit",
 		"./scripts/lint/src-outside.grit"
 	]

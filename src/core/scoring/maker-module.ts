@@ -14,6 +14,3 @@ export type Endpoint = {
 export type MakerModule = { readonly paths: Readonly<Record<Path, Endpoint>> };
 
 export const BEARER: KeyHeader = { name: "Authorization", prefix: "Bearer " };
-// The OpenAI and Google OpenRouter paths ask this one address.
-export const OPENROUTER_DECISIONS_URL =
-	"https://openrouter.ai/api/alpha/decisions";

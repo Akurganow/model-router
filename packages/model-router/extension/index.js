@@ -1037,9 +1037,8 @@ var OPENROUTER_DECISIONS = {
   read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
 };
 
-// src/core/scoring/makers/shared.ts
+// src/core/scoring/maker-module.ts
 var BEARER = { name: "Authorization", prefix: "Bearer " };
-var OPENROUTER_DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions";
 
 // src/core/scoring/makers/google.ts
 var GOOGLE_KEY = { name: "x-goog-api-key", prefix: "" };
@@ -1052,7 +1051,7 @@ var google = {
       keyHeader: GOOGLE_KEY
     },
     openrouter: {
-      url: OPENROUTER_DECISIONS_URL,
+      url: "https://openrouter.ai/api/alpha/decisions",
       format: OPENROUTER_DECISIONS,
       model: "google/gemini-decision-1",
       keyHeader: BEARER
@@ -1103,7 +1102,7 @@ var openai = {
       keyHeader: BEARER
     },
     openrouter: {
-      url: OPENROUTER_DECISIONS_URL,
+      url: "https://openrouter.ai/api/alpha/decisions",
       format: OPENROUTER_DECISIONS,
       model: "openai/gpt-6-luna-decisions",
       keyHeader: BEARER
@@ -1136,7 +1135,7 @@ var typesafe = {
   }
 };
 
-// src/core/scoring/makers/registry.ts
+// src/core/scoring/maker-registry.ts
 var MODULES = {
   typesafe,
   openai,
