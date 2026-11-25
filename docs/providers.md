@@ -23,8 +23,6 @@ It takes the values below, and `typesafe` is the default:
 | `google` | Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text |
 | `perplexity` | Perplexity's decision model; costs less than Jev, and nothing through OpenRouter's `:free` variant; its answers are not fitted |
 
-Each provider is reached on its own API or through OpenRouter.
-
 The `gateway` setting says how OpenRouter is used to reach the provider:
 
 | `gateway` | First path | Second path, after a failure |
@@ -35,22 +33,19 @@ The `gateway` setting says how OpenRouter is used to reach the provider:
 | `openrouter` | OpenRouter | none |
 
 The direct path takes the key of the provider you chose, and the gateway path takes the OpenRouter key.
-A path whose key is not set is left out.
-So with `auto` or `openrouter-first` and one key set, the plugin uses that key's path alone.
-With the provider's key and the OpenRouter key set, one task may reach both the provider and OpenRouter.
-The second path gets the task only when the first fails.
+A path whose key is not set is left out, so with one key set the plugin uses that key's path alone.
+With both keys set, the second path gets the task only when the first fails.
 The failures that count are a `network error`, a timeout of the request (it prints `timeout`), and HTTP status 401, 402, 403, 404, 408, 429 or 5xx.
-It never gets the task after 400, 422, `cancelled`, the routing limit (which also prints `timeout`), a bad reply or `failed`.
+The second path never gets it after 400, 422, `cancelled`, the routing limit (which also prints `timeout`), a bad reply or `failed`.
 An error status counts as that status even when its body cannot be read.
 A 2xx reply whose body cannot be read is a `network error`.
 
-A bad key gets HTTP 401 from OpenAI and from OpenRouter, and HTTP 400 from Google's own API.
-400 is no fallback status.
-So under `auto`, a bad Google key does not reach OpenRouter, and the task skips with `HTTP 400`.
+A bad key gets HTTP 401 from OpenAI and OpenRouter, and HTTP 400 from Google's own API.
+400 is no fallback status, so under `auto` a bad Google key skips the task with `HTTP 400`.
 
 Under `perplexity`, the OpenRouter path asks the `:free` variant of the decision model by default.
 OpenRouter rate limits every `:free` variant.
-A 429 from that limit is a failure that counts, so under `auto` or `openrouter-first` the task reaches the second path.
+A 429 from that limit counts as a failure, so under `auto` or `openrouter-first` the task reaches the second path.
 [OpenRouter's limits page](https://openrouter.ai/docs/api-reference/limits) holds the figures.
 
 ## A setting that is not valid
@@ -64,12 +59,11 @@ The `models` setting has no list.
 
 While a setting is not valid, the plugin routes no task.
 Each task runs as it would without the plugin.
-The plugin then reads no key and sends no request.
+The plugin reads no key and sends no request.
 The skip line gives the reason `<setting> not valid: run setup`, for example `provider not valid: run setup`.
 Where more than one setting is not valid, the reason names the first of `provider`, `gateway`, `scope` and `models`.
 In Oh My Pi two gates stand before this check, as [Gate reasons](../plugins/model-router-omp/README.md#gate-reasons) lists.
-In Hermes Agent a task with no level meets the `models` check in its Node step, after [the gates in Hermes Agent](../plugins/model-router-hermes/README.md#the-gates).
-By then the plugin has read its keys, and an earlier gate can skip the task.
+In Hermes Agent a task with no level meets the `models` check in its Node step, after [the gates in Hermes Agent](../plugins/model-router-hermes/README.md#the-gates). By then the plugin has read its keys.
 
 The skip line shows for these tasks:
 
@@ -78,22 +72,20 @@ The skip line shows for these tasks:
 - In OpenClaw, every spawn that does not pass through unchanged.
 - In Hermes Agent, every task.
 
-Claude Code keeps such a value from the plugin.
-It hands the plugin an option's default in place of any stored value that the option's list does not hold, for `provider`, `gateway` and `scope`.
+Claude Code hands the plugin an option's default in place of any stored `provider`, `gateway` or `scope` value that the option's list does not hold.
 So in Claude Code the plugin routes by the default, and no setup line shows.
 `models` is a free string with no list, so Claude Code hands it on as stored and the setup line shows.
 [A stored value outside an option's list](../plugins/model-router/README.md#a-stored-value-outside-an-options-list) says what that changes after an update.
 
-The plugin writes no setting when it loads.
-Code migrates stored settings through [the ladder](#the-migration-ladder), which recognises each old form from the data.
+Code migrates stored settings through [the ladder](#the-migration-ladder).
 A value that no step can read still skips with the setup line.
 To set a valid value, run the `model-router-setup` skill of your plugin, or give the setting's command a value.
 
 ### Retired values of `provider`
 
 Earlier versions took `auto`, `openrouter-first` and `openrouter` as values of `provider`.
-They are values of `gateway` now, so a stored `provider` that holds one of them is not valid.
-For each, one pair of settings gives the same requests as before:
+They are values of `gateway` now, so a stored `provider` that holds one is not valid.
+One pair of settings gives the same requests as before:
 
 | Stored `provider` | Set `provider` to | Set `gateway` to |
 | :-- | :-- | :-- |
@@ -103,15 +95,13 @@ For each, one pair of settings gives the same requests as before:
 
 The setup skill proposes the pair, and nothing is set before you agree.
 Set `gateway` first and `provider` second.
-While `provider` is not valid nothing is routed, so in that order no task takes a path you did not choose.
-A stored `typesafe` needs no change: with no `gateway` stored it asks TypeSafe's own API only, as before.
-In Claude Code a retired value reaches the plugin as the default, as the section above says.
+While `provider` is not valid nothing is routed, so no task takes a path you did not choose.
+A stored `typesafe` needs no change.
+In Claude Code a retired value reaches the plugin as the default.
 
 ## The `models` setting
 
-Every harness has a `models` setting.
-It names the scoring model of each provider.
-
+Every harness has a `models` setting that names the scoring model of each provider.
 It takes one of these forms:
 
 - The short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`.
@@ -138,8 +128,7 @@ A value is not valid for any of these:
 While `models` is not valid, the plugin routes no task.
 The skip line reads `models not valid: run setup`, unless an earlier gate skips the task first, as [the Hermes Agent order](#a-setting-that-is-not-valid) says.
 The config tool names the failing entry.
-A slash is never valid.
-So `models` never sends the task text to a company other than the one `provider` names.
+A slash is never valid, so `models` never sends the task text to a company other than the one `provider` names.
 
 ### The model name on each path
 
@@ -148,10 +137,8 @@ The module of each provider holds its OpenRouter names.
 The config tool prints each provider's OpenRouter model on its `<provider> model` line, as [The report lines](#the-report-lines) shows.
 `jev-preview` has no OpenRouter model.
 
-A name that the module does not map goes bare on TypeSafe's System One route.
-On the Decisions route of OpenAI, Google and Perplexity it goes as `<vendor>/<name>`.
-OpenRouter answers an unknown name with HTTP 400.
-That status gets no second attempt, as [the fallback rule](#the-provider-and-the-gateway) says.
+A name that the module does not map goes bare on TypeSafe's System One route, and as `<vendor>/<name>` on the Decisions route of OpenAI, Google and Perplexity.
+OpenRouter answers an unknown name with HTTP 400, which gets no second attempt, as [the fallback rule](#the-provider-and-the-gateway) says.
 So under `openrouter-first`, routing skips with `HTTP 400` and never asks the provider's own API.
 
 ### The report lines
@@ -178,10 +165,8 @@ typesafe key: set
 
 ### The migration ladder
 
-A ladder of steps in the core migrates stored settings.
-It runs on every read of stored settings, in every harness.
-Each step recognises its input from the data.
-A step changes nothing on a second run, and no version is stored.
+A ladder of steps in the core migrates stored settings on every read, in every harness.
+Each step recognises its input from the data, changes nothing on a second run, and stores no version.
 Today the ladder holds no step.
 
 The plugin writes no setting when it loads.
@@ -203,11 +188,9 @@ The plugin reads these keys, each from one variable:
 
 The plugin does not read `GOOGLE_API_KEY`.
 A key counts as set when a place the plugin reads for it holds non-blank text.
-The key of the provider you chose serves the direct path, the provider's own API, and the OpenRouter key serves the gateway path, through OpenRouter.
 Each plugin README names where else a key can sit and, in a harness that has one, the setting that holds it.
 A plugin reads a key only for a holder that the `provider` and `gateway` settings allow.
-Each key goes only to the host of its holder, at the address that [The request](#the-request) lists for it.
-The plugin passes the address and the key with every request, so no environment variable moves a key to another host.
+Each key goes only to the host of its holder, at the address that [The request](#the-request) lists for it, so no environment variable moves a key to another host.
 An environment variable can supply a key, and with it the account that receives the task text.
 Each key identifies your account to the company that issued it.
 With no key for any allowed path, each task the plugin would score reports `key unset`.
@@ -249,8 +232,8 @@ In OpenClaw and Hermes Agent the tool also prints each slot setting between the 
 [The `models` setting](#the-models-setting) lists the `models` lines, which follow the setting lines in every harness.
 
 [A setting that is not valid](#a-setting-that-is-not-valid) prints its stored text and the values to use, as `<setting>: <stored text> (not valid: use one of <values>)`.
-Every valid setting then prints as `<setting>: <value>`.
-The gateway line names nobody, and the tool prints no key line:
+A valid setting prints as `<setting>: <value>`.
+In this case the gateway line names nobody, and the tool prints no key line:
 
 ```text
 provider: typesafe
@@ -274,8 +257,9 @@ Each of them takes the model for a level from a slot:
 
 In Oh My Pi each slot is a model role, as [Models in the Oh My Pi guide](../plugins/model-router-omp/README.md#models) lists.
 
-In OpenClaw and Hermes Agent a slot is set when its setting names a model, and unset when it names none.
-In Oh My Pi a slot is set when omp has a model for the slot's role, and unset when it has none.
+In OpenClaw and Hermes Agent a slot is set when its setting names a model.
+In Oh My Pi a slot is set when omp has a model for the slot's role.
+Otherwise the slot is unset.
 For an unset slot, the task keeps the model the harness gives it.
 For a task it scores, the plugin still sets the effort, with the exceptions that each guide lists.
 Those lists are [Efforts the plugin keeps in Oh My Pi](../plugins/model-router-omp/README.md#efforts-the-plugin-keeps), [Efforts the plugin keeps in OpenClaw](../plugins/model-router-openclaw/README.md#efforts-the-plugin-keeps) and [Precedence in Hermes Agent](../plugins/model-router-hermes/README.md#precedence).
@@ -283,15 +267,12 @@ The routing line names the slot and its state in place of a model, as in `L1 mid
 
 An unset slot is your choice and needs no fix: its level runs on the harness's model.
 The plugin sets the model you named and does not check that it runs.
-
-No task skips because a slot has no model.
-So with a key set and no model set, the plugin still sends each task it scores to the provider and sets its effort.
+No task skips because a slot has no model, so with a key set the plugin still sends each task it scores to the provider and sets its effort.
 
 ## The request
 
 The request is an HTTPS POST.
-Its JSON body names the model of its endpoint and the scoring questions, with three descriptions each.
-These texts ship with the plugin.
+Its JSON body names the model of its endpoint and the scoring questions, with three descriptions each, all shipped with the plugin.
 The question `tier` asks how much judgment the task needs.
 The question `work` asks how much work the task takes.
 Each plugin's README lists the questions it asks.
@@ -316,8 +297,7 @@ Each provider and path has its own address and model:
 
 [Perplexity's Decisions API reference](https://docs.perplexity.ai/api-reference/decisions-post.md) documents its direct path.
 
-Under `typesafe`, both paths get the alias `jev-latest`.
-TypeSafe points it at the most recent official Jev release, and OpenRouter routes it to its own alias for the newest Jev release.
+Under `typesafe`, both paths get the alias `jev-latest`, which TypeSafe and OpenRouter point at the newest Jev release.
 The alias moves when a release ships, so the picks can shift with no change to the plugin.
 [TypeSafe's Models page](https://docs.typesafe.ai/models) says which version it points to, and the routing line names the model that answered.
 
@@ -328,7 +308,6 @@ The plugin sets exactly four request headers:
 - `Content-Type: application/json`
 - `User-Agent: model-router/<version> (+https://github.com/Akurganow/model-router)`, where `<version>` is the plugin version.
 
-OpenRouter receives the same headers, with `Authorization: Bearer <key>`.
 No header names the runtime, the operating system or the architecture.
 
 A task whose text quotes an image reference, `<image:` and 32 lowercase hexadecimal digits and `>`, goes out as text like any other text.
@@ -375,9 +354,8 @@ A text over 12,000 characters keeps its start and its end.
 One task makes at most two attempts, one for each path its `gateway` value allows.
 
 With one attempt, a routed task sends one request and up to two retries, three requests in all.
-The plugin retries a connection error, a timeout and an HTTP status 408, 429 or 5xx.
-It retries no other status.
-The retries send the same body as the first request.
+The plugin retries a connection error, a timeout and an HTTP status 408, 429 or 5xx, and no other status.
+The retries send the same body.
 Before a retry the plugin waits as a `Retry-After` or `retry-after-ms` header says, up to 60 s.
 Without one it backs off for 0.5 s, doubling up to 5 s, with some jitter.
 The routing limit ends any wait, so a 429 with a long `Retry-After` can hold a task until the limit.
@@ -401,8 +379,7 @@ A first request the plugin gave up on may still be billed, on top of the second 
 ## What each company does with the text
 
 The `provider` and `gateway` settings pick the company that receives the text, as [the values of these settings](#the-provider-and-the-gateway) say.
-Each company processes the request to answer the scoring questions.
-The plugin author has no access to those requests.
+Each company processes the request to answer the scoring questions, and the plugin author has no access to those requests.
 Each company's own page sets what it does with the text:
 
 - TypeSafe: its handling of request data is set by the [TypeSafe privacy policy](https://typesafe.ai/legal/privacy-policy).
@@ -425,8 +402,6 @@ Each company's own page sets what it does with the text:
   For the free Perplexity endpoint, OpenRouter stores no prompt unless you opt in or child-safety screening flags it, and it lists that endpoint as [zero retention](https://openrouter.ai/api/v1/endpoints/zdr).
   Its pages are the [OpenRouter privacy policy](https://openrouter.ai/privacy), [provider logging](https://openrouter.ai/docs/guides/privacy/provider-logging) and [data collection](https://openrouter.ai/docs/guides/privacy/data-collection).
 
-With `auto` or `openrouter-first` and the provider's key and the OpenRouter key set, one task can reach the provider directly and through OpenRouter.
-
 ## Descriptions and private names
 
 An agent's description and a call's one-line description can hold private names, such as a client, a product or a team.
@@ -438,8 +413,7 @@ Each of `provider`, `gateway` and `scope` has a command, and each plugin README 
 `models` has no command: its plugin README says how the harness writes it.
 A bare command prints the setting's line, as [the config tool](#the-config-tool) prints it.
 A command with a valid value writes it and prints the new line.
-A value equal to the stored text is not written, and the command prints `<setting> unchanged: already <value>`.
-The stored text is compared as it is.
+A value equal to the stored text, compared as it is, is not written, and the command prints `<setting> unchanged: already <value>`.
 So a valid value replaces a stored value that is not valid, and a default typed over nothing stored is written.
 An invalid value lists the allowed ones.
 A refused or failed write prints `<setting> unchanged: <reason>` and leaves the stored value as it was.
@@ -452,13 +426,13 @@ In Oh My Pi, a command writes your global setting, and a project value can chang
 
 Set `provider` to the company you accept: it decides whose model receives each task, directly or through OpenRouter.
 Set `gateway` to `direct` or `openrouter` to send each task on one path only.
-Under `direct`, the default, no task reaches OpenRouter, and each task reaches only the provider you chose.
+Under `auto` or `openrouter-first` with both keys set, one task can reach the provider and OpenRouter.
+Under `direct`, the default, each task reaches only the provider you chose.
 Remove the key of every path the `gateway` setting allows, and the plugin skips routing.
 
 ## Fails open
 
-A plugin fails open.
-It never throws into its harness.
+A plugin fails open and never throws into its harness.
 A missing key, a setting that is not valid, a closed gate, an error or a timeout leaves the task to run as the harness would run it without the plugin.
 
 ## The routing line
@@ -467,7 +441,7 @@ A routed line holds the chosen level as `L<level>`, then the model or role it se
 It then holds `p=` with the probability of each chosen level, one for each question the plugin asks.
 Each plugin's README gives the exact shape.
 
-The line then names who answered: `typesafe`, `openai`, `google` or `perplexity` on the direct path, and `openrouter` on the gateway path.
+The line then names who answered: the provider on the direct path, and `openrouter` on the gateway path.
 The model the reply names follows, and then the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok` or ` · openai gpt-6-luna · 506/0 tok`.
 A reply with no model name or no token counts leaves that part out, and the name stays.
 Google's reply names no model, so its line shows none, as in ` · google · 430/0 tok`.

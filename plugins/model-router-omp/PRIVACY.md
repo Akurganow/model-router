@@ -14,9 +14,9 @@ paths:
 - the direct path: the provider's own API, with the provider's key
 - the gateway path: OpenRouter, with your OpenRouter key.
 
-The `provider` setting says whose model scores: `typesafe`, `openai`,
-`google` or `perplexity`. OpenRouter is a gateway that passes the request to that provider's
-model. These companies can receive the task text:
+The `provider` setting says whose model scores: `typesafe`, `openai`, `google` or
+`perplexity`. OpenRouter is a gateway that passes the request to that
+provider's model. These companies can receive the task text:
 
 | Company | Host | It receives the text when | Key it takes |
 | :-- | :-- | :-- | :-- |
@@ -35,7 +35,7 @@ The `gateway` setting decides which paths are open:
 | `openrouter-first` | OpenRouter, with the OpenRouter key | the provider, with its key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
 
-A path with no key is left out. With the provider's key and the OpenRouter key set under `auto` or `openrouter-first`, one item may reach both the provider and OpenRouter.
+A path with no key is left out. With both keys under `auto` or `openrouter-first`, one item may reach both the provider and OpenRouter.
 
 A setting that is not valid sends nothing, as
 [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)
@@ -153,9 +153,10 @@ or when newer decisions push it out.
 It holds a key in memory only while it checks whether to route and while it
 sends a request. It reads a key only for a company that the `provider` and
 `gateway` settings allow. It reads the credential omp holds for that company's
-id, `typesafe`, `openai`, `google`, `perplexity` or `openrouter`, and when that is empty or, from omp 18.13.2, a
-stored login, the environment variable `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`,
-`PERPLEXITY_API_KEY` or `OPENROUTER_API_KEY`. It sends each key only to its own company's host above.
+id, `typesafe`, `openai`, `google`, `perplexity` or `openrouter`. When that is
+empty or, from omp 18.13.2, a stored login, it reads the environment variable
+`TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY` or
+`OPENROUTER_API_KEY`. It sends each key only to its own company's host above.
 It does not read `GOOGLE_API_KEY`. It reads no other environment variable, and
 it runs no program.
 

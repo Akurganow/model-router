@@ -15,9 +15,9 @@ model answers on one or two paths:
 - the direct path: the provider's own API, with the provider's key
 - the gateway path: OpenRouter, with your OpenRouter key.
 
-The `provider` setting says whose model scores: `typesafe`, `openai`,
-`google` or `perplexity`. OpenRouter is a gateway that passes the request to that provider's
-model. These companies can receive the task text:
+The `provider` setting says whose model scores: `typesafe`, `openai`, `google` or
+`perplexity`. OpenRouter is a gateway that passes the request to that
+provider's model. These companies can receive the task text:
 
 | Company | Host | It receives the text when | Key it takes |
 | :-- | :-- | :-- | :-- |
@@ -36,7 +36,7 @@ The `gateway` setting decides which paths are open:
 | `openrouter-first` | OpenRouter, with the OpenRouter key | the provider, with its key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
 
-A path with no key is left out. With the provider's key and the OpenRouter key set under `auto` or `openrouter-first`, one spawn may reach both the provider and OpenRouter.
+A path with no key is left out. With both keys under `auto` or `openrouter-first`, one spawn may reach both the provider and OpenRouter.
 
 A model setting does not decide whether a request leaves: with a key set and
 no model set, each routed spawn is still sent for scoring, as
@@ -141,8 +141,8 @@ variable, and it runs no program.
 
 A `.env` file in the Gateway's working directory is a lower-trust source.
 OpenClaw drops `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and
-`PERPLEXITY_API_KEY` from it, while it can still supply `TYPESAFE_API_KEY`. The plugin then sends the task
-text to the account that key belongs to. The global `~/.openclaw/.env` and the Gateway's
+`PERPLEXITY_API_KEY` from it, while it can still supply `TYPESAFE_API_KEY`.
+The plugin then sends the task text to the account that key belongs to. The global `~/.openclaw/.env` and the Gateway's
 environment stay trusted sources, as
 [the `.env` fact](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#openclaw-runtime-logs-and-environment)
 records. The plugin does not depend on that filter. Keep the keys in the

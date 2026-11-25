@@ -68,7 +68,7 @@ Add a key in one of two ways:
 - Store the credential omp holds for the id: run `/login typesafe` or `/login openrouter`, or run `omp login typesafe` or `omp login openrouter` outside a session. For `openai` and `google`, store it the way omp stores a credential for that provider.
 - Set the environment variable where omp reads it. The variable is visible to every process omp starts. [What the plugin stores](PRIVACY.md#what-the-plugin-stores) says more.
 
-Scoring takes an API key. From omp 18.13.2, a login stored for the same id is skipped, and the plugin reads the holder's variable instead. An earlier omp hands the plugin the login's token.
+Scoring takes an API key. From omp 18.13.2, a stored login for the id is skipped and the plugin reads the holder's variable. An earlier omp hands over the login's token.
 
 ## Provider and gateway
 
@@ -109,7 +109,7 @@ The `scope` plugin setting picks which agents the plugin routes:
 | `core` (default) | The bundled `task` agent only |
 | `extended` | Every agent whose model you did not set, bundled agents included |
 
-A value outside this list is not valid, as [the rule for a value outside the list](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says.
+A value outside this list is not valid, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says.
 
 Under `extended`, the plugin judges each batch item on its own. Bundled agents route: `task`, `scout`, `sonic`, `reviewer` and `security-reviewer`, on omp 18.12.6 and 18.18.9. A bundled agent's default model is not your choice. The bundled `seance` agent is the exception: omp gives it no spawn hook, so the plugin skips it.
 

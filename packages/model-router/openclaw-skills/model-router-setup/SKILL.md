@@ -28,22 +28,18 @@ Find out which of these already hold, with the `model_router_config` tool and Op
 
 When you find what already holds, also check the stored field names. Follow these steps in order:
 
-1. Read the field names stored under `plugins.entries.model-router-openclaw.config` in OpenClaw's configuration.
+1. Read the field names, not the values, stored under `plugins.entries.model-router-openclaw.config` in OpenClaw's configuration.
 2. Compare them with the fields the plugin declares: `provider`, `gateway`, `scope`, `models`, `small_model`, `middle_model`, `large_model`, `api_key`, `openai_api_key`, `google_api_key`, `perplexity_api_key` and `openrouter_api_key`.
 3. Tell the person each stored field that the plugin does not declare.
-4. Read a value only of a field that is not a key field and not named like a key or a secret.
-5. Never print the value of a key field, or of a field named like a key or a secret. Say only that it holds a value.
-6. For a look-alike field that is not a key field and holds a value, propose the move.
-7. Name the declared field and the exact text to write, for example `middle_modle` against `middle_model`.
-8. For a look-alike key field, never move or copy its value.
-9. Ask the person which undeclared fields to remove, and agree each move.
-10. Note each agreed move and its text. Never note the value of a key.
-11. On the person's word, edit OpenClaw's configuration so that it drops every agreed undeclared field, and nothing else.
+4. Read a value only of a non-key field not named like a key or a secret. Never print or copy any other field's value.
+5. For a look-alike field that is not a key, propose the declared field and the exact text to write, for example `middle_modle` against `middle_model`.
+6. Ask the person which undeclared fields to remove or move, and agree each move.
+7. Note each agreed move and its text, never a key value.
+8. On the person's word, edit OpenClaw's configuration so that it drops every agreed undeclared field, and nothing else.
     - Remove all of them first: OpenClaw declines every `openclaw config set` while the config holds an undeclared field.
-12. Write each moved field with `openclaw config set plugins.entries.model-router-openclaw.config.<field> '<text>'`.
-13. Ask the person to enter each key in its declared key field, as the Keys facts say.
-14. Read the field names again, and confirm that no undeclared field remains.
-15. Write nothing else in the file.
+9. Write each moved field with `openclaw config set plugins.entries.model-router-openclaw.config.<field> '<text>'`.
+10. For a look-alike key field, ask the person to enter the key where the Keys facts say.
+11. Read the field names again, and confirm that no undeclared field remains. Write nothing else.
 
 When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
 

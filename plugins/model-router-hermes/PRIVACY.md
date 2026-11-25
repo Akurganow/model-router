@@ -12,9 +12,9 @@ It never scores the main turn. The model answers on one or two paths:
 - the direct path: the provider's own API, with the provider's key
 - the gateway path: OpenRouter, with your OpenRouter key.
 
-The `provider` setting says whose model scores: `typesafe`, `openai`,
-`google` or `perplexity`. OpenRouter is a gateway that passes the request to that provider's
-model. These companies can receive the task text:
+The `provider` setting says whose model scores: `typesafe`, `openai`, `google` or
+`perplexity`. OpenRouter is a gateway that passes the request to that
+provider's model. These companies can receive the task text:
 
 | Company | Host | It receives the text when | Key it takes |
 | :-- | :-- | :-- | :-- |
@@ -33,7 +33,7 @@ The `gateway` setting decides which paths are open:
 | `openrouter-first` | OpenRouter, with the OpenRouter key | the provider, with its key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
 
-A path with no key is left out. With the provider's key and the OpenRouter key set under `auto` or `openrouter-first`, one task may reach both the provider and OpenRouter.
+A path with no key is left out. With both keys under `auto` or `openrouter-first`, one task may reach both the provider and OpenRouter.
 A setting that is not valid sends nothing, as
 [A setting that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid)
 says.
@@ -148,8 +148,8 @@ and of the plugin host. Like any key in the environment, it is
 visible to the programs Hermes starts. Keep a key out of the environment of
 programs you do not trust.
 
-At each task the plugin reads these settings of its own through Hermes:
-`provider`, `gateway`, `models`, `small_model`, `middle_model` and `large_model`. It reads the task's
+At each task the plugin reads its own settings through Hermes: `provider`,
+`gateway`, `models`, `small_model`, `middle_model` and `large_model`. It reads the task's
 `description`, `reasoning_effort` and `level` parameters. Of those, only the
 description leaves your machine, in the request. It also reads the `delegation`
 section of Hermes's configuration, which Hermes passes with the task. It uses
@@ -162,9 +162,10 @@ changed when it routes. When the section sets no effort, every route carries
 the task's `reasoning_effort` parameter.
 
 The plugin reads no credential of a model's provider except the keys above.
-Hermes's own OpenRouter, OpenAI and Gemini providers read the same keys, and a
-key you save for the plugin may serve your own Hermes session too.
-[Keys](README.md#keys) says how, and how to keep another provider. A key you save for Perplexity also gives Hermes's own Perplexity web search its key, as [Keys](README.md#keys) says. The plugin sets the model and provider you named in a slot on the task. Of the
+Hermes's own OpenRouter, OpenAI and Gemini providers and its Perplexity web
+search read the same keys, and a key you save for the plugin may serve your own
+Hermes session too. [Keys](README.md#keys) says how, and how to keep another
+provider. The plugin sets the model and provider you named in a slot on the task. Of the
 settings, the task parameters and the `delegation` section, only the role text
 leaves your machine, in the request, as described above.
 

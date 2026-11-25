@@ -12,8 +12,8 @@ This plugin is a mod: a plugin whose `hooks/hooks.json` has a
 
 - It scores each Agent call it routes through the decision model of the
   `provider` option: [Jev](https://docs.typesafe.ai) from TypeSafe, OpenAI's,
-  Google's or Perplexity's. The model reads the task and the agent text, the request's `role`
-  field. One request asks two questions: how much judgment the task needs, and
+  Google's or Perplexity's. The model reads the task and the agent text, the
+  request's `role` field. One request asks two questions: how much judgment the task needs, and
   how much work it takes.
 - It sets the model of the level, as [Models](#models) lists, and an effort from
   a fixed ladder, as [Effort](#effort) says. One dim line per routed call shows
@@ -35,10 +35,10 @@ asks six questions. The answers for this mod:
   its own and starts no program.
 - **Reads your secrets?** Only its own keys: TypeSafe, OpenAI, Google,
   Perplexity and OpenRouter. Claude Code hands it the plugin's sensitive `api_key`,
-  `openai_api_key`, `google_api_key`, `perplexity_api_key` and `openrouter_api_key` options from
-  secure storage. When an option is empty, the mod reads the key from
-  `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY` or
-  `OPENROUTER_API_KEY`. It reads a key only for a holder the `provider` and
+  `openai_api_key`, `google_api_key`, `perplexity_api_key` and
+  `openrouter_api_key` options from secure storage. When an option is empty, the mod reads the key from
+  `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY`
+  or `OPENROUTER_API_KEY`. It reads a key only for a holder the `provider` and
   `gateway` options allow. It reads one more environment
   variable, `CLAUDE_CODE_EFFORT_LEVEL`, and only to see whether it is set. It
   never sends its value anywhere. It reads no file.
@@ -51,8 +51,9 @@ asks six questions. The answers for this mod:
   describe it. It reads the spawn of each subagent and the requests the
   subagent then makes. Between calls it keeps only the latest source and
   description of each agent name, in memory.
-- **Changes your session?** The `model` and the `effort` of the subagent. The mod sets the `model` when the subagent spawns, and the Agent
-  call stays as written. It sets `effort` on the subagent's own requests only
+- **Changes your session?** The `model` and the `effort` of the subagent. The
+  mod sets the `model` when the subagent spawns, and the Agent call stays as
+  written. It sets `effort` on the subagent's own requests only
   when the call names none and `CLAUDE_CODE_EFFORT_LEVEL` is unset, or, under
   the [rules of the extended scope](#which-calls-are-routed), replaces the one the agent's
   definition sets. A model without effort gets none. It registers one tool the model can call,
@@ -186,11 +187,13 @@ claude plugin install model-router --marketplace Akurganow/model-router --config
 ```
 
 `YOUR_KEY` stands for your TypeSafe key and `YOUR_OPENROUTER_KEY` for your
-OpenRouter key. To use OpenAI, Google or Perplexity, add `--config provider=openai`,
-`--config provider=google` or `--config provider=perplexity`, and replace `--config api_key` with
-`--config openai_api_key`, `--config google_api_key` or `--config perplexity_api_key`. Drop the `--config` pair of a key you do not have. The line
-leaves the keys in your shell history and shows them in the process list
-while it runs.
+OpenRouter key. To use OpenAI, Google or Perplexity, add
+`--config provider=openai`, `--config provider=google` or
+`--config provider=perplexity`, and replace `--config api_key` with
+`--config openai_api_key`, `--config google_api_key` or
+`--config perplexity_api_key`. Drop the `--config` pair of a key you do not
+have. The line leaves the keys in your shell history and shows them in the
+process list while it runs.
 
 </details>
 
@@ -354,9 +357,8 @@ The `scope` option says which Agent calls the mod routes:
 
 ## Change the options
 
-The plugin has these options: `provider`, `gateway`, `scope`, `models` and
-the key of each provider and of OpenRouter.
-Set them in the install dialog. `/config` also changes `provider`, `gateway`,
+The plugin has the options `provider`, `gateway`, `scope`, `models` and a key
+for each provider and for OpenRouter. Set them in the install dialog. `/config` also changes `provider`, `gateway`,
 `scope` and `models`.
 
 Claude Code ignores plugin options in project and local settings. No project
@@ -408,8 +410,8 @@ dialog closes.
 To be guided through the choices, ask Claude to run the `model-router-setup`
 skill. It reads the settings and the key status through the tool, then asks
 about the provider, the gateway, any missing key and the scope. For a retired
-`provider` value, it proposes values of `gateway` and `provider`. It lists the reasons routing
-is off and ends with a routing check. The skill lives in
+`provider` value, it proposes values of `gateway` and `provider`. It lists the
+reasons routing is off and ends with a routing check. The skill lives in
 [skills/model-router-setup/SKILL.md](skills/model-router-setup/SKILL.md).
 
 ## Models
@@ -472,7 +474,8 @@ The scoring model answers a second question: how much work the task takes once t
 judgment is settled, as an index from 0 to 2. The index rests on the middle
 and moves to an end only when the model gives that end more than a fitted factor
 times the middle's probability: 2.38 for index 0 and 1.41 for index 2. The
-factors are fitted to Jev, and `openai`, `google` and `perplexity` use them unfitted. The index then maps to an effort per model:
+factors are fitted to Jev, and `openai`, `google` and `perplexity` use them unfitted. The index then maps to
+an effort per model:
 
 | index | haiku | sonnet | opus |
 | --- | --- | --- | --- |
@@ -495,8 +498,8 @@ that an agent definition sets, as
 
 ## Which calls are routed
 
-The `scope` option decides which Agent calls the mod routes. Each scope skips a call that sets
-a `model` or a `name`, a fork, and a call your permission rules deny.
+The `scope` option decides which Agent calls the mod routes. Each scope skips
+a call that sets a `model` or a `name`, a fork, and a call your permission rules deny.
 
 Under `core`, the default, the mod routes a call to one of the built-in agents
 `general-purpose`, `claude`, `Explore` and `Plan`, as Claude Code ships them. A
@@ -616,8 +619,8 @@ claude plugin uninstall model-router@model-router
 ```
 
 If you added `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`,
-`PERPLEXITY_API_KEY` or `OPENROUTER_API_KEY` to the `env` block of `~/.claude/settings.json`, delete
-those lines too.
+`PERPLEXITY_API_KEY` or `OPENROUTER_API_KEY` to the `env` block of
+`~/.claude/settings.json`, delete those lines too.
 
 Removing the key of every path the `gateway` option allows also stops
 routing, and every routed call then reports `key unset`.
@@ -628,8 +631,8 @@ On each routed call the mod sends an HTTPS POST through Claude Code's own
 `$.http.fetch` to the first path of the `gateway` value that has a key:
 
 - The direct path, the provider's own API: `api.typesafe.ai`, `api.openai.com`,
-  `generativelanguage.googleapis.com` or `api.perplexity.ai`, with the key of the provider you
-  chose.
+  `generativelanguage.googleapis.com` or `api.perplexity.ai`, with the key of
+  the provider you chose.
 - The gateway path, OpenRouter: `openrouter.ai`, with your OpenRouter key.
 
 [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)

@@ -32,21 +32,16 @@ Find out which of these already hold, with the `model_router_config` tool and om
 
 When you find what already holds, also check the stored field names. Follow these steps in order:
 
-1. Read the field names stored under `settings`, for the package name `model-router-omp` or `@akurganow/model-router`, in omp's plugins lockfile `omp-plugins.lock.json`.
+1. Read the field names, not the values, stored under `settings`, for the package name `model-router-omp` or `@akurganow/model-router`, in omp's plugins lockfile `omp-plugins.lock.json`.
 2. Compare them with the fields the plugin declares: `provider`, `gateway`, `scope` and `models`.
 3. Tell the person each stored field that the plugin does not declare.
-4. Read a value only of a field that is not a key field and not named like a key or a secret.
-5. Never print the value of a key field, or of a field named like a key or a secret. Say only that it holds a value.
-6. On the person's word, remove only a field that resembles no declared field.
-7. For a look-alike field that is not a key field and holds a value, propose the move.
-8. Name the declared field and the exact text to write, for example `gatway` against `gateway`.
-9. On the person's word, write the declared field, then remove the old field.
-10. For a stored field named like a key, never move or copy its value, since omp declares no key field.
-11. Ask the person to store the key as the credential of its id, or in its variable, as the Keys facts say.
-12. On the person's word, remove the old field.
-13. Write `models` with `model_router_config`, and any other field with `omp plugin config set`.
-14. Remove a field by editing `omp-plugins.lock.json` so that it drops only that field.
-15. Write nothing else in the file.
+4. Read a value only of a non-key field not named like a key or a secret. Never print or copy any other field's value.
+5. On the person's word, remove a field that resembles no declared field.
+6. For a look-alike field that is not a key, propose the declared field and the exact text to write, for example `gatway` against `gateway`.
+7. On the person's word, write the proposed text, then remove the old field.
+8. For a stored field named like a key, ask the person to store the key where the Keys facts say, then, on their word, remove the old field.
+9. Write `models` with `model_router_config`, and any other field with `omp plugin config set`.
+10. Remove a field by editing `omp-plugins.lock.json` so that only that field goes. Write nothing else.
 
 When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
 
@@ -101,7 +96,7 @@ When the person wants another scoring model for one provider, follow these steps
 - omp passes a stored value on as stored, so the skip line shows in omp, as [omp manifest and settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#omp-manifest-and-settings) says.
 - The tool takes two optional inputs: `setting`, which is `provider`, `gateway` or `scope`, and `models`.
 - With `provider`, `gateway` or `scope`, the plugin asks the person in its own dialog and writes the value the person picks. The tool takes no value from the agent for these.
-- With `models` set to a string, the plugin writes that text to the global setting at once, with no dialog. Do this only at the person's request.
+- With `models` set to a string, the plugin writes that text to the global setting at once, with no dialog.
 - A `models` text that is not valid is refused with `models unchanged: not valid: <entry>`, and nothing is written.
 - A call that picks a value the global setting already holds, with no project value in the way, returns `<setting> unchanged: already <value>`.
 - A call with no dialog answer returns `<setting> unchanged: no answer from the dialog`. It appears when omp has no UI too. The person can type `/model-router:provider <value>`, `/model-router:gateway <value>` or `/model-router:scope <value>` instead.
@@ -189,7 +184,7 @@ To move a retired value, follow these steps in order:
 - The key of the chosen provider serves the direct path, and the OpenRouter key serves the gateway path.
 - A key counts as set when either place holds a non-blank value.
 - A key variable reaches the environment of every process omp starts.
-- The person adds a key with `/login typesafe` or `/login openrouter`, or with `omp login <provider>` outside a session. For OpenAI or Google, the person stores the credential the way omp stores one for that provider, or sets the variable. Scoring takes an API key, so the person gives one. The plugin never asks for a key.
+- The person adds a key with `/login typesafe` or `/login openrouter`, or with `omp login <provider>` outside a session. For OpenAI or Google, the person stores the credential the way omp stores one for that provider, or sets the variable. The plugin never asks for a key.
 - With no key for any path the `provider` and `gateway` settings allow, every call skips with `key unset`.
 
 ### Models

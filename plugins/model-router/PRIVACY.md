@@ -14,9 +14,9 @@ paths:
 - the direct path: the provider's own API, with the provider's key
 - the gateway path: OpenRouter, with your OpenRouter key.
 
-The `provider` option says whose model scores: `typesafe`, `openai`,
-`google` or `perplexity`. OpenRouter is a gateway that passes the request to that provider's
-model. These companies can receive the task text:
+The `provider` option says whose model scores: `typesafe`, `openai`, `google` or
+`perplexity`. OpenRouter is a gateway that passes the request to that
+provider's model. These companies can receive the task text:
 
 | Company | Host | It receives the text when | Key it takes |
 | :-- | :-- | :-- | :-- |
@@ -35,7 +35,7 @@ The `gateway` option decides which paths are open:
 | `openrouter-first` | OpenRouter, with the OpenRouter key | the provider, with its key |
 | `openrouter` | OpenRouter, with the OpenRouter key | none |
 
-A path with no key is left out. With the provider's key and the OpenRouter key set under `auto` or `openrouter-first`, one call may reach both the provider and OpenRouter.
+A path with no key is left out. With both keys under `auto` or `openrouter-first`, one call may reach both the provider and OpenRouter.
 
 [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway)
 gives the fallback rules.
@@ -151,8 +151,8 @@ The plugin writes them in three cases only. You pick a value in the dialog that
 the `config` tool opens. Or you type `/model-router:provider`,
 `/model-router:gateway` or `/model-router:scope` with a value at your own
 prompt. Or the agent passes a `models` text to the `config` tool at your
-request. A command from any other origin writes nothing. The plugin writes no other option and no file. Claude
-Code ignores plugin options in project and local settings, so a project cannot
+request. A command from any other origin writes nothing. The plugin writes no
+other option and no file. Claude Code ignores plugin options in project and local settings, so a project cannot
 change any of these options.
 
 After an update, a stored `openrouter` in `provider` reaches the plugin as

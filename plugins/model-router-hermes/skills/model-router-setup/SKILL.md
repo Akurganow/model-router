@@ -27,22 +27,16 @@ Find out which of these already hold, with the `model_router_config` tool and He
 
 When you find what already holds, also check the stored field names. Follow these steps in order:
 
-1. Read the field names stored under `plugins.entries.model-router-hermes.settings` in Hermes's `config.yaml`.
+1. Read the field names, not the values, stored under `plugins.entries.model-router-hermes.settings` in Hermes's `config.yaml`.
 2. Compare them with the fields the plugin declares: `provider`, `gateway`, `models`, `small_model`, `middle_model`, `large_model`, `api_key`, `openai_api_key`, `google_api_key`, `perplexity_api_key` and `openrouter_api_key`.
 3. Tell the person each stored field that the plugin does not declare.
-4. Read a value only of a field that is not a key field and not named like a key or a secret.
-5. Never print the value of a key field, or of a field named like a key or a secret. Say only that it holds a value.
-6. On the person's word, remove only a field that resembles no declared field.
-7. For a look-alike field that is not a key field and holds a value, propose the move.
-8. Name the declared field and the exact text to write, for example `middle_modle` against `middle_model`.
-9. On the person's word, write the declared field, then remove the old field.
-10. For a look-alike key field, never move or copy its value.
-11. Ask the person to enter the key in the plugin's settings form in Hermes Desktop, as the keys facts say.
-12. On the person's word, remove the old field.
-13. Write a field that is not a key field with `hermes config set plugins.entries.model-router-hermes.settings.<field> '<text>'`.
-14. Write a slot field as the JSON object that The models facts show.
-15. Remove a field by editing the plugin's `settings` in Hermes's `config.yaml` so that it drops only that field.
-16. Write nothing else in the file.
+4. Read a value only of a non-key field not named like a key or a secret. Never print or copy any other field's value.
+5. On the person's word, remove a field that resembles no declared field.
+6. For a look-alike field that is not a key, propose the declared field and the exact text to write, for example `middle_modle` against `middle_model`.
+7. On the person's word, write the proposed text, then remove the old field.
+8. For a look-alike key field, ask the person to enter the key where the keys facts say, then, on their word, remove the old field.
+9. Write a field with `hermes config set plugins.entries.model-router-hermes.settings.<field> '<text>'`, a slot field as the JSON object that The models facts show.
+10. Remove a field by editing the plugin's `settings` in Hermes's `config.yaml` so that only that field goes. Write nothing else.
 
 When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
 
@@ -144,7 +138,7 @@ When the person wants another scoring model for one provider, follow these steps
   - Perplexity: `PERPLEXITY_API_KEY`, form secret `perplexity_api_key`. Get a key at https://console.perplexity.ai.
   - OpenRouter: `OPENROUTER_API_KEY`, form secret `openrouter_api_key`. Get a key at https://openrouter.ai.
 - The plugin's settings form in Hermes Desktop also sets each key, and Hermes stores it under that variable.
-- Hermes's own OpenRouter, OpenAI and Gemini providers and its Perplexity web search read the same keys, and a key saved for the plugin may serve the person's own Hermes session too. Setting `model.provider` keeps another provider. [Keys](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#keys) gives the facts, including the `GOOGLE_API_KEY` order, the `model.key_env` limit and the web search.
+- Hermes's own OpenRouter, OpenAI and Gemini providers and its Perplexity web search read the same keys, and a key saved for the plugin may serve the person's own Hermes session too. Setting `model.provider` keeps another provider. [Keys](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#keys) gives the facts, including the `GOOGLE_API_KEY` order and the `model.key_env` limit.
 - No other credential of Hermes serves as a scoring key.
 - A key in the environment is visible to every process Hermes starts.
 - With no key for any path the `gateway` setting allows, every task without a `level` skips with `key unset`.
