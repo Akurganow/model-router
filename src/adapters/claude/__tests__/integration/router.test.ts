@@ -170,7 +170,7 @@ describe("the stored text of both settings reaches the core", () => {
 });
 
 describe("the models setting reaches the core", () => {
-	const MODELS = "{typesafe:jev-latest, openai:gpt-6-luna}";
+	const MODELS = "{typesafe:jev-preview, openai:gpt-7-sol}";
 	const KEYS = { api_key: "ts-key", openai_api_key: "oa-key" };
 	const sent = async (options: Record<string, unknown>) =>
 		(
@@ -186,12 +186,12 @@ describe("the models setting reaches the core", () => {
 		).requests.map((r) => r.model);
 
 	test("a routed spawn sends the model of the provider in force, across a provider switch", async () => {
-		assert.deepEqual(await sent({ models: MODELS }), ["jev-latest"]);
+		assert.deepEqual(await sent({ models: MODELS }), ["jev-preview"]);
 		assert.deepEqual(await sent({ models: MODELS, provider: "openai" }), [
-			"gpt-6-luna",
+			"gpt-7-sol",
 		]);
 		assert.deepEqual(await sent({ models: MODELS, provider: "typesafe" }), [
-			"jev-latest",
+			"jev-preview",
 		]);
 	});
 

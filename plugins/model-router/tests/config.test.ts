@@ -255,11 +255,11 @@ test("overlapping calls run one after the other and the second sees the first's 
 	expect((await configTool($)).result).toContain("scope: extended");
 });
 
-const MODELS = "{typesafe:jev-latest, openai:gpt-6-luna}";
+const MODELS = "{typesafe:jev-preview, openai:gpt-7-sol}";
 const MODELS_LINES = [
 	`models: ${MODELS}`,
-	"typesafe model: jev-latest (OpenRouter: jev-latest)",
-	"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
+	"typesafe model: jev-preview (OpenRouter: jev-preview)",
+	"openai model: gpt-7-sol (OpenRouter: openai/gpt-7-sol)",
 	"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
 ].join("\n");
 

@@ -192,13 +192,8 @@ const OPENAI_ANSWER = JSON.stringify({
 
 // With models naming a model for two providers, each provider's request carries its own.
 for (const [provider, url, model, text] of [
-	["typesafe", TYPESAFE_URL, "jev-latest", undefined],
-	[
-		"openai",
-		"https://api.openai.com/v1/decisions",
-		"gpt-6-luna",
-		OPENAI_ANSWER,
-	],
+	["typesafe", TYPESAFE_URL, "jev-preview", undefined],
+	["openai", "https://api.openai.com/v1/decisions", "gpt-7-sol", OPENAI_ANSWER],
 ] as const)
 	test(
 		`${provider} sends the model the models setting names for it`,
@@ -207,7 +202,7 @@ for (const [provider, url, model, text] of [
 				provider,
 				api_key: "typesafe-key",
 				openai_api_key: "openai-key",
-				models: "{typesafe:jev-latest, openai:gpt-6-luna}",
+				models: "{typesafe:jev-preview, openai:gpt-7-sol}",
 			},
 		},
 		async ($, on) => {

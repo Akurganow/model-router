@@ -321,9 +321,9 @@ test("the settings report lists the values and each key the gateway allows", asy
 			"provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset\nopenrouter key: unset",
 		],
 		[
-			{ models: "{typesafe:jev-latest, openai:gpt-6-luna}" },
+			{ models: "{typesafe:jev-preview, openai:gpt-7-sol}" },
 			[],
-			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: {typesafe:jev-latest, openai:gpt-6-luna}\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset",
+			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: {typesafe:jev-preview, openai:gpt-7-sol}\ntypesafe model: jev-preview (OpenRouter: jev-preview)\nopenai model: gpt-7-sol (OpenRouter: openai/gpt-7-sol)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset",
 		],
 		[
 			{ model: "jev-preview" },
@@ -349,11 +349,11 @@ test("the settings report reads only the variables of the key holders the gatewa
 	assert.deepEqual(reads, ["OPENROUTER_API_KEY"]);
 });
 
-const MODELS = "{typesafe:jev-latest, openai:gpt-6-luna}";
+const MODELS = "{typesafe:jev-preview, openai:gpt-7-sol}";
 const MODELS_LINES = [
 	`models: ${MODELS}`,
-	"typesafe model: jev-latest (OpenRouter: jev-latest)",
-	"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
+	"typesafe model: jev-preview (OpenRouter: jev-preview)",
+	"openai model: gpt-7-sol (OpenRouter: openai/gpt-7-sol)",
 	"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
 ].join("\n");
 const MODELS_KEY = "model-router.models";
@@ -431,14 +431,14 @@ test("the text the report shows, with a removed model option stored, erases it a
 	resetConfig();
 	const { $, log } = answeringEngine(async () => "unused");
 	assert.deepEqual(
-		await configCall($, modelsCall("{typesafe:jev-latest}"), {
+		await configCall($, modelsCall("{typesafe:jev-1.14.0}"), {
 			model: "jev-preview",
-			models: "{typesafe:jev-latest}",
+			models: "{typesafe:jev-1.14.0}",
 		}),
 		{
 			result: [
-				"models: {typesafe:jev-latest}",
-				"typesafe model: jev-latest (OpenRouter: jev-latest)",
+				"models: {typesafe:jev-1.14.0}",
+				"typesafe model: jev-1.14.0 (OpenRouter: typesafe/jev-1.14)",
 				"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 				"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
 			].join("\n"),
