@@ -224,8 +224,8 @@ test("labels carry the consequences of each value", () => {
 		"openrouter - OpenRouter only",
 	]);
 	assert.deepEqual(ask("scope", "core").options, [
-		"core - built-in general agents only",
-		"extended - also routes other agents that pass no model",
+		"core - the default agents only",
+		"extended - also other agents, as the README lists",
 	]);
 });
 

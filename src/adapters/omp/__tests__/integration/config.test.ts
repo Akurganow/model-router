@@ -200,8 +200,8 @@ test("the scope dialog lists a stored extended first, then core", async () => {
 		{
 			title: "Which agent calls should the router route?",
 			options: [
-				"extended - also routes other agents that pass no model",
-				"core - built-in general agents only",
+				"extended - also other agents, as the README lists",
+				"core - the default agents only",
 			],
 		},
 	]);

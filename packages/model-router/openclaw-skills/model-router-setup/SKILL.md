@@ -127,8 +127,8 @@ openrouter key: unset
 ### Scope
 
 - `scope` has two values. `core` is the default.
-  - `core - built-in general agents only`
-  - `extended - also routes other agents that pass no model`
+  - `core - the default agents only`
+  - `extended - also other agents, as the README lists`
 - `core` routes the spawn of the requesting agent itself: a spawn with no `agentId`, or with the requester's own id, and a `runtime` that is absent or `subagent`.
 - `extended` also routes the spawn of any other configured agent that does not set its own model.
 - The person changes it with `/model-router-scope <value>`. The replies and the timing match `provider`.

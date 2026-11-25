@@ -28,8 +28,8 @@ const typed = (args: string): CommandRun => ({
 });
 
 const CALL = { tool: "mcp__model-router__config" };
-const CORE = "core - built-in general agents only";
-const EXTENDED = "extended - also routes other agents that pass no model";
+const CORE = "core - the default agents only";
+const EXTENDED = "extended - also other agents, as the README lists";
 const DIRECT = "direct - the provider's own API only";
 const AUTO = "auto - the provider's own API, then OpenRouter if it fails";
 const OPENROUTER_FIRST =

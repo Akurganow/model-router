@@ -74,8 +74,8 @@ const TEXTS: Readonly<Record<ValueSetting, ValueText<string>>> = {
 		about: "which agent calls the router routes",
 		question: "Which agent calls should the router route?",
 		consequences: {
-			core: "built-in general agents only",
-			extended: "also routes other agents that pass no model",
+			core: "the default agents only",
+			extended: "also other agents, as the README lists",
 		},
 	} satisfies ValueText<Scope>,
 };

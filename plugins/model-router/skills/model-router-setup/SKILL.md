@@ -103,8 +103,8 @@ When the person wants another scoring model for one provider, follow these steps
   - Only some failures reach the second path: [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists them.
 - Claude Code hands the plugin an option's default in place of a stored value outside the option's list. So the tool then prints the default, and no setup line shows.
 - `scope` takes `core` (the default) or `extended`.
-  - `core - built-in general agents only`
-  - `extended - also routes other agents that pass no model`
+  - `core - the default agents only`
+  - `extended - also other agents, as the README lists`
   - Under `core`, the plugin routes a call to the built-in agents `general-purpose`, `claude`, `Explore` and `Plan`. A call with no `subagent_type` counts as `general-purpose`.
   - Under `extended`, it routes every Agent call that passes no `model` and no `name`, a fork excepted. That includes user, project and plugin agents.
   - Under `extended`, the routed model and effort replace the ones an agent's definition sets, and the agent's description and task text go to the company that scores.

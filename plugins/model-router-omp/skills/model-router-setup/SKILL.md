@@ -161,8 +161,8 @@ To move a retired value, follow these steps in order:
 ### Scope
 
 - `scope` has two values. `core` is the default.
-  - `core - built-in general agents only`
-  - `extended - also routes other agents that pass no model`
+  - `core - the default agents only`
+  - `extended - also other agents, as the README lists`
 - `core` is the default and routes the bundled `task` agent only.
 - `extended` routes every agent whose model the person did not set, bundled agents included.
 
