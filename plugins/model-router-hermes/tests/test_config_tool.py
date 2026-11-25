@@ -1,7 +1,19 @@
 import json
+import shutil
 import unittest
+from pathlib import Path
 
-from support import CONSTANTS, FakeCtx, UnreadableCtx, fake_api, good_settings, submodule
+from node_stub import make_node_stub
+from support import (
+    CONSTANTS,
+    PLUGIN_DIR,
+    FakeCtx,
+    UnreadableCtx,
+    fake_api,
+    good_settings,
+    submodule,
+    temp_dir,
+)
 
 TEXTS = CONSTANTS["texts"]
 LINES = TEXTS["lineBreak"]
@@ -11,12 +23,23 @@ SECRETS = {
     "GEMINI_API_KEY": "google-secret-four",
     "OPENROUTER_API_KEY": "openrouter-secret-2",
 }
+# What the Node stand-in answers when a test asks for no lines of its own.
+STUB_LINES = ["models: unset"]
+_STUBS = temp_dir()
+_stub_count = [0]
 
 
-def handler_for(settings=None, secrets=None, **api_overrides):
+def stub_node(**kwargs):
+    _stub_count[0] += 1
+    kwargs.setdefault("reply", {"lines": STUB_LINES})
+    return make_node_stub(Path(_STUBS.name), name=f"stub{_stub_count[0]}", **kwargs)
+
+
+def handler_for(settings=None, secrets=None, stub=None, **api_overrides):
     ctx = FakeCtx(good_settings() if settings is None else settings)
     api = fake_api(secrets={} if secrets is None else secrets, **api_overrides)
-    submodule("config_tool").register_tool(ctx, api=api)
+    stub = stub or stub_node()
+    submodule("config_tool").register_tool(ctx, api=api, script=stub.script)
     return ctx.tools[0]["handler"]
 
 
@@ -37,6 +60,7 @@ class ReadAllTest(unittest.TestCase):
             call(handler),
             "provider: typesafe\n"
             "gateway: direct (typesafe)\n"
+            "models: unset\n"
             "small_model: unset\n"
             "middle_model: unset\n"
             "large_model: unset\n"
@@ -45,7 +69,7 @@ class ReadAllTest(unittest.TestCase):
 
     def test_a_setting_that_is_not_valid_shows_its_notice_and_lists_no_key(self):
         looked_up = []
-        models = "\nsmall_model: unset\nmiddle_model: unset\nlarge_model: unset"
+        models = "\nmodels: unset\nsmall_model: unset\nmiddle_model: unset\nlarge_model: unset"
         gateways = "direct, auto, openrouter-first, openrouter"
         for stored, expected in (
             ({"provider": "auto"}, "provider: auto (not valid: use one of typesafe, openai, google)\ngateway: direct"),
@@ -66,6 +90,7 @@ class ReadAllTest(unittest.TestCase):
                 [
                     "provider: typesafe",
                     "gateway: auto (typesafe, then openrouter)",
+                    "models: unset",
                     "small_model: openrouter small-model",
                     "middle_model: unset",
                     "large_model: unset",
@@ -86,7 +111,7 @@ class ReadAllTest(unittest.TestCase):
             with self.subTest(value):
                 lines = call(handler_for(good_settings(gateway=value), SECRETS)).split(LINES)
                 self.assertEqual(
-                    lines[5:], [TEXTS["keyLines"][name]["set"] for name in names]
+                    lines[6:], [TEXTS["keyLines"][name]["set"] for name in names]
                 )
 
     def test_a_blank_key_is_unset(self):
@@ -103,14 +128,14 @@ class ReadAllTest(unittest.TestCase):
     def test_an_incomplete_model_slot_shows_the_missing_part_as_unset(self):
         settings = good_settings(small_model={"model": "m/x"}, large_model={"provider": "p"})
         lines = call(handler_for(settings)).split(LINES)
-        self.assertEqual(lines[2], "small_model: unset m/x")
-        self.assertEqual(lines[4], "large_model: unset")
+        self.assertEqual(lines[3], "small_model: unset m/x")
+        self.assertEqual(lines[5], "large_model: unset")
 
     def test_the_report_shows_a_model_as_configured(self):
         settings = good_settings(middle_model={"provider": "openrouter", "model": "middle-model"})
         handler = handler_for(settings)
         self.assertEqual(
-            call(handler).split(LINES)[2:5],
+            call(handler).split(LINES)[3:6],
             [
                 "small_model: openrouter small-model",
                 "middle_model: openrouter middle-model",
@@ -119,7 +144,7 @@ class ReadAllTest(unittest.TestCase):
         )
 
     def test_a_blank_spaces_or_missing_model_is_unset_in_every_slot(self):
-        for index, slot in enumerate(("small", "middle", "large"), start=2):
+        for index, slot in enumerate(("small", "middle", "large"), start=3):
             for value in ({"provider": "openrouter", "model": ""}, {"model": "   "}, None):
                 with self.subTest(slot=slot, value=value):
                     settings = good_settings(**{f"{slot}_model": value})
@@ -128,6 +153,71 @@ class ReadAllTest(unittest.TestCase):
 
     def test_extra_keywords_from_hermes_are_accepted(self):
         self.assertIn("provider: typesafe", call(handler_for(), task_id="t", parent_agent=None))
+
+
+class ModelsLinesTest(unittest.TestCase):
+    def test_the_lines_node_gives_follow_the_settings_and_come_before_the_slots(self):
+        lines = ["models: {typesafe:jev-preview}", "typesafe model: jev-preview (OpenRouter: x)"]
+        handler = handler_for(stub=stub_node(reply={"lines": lines}))
+        self.assertEqual(
+            call(handler).split(LINES)[2:5],
+            [*lines, "small_model: openrouter small-model"],
+        )
+
+    def test_the_stored_value_goes_to_node_as_read_and_nothing_else_does(self):
+        for value in ({"typesafe": "jev-preview"}, "{typesafe:jev-preview}", "{typesafe", "", None):
+            with self.subTest(value):
+                stub = stub_node()
+                call(handler_for(good_settings(models=value), SECRETS, stub=stub))
+                self.assertEqual(
+                    json.loads(stub.captured()["stdin"]),
+                    {"command": TEXTS["modelsCommand"], "models": value},
+                )
+
+    def test_the_models_are_read_when_a_setting_is_not_valid_too(self):
+        stub = stub_node()
+        text = call(handler_for(good_settings(provider="auto"), stub=stub))
+        self.assertIn("models: unset", text)
+        self.assertTrue(stub.capture.exists())
+
+    def test_no_node_or_a_failed_run_gives_the_unavailable_line(self):
+        for name, handler in (
+            ("no node", handler_for(find_node=lambda: None)),
+            ("exit code", handler_for(stub=stub_node(exit_code=1))),
+            ("not json", handler_for(stub=stub_node(raw="no\n"))),
+            ("no lines", handler_for(stub=stub_node(reply={"lines": "models: unset"}))),
+            ("no line text", handler_for(stub=stub_node(reply={"lines": [3]}))),
+        ):
+            with self.subTest(name):
+                lines = call(handler).split(LINES)
+                self.assertEqual(lines[2], TEXTS["modelsUnavailable"])
+                self.assertEqual(lines[3], "small_model: openrouter small-model")
+
+
+@unittest.skipUnless(shutil.which("node"), "node is not installed")
+class RealBundleTest(unittest.TestCase):
+    """The shipped bundle prints the models lines, naming the entry that is not valid."""
+
+    def lines(self, models):
+        node_path = shutil.which("node")
+        ctx = FakeCtx(good_settings(models=models))
+        api = fake_api(secrets={}, find_node=lambda: node_path)
+        submodule("config_tool").register_tool(ctx, api=api, script=PLUGIN_DIR / "route.mjs")
+        return call(ctx.tools[0]["handler"]).split(LINES)
+
+    def test_a_dict_and_a_text_give_their_model_lines(self):
+        for models in ({"typesafe": "jev-preview"}, "{typesafe:jev-preview}"):
+            with self.subTest(models):
+                lines = self.lines(models)
+                self.assertEqual(
+                    lines[3], "typesafe model: jev-preview (OpenRouter: jev-preview)"
+                )
+
+    def test_an_entry_that_is_not_valid_is_named(self):
+        self.assertEqual(
+            self.lines("{typesafe:a/b}")[2],
+            "models: {typesafe:a/b} (not valid: typesafe:a/b)",
+        )
 
 
 class NoKeyLeakTest(unittest.TestCase):

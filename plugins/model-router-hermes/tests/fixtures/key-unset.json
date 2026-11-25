@@ -6,7 +6,7 @@
 		"provider": "typesafe",
 		"keys": {},
 		"budgetMs": 8000,
-		"models": {
+		"slotModels": {
 			"small": "openai/small",
 			"large": "openai/large"
 		},

@@ -1,4 +1,5 @@
 import { EFFORTS } from "#core/decision/ladder.ts";
+import type { Stored } from "#core/options/settings.ts";
 import {
 	FAILED,
 	KEY_UNSET,
@@ -6,6 +7,15 @@ import {
 	TIMEOUT,
 } from "#core/output/reasons.ts";
 import { LEVELS } from "#core/parts/part.ts";
+
+// The stored setting that names the scoring model of each provider. Python reads it and sends it as stored.
+export const MODELS_SETTING = "models" satisfies keyof Stored;
+
+// What Python asks Node for to print the `models` lines, which only the bundle can read.
+export const MODELS_COMMAND = "modelsLines";
+
+// The line Python prints when it cannot get the models lines from Node.
+export const MODELS_UNAVAILABLE = "models: unavailable, no answer from node";
 
 // The reason Python gives when no Node runtime is on the path.
 const NODE_NOT_FOUND = "node not found";

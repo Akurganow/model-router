@@ -92,7 +92,7 @@ function answer(
 ): HermesResponse {
 	const { slot, effort, line } = outcomeOf(
 		decided,
-		request.models,
+		request.slotModels,
 		request.keptEffort === undefined
 			? undefined
 			: KEPT_LABELS[request.keptEffort],

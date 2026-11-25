@@ -106,11 +106,15 @@ Hermes Agent has no `scope` setting. The plugin considers every task of `delegat
 
 `/model-router-provider [typesafe|openai|google]` shows or changes the provider, and `/model-router-gateway [direct|auto|openrouter-first|openrouter]` shows or changes the gateway. [The option commands](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-option-commands) say what a bare command, an invalid value and a failed write print. Each command writes only from a local session: a Hermes CLI, TUI or Desktop session. From any other session, such as a messaging platform, a valid value prints `<setting> unchanged: only a local session can change it` and the current line.
 
-The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the three model lines and the key lines. A model line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
+The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `models` lines, the three model lines and the key lines. The `models` lines come from the plugin's Node step, which reads the stored value. When Hermes has no Node or the step fails, they are the one line `models: unavailable, no answer from node`. A model line shows the slot's provider and model as you set them, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid. The tool sits in the `model_router` toolset, which is on once the plugin is enabled.
 
 ```text
 provider: typesafe
 gateway: auto (typesafe, then openrouter)
+models: {typesafe:jev-preview}
+typesafe model: jev-preview (OpenRouter: jev-preview)
+openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)
+google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)
 small_model: openrouter <model>
 middle_model: unset
 large_model: unset
@@ -135,6 +139,16 @@ A slot with no `model` counts as unset. You can fill any of the slots.
 A slot that has a `model` gets that `model` and its `provider` set on the task, for a scored task and for a pinned `level`.
 
 An unset slot keeps the route Hermes would give the task, and the line names the slot: `L1 middle model unset`. For a task it scores, the plugin still sets the effort, except where [the order of precedence](#precedence) says otherwise. [A slot with no model](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-slot-with-no-model) has the rule the omp, OpenClaw and Hermes plugins share.
+
+### Scoring models
+
+`models` names the scoring model of each provider as `provider:model` entries, for example `{typesafe:jev-latest, openai:gpt-6-luna}`, or as a JSON object or a mapping. A provider with no entry uses its default model. The plugin sends only the entry of the provider in force, so one value serves every `provider` setting. Set it in the settings form or with:
+
+```bash
+hermes config set plugins.entries.model-router-hermes.settings.models '{typesafe:jev-latest, openai:gpt-6-luna}'
+```
+
+A blank or unset value uses the defaults. A value that is not valid skips every scored task with `models not valid: run setup`, and the config tool names the entry that fails: an unknown provider, an empty model, an entry with no colon, a provider named twice, a model with a slash, or text of neither form.
 
 ## Routing
 
@@ -205,7 +219,7 @@ The routed effort replaces the effort of the calling session. Hermes ranks a rou
 
 Every task without a `level` meets these gates in order. The first that fails skips the task with its reason, and Hermes runs the task on its own route, the one the default backend gives. A task with a `level` meets the first gate and the third.
 
-1. `<setting> not valid: run setup`: a stored `provider` or `gateway` holds a value outside its list. [Not valid: run setup](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names.
+1. `<setting> not valid: run setup`: a stored `provider` or `gateway` holds a value outside its list. A stored `models` value that is not valid gives the same reason, named `models`, but only Node reads that value: it skips a scored task after gates 2 to 5 have passed, and it never skips a task with a `level`. [Not valid: run setup](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says which setting the reason names.
 2. `key unset`: no path the `gateway` setting allows has a key.
 3. `subagent model set`: the `delegation` section sets `model`, `provider`, `base_url` or `api_key`. Hermes's own choice decides.
 4. `node not found`: Hermes has no Node. [The Node step](#node) says why.

@@ -1,5 +1,9 @@
 import { settingTexts, setupTexts } from "#adapters/hermes/setup.ts";
-import { HERMES_TEXTS, taskParameterTexts } from "#adapters/hermes/texts.ts";
+import {
+	HERMES_TEXTS,
+	MODELS_SETTING,
+	taskParameterTexts,
+} from "#adapters/hermes/texts.ts";
 import { EFFORTS } from "#core/decision/ladder.ts";
 import {
 	pickModel,
@@ -159,6 +163,7 @@ const constants = (source: Source): JsonObject => {
 		blank: blankCodePoints(),
 		keyVariables: { ...KEY_VARIABLES },
 		settings: HARNESS_SETTINGS.hermes.map(settingEntry),
+		modelsSetting: MODELS_SETTING,
 		choices: choices(HARNESS_SETTINGS.hermes, {}),
 		efforts: [...EFFORTS],
 		skips: Object.fromEntries(

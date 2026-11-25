@@ -9,10 +9,18 @@ import time
 
 from . import node, params
 from .budget import Budget
-from .constants import CONSTANTS, MS_PER_SECOND, PLUGIN_DIR
+from .constants import CONSTANTS, MS_PER_SECOND, SCRIPT
 from .hermes_api import live_api
 from .labels import OnceLog
-from .settings import choice, first_not_valid, found_keys, read_slot, read_texts, stripped
+from .settings import (
+    choice,
+    first_not_valid,
+    found_keys,
+    read_models,
+    read_slot,
+    read_texts,
+    stripped,
+)
 
 # Config keys that name a model route of their own; the plugin then leaves the task alone.
 SUBAGENT_ROUTE_KEYS = ("model", "provider", "base_url", "api_key")
@@ -49,7 +57,7 @@ class Router:
     def __init__(self, ctx, *, api=None, clock=time.monotonic, script=None, constants=None):
         self._ctx = ctx
         self._api = api if api is not None else live_api()
-        self._script = str(script if script is not None else PLUGIN_DIR / "route.mjs")
+        self._script = str(script if script is not None else SCRIPT)
         self._constants = constants if constants is not None else CONSTANTS
         self._budget = Budget(self._constants["routingLimitMs"], clock)
         self._log = OnceLog(logging.getLogger(__name__))
@@ -115,9 +123,10 @@ class Router:
             "task": task.get("goal") or "",
             "context": task.get("context") or "",
             **stored,
+            self._constants["modelsSetting"]: read_models(self._ctx, self._constants),
             "keys": keys,
             "budgetMs": budget_ms,
-            "models": {name: slot.model or None for name, slot in slot_settings.items()},
+            "slotModels": {name: slot.model or None for name, slot in slot_settings.items()},
             "keptEffort": _kept_effort(config, params.caller_effort(task, self._constants)),
             "description": params.description(task),
         }

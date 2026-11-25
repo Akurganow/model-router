@@ -77,17 +77,29 @@ def _checked(reply):
     raise NodeFailed("reply is outside the protocol")
 
 
-def parse_response(text):
-    """Reads Node's stdout. Raises NodeFailed unless it is one protocol object."""
+def _json(text):
     try:
-        reply = json.loads(text)
+        return json.loads(text)
     except ValueError:
         raise NodeFailed("reply is not one JSON object") from None
-    return _checked(reply)
 
 
-def run_node(command, request, timeout_s):
-    """Runs `command` (a list, no shell) with the request on stdin; returns a Skip or a Route."""
+def parse_response(text):
+    """Reads Node's stdout. Raises NodeFailed unless it is one protocol object."""
+    return _checked(_json(text))
+
+
+def parse_lines(text):
+    """Reads Node's stdout for the models command. Raises NodeFailed unless it is a list of lines."""
+    reply = _json(text)
+    lines = reply.get("lines") if isinstance(reply, dict) else None
+    if not isinstance(lines, list) or not all(isinstance(line, str) for line in lines):
+        raise NodeFailed("reply has no lines")
+    return lines
+
+
+def _stdout(command, request, timeout_s):
+    """Runs `command` (a list, no shell) with the request on stdin; returns its stdout as text."""
     try:
         done = subprocess.run(
             command,
@@ -105,6 +117,16 @@ def run_node(command, request, timeout_s):
     if done.returncode != 0:
         raise NodeFailed("node exited non-zero")
     try:
-        return parse_response(done.stdout.decode("utf-8"))
+        return done.stdout.decode("utf-8")
     except UnicodeDecodeError:
         raise NodeFailed("reply is not text") from None
+
+
+def run_node(command, request, timeout_s):
+    """Runs the routing request; returns a Skip or a Route."""
+    return parse_response(_stdout(command, request, timeout_s))
+
+
+def run_lines(command, request, timeout_s):
+    """Runs the models command; returns the lines Node answers."""
+    return parse_lines(_stdout(command, request, timeout_s))

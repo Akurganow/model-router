@@ -47,6 +47,11 @@ def read_texts(ctx, constants):
     return stored
 
 
+def read_models(ctx, constants):
+    """The stored `models` value as Hermes gives it: a text, a mapping or None. Node reads it."""
+    return ctx.get_config(constants["modelsSetting"], None)
+
+
 def _value(spec, text):
     """The value a stored text reads as, or None when the text is not valid."""
     if not stripped(text):
