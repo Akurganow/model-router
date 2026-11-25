@@ -47,7 +47,7 @@ test("the manifest names the setup entry's migration and leaves requiresRuntime 
 	assert.deepEqual(manifest.setup, { configMigrations: ["settings-v1"] });
 });
 
-test("the config schema holds the eleven settings and refuses any other key", () => {
+test("the config schema holds the twelve settings and refuses any other key", () => {
 	assert.equal(schema.additionalProperties, false);
 	assert.deepEqual(Object.keys(schema.properties ?? {}), [
 		"provider",
@@ -60,6 +60,7 @@ test("the config schema holds the eleven settings and refuses any other key", ()
 		"api_key",
 		"openai_api_key",
 		"google_api_key",
+		"perplexity_api_key",
 		"openrouter_api_key",
 	]);
 });
@@ -99,7 +100,7 @@ test("the models setting takes a string or an object of strings, with the shared
 	});
 	assert.deepEqual(manifest.uiHints.models, {
 		label: "Scoring models",
-		help: "The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.",
+		help: "The scoring model per provider as provider:model entries for typesafe, openai, google or perplexity, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.",
 	});
 	assert.deepEqual(validate(schema, { models: "{typesafe:jev-latest}" }), []);
 	assert.deepEqual(

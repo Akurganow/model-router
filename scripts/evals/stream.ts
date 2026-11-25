@@ -24,7 +24,7 @@ export function jsonLines(text: string): Record<string, unknown>[] {
 // "<key holder> <word>" form. The model is optional: a reply may name none. cleanModel in
 // src/core/scoring/reply.ts cuts the model to these characters.
 const MODEL_SEGMENT = new RegExp(
-	` · p=\\S+ · (?:${KEY_HOLDERS.join("|")})(?: (?<jev>[A-Za-z0-9._/-]+))?`,
+	` · p=\\S+ · (?:${KEY_HOLDERS.join("|")})(?: (?<jev>[A-Za-z0-9._/:-]+))?`,
 );
 
 export function jevModel(line: string): string | null {

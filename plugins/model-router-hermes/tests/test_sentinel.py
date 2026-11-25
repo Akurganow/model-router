@@ -19,6 +19,7 @@ TYPESAFE_SENTINEL = "ts-sentinel-alpha"
 OPENROUTER_SENTINEL = "or-sentinel-beta"
 OPENAI_SENTINEL = "oa-sentinel-zeta"
 GOOGLE_SENTINEL = "gm-sentinel-eta"
+PERPLEXITY_SENTINEL = "px-sentinel-theta"
 CONFIG_API_SENTINEL = "cfg-sentinel-gamma"
 TASK_SENTINEL = "goal-sentinel-delta"
 CONTEXT_SENTINEL = "ctx-sentinel-epsilon"
@@ -26,6 +27,7 @@ SECRETS = {
     "TYPESAFE_API_KEY": TYPESAFE_SENTINEL,
     "OPENAI_API_KEY": OPENAI_SENTINEL,
     "GEMINI_API_KEY": GOOGLE_SENTINEL,
+    "PERPLEXITY_API_KEY": PERPLEXITY_SENTINEL,
     "OPENROUTER_API_KEY": OPENROUTER_SENTINEL,
 }
 
@@ -65,6 +67,7 @@ class SentinelTest(unittest.TestCase):
             OPENROUTER_SENTINEL,
             OPENAI_SENTINEL,
             GOOGLE_SENTINEL,
+            PERPLEXITY_SENTINEL,
             CONFIG_API_SENTINEL,
             TASK_SENTINEL,
             CONTEXT_SENTINEL,
@@ -79,6 +82,7 @@ class SentinelTest(unittest.TestCase):
         self.assertNotIn(OPENROUTER_SENTINEL, json.dumps(without_keys))
         self.assertNotIn(OPENAI_SENTINEL, json.dumps(request))
         self.assertNotIn(GOOGLE_SENTINEL, json.dumps(request))
+        self.assertNotIn(PERPLEXITY_SENTINEL, json.dumps(request))
         for field in ("provider", "gateway", "models"):
             self.assertNotIn(TASK_SENTINEL, str(request[field]))
 

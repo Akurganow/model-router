@@ -297,37 +297,37 @@ test("the settings report lists the values and each key the gateway allows", asy
 		[
 			{},
 			[],
-			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset",
+			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nperplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\ntypesafe key: unset",
 		],
 		[
 			{ gateway: "auto", scope: "extended", api_key: "k-1" },
 			["OPENROUTER_API_KEY"],
-			"provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: extended\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: set\nopenrouter key: set",
+			"provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: extended\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nperplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\ntypesafe key: set\nopenrouter key: set",
 		],
 		[
 			{ gateway: "openrouter-first" },
 			["TYPESAFE_API_KEY"],
-			"provider: typesafe\ngateway: openrouter-first (openrouter, then typesafe)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nopenrouter key: unset\ntypesafe key: set",
+			"provider: typesafe\ngateway: openrouter-first (openrouter, then typesafe)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nperplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\nopenrouter key: unset\ntypesafe key: set",
 		],
 		[
 			{ gateway: "openrouter", openrouter_api_key: "k-2", api_key: "k-1" },
 			[],
-			"provider: typesafe\ngateway: openrouter (openrouter)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nopenrouter key: set",
+			"provider: typesafe\ngateway: openrouter (openrouter)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nperplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\nopenrouter key: set",
 		],
 		[
 			{ gateway: "auto", api_key: "  ", openrouter_api_key: "" },
 			[],
-			"provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset\nopenrouter key: unset",
+			"provider: typesafe\ngateway: auto (typesafe, then openrouter)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nperplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\ntypesafe key: unset\nopenrouter key: unset",
 		],
 		[
 			{ models: "{typesafe:jev-preview, openai:gpt-7-sol}" },
 			[],
-			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: {typesafe:jev-preview, openai:gpt-7-sol}\ntypesafe model: jev-preview (OpenRouter: jev-preview)\nopenai model: gpt-7-sol (OpenRouter: openai/gpt-7-sol)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset",
+			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: {typesafe:jev-preview, openai:gpt-7-sol}\ntypesafe model: jev-preview (OpenRouter: jev-preview)\nopenai model: gpt-7-sol (OpenRouter: openai/gpt-7-sol)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nperplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\ntypesafe key: unset",
 		],
 		[
 			{ model: "jev-preview" },
 			[],
-			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: {typesafe:jev-preview} (not stored yet: run setup)\ntypesafe model: jev-preview (OpenRouter: jev-preview)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset",
+			"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: {typesafe:jev-preview} (not stored yet: run setup)\ntypesafe model: jev-preview (OpenRouter: jev-preview)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nperplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\ntypesafe key: unset",
 		],
 		[
 			{ models: "{typesafe:jev-latest, foo:bar}" },
@@ -354,6 +354,7 @@ const MODELS_LINES = [
 	"typesafe model: jev-preview (OpenRouter: jev-preview)",
 	"openai model: gpt-7-sol (OpenRouter: openai/gpt-7-sol)",
 	"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+	"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 ].join("\n");
 const MODELS_KEY = "model-router.models";
 const MODEL_KEY = "model-router.model";
@@ -439,6 +440,7 @@ test("the text the report shows, with a removed model option stored, erases it a
 				"typesafe model: jev-1.14.0 (OpenRouter: typesafe/jev-1.14)",
 				"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 				"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+				"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 			].join("\n"),
 		},
 	);

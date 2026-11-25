@@ -289,6 +289,8 @@ test("a non-string, missing or blank description gives the neutral line", () => 
 // Token-shaped fixtures are joined from pieces at run time, so neither push protection nor the owner-setup scan reads this file as a leak.
 const j = (...pieces: string[]) => pieces.join("");
 const A36 = "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8";
+// 48 characters, the shortest body of a Perplexity key.
+const PPLX_BODY = "A1b2".repeat(12);
 const AWS_ID = j("AKIA", "IOSFODNN7EXAMPLE");
 const AWS_SECRET = j("wJalrXUtnFEMI", "/K7MDENG/bPxRfiCYEXAMPLEKEY");
 const RSA = "RSA PRIVATE";
@@ -529,6 +531,18 @@ const SHAPES: [string, string, string, string][] = [
 		"a PyPI upload token",
 		`upload with ${j("pypi", "-AgEIcHlwaS5vcmc", "A".repeat(60))}`,
 		"upload with ***",
+	],
+	[
+		"Perplexity API key",
+		"a Perplexity API key",
+		`call with ${j("pplx", "-", PPLX_BODY)}`,
+		"call with ***",
+	],
+	[
+		"Perplexity API key",
+		"a longer run after the Perplexity prefix",
+		`call with ${j("pplx", "-", PPLX_BODY, "A1b2")} now`,
+		"call with *** now",
 	],
 	[
 		"Bearer token",
@@ -1080,6 +1094,11 @@ const ADVERSARIAL: [string, string, () => string][] = [
 		"PyPI token",
 		"repeated PyPI prefixes",
 		() => fill(j("pypi", "-AgEIcHlwaS5vcmc ")),
+	],
+	[
+		"Perplexity API key",
+		"Perplexity near misses",
+		() => fill(`${j("pplx", "-")}${"a".repeat(47)} `),
 	],
 	["Bearer token", "repeated Bearer", () => fill("Bearer ")],
 	["sk- key", "repeated sk- prefixes", () => fill(j("sk", "-"))],

@@ -38,6 +38,7 @@ const UNSET_MODELS = [
 	"typesafe model: jev-latest (OpenRouter: jev-latest)",
 	"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 	"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+	"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 ];
 const NO_ENV = { TYPESAFE_API_KEY: "", OPENROUTER_API_KEY: "" };
 
@@ -314,6 +315,7 @@ describe("the tool reads", () => {
 			"typesafe model: jev-preview (OpenRouter: jev-preview)",
 			"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 			"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+			"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 		];
 		const report = (models: unknown) =>
 			runTool(setup({ models, api_key: TYPESAFE_KEY }));

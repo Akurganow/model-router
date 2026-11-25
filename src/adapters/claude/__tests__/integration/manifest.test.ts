@@ -20,7 +20,7 @@ const manifest: { commands: Record<string, Command | undefined> } = JSON.parse(
 );
 
 const HINTS = {
-	provider: "[typesafe|openai|google]",
+	provider: "[typesafe|openai|google|perplexity]",
 	gateway: "[direct|auto|openrouter-first|openrouter]",
 	scope: "[core|extended]",
 };

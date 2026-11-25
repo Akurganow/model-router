@@ -161,7 +161,7 @@ test("the scope line shows the value, the default when none is stored, or that i
 test("use-one-of and unchanged texts name the setting", () => {
 	assert.equal(
 		useOneOf("provider"),
-		"provider: use one of typesafe, openai, google",
+		"provider: use one of typesafe, openai, google, perplexity",
 	);
 	assert.equal(useOneOf("scope"), "scope: use one of core, extended");
 	assert.equal(
@@ -216,6 +216,7 @@ test("labels carry the consequences of each value", () => {
 		"typesafe - Jev from TypeSafe",
 		"openai - OpenAI's decision model",
 		"google - Google's decision model",
+		"perplexity - Perplexity's decision model",
 	]);
 	assert.deepEqual(ask("gateway", "direct").options, [
 		"direct - the provider's own API only",
@@ -359,6 +360,7 @@ const UNSET_MODELS = [
 	"typesafe model: jev-latest (OpenRouter: jev-latest)",
 	"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 	"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+	"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 ].join("\n");
 
 test("settingsReport joins the value lines, the extra lines and the key lines in order", () => {
@@ -420,7 +422,7 @@ test("settingsReport gives key lines only when every setting is valid", () => {
 	);
 	assert.equal(
 		settingsReport({ provider: "auto" }, [], KEY),
-		"provider: auto (not valid: use one of typesafe, openai, google)\ngateway: direct\nscope: core\n" +
+		"provider: auto (not valid: use one of typesafe, openai, google, perplexity)\ngateway: direct\nscope: core\n" +
 			UNSET_MODELS,
 	);
 	assert.equal(
@@ -544,6 +546,7 @@ test("the report shows the models as stored and the model each path takes", () =
 			"typesafe model: jev-1.14.0 (OpenRouter: typesafe/jev-1.14)\n" +
 			"openai model: gpt-7-sol (OpenRouter: openai/gpt-7-sol)\n" +
 			"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\n" +
+			"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\n" +
 			"typesafe key: unset",
 	);
 });
@@ -563,6 +566,7 @@ test("the report says when the ladder made the models and they are not stored ye
 			"typesafe model: jev-preview (OpenRouter: jev-preview)\n" +
 			"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\n" +
 			"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\n" +
+			"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\n" +
 			"typesafe key: unset",
 	);
 });

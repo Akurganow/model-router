@@ -1,7 +1,7 @@
 {
 	"id": "model-router-openclaw",
 	"name": "Model Router",
-	"description": "Routes OpenClaw subagent spawns to your small, middle or large model and an effort that fits the task, judged by Jev or the decision model the provider setting names. It scores a task even when you set no model, and sets the effort unless you set one. For each routed sessions_spawn call it sends the task text, condensed to at most 12,000 characters, the agent's description, cut to 500 characters, and the spawn's one-line label, all with token-shaped strings such as keys masked, to the provider's own API (api.typesafe.ai, api.openai.com or generativelanguage.googleapis.com), to openrouter.ai or to both, as its provider and gateway settings allow, each with its own key. The spawn of the requesting agent itself sends that agent's description when it has one and a fixed text when it has none. The plugin sets a model only from your small_model, middle_model and large_model settings. The scope setting picks the spawns: core routes the spawn of the requesting agent itself; extended also routes the spawns of other agents that set no model. A key set as an environment variable is visible to every process OpenClaw starts.",
+	"description": "Routes OpenClaw subagent spawns to your small, middle or large model and an effort that fits the task, judged by Jev or the decision model the provider setting names. It scores a task even when you set no model, and sets the effort unless you set one. For each routed sessions_spawn call it sends the task text, condensed to at most 12,000 characters, the agent's description, cut to 500 characters, and the spawn's one-line label, all with token-shaped strings such as keys masked, to the provider's own API (api.typesafe.ai, api.openai.com, generativelanguage.googleapis.com or api.perplexity.ai), to openrouter.ai or to both, as its provider and gateway settings allow, each with its own key. The spawn of the requesting agent itself sends that agent's description when it has one and a fixed text when it has none. The plugin sets a model only from your small_model, middle_model and large_model settings. The scope setting picks the spawns: core routes the spawn of the requesting agent itself; extended also routes the spawns of other agents that set no model. A key set as an environment variable is visible to every process OpenClaw starts.",
 	"version": "0.27.0",
 	"activation": {
 		"onStartup": true
@@ -29,6 +29,10 @@
 					"expected": "string"
 				},
 				{
+					"path": "perplexity_api_key",
+					"expected": "string"
+				},
+				{
 					"path": "openrouter_api_key",
 					"expected": "string"
 				}
@@ -38,7 +42,7 @@
 	"uiHints": {
 		"provider": {
 			"label": "Scoring provider",
-			"help": "Whose model scores each subagent task: typesafe, openai or google."
+			"help": "Whose model scores each subagent task: typesafe, openai, google or perplexity."
 		},
 		"gateway": {
 			"label": "OpenRouter gateway",
@@ -50,7 +54,7 @@
 		},
 		"models": {
 			"label": "Scoring models",
-			"help": "The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default."
+			"help": "The scoring model per provider as provider:model entries for typesafe, openai, google or perplexity, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default."
 		},
 		"small_model": {
 			"label": "Small model",
@@ -77,6 +81,11 @@
 		"google_api_key": {
 			"label": "Google API key",
 			"help": "The plugin sends it to Google when provider is google and gateway is not openrouter.",
+			"sensitive": true
+		},
+		"perplexity_api_key": {
+			"label": "Perplexity API key",
+			"help": "The plugin sends it to Perplexity when provider is perplexity and gateway is not openrouter.",
 			"sensitive": true
 		},
 		"openrouter_api_key": {
@@ -123,6 +132,9 @@
 				"type": "string"
 			},
 			"google_api_key": {
+				"type": "string"
+			},
+			"perplexity_api_key": {
 				"type": "string"
 			},
 			"openrouter_api_key": {

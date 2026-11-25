@@ -48,7 +48,13 @@ const FIXTURE: Source = {
 	},
 	options: { provider: OPTION, gateway: OPTION, scope: OPTION },
 	models: MODELS,
-	keys: { typesafe: KEY, openai: KEY, google: KEY, openrouter: KEY },
+	keys: {
+		typesafe: KEY,
+		openai: KEY,
+		google: KEY,
+		perplexity: KEY,
+		openrouter: KEY,
+	},
 	claude: {
 		skills: ["s"],
 		commandContents: { provider: "p", gateway: "g", scope: "s" },

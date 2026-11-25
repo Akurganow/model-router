@@ -2,6 +2,7 @@ import type { Attempt, Maker, Path } from "#core/providers/provider.ts";
 import type { Endpoint, MakerModule } from "./maker-module.ts";
 import { google } from "./makers/google.ts";
 import { openai } from "./makers/openai.ts";
+import { perplexity } from "./makers/perplexity.ts";
 import { typesafe } from "./makers/typesafe.ts";
 
 // A maker in `MAKERS` with no module, or a module with no maker, fails the type check.
@@ -9,6 +10,7 @@ export const MODULES: Readonly<Record<Maker, MakerModule>> = {
 	typesafe,
 	openai,
 	google,
+	perplexity,
 };
 
 /**

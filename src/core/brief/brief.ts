@@ -71,6 +71,7 @@ export const TOKEN_PREFIXES: Readonly<Record<string, string>> = {
 	"npm token": "npm_[A-Za-z0-9]{36,}",
 	"Hugging Face token": "hf_[A-Za-z]{34,}",
 	"PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}",
+	"Perplexity API key": "pplx-[A-Za-z0-9]{48,}",
 };
 
 // The task text goes to a third party, and nothing marks which strings are secrets, so redaction matches shapes.

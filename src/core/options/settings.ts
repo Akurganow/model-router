@@ -56,6 +56,7 @@ const TEXTS: Readonly<Record<ValueSetting, ValueText<string>>> = {
 			typesafe: "Jev from TypeSafe",
 			openai: "OpenAI's decision model",
 			google: "Google's decision model",
+			perplexity: "Perplexity's decision model",
 		},
 	} satisfies ValueText<Maker>,
 	gateway: {

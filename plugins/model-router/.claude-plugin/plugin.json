@@ -1,7 +1,7 @@
 {
 	"name": "model-router",
 	"version": "0.27.0",
-	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev or the decision model the provider option names. For each routed Agent call it sends the task text, condensed to at most 12,000 characters, the agent's description, cut to 500 characters, and the call's one-line description, all with token-shaped strings such as keys masked, to the provider's own API (api.typesafe.ai, api.openai.com or generativelanguage.googleapis.com), to openrouter.ai or to both, as its provider and gateway options allow, each with its own key. The built-in general-purpose and claude agents send a fixed text in place of their description. The scope option picks the calls: core routes the four built-in agents, extended also routes user, project and plugin agents and sends their text. A config tool opens the plugin's own dialog to change the provider, gateway and scope options. A key set as an environment variable is visible to every process Claude Code starts.",
+	"description": "Routes each subagent to a Claude model and effort that fits its task, judged by Jev or the decision model the provider option names. For each routed Agent call it sends the task text, condensed to at most 12,000 characters, the agent's description, cut to 500 characters, and the call's one-line description, all with token-shaped strings such as keys masked, to the provider's own API (api.typesafe.ai, api.openai.com, generativelanguage.googleapis.com or api.perplexity.ai), to openrouter.ai or to both, as its provider and gateway options allow, each with its own key. The built-in general-purpose and claude agents send a fixed text in place of their description. The scope option picks the calls: core routes the four built-in agents, extended also routes user, project and plugin agents and sends their text. A config tool opens the plugin's own dialog to change the provider, gateway and scope options. A key set as an environment variable is visible to every process Claude Code starts.",
 	"author": {
 		"name": "Akurganow",
 		"url": "https://github.com/Akurganow"
@@ -19,13 +19,14 @@
 		"jev",
 		"openai",
 		"gemini",
+		"perplexity",
 		"openrouter"
 	],
 	"skills": ["."],
 	"commands": {
 		"provider": {
-			"description": "Shows or changes whose model scores subagent calls: typesafe, openai, google.",
-			"argumentHint": "[typesafe|openai|google]",
+			"description": "Shows or changes whose model scores subagent calls: typesafe, openai, google, perplexity.",
+			"argumentHint": "[typesafe|openai|google|perplexity]",
 			"content": "Call the tool mcp__model-router__config. With no setting it shows the router's settings. With the setting \"provider\" it asks the person whose model should score subagent calls and applies the answer. Pass no value, because the person chooses in the dialog. Show the tool's reply to the person. If the tool is missing, tell the person to open /config, find the model-router plugin, and set its provider option in the plugin's settings."
 		},
 		"gateway": {
@@ -43,8 +44,8 @@
 		"provider": {
 			"type": "string",
 			"title": "Scoring provider",
-			"description": "Whose model scores each subagent task: typesafe, openai or google.",
-			"options": ["typesafe", "openai", "google"],
+			"description": "Whose model scores each subagent task: typesafe, openai, google or perplexity.",
+			"options": ["typesafe", "openai", "google", "perplexity"],
 			"default": "typesafe"
 		},
 		"gateway": {
@@ -64,7 +65,7 @@
 		"models": {
 			"type": "string",
 			"title": "Scoring models",
-			"description": "The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.",
+			"description": "The scoring model per provider as provider:model entries for typesafe, openai, google or perplexity, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.",
 			"default": ""
 		},
 		"model": {
@@ -88,6 +89,12 @@
 			"type": "string",
 			"title": "Google API key",
 			"description": "The plugin sends it to Google when provider is google and gateway is not openrouter.",
+			"sensitive": true
+		},
+		"perplexity_api_key": {
+			"type": "string",
+			"title": "Perplexity API key",
+			"description": "The plugin sends it to Perplexity when provider is perplexity and gateway is not openrouter.",
 			"sensitive": true
 		},
 		"openrouter_api_key": {

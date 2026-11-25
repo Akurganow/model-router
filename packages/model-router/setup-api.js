@@ -20,7 +20,7 @@ function plainText(value) {
 }
 
 // src/core/providers/provider.ts
-var MAKERS = ["typesafe", "openai", "google"];
+var MAKERS = ["typesafe", "openai", "google", "perplexity"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
 var GATEWAYS = [
   "direct",
@@ -293,7 +293,8 @@ var TEXTS = {
     consequences: {
       typesafe: "Jev from TypeSafe",
       openai: "OpenAI's decision model",
-      google: "Google's decision model"
+      google: "Google's decision model",
+      perplexity: "Perplexity's decision model"
     }
   },
   gateway: {

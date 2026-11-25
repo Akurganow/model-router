@@ -19,6 +19,7 @@ const PREVIEW_LINES = lines(
 	"typesafe model: jev-preview (OpenRouter: jev-preview)",
 	"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 	"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+	"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 );
 
 // The fake serves the OpenAI reply on OpenAI's address and the System One reply elsewhere.

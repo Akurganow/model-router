@@ -21,6 +21,7 @@ SECRETS = {
     "TYPESAFE_API_KEY": "typesafe-secret-one",
     "OPENAI_API_KEY": "openai-secret-three",
     "GEMINI_API_KEY": "google-secret-four",
+    "PERPLEXITY_API_KEY": "perplexity-secret-five",
     "OPENROUTER_API_KEY": "openrouter-secret-2",
 }
 # What the Node stand-in answers when a test asks for no lines of its own.
@@ -72,7 +73,7 @@ class ReadAllTest(unittest.TestCase):
         models = "\nmodels: unset\nsmall_model: unset\nmiddle_model: unset\nlarge_model: unset"
         gateways = "direct, auto, openrouter-first, openrouter"
         for stored, expected in (
-            ({"provider": "auto"}, "provider: auto (not valid: use one of typesafe, openai, google)\ngateway: direct"),
+            ({"provider": "auto"}, "provider: auto (not valid: use one of typesafe, openai, google, perplexity)\ngateway: direct"),
             ({"gateway": "fast"}, f"provider: typesafe\ngateway: fast (not valid: use one of {gateways})"),
         ):
             with self.subTest(stored):

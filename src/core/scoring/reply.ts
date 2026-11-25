@@ -9,5 +9,5 @@ export type Usage = {
 // The model name reaches the routing line, so it keeps safe characters only.
 export const cleanModel = (model: unknown): string =>
 	typeof model === "string"
-		? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX)
+		? model.replace(/[^A-Za-z0-9._/:-]/g, "").slice(0, MODEL_CHARS_MAX)
 		: "";

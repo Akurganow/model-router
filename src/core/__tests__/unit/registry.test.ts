@@ -34,6 +34,10 @@ test("modelOf gives a stored name as written on the direct path", () => {
 	assert.equal(modelOf("typesafe", "direct", "jev-1.14.0"), "jev-1.14.0");
 	assert.equal(modelOf("openai", "direct", "gpt-7-sol"), "gpt-7-sol");
 	assert.equal(modelOf("openai", "direct", "toString"), "toString");
+	assert.equal(
+		modelOf("perplexity", "direct", "pplx-decider-flash-latest"),
+		"pplx-decider-flash-latest",
+	);
 });
 
 test("modelOf gives the slug of a name in the table on the OpenRouter path", () => {
@@ -50,6 +54,10 @@ test("modelOf gives the slug of a name in the table on the OpenRouter path", () 
 		modelOf("google", "openrouter", "gemini-decision-1"),
 		"google/gemini-decision-1",
 	);
+	assert.equal(
+		modelOf("perplexity", "openrouter", "pplx-decider-flash-latest"),
+		"perplexity/pplx-decider-flash-v1.3:free",
+	);
 });
 
 test("modelOf sends a name outside the table as written on the System One route and with its vendor on a Decisions route", () => {
@@ -61,6 +69,10 @@ test("modelOf sends a name outside the table as written on the System One route 
 	assert.equal(
 		modelOf("google", "openrouter", "gemini-decision-2"),
 		"google/gemini-decision-2",
+	);
+	assert.equal(
+		modelOf("perplexity", "openrouter", "pplx-decider-v9"),
+		"perplexity/pplx-decider-v9",
 	);
 });
 

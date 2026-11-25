@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 import { generatedFiles } from "./build/copies.ts";
 import { EXIT_USAGE } from "./exit-codes.ts";
 
-// The two key shapes are two of the shapes the redaction in src/core/brief/brief.ts
-// masks, and the bearer rule ignores case as that redaction does. It also needs
+// The three key shapes are three of the shapes the redaction in src/core/brief/brief.ts
+// masks. The bearer rule ignores case as that redaction does. It also needs
 // a digit and 16 characters, because prose such as "the bearer token" and the
 // masked form "Bearer ***" must pass.
 const BEARER_TOKEN = "[A-Za-z0-9._~+/=-]";
@@ -23,6 +23,7 @@ export const MARKERS = [
 		pattern: HOME_PATH,
 	},
 	{ kind: "sk- key", pattern: /\bsk-[A-Za-z0-9_-]{8,}/ },
+	{ kind: "pplx- key", pattern: /\bpplx-[A-Za-z0-9]{48,}/ },
 	{
 		kind: "Bearer token",
 		pattern: new RegExp(

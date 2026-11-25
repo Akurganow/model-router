@@ -457,6 +457,7 @@ describe("the models lines for the config tool", () => {
 		"typesafe model: jev-latest (OpenRouter: jev-latest)",
 		"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 		"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+		"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 	];
 
 	it("prints the models line and the model of each provider for a dict", () => {
@@ -471,6 +472,7 @@ describe("the models lines for the config tool", () => {
 					"typesafe model: jev-preview (OpenRouter: jev-preview)",
 					DEFAULTS[1],
 					DEFAULTS[2],
+					DEFAULTS[3],
 				],
 				valid: true,
 			},
@@ -615,6 +617,7 @@ describe("the entry", () => {
 				"typesafe model: jev-preview (OpenRouter: jev-preview)",
 				"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 				"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+				"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 			],
 			valid: true,
 		});

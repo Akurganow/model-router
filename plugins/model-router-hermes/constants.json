@@ -9,32 +9,35 @@
 		"typesafe": "TYPESAFE_API_KEY",
 		"openai": "OPENAI_API_KEY",
 		"google": "GEMINI_API_KEY",
+		"perplexity": "PERPLEXITY_API_KEY",
 		"openrouter": "OPENROUTER_API_KEY"
 	},
 	"settings": [
 		{
 			"name": "provider",
-			"values": ["typesafe", "openai", "google"],
+			"values": ["typesafe", "openai", "google", "perplexity"],
 			"default": "typesafe",
 			"skip": "model-router skipped, provider not valid: run setup",
-			"notValid": "provider: {stored} (not valid: use one of typesafe, openai, google)",
+			"notValid": "provider: {stored} (not valid: use one of typesafe, openai, google, perplexity)",
 			"valueLines": {
 				"typesafe": "provider: typesafe",
 				"openai": "provider: openai",
-				"google": "provider: google"
+				"google": "provider: google",
+				"perplexity": "provider: perplexity"
 			},
-			"useOneOf": "provider: use one of typesafe, openai, google",
+			"useOneOf": "provider: use one of typesafe, openai, google, perplexity",
 			"already": {
 				"typesafe": "provider unchanged: already typesafe",
 				"openai": "provider unchanged: already openai",
-				"google": "provider unchanged: already google"
+				"google": "provider unchanged: already google",
+				"perplexity": "provider unchanged: already perplexity"
 			},
 			"unchanged": "provider unchanged: ",
 			"refused": "provider unchanged: only a local session can change it",
 			"command": {
 				"name": "model-router-provider",
-				"description": "Shows or changes whose model scores subagent calls: typesafe, openai, google.",
-				"argsHint": "<typesafe|openai|google>"
+				"description": "Shows or changes whose model scores subagent calls: typesafe, openai, google, perplexity.",
+				"argsHint": "<typesafe|openai|google|perplexity>"
 			}
 		},
 		{
@@ -132,6 +135,30 @@
 				"holders": ["openrouter"],
 				"lines": ["provider: google", "gateway: openrouter (openrouter)"]
 			}
+		},
+		"perplexity": {
+			"direct": {
+				"holders": ["perplexity"],
+				"lines": ["provider: perplexity", "gateway: direct (perplexity)"]
+			},
+			"auto": {
+				"holders": ["perplexity", "openrouter"],
+				"lines": [
+					"provider: perplexity",
+					"gateway: auto (perplexity, then openrouter)"
+				]
+			},
+			"openrouter-first": {
+				"holders": ["openrouter", "perplexity"],
+				"lines": [
+					"provider: perplexity",
+					"gateway: openrouter-first (openrouter, then perplexity)"
+				]
+			},
+			"openrouter": {
+				"holders": ["openrouter"],
+				"lines": ["provider: perplexity", "gateway: openrouter (openrouter)"]
+			}
 		}
 	},
 	"efforts": ["low", "medium", "high", "xhigh"],
@@ -201,6 +228,10 @@
 			"google": {
 				"set": "google key: set",
 				"unset": "google key: unset"
+			},
+			"perplexity": {
+				"set": "perplexity key: set",
+				"unset": "perplexity key: unset"
 			},
 			"openrouter": {
 				"set": "openrouter key: set",

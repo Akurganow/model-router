@@ -63,7 +63,7 @@ test("the manifest names the plugin, its version and its backend kind", () => {
 	assert.deepEqual(manifest.provides_tools, [TOOL_NAME]);
 });
 
-test("the manifest holds ten settings and no scope", () => {
+test("the manifest holds eleven settings and no scope", () => {
 	assert.deepEqual(Object.keys(schema), [
 		"provider",
 		"gateway",
@@ -74,6 +74,7 @@ test("the manifest holds ten settings and no scope", () => {
 		"api_key",
 		"openai_api_key",
 		"google_api_key",
+		"perplexity_api_key",
 		"openrouter_api_key",
 	]);
 	assert.equal(JSON.stringify(manifest).includes("scope"), false);
@@ -89,11 +90,11 @@ test("the provider and gateway settings offer the values the code accepts, with 
 	});
 	assert.deepEqual(shown("provider"), {
 		type: "str",
-		choices: ["typesafe", "openai", "google"],
+		choices: ["typesafe", "openai", "google", "perplexity"],
 		default: "typesafe",
 		label: source.options.provider.title,
 		description:
-			"Whose model scores each subagent task: typesafe, openai or google.",
+			"Whose model scores each subagent task: typesafe, openai, google or perplexity.",
 	});
 	assert.deepEqual(shown("gateway"), {
 		type: "str",
@@ -110,7 +111,7 @@ test("the models setting is a plain string with the shared label and text, and n
 		type: "str",
 		label: "Scoring models",
 		description:
-			"The scoring model per provider as provider:model entries for typesafe, openai or google, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.",
+			"The scoring model per provider as provider:model entries for typesafe, openai, google or perplexity, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider with no entry uses its default.",
 	});
 });
 
@@ -197,29 +198,31 @@ test("the settings table lists provider then gateway, each with its texts", () =
 	assert.deepEqual(constants.settings, [
 		{
 			name: "provider",
-			values: ["typesafe", "openai", "google"],
+			values: ["typesafe", "openai", "google", "perplexity"],
 			default: "typesafe",
 			skip: "model-router skipped, provider not valid: run setup",
 			notValid:
-				"provider: {stored} (not valid: use one of typesafe, openai, google)",
+				"provider: {stored} (not valid: use one of typesafe, openai, google, perplexity)",
 			valueLines: {
 				typesafe: "provider: typesafe",
 				openai: "provider: openai",
 				google: "provider: google",
+				perplexity: "provider: perplexity",
 			},
-			useOneOf: "provider: use one of typesafe, openai, google",
+			useOneOf: "provider: use one of typesafe, openai, google, perplexity",
 			already: {
 				typesafe: "provider unchanged: already typesafe",
 				openai: "provider unchanged: already openai",
 				google: "provider unchanged: already google",
+				perplexity: "provider unchanged: already perplexity",
 			},
 			unchanged: "provider unchanged: ",
 			refused: "provider unchanged: only a local session can change it",
 			command: {
 				name: "model-router-provider",
 				description:
-					"Shows or changes whose model scores subagent calls: typesafe, openai, google.",
-				argsHint: "<typesafe|openai|google>",
+					"Shows or changes whose model scores subagent calls: typesafe, openai, google, perplexity.",
+				argsHint: "<typesafe|openai|google|perplexity>",
 			},
 		},
 		{
@@ -261,7 +264,12 @@ test("the choices table holds the key holders and the lines of each provider and
 		lines: [`provider: ${provider}`, gateway],
 	});
 	const choices = constants.choices as { typesafe: unknown; openai: unknown };
-	assert.deepEqual(Object.keys(choices), ["typesafe", "openai", "google"]);
+	assert.deepEqual(Object.keys(choices), [
+		"typesafe",
+		"openai",
+		"google",
+		"perplexity",
+	]);
 	assert.deepEqual(
 		{ typesafe: choices.typesafe, openai: choices.openai },
 		{

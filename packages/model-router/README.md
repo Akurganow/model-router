@@ -2,7 +2,7 @@
 
 Routes OpenClaw and Oh My Pi subagents to a small, middle or large model and an effort that fit the task.
 
-model-router sends a lookup to a small model, bounded work to a middle model and open-ended work to a large one. Where no model is set for one of the three, the harness keeps its own. A decision model scores each task the plugin routes: [Jev](https://docs.typesafe.ai) from TypeSafe by default, or OpenAI's or Google's, on the provider's own API or through OpenRouter.
+model-router sends a lookup to a small model, bounded work to a middle model and open-ended work to a large one. Where no model is set for one of the three, the harness keeps its own. A decision model scores each task the plugin routes: [Jev](https://docs.typesafe.ai) from TypeSafe by default, or OpenAI's, Google's or Perplexity's, on the provider's own API or through OpenRouter.
 
 ## Install
 

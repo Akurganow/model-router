@@ -96,6 +96,7 @@ const LOOKED_UP = {
 	typesafe: "ts-key",
 	openai: "oa-key",
 	google: "g-key",
+	perplexity: "pp-key",
 	openrouter: "or-key",
 };
 

@@ -58,6 +58,7 @@ test(
 				"typesafe model: jev-latest (OpenRouter: jev-latest)",
 				"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 				"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+				"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 				"typesafe key: set",
 				"openrouter key: set",
 			].join("\n"),
@@ -70,7 +71,7 @@ test(
 test("a key that is empty in both places reads as unset", async ($, on) => {
 	const h = harness(on, { env: { TYPESAFE_API_KEY: "" } });
 	expect((await configTool($)).result).toBe(
-		"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\ntypesafe key: unset",
+		"provider: typesafe\ngateway: direct (typesafe)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nperplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\ntypesafe key: unset",
 	);
 	expect(h.envReads).toEqual(["TYPESAFE_API_KEY"]);
 });
@@ -82,7 +83,7 @@ test(
 		const h = harness(on, { env: { TYPESAFE_API_KEY: "never-read" } });
 		const { result } = await configTool($);
 		expect(result).toBe(
-			"provider: typesafe\ngateway: openrouter (openrouter)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nopenrouter key: unset",
+			"provider: typesafe\ngateway: openrouter (openrouter)\nscope: core\nmodels: unset\ntypesafe model: jev-latest (OpenRouter: jev-latest)\nopenai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)\ngoogle model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)\nperplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)\nopenrouter key: unset",
 		);
 		expect(h.envReads).toEqual(["OPENROUTER_API_KEY"]);
 	},
@@ -107,7 +108,7 @@ test("a write opens the dialog with the current value first", async ($, on) => {
 	]);
 });
 
-test("the provider dialog offers the three makers", async ($, on) => {
+test("the provider dialog offers the four makers", async ($, on) => {
 	const h = harness(on, { dialog: () => undefined });
 	config(on, (e) => ({ value: e.value }));
 	await configTool($, "provider");
@@ -115,6 +116,7 @@ test("the provider dialog offers the three makers", async ($, on) => {
 		"typesafe",
 		"openai",
 		"google",
+		"perplexity",
 	]);
 });
 
@@ -261,6 +263,7 @@ const MODELS_LINES = [
 	"typesafe model: jev-preview (OpenRouter: jev-preview)",
 	"openai model: gpt-7-sol (OpenRouter: openai/gpt-7-sol)",
 	"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+	"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 ].join("\n");
 
 test(
@@ -293,6 +296,7 @@ test(
 				"typesafe model: jev-preview (OpenRouter: jev-preview)",
 				"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
 				"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+				"perplexity model: pplx-decider-latest (OpenRouter: perplexity/pplx-decider-v1.3:free)",
 			].join("\n"),
 		);
 		expect(writes.map((e) => [e.key, e.value])).toEqual([

@@ -33,6 +33,7 @@ const KEYS = {
 	openrouter: OR_KEY,
 	openai: "test-openai-key",
 	google: "test-google-key",
+	perplexity: "test-perplexity-key",
 };
 const BOTH = plan({ provider: "typesafe", gateway: "auto" }, KEYS);
 const MODEL = "jev-test";
@@ -260,6 +261,15 @@ test("the model keeps safe characters and / and is capped at 40", async () => {
 	const { fetchFn } = answering({ ...VALID, model });
 	const decision = asDecision(await run(fetchFn));
 	assert.equal(decision.model, `typesafe/jev1.14b${"x".repeat(23)}`);
+});
+
+test("the model keeps the colon of an OpenRouter variant", async () => {
+	const { fetchFn } = answering({
+		...VALID,
+		model: "perplexity/pplx-decider-v1.3:free",
+	});
+	const decision = asDecision(await run(fetchFn));
+	assert.equal(decision.model, "perplexity/pplx-decider-v1.3:free");
 });
 
 test("a 503 falls back once to the next key holder with its own host and key", async () => {
@@ -545,6 +555,26 @@ const ADDRESSES: readonly [
 		["Authorization", "Bearer test-openrouter-key"],
 		{ ...JSON.parse(OPENROUTER_REPLY), model: "google/gemini-decision-1" },
 		"google/gemini-decision-1",
+		{ input_tokens: 488, output_tokens: 0 },
+	],
+	[
+		"perplexity",
+		"direct",
+		"https://api.perplexity.ai/v1/decisions",
+		"pplx-decider-latest",
+		["Authorization", "Bearer test-perplexity-key"],
+		{ ...VALID, model: "pplx-decider-v1.3" },
+		"pplx-decider-v1.3",
+		{ input_tokens: 120, output_tokens: 8 },
+	],
+	[
+		"perplexity",
+		"openrouter",
+		"https://openrouter.ai/api/alpha/decisions",
+		"perplexity/pplx-decider-v1.3:free",
+		["Authorization", "Bearer test-openrouter-key"],
+		{ ...JSON.parse(OPENROUTER_REPLY), model: "perplexity/pplx-decider-v1.3" },
+		"perplexity/pplx-decider-v1.3",
 		{ input_tokens: 488, output_tokens: 0 },
 	],
 ];

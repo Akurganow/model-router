@@ -102,7 +102,8 @@ var TOKEN_PREFIXES = {
   "Stripe key": "[rs]k_(?:live|test|prod)_[A-Za-z0-9]{10,}",
   "npm token": "npm_[A-Za-z0-9]{36,}",
   "Hugging Face token": "hf_[A-Za-z]{34,}",
-  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}"
+  "PyPI token": "pypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}",
+  "Perplexity API key": "pplx-[A-Za-z0-9]{48,}"
 };
 var REDACTIONS = [
   {
@@ -318,7 +319,7 @@ var notValid = (setting) => `${setting} not valid: run setup`;
 var failedAttemptText = (f) => `${f.holder} ${f.reason}`;
 
 // src/core/providers/provider.ts
-var MAKERS = ["typesafe", "openai", "google"];
+var MAKERS = ["typesafe", "openai", "google", "perplexity"];
 var KEY_HOLDERS = [...MAKERS, "openrouter"];
 var GATEWAYS = [
   "direct",
@@ -330,6 +331,7 @@ var KEY_VARIABLES = {
   typesafe: "TYPESAFE_API_KEY",
   openai: "OPENAI_API_KEY",
   google: "GEMINI_API_KEY",
+  perplexity: "PERPLEXITY_API_KEY",
   openrouter: "OPENROUTER_API_KEY"
 };
 var FIRST_ATTEMPT_TIMEOUT_MS = 5e3;
@@ -581,6 +583,35 @@ var SYSTEM_ONE = {
   read: replyReader(mapAnswer, usageNamed("input_tokens", "output_tokens"))
 };
 
+// src/core/scoring/makers/perplexity.ts
+var perplexity = {
+  vendor: "perplexity",
+  openrouterRoute: "decisions",
+  // The aliases and the paid v1.3 slugs have no OpenRouter endpoint, so the aliases and the v1.3 ids map to the `:free` slugs.
+  openrouterNames: {
+    "pplx-decider-latest": "perplexity/pplx-decider-v1.3:free",
+    "pplx-decider-v1.3": "perplexity/pplx-decider-v1.3:free",
+    "pplx-decider-flash-latest": "perplexity/pplx-decider-flash-v1.3:free",
+    "pplx-decider-flash-v1.3": "perplexity/pplx-decider-flash-v1.3:free",
+    "pplx-decider-v1.2": "perplexity/pplx-decider-v1.2",
+    "pplx-decider-flash-v1.2": "perplexity/pplx-decider-flash-v1.2"
+  },
+  paths: {
+    direct: {
+      url: "https://api.perplexity.ai/v1/decisions",
+      format: SYSTEM_ONE,
+      model: "pplx-decider-latest",
+      keyHeader: BEARER
+    },
+    openrouter: {
+      url: "https://openrouter.ai/api/alpha/decisions",
+      format: OPENROUTER_DECISIONS,
+      model: "perplexity/pplx-decider-v1.3:free",
+      keyHeader: BEARER
+    }
+  }
+};
+
 // src/core/scoring/makers/typesafe.ts
 var JEV = "jev-latest";
 var typesafe = {
@@ -613,7 +644,8 @@ var typesafe = {
 var MODULES = {
   typesafe,
   openai,
-  google
+  google,
+  perplexity
 };
 function modelOf(maker, path, stored) {
   const made = MODULES[maker];
@@ -773,7 +805,8 @@ var TEXTS = {
     consequences: {
       typesafe: "Jev from TypeSafe",
       openai: "OpenAI's decision model",
-      google: "Google's decision model"
+      google: "Google's decision model",
+      perplexity: "Perplexity's decision model"
     }
   },
   gateway: {
@@ -1422,7 +1455,7 @@ var work = {
 
 // src/core/scoring/reply.ts
 var MODEL_CHARS_MAX = 40;
-var cleanModel = (model) => typeof model === "string" ? model.replace(/[^A-Za-z0-9._/-]/g, "").slice(0, MODEL_CHARS_MAX) : "";
+var cleanModel = (model) => typeof model === "string" ? model.replace(/[^A-Za-z0-9._/:-]/g, "").slice(0, MODEL_CHARS_MAX) : "";
 
 // src/core/scoring/transport/retry.ts
 var RETRIES = 2;
