@@ -732,7 +732,7 @@ function firstText(from, field) {
 function firstModels(from) {
   for (const settings of from) {
     const { models } = settings;
-    if (isPlainObject(models) || !isSilent(models)) return models;
+    if (!isSilentModels(models)) return models;
   }
   return void 0;
 }
