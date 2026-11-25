@@ -4,7 +4,7 @@ An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model an
 
 ## What it does
 
-- It scores each routed `sessions_spawn` call through the decision model of the `provider` setting: [Jev](https://docs.typesafe.ai) from TypeSafe, OpenAI's, Google's or Perplexity's. One request asks two questions: how much judgment the task needs, and how much work it takes.
+- It scores each routed `sessions_spawn` call through the decision model of the `provider` setting, [Jev](https://docs.typesafe.ai) from TypeSafe by default. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - Level 0 sets your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A slot you leave unset keeps OpenClaw's model for its level, which then gets the effort alone, as [Models](#models) says.
 - It sets `thinking` from a fixed ladder of efforts, as [Effort](#effort) says.
 - It sets only a model you assigned.

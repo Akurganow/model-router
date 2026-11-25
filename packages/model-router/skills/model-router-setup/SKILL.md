@@ -20,7 +20,7 @@ Routing works when all of these hold:
 
 The person may also choose:
 
-- The `provider` setting, which says whose model scores. It takes `typesafe`, `openai`, `google` or `perplexity`.
+- The `provider` setting, which says whose model scores.
 - The `gateway` setting, which says how OpenRouter is used to reach the provider.
 - The `scope` setting, which picks the routed agents.
 - The `models` setting, which names the scoring model of each provider. A provider with no entry uses its default model.
@@ -76,7 +76,7 @@ When the person wants another scoring model for one provider, follow these steps
 
 ### The tool
 
-- Called with no input, `model_router_config` prints the `provider` line, the `gateway` line, the `scope` line, the `models` lines, and one key line for each path the `gateway` value allows, in order:
+- Called with no input, `model_router_config` prints a line for each setting, and one key line for each path the `gateway` value allows, in order:
 
   ```text
   provider: typesafe
@@ -89,17 +89,17 @@ When the person wants another scoring model for one provider, follow these steps
   ```
 
   The example holds the model line of one provider. [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each.
-- A key line reads `<holder> key: set` or `<holder> key: unset`. For the direct path the holder is the provider's name, `typesafe`, `openai`, `google` or `perplexity`, and for the gateway path it is `openrouter`.
-- The `gateway` line names the paths of its value, with the provider's name for the direct path: `gateway: direct (openai)`, `gateway: auto (openai, then openrouter)`, `gateway: openrouter-first (openrouter, then openai)` or `gateway: openrouter (openrouter)`.
+- A key line reads `<holder> key: set` or `<holder> key: unset`. For the direct path the holder is the provider's name, and for the gateway path it is `openrouter`.
+- The `gateway` line names the paths of its value in order, with the provider's name for the direct path, as in `gateway: openrouter-first (openrouter, then openai)`.
 - A stored value outside its setting's list is not valid. The plugin then routes no task, and each task skips with `<setting> not valid: run setup`.
 - The tool prints `<setting>: <stored text> (not valid: use one of <values>)` for that setting, and each valid setting as `<setting>: <value>`, in the usual order. The gateway line names nobody, and no key line prints.
 - omp passes a stored value on as stored, so the skip line shows in omp, as [omp manifest and settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#omp-manifest-and-settings) says.
 - The tool takes two optional inputs: `setting`, which is `provider`, `gateway` or `scope`, and `models`.
-- With `provider`, `gateway` or `scope`, the plugin asks the person in its own dialog and writes the value the person picks. The tool takes no value from the agent for these.
+- With `setting`, the plugin asks the person in its own dialog and writes the value the person picks. The tool takes no value from the agent for these.
 - With `models` set to a string, the plugin writes that text to the global setting at once, with no dialog.
 - A `models` text that is not valid is refused with `models unchanged: not valid: <entry>`, and nothing is written.
 - A call that picks a value the global setting already holds, with no project value in the way, returns `<setting> unchanged: already <value>`.
-- A call with no dialog answer returns `<setting> unchanged: no answer from the dialog`. It appears when omp has no UI too. The person can type `/model-router:provider <value>`, `/model-router:gateway <value>` or `/model-router:scope <value>` instead.
+- A call with no dialog answer returns `<setting> unchanged: no answer from the dialog`. It appears when omp has no UI too. The person can type `/model-router:<setting> <value>` instead.
 - The tool writes the global plugin settings only. When a project value wins, the output adds `A project value for <setting> overrides it.`
 - A project never changes `provider`: the plugin ignores a valid project value. A project may only narrow `gateway`, from `auto` or `openrouter-first` to `direct` or `openrouter`. A project may set `scope` to either value, and it overrides the global one. A project value outside its list is not valid, and its tasks skip with `<setting> not valid: run setup`.
 - The plugin reads the settings on every batch, so a change reaches the next batch with no reload.
@@ -123,10 +123,7 @@ When the person wants another scoring model for one provider, follow these steps
 ### A retired provider value
 
 - `auto`, `openrouter-first` and `openrouter` are values of `gateway` now. A stored `provider` with one of them is not valid.
-- Each pair gives the same requests as before:
-  - `provider: auto` is `provider: typesafe` with `gateway: auto`.
-  - `provider: openrouter-first` is `provider: typesafe` with `gateway: openrouter-first`.
-  - `provider: openrouter` is `provider: typesafe` with `gateway: openrouter`.
+- Each becomes `provider` `typesafe` with that value for `gateway`, which gives the same requests as before.
 - A stored `provider: typesafe` needs no change.
 
 To move a retired value, follow these steps in order:
@@ -144,7 +141,7 @@ To move a retired value, follow these steps in order:
    3. Tell the person to check the other projects' override files before setting the global pair.
       - The plugin reads none of them.
    4. Edit the file only when the person asks.
-3. Propose the pair above that matches the global `provider`.
+3. Propose the pair that matches the global `provider`.
    - The `provider` line of step 1 shows the global text, unless the project's override file sets a `provider` outside the list. Then it shows the project's text.
    - If step 2 found such a line, take no pair from the line of step 1. Call `model_router_config` again once the person has changed the file, and read the `provider` line.
    - While the file keeps that line, propose no pair: this project does not show the global text.
@@ -202,7 +199,7 @@ To move a retired value, follow these steps in order:
 - A routed entry reads `L<level> <role or slot state> · <effort or kept label> · p=<tier>/<work>`, such as `L1 @midl · medium · p=0.66/0.72`.
 - A level with no model shows the slot, as `L0 small model unset`, `L1 middle model unset` or `L2 large model unset`.
 - A kept label replaces the effort: `caller effort` when the item's own `effort` applies, `config effort` when a thinking level comes from omp's settings or the role, and `no model patterns` when the spawn has none.
-- Who answered follows: `typesafe`, `openai`, `google` or `perplexity` on the direct path, or `openrouter` on the gateway path. Then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its entry reads ` · google · 430/0 tok`.
+- Who answered follows: the provider's name on the direct path, or `openrouter` on the gateway path. Then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its entry reads ` · google · 430/0 tok`.
 - After a fallback, the entry ends with the attempt that failed and its reason, as in ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429`.
 - A skipped entry reads `task <n>: skipped, <reason>`. After both attempts fail, the reason names each one with its own reason, as in `skipped, openai HTTP 503, openrouter timeout`.
 - A spawn can print a second line for the same item. That later line holds.
@@ -214,7 +211,7 @@ A closed gate skips every item the scope covers with the same reason:
 
 - `tool call timeout <n> ms leaves <m> ms to route`: omp's tool call timeout leaves under 1 s to score. Set `extensionHandlers.toolCallTimeoutMs` to 3000 or more.
 - `settings unreadable`: the plugin cannot read its settings, omp's model roles, task model overrides or disabled agents.
-- `<setting> not valid: run setup`: a stored `provider`, `gateway` or `scope` holds a value outside its list. Set it again with the tool or its command.
+- `<setting> not valid: run setup`: a stored setting holds a value outside its list. Set it again with the tool or its command.
 - `models not valid: run setup`: the stored `models` is not valid. Write a valid text with the tool's `models` input.
 - `key unset`: no path the `provider` and `gateway` settings allow has a key.
 

@@ -26,9 +26,8 @@ changes the model of your main session.
 | OpenClaw | `model` and `thinking` | 2026.10.10 | [Install for OpenClaw](#openclaw) | [OpenClaw guide](plugins/model-router-openclaw/README.md) |
 | Hermes Agent | the `model`, `provider` and `reasoning_effort` of the task's child | 0.22.6 | [Install for Hermes Agent](#hermes-agent) | [Hermes Agent guide](plugins/model-router-hermes/README.md) |
 
-You need the API key of the provider you choose (TypeSafe, OpenAI, Google or
-Perplexity) or an OpenRouter key. OpenRouter is a gateway that reaches each
-provider, once the `gateway` setting allows it.
+OpenRouter is a gateway that reaches each provider, once the `gateway` setting
+allows it.
 [What leaves the machine](#what-leaves-the-machine) says what each scored task
 sends, and to whom.
 

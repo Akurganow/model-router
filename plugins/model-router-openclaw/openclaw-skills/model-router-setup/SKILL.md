@@ -16,7 +16,7 @@ Routing works when both of these hold:
 
 The person may also choose these, and each has a default:
 
-- `provider`: whose model scores tasks. It takes `typesafe` (the default), `openai`, `google` or `perplexity`.
+- `provider`: whose model scores tasks. The default is `typesafe`.
 - `gateway`: how OpenRouter is used to reach the provider. The default is `direct`.
 - `scope`: which spawns the plugin routes. The default is `core`.
 - `models`: the scoring model of each provider. A provider with no entry uses its default model.
@@ -73,8 +73,8 @@ When the person wants another scoring model for one provider, follow these steps
 
 ### The tool
 
-- `model_router_config` with no input prints the `provider`, `gateway`, `scope`, `models`, `small_model`, `middle_model` and `large_model` lines, then one key line for each path the `gateway` setting allows.
-- A model line shows the slot string as written, or `unset`. A key line reads `typesafe key: set`, `openai key: unset` or `openrouter key: unset`, after the key's holder.
+- `model_router_config` with no input prints a line for each setting, then one key line for each path the `gateway` setting allows.
+- A model line shows the slot string as written, or `unset`. A key line reads `<holder> key: set` or `<holder> key: unset`.
 - Example output, with the model line of one provider. [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each:
 
 ```text
@@ -118,13 +118,10 @@ openrouter key: unset
 
 - `auto`, `openrouter-first` and `openrouter` are retired `provider` values. They are `gateway` values now, so a stored `provider` that holds one is not valid.
 - The tool shows a retired value as `provider: <stored text> (not valid: use one of <values>)`.
-- The pairs that give the same requests as before:
-  - `auto`: `provider` `typesafe`, `gateway` `auto`.
-  - `openrouter-first`: `provider` `typesafe`, `gateway` `openrouter-first`.
-  - `openrouter`: `provider` `typesafe`, `gateway` `openrouter`.
+- Each becomes `provider` `typesafe` with that value for `gateway`, which gives the same requests as before.
 - Take these steps in this order. Set `gateway` first. While `provider` is not valid, nothing routes, so no task takes an unchosen path.
   1. Read the stored `provider` and `gateway` with `model_router_config`.
-  2. Propose the pair above that matches the stored value.
+  2. Propose the pair that matches the stored value.
   3. Once the person agrees, ask them to type `/model-router-gateway <value>`.
   4. After OpenClaw has replaced the plugin, call `model_router_config` again. Go on only when the `gateway` line shows the agreed value.
   5. Ask them to type `/model-router-provider typesafe`.
@@ -162,7 +159,7 @@ openrouter key: unset
 - A key counts as set when either place holds a non-blank value.
 - OpenClaw's own OpenRouter provider reads `OPENROUTER_API_KEY` too. A key already in any of these variables scores tasks when the `provider` and `gateway` settings allow its holder and the plugin's setting for that holder holds none.
 - No other credential of OpenClaw serves as a scoring key.
-- A workspace `.env` is a lower-trust source: OpenClaw drops `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and `PERPLEXITY_API_KEY` from it, and not `TYPESAFE_API_KEY`. The global `~/.openclaw/.env` and the Gateway's environment stay trusted. Tell the person to keep a key in one of those two.
+- A workspace `.env` is a lower-trust source: OpenClaw drops each key variable from it except `TYPESAFE_API_KEY`. The global `~/.openclaw/.env` and the Gateway's environment stay trusted. Tell the person to keep a key in one of those two.
 - A key variable reaches every process the Gateway starts.
 - With `auto` or `openrouter-first` and one key, that key's path scores alone.
 
@@ -184,7 +181,7 @@ openrouter key: unset
 
 - OpenClaw shows no line in the chat. The plugin writes one line per routed or skipped spawn to the Gateway log. The line starts with `model-router`.
 - A routed line reads `L<level> <model or slot state> · <effort or kept label> · p=<tier>/<work>`. The model is the slot string as written. An unset slot shows `<slot> model unset`, and that spawn keeps OpenClaw's model.
-- Who answered follows, as `typesafe`, `openai`, `google`, `perplexity` or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
+- Who answered follows, as the provider's name or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
 - After a fallback, the line ends with the attempt that failed and its reason, as in ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429`.
 - Example lines:
 
@@ -231,7 +228,7 @@ For the person: the plugin's README, `plugins/model-router-openclaw/README.md` i
 - Never take, show or repeat a key. If a key arrives in chat, do not repeat or store it, and tell the person to rotate it.
 - Change a setting only when the person asked for it or agreed.
 - Run the `models` command only on the person's word, with every entry the person keeps.
-- Only the owner can change a setting with `/model-router-provider`, `/model-router-gateway` and `/model-router-scope`.
+- Only the owner can change a setting with its chat command.
 - A routing check spawns one small task and spends a little usage, so ask before it.
 
 ## When you finish

@@ -11,8 +11,8 @@ This plugin is a mod: a plugin whose `hooks/hooks.json` has a
 ## What it does
 
 - It scores each Agent call it routes through the decision model of the
-  `provider` option: [Jev](https://docs.typesafe.ai) from TypeSafe, OpenAI's,
-  Google's or Perplexity's. The model reads the task and the agent text, the
+  `provider` option, [Jev](https://docs.typesafe.ai) from TypeSafe by default.
+  The model reads the task and the agent text, the
   request's `role` field. One request asks two questions: how much judgment the task needs, and
   how much work it takes.
 - It sets the model of the level, as [Models](#models) lists, and an effort from
@@ -33,13 +33,10 @@ asks six questions. The answers for this mod:
 
 - **Acts on your machine as you?** No. It reads no files, writes no files of
   its own and starts no program.
-- **Reads your secrets?** Only its own keys: TypeSafe, OpenAI, Google,
-  Perplexity and OpenRouter. Claude Code hands it the plugin's sensitive `api_key`,
-  `openai_api_key`, `google_api_key`, `perplexity_api_key` and
-  `openrouter_api_key` options from secure storage. When an option is empty, the mod reads the key from
-  `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY`
-  or `OPENROUTER_API_KEY`. It reads a key only for a holder the `provider` and
-  `gateway` options allow. It reads one more environment
+- **Reads your secrets?** Only its own keys, which [Keys](#keys) lists.
+  Claude Code hands it each as a sensitive plugin option from secure storage.
+  When an option is empty, the mod reads the key from its variable. It reads a
+  key only for a holder the `provider` and `gateway` options allow. It reads one more environment
   variable, `CLAUDE_CODE_EFFORT_LEVEL`, and only to see whether it is set. It
   never sends its value anywhere. It reads no file.
 - **Sees your session?** The arguments of each Agent tool call. It sends the
@@ -153,13 +150,14 @@ key. The line is for zsh, the default shell on macOS.
 claude plugin install model-router --marketplace Akurganow/model-router && read -rs 'TS_KEY?TypeSafe key: ' && echo && read -rs 'OR_KEY?OpenRouter key: ' && echo && printf '{"gateway":"auto","api_key":"%s","openrouter_api_key":"%s"}' "$TS_KEY" "$OR_KEY" | claude plugin configure model-router@model-router --values-stdin
 ```
 
-To pick another `gateway` value, replace `auto` in the line. To use OpenAI, Google or
-Perplexity, change the line in three places:
+To pick another `gateway` value, replace `auto` in the line. To use another
+provider, change the line in three places:
 
-- Add `"provider":"openai"`, `"provider":"google"` or `"provider":"perplexity"` to the JSON.
-- Replace `"api_key"` with `"openai_api_key"`, `"google_api_key"` or `"perplexity_api_key"`.
-- Replace `TypeSafe` in the first prompt with `OpenAI`, `Google` or `Perplexity`, so that the
-  prompt names the key it reads.
+- Add `"provider":"<value>"` to the JSON, with a value that
+  [the provider command](#change-the-options) takes.
+- Replace `"api_key"` with the provider's option in [Keys](#keys).
+- Replace `TypeSafe` in the first prompt with the provider's name in the same
+  table, so that the prompt names the key it reads.
 
 In bash, replace `read -rs 'TS_KEY?TypeSafe key: '` with
 `read -rsp 'TypeSafe key: ' TS_KEY`.
@@ -187,11 +185,9 @@ claude plugin install model-router --marketplace Akurganow/model-router --config
 ```
 
 `YOUR_KEY` stands for your TypeSafe key and `YOUR_OPENROUTER_KEY` for your
-OpenRouter key. To use OpenAI, Google or Perplexity, add
-`--config provider=openai`, `--config provider=google` or
-`--config provider=perplexity`, and replace `--config api_key` with
-`--config openai_api_key`, `--config google_api_key` or
-`--config perplexity_api_key`. Drop the `--config` pair of a key you do not
+OpenRouter key. To use another provider, add `--config provider=<value>`
+and replace `--config api_key` with `--config <option>`, the provider's option
+in the Keys table. Drop the `--config` pair of a key you do not
 have. The line leaves the keys in your shell history and shows them in the
 process list while it runs.
 
@@ -263,10 +259,8 @@ variable and the user settings file, and you add the variable to its `env`
 block. Until the bug is fixed:
 
 1. Open `~/.claude/settings.json`.
-2. Add the variable of each key you use to the `env` block:
-   `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY` or
-   `OPENROUTER_API_KEY`. This example sets a TypeSafe key and an OpenRouter
-   key, with your keys in place of `YOUR_KEY` and `YOUR_OPENROUTER_KEY`:
+2. Add the variable of each key you use to the `env` block, as the Keys
+   table names it. This example sets a TypeSafe key and an OpenRouter key, with your keys in place of `YOUR_KEY` and `YOUR_OPENROUTER_KEY`:
 
    ```json
    {
@@ -474,7 +468,7 @@ The scoring model answers a second question: how much work the task takes once t
 judgment is settled, as an index from 0 to 2. The index rests on the middle
 and moves to an end only when the model gives that end more than a fitted factor
 times the middle's probability: 2.38 for index 0 and 1.41 for index 2. The
-factors are fitted to Jev, and `openai`, `google` and `perplexity` use them unfitted. The index then maps to
+factors are fitted to Jev, and the other providers use them unfitted. The index then maps to
 an effort per model:
 
 | index | haiku | sonnet | opus |
@@ -618,9 +612,8 @@ shell:
 claude plugin uninstall model-router@model-router
 ```
 
-If you added `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`,
-`PERPLEXITY_API_KEY` or `OPENROUTER_API_KEY` to the `env` block of
-`~/.claude/settings.json`, delete those lines too.
+If you added a key variable of the Keys table to the `env` block of
+`~/.claude/settings.json`, delete that line too.
 
 Removing the key of every path the `gateway` option allows also stops
 routing, and every routed call then reports `key unset`.

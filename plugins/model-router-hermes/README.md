@@ -4,7 +4,7 @@ A [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that picks
 
 ## What it does
 
-- It is a delegation backend named `model-router`. It scores each `delegate_task` task through the decision model of the `provider` setting: [Jev](https://docs.typesafe.ai) from TypeSafe, OpenAI's, Google's or Perplexity's. One request asks two questions: how much judgment the task needs, and how much work it takes.
+- It is a delegation backend named `model-router`. It scores each `delegate_task` task through the decision model of the `provider` setting, [Jev](https://docs.typesafe.ai) from TypeSafe by default. One request asks two questions: how much judgment the task needs, and how much work it takes.
 - It routes the tasks of `delegate_task` only. The main turn is never routed.
 - Level 0 gives the task your `small_model`, level 1 your `middle_model` and level 2 your `large_model`. A slot can be unset. Its level then keeps Hermes's model and gets the effort alone, as [Models](#models) says.
 - It sets the effort from a fixed ladder, as [Effort](#effort) says.

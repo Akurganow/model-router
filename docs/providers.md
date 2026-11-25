@@ -137,7 +137,7 @@ The module of each provider holds its OpenRouter names.
 The config tool prints each provider's OpenRouter model on its `<provider> model` line, as [The report lines](#the-report-lines) shows.
 `jev-preview` has no OpenRouter model.
 
-A name that the module does not map goes bare on TypeSafe's System One route, and as `<vendor>/<name>` on the Decisions route of OpenAI, Google and Perplexity.
+A name that the module does not map goes bare on TypeSafe's System One route, and as `<vendor>/<name>` on the Decisions route of every other provider.
 OpenRouter answers an unknown name with HTTP 400, which gets no second attempt, as [the fallback rule](#the-provider-and-the-gateway) says.
 So under `openrouter-first`, routing skips with `HTTP 400` and never asks the provider's own API.
 
@@ -200,11 +200,11 @@ A key with no model still scores: [A slot with no model](#a-slot-with-no-model) 
 
 The config tool prints one line for each setting, then one line for each key:
 
-- The provider line reads `provider: typesafe`, `provider: openai`, `provider: google` or `provider: perplexity`.
+- The provider line reads `provider: <value>`, with a value from [the `provider` table](#the-provider-and-the-gateway).
 - The gateway line holds the value and, in order, who the plugin asks, as in `gateway: auto (typesafe, then openrouter)`.
   The name is the provider's own on the direct path and `openrouter` on the gateway path.
 - The scope line reads `scope: core`, in a harness that has the setting.
-- A key line reads `typesafe key: set`, `openai key: unset` or `openrouter key: unset`, after the key's holder.
+- A key line reads `<holder> key: set` or `<holder> key: unset`, with a holder from [Keys](#keys).
   The tool prints one for each path the `gateway` value allows, in the same order.
 
 With the defaults and a TypeSafe key set, the tool prints:

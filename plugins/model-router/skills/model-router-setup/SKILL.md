@@ -20,7 +20,7 @@ Routing works when all of these hold:
 
 The person may also choose:
 
-- `provider`: whose model scores a call. It takes `typesafe`, `openai`, `google` or `perplexity`.
+- `provider`: whose model scores a call.
 - `gateway`: how OpenRouter is used to reach the provider.
 - `scope`: which Agent calls the plugin routes.
 - `models`: the scoring model of each provider. A provider with no entry uses its default model.
@@ -78,7 +78,7 @@ When the person wants another scoring model for one provider, follow these steps
 ### The config tool
 
 - The tool is `mcp__model-router__config`. It takes two optional inputs, `setting` and `models`.
-- With no input it prints a `provider` line, a `gateway` line, a `scope` line, the `models` lines, and one key line for each path the `gateway` value allows, in order, as in `typesafe key: set`, `openai key: unset` or `openrouter key: unset`.
+- With no input it prints a `provider` line, a `gateway` line, a `scope` line, the `models` lines, and one key line for each path the `gateway` value allows, in order, as in `typesafe key: set` or `openrouter key: unset`.
 - A provider line looks like `provider: typesafe`. A gateway line looks like `gateway: auto (typesafe, then openrouter)`. A scope line looks like `scope: core`.
 - A key counts as set when its plugin option or its environment variable holds a non-blank value.
 - The tool never returns a key, its length or any part of it.
@@ -87,7 +87,7 @@ When the person wants another scoring model for one provider, follow these steps
 - The dialog writes nothing for the current value, a dismissed dialog or free text. It also writes nothing where no dialog can open, such as `claude -p`.
 - Reply `models unchanged: not valid: <entry>` means the text is not valid, and nothing was written.
 - Reply `<setting> unchanged: already <value>` means the person kept the current value.
-- Reply `<setting> unchanged: no answer from the dialog` means no dialog answered. The person can type `/model-router:provider <value>`, `/model-router:gateway <value>` or `/model-router:scope <value>` at their own prompt. A command writes only when typed there.
+- Reply `<setting> unchanged: no answer from the dialog` means no dialog answered. The person can type `/model-router:<setting> <value>` at their own prompt. A command writes only when typed there.
 - Reply `<setting> unchanged: the answer was not one of the offered values` means the dialog returned something else. Nothing was written.
 - Reply `Permission rules deny this tool, so nothing was read or changed.` means the person's permission rules deny the tool.
 - All three commands print the current value when run with no value. A value outside the list prints the allowed ones.
@@ -157,7 +157,7 @@ More than one can hold. Report every one that holds.
 - It holds the level (`L0`, `L1` or `L2`), the model, the effort and the probability of each chosen level.
 - `caller effort` or `env effort` takes the place of the effort when a kept effort applies.
 - A call that Claude Code then refuses adds a second line, `denied`.
-- Who answered follows, `typesafe`, `openai`, `google`, `perplexity` or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
+- Who answered follows, the provider's name or `openrouter`, then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its line reads ` · google · 430/0 tok`.
 - After a fallback, the line ends with the attempt that failed and its reason, as in ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429`.
 - After both attempts fail, the line names each, for example `skipped, openai HTTP 503, openrouter timeout`.
 - A skipped call runs unchanged.
@@ -181,10 +181,7 @@ Earlier versions took `auto`, `openrouter-first` and `openrouter` as values of `
 
 1. Ask the person which `provider` value they chose before the update.
    The tool cannot show the stored value, as the Settings facts say.
-2. Propose the pair that gives the same requests as before:
-   - `auto` becomes `provider` `typesafe` with `gateway` `auto`.
-   - `openrouter-first` becomes `provider` `typesafe` with `gateway` `openrouter-first`.
-   - `openrouter` becomes `provider` `typesafe` with `gateway` `openrouter`.
+2. Propose `provider` `typesafe` with the retired value as `gateway`. That pair gives the same requests as before.
 3. On the person's word, call the tool with `setting` set to `gateway`.
    The person picks the agreed value in the dialog. Where no dialog opens, the person types `/model-router:gateway <value>`.
 4. Ask the person to type `/model-router:provider typesafe` at their own prompt, so the retired value leaves the settings.
