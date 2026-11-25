@@ -66,11 +66,11 @@
 				"scope": { "$ref": "#/$defs/option" }
 			}
 		},
-		"models": { "$ref": "#/$defs/modelsOption" },
+		"models": { "$ref": "#/$defs/option" },
 		"keys": {
 			"type": "object",
 			"description": "The title and the one text of each key holder's key field, shown in every harness that has the field.",
-			"additionalProperties": { "$ref": "#/$defs/keyText" }
+			"additionalProperties": { "$ref": "#/$defs/option" }
 		},
 		"claude": {
 			"type": "object",
@@ -104,7 +104,7 @@
 					"required": ["optionType", "model"],
 					"properties": {
 						"optionType": { "$ref": "#/$defs/text" },
-						"model": { "$ref": "#/$defs/removedOption" }
+						"model": { "$ref": "#/$defs/option" }
 					}
 				},
 				"catalogueSource": { "$ref": "#/$defs/text" },
@@ -292,27 +292,7 @@
 		"option": {
 			"type": "object",
 			"additionalProperties": false,
-			"description": "The title and the one text that every harness storing the setting shows.",
-			"required": ["title", "description"],
-			"properties": {
-				"title": { "$ref": "#/$defs/text" },
-				"description": { "$ref": "#/$defs/text" }
-			}
-		},
-		"modelsOption": {
-			"type": "object",
-			"description": "The setting that holds the scoring model per provider. Every harness stores it and shows one text.",
-			"additionalProperties": false,
-			"required": ["title", "description"],
-			"properties": {
-				"title": { "$ref": "#/$defs/text" },
-				"description": { "$ref": "#/$defs/text" }
-			}
-		},
-		"removedOption": {
-			"type": "object",
-			"description": "An option the Claude Code manifest still declares, so a stored value reaches the plugin and can be migrated. It has no default and no options list.",
-			"additionalProperties": false,
+			"description": "A title and the one text that every harness showing the setting displays.",
 			"required": ["title", "description"],
 			"properties": {
 				"title": { "$ref": "#/$defs/text" },
@@ -347,15 +327,6 @@
 				},
 				"ciLine": { "$ref": "#/$defs/text" },
 				"note": { "$ref": "#/$defs/text" }
-			}
-		},
-		"keyText": {
-			"type": "object",
-			"additionalProperties": false,
-			"required": ["title", "description"],
-			"properties": {
-				"title": { "$ref": "#/$defs/text" },
-				"description": { "$ref": "#/$defs/text" }
 			}
 		}
 	}

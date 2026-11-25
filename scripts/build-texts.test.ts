@@ -16,6 +16,7 @@ import {
 	OPENCLAW_OUTPUTS,
 } from "./build/outputs.ts";
 import { loadSource } from "./build/source.ts";
+import { HARNESS_SETTINGS, HARNESSES, type Harness } from "./build/values.ts";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const source = loadSource(ROOT);
@@ -51,7 +52,7 @@ const renamed = (
 	);
 
 // Each built settings form, by the fields a person reads in it: a title or label, and a text.
-const FORMS: Readonly<Record<string, Form>> = {
+const FORMS: Readonly<Record<Harness, Form>> = {
 	claude: claude.userConfig,
 	omp: omp.omp.settings,
 	openclaw: renamed(openclaw.uiHints, "help"),
@@ -69,22 +70,46 @@ const SHARED = [
 const wholeWord = (text: string, word: string) =>
 	new RegExp(`(?<![\\w-])${word}(?![\\w-])`).test(text);
 
-test("each setting text names every value of its setting as a whole word", () => {
-	for (const [harness, form] of Object.entries(FORMS)) {
-		for (const [setting, values] of Object.entries(VALUES)) {
-			const field = form[setting];
-			if (field === undefined) continue;
-			for (const value of values)
-				assert.ok(
-					wholeWord(field.description, value),
-					`${setting} text for ${harness} names ${value}`,
-				);
+// A value-setting text has the shape "<question>: <v1> (gloss), <v2> or <v3>.", so the values are what stays after the glosses go.
+const valuesNamed = (text: string): string[] =>
+	text
+		.slice(text.indexOf(": ") + 2)
+		.replace(/ \([^)]*\)/g, "")
+		.replace(/\.$/, "")
+		.split(/, | or /);
+
+test("each setting text names exactly the values of its setting, in order", () => {
+	for (const harness of HARNESSES)
+		for (const setting of HARNESS_SETTINGS[harness]) {
+			const field = FORMS[harness][setting];
+			assert.ok(field, `the ${harness} form holds ${setting}`);
+			assert.deepEqual(
+				valuesNamed(field.description),
+				[...VALUES[setting]],
+				`${setting} text for ${harness}`,
+			);
 		}
+});
+
+test("each models text names every maker as a whole word", () => {
+	for (const [harness, form] of Object.entries(FORMS))
 		for (const maker of MAKERS)
 			assert.ok(
 				wholeWord(form["models"]?.description ?? "", maker),
 				`models text for ${harness} names ${maker}`,
 			);
+});
+
+test("in each built form every key field comes after every other field", () => {
+	const keys = new Set<string>(Object.values(KEY_FIELDS));
+	for (const [harness, form] of Object.entries(FORMS)) {
+		const names = Object.keys(form);
+		const firstKey = names.findIndex((name) => keys.has(name));
+		const afterFirstKey = firstKey < 0 ? [] : names.slice(firstKey);
+		assert.ok(
+			afterFirstKey.every((name) => keys.has(name)),
+			`${harness} puts a key field before another field: ${names.join(", ")}`,
+		);
 	}
 });
 

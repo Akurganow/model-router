@@ -842,10 +842,11 @@ function pagesOf(options) {
 }
 async function askPaged(question, options, select) {
   const pages = pagesOf(options);
-  for (let index = 0; ; index = (index + 1) % pages.length) {
-    const answer = await select(question, pages[index] ?? []);
-    if (answer !== MORE || pages.length === 1) return answer;
-  }
+  for (; ; )
+    for (const page of pages) {
+      const answer = await select(question, page);
+      if (answer !== MORE || pages.length === 1) return answer;
+    }
 }
 function ask(setting, current) {
   const { values, question } = TEXTS[setting];

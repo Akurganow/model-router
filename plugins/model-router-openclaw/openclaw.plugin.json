@@ -46,7 +46,7 @@
 		},
 		"scope": {
 			"label": "Routing scope",
-			"help": "Which subagents are routed: core or extended, which also routes other agents that set no model."
+			"help": "Which subagents are routed: core (the default agents only) or extended (also other agents, as the README lists)."
 		},
 		"models": {
 			"label": "Scoring models",
@@ -54,34 +54,34 @@
 		},
 		"small_model": {
 			"label": "Small model",
-			"help": "The model a task rated small gets, as provider/model; unset, the task keeps the model it would get without the plugin."
+			"help": "The model a task rated small gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
 		},
 		"middle_model": {
 			"label": "Middle model",
-			"help": "The model a task rated middle gets, as provider/model; unset, the task keeps the model it would get without the plugin."
+			"help": "The model a task rated middle gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
 		},
 		"large_model": {
 			"label": "Large model",
-			"help": "The model a task rated large gets, as provider/model; unset, the task keeps the model it would get without the plugin."
+			"help": "The model a task rated large gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
 		},
 		"api_key": {
 			"label": "TypeSafe API key",
-			"help": "Sent to TypeSafe only, when provider is typesafe and gateway is not openrouter.",
+			"help": "The plugin sends it to TypeSafe when provider is typesafe and gateway is not openrouter.",
 			"sensitive": true
 		},
 		"openai_api_key": {
 			"label": "OpenAI API key",
-			"help": "Sent to OpenAI only, when provider is openai and gateway is not openrouter.",
+			"help": "The plugin sends it to OpenAI when provider is openai and gateway is not openrouter.",
 			"sensitive": true
 		},
 		"google_api_key": {
 			"label": "Google API key",
-			"help": "Sent to Google only, when provider is google and gateway is not openrouter.",
+			"help": "The plugin sends it to Google when provider is google and gateway is not openrouter.",
 			"sensitive": true
 		},
 		"openrouter_api_key": {
 			"label": "OpenRouter API key",
-			"help": "Sent to OpenRouter only, when gateway is not direct.",
+			"help": "The plugin sends it to OpenRouter when gateway is not direct.",
 			"sensitive": true
 		}
 	},

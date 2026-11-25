@@ -565,10 +565,11 @@ function pagesOf(options) {
 }
 async function askPaged(question, options, select) {
   const pages = pagesOf(options);
-  for (let index = 0; ; index = (index + 1) % pages.length) {
-    const answer2 = await select(question, pages[index] ?? []);
-    if (answer2 !== MORE || pages.length === 1) return answer2;
-  }
+  for (; ; )
+    for (const page of pages) {
+      const answer2 = await select(question, page);
+      if (answer2 !== MORE || pages.length === 1) return answer2;
+    }
 }
 function ask(setting, current2) {
   const { values, question } = TEXTS[setting];

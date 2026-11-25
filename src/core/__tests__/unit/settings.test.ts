@@ -675,7 +675,7 @@ test("modelsAlready names the text only when it equals what is stored", () => {
 	assert.equal(modelsAlready({ openai: "a" }, '{"openai":"a"}'), undefined);
 });
 
-test("six values give two pages with the current value first and more last, and more wraps", async () => {
+test("six or five values give two pages with more last, the current value first, and more wraps", async () => {
 	const labels = ["a", "b", "c", "d", "e", "f"];
 	assert.deepEqual(currentFirst(labels, "e"), ["e", "a", "b", "c", "d", "f"]);
 	assert.deepEqual(currentFirst(labels, undefined), labels);
@@ -683,6 +683,10 @@ test("six values give two pages with the current value first and more last, and 
 	assert.deepEqual(pagesOf(currentFirst(labels, "e")), [
 		["e", "a", "b", "more"],
 		["c", "d", "f", "more"],
+	]);
+	assert.deepEqual(pagesOf(["a", "b", "c", "d", "e"]), [
+		["a", "b", "c", "more"],
+		["d", "e", "more"],
 	]);
 	const shown: string[][] = [];
 	const answers = ["more", "more", "b"];

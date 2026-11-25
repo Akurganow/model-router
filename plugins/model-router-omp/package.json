@@ -35,7 +35,7 @@
 			},
 			"scope": {
 				"type": "enum",
-				"description": "Which subagents are routed: core or extended, which also routes other agents that set no model.",
+				"description": "Which subagents are routed: core (the default agents only) or extended (also other agents, as the README lists).",
 				"values": [
 					"core",
 					"extended"

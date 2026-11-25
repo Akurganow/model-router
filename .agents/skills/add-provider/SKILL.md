@@ -282,12 +282,12 @@ Each search below reads every Markdown file, `metadata/source.json` and `scripts
 75. Run `git grep -n -i -E 'typesafe|openrouter' -- '*.md' metadata/source.json scripts/build/npm.ts ':!CHANGELOG.md' ':!packages'`, and read each hit. Each hit that lists the makers, their keys, their variables or their hosts takes the new one, whether or not a step below names its file.
 76. In the company table of each of the four `PRIVACY.md` under `plugins/`, name the company, its host and its privacy policy.
 77. In each of the four READMEs under `plugins/`, add the key and its variable.
-78. In the same READMEs, add the new value to the usage of the `provider` command. Add no label: the table in `docs/providers.md` holds it.
+78. In the same READMEs, add the new value to the usage of the `provider` command. Add no label: it lives in `TEXTS`, and the table in `docs/providers.md` describes each value.
 79. Name the key's setting in each README whose harness has one; the others say where the key comes from.
 80. In the root `README.md`, change the first screen and "What leaves the machine". In the Claude Code and omp guides, change the steps under "Set up".
 81. In the list of values of `provider` in each of the four `model-router-setup/SKILL.md` under `plugins/`, add the key, the new value and its label.
 82. In `docs/providers.md`, change these sections:
-    - the table of [The provider and the gateway](../../../docs/providers.md#the-provider-and-the-gateway), which holds each value's label;
+    - the table of [The provider and the gateway](../../../docs/providers.md#the-provider-and-the-gateway), which describes each value;
     - [Keys](../../../docs/providers.md#keys);
     - [What each company does with the text](../../../docs/providers.md#what-each-company-does-with-the-text);
     - [Your choices](../../../docs/providers.md#your-choices);

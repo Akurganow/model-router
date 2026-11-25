@@ -117,7 +117,7 @@ test("the models setting takes a string or an object of strings, with the shared
 test("the scope help is the shared scope text", () => {
 	assert.equal(
 		manifest.uiHints.scope.help,
-		"Which subagents are routed: core or extended, which also routes other agents that set no model.",
+		"Which subagents are routed: core (the default agents only) or extended (also other agents, as the README lists).",
 	);
 });
 
@@ -226,6 +226,6 @@ test("the manifest says the effort is set unless the user sets one, and the midd
 	);
 	assert.equal(
 		manifest.uiHints.middle_model.help,
-		"The model a task rated middle gets, as provider/model; unset, the task keeps the model it would get without the plugin.",
+		"The model a task rated middle gets, as provider/model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort.",
 	);
 });

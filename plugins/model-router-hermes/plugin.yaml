@@ -40,41 +40,41 @@
     "small_model": {
       "type": "dict",
       "label": "Small model",
-      "description": "The model a task rated small gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin."
+      "description": "The model a task rated small gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
     },
     "middle_model": {
       "type": "dict",
       "label": "Middle model",
-      "description": "The model a task rated middle gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin."
+      "description": "The model a task rated middle gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
     },
     "large_model": {
       "type": "dict",
       "label": "Large model",
-      "description": "The model a task rated large gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin."
+      "description": "The model a task rated large gets, as a dict that names a provider and a model; unset, the task keeps the model it would get without the plugin, and the plugin still sets its effort."
     },
     "api_key": {
       "type": "secret",
       "env": "TYPESAFE_API_KEY",
       "label": "TypeSafe API key",
-      "description": "Sent to TypeSafe only, when provider is typesafe and gateway is not openrouter."
+      "description": "The plugin sends it to TypeSafe when provider is typesafe and gateway is not openrouter."
     },
     "openai_api_key": {
       "type": "secret",
       "env": "OPENAI_API_KEY",
       "label": "OpenAI API key",
-      "description": "Sent to OpenAI only, when provider is openai and gateway is not openrouter."
+      "description": "The plugin sends it to OpenAI when provider is openai and gateway is not openrouter."
     },
     "google_api_key": {
       "type": "secret",
       "env": "GEMINI_API_KEY",
       "label": "Google API key",
-      "description": "Sent to Google only, when provider is google and gateway is not openrouter."
+      "description": "The plugin sends it to Google when provider is google and gateway is not openrouter."
     },
     "openrouter_api_key": {
       "type": "secret",
       "env": "OPENROUTER_API_KEY",
       "label": "OpenRouter API key",
-      "description": "Sent to OpenRouter only, when gateway is not direct."
+      "description": "The plugin sends it to OpenRouter when gateway is not direct."
     }
   }
 }

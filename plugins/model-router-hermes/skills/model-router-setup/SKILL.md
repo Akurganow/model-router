@@ -31,7 +31,7 @@ When the person wants to choose the provider, follow these steps in order:
 
 1. Call `model_router_config` with no input, and read the settings and the key lines.
 2. Ask which provider's model scores, and give the labels from the provider and gateway facts.
-3. Ask how OpenRouter is used, before any write.
+3. Ask how OpenRouter is used, before any write, and give the labels from the provider and gateway facts.
 4. On the person's word, ask them to type `/model-router-gateway <value>` and `/model-router-provider <value>` in a local session, one command at a time. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
    - Ask for the second command only after `model_router_config` shows the agreed value of the first setting. If it does not, stop and tell the person.
    - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
@@ -77,13 +77,12 @@ When the person wants another scoring model for one provider, follow these steps
   - `typesafe - Jev from TypeSafe`
   - `openai - OpenAI's decision model`
   - `google - Google's decision model`
-  - On a free-tier Google key, Google may use the text.
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
-- `gateway` says how OpenRouter is used to reach the provider. OpenRouter is a gateway, never a provider. It has four values:
-  - `direct` is the default and asks the provider's own API only.
-  - `auto` asks the provider, then OpenRouter.
-  - `openrouter-first` asks OpenRouter, then the provider.
-  - `openrouter` asks OpenRouter only.
+- `gateway` says how OpenRouter is used to reach the provider. OpenRouter is a gateway, never a provider. It has four values, and `direct` is the default:
+  - `direct - the provider's own API only`
+  - `auto - the provider's own API, then OpenRouter if it fails`
+  - `openrouter-first - OpenRouter, then the provider's own API if it fails`
+  - `openrouter - OpenRouter only`
 - The `gateway` setting is not Hermes's gateway, the process that owns a session.
 - With `auto` or `openrouter-first` and one key, the path with that key scores alone.
 - Only some failures reach the second path: [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists them.

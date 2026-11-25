@@ -36,7 +36,7 @@ When the person wants to choose the provider, follow these steps in order:
 
 1. Call `model_router_config` with no setting, and read the settings and the key lines.
 2. Ask which provider's model scores, and give the labels from the Provider and gateway facts.
-3. Ask how OpenRouter is used, before any write.
+3. Ask how OpenRouter is used, before any write, and give the labels from the Provider and gateway facts.
 4. On the person's word, call `model_router_config` once with `setting` set to `gateway` and once with `provider`. Set `gateway` first. When the stored `gateway` is `openrouter`, set `provider` first.
    - Make the second call only after the first setting's line shows the agreed value. If it does not, stop and tell the person.
    - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
@@ -104,13 +104,12 @@ When the person wants another scoring model for one provider, follow these steps
   - `typesafe - Jev from TypeSafe`
   - `openai - OpenAI's decision model`
   - `google - Google's decision model`
-  - On a free-tier Google key, Google may use the text.
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
 - `gateway` has four values. `direct` is the default.
-  - `direct` uses the provider's own API only.
-  - `auto` uses the provider's own API, then OpenRouter if that fails.
-  - `openrouter-first` uses OpenRouter, then the provider's own API if that fails.
-  - `openrouter` uses OpenRouter only.
+  - `direct - the provider's own API only`
+  - `auto - the provider's own API, then OpenRouter if it fails`
+  - `openrouter-first - OpenRouter, then the provider's own API if it fails`
+  - `openrouter - OpenRouter only`
 - With `auto` or `openrouter-first` and one key, the path with that key scores alone.
 - Only some failures reach the second path: [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) lists them.
 
@@ -161,6 +160,9 @@ To move a retired value, follow these steps in order:
 
 ### Scope
 
+- `scope` has two values. `core` is the default.
+  - `core - built-in general agents only`
+  - `extended - also routes other agents that pass no model`
 - `core` is the default and routes the bundled `task` agent only.
 - `extended` routes every agent whose model the person did not set, bundled agents included.
 

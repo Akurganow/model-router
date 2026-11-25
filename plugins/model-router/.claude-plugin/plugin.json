@@ -57,7 +57,7 @@
 		"scope": {
 			"type": "string",
 			"title": "Routing scope",
-			"description": "Which subagents are routed: core or extended, which also routes other agents that set no model.",
+			"description": "Which subagents are routed: core (the default agents only) or extended (also other agents, as the README lists).",
 			"options": ["core", "extended"],
 			"default": "core"
 		},
@@ -75,25 +75,25 @@
 		"api_key": {
 			"type": "string",
 			"title": "TypeSafe API key",
-			"description": "Sent to TypeSafe only, when provider is typesafe and gateway is not openrouter.",
+			"description": "The plugin sends it to TypeSafe when provider is typesafe and gateway is not openrouter.",
 			"sensitive": true
 		},
 		"openai_api_key": {
 			"type": "string",
 			"title": "OpenAI API key",
-			"description": "Sent to OpenAI only, when provider is openai and gateway is not openrouter.",
+			"description": "The plugin sends it to OpenAI when provider is openai and gateway is not openrouter.",
 			"sensitive": true
 		},
 		"google_api_key": {
 			"type": "string",
 			"title": "Google API key",
-			"description": "Sent to Google only, when provider is google and gateway is not openrouter.",
+			"description": "The plugin sends it to Google when provider is google and gateway is not openrouter.",
 			"sensitive": true
 		},
 		"openrouter_api_key": {
 			"type": "string",
 			"title": "OpenRouter API key",
-			"description": "Sent to OpenRouter only, when gateway is not direct.",
+			"description": "The plugin sends it to OpenRouter when gateway is not direct.",
 			"sensitive": true
 		}
 	}

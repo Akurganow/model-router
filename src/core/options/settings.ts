@@ -170,7 +170,8 @@ const label = (setting: ValueSetting, value: string): string =>
 
 export const MORE = "more";
 
-// Claude Code's dialog takes at most four options.
+// Claude Code's dialog takes at most four options. The other harnesses page the same way, so a
+// choice reads alike in all four.
 const PAGE_MAX = 4;
 const PAGE_VALUES = PAGE_MAX - 1;
 
@@ -205,10 +206,11 @@ export async function askPaged(
 	select: (question: string, page: string[]) => Promise<string | undefined>,
 ): Promise<string | undefined> {
 	const pages = pagesOf(options);
-	for (let index = 0; ; index = (index + 1) % pages.length) {
-		const answer = await select(question, pages[index] ?? []);
-		if (answer !== MORE || pages.length === 1) return answer;
-	}
+	for (;;)
+		for (const page of pages) {
+			const answer = await select(question, page);
+			if (answer !== MORE || pages.length === 1) return answer;
+		}
 }
 
 // The current value comes first when it is valid. Otherwise the values keep their order.
