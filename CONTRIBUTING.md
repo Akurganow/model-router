@@ -117,7 +117,8 @@ every commit as a [conventional commit](#commits).
     gives the slot, its model, the effort to set and the routing line of a
     scored call.
   - `options/`: the settings and the scope, with their report and dialog
-    texts.
+    texts. `models.ts` reads the `models` setting, and `migrate.ts` holds the
+    [migration ladder](docs/providers.md#the-migration-ladder).
   - `output/`: the routing line, its suffix and the shared skip reasons. It
     imports nothing from `scoring/` or `decision/`. A failure's mapping to
     its reason stays in `scoring/`.

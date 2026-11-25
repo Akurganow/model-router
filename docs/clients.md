@@ -36,6 +36,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
   Claude Code before v2.1.271 cannot load a plugin that declares `options`.
 - Claude Code saves non-sensitive values under `pluginConfigs` in `settings.json`.
   It saves `sensitive` values in the platform's secure credential store.
+- Claude Code keeps a stored `pluginConfigs` value under a key that the manifest does not declare, through load and update.
+  It drops a stored value only for a key that declares `options`, when the value is outside the list.
 - `/config` shows a row for each option, except `sensitive` options and `multiple` lists.
 - `commands` accepts an object map from a command name to `source` or `content`.
   Each value sets exactly one of the two, and `description` and `argumentHint` are optional.
@@ -97,6 +99,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 - Claude Code loads `.js` and `.ts` files directly, with no build step.
   A hooks module imports only files inside the plugin directory by relative path, and the one bare import allowed is `claude-code`.
 - `$.ui.ask` takes at most four options.
+- A free string option that a manifest declares again hands its stored string to the plugin.
+- A `config.describe` hook returns `{ label, description, isHidden }` for each `/config` row, keyed `<plugin>.<field>`.
+  A hidden row still answers `$.config.set`.
 - When a hooks module fails, Claude Code skips it and the session continues.
   A broken mod can therefore look like one that does nothing.
 - A mod installed from a marketplace loads at the next start of Claude Code, or at `/reload-plugins` in an open session.

@@ -34,8 +34,9 @@ This file adds what an agent gets wrong without being told.
   definition's model too. In Claude Code the routed model outranks
   `CLAUDE_CODE_SUBAGENT_MODEL`.
 - They track no spend and no cost budget.
-- They never migrate a stored setting by code: one that a new version cannot
-  take skips routing with
+- They migrate a stored setting by code only through
+  [the ladder](docs/providers.md#the-migration-ladder). A value that no step
+  can read skips routing with
   [the setup line](docs/providers.md#a-setting-that-is-not-valid), except in
   Claude Code, which
   [hands the plugin the default](plugins/model-router/README.md#a-stored-value-outside-an-options-list)
