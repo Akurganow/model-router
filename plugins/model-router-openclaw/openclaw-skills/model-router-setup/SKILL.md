@@ -41,14 +41,14 @@ When the `models` line ends with `(not valid: <entry>)`, repair it. Follow these
 
 1. Call `model_router_config` with no input, and read the `models` line.
 2. Name the entry to the person, and ask for a corrected text.
-3. On the person's word, run `openclaw config set plugins.entries.model-router-openclaw.config.models '<corrected text>'`, with the text in the short form and the entries in the order the line shows them.
+3. On the person's word, run `openclaw config set plugins.entries.model-router-openclaw.config.models '<corrected text>'`, with the text in the short form and the entries in the order the line shows them. When a kept name holds a comma, a quote or a brace, write the whole value as a JSON object.
 4. After OpenClaw replaces the plugin, call `model_router_config` again, and confirm the `models` line.
 
 When the person wants another scoring model for one provider, follow these steps in order:
 
 1. Call `model_router_config` with no input, and read the `models` line and the lines under it.
 2. Ask the person for the provider and the model name. Model names come from the provider's API documentation.
-3. Take the text the line shows, keep every other entry, and set or replace that provider's entry. Write the short form, with the entries in the order the line shows them.
+3. Take the text the line shows, keep every other entry, and set or replace that provider's entry. Write the short form, with the entries in the order the line shows them. When a kept name holds a comma, a quote or a brace, write the whole value as a JSON object.
 4. On the person's word, run `openclaw config set plugins.entries.model-router-openclaw.config.models '<whole text>'`.
 5. After OpenClaw replaces the plugin, call `model_router_config` again, and confirm the `models` line.
 

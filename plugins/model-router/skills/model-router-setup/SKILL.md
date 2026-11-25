@@ -51,7 +51,7 @@ When the `models` line ends with `(not stored yet: run setup)`, migrate it. Foll
 When the `models` line ends with `(not valid: <entry>)`, repair it. Follow these steps in order:
 
 1. Name the entry to the person, and ask for a corrected text.
-2. On the person's word, call the tool with `models` set to the corrected text, in the short form, with the entries in the order the line shows them.
+2. On the person's word, call the tool with `models` set to the corrected text, in the short form, with the entries in the order the line shows them. When a kept name holds a comma, a quote or a brace, write the whole value as a JSON object.
 3. Read the reply. `models unchanged: not valid: <entry>` means nothing was written. Name the entry to the person, and ask again.
 4. Call the tool with no input, and confirm the `models` line.
 
@@ -59,7 +59,7 @@ When the person wants another scoring model for one provider, follow these steps
 
 1. Call the tool with no input, and read the `models` line and the lines under it.
 2. Ask the person for the provider and the model name. Model names come from the provider's API documentation.
-3. Take the text the line shows, keep every other entry, and set or replace that provider's entry. Write the short form, with the entries in the order the line shows them.
+3. Take the text the line shows, keep every other entry, and set or replace that provider's entry. Write the short form, with the entries in the order the line shows them. When a kept name holds a comma, a quote or a brace, write the whole value as a JSON object.
 4. On the person's word, call the tool with `models` set to the whole new text.
 5. Read the reply. `models unchanged: not valid: <entry>` means nothing was written. Name the entry to the person.
 6. Call the tool with no input, and confirm the `models` line.

@@ -40,14 +40,14 @@ When the `models` line ends with `(not valid: <entry>)`, repair it. Follow these
 
 1. Call `model_router_config` with no input, and read the `models` line.
 2. Name the entry to the person, and ask for a corrected text.
-3. On the person's word, run `hermes config set plugins.entries.model-router-hermes.settings.models '<corrected text>'`, with the text in the short form and the entries in the order the line shows them.
+3. On the person's word, run `hermes config set plugins.entries.model-router-hermes.settings.models '<corrected text>'`, with the text in the short form and the entries in the order the line shows them. When a kept name holds a comma, a quote or a brace, write the whole value as a JSON object.
 4. Call `model_router_config` again, and confirm the `models` line.
 
 When the person wants another scoring model for one provider, follow these steps in order:
 
 1. Call `model_router_config` with no input, and read the `models` line and the lines under it.
 2. Ask the person for the provider and the model name. Model names come from the provider's API documentation.
-3. Take the text the line shows, keep every other entry, and set or replace that provider's entry. Write the short form, with the entries in the order the line shows them.
+3. Take the text the line shows, keep every other entry, and set or replace that provider's entry. Write the short form, with the entries in the order the line shows them. When a kept name holds a comma, a quote or a brace, write the whole value as a JSON object.
 4. On the person's word, run `hermes config set plugins.entries.model-router-hermes.settings.models '<whole text>'`.
 5. Call `model_router_config` again, and confirm the `models` line.
 
@@ -130,7 +130,7 @@ When the person wants another scoring model for one provider, follow these steps
 
 - `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, a JSON object, or a native object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults, the OpenRouter names and when a value is not valid.
 - The person sets `models` in the settings form in Hermes Desktop, or with `hermes config set plugins.entries.model-router-hermes.settings.models '<text>'`. Run the command only on the person's word.
-- The Python passes the stored value to the Node step, which decides whether it is valid. A value that is not valid skips every task, a task with a level too, with `models not valid: run setup`.
+- The Python passes the stored value to the Node step, which decides whether it is valid. A value that is not valid stops routing. A task with a level skips with `models not valid: run setup` after the `<setting> not valid` gate. A task without one meets that check in its Node step after every gate, so it can skip with an earlier reason, such as `key unset`. [The gates](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#the-gates) give the order.
 - A model name goes as written on the provider's own API, and that API's documentation lists the names. [The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path) says what OpenRouter does with a name.
 - The plugin writes no setting when it loads.
 

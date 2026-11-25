@@ -62,6 +62,8 @@ The plugin then reads no key and sends no request.
 The skip line gives the reason `<setting> not valid: run setup`, for example `provider not valid: run setup`.
 Where more than one setting is not valid, the reason names the first of `provider`, `gateway`, `scope` and `models`.
 In Oh My Pi two gates stand before this check, as [Gate reasons](../plugins/model-router-omp/README.md#gate-reasons) lists.
+In Hermes Agent a task with no level meets the `models` check in its Node step, after [the gates in Hermes Agent](../plugins/model-router-hermes/README.md#the-gates).
+By then the plugin has read its keys, and an earlier gate can skip the task.
 
 The skip line shows for these tasks:
 
@@ -110,6 +112,7 @@ It takes one of these forms:
   The braces are optional.
   Commas split the entries, and each entry splits at its first colon.
   Spaces around a part and one trailing comma are allowed.
+  A model name that holds a comma, a quote or a brace needs the JSON form.
 - A JSON object, such as `{"typesafe": "jev-latest", "openai": "gpt-6-luna"}`.
 - A native object, in OpenClaw and Hermes Agent.
 
@@ -126,7 +129,8 @@ A value is not valid for any of these:
 - a JSON value that is not a string;
 - a text that is neither form.
 
-While `models` is not valid, the plugin routes no task and the skip line reads `models not valid: run setup`.
+While `models` is not valid, the plugin routes no task.
+The skip line reads `models not valid: run setup`, unless an earlier gate skips the task first, as [the Hermes Agent order](#a-setting-that-is-not-valid) says.
 The config tool names the failing entry.
 A slash is never valid.
 So `models` never sends the task text to a company other than the one `provider` names.
