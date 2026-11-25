@@ -3,6 +3,23 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.28.0 - 2026-11-25
+#### Features
+- (**setup**) name Perplexity in every text, and check stored fields (dddbc52)
+- add Perplexity as a scoring provider (94669af)
+#### Bug Fixes
+- (**claude**) drop the removed model option (0972c98)
+- (**openclaw**) keep the config migration id at settings-v1 (d6924fe)
+- setup step order in OpenClaw, omp version note, scan key boundary (c88607c)
+- skip omp logins for keys, and safer stored-field steps (a9c37c7)
+#### Documentation
+- (**omp**) say from which omp a stored login is skipped (03a2c35)
+- name each list once per file (9337e65)
+- shorten the texts this change touches (ee702ad)
+
+- - -
+
+
 ## v0.27.0 - 2026-11-25
 #### Features
 - (**options**) page choices of more than four values (595550e)
