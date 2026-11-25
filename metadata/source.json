@@ -70,6 +70,15 @@
 			}
 		}
 	},
+	"models": {
+		"title": "Scoring models",
+		"descriptions": {
+			"claude": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.",
+			"omp": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.",
+			"openclaw": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.",
+			"hermes": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model."
+		}
+	},
 	"claude": {
 		"skills": ["."],
 		"commandContents": {
@@ -104,6 +113,10 @@
 					"description": "Your OpenRouter API key. The plugin sends it to OpenRouter only, as the bearer token of the scoring request, and only when the gateway option allows OpenRouter.",
 					"sensitive": true
 				}
+			},
+			"model": {
+				"title": "Jev model",
+				"description": "Removed: the setup skill moves it into models."
 			}
 		},
 		"catalogueSource": "./plugins/model-router",

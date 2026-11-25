@@ -41,6 +41,10 @@ const INSTALL: Install = {
 	source: { publisher: "p", title: "t", url: "u" },
 	ciSystems: ["s"],
 };
+const MODELS: Source["models"] = {
+	title: "t",
+	descriptions: { claude: "c", omp: "o", openclaw: "w", hermes: "h" },
+};
 const TEXTS = { manifest: "m", catalogue: "c" };
 
 // tsc rejects a key this literal lacks or adds, so the type, the schema and the source change together.
@@ -60,6 +64,7 @@ const FIXTURE: Source = {
 		hermes: { manifest: "m" },
 	},
 	options: { provider: OPTION, gateway: OPTION, scope: OPTION },
+	models: MODELS,
 	claude: {
 		skills: ["s"],
 		commandContents: { provider: "p", gateway: "g", scope: "s" },
@@ -71,6 +76,7 @@ const FIXTURE: Source = {
 				google: SECRET,
 				openrouter: SECRET,
 			},
+			model: { title: "t", description: "d" },
 		},
 		catalogueSource: "c",
 		install: INSTALL,

@@ -45,6 +45,10 @@
 			"label": "Routing scope",
 			"help": "Which spawns are routed. core: the spawn of the requesting agent itself. extended: also the spawns of other agents that set no model."
 		},
+		"models": {
+			"label": "Scoring models",
+			"help": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model."
+		},
 		"small_model": {
 			"label": "Small model",
 			"help": "The model a spawn gets when the scoring model rates its task small, written as provider/model. Unset: such a spawn keeps the model OpenClaw would give it, and the plugin still sets its effort unless you set one."
@@ -93,6 +97,12 @@
 			"scope": {
 				"type": "string",
 				"default": "core"
+			},
+			"models": {
+				"type": ["string", "object"],
+				"additionalProperties": {
+					"type": "string"
+				}
 			},
 			"small_model": {
 				"type": "string"

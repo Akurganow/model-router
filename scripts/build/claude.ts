@@ -38,6 +38,18 @@ const userConfig = (source: Source): JsonObject => ({
 			];
 		}),
 	),
+	models: {
+		type: source.claude.userConfig.optionType,
+		title: source.models.title,
+		description: source.models.descriptions.claude,
+		default: "",
+	},
+	// No default and no options: a default would give every install an entry, and a list would refuse an erase to an empty string.
+	model: {
+		type: "string",
+		title: source.claude.userConfig.model.title,
+		description: source.claude.userConfig.model.description,
+	},
 });
 
 const manifest = (source: Source): JsonObject => ({
