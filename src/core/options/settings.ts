@@ -13,8 +13,9 @@ import {
 } from "#core/providers/provider.ts";
 import { modelOf } from "#core/scoring/maker-registry.ts";
 import { errorText } from "#utils/error.ts";
-import { migrate } from "./migrate.ts";
-import { readModels, textOf } from "./models.ts";
+import { nonEmpty } from "#utils/text.ts";
+import { migrate, type StoredRecord } from "./migrate.ts";
+import { isSilentModels, readModels, textOf } from "./models.ts";
 import { DEFAULT_SCOPE, SCOPE_VALUES, type Scope } from "./scope.ts";
 
 export const VALUE_SETTINGS = ["provider", "gateway", "scope"] as const;
@@ -113,23 +114,28 @@ const readGateway = (stored: unknown): Gateway | undefined =>
 const readScope = (stored: unknown): Scope | undefined =>
 	SCOPE_VALUES.find((scope) => scope === valueFor("scope", stored));
 
+// The settings of a record the ladder already ran on.
+function settingsFrom(record: StoredRecord): Settings | NoChoice {
+	const { provider, gateway, scope, models } = record;
+	const maker = readProvider(provider);
+	if (maker === undefined) return { skipped: notValid("provider") };
+	const via = readGateway(gateway);
+	if (via === undefined) return { skipped: notValid("gateway") };
+	const routed = readScope(scope);
+	if (routed === undefined) return { skipped: notValid("scope") };
+	const read = readModels(models);
+	if ("invalid" in read) return { skipped: notValid("models") };
+	return { provider: maker, gateway: via, scope: routed, models: read.models };
+}
+
 /**
  * Returns the typed settings, or the skip reason of the first setting, in
  * VALUE_SETTINGS order and then `models`, whose stored text is not valid. The
- * migration ladder runs first, so a stored removed option counts as its new form.
+ * migration ladder runs first on the whole record, so a stored removed option
+ * counts as its new form.
  */
-export function settingsOf(stored: Stored): Settings | NoChoice {
-	const provider = readProvider(stored.provider);
-	if (provider === undefined) return { skipped: notValid("provider") };
-	const gateway = readGateway(stored.gateway);
-	if (gateway === undefined) return { skipped: notValid("gateway") };
-	const scope = readScope(stored.scope);
-	if (scope === undefined) return { skipped: notValid("scope") };
-	const { models } = migrate(stored).stored;
-	const read = readModels(models);
-	if ("invalid" in read) return { skipped: notValid("models") };
-	return { provider, gateway, scope, models: read.models };
-}
+export const settingsOf = (stored: Stored): Settings | NoChoice =>
+	settingsFrom(migrate(stored).stored);
 
 /**
  * Returns the value the stored scope reads as: the default for a silent text,
@@ -137,8 +143,10 @@ export function settingsOf(stored: Stored): Settings | NoChoice {
  * other settings play no part: a valid stored scope decides which calls get the
  * skip line of another setting that is not valid.
  */
-export const scopeOf = (stored: Stored): Scope =>
-	readScope(stored.scope) ?? DEFAULT_SCOPE;
+export function scopeOf(stored: Stored): Scope {
+	const { scope } = migrate(stored).stored;
+	return readScope(scope) ?? DEFAULT_SCOPE;
+}
 
 export const useOneOf = (setting: ValueSetting): string =>
 	`${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
@@ -211,49 +219,72 @@ export async function chooseValue(
 	return value === undefined ? unchanged(setting, NOT_OFFERED) : apply(value);
 }
 
-/**
- * Returns the line of one setting. A setting that is not valid shows its stored
- * text and the values it takes. A gateway that is valid also names the key
- * holders it asks, but only when every setting is valid.
- */
-export const valueLine = (setting: ValueSetting, stored: Stored): string => {
-	const value = valueFor(setting, stored[setting]);
+const valueLineFrom = (setting: ValueSetting, record: StoredRecord): string => {
+	const shown = record[setting];
+	const value = valueFor(setting, shown);
 	if (value === undefined)
-		return `${setting}: ${String(stored[setting])} (not valid: use one of ${TEXTS[setting].values.join(", ")})`;
-	const settings = settingsOf(stored);
+		return `${setting}: ${String(shown)} (not valid: use one of ${TEXTS[setting].values.join(", ")})`;
+	const settings = settingsFrom(record);
 	if (setting === "gateway" && !("skipped" in settings))
 		return `gateway: ${value} (${holders(settings).join(", then ")})`;
 	return `${setting}: ${value}`;
 };
 
-// The stored value of `models` as the report shows it.
-const silent = (models: unknown): boolean =>
-	models === undefined ||
-	models === null ||
-	(typeof models === "string" && models.trim() === "");
-
 /**
- * Returns the lines of the `models` setting, read after the migration ladder. The first line shows
- * the value as stored, and says when the ladder changed it and the change is not stored yet, or
- * which entry is not valid. A valid value then gets one line per maker with the model name for each
- * path.
+ * Returns the line of one setting. A setting that is not valid shows its stored
+ * text and the values it takes. A gateway that is valid also names the key
+ * holders it asks, but only when every setting is valid.
  */
-export const modelsLines = (stored: Stored): string[] => {
-	const { stored: migrated } = migrate(stored);
-	const { models } = migrated;
-	const shown = silent(models) ? "unset" : textOf(models);
-	const pending =
-		models === stored.models ? "" : " (not stored yet: run setup)";
+export const valueLine = (setting: ValueSetting, stored: Stored): string =>
+	valueLineFrom(setting, migrate(stored).stored);
+
+const NOT_STORED = " (not stored yet: run setup)";
+
+const modelsLinesFrom = (record: StoredRecord, pending: boolean): string[] => {
+	const { models } = record;
+	const shown = isSilentModels(models) ? "unset" : textOf(models);
 	const read = readModels(models);
 	if ("invalid" in read)
 		return [`models: ${shown} (not valid: ${read.invalid})`];
 	return [
-		`models: ${shown}${pending}`,
+		`models: ${shown}${pending ? NOT_STORED : ""}`,
 		...MAKERS.map(
 			(maker) =>
 				`${maker} model: ${modelOf(maker, "direct", read.models[maker])} (OpenRouter: ${modelOf(maker, "openrouter", read.models[maker])})`,
 		),
 	];
+};
+
+type Migrated = ReturnType<typeof migrate>;
+
+const hasModel = (stored: Stored): boolean =>
+	nonEmpty(stored.model) !== undefined;
+
+// What the stored removed `model` leaves to do: the models text the ladder made, when it changed
+// anything, and the erase of `model` itself.
+const carryFrom = (
+	stored: Stored,
+	{ stored: { models }, changes }: Migrated,
+): { readonly models?: string; readonly eraseModel: boolean } => ({
+	...(changes.length > 0 ? { models: textOf(models) } : {}),
+	eraseModel: hasModel(stored),
+});
+
+const isPending = (carry: ReturnType<typeof carryFrom>): boolean =>
+	carry.models !== undefined || carry.eraseModel;
+
+/**
+ * Returns the lines of the `models` setting, read after the migration ladder. The first line shows
+ * the value as stored, and says when the ladder changed it or a removed `model` is left to erase
+ * and the change is not stored yet, or which entry is not valid. A valid value then gets one line
+ * per maker with the model name for each path.
+ */
+export const modelsLines = (stored: Stored): string[] => {
+	const migrated = migrate(stored);
+	return modelsLinesFrom(
+		migrated.stored,
+		isPending(carryFrom(stored, migrated)),
+	);
 };
 
 /**
@@ -268,7 +299,9 @@ export const settingsReport = (
 	extra: readonly string[],
 	keys: Keys,
 ): string => {
-	const settings = settingsOf(stored);
+	const migrated = migrate(stored);
+	const { stored: record } = migrated;
+	const settings = settingsFrom(record);
 	const keyLines: string[] =
 		"skipped" in settings
 			? []
@@ -276,47 +309,56 @@ export const settingsReport = (
 					keyLine(holder, keys[holder] === undefined ? "unset" : "set"),
 				);
 	return [
-		...VALUE_SETTINGS.map((setting) => valueLine(setting, stored)),
-		...modelsLines(stored),
+		...VALUE_SETTINGS.map((setting) => valueLineFrom(setting, record)),
+		...modelsLinesFrom(record, isPending(carryFrom(stored, migrated))),
 		...extra,
 		...keyLines,
 	].join("\n");
 };
 
-const hasModel = (stored: Stored): boolean =>
-	typeof stored.model === "string" && stored.model.trim() !== "";
+/**
+ * Returns what a stored removed `model` leaves to write. `models` is the text the ladder made of
+ * the record, present only when the ladder changed it. `eraseModel` is true whenever a `model`
+ * that is not blank is stored, even when the ladder copied nothing.
+ */
+export const modelCarry = (
+	stored: Stored,
+): { readonly models?: string; readonly eraseModel: boolean } =>
+	carryFrom(stored, migrate(stored));
 
 /**
- * Returns what to write for the `models` text a person asked for, or the line that refuses it. The
- * text goes through the ladder, so a stored removed `model` becomes the `typesafe` entry when the
- * text names none. `eraseModel` is true when a stored `model` is left to erase.
+ * Returns the `models` text to store for the text a person asked for, or the line that refuses it.
+ * The text goes through the ladder, so a stored removed `model` becomes the `typesafe` entry when
+ * the text names none.
  */
 export function modelsWrite(
 	stored: Stored,
 	text: string,
-):
-	| { readonly models: string; readonly eraseModel: boolean }
-	| { readonly refused: string } {
+): { readonly models: string } | { readonly refused: string } {
 	const read = readModels(text);
 	if ("invalid" in read)
 		return { refused: unchanged("models", `not valid: ${read.invalid}`) };
-	const { models } = migrate({ ...stored, models: text }).stored;
-	return {
-		models: typeof models === "string" ? models : text,
-		eraseModel: hasModel(stored),
-	};
+	return { models: modelCarry({ ...stored, models: text }).models ?? text };
 }
 
 /**
- * Returns the `models` text the ladder makes from a stored `model`, for the write that comes before
- * a change of provider erases `model`. Returns undefined when the ladder changes nothing.
+ * Returns the text a `models` call of a config tool carries, or the line that refuses its shape:
+ * `models` beside a `setting`, or `models` that is not text.
  */
-export function pendingModels(stored: Stored): string | undefined {
-	const { stored: migrated, changes } = migrate(stored);
-	if (changes.length === 0 || !hasModel(stored)) return undefined;
-	const { models } = migrated;
-	return textOf(models);
-}
+export const modelsCallOf = (
+	setting: unknown,
+	models: unknown,
+): { readonly text: string } | { readonly refused: string } =>
+	typeof models === "string" && setting === undefined
+		? { text: models }
+		: { refused: BAD_MODELS_CALL };
+
+/** Returns the unchanged line when the stored `models` equals the text to write, else undefined. */
+export const modelsAlready = (
+	held: unknown,
+	text: string,
+): string | undefined =>
+	held === text ? unchanged("models", alreadyValue(text)) : undefined;
 
 export const toolDescription = (): string =>
 	`Reads the router's settings. With no input it returns the provider, gateway, scope and models, and whether each key the settings allow is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice; never pass a value for these. With models and a string, the tool writes that string as the models setting at the person's request, for example {typesafe:jev-latest, openai:gpt-6-luna}. Never pass a key.`;

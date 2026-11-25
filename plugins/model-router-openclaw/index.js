@@ -456,7 +456,8 @@ function endpointOf(attempt) {
 var errorText = (err) => err instanceof Error ? err.message : String(err);
 
 // src/core/options/models.ts
-var QUOTED = /"(?:[^"\\]|\\.)*"/g;
+var QUOTED_KEY = /"(?:[^"\\]|\\.)*"(?=\s*:)/g;
+var JSON_CHARS = /["{}]/;
 var isPlainObject = (value) => {
   if (typeof value !== "object" || value === null) return false;
   const proto = Object.getPrototypeOf(value);
@@ -490,9 +491,8 @@ function readObject(object) {
 }
 function repeatedKey(text) {
   const seen = /* @__PURE__ */ new Set();
-  const tokens = text.match(QUOTED) ?? [];
-  for (let i = 0; i < tokens.length; i += 2) {
-    const key = String(JSON.parse(tokens[i] ?? '""')).trim();
+  for (const [token] of text.matchAll(QUOTED_KEY)) {
+    const key = String(JSON.parse(token));
     if (seen.has(key)) return key;
     seen.add(key);
   }
@@ -515,17 +515,17 @@ function readOwnerForm(text) {
   )) {
     const entry = part.trim();
     const colon = entry.indexOf(":");
-    if (colon < 0 || !accept(named, entry.slice(0, colon), entry.slice(colon + 1)))
+    if (colon < 0 || JSON_CHARS.test(entry.slice(colon + 1)) || !accept(named, entry.slice(0, colon), entry.slice(colon + 1)))
       return { invalid: entry === "" ? text : entry };
   }
   return { models: named };
 }
+var isSilentModels = (stored) => stored === void 0 || stored === null || typeof stored === "string" && stored.trim() === "";
 function readModels(stored) {
-  if (stored === void 0 || stored === null) return { models: {} };
+  if (isSilentModels(stored)) return { models: {} };
   if (isPlainObject(stored)) return readObject(stored);
   if (typeof stored !== "string") return { invalid: textOf(stored) };
   const text = stored.trim();
-  if (text === "") return { models: {} };
   if (text.startsWith("{")) {
     const parsed = parseJson2(text);
     if (isPlainObject(parsed)) {
@@ -541,19 +541,29 @@ var formatModels = (names) => `{${MAKERS.flatMap((maker) => {
   const name = names[maker];
   return name === void 0 ? [] : [`${maker}:${name}`];
 }).join(", ")}}`;
+var sameNames = (a, b) => MAKERS.every((maker) => a[maker] === b[maker]);
+function withModel(models, maker, name) {
+  const read = readModels(models);
+  if ("invalid" in read || read.models[maker] !== void 0) return void 0;
+  const text = typeof models === "string" ? models.trim() : void 0;
+  const parsed = text?.startsWith("{") ? parseJson2(text) : void 0;
+  let added;
+  if (isPlainObject(models)) added = { ...models, [maker]: name };
+  else if (isPlainObject(parsed))
+    added = JSON.stringify({ ...parsed, [maker]: name });
+  else added = formatModels({ ...read.models, [maker]: name });
+  const back = readModels(added);
+  return "models" in back && sameNames(back.models, { ...read.models, [maker]: name }) ? added : void 0;
+}
 
 // src/core/options/migrate.ts
 var typesafeFromModel = (stored) => {
   const { model, models } = stored;
-  if (typeof model !== "string" || model.trim() === "") return void 0;
-  const read = readModels(models);
-  if ("invalid" in read || read.models.typesafe !== void 0) return void 0;
-  const typesafe2 = model.trim();
+  if (typeof model !== "string") return void 0;
+  const added = withModel(models, "typesafe", model.trim());
+  if (added === void 0 || model.trim() === "") return void 0;
   return {
-    stored: {
-      ...stored,
-      models: isPlainObject(models) ? { ...models, typesafe: typesafe2 } : formatModels({ ...read.models, typesafe: typesafe2 })
-    },
+    stored: { ...stored, models: added },
     change: "models: typesafe from the removed model option"
   };
 };
@@ -617,56 +627,65 @@ var valueFor = (setting, stored) => isSilent(stored) ? TEXTS[setting].values[0] 
 var readProvider = (stored) => MAKERS.find((maker) => maker === valueFor("provider", stored));
 var readGateway = (stored) => GATEWAYS.find((gateway) => gateway === valueFor("gateway", stored));
 var readScope = (stored) => SCOPE_VALUES.find((scope) => scope === valueFor("scope", stored));
-function settingsOf(stored) {
-  const provider = readProvider(stored.provider);
-  if (provider === void 0) return { skipped: notValid("provider") };
-  const gateway = readGateway(stored.gateway);
-  if (gateway === void 0) return { skipped: notValid("gateway") };
-  const scope = readScope(stored.scope);
-  if (scope === void 0) return { skipped: notValid("scope") };
-  const { models } = migrate(stored).stored;
+function settingsFrom(record) {
+  const { provider, gateway, scope, models } = record;
+  const maker = readProvider(provider);
+  if (maker === void 0) return { skipped: notValid("provider") };
+  const via = readGateway(gateway);
+  if (via === void 0) return { skipped: notValid("gateway") };
+  const routed = readScope(scope);
+  if (routed === void 0) return { skipped: notValid("scope") };
   const read = readModels(models);
   if ("invalid" in read) return { skipped: notValid("models") };
-  return { provider, gateway, scope, models: read.models };
+  return { provider: maker, gateway: via, scope: routed, models: read.models };
 }
+var settingsOf = (stored) => settingsFrom(migrate(stored).stored);
 var useOneOf = (setting) => `${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 var unchanged = (setting, reason) => `${setting} unchanged: ${reason}`;
 var unchangedBy = (setting, err) => unchanged(setting, errorText(err));
 var alreadyValue = (value) => `already ${value}`;
 var keyLine = (holder, state) => `${holder} key: ${state}`;
-var valueLine = (setting, stored) => {
-  const value = valueFor(setting, stored[setting]);
+var valueLineFrom = (setting, record) => {
+  const shown = record[setting];
+  const value = valueFor(setting, shown);
   if (value === void 0)
-    return `${setting}: ${String(stored[setting])} (not valid: use one of ${TEXTS[setting].values.join(", ")})`;
-  const settings = settingsOf(stored);
+    return `${setting}: ${String(shown)} (not valid: use one of ${TEXTS[setting].values.join(", ")})`;
+  const settings = settingsFrom(record);
   if (setting === "gateway" && !("skipped" in settings))
     return `gateway: ${value} (${holders(settings).join(", then ")})`;
   return `${setting}: ${value}`;
 };
-var silent = (models) => models === void 0 || models === null || typeof models === "string" && models.trim() === "";
-var modelsLines = (stored) => {
-  const { stored: migrated } = migrate(stored);
-  const { models } = migrated;
-  const shown = silent(models) ? "unset" : textOf(models);
-  const pending = models === stored.models ? "" : " (not stored yet: run setup)";
+var valueLine = (setting, stored) => valueLineFrom(setting, migrate(stored).stored);
+var NOT_STORED = " (not stored yet: run setup)";
+var modelsLinesFrom = (record, pending) => {
+  const { models } = record;
+  const shown = isSilentModels(models) ? "unset" : textOf(models);
   const read = readModels(models);
   if ("invalid" in read)
     return [`models: ${shown} (not valid: ${read.invalid})`];
   return [
-    `models: ${shown}${pending}`,
+    `models: ${shown}${pending ? NOT_STORED : ""}`,
     ...MAKERS.map(
       (maker) => `${maker} model: ${modelOf(maker, "direct", read.models[maker])} (OpenRouter: ${modelOf(maker, "openrouter", read.models[maker])})`
     )
   ];
 };
+var hasModel = (stored) => nonEmpty(stored.model) !== void 0;
+var carryFrom = (stored, { stored: { models }, changes }) => ({
+  ...changes.length > 0 ? { models: textOf(models) } : {},
+  eraseModel: hasModel(stored)
+});
+var isPending = (carry) => carry.models !== void 0 || carry.eraseModel;
 var settingsReport = (stored, extra, keys) => {
-  const settings = settingsOf(stored);
+  const migrated = migrate(stored);
+  const { stored: record } = migrated;
+  const settings = settingsFrom(record);
   const keyLines = "skipped" in settings ? [] : holders(settings).map(
     (holder) => keyLine(holder, keys[holder] === void 0 ? "unset" : "set")
   );
   return [
-    ...VALUE_SETTINGS.map((setting) => valueLine(setting, stored)),
-    ...modelsLines(stored),
+    ...VALUE_SETTINGS.map((setting) => valueLineFrom(setting, record)),
+    ...modelsLinesFrom(record, isPending(carryFrom(stored, migrated))),
     ...extra,
     ...keyLines
   ].join("\n");

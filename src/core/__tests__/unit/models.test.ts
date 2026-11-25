@@ -2,7 +2,11 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatModels, readModels } from "#core/options/models.ts";
+import {
+	formatModels,
+	isSilentModels,
+	readModels,
+} from "#core/options/models.ts";
 
 test("a silent value names no model", () => {
 	for (const stored of [undefined, null, "", "   "])
@@ -154,4 +158,11 @@ test("formatModels writes the owner's form in the order of the makers", () => {
 	);
 	assert.equal(formatModels({ openai: "gpt-6-luna" }), "{openai:gpt-6-luna}");
 	assert.equal(formatModels({}), "{}");
+});
+
+test("isSilentModels is true for unset, null, a blank text and spaces, and false for any other value", () => {
+	for (const stored of [undefined, null, "", "   "])
+		assert.equal(isSilentModels(stored), true, String(stored));
+	for (const stored of ["{}", "a", 0, false, {}, []])
+		assert.equal(isSilentModels(stored), false, String(stored));
 });

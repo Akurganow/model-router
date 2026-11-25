@@ -12,10 +12,13 @@ import {
 	isValue,
 	isValueSetting,
 	keyLine,
+	modelCarry,
+	modelsAlready,
+	modelsCallOf,
+	modelsLines,
 	modelsWrite,
 	NO_ANSWER,
 	NOT_OFFERED,
-	pendingModels,
 	pick,
 	readOnlyToolDescription,
 	scopeOf,
@@ -573,37 +576,97 @@ test("modelsWrite refuses a text that is not valid and names the entry", () => {
 	});
 });
 
-test("modelsWrite gives the text as it is when no old model is stored", () => {
+test("modelsWrite gives the text as it is when the ladder changes nothing", () => {
 	assert.deepEqual(modelsWrite({}, "{openai:gpt-6-luna}"), {
 		models: "{openai:gpt-6-luna}",
-		eraseModel: false,
-	});
-});
-
-test("modelsWrite folds a stored old model into the text and asks to erase it", () => {
-	assert.deepEqual(modelsWrite({ model: "jev-preview" }, "openai:gpt-6-luna"), {
-		models: "{typesafe:jev-preview, openai:gpt-6-luna}",
-		eraseModel: true,
 	});
 	assert.deepEqual(
 		modelsWrite({ model: "jev-preview" }, "{typesafe:jev-latest}"),
-		{ models: "{typesafe:jev-latest}", eraseModel: true },
+		{ models: "{typesafe:jev-latest}" },
 	);
 });
 
-test("pendingModels gives the ladder's text only when an old model changes it", () => {
-	assert.equal(
-		pendingModels({ model: "jev-preview" }),
-		"{typesafe:jev-preview}",
+test("modelsWrite folds a stored old model into the text and says nothing of erasing it", () => {
+	assert.deepEqual(modelsWrite({ model: "jev-preview" }, "openai:gpt-6-luna"), {
+		models: "{typesafe:jev-preview, openai:gpt-6-luna}",
+	});
+});
+
+test("modelCarry gives the ladder's text only when an old model changes it", () => {
+	assert.deepEqual(modelCarry({ model: "jev-preview" }), {
+		models: "{typesafe:jev-preview}",
+		eraseModel: true,
+	});
+	assert.deepEqual(
+		modelCarry({ model: "jev-preview", models: { openai: "a" } }),
+		{ models: '{"openai":"a","typesafe":"jev-preview"}', eraseModel: true },
 	);
-	assert.equal(
-		pendingModels({ model: "jev-preview", models: { openai: "a" } }),
-		'{"openai":"a","typesafe":"jev-preview"}',
+	assert.deepEqual(modelCarry({}), { eraseModel: false });
+});
+
+test("modelCarry erases a stored old model even when the ladder copies nothing", () => {
+	for (const stored of [
+		{ model: "jev-preview", models: "{typesafe:jev-latest}" },
+		{ model: "jev-preview", models: "{acme:x}" },
+		{ model: "a/b" },
+	])
+		assert.deepEqual(modelCarry(stored), { eraseModel: true }, stored.model);
+});
+
+test("modelCarry erases nothing for a blank old model", () => {
+	for (const model of ["", "   ", null, undefined, 5])
+		assert.deepEqual(
+			modelCarry({ model }),
+			{ eraseModel: false },
+			String(model),
+		);
+});
+
+test("the report says a removed model is not stored yet, though the ladder copies nothing", () => {
+	assert.match(
+		settingsReport(
+			{ model: "jev-preview", models: "{typesafe:jev-latest}" },
+			[],
+			{},
+		),
+		/\nmodels: \{typesafe:jev-latest\} \(not stored yet: run setup\)\n/,
 	);
-	assert.equal(pendingModels({}), undefined);
-	assert.equal(pendingModels({ model: "   " }), undefined);
+});
+
+test("the report says a models value is unset for each silent form, and shows any other form as it is", () => {
+	for (const models of ["", "   ", null, undefined])
+		assert.equal(modelsLines({ models })[0], "models: unset", String(models));
+	assert.equal(modelsLines({ models: 0 })[0], "models: 0 (not valid: 0)");
 	assert.equal(
-		pendingModels({ model: "jev-preview", models: "{typesafe:jev-latest}" }),
-		undefined,
+		modelsLines({ models: false })[0],
+		"models: false (not valid: false)",
 	);
+});
+
+test("modelsCallOf takes the text of a models call and refuses any other shape", () => {
+	assert.deepEqual(modelsCallOf(undefined, "{openai:a}"), {
+		text: "{openai:a}",
+	});
+	assert.deepEqual(modelsCallOf(undefined, ""), { text: "" });
+	for (const [setting, models] of [
+		["scope", "{openai:a}"],
+		[undefined, 3],
+		[undefined, null],
+		[undefined, { openai: "a" }],
+	] as const)
+		assert.deepEqual(
+			modelsCallOf(setting, models),
+			{ refused: "Pass setting alone, or models as a text alone." },
+			String(models),
+		);
+});
+
+test("modelsAlready names the text only when it equals what is stored", () => {
+	assert.equal(
+		modelsAlready("{openai:a}", "{openai:a}"),
+		"models unchanged: already {openai:a}",
+	);
+	assert.equal(modelsAlready("{openai:a}", "{openai:b}"), undefined);
+	assert.equal(modelsAlready(undefined, ""), undefined);
+	assert.equal(modelsAlready({ openai: "a" }, '{"openai":"a"}'), undefined);
 });

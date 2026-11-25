@@ -1,11 +1,12 @@
 import {
 	alreadyValue,
-	BAD_MODELS_CALL,
 	badCall,
 	COMMAND_DESCRIPTIONS,
 	chooseValue,
 	isValue,
 	isValueSetting,
+	modelsAlready,
+	modelsCallOf,
 	modelsLines,
 	modelsWrite,
 	NO_ANSWER,
@@ -122,8 +123,8 @@ async function applyModels(
 		return unchanged("models", UNREADABLE);
 	const write = modelsWrite(global, text);
 	if ("refused" in write) return write.refused;
-	if (global.models === write.models)
-		return unchanged("models", alreadyValue(write.models));
+	const already = modelsAlready(global.models, write.models);
+	if (already !== undefined) return already;
 	try {
 		await omp.writeSetting(ctx.cwd, plugin, "models", write.models);
 	} catch (err) {
@@ -157,10 +158,12 @@ async function runTool(
 	params: unknown,
 ): Promise<string> {
 	const { setting, models } = isRecord(params) ? params : {};
-	if (models !== undefined)
-		return setting === undefined && typeof models === "string"
-			? applyModels(omp, ctx, models)
-			: BAD_MODELS_CALL;
+	if (models !== undefined) {
+		const asked = modelsCallOf(setting, models);
+		return "refused" in asked
+			? asked.refused
+			: applyModels(omp, ctx, asked.text);
+	}
 	if (setting === undefined) return readAll(omp, ctx);
 	return isValueSetting(setting) ? dialog(omp, ctx, setting) : badCall();
 }

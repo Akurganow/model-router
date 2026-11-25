@@ -1,13 +1,14 @@
 import {
 	alreadyValue,
-	BAD_MODELS_CALL,
 	badCall,
 	chooseValue,
 	isValue,
 	isValueSetting,
+	modelCarry,
+	modelsAlready,
+	modelsCallOf,
 	modelsLines,
 	modelsWrite,
-	pendingModels,
 	type Stored,
 	settingsOf,
 	settingsReport,
@@ -117,28 +118,31 @@ async function put(
 	}
 }
 
-// Writes `models`, then erases the removed `model` when asked, in that order. A refused `models`
-// stops there. Returns the lines of the writes that failed, and whether `models` was written.
+// Writes `models` when there is a text, then erases the removed `model` when asked, in that order.
+// A refused `models` stops there. Returns the lines of the writes that failed, and whether `models`
+// was written.
 async function storeModels(
 	$: Engine,
-	models: string,
+	models: string | undefined,
 	eraseModel: boolean,
 ): Promise<{ stored: boolean; lines: string[] }> {
-	const refused = await put($, "models", models);
-	if (refused !== undefined)
-		return { stored: false, lines: [unchanged("models", refused)] };
-	if (!eraseModel) return { stored: true, lines: [] };
+	if (models !== undefined) {
+		const refused = await put($, "models", models);
+		if (refused !== undefined)
+			return { stored: false, lines: [unchanged("models", refused)] };
+	}
+	if (!eraseModel) return { stored: models !== undefined, lines: [] };
 	const kept = await put($, "model", "");
 	return {
-		stored: true,
+		stored: models !== undefined,
 		lines: kept === undefined ? [] : [unchanged("model", kept)],
 	};
 }
 
 // A provider change also stores the models text the removed `model` makes, then erases it.
 async function carryModel($: Engine, options: Options): Promise<string[]> {
-	const models = pendingModels(storedOf(options));
-	return models === undefined ? [] : (await storeModels($, models, true)).lines;
+	const { models, eraseModel } = modelCarry(storedOf(options));
+	return (await storeModels($, models, eraseModel)).lines;
 }
 
 // The tool and every command write through this one function, so equal outcomes read alike.
@@ -162,13 +166,13 @@ async function writeModels(
 	const stored = storedOf(options);
 	const planned = modelsWrite(stored, text);
 	if ("refused" in planned) return planned.refused;
-	const held = typeof stored.models === "string" ? stored.models : "";
-	if (planned.models === held && !planned.eraseModel)
-		return unchanged("models", alreadyValue(planned.models));
+	const { eraseModel } = modelCarry(stored);
+	const already = modelsAlready(stored.models, planned.models);
+	if (already !== undefined && !eraseModel) return already;
 	const { stored: done, lines } = await storeModels(
 		$,
 		planned.models,
-		planned.eraseModel,
+		eraseModel,
 	);
 	return [...(done ? modelsLines(storedOf(options)) : []), ...lines].join("\n");
 }
@@ -203,13 +207,15 @@ async function answer(
 ): Promise<ToolAnswer> {
 	if (await denied($, call)) return { deny: REFUSED };
 	const { setting, models } = call;
-	if (models !== undefined)
+	if (models !== undefined) {
+		const asked = modelsCallOf(setting, models);
 		return {
 			result:
-				typeof models === "string" && setting === undefined
-					? await writeModels($, options, models)
-					: BAD_MODELS_CALL,
+				"refused" in asked
+					? asked.refused
+					: await writeModels($, options, asked.text),
 		};
+	}
 	if (setting === undefined) return { result: await read($, options) };
 	if (isValueSetting(setting))
 		return { result: await choose($, setting, options) };

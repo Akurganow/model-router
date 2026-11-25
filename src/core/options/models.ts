@@ -104,17 +104,22 @@ function readOwnerForm(text: string): ModelsRead {
 	return { models: named };
 }
 
+/** Tells whether a stored `models` names nothing: unset, null, or text of spaces alone. */
+export const isSilentModels = (stored: unknown): boolean =>
+	stored === undefined ||
+	stored === null ||
+	(typeof stored === "string" && stored.trim() === "");
+
 /**
  * Returns the scoring model each maker names in a stored `models` value, or the failing part of
  * it. A silent value names none. A text is the owner's form `{typesafe:jev-preview, openai:gpt-6-luna}`
  * with optional braces, or a JSON object; a native object is read the same way. Never throws.
  */
 export function readModels(stored: unknown): ModelsRead {
-	if (stored === undefined || stored === null) return { models: {} };
+	if (isSilentModels(stored)) return { models: {} };
 	if (isPlainObject(stored)) return readObject(stored);
 	if (typeof stored !== "string") return { invalid: textOf(stored) };
 	const text = stored.trim();
-	if (text === "") return { models: {} };
 	if (text.startsWith("{")) {
 		const parsed = parseJson(text);
 		if (isPlainObject(parsed)) {

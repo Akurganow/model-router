@@ -4,7 +4,7 @@ import { withModel } from "./models.ts";
 // each step recognises its input from the data.
 export const SETTINGS_VERSION = 1;
 
-type StoredRecord = Readonly<Record<string, unknown>>;
+export type StoredRecord = Readonly<Record<string, unknown>>;
 type Step = (
 	stored: StoredRecord,
 ) => { stored: StoredRecord; change: string } | undefined;
