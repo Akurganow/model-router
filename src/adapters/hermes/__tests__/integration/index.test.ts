@@ -358,7 +358,7 @@ describe("the models setting of a request", () => {
 		host: "api.openai.com",
 		reply: { body: JSON.parse(OPENAI_REPLY) },
 	} satisfies Step;
-	const NAMES = "{typesafe:jev-latest, openai:gpt-6-luna}";
+	const NAMES = "{typesafe:jev-preview, openai:gpt-7-sol}";
 
 	// The model name the scoring call carried.
 	async function sentModel(request: object, step: Step) {
@@ -375,9 +375,9 @@ describe("the models setting of a request", () => {
 			models: NAMES,
 			keys: { openai: "openai-key" },
 		};
-		assert.equal(await sentModel(typesafe, TYPESAFE), "jev-latest");
-		assert.equal(await sentModel(openai, OPENAI), "gpt-6-luna");
-		assert.equal(await sentModel(typesafe, TYPESAFE), "jev-latest");
+		assert.equal(await sentModel(typesafe, TYPESAFE), "jev-preview");
+		assert.equal(await sentModel(openai, OPENAI), "gpt-7-sol");
+		assert.equal(await sentModel(typesafe, TYPESAFE), "jev-preview");
 	});
 
 	for (const [name, models] of [
