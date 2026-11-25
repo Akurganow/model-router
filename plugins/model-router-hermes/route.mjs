@@ -487,9 +487,9 @@ var TEXTS = {
     about: "whose model scores subagent calls",
     question: "Which provider's model should score subagent calls?",
     consequences: {
-      typesafe: "Jev from TypeSafe, the model the plugin's questions are fitted to",
-      openai: "OpenAI's decision model; costs more than Jev and its answers are not fitted",
-      google: "Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text"
+      typesafe: "Jev from TypeSafe",
+      openai: "OpenAI's decision model",
+      google: "Google's decision model"
     }
   },
   gateway: {
@@ -531,6 +531,8 @@ function settingsFrom(record) {
   return { provider: maker, gateway: via, scope: routed, models: read.models };
 }
 var settingsOf = (stored) => settingsFrom(migrate(stored).stored);
+var PAGE_MAX = 4;
+var PAGE_VALUES = PAGE_MAX - 1;
 var NOT_STORED = " (not stored yet: run setup)";
 var modelsLinesFrom = (record, pending) => {
   const { models } = record;

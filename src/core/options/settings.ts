@@ -53,12 +53,9 @@ const TEXTS: Readonly<Record<ValueSetting, ValueText<string>>> = {
 		about: "whose model scores subagent calls",
 		question: "Which provider's model should score subagent calls?",
 		consequences: {
-			typesafe:
-				"Jev from TypeSafe, the model the plugin's questions are fitted to",
-			openai:
-				"OpenAI's decision model; costs more than Jev and its answers are not fitted",
-			google:
-				"Google's decision model; costs more than Jev and its answers are not fitted; on a free-tier key Google may use the text",
+			typesafe: "Jev from TypeSafe",
+			openai: "OpenAI's decision model",
+			google: "Google's decision model",
 		},
 	} satisfies ValueText<Maker>,
 	gateway: {
@@ -171,18 +168,61 @@ export const keyLine = (holder: KeyHolder, state: KeyState): string =>
 const label = (setting: ValueSetting, value: string): string =>
 	`${value}${LABEL_SEPARATOR}${TEXTS[setting].consequences[value]}`;
 
+export const MORE = "more";
+
+// Claude Code's dialog takes at most four options.
+const PAGE_MAX = 4;
+const PAGE_VALUES = PAGE_MAX - 1;
+
+/** Returns the values with the current one first, or in their order when there is no current. */
+export const currentFirst = <V>(
+	values: readonly V[],
+	current: V | undefined,
+): V[] =>
+	current === undefined
+		? [...values]
+		: [current, ...values.filter((value) => value !== current)];
+
+/**
+ * Returns the pages of a choice. Up to four options make one page with no `more`. More make pages
+ * of three options and `more`, and the last page holds the rest and `more`.
+ */
+export function pagesOf(options: readonly string[]): string[][] {
+	if (options.length <= PAGE_MAX) return [[...options]];
+	const pages: string[][] = [];
+	for (let at = 0; at < options.length; at += PAGE_VALUES)
+		pages.push([...options.slice(at, at + PAGE_VALUES), MORE]);
+	return pages;
+}
+
+/**
+ * Shows the pages of a choice one at a time from the first. `more` moves to the next page, and from
+ * the last page back to the first. Any other answer, or none, is returned as it is.
+ */
+export async function askPaged(
+	question: string,
+	options: readonly string[],
+	select: (question: string, page: string[]) => Promise<string | undefined>,
+): Promise<string | undefined> {
+	const pages = pagesOf(options);
+	for (let index = 0; ; index = (index + 1) % pages.length) {
+		const answer = await select(question, pages[index] ?? []);
+		if (answer !== MORE || pages.length === 1) return answer;
+	}
+}
+
 // The current value comes first when it is valid. Otherwise the values keep their order.
 export function ask(
 	setting: ValueSetting,
 	current: unknown,
 ): { question: string; options: string[] } {
 	const { values, question } = TEXTS[setting];
-	const first = valueFor(setting, current);
-	const sorted =
-		first === undefined
-			? values
-			: [first, ...values.filter((value) => value !== first)];
-	return { question, options: sorted.map((value) => label(setting, value)) };
+	return {
+		question,
+		options: currentFirst(values, valueFor(setting, current)).map((value) =>
+			label(setting, value),
+		),
+	};
 }
 
 export function pick(
@@ -210,7 +250,7 @@ export async function chooseValue(
 	const { question, options } = ask(setting, current);
 	let answer: string | undefined;
 	try {
-		answer = await select(question, options);
+		answer = await askPaged(question, options, select);
 	} catch {
 		answer = undefined;
 	}
