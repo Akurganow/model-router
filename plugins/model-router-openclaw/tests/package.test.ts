@@ -51,7 +51,7 @@ test("the setup entry carries the plugin id and registers one config migration",
 	});
 	assert.equal(registered.length, 1);
 	assert.equal(typeof registered[0], "function");
-	assert.deepEqual(manifest.setup.configMigrations, ["settings-v1"]);
+	assert.deepEqual(manifest.setup.configMigrations, ["settings-v0"]);
 });
 
 test("the default export carries the plugin id and a register function", async () => {

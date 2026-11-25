@@ -66,36 +66,4 @@ describe("the config migration", () => {
 			assert.equal(migrateConfig(config).config, config);
 		}
 	});
-
-	it("writes what the ladder changes into the plugin's settings and nothing else", () => {
-		const legacy = structuredClone(FIXTURE);
-		const entry = legacy.plugins?.entries?.[PLUGIN_ID];
-		assert.ok(entry?.config);
-		delete entry.config["models"];
-		entry.config["model"] = "jev-preview";
-		const before = structuredClone(legacy);
-		const first = migrateConfig(legacy);
-		assert.deepEqual(legacy, before);
-		assert.deepEqual(first.changes, [
-			"models: typesafe from the removed model option",
-		]);
-		const migrated = first.config.plugins?.entries?.[PLUGIN_ID];
-		assert.deepEqual(migrated?.config, {
-			provider: "openai",
-			gateway: "auto",
-			scope: "extended",
-			small_model: "prov/small",
-			model: "jev-preview",
-			models: "{typesafe:jev-preview}",
-		});
-		assert.deepEqual(migrated?.hooks, { timeoutMs: 9000 });
-		assert.deepEqual(first.config.plugins?.entries?.["other"], {
-			config: { model: "keep-me" },
-		});
-		assert.deepEqual(first.config.agents, FIXTURE.agents);
-		assert.deepEqual(migrateConfig(first.config), {
-			config: first.config,
-			changes: [],
-		});
-	});
 });

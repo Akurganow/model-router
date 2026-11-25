@@ -121,7 +121,7 @@ async function applyModels(
 	const global = await readGlobalSettings(omp);
 	if (global === undefined || plugin === undefined)
 		return unchanged("models", UNREADABLE);
-	const write = modelsWrite(global, text);
+	const write = modelsWrite(text);
 	if ("refused" in write) return write.refused;
 	const already = modelsAlready(global.models, write.models);
 	if (already !== undefined) return already;

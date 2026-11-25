@@ -61,7 +61,7 @@ asks six questions. The answers for this mod:
   mod's own dialog. It writes the `provider`, `gateway` and `scope` options
   only after you pick a value there. The three commands write the same options, and only from your own prompt. The
   model passes a value for `models` alone, and only at your request. It then
-  writes `models` at once, and it erases a stored `model`.
+  writes `models` at once.
   [The commands and the tool](#change-the-options) have the details.
 - **Acts without asking you?** No. It approves nothing, and it denies only its
   own tool when your permission rules deny that tool. Your permission rules
@@ -82,7 +82,6 @@ This is the whole surface:
 | hook | `command.run{command=model-router:provider}` | Answers the `/model-router:provider` command. |
 | hook | `command.run{command=model-router:gateway}` | Answers the `/model-router:gateway` command. |
 | hook | `command.run{command=model-router:scope}` | Answers the `/model-router:scope` command. |
-| hook | `config.describe{key="model-router.model"}` | Hides the `/config` row of the removed `model` option. It changes no value. |
 | hook | `session.start` | Registers the `mcp__model-router__config` tool, at session start and after each plugin reload. |
 | hook | `agent.spawn` | Scores the brief and sets the subagent's `model` before it starts. |
 | hook | `tool.call{tool=Agent}` | Passes the Agent call on unchanged and notes whether the caller set an `effort`. |
@@ -91,7 +90,7 @@ This is the whole surface:
 | hook | `turn.complete` | Forgets that a finished subagent's first request already waited for the spawns in flight. |
 | call | `$.clock.after` | The 10 s limit and the request's timers run on it, for example the retry wait. |
 | call | `$.clock.sleep` | Bounds the wait of a subagent's first request for the spawns in flight, 1 s at most. |
-| call | `$.config.set` | Writes the `provider`, `gateway` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. Writes the `models` option when the `config` tool gets a `models` text, or when a provider change must store what the removed `model` option held. Clears a stored `model` on a `models` write and on a provider change. |
+| call | `$.config.set` | Writes the `provider`, `gateway` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. Writes the `models` option when the `config` tool gets a `models` text. |
 | call | `$.env.get` | Reads `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY` and `OPENROUTER_API_KEY`, and whether `CLAUDE_CODE_EFFORT_LEVEL` is set, the only variables the mod reads. |
 | call | `$.http.fetch` | Sends the request to `api.typesafe.ai`, `api.openai.com`, `generativelanguage.googleapis.com`, `api.perplexity.ai` or `openrouter.ai`. |
 | call | `$.tool.check` | Asks for the permission verdict of a call to the `config` tool. |
@@ -320,29 +319,6 @@ The config tool takes a `models` string and writes it at once, with no dialog,
 at your request. A text that is not valid is refused with
 `models unchanged: not valid: <entry>`.
 
-The removed option `model` stays in the manifest as a free string with no
-default and no options. Its `/config` row is hidden. The mod reads it through
-[the migration ladder](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-migration-ladder):
-it becomes the `typesafe` entry of `models` when `models` names none.
-While a `model` that is not blank is stored, the `models` line of the config
-tool shows the migrated text and ends with `(not stored yet: run setup)`.
-
-The mod erases a stored `model` in two cases:
-
-- The config tool changes `provider` through the dialog.
-- The config tool writes `models`.
-
-Each case erases `model` whenever one is stored.
-When the migration changed `models`, the mod writes the migrated `models`
-first.
-The setup skill reaches both cases through the tool.
-The release that adds three more providers removes the `model` declaration.
-A `model` not migrated by then is no longer read, and TypeSafe uses its
-default.
-
-[The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path)
-says what a migrated `jev-preview` does on the OpenRouter path.
-
 ### A stored value outside an option's list
 
 Claude Code hands the mod an option's default in place of a stored value that
@@ -366,11 +342,6 @@ An install updated from an earlier version follows these rules:
 - To get the earlier requests back, set `gateway` to the value `provider`
   held. [Retired values of `provider`](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retired-values-of-provider)
   gives the pairs.
-- A stored `model` option counts as the `typesafe` entry of `models` when
-  `models` names none, as
-  [The scoring model of each provider](#the-scoring-model-of-each-provider)
-  says. The next write of `models`, or the next change of provider, stores it
-  there and clears `model`.
 - A missing `scope` counts as `core`, so an update changes no routing.
 
 ## Scope
@@ -384,8 +355,8 @@ The `scope` option says which Agent calls the mod routes:
 
 ## Change the options
 
-The plugin has nine visible options: `provider`, `gateway`, `scope`, `models`
-and the five keys. A ninth, the removed `model`, has no `/config` row.
+The plugin has nine options: `provider`, `gateway`, `scope`, `models` and
+the five keys.
 Set them in the install dialog. `/config` also changes `provider`, `gateway`,
 `scope` and `models`.
 
@@ -425,9 +396,7 @@ The tool `mcp__model-router__config` takes two optional inputs, `setting` and
   can open, such as `claude -p`. A written value, a refused write and a failed
   write get the reply the command gives.
 - With `models`, a string, the mod writes the text at once, with no dialog, at
-  your request. It writes the migrated shape and erases a stored `model`, as
-  [The scoring model of each provider](#the-scoring-model-of-each-provider)
-  says. A text that is not valid is refused with
+  your request. A text that is not valid is refused with
   `models unchanged: not valid: <entry>`, and nothing is written.
 
 The tool takes no key. Add a key in the plugin's settings: `/plugin` in the
@@ -440,7 +409,7 @@ dialog closes.
 To be guided through the choices, ask Claude to run the `model-router-setup`
 skill. It reads the settings and the key status through the tool, then asks
 about the provider, the gateway, any missing key and the scope, and it moves a
-retired `provider` value and a stored `model` into `models`. It lists the reasons routing
+retired `provider` value into `models`. It lists the reasons routing
 is off and ends with a routing check. The skill lives in
 [skills/model-router-setup/SKILL.md](skills/model-router-setup/SKILL.md).
 

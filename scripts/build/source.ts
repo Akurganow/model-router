@@ -60,8 +60,6 @@ export type Source = {
 		readonly commandContents: Readonly<Record<ValueSetting, string>>;
 		readonly userConfig: {
 			readonly optionType: string;
-			// The removed option the manifest still declares, so a stored value reaches the plugin. It has no default and no options.
-			readonly model: { readonly title: string; readonly description: string };
 		};
 		readonly catalogueSource: string;
 		readonly install: Install;

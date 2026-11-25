@@ -58,10 +58,7 @@ const FIXTURE: Source = {
 	claude: {
 		skills: ["s"],
 		commandContents: { provider: "p", gateway: "g", scope: "s" },
-		userConfig: {
-			optionType: "t",
-			model: { title: "t", description: "d" },
-		},
+		userConfig: { optionType: "t" },
 		catalogueSource: "c",
 		install: INSTALL,
 	},

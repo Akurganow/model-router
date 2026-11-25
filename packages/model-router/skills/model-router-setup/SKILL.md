@@ -3,7 +3,7 @@ name: model-router-setup
 description: >
   Use when the user wants to set up or check model-router in Oh My Pi (omp): to
   choose its provider, gateway, scope, scoring models or level models, to add a TypeSafe,
-  OpenAI, Google or OpenRouter key, to find out why routing is off, or to check that routing works.
+  OpenAI, Google, Perplexity or OpenRouter key, to find out why routing is off, or to check that routing works.
 ---
 
 # model-router setup for Oh My Pi
@@ -20,7 +20,7 @@ Routing works when all of these hold:
 
 The person may also choose:
 
-- The `provider` setting, which says whose model scores. It takes `typesafe`, `openai` or `google`.
+- The `provider` setting, which says whose model scores. It takes `typesafe`, `openai`, `google` or `perplexity`.
 - The `gateway` setting, which says how OpenRouter is used to reach the provider.
 - The `scope` setting, which picks the routed agents.
 - The `models` setting, which names the scoring model of each provider. A provider with no entry uses its default model.
@@ -29,6 +29,21 @@ The person may also choose:
 ## Your job
 
 Find out which of these already hold, with the `model_router_config` tool and omp's own means. Tell the person in one message what is set and what is missing. Do only what is missing or what the person asks to change, and do it yourself once the person agrees. Never ask the person to repeat a step that is done, and never ask for the install commands. Ask the person with the question tool omp gives you, never as plain text in your reply. If the session has no such tool, ask one question per message.
+
+When you find what already holds, also check the stored field names. Follow these steps in order:
+
+1. Read only the field names stored under `settings`, for the package name `model-router-omp` or `@akurganow/model-router`, in omp's plugins lockfile `omp-plugins.lock.json`.
+2. Compare them with the fields the plugin declares: `provider`, `gateway`, `scope` and `models`.
+3. Tell the person each stored field that the plugin does not declare.
+4. Never print the value of a key field, or of an unknown field named like a key or a secret.
+5. Say only that such a field holds a value.
+6. When an unknown field's name resembles a declared one and holds a value, propose the move.
+7. Name the declared field and the text it would write, for example `model` against `models`.
+8. For a key field, name the declared field and ask the person to enter the key there.
+9. On the person's word, write the declared field, then remove the old field.
+10. Write `models` with `model_router_config`, and any other field with `omp plugin config set`.
+11. On the person's word, remove only an unknown field that resembles no declared one.
+12. Write nothing else in the file.
 
 When a choice has more than four values, ask with three values and `more` at a time, the current value first; `more` on the last page goes back to the first.
 
@@ -42,13 +57,6 @@ When the person wants to choose the provider, follow these steps in order:
    - Between the two writes the plugin routes by the middle pair. This order uses no key that neither the old pair nor the new pair uses.
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. Call `model_router_config` with no setting, and confirm the lines.
-
-When the `models` line ends with `(not stored yet: run setup)`, migrate it. Follow these steps in order:
-
-1. Call `model_router_config` with no input, and read the `models` line and the lines under it.
-2. Tell the person that the line shows the migrated text, and that nothing is stored yet.
-3. Ask the person whether to write it. On the person's word, call `model_router_config` with `models` set to the text shown before the note.
-4. Read the reply, call `model_router_config` with no input, and confirm the `models` line.
 
 When the `models` line ends with `(not valid: <entry>)`, repair it. Follow these steps in order:
 
@@ -83,7 +91,7 @@ When the person wants another scoring model for one provider, follow these steps
   ```
 
   The example holds the model line of one provider. [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each.
-- A key line reads `<holder> key: set` or `<holder> key: unset`. For the direct path the holder is the provider's name, `typesafe`, `openai` or `google`, and for the gateway path it is `openrouter`.
+- A key line reads `<holder> key: set` or `<holder> key: unset`. For the direct path the holder is the provider's name, `typesafe`, `openai`, `google` or `perplexity`, and for the gateway path it is `openrouter`.
 - The `gateway` line names the paths of its value, with the provider's name for the direct path: `gateway: direct (openai)`, `gateway: auto (openai, then openrouter)`, `gateway: openrouter-first (openrouter, then openai)` or `gateway: openrouter (openrouter)`.
 - A stored value outside its setting's list is not valid. The plugin then routes no task, and each task skips with `<setting> not valid: run setup`.
 - The tool prints `<setting>: <stored text> (not valid: use one of <values>)` for that setting, and each valid setting as `<setting>: <value>`, in the usual order. The gateway line names nobody, and no key line prints.
@@ -100,10 +108,11 @@ When the person wants another scoring model for one provider, follow these steps
 
 ### Provider and gateway
 
-- `provider` has three values. `typesafe` is the default.
+- `provider` has four values. `typesafe` is the default.
   - `typesafe - Jev from TypeSafe`
   - `openai - OpenAI's decision model`
   - `google - Google's decision model`
+  - `perplexity - Perplexity's decision model`
   - [What each company does with the text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#what-each-company-does-with-the-text) says more.
 - `gateway` has four values. `direct` is the default.
   - `direct - the provider's own API only`
@@ -156,7 +165,7 @@ To move a retired value, follow these steps in order:
 - A `models` value that is not valid prints as `models: <text> (not valid: <entry>)`, and it stops routing. An item the scope covers skips with `models not valid: run setup`, unless an earlier gate skips it first. [Gate reasons](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#gate-reasons) lists the order.
 - The plugin reads `models` from the global settings only. A project's value never applies.
 - A model name goes as written on the provider's own API, and that API's documentation lists the names. [The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path) says what OpenRouter does with a name.
-- The plugin writes no setting when it loads. The `models` line ends with `(not stored yet: run setup)` when the migration changed a stored value, and then it shows the migrated text.
+- The plugin writes no setting when it loads.
 
 ### Scope
 
@@ -172,11 +181,12 @@ To move a retired value, follow these steps in order:
   - TypeSafe: the id `typesafe`, which `/login typesafe` stores, then `TYPESAFE_API_KEY`. Get a key at https://console.typesafe.ai/keys.
   - OpenAI: the id `openai`, then `OPENAI_API_KEY`. Get a key at https://platform.openai.com/api-keys.
   - Google: the id `google`, then `GEMINI_API_KEY`. Get a key at https://aistudio.google.com/docs/api-key. The plugin does not read `GOOGLE_API_KEY`.
+  - Perplexity: the id `perplexity`, then `PERPLEXITY_API_KEY`. Get a key at https://console.perplexity.ai. [Keys](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-omp/README.md#keys) says why a stored Perplexity login does not serve.
   - OpenRouter: the id `openrouter`, which `/login openrouter` stores, then `OPENROUTER_API_KEY`. Get a key at https://openrouter.ai.
 - The key of the chosen provider serves the direct path, and the OpenRouter key serves the gateway path.
 - A key counts as set when either place holds a non-blank value.
 - A key variable reaches the environment of every process omp starts.
-- The person adds a key with `/login typesafe` or `/login openrouter`, or with `omp login <provider>` outside a session. For OpenAI or Google, the person stores the credential the way omp stores one for that provider, or sets the variable. The plugin never asks for a key.
+- The person adds a key with `/login typesafe` or `/login openrouter`, or with `omp login <provider>` outside a session. For OpenAI, Google or Perplexity, the person stores the credential the way omp stores one for that provider, or sets the variable. The plugin never asks for a key.
 - With no key for any path the `provider` and `gateway` settings allow, every call skips with `key unset`.
 
 ### Models
@@ -194,7 +204,7 @@ To move a retired value, follow these steps in order:
 - A routed entry reads `L<level> <role or slot state> · <effort or kept label> · p=<tier>/<work>`, such as `L1 @midl · medium · p=0.66/0.72`.
 - A level with no model shows the slot, as `L0 small model unset`, `L1 middle model unset` or `L2 large model unset`.
 - A kept label replaces the effort: `caller effort` when the item's own `effort` applies, `config effort` when a thinking level comes from omp's settings or the role, and `no model patterns` when the spawn has none.
-- Who answered follows: `typesafe`, `openai` or `google` on the direct path, or `openrouter` on the gateway path. Then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its entry reads ` · google · 430/0 tok`.
+- Who answered follows: `typesafe`, `openai`, `google` or `perplexity` on the direct path, or `openrouter` on the gateway path. Then the model its reply names and the token counts, as in ` · typesafe jev-1.14.0 · 812/9 tok`. The model and the token counts are left out when the reply lacks them. Google's reply names no model, so its entry reads ` · google · 430/0 tok`.
 - After a fallback, the entry ends with the attempt that failed and its reason, as in ` · openrouter openai/gpt-6-luna-decisions-20261006 · 488/0 tok · openai HTTP 429`.
 - A skipped entry reads `task <n>: skipped, <reason>`. After both attempts fail, the reason names each one with its own reason, as in `skipped, openai HTTP 503, openrouter timeout`.
 - A spawn can print a second line for the same item. That later line holds.

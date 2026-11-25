@@ -4,7 +4,6 @@ import {
 	chooseValue,
 	isValue,
 	isValueSetting,
-	modelCarry,
 	modelsAlready,
 	modelsCallOf,
 	modelsLines,
@@ -25,12 +24,10 @@ import type {
 	CommandOutput,
 	CommandRun,
 	ConfigCall,
-	ConfigRow,
 	Engine,
 	Next,
 	Options,
 	Outcome,
-	RowShown,
 	SessionStart,
 	ToolAnswer,
 } from "./host.ts";
@@ -55,8 +52,8 @@ const TOOL_SPEC = {
 	},
 };
 
-// The rows this adapter writes: the value settings, `models` and the removed `model`.
-const ROWS = [...VALUE_SETTINGS, "models", "model"] as const;
+// The rows this adapter writes: the value settings and `models`.
+const ROWS = [...VALUE_SETTINGS, "models"] as const;
 type Row = (typeof ROWS)[number];
 
 // What this instance wrote, so a call queued behind a write sees the new value before the reload.
@@ -77,7 +74,6 @@ const storedOf = (options: Options): Stored => ({
 	gateway: current(options, "gateway"),
 	scope: current(options, "scope"),
 	models: current(options, "models"),
-	model: current(options, "model"),
 });
 
 export async function registerConfigTool(
@@ -87,16 +83,6 @@ export async function registerConfigTool(
 ): Promise<Outcome> {
 	await $.tool.register(TOOL_SPEC);
 	return next(e);
-}
-
-// Hides the row of the removed `model` option. The manifest keeps the option so a stored value
-// reaches the migration, but the menu offers no row for it.
-export async function hideRow(_: Engine, row: ConfigRow): Promise<RowShown> {
-	return {
-		label: row.label,
-		...(row.description === undefined ? {} : { description: row.description }),
-		isHidden: true,
-	};
 }
 
 // Writes one row. Returns why it was not written, or undefined when it was.
@@ -118,33 +104,6 @@ async function put(
 	}
 }
 
-// Writes `models` when there is a text, then erases the removed `model` when asked, in that order.
-// A refused `models` stops there. Returns the lines of the writes that failed, and whether `models`
-// was not refused.
-async function storeModels(
-	$: Engine,
-	models: string | undefined,
-	eraseModel: boolean,
-): Promise<{ stored: boolean; lines: string[] }> {
-	if (models !== undefined) {
-		const refused = await put($, "models", models);
-		if (refused !== undefined)
-			return { stored: false, lines: [unchanged("models", refused)] };
-	}
-	if (!eraseModel) return { stored: true, lines: [] };
-	const kept = await put($, "model", "");
-	return {
-		stored: true,
-		lines: kept === undefined ? [] : [unchanged("model", kept)],
-	};
-}
-
-// A provider change also stores the models text the removed `model` makes, then erases it.
-async function carryModel($: Engine, options: Options): Promise<string[]> {
-	const { models, eraseModel } = modelCarry(storedOf(options));
-	return (await storeModels($, models, eraseModel)).lines;
-}
-
 // The tool and every command write through this one function, so equal outcomes read alike.
 async function write(
 	$: Engine,
@@ -154,8 +113,7 @@ async function write(
 ): Promise<string> {
 	const refused = await put($, setting, value);
 	if (refused !== undefined) return unchanged(setting, refused);
-	const rest = setting === "provider" ? await carryModel($, options) : [];
-	return [valueLine(setting, storedOf(options)), ...rest].join("\n");
+	return valueLine(setting, storedOf(options));
 }
 
 async function writeModels(
@@ -163,19 +121,13 @@ async function writeModels(
 	options: Options,
 	text: string,
 ): Promise<string> {
-	const stored = storedOf(options);
-	const planned = modelsWrite(stored, text);
+	const planned = modelsWrite(text);
 	if ("refused" in planned) return planned.refused;
-	const { eraseModel } = modelCarry(stored);
-	const already = modelsAlready(stored.models, planned.models);
-	if (already !== undefined && !eraseModel) return already;
-	// A text that is stored already is not written again, but a removed `model` is still erased.
-	const { stored: done, lines } = await storeModels(
-		$,
-		already === undefined ? planned.models : undefined,
-		eraseModel,
-	);
-	return [...(done ? modelsLines(storedOf(options)) : []), ...lines].join("\n");
+	const already = modelsAlready(storedOf(options).models, planned.models);
+	if (already !== undefined) return already;
+	const refused = await put($, "models", planned.models);
+	if (refused !== undefined) return unchanged("models", refused);
+	return modelsLines(storedOf(options)).join("\n");
 }
 
 async function choose(
