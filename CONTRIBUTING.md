@@ -89,17 +89,25 @@ every commit as a [conventional commit](#commits).
     plugin's `settings.py` walks the same order in Python, over the generated
     constants. It imports nothing from `scoring/`.
   - `scoring/`: the call. `route` asks the attempts in order and picks each
-    part's level, `ask` sends one request, `endpoints.ts` holds one table
-    with a row for each maker and path: the URL, the wire format, the model
-    name and the key header. `formats/` holds the wire
+    part's level, `ask` sends one request. `makers/` holds one module for
+    each maker, with its direct path and its OpenRouter path: the URL, the
+    wire format, the model name and the key header of each. `makers/shared.ts`
+    holds what several modules share, and `makers/registry.ts` maps each
+    maker to its module and gives `endpointOf`. `formats/` holds the wire
     formats, `transport/` the request and its retries. `limit.ts` holds the
     routing limit: its duration, the signal that the clock aborts when it
     runs out, and the race of a handler's work against a deadline.
     `handler-deadline.ts` holds a handler's deadline. It imports nothing from
     `decision/` or `options/`. `formats/` imports only its own folder,
     `scoring/failure.ts`, `scoring/reply.ts`, `parts/part.ts`,
-    `brief/brief.ts` and `utils/`. `route.ts` imports no wire format,
-    nothing from `transport/` and not `endpoints.ts`.
+    `brief/brief.ts` and `utils/`. Every file of `makers/` but `registry.ts`
+    and `shared.ts` is a module, and a module imports no other module, only
+    `makers/shared.ts`.
+    `route.ts` imports no wire format, nothing from `transport/` and nothing
+    from `makers/`. `ask.ts` reaches the modules only through
+    `makers/registry.ts`. No shared code branches on a provider's name: a
+    difference that a provider's API forces is a field or a function of its
+    module.
   - `decision/`: `scoreWork`, the entry every adapter calls, which reads the
     tier and work levels; the effort ladder; the slots; `outcomeOf`, which
     gives the slot, its model, the effort to set and the routing line of a
