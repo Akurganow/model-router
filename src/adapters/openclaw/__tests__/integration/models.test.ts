@@ -80,6 +80,8 @@ describe("the models setting", () => {
 		["a JSON value that is not a string", '{"typesafe": 5}'],
 		["a native value that is not a string", { typesafe: 5 }],
 		["a text of neither form", "{typesafe:a"],
+		["a stored number", 5],
+		["a stored array", ["typesafe:jev-preview"]],
 	];
 
 	for (const [name, stored] of NOT_VALID)

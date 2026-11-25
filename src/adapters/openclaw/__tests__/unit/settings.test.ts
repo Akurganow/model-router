@@ -155,6 +155,8 @@ test("the models setting follows the first-source rule, and a plain object is a 
 	for (const silent of ["", "   ", null, undefined])
 		assert.equal(models(silent, "{typesafe:other}"), "{typesafe:other}");
 	assert.equal(models("typesafe", "{typesafe:other}"), "typesafe");
+	assert.equal(models(5, "{typesafe:other}"), 5);
+	assert.deepEqual(models(["typesafe:a"], "{typesafe:other}"), ["typesafe:a"]);
 	assert.equal(models(undefined), undefined);
 });
 

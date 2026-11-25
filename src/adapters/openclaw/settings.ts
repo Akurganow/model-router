@@ -1,4 +1,5 @@
 import { type Slot, slotRecord, slotSetting } from "#core/decision/slots.ts";
+import { isSilentModels } from "#core/options/models.ts";
 import {
 	type Settings as CheckedSettings,
 	isSilent,
@@ -13,7 +14,7 @@ import {
 	type Keys,
 	type NoChoice,
 } from "#core/providers/provider.ts";
-import { isPlainObject, isRecord } from "#utils/guards.ts";
+import { isRecord } from "#utils/guards.ts";
 import { nonEmpty } from "#utils/text.ts";
 import type { OpenClawApi, OpenClawConfig } from "./types.ts";
 
@@ -65,11 +66,10 @@ function sources(
 
 /**
  * Returns the first text a source holds in the field, or undefined when every
- * source is silent. One rule for the value settings, the models and the keys:
- * the first source that holds text decides, valid or not, and no later source
- * is read. A source whose text names no value must still decide, so that the
- * core can skip with the setup reason and a later source cannot hide the
- * mistake.
+ * source is silent. One rule for the value settings and the keys: the first
+ * source that holds text decides, valid or not, and no later source is read. A
+ * source whose text names no value must still decide, so that the core can
+ * skip with the setup reason and a later source cannot hide the mistake.
  */
 function firstText(from: readonly Settings[], field: string): unknown {
 	for (const settings of from) {
@@ -79,12 +79,12 @@ function firstText(from: readonly Settings[], field: string): unknown {
 	return undefined;
 }
 
-// A plain object holds the `models` setting as a value, as OpenClaw's config can carry a map; the
-// text rule reads such a value as silence.
+// The same first-source rule, with the core's silence for `models`: any value that is not silent
+// decides and goes to the core unchanged, a native object, a number and an array included.
 function firstModels(from: readonly Settings[]): unknown {
 	for (const settings of from) {
 		const { models } = settings;
-		if (isPlainObject(models) || !isSilent(models)) return models;
+		if (!isSilentModels(models)) return models;
 	}
 	return undefined;
 }
