@@ -180,7 +180,8 @@ describe("the models setting reaches the core", () => {
 					status: 200,
 					ok: true,
 					headers: {},
-					text: url.includes("openai.com") ? OPENAI_REPLY : ANSWER,
+					text:
+						new URL(url).hostname === "api.openai.com" ? OPENAI_REPLY : ANSWER,
 				}),
 			})
 		).requests.map((r) => r.model);

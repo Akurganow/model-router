@@ -23,7 +23,7 @@ const PREVIEW_LINES = lines(
 
 // The fake serves the OpenAI reply on OpenAI's address and the System One reply elsewhere.
 const answerByUrl = async ({ url }: { url: string }) =>
-	url.includes("openai.com")
+	new URL(url).hostname === "api.openai.com"
 		? scoringReply(200, JSON.parse(OPENAI_REPLY))
 		: scoringReply(200, systemOneAnswer(1, 1));
 
