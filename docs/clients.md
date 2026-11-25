@@ -105,6 +105,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
   A broken mod can therefore look like one that does nothing.
 - A mod installed from a marketplace loads at the next start of Claude Code, or at `/reload-plugins` in an open session.
 - When `$.config.set` writes an option of a mod in an open session, Claude Code reloads the mod's hooks module at once, with no `/reload-plugins`, and runs its `session.start` hook again.
+- A running hooks-module call that writes twice with `$.config.set` completes its second write after the reload that its first write caused.
+  Both writes land, and the call returns its result after the second reload.
+- An option cleared with `$.config.set` to an empty text stays under `pluginConfigs` as an empty string, not as a deleted key.
 - A command typed at the prompt of an interactive session reaches `command.run` with the origin kind `composer`. A command given as the prompt of `claude -p` reaches it with another origin.
 - In print mode, a turn that ends in a sign-in error exits with status 1, and it has loaded the hooks module and run its `session.start` hook.
 - Claude Code caches an installed plugin by version.
@@ -524,6 +527,11 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
 - `setup.requiresRuntime: false` in the manifest keeps OpenClaw from executing the setup entry.
   An omitted field keeps the entry in use.
 - `setup.configMigrations` lists the ids of the migrations that the setup entry owns.
+- Only `openclaw doctor` runs the migrations that setup entries register.
+  `openclaw update` runs a fresh `doctor --repair` when a plugin changed, and then validates the config in a new process.
+- `openclaw plugins update <id>` runs no setup-entry migration.
+  After it replaces the files it runs the config repair of a plugin whose manifest sets `doctorContract.configRepair: true`, from its `doctor-contract-api` file.
+- `openclaw gateway run` runs no plugin migration before it validates the config, and an invalid config stops the start.
 
 ### OpenClaw hook and spawn
 
