@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { migrate, SETTINGS_VERSION } from "#core/options/migrate.ts";
+import { readModels } from "#core/options/models.ts";
 
 const CHANGE = "models: typesafe from the removed model option";
 
@@ -51,12 +52,27 @@ test("an object stays an object", () => {
 	});
 });
 
-test("a JSON text takes the entry as the owner's form", () => {
+test("a JSON text stays JSON, and a name with a comma stays valid", () => {
+	assert.equal(
+		migrate({
+			model: "jev-preview",
+			models: '{"google": "gemini-decision-1"}',
+		}).stored.models,
+		'{"google":"gemini-decision-1","typesafe":"jev-preview"}',
+	);
 	const { models } = migrate({
 		model: "jev-preview",
-		models: '{"google": "gemini-decision-1"}',
+		models: '{"openai": "a,b"}',
 	}).stored;
-	assert.equal(models, "{typesafe:jev-preview, google:gemini-decision-1}");
+	assert.equal(models, '{"openai":"a,b","typesafe":"jev-preview"}');
+	assert.deepEqual(readModels(models), {
+		models: { openai: "a,b", typesafe: "jev-preview" },
+	});
+});
+
+test("a model that would not read back as the typesafe entry is not copied", () => {
+	for (const model of ["a/b", "a,b", "a, openai:b"])
+		assert.deepEqual(migrate({ model }).changes, [], model);
 });
 
 test("a models that names typesafe is left as it is", () => {

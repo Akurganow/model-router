@@ -131,3 +131,33 @@ export const formatModels = (names: ModelNames): string =>
 		const name = names[maker];
 		return name === undefined ? [] : [`${maker}:${name}`];
 	}).join(", ")}}`;
+
+const sameNames = (a: ModelNames, b: ModelNames): boolean =>
+	MAKERS.every((maker) => a[maker] === b[maker]);
+
+/**
+ * Returns `models` with the maker's entry added in the form `models` already has: a native object
+ * stays an object, a JSON text stays JSON, any other text stays the owner's form. Returns undefined
+ * when `models` is not valid, names the maker already, or the result would not read back as the
+ * old names plus this one.
+ */
+export function withModel(
+	models: unknown,
+	maker: Maker,
+	name: string,
+): string | Record<string, unknown> | undefined {
+	const read = readModels(models);
+	if ("invalid" in read || read.models[maker] !== undefined) return undefined;
+	const text = typeof models === "string" ? models.trim() : undefined;
+	const parsed = text?.startsWith("{") ? parseJson(text) : undefined;
+	let added: string | Record<string, unknown>;
+	if (isPlainObject(models)) added = { ...models, [maker]: name };
+	else if (isPlainObject(parsed))
+		added = JSON.stringify({ ...parsed, [maker]: name });
+	else added = formatModels({ ...read.models, [maker]: name });
+	const back = readModels(added);
+	return "models" in back &&
+		sameNames(back.models, { ...read.models, [maker]: name })
+		? added
+		: undefined;
+}
