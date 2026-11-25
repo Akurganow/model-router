@@ -434,6 +434,20 @@ const faults: Fault[] = [
 		message: ENTRY_ADAPTER,
 	},
 	{
+		form: "the OpenClaw setup entry imports openclaw",
+		file: "src/adapters/openclaw/setup.ts",
+		code: 'import { a } from "openclaw";',
+		category: RESTRICTED,
+		message: ENTRY_OPENCLAW,
+	},
+	{
+		form: "the OpenClaw setup entry imports a path of openclaw",
+		file: "src/adapters/openclaw/setup.ts",
+		code: 'import { b } from "openclaw/plugin-sdk";',
+		category: RESTRICTED,
+		message: ENTRY_ADAPTER,
+	},
+	{
 		form: "the version writer imports esbuild",
 		file: "scripts/set-version.ts",
 		code: 'import { build } from "esbuild";',
@@ -806,6 +820,12 @@ const clean: Record<string, string[]> = {
 		'import { g } from "#adapters/openclaw/gates.ts";',
 		'import { r } from "./router.ts";',
 		"export const v = [c, r, g];",
+	],
+	"src/adapters/openclaw/setup.ts": [
+		'import { c } from "#core/c.ts";',
+		'import { s } from "#adapters/openclaw/settings.ts";',
+		'import { t } from "./types.ts";',
+		"export const v = [c, s, t];",
 	],
 	"scripts/set-version.ts": [
 		'import { readFileSync } from "node:fs";',

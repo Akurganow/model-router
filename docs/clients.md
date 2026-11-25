@@ -505,6 +505,20 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
 - `openclaw plugins doctor` exits 1 on a diagnostic, that trust note included.
   The doctor passes over one kind alone: the note that an explicit config-selected plugin resolved a duplicate plugin id.
 
+### OpenClaw setup entry and config migration
+
+- A plugin can ship a setup entry that OpenClaw loads in a pass of its own.
+  `openclaw.setupEntry` in `package.json` names it. Without that field OpenClaw takes a file named `setup-api` with one of the extensions `.js`, `.mjs`, `.cjs`, `.ts`, `.mts` or `.cts`, at the plugin root or in its `dist/` folder.
+- The pass builds an `api` in `setup-only` mode whose `runtime` is unavailable, and calls the module's `register(api)`.
+  It skips a module whose `register` is missing or whose `id` differs from the manifest id.
+  A default export that is a plain object `{ id, register(api) }` serves.
+- `api.registerConfigMigration(migrate)` records the function.
+  The setup pass calls `migrate(cfg)` with the whole config and reads `{ config, changes }` from the result. A result of `null` or `undefined` reads as no change.
+- The pass reads the setup entry of each plugin that has an entry under `plugins.entries`.
+- `setup.requiresRuntime: false` in the manifest keeps OpenClaw from executing the setup entry.
+  An omitted field keeps the entry in use.
+- `setup.configMigrations` lists the ids of the migrations that the setup entry owns.
+
 ### OpenClaw hook and spawn
 
 Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenClaw#openclaw-hook-and-spawn)

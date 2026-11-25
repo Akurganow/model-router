@@ -25,17 +25,33 @@ const property = (name: string) => schema.properties?.[name];
 const bundlePath = join(PLUGIN, "index.js");
 const bundle = readFileSync(bundlePath, "utf8");
 
-test("the bundle imports nothing outside the node: built-ins", () => {
-	const staticImports = [...bundle.matchAll(/\bfrom\s+"([^"]+)"/g)];
-	const bareImports = [...bundle.matchAll(/^import\s+"([^"]+)"/gm)];
-	const dynamicImports = [...bundle.matchAll(/\bimport\(\s*"([^"]+)"\s*\)/g)];
-	for (const [, specifier = ""] of [
-		...staticImports,
-		...bareImports,
-		...dynamicImports,
-	])
-		assert.match(specifier, /^node:/, specifier);
-	assert.doesNotMatch(bundle, /\brequire\(\s*"(?!node:)/);
+const setupPath = join(PLUGIN, "setup-api.js");
+
+test("each bundle imports nothing outside the node: built-ins", () => {
+	for (const code of [bundle, readFileSync(setupPath, "utf8")]) {
+		const staticImports = [...code.matchAll(/\bfrom\s+"([^"]+)"/g)];
+		const bareImports = [...code.matchAll(/^import\s+"([^"]+)"/gm)];
+		const dynamicImports = [...code.matchAll(/\bimport\(\s*"([^"]+)"\s*\)/g)];
+		for (const [, specifier = ""] of [
+			...staticImports,
+			...bareImports,
+			...dynamicImports,
+		])
+			assert.match(specifier, /^node:/, specifier);
+		assert.doesNotMatch(code, /\brequire\(\s*"(?!node:)/);
+	}
+});
+
+test("the setup entry carries the plugin id and registers one config migration", async () => {
+	const { default: setup } = await import(pathToFileURL(setupPath).href);
+	assert.equal(setup.id, PLUGIN_ID);
+	const registered: unknown[] = [];
+	setup.register({
+		registerConfigMigration: (migrate: unknown) => registered.push(migrate),
+	});
+	assert.equal(registered.length, 1);
+	assert.equal(typeof registered[0], "function");
+	assert.deepEqual(manifest.setup.configMigrations, ["settings-v1"]);
 });
 
 test("the default export carries the plugin id and a register function", async () => {
@@ -145,6 +161,7 @@ test("the config schema rejects no field the code reads", () => {
 		"gateway",
 		"large_model",
 		"middle_model",
+		"models",
 		"openrouter_api_key",
 		"provider",
 		"scope",
@@ -170,6 +187,7 @@ test("the config schema rejects no field the code reads", () => {
 test("the tree's package.json carries the OpenClaw blocks at the floor", () => {
 	const { openclaw } = json(join(TREE, "package.json"));
 	assert.deepEqual(openclaw.extensions, ["./index.js"]);
+	assert.ok(json(join(TREE, "package.json")).files.includes("setup-api.js"));
 	assert.equal(openclaw.compat.pluginApi, `>=${FLOOR}`);
 	assert.equal(openclaw.build.openclawVersion, FLOOR);
 	assert.equal(openclaw.install.minHostVersion, `>=${FLOOR}`);

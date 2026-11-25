@@ -154,7 +154,7 @@ describe("registration", () => {
 	it("registers the tool with its description text", () => {
 		assert.equal(
 			setup().tool().description,
-			"Reads the router's settings. It returns the provider, the gateway, the scope, the three models, and whether each key the settings allow is set. It changes nothing and never returns a key.",
+			"Reads the router's settings. It returns the provider, the gateway, the scope, the scoring models, the three models, and whether each key the settings allow is set. It changes nothing and never returns a key.",
 		);
 	});
 
@@ -305,6 +305,49 @@ describe("the tool reads", () => {
 				"middle_model: openai/gpt-5",
 				"large_model: unset",
 				keyLine("typesafe", "set"),
+			),
+		);
+	});
+
+	it("shows the models lines for a text and for a native object", async () => {
+		const lines3 = [
+			"typesafe model: jev-preview (OpenRouter: jev-preview)",
+			"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
+			"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+		];
+		const report = (models: unknown) =>
+			runTool(setup({ models, api_key: TYPESAFE_KEY }));
+		assert.equal(
+			await report("{typesafe:jev-preview}"),
+			lines(
+				"provider: typesafe",
+				"gateway: direct (typesafe)",
+				"scope: core",
+				"models: {typesafe:jev-preview}",
+				...lines3,
+				"small_model: unset",
+				"middle_model: unset",
+				"large_model: unset",
+				keyLine("typesafe", "set"),
+			),
+		);
+		assert.match(
+			await report({ typesafe: "jev-preview" }),
+			/\nmodels: \{"typesafe":"jev-preview"\}\ntypesafe model: jev-preview /,
+		);
+	});
+
+	it("names the entry of a models value that is not valid", async () => {
+		assert.equal(
+			await runTool(setup({ models: "typesafe:jev, acme:x" })),
+			lines(
+				"provider: typesafe",
+				"gateway: direct",
+				"scope: core",
+				"models: typesafe:jev, acme:x (not valid: acme:x)",
+				"small_model: unset",
+				"middle_model: unset",
+				"large_model: unset",
 			),
 		);
 	});

@@ -1,4 +1,5 @@
 import { type Slot, slotRecord, slotSetting } from "#core/decision/slots.ts";
+import { isPlainObject } from "#core/options/models.ts";
 import {
 	type Settings as CheckedSettings,
 	isSilent,
@@ -22,7 +23,9 @@ export const PLUGIN_ID = "model-router-openclaw";
 export type OpenClawSettings = {
 	// The stored text of each value setting, unchecked: `settingsOf` checks it.
 	readonly stored: Stored;
-	readonly models: Readonly<Record<Slot, string | undefined>>;
+	// The model each slot takes: the `small_model`, `middle_model` and `large_model` settings.
+	// Not the `models` setting, which names the scoring model of each provider and sits in `stored`.
+	readonly slots: Readonly<Record<Slot, string | undefined>>;
 };
 export type Environment = Readonly<Record<string, string | undefined>>;
 type Settings = Record<string, unknown>;
@@ -77,6 +80,16 @@ function firstText(from: readonly Settings[], field: string): unknown {
 	return undefined;
 }
 
+// A plain object holds the `models` setting as a value, as OpenClaw's config can carry a map; the
+// text rule reads such a value as silence.
+function firstModels(from: readonly Settings[]): unknown {
+	for (const settings of from) {
+		const { models } = settings;
+		if (isPlainObject(models) || !isSilent(models)) return models;
+	}
+	return undefined;
+}
+
 /**
  * Returns the live config, or undefined when the runtime cannot read it. Never
  * throws.
@@ -99,8 +112,9 @@ export function readSettings(
 			provider: firstText(from, "provider"),
 			gateway: firstText(from, "gateway"),
 			scope: firstText(from, "scope"),
+			models: firstModels(from),
 		},
-		models: slotRecord((slot) => nonEmpty(firstText(from, slotSetting(slot)))),
+		slots: slotRecord((slot) => nonEmpty(firstText(from, slotSetting(slot)))),
 	};
 }
 

@@ -11,6 +11,7 @@
 			"!plugins/model-router/hooks/register.js",
 			"!plugins/model-router-omp/extension/index.js",
 			"!plugins/model-router-openclaw/index.js",
+			"!plugins/model-router-openclaw/setup-api.js",
 			"!plugins/model-router-hermes/route.mjs",
 			"!packages/model-router"
 		]
@@ -246,7 +247,10 @@
 			}
 		},
 		{
-			"includes": ["src/adapters/openclaw/index.ts"],
+			"includes": [
+				"src/adapters/openclaw/index.ts",
+				"src/adapters/openclaw/setup.ts"
+			],
 			"linter": {
 				"rules": {
 					"style": {

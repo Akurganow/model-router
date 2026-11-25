@@ -22,6 +22,8 @@ export const OMP_OUTPUTS = {
 export const OPENCLAW_OUTPUTS = {
 	manifest: "plugins/model-router-openclaw/openclaw.plugin.json",
 	bundle: "plugins/model-router-openclaw/index.js",
+	// The conventional name of OpenClaw's setup entry, which it finds at the plugin root.
+	setup: "plugins/model-router-openclaw/setup-api.js",
 } as const;
 
 export const HERMES_DIR = "plugins/model-router-hermes";
@@ -54,6 +56,7 @@ export const NPM_FILE_COPIES: readonly Copy[] = [
 	},
 	{ from: OMP_OUTPUTS.bundle, to: `${NPM_ROOT}/extension/index.js` },
 	{ from: OPENCLAW_OUTPUTS.bundle, to: `${NPM_ROOT}/index.js` },
+	{ from: OPENCLAW_OUTPUTS.setup, to: `${NPM_ROOT}/setup-api.js` },
 	{
 		from: OPENCLAW_OUTPUTS.manifest,
 		to: `${NPM_ROOT}/openclaw.plugin.json`,
