@@ -144,7 +144,7 @@ export const useOneOf = (setting: ValueSetting): string =>
 	`${setting}: use one of ${TEXTS[setting].values.join(", ")}`;
 
 export const unchanged = (
-	setting: ValueSetting | "models",
+	setting: ValueSetting | "models" | "model",
 	reason: string,
 ): string => `${setting} unchanged: ${reason}`;
 
@@ -326,6 +326,9 @@ export const readOnlyToolDescription = (returned: readonly string[]): string =>
 	`Reads the router's settings. It returns ${returned.join(", ")}, and whether each key the settings allow is set. It changes nothing and never returns a key.`;
 
 export const TOOL_LABEL = "Model Router settings";
+
+// A call that passes `models` beside `setting`, or `models` that is not text.
+export const BAD_MODELS_CALL = "Pass setting alone, or models as a text alone.";
 
 export const badCall = (): string =>
 	`Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;

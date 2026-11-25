@@ -14,12 +14,7 @@ import {
 	resetConfig,
 } from "#adapters/claude/config.ts";
 import type { CommandRun, ConfigCall, Engine } from "#adapters/claude/host.ts";
-import {
-	badCall,
-	NO_ANSWER,
-	unchanged,
-	valueLine,
-} from "#core/options/settings.ts";
+import { NO_ANSWER, unchanged, valueLine } from "#core/options/settings.ts";
 
 test("the refusal says nothing was read or changed", () => {
 	assert.match(REFUSED, /Permission rules deny/);
@@ -513,7 +508,9 @@ for (const [name, input] of [
 	test(`${name} is a bad call and writes nothing`, async () => {
 		resetConfig();
 		const { $, log } = answeringEngine(async () => EXTENDED);
-		assert.deepEqual(await configCall($, input, {}), { result: badCall() });
+		assert.deepEqual(await configCall($, input, {}), {
+			result: "Pass setting alone, or models as a text alone.",
+		});
 		assert.deepEqual(log, ["check"]);
 	});
 

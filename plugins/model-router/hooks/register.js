@@ -595,6 +595,7 @@ function pendingModels(stored) {
   return textOf(models);
 }
 var toolDescription = () => `Reads the router's settings. With no input it returns the provider, gateway, scope and models, and whether each key the settings allow is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice; never pass a value for these. With models and a string, the tool writes that string as the models setting at the person's request, for example {typesafe:jev-latest, openai:gpt-6-luna}. Never pass a key.`;
+var BAD_MODELS_CALL = "Pass setting alone, or models as a text alone.";
 var badCall = () => `Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
 function describeCommand(setting) {
   const { about, values } = TEXTS[setting];
@@ -709,14 +710,16 @@ async function put($, row, value) {
     return errorText(err);
   }
 }
-var modelKept = (reason) => `model unchanged: ${reason}`;
 async function storeModels($, models, eraseModel) {
   const refused = await put($, "models", models);
   if (refused !== void 0)
     return { stored: false, lines: [unchanged("models", refused)] };
   if (!eraseModel) return { stored: true, lines: [] };
   const kept = await put($, "model", "");
-  return { stored: true, lines: kept === void 0 ? [] : [modelKept(kept)] };
+  return {
+    stored: true,
+    lines: kept === void 0 ? [] : [unchanged("model", kept)]
+  };
 }
 async function carryModel($, options) {
   const models = pendingModels(storedOf(options));
@@ -760,7 +763,7 @@ async function answer($, call, options) {
   const { setting, models } = call;
   if (models !== void 0)
     return {
-      result: typeof models === "string" && setting === void 0 ? await writeModels($, options, models) : badCall()
+      result: typeof models === "string" && setting === void 0 ? await writeModels($, options, models) : BAD_MODELS_CALL
     };
   if (setting === void 0) return { result: await read($, options) };
   if (isValueSetting(setting))

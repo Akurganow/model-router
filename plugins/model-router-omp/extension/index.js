@@ -867,6 +867,7 @@ function modelsWrite(stored, text) {
 }
 var toolDescription = () => `Reads the router's settings. With no input it returns the provider, gateway, scope and models, and whether each key the settings allow is set. With a setting name (${VALUE_SETTINGS.join(", ")}) the plugin asks the person in its own dialog and writes their choice; never pass a value for these. With models and a string, the tool writes that string as the models setting at the person's request, for example {typesafe:jev-latest, openai:gpt-6-luna}. Never pass a key.`;
 var TOOL_LABEL = "Model Router settings";
+var BAD_MODELS_CALL = "Pass setting alone, or models as a text alone.";
 var badCall = () => `Unknown setting. Pass no setting, or one of: ${VALUE_SETTINGS.join(", ")}`;
 function describeCommand(setting) {
   const { about, values } = TEXTS[setting];
@@ -1009,7 +1010,6 @@ function readConfig(lookup2, settings) {
 // src/adapters/omp/config.ts
 var COMMAND_PREFIX = "model-router:";
 var LINE_BREAK = "\n";
-var BAD_MODELS_CALL = "Pass setting alone, or models as a text alone.";
 var projectOverrides = (setting) => `A project value for ${setting} overrides it.`;
 function say(ctx, text) {
   try {

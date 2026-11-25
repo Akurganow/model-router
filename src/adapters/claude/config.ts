@@ -1,5 +1,6 @@
 import {
 	alreadyValue,
+	BAD_MODELS_CALL,
 	badCall,
 	chooseValue,
 	isValue,
@@ -116,9 +117,6 @@ async function put(
 	}
 }
 
-// `unchanged` names a setting or `models`, so the line of the removed `model` is spelled here.
-const modelKept = (reason: string): string => `model unchanged: ${reason}`;
-
 // Writes `models`, then erases the removed `model` when asked, in that order. A refused `models`
 // stops there. Returns the lines of the writes that failed, and whether `models` was written.
 async function storeModels(
@@ -131,7 +129,10 @@ async function storeModels(
 		return { stored: false, lines: [unchanged("models", refused)] };
 	if (!eraseModel) return { stored: true, lines: [] };
 	const kept = await put($, "model", "");
-	return { stored: true, lines: kept === undefined ? [] : [modelKept(kept)] };
+	return {
+		stored: true,
+		lines: kept === undefined ? [] : [unchanged("model", kept)],
+	};
 }
 
 // A provider change also stores the models text the removed `model` makes, then erases it.
@@ -207,7 +208,7 @@ async function answer(
 			result:
 				typeof models === "string" && setting === undefined
 					? await writeModels($, options, models)
-					: badCall(),
+					: BAD_MODELS_CALL,
 		};
 	if (setting === undefined) return { result: await read($, options) };
 	if (isValueSetting(setting))

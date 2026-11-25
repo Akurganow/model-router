@@ -335,7 +335,7 @@ test("a setting with models is a bad call", async ($, on) => {
 		setting: "scope",
 		models: MODELS,
 	} as never);
-	expect(result).toBe(UNKNOWN_SETTING);
+	expect(result).toBe("Pass setting alone, or models as a text alone.");
 	expect(writes).toEqual([]);
 });
 

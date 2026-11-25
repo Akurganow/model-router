@@ -1,5 +1,6 @@
 import {
 	alreadyValue,
+	BAD_MODELS_CALL,
 	badCall,
 	COMMAND_DESCRIPTIONS,
 	chooseValue,
@@ -31,7 +32,6 @@ import type { Context, OmpImports, Pi, ToolReply } from "./types.ts";
 
 const COMMAND_PREFIX = "model-router:";
 const LINE_BREAK = "\n";
-export const BAD_MODELS_CALL = "Pass setting alone, or models as a text alone.";
 
 export const projectOverrides = (setting: ValueSetting): string =>
 	`A project value for ${setting} overrides it.`;
