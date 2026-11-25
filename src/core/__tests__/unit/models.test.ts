@@ -103,6 +103,15 @@ test("a provider named twice is not valid when an earlier value is not text", ()
 	});
 });
 
+test("a value holding many escaped quotes reads in linear time", () => {
+	const text = `{"typesafe":"${'\\"'.repeat(100_000)}"}`;
+	const start = performance.now();
+	const read = readModels(text);
+	const elapsed = performance.now() - start;
+	assert.deepEqual(read, { models: { typesafe: '"'.repeat(100_000) } });
+	assert.ok(elapsed < 1000, `took ${elapsed} ms`);
+});
+
 test("an empty entry between two commas is not valid and names the text", () => {
 	assert.deepEqual(readModels("{openai:a,,google:b}"), {
 		invalid: "{openai:a,,google:b}",
