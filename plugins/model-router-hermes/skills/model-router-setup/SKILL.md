@@ -36,14 +36,20 @@ When the person wants to choose the provider, follow these steps in order:
 5. Name the key the choice needs, and say where it comes from and what it changes in Hermes, as the keys facts say.
 6. Call `model_router_config` again, and confirm the lines.
 
-When the person wants another scoring model, follow these steps in order:
+When the `models` line ends with `(not valid: <entry>)`, repair it. Follow these steps in order:
+
+1. Call `model_router_config` with no input, and read the `models` line.
+2. Name the entry to the person, and ask for a corrected text.
+3. On the person's word, run `hermes config set plugins.entries.model-router-hermes.settings.models '<corrected text>'`, with the text in the short form and the entries in the order the line shows them.
+4. Call `model_router_config` again, and confirm the `models` line.
+
+When the person wants another scoring model for one provider, follow these steps in order:
 
 1. Call `model_router_config` with no input, and read the `models` line and the lines under it.
-2. When the line ends with `(not valid: <entry>)`, name the entry to the person, and ask for a corrected text.
-3. Ask the person for the provider and the model name as written on the provider's API.
-4. Take the text the line shows, keep every other entry, and set or replace that provider's entry.
-5. On the person's word, run `hermes config set plugins.entries.model-router-hermes.settings.models '<whole text>'`.
-6. Call `model_router_config` again, and confirm the `models` line.
+2. Ask the person for the provider and the model name. Model names come from the provider's API documentation.
+3. Take the text the line shows, keep every other entry, and set or replace that provider's entry. Write the short form, with the entries in the order the line shows them.
+4. On the person's word, run `hermes config set plugins.entries.model-router-hermes.settings.models '<whole text>'`.
+5. Call `model_router_config` again, and confirm the `models` line.
 
 ## Facts
 
@@ -122,11 +128,10 @@ When the person wants another scoring model, follow these steps in order:
 
 ### The scoring models
 
-- `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, a JSON object, or a native object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults and the OpenRouter names.
-- A `models` value is not valid for an unknown provider, an empty model, an entry with no colon, a provider named twice, a model with a slash, a JSON value that is not a string, or text that is neither form.
+- `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, a JSON object, or a native object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults, the OpenRouter names and when a value is not valid.
 - The person sets `models` in the settings form in Hermes Desktop, or with `hermes config set plugins.entries.model-router-hermes.settings.models '<text>'`. Run the command only on the person's word.
 - The Python passes the stored value to the Node step, which decides whether it is valid. A value that is not valid skips every scored task with `models not valid: run setup`.
-- A model name goes as written on the provider's own API. OpenRouter answers a name it does not know with `HTTP 400`, which gets no second attempt.
+- A model name goes as written on the provider's own API, and that API's documentation lists the names. [The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path) says what OpenRouter does with a name.
 - The plugin writes no setting when it loads.
 
 ### The models

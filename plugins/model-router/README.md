@@ -87,12 +87,11 @@ This is the whole surface:
 | hook | `agent.spawn` | Scores the brief and sets the subagent's `model` before it starts. |
 | hook | `tool.call{tool=Agent}` | Passes the Agent call on unchanged and notes whether the caller set an `effort`. |
 | hook | `tool.call{tool=mcp__model-router__config}` | Answers the `config` tool: the settings and the dialogs. |
-| hook | `config.describe` | Hides the `/config` row of the removed `model` option. |
 | hook | `turn.step` | Sets the routed `effort` on the subagent's requests. |
 | hook | `turn.complete` | Forgets that a finished subagent's first request already waited for the spawns in flight. |
 | call | `$.clock.after` | The 10 s limit and the request's timers run on it, for example the retry wait. |
 | call | `$.clock.sleep` | Bounds the wait of a subagent's first request for the spawns in flight, 1 s at most. |
-| call | `$.config.set` | Writes the `provider`, `gateway` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. Writes the `models` option when the `config` tool gets a `models` text, or when a provider change stores what the removed `model` option held, and then clears `model`. |
+| call | `$.config.set` | Writes the `provider`, `gateway` or `scope` option, after you pick a value in the dialog or give a command with a value at your own prompt. Writes the `models` option when the `config` tool gets a `models` text, or when a provider change must store what the removed `model` option held. Clears a stored `model` on a `models` write and on a provider change. |
 | call | `$.env.get` | Reads `TYPESAFE_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and `OPENROUTER_API_KEY`, and whether `CLAUDE_CODE_EFFORT_LEVEL` is set, the only variables the mod reads. |
 | call | `$.http.fetch` | Sends the request to `api.typesafe.ai`, `api.openai.com`, `generativelanguage.googleapis.com` or `openrouter.ai`. |
 | call | `$.tool.check` | Asks for the permission verdict of a call to the `config` tool. |
@@ -324,21 +323,24 @@ The removed option `model` stays in the manifest as a free string with no
 default and no options. Its `/config` row is hidden. The mod reads it through
 [the migration ladder](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-migration-ladder):
 it becomes the `typesafe` entry of `models` when `models` names none.
+While a `model` that is not blank is stored, the `models` line of the config
+tool shows the migrated text and ends with `(not stored yet: run setup)`.
 
-The mod erases the stored `model` in three cases:
+The mod erases a stored `model` in two cases:
 
-- The setup skill runs.
 - The config tool changes `provider` through the dialog.
 - The config tool writes `models`.
 
-Each first writes the migrated `models`, then erases `model`.
+Each case erases `model` whenever one is stored.
+When the migration changed `models`, the mod writes the migrated `models`
+first.
+The setup skill reaches both cases through the tool.
 The release that adds three more providers removes the `model` declaration.
 A `model` not migrated by then is no longer read, and TypeSafe uses its
 default.
 
-A migrated `jev-preview` has no OpenRouter model. With `gateway` set to
-`openrouter` or `openrouter-first`, that path answers HTTP 400 and routing
-skips.
+[The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path)
+says what a migrated `jev-preview` does on the OpenRouter path.
 
 ### A stored value outside an option's list
 
@@ -363,13 +365,11 @@ An install updated from an earlier version follows these rules:
 - To get the earlier requests back, set `gateway` to the value `provider`
   held. [Retired values of `provider`](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#retired-values-of-provider)
   gives the pairs.
-- A stored `model` option, `jev-preview` for example, counts as the `typesafe`
-  entry of `models` when `models` names none, as
+- A stored `model` option counts as the `typesafe` entry of `models` when
+  `models` names none, as
   [The scoring model of each provider](#the-scoring-model-of-each-provider)
   says. The next write of `models`, or the next change of provider, stores it
-  there and clears `model`. With `gateway` set to `openrouter` or
-  `openrouter-first`, `jev-preview` has no OpenRouter model, so that path
-  answers `HTTP 400` and routing skips.
+  there and clears `model`.
 - A missing `scope` counts as `core`, so an update changes no routing.
 
 ## Scope

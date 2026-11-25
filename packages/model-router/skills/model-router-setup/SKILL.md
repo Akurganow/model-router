@@ -41,15 +41,28 @@ When the person wants to choose the provider, follow these steps in order:
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. Call `model_router_config` with no setting, and confirm the lines.
 
-When the person wants another scoring model, follow these steps in order:
+When the `models` line ends with `(not stored yet: run setup)`, migrate it. Follow these steps in order:
 
 1. Call `model_router_config` with no input, and read the `models` line and the lines under it.
-2. When the line ends with `(not valid: <entry>)`, name the entry to the person, and ask for a corrected text.
-3. Ask the person for the provider and the model name as written on the provider's API.
-4. Take the text the line shows, keep every other entry, and set or replace that provider's entry.
-5. On the person's word, call `model_router_config` with `models` set to the whole new text.
-6. Read the reply. `models unchanged: not valid: <entry>` means nothing was written. Name the entry to the person.
-7. Call `model_router_config` with no input, and confirm the `models` line.
+2. Tell the person that the line shows the migrated text, and that nothing is stored yet.
+3. Ask the person whether to write it. On the person's word, call `model_router_config` with `models` set to the text shown before the note.
+4. Read the reply, call `model_router_config` with no input, and confirm the `models` line.
+
+When the `models` line ends with `(not valid: <entry>)`, repair it. Follow these steps in order:
+
+1. Name the entry to the person, and ask for a corrected text.
+2. On the person's word, call `model_router_config` with `models` set to the corrected text, in the short form, with the entries in the order the line shows them.
+3. Read the reply. `models unchanged: not valid: <entry>` means nothing was written. Name the entry to the person, and ask again.
+4. Call `model_router_config` with no input, and confirm the `models` line.
+
+When the person wants another scoring model for one provider, follow these steps in order:
+
+1. Call `model_router_config` with no input, and read the `models` line and the lines under it.
+2. Ask the person for the provider and the model name. Model names come from the provider's API documentation.
+3. Take the text the line shows, keep every other entry, and set or replace that provider's entry. Write the short form, with the entries in the order the line shows them.
+4. On the person's word, call `model_router_config` with `models` set to the whole new text.
+5. Read the reply. `models unchanged: not valid: <entry>` means nothing was written. Name the entry to the person.
+6. Call `model_router_config` with no input, and confirm the `models` line.
 
 ## Facts
 
@@ -63,11 +76,11 @@ When the person wants another scoring model, follow these steps in order:
   scope: core
   models: unset
   typesafe model: jev-latest (OpenRouter: jev-latest)
-  openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)
-  google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)
   typesafe key: set
   openrouter key: unset
   ```
+
+  The example holds the model line of one provider. [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each.
 - A key line reads `<holder> key: set` or `<holder> key: unset`. For the direct path the holder is the provider's name, `typesafe`, `openai` or `google`, and for the gateway path it is `openrouter`.
 - The `gateway` line names the paths of its value, with the provider's name for the direct path: `gateway: direct (openai)`, `gateway: auto (openai, then openrouter)`, `gateway: openrouter-first (openrouter, then openai)` or `gateway: openrouter (openrouter)`.
 - A stored value outside its setting's list is not valid. The plugin then routes no task, and each task skips with `<setting> not valid: run setup`.
@@ -137,12 +150,11 @@ To move a retired value, follow these steps in order:
 
 ### Scoring models
 
-- `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, or a JSON object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults and the OpenRouter names.
-- A `models` value is not valid for an unknown provider, an empty model, an entry with no colon, a provider named twice, a model with a slash, a JSON value that is not a string, or text that is neither form.
-- The tool then prints `models: <text> (not valid: <entry>)`, and every task skips with `models not valid: run setup`.
+- `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, or a JSON object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults, the OpenRouter names and when a value is not valid.
+- A `models` value that is not valid prints as `models: <text> (not valid: <entry>)`, and every task skips with `models not valid: run setup`.
 - The plugin reads `models` from the global settings only. A project's value never applies.
-- A model name goes as written on the provider's own API. OpenRouter answers a name it does not know with `HTTP 400`, which gets no second attempt.
-- The plugin writes no setting when it loads. The `models` line ends with `(not stored yet: run setup)` when the migration changed a stored value. Write the shown text then, on the person's word.
+- A model name goes as written on the provider's own API, and that API's documentation lists the names. [The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path) says what OpenRouter does with a name.
+- The plugin writes no setting when it loads. The `models` line ends with `(not stored yet: run setup)` when the migration changed a stored value, and then it shows the migrated text.
 
 ### Scope
 

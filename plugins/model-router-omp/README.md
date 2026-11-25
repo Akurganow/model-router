@@ -87,7 +87,7 @@ Earlier versions let a project narrow with `provider`. A project's `provider: ty
 
 ### The scoring model of each provider
 
-The `models` setting names the scoring model of each provider. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists its forms, its defaults, the OpenRouter names and the lines of the config tool.
+The `models` setting names the scoring model of each provider. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists its forms, its defaults, the OpenRouter names, when a value is not valid and the lines of the config tool.
 
 The plugin reads `models` from your global settings only. A project's value never applies.
 

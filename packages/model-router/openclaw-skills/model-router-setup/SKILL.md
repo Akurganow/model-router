@@ -37,14 +37,20 @@ When the person wants to choose the provider, follow these steps in order:
 5. Name the key the choice needs, and say where it comes from, as the Keys facts say.
 6. After OpenClaw replaces the plugin, call `model_router_config` again and confirm the lines.
 
-When the person wants another scoring model, follow these steps in order:
+When the `models` line ends with `(not valid: <entry>)`, repair it. Follow these steps in order:
+
+1. Call `model_router_config` with no input, and read the `models` line.
+2. Name the entry to the person, and ask for a corrected text.
+3. On the person's word, run `openclaw config set plugins.entries.model-router-openclaw.config.models '<corrected text>'`, with the text in the short form and the entries in the order the line shows them.
+4. After OpenClaw replaces the plugin, call `model_router_config` again, and confirm the `models` line.
+
+When the person wants another scoring model for one provider, follow these steps in order:
 
 1. Call `model_router_config` with no input, and read the `models` line and the lines under it.
-2. When the line ends with `(not valid: <entry>)`, name the entry to the person, and ask for a corrected text.
-3. Ask the person for the provider and the model name as written on the provider's API.
-4. Take the text the line shows, keep every other entry, and set or replace that provider's entry.
-5. On the person's word, run `openclaw config set plugins.entries.model-router-openclaw.config.models '<whole text>'`.
-6. After OpenClaw replaces the plugin, call `model_router_config` again and confirm the `models` line.
+2. Ask the person for the provider and the model name. Model names come from the provider's API documentation.
+3. Take the text the line shows, keep every other entry, and set or replace that provider's entry. Write the short form, with the entries in the order the line shows them.
+4. On the person's word, run `openclaw config set plugins.entries.model-router-openclaw.config.models '<whole text>'`.
+5. After OpenClaw replaces the plugin, call `model_router_config` again, and confirm the `models` line.
 
 ## Facts
 
@@ -52,7 +58,7 @@ When the person wants another scoring model, follow these steps in order:
 
 - `model_router_config` with no input prints the `provider`, `gateway`, `scope`, `models`, `small_model`, `middle_model` and `large_model` lines, then one key line for each path the `gateway` setting allows.
 - A model line shows the slot string as written, or `unset`. A key line reads `typesafe key: set`, `openai key: unset` or `openrouter key: unset`, after the key's holder.
-- Example output:
+- Example output, with the model line of one provider. [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each:
 
 ```text
 provider: typesafe
@@ -60,8 +66,6 @@ gateway: auto (typesafe, then openrouter)
 scope: core
 models: unset
 typesafe model: jev-latest (OpenRouter: jev-latest)
-openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)
-google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)
 small_model: acme/small
 middle_model: unset
 large_model: unset
@@ -111,11 +115,10 @@ openrouter key: unset
 
 ### Scoring models
 
-- `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, a JSON object, or a native object in the config. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults and the OpenRouter names.
-- A `models` value is not valid for an unknown provider, an empty model, an entry with no colon, a provider named twice, a model with a slash, a JSON value that is not a string, or text that is neither form.
+- `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, a JSON object, or a native object in the config. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults, the OpenRouter names and when a value is not valid.
 - The person sets `models` on the plugin's page in the Control UI, or with `openclaw config set plugins.entries.model-router-openclaw.config.models '<text>'`. Run the command only on the person's word.
 - A change applies once OpenClaw replaces the plugin, after running work drains, up to 60 s. The tool can show the old value until then.
-- A model name goes as written on the provider's own API. OpenRouter answers a name it does not know with `HTTP 400`, which gets no second attempt.
+- A model name goes as written on the provider's own API, and that API's documentation lists the names. [The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path) says what OpenRouter does with a name.
 - A stored `models` makes an older plugin version fail OpenClaw's config check, because the schema allows no unknown key. Tell the person to remove the setting before an older install.
 - The plugin registers its migration ladder with OpenClaw. `openclaw doctor --fix` and an update run it. Today it changes nothing.
 

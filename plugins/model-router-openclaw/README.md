@@ -95,7 +95,7 @@ Switch them with `/model-router-provider <value>` and `/model-router-gateway <va
 
 ### The scoring model of each provider
 
-The `models` setting names the scoring model of each provider. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists its forms, its defaults, the OpenRouter names and the lines of the config tool. OpenClaw also takes a native object.
+The `models` setting names the scoring model of each provider. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists its forms, its defaults, the OpenRouter names, when a value is not valid and the lines of the config tool. OpenClaw also takes a native object.
 
 The tool is read-only, so the owner or the agent, on the owner's word, sets `models`. Use the Control UI page `/settings/plugins/model-router-openclaw`, or run:
 
@@ -145,7 +145,7 @@ A Gateway client without `operator.admin` gets OpenClaw's own `This command requ
 
 Only the owner can write. For anyone else, a command with a valid value prints `<setting> unchanged: only the owner can change it` and the setting's current line.
 
-The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `scope` line, the `models` lines, the three slot lines and the key lines. A slot line shows the slot string as you wrote it, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid.
+The read-only `model_router_config` tool returns the `provider` line, the `gateway` line, the `scope` line, the `models` lines, the three slot lines and the key lines. The example shows the model line of one provider, and [The report lines](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-report-lines) show one for each. A slot line shows the slot string as you wrote it, or `unset`. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) says what the key lines show and what the tool prints while a setting is not valid.
 
 ```text
 provider: typesafe
@@ -153,8 +153,6 @@ gateway: auto (typesafe, then openrouter)
 scope: core
 models: unset
 typesafe model: jev-latest (OpenRouter: jev-latest)
-openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)
-google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)
 small_model: acme/small
 middle_model: unset
 large_model: unset
