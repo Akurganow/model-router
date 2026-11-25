@@ -8,7 +8,7 @@
 //   OpenClaw's `readSettings`, Hermes's request reader. A key missing there never reaches the step.
 // - OpenClaw also runs the ladder over its stored config through its own migration entry. Give that
 //   entry the new step.
-// - A step that reads `models` handles its three shapes: the owner's short text
+// - A step that reads `models` handles its three shapes: the short text
 //   `{typesafe:jev-preview}`, a JSON text, and a native object. `withModel` keeps each shape.
 // - A step changes nothing on its own output, so a second run gives the same record.
 

@@ -32,6 +32,7 @@
 	"files": [
 		"extension",
 		"index.js",
+		"setup-api.js",
 		"openclaw.plugin.json",
 		"skills",
 		"openclaw-skills"

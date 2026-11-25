@@ -9,6 +9,9 @@
 	"contracts": {
 		"tools": ["model_router_config"]
 	},
+	"setup": {
+		"configMigrations": ["settings-v1"]
+	},
 	"skills": ["./openclaw-skills"],
 	"configContracts": {
 		"secretInputs": {

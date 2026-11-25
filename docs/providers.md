@@ -53,13 +53,17 @@ Each of `provider`, `gateway` and `scope` takes only the values of its own list.
 A stored setting that holds any other text is not valid, a value with a space around it included.
 An absent value, a value that is not text and a blank text read as the default.
 Hermes Agent has no `scope` setting.
+The `models` setting has no list.
+[The `models` setting](#the-models-setting) says when its value is not valid.
 
 While a setting is not valid, the plugin routes no task.
 Each task runs as it would without the plugin.
 The plugin then reads no key and sends no request.
 The skip line gives the reason `<setting> not valid: run setup`, for example `provider not valid: run setup`.
-Where more than one setting is not valid, the reason names the first of `provider`, `gateway` and `scope`.
+Where more than one setting is not valid, the reason names the first of `provider`, `gateway`, `scope` and `models`.
 In Oh My Pi two gates stand before this check, as [Gate reasons](../plugins/model-router-omp/README.md#gate-reasons) lists.
+In Hermes Agent a task with no level meets the `models` check in its Node step, after [the gates in Hermes Agent](../plugins/model-router-hermes/README.md#the-gates).
+By then the plugin has read its keys, and an earlier gate can skip the task.
 
 The skip line shows for these tasks:
 
@@ -71,9 +75,12 @@ The skip line shows for these tasks:
 Claude Code keeps such a value from the plugin.
 It hands the plugin an option's default in place of any stored value that the option's list does not hold, for each of the three options.
 So in Claude Code the plugin routes by the default, and no setup line shows.
+`models` is a free string with no list, so Claude Code hands it on as stored and the setup line shows.
 [A stored value outside an option's list](../plugins/model-router/README.md#a-stored-value-outside-an-options-list) says what that changes after an update.
 
-The plugin never rewrites a stored value on its own.
+The plugin writes no setting when it loads.
+Code migrates stored settings through [the ladder](#the-migration-ladder), which recognises each old form from the data.
+A value that no step can read still skips with the setup line.
 To set a valid value, run the `model-router-setup` skill of your plugin, or give the setting's command a value.
 
 ### Retired values of `provider`
@@ -93,6 +100,91 @@ Set `gateway` first and `provider` second.
 While `provider` is not valid nothing is routed, so in that order no task takes a path you did not choose.
 A stored `typesafe` needs no change: with no `gateway` stored it asks TypeSafe's own API only, as before.
 In Claude Code a retired value reaches the plugin as the default, as the section above says.
+
+## The `models` setting
+
+Every harness has a `models` setting.
+It names the scoring model of each provider.
+
+It takes one of these forms:
+
+- The short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`.
+  The braces are optional.
+  Commas split the entries, and each entry splits at its first colon.
+  Spaces around a part and one trailing comma are allowed.
+  A model name that holds a comma, a quote or a brace needs the JSON form.
+- A JSON object, such as `{"typesafe": "jev-latest", "openai": "gpt-6-luna"}`.
+- A native object, in OpenClaw and Hermes Agent.
+
+A provider with no entry uses its default model for the path, as the table of [The request](#the-request) lists.
+A blank value, an absent value and `{}` mean every default.
+
+A value is not valid for any of these:
+
+- a provider that is not a value of `provider`;
+- an empty model;
+- an entry with no colon;
+- a provider named twice;
+- a model with a slash;
+- a JSON value that is not a string;
+- a text that is neither form.
+
+While `models` is not valid, the plugin routes no task.
+The skip line reads `models not valid: run setup`, unless an earlier gate skips the task first, as [the Hermes Agent order](#a-setting-that-is-not-valid) says.
+The config tool names the failing entry.
+A slash is never valid.
+So `models` never sends the task text to a company other than the one `provider` names.
+
+### The model name on each path
+
+The stored name goes as written to the provider's own API.
+The module of each provider holds its OpenRouter names.
+The config tool prints each provider's OpenRouter model on its `<provider> model` line, as [The report lines](#the-report-lines) shows.
+`jev-preview` has no OpenRouter model.
+
+A name that the module does not map goes bare on TypeSafe's System One route.
+On the Decisions route of OpenAI and Google it goes as `<vendor>/<name>`.
+OpenRouter answers an unknown name with HTTP 400.
+That status gets no second attempt, as [the fallback rule](#the-provider-and-the-gateway) says.
+So under `openrouter-first`, routing skips with `HTTP 400` and never asks the provider's own API.
+
+### The report lines
+
+The config tool prints these lines after the setting lines:
+
+- `models: <stored text>`, or `models: unset` when nothing is stored.
+- ` (not stored yet: run setup)` follows the text when [the ladder](#the-migration-ladder) changed it, or when Claude Code stores a removed `model` that is not blank.
+  The line then shows the migrated text.
+- ` (not valid: <entry>)` follows the text when `models` is not valid, and no provider lines print.
+- Then one line for each provider: `<provider> model: <direct name> (OpenRouter: <slug>)`.
+
+With one entry stored and a TypeSafe key set, the tool prints:
+
+```text
+provider: typesafe
+gateway: direct (typesafe)
+scope: core
+models: {openai:gpt-6-luna}
+typesafe model: jev-latest (OpenRouter: jev-latest)
+openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)
+google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)
+typesafe key: set
+```
+
+### The migration ladder
+
+A ladder of steps in the core migrates stored settings.
+It runs on every read of stored settings, in every harness.
+Each step recognises its input from the data.
+A step changes nothing on a second run, and no version is stored.
+
+The first step reads Claude Code's removed option `model`.
+It becomes the `typesafe` entry of `models` when `models` names none.
+A `models` that is not valid stays as it is.
+
+The plugin writes no setting when it loads.
+Where the harness lets the plugin migrate its own config, the plugin README says so.
+Elsewhere the setup skill writes the migrated shape when the person agrees.
 
 ## Keys
 
@@ -150,7 +242,8 @@ openrouter key: unset
 
 The tool never returns a key, its length or any part of it.
 When a harness cannot read its settings, Oh My Pi prints `settings unreadable`, and OpenClaw and Hermes Agent print `error: <message>`.
-In OpenClaw and Hermes Agent the tool also prints each model setting between the setting lines and the key lines, as its README says: the configured value, or `unset`.
+In OpenClaw and Hermes Agent the tool also prints each slot setting between the setting lines and the key lines, as its README says: the configured value, or `unset`.
+[The `models` setting](#the-models-setting) lists the `models` lines, which follow the setting lines in every harness.
 
 [A setting that is not valid](#a-setting-that-is-not-valid) prints its stored text and the values to use, as `<setting>: <stored text> (not valid: use one of <values>)`.
 Every valid setting then prints as `<setting>: <value>`.
@@ -162,7 +255,8 @@ gateway: fast (not valid: use one of direct, auto, openrouter-first, openrouter)
 scope: core
 ```
 
-In Claude Code no setting prints as not valid, because [the plugin never gets such a value](../plugins/model-router/README.md#a-stored-value-outside-an-options-list).
+In Claude Code no value setting prints as not valid, because [the plugin never gets such a value](../plugins/model-router/README.md#a-stored-value-outside-an-options-list).
+`models` can print as not valid in every harness, as [The `models` setting](#the-models-setting) says.
 
 ## A slot with no model
 
@@ -324,7 +418,8 @@ The plugin masks token-shaped strings only, so a private name in a description l
 
 ## The option commands
 
-Each setting has a command, and each plugin README names it.
+Each of `provider`, `gateway` and `scope` has a command, and each plugin README names it.
+`models` has no command: its plugin README says how the harness writes it.
 A bare command prints the setting's line, as [the config tool](#the-config-tool) prints it.
 A command with a valid value writes it and prints the new line.
 A value equal to the stored text is not written, and the command prints `<setting> unchanged: already <value>`.

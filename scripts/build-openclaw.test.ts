@@ -44,6 +44,10 @@ test("the manifest names the plugin, its version, its tool and its skills", () =
 	assert.deepEqual(manifest.skills, source.openclaw.skills);
 });
 
+test("the manifest names the setup entry's migration and leaves requiresRuntime out", () => {
+	assert.deepEqual(manifest.setup, { configMigrations: ["settings-v1"] });
+});
+
 test("the config schema holds the eleven settings and refuses any other key", () => {
 	assert.equal(schema.additionalProperties, false);
 	assert.deepEqual(Object.keys(schema.properties ?? {}), [
@@ -70,7 +74,7 @@ test("each default in the manifest is the value the code applies to an empty con
 	assert.equal(property("scope")?.default, chosen.scope);
 	for (const slot of ["small_model", "middle_model", "large_model"])
 		assert.equal(property(slot)?.default, undefined, slot);
-	assert.deepEqual(settings.models, {
+	assert.deepEqual(settings.slots, {
 		small: undefined,
 		middle: undefined,
 		large: undefined,
@@ -192,6 +196,17 @@ test("the bundle builds under the cap and equals the committed bundle", async ()
 	assert.equal(code, read(OPENCLAW_OUTPUTS.bundle));
 });
 
+test("the setup bundle builds under the cap and equals the committed bundle", async () => {
+	const out = join(box.root, "setup-api.js");
+	assert.deepEqual(
+		await buildBundle("openclaw", "src/adapters/openclaw/setup.ts", out),
+		[],
+	);
+	const code = readFileSync(out, "utf8");
+	assert.ok(Buffer.byteLength(code) < MAX_BUNDLE_BYTES);
+	assert.equal(code, read(OPENCLAW_OUTPUTS.setup));
+});
+
 test("two builds of the bundle give identical bytes", async () => {
 	const first = join(box.root, "first.js");
 	const second = join(box.root, "second.js");
@@ -200,11 +215,13 @@ test("two builds of the bundle give identical bytes", async () => {
 	assert.equal(readFileSync(first, "utf8"), readFileSync(second, "utf8"));
 });
 
-test("the bundle holds no absolute path", () => {
-	assert.doesNotMatch(
-		read(OPENCLAW_OUTPUTS.bundle),
-		/(^|[\s"'`(])\/(Users|home|private|tmp)\//,
-	);
+test("the bundles hold no absolute path", () => {
+	for (const path of [OPENCLAW_OUTPUTS.bundle, OPENCLAW_OUTPUTS.setup])
+		assert.doesNotMatch(
+			read(path),
+			/(^|[\s"'`(])\/(Users|home|private|tmp)\//,
+			path,
+		);
 });
 
 test("the manifest and the middle hint say the effort is set unless the user sets one", () => {

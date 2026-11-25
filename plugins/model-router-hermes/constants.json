@@ -65,6 +65,7 @@
 			}
 		}
 	],
+	"modelsSetting": "models",
 	"choices": {
 		"typesafe": {
 			"direct": {
@@ -135,6 +136,7 @@
 	},
 	"efforts": ["low", "medium", "high", "xhigh"],
 	"skips": {
+		"modelsNotValid": "model-router skipped, models not valid: run setup",
 		"keyUnset": "model-router skipped, key unset",
 		"subagentModelSet": "model-router skipped, subagent model set",
 		"nodeNotFound": "model-router skipped, node not found",
@@ -205,6 +207,8 @@
 				"unset": "openrouter key: unset"
 			}
 		},
+		"modelsCommand": "modelsLines",
+		"modelsUnavailable": "models: unavailable, no answer from node",
 		"unset": "unset",
 		"modelLine": "{name}: {provider} {model}",
 		"modelUnset": "{name}: unset",

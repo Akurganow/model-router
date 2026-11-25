@@ -263,3 +263,8 @@ class RouterCase(unittest.TestCase):
 
     def assertNodeNotRun(self, stub):
         self.assertFalse(stub.capture.exists())
+
+    def assertRoutingNotRun(self, stub):
+        """A pinned task asks Node for the models verdict, which has a `command`, and never for routing."""
+        if stub.capture.exists():
+            self.assertIn("command", json.loads(stub.captured()["stdin"]))

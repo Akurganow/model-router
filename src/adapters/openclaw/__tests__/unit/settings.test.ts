@@ -31,8 +31,13 @@ test("the plugin id is the manifest id", () => {
 
 test("without any config the defaults hold and no model is set", () => {
 	assert.deepEqual(readSettings(undefined, undefined), {
-		stored: { provider: undefined, gateway: undefined, scope: undefined },
-		models: { small: undefined, middle: undefined, large: undefined },
+		stored: {
+			provider: undefined,
+			gateway: undefined,
+			scope: undefined,
+			models: undefined,
+		},
+		slots: { small: undefined, middle: undefined, large: undefined },
 	});
 });
 
@@ -46,8 +51,13 @@ test("the live config supplies every setting", () => {
 		large_model: "anthropic/claude-opus-5-5",
 	});
 	assert.deepEqual(readSettings(config, undefined), {
-		stored: { provider: "typesafe", gateway: "auto", scope: "extended" },
-		models: {
+		stored: {
+			provider: "typesafe",
+			gateway: "auto",
+			scope: "extended",
+			models: undefined,
+		},
+		slots: {
 			small: "openai/gpt-5-mini",
 			middle: "openai/gpt-5",
 			large: "anthropic/claude-opus-5-5",
@@ -73,7 +83,7 @@ test("a setting the live config lacks comes from the plugin config", () => {
 		small_model: "a/b",
 	});
 	assert.deepEqual(
-		[settings.stored.gateway, settings.stored.scope, settings.models.small],
+		[settings.stored.gateway, settings.stored.scope, settings.slots.small],
 		["auto", "extended", "a/b"],
 	);
 });
@@ -91,7 +101,7 @@ test("an unusable live model falls through to the plugin config value", () => {
 			large_model: "c/d",
 		},
 	);
-	assert.deepEqual(settings.models, {
+	assert.deepEqual(settings.slots, {
 		small: "a/b",
 		middle: "e/f",
 		large: "c/d",
@@ -102,7 +112,7 @@ test("when no source holds a usable model it is unset", () => {
 	const settings = readSettings(live({ small_model: "" }), {
 		small_model: null,
 	});
-	assert.equal(settings.models.small, undefined);
+	assert.equal(settings.slots.small, undefined);
 });
 
 test("a model slot is trimmed, for every slot", () => {
@@ -114,7 +124,7 @@ test("a model slot is trimmed, for every slot", () => {
 		}),
 		undefined,
 	);
-	assert.deepEqual(set.models, { small: "a/b", middle: "c/d", large: "e/f" });
+	assert.deepEqual(set.slots, { small: "a/b", middle: "c/d", large: "e/f" });
 });
 
 test("a blank or non-string slot is unset, for every slot", () => {
@@ -123,12 +133,31 @@ test("a blank or non-string slot is unset, for every slot", () => {
 			live({ small_model: bad, middle_model: bad, large_model: bad }),
 			undefined,
 		);
-		assert.deepEqual(settings.models, {
+		assert.deepEqual(settings.slots, {
 			small: undefined,
 			middle: undefined,
 			large: undefined,
 		});
 	}
+});
+
+test("the models setting follows the first-source rule, and a plain object is a value", () => {
+	const models = (liveValue: unknown, pluginValue?: unknown) =>
+		readSettings(live({ models: liveValue }), { models: pluginValue }).stored
+			.models;
+	assert.equal(
+		models("{typesafe:jev-preview}", "{typesafe:other}"),
+		"{typesafe:jev-preview}",
+	);
+	assert.deepEqual(models({ typesafe: "jev-preview" }, "{typesafe:other}"), {
+		typesafe: "jev-preview",
+	});
+	for (const silent of ["", "   ", null, undefined])
+		assert.equal(models(silent, "{typesafe:other}"), "{typesafe:other}");
+	assert.equal(models("typesafe", "{typesafe:other}"), "typesafe");
+	assert.equal(models(5, "{typesafe:other}"), 5);
+	assert.deepEqual(models(["typesafe:a"], "{typesafe:other}"), ["typesafe:a"]);
+	assert.equal(models(undefined), undefined);
 });
 
 test("a live config whose plugin entry is not a record falls back", () => {

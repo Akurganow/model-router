@@ -139,6 +139,7 @@ test("the constants hold only the keys the Python shim reads", () => {
 		"blank",
 		"keyVariables",
 		"settings",
+		"modelsSetting",
 		"choices",
 		"efforts",
 		"skips",
@@ -157,8 +158,15 @@ test("the constants hold the values src/ gives", () => {
 	assert.equal(constants.routingLimitMs, ROUTING_LIMIT_MS);
 	assert.equal(constants.graceMs, HERMES_TEXTS.graceMs);
 	assert.equal(constants.backend, source.hermes.backendName);
+	assert.equal(constants.modelsSetting, "models");
+	assert.equal(constants.texts.modelsCommand, "modelsLines");
+	assert.equal(
+		constants.texts.modelsUnavailable,
+		"models: unavailable, no answer from node",
+	);
 	assert.deepEqual(constants.keyVariables, KEY_VARIABLES);
 	assert.deepEqual(constants.skips, {
+		modelsNotValid: "model-router skipped, models not valid: run setup",
 		keyUnset: "model-router skipped, key unset",
 		subagentModelSet: "model-router skipped, subagent model set",
 		nodeNotFound: "model-router skipped, node not found",
@@ -391,7 +399,7 @@ test("the committed bundle answers a request on stdin with one JSON line", () =>
 		provider: "typesafe",
 		keys: {},
 		budgetMs: 1000,
-		models: { small: null, large: null },
+		slotModels: { small: null, large: null },
 		keptEffort: null,
 	};
 	const run = spawnSync(process.execPath, [join(ROOT, HERMES_OUTPUTS.bundle)], {

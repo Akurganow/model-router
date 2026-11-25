@@ -39,18 +39,19 @@ const TOOL_DESCRIPTION = readOnlyToolDescription([
 	"the provider",
 	"the gateway",
 	"the scope",
+	"the scoring models",
 	"the three models",
 ]);
 
 /**
- * Returns the report: the three value settings, the three models as configured,
+ * Returns the report: the three value settings, the models lines, the three slot models as configured,
  * and one line per key holder that says whether its key is set or unset. A key
  * is only checked for presence. Nothing about it leaves this function.
  */
 function readAll({ settings, keys }: State): string {
 	return settingsReport(
 		settings.stored,
-		SLOTS.map((slot) => slotLine(slotSetting(slot), settings.models[slot])),
+		SLOTS.map((slot) => slotLine(slotSetting(slot), settings.slots[slot])),
 		keys,
 	);
 }

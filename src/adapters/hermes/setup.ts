@@ -13,6 +13,7 @@ import {
 	valueLine,
 } from "#core/options/settings.ts";
 import { KEY_HOLDERS, type KeyHolder } from "#core/providers/provider.ts";
+import { MODELS_COMMAND, MODELS_UNAVAILABLE } from "./texts.ts";
 
 // Hermes puts a plugin tool in a toolset of its own, and a plugin toolset is on in a default session.
 const TOOLSET = "model_router";
@@ -89,6 +90,8 @@ export function setupTexts() {
 		keyLines: Object.fromEntries(
 			KEY_HOLDERS.map((name) => [name, states(name)]),
 		),
+		modelsCommand: MODELS_COMMAND,
+		modelsUnavailable: MODELS_UNAVAILABLE,
 		unset: UNSET,
 		modelLine: slotLine("{name}", MODEL_SHOWN),
 		modelUnset: slotLine("{name}"),

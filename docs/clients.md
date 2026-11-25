@@ -36,6 +36,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
   Claude Code before v2.1.271 cannot load a plugin that declares `options`.
 - Claude Code saves non-sensitive values under `pluginConfigs` in `settings.json`.
   It saves `sensitive` values in the platform's secure credential store.
+- Claude Code keeps a stored `pluginConfigs` value under a key that the manifest does not declare, through load and update.
 - `/config` shows a row for each option, except `sensitive` options and `multiple` lists.
 - `commands` accepts an object map from a command name to `source` or `content`.
   Each value sets exactly one of the two, and `description` and `argumentHint` are optional.
@@ -97,6 +98,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 - Claude Code loads `.js` and `.ts` files directly, with no build step.
   A hooks module imports only files inside the plugin directory by relative path, and the one bare import allowed is `claude-code`.
 - `$.ui.ask` takes at most four options.
+- A free string option that a manifest declares again hands its stored string to the plugin.
+- A `config.describe` hook returns `{ label, description, isHidden }` for each `/config` row, keyed `<plugin>.<field>`.
+  A hidden row still answers `$.config.set`.
 - When a hooks module fails, Claude Code skips it and the session continues.
   A broken mod can therefore look like one that does nothing.
 - A mod installed from a marketplace loads at the next start of Claude Code, or at `/reload-plugins` in an open session.
@@ -504,6 +508,22 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   The plugin's id in `plugins.allow` silences the note.
 - `openclaw plugins doctor` exits 1 on a diagnostic, that trust note included.
   The doctor passes over one kind alone: the note that an explicit config-selected plugin resolved a duplicate plugin id.
+
+### OpenClaw setup entry and config migration
+
+Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenClaw#openclaw-setup-entry-and-config-migration)
+
+- A plugin can ship a setup entry that OpenClaw loads in a pass of its own.
+  `openclaw.setupEntry` in `package.json` names it. Without that field OpenClaw takes a file named `setup-api` with one of the extensions `.js`, `.mjs`, `.cjs`, `.ts`, `.mts` or `.cts`, at the plugin root or in its `dist/` folder.
+- The pass builds an `api` in `setup-only` mode whose `runtime` is unavailable, and calls the module's `register(api)`.
+  It skips a module whose `register` is missing or whose `id` differs from the manifest id.
+  A default export that is a plain object `{ id, register(api) }` serves.
+- `api.registerConfigMigration(migrate)` records the function.
+  The setup pass calls `migrate(cfg)` with the whole config and reads `{ config, changes }` from the result. A result of `null` or `undefined` reads as no change.
+- The pass reads the setup entry of each plugin that has an entry under `plugins.entries`.
+- `setup.requiresRuntime: false` in the manifest keeps OpenClaw from executing the setup entry.
+  An omitted field keeps the entry in use.
+- `setup.configMigrations` lists the ids of the migrations that the setup entry owns.
 
 ### OpenClaw hook and spawn
 

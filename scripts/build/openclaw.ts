@@ -5,6 +5,7 @@ import {
 	defaultOf,
 	KEY_FIELDS,
 	keyEntries,
+	SETTINGS_VERSION,
 	SLOT_SETTINGS,
 	TOOL_NAME,
 	VALUE_SETTINGS,
@@ -43,6 +44,12 @@ const configSchema = (source: Source): JsonObject => ({
 	},
 });
 
+// manifest/setup-and-auth.md, "setup fields": `configMigrations` holds the ids of the migrations the setup entry registers.
+// Only an explicit `requiresRuntime: false` disables the setup entry, so leaving the field out keeps `setup-api.js` in use.
+const setup = (): JsonObject => ({
+	configMigrations: [`settings-v${SETTINGS_VERSION}`],
+});
+
 // manifest/setup-and-auth.md, "uiHints reference": label, help and sensitive.
 const uiHints = (source: Source): JsonObject => ({
 	...Object.fromEntries(
@@ -79,6 +86,7 @@ const manifest = (source: Source): JsonObject => ({
 	version: source.version,
 	activation: { onStartup: true },
 	contracts: { tools: [TOOL_NAME] },
+	setup: setup(),
 	skills: [...source.openclaw.skills],
 	configContracts: { secretInputs: secretInputs() },
 	uiHints: uiHints(source),

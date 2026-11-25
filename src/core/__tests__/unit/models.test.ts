@@ -18,7 +18,7 @@ test("empty braces name no model", () => {
 		assert.deepEqual(readModels(stored), { models: {} }, stored);
 });
 
-test("the owner's form reads with and without braces", () => {
+test("the short form reads with and without braces", () => {
 	for (const stored of [
 		"{typesafe:jev-preview, openai:gpt-6-luna}",
 		"typesafe:jev-preview, openai:gpt-6-luna",
@@ -30,7 +30,7 @@ test("the owner's form reads with and without braces", () => {
 		);
 });
 
-test("the owner's form allows spaces around entries and one trailing comma", () => {
+test("the short form allows spaces around entries and one trailing comma", () => {
 	assert.deepEqual(
 		readModels("  { typesafe : jev-preview ,  google:gemini-decision-1 , } "),
 		{
@@ -147,7 +147,7 @@ test("a value that is not text or an object is neither form", () => {
 	assert.deepEqual(readModels(["openai:a"]), { invalid: '["openai:a"]' });
 });
 
-test("formatModels writes the owner's form in the order of the makers", () => {
+test("formatModels writes the short form in the order of the makers", () => {
 	assert.equal(
 		formatModels({
 			google: "g",

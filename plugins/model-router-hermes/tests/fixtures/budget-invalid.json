@@ -8,7 +8,7 @@
 			"typesafe": "typesafe-key"
 		},
 		"budgetMs": 0,
-		"models": {
+		"slotModels": {
 			"small": "openai/small",
 			"large": "openai/large"
 		},

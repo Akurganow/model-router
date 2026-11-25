@@ -1,4 +1,5 @@
 import { type Slot, slotRecord, slotSetting } from "#core/decision/slots.ts";
+import { isSilentModels } from "#core/options/models.ts";
 import {
 	type Settings as CheckedSettings,
 	isSilent,
@@ -22,7 +23,9 @@ export const PLUGIN_ID = "model-router-openclaw";
 export type OpenClawSettings = {
 	// The stored text of each value setting, unchecked: `settingsOf` checks it.
 	readonly stored: Stored;
-	readonly models: Readonly<Record<Slot, string | undefined>>;
+	// The model each slot takes: the `small_model`, `middle_model` and `large_model` settings.
+	// Not the `models` setting, which names the scoring model of each provider and sits in `stored`.
+	readonly slots: Readonly<Record<Slot, string | undefined>>;
 };
 export type Environment = Readonly<Record<string, string | undefined>>;
 type Settings = Record<string, unknown>;
@@ -63,16 +66,25 @@ function sources(
 
 /**
  * Returns the first text a source holds in the field, or undefined when every
- * source is silent. One rule for the value settings, the models and the keys:
- * the first source that holds text decides, valid or not, and no later source
- * is read. A source whose text names no value must still decide, so that the
- * core can skip with the setup reason and a later source cannot hide the
- * mistake.
+ * source is silent. One rule for the value settings and the keys: the first
+ * source that holds text decides, valid or not, and no later source is read. A
+ * source whose text names no value must still decide, so that the core can
+ * skip with the setup reason and a later source cannot hide the mistake.
  */
 function firstText(from: readonly Settings[], field: string): unknown {
 	for (const settings of from) {
 		const text = settings[field];
 		if (!isSilent(text)) return text;
+	}
+	return undefined;
+}
+
+// The same first-source rule, with the core's silence for `models`: any value that is not silent
+// decides and goes to the core unchanged, a native object, a number and an array included.
+function firstModels(from: readonly Settings[]): unknown {
+	for (const settings of from) {
+		const { models } = settings;
+		if (!isSilentModels(models)) return models;
 	}
 	return undefined;
 }
@@ -99,8 +111,9 @@ export function readSettings(
 			provider: firstText(from, "provider"),
 			gateway: firstText(from, "gateway"),
 			scope: firstText(from, "scope"),
+			models: firstModels(from),
 		},
-		models: slotRecord((slot) => nonEmpty(firstText(from, slotSetting(slot)))),
+		slots: slotRecord((slot) => nonEmpty(firstText(from, slotSetting(slot)))),
 	};
 }
 

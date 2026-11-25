@@ -78,7 +78,7 @@ describe("a reply without the work part skips with a bad reply", () => {
 				provider: "typesafe",
 				keys: { typesafe: "typesafe-key" },
 				budgetMs: 8000,
-				models: { small: "openai/small", large: "openai/large" },
+				slotModels: { small: "openai/small", large: "openai/large" },
 				keptEffort: null,
 				description: DESCRIPTION,
 			},

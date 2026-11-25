@@ -7,9 +7,11 @@ import {
 	createScriptedScoring,
 	type Step,
 } from "#adapters/hermes/__tests__/support/fakes.ts";
+import { modelsReport } from "#adapters/hermes/report.ts";
 import { readRequest } from "#adapters/hermes/request.ts";
 import { routeRequest } from "#adapters/hermes/route.ts";
 import {
+	OPENAI_REPLY,
 	scoringReply,
 	systemOneAnswer,
 } from "#core/__tests__/support/replies.ts";
@@ -102,7 +104,7 @@ const REQUEST = {
 	provider: "typesafe",
 	keys: { typesafe: "typesafe-key" },
 	budgetMs: ROUTING_LIMIT_MS,
-	models: { small: "openai/small", large: "openai/large" },
+	slotModels: { small: "openai/small", large: "openai/large" },
 	keptEffort: null,
 	description: "Rename one helper",
 };
@@ -303,19 +305,20 @@ describe("the slot and model each level takes", () => {
 		],
 	];
 
-	for (const [tier, name, models, expected] of ROWS)
+	for (const [tier, name, slotModels, expected] of ROWS)
 		it(`level ${tier} with ${name} gives ${JSON.stringify(expected)}`, async () => {
 			const steps = [
 				{ host: "api.typesafe.ai", reply: { levels: { tier, work: 1 } } },
 			] satisfies Step[];
-			const { response, scoring } = run({ ...REQUEST, models }, steps);
+			const { response, scoring } = run({ ...REQUEST, slotModels }, steps);
 			assert.deepEqual(await response, expected);
 			assert.deepEqual(scoring.hosts, ["api.typesafe.ai"]);
 		});
 });
 
-describe("the models of a request", () => {
-	const models = (raw: unknown) => (readRequest(raw) ?? assert.fail()).models;
+describe("the slot models of a request", () => {
+	const models = (raw: unknown) =>
+		(readRequest(raw) ?? assert.fail()).slotModels;
 
 	for (const [name, value] of [
 		["blank", ""],
@@ -323,18 +326,164 @@ describe("the models of a request", () => {
 		["null", null],
 	] as const)
 		it(`a model that is ${name} is undefined, in every slot`, () => {
-			assert.deepEqual(models({ models: { middle: value } }).middle, undefined);
-			assert.deepEqual(models({ models: { small: value } }).small, undefined);
-			assert.deepEqual(models({ models: { large: value } }).large, undefined);
+			assert.deepEqual(
+				models({ slotModels: { middle: value } }).middle,
+				undefined,
+			);
+			assert.deepEqual(
+				models({ slotModels: { small: value } }).small,
+				undefined,
+			);
+			assert.deepEqual(
+				models({ slotModels: { large: value } }).large,
+				undefined,
+			);
 		});
 
 	it("a missing middle model is undefined, and the others keep theirs, trimmed", () => {
-		assert.deepEqual(models({ models: { small: " a/s ", large: "a/l" } }), {
+		assert.deepEqual(models({ slotModels: { small: " a/s ", large: "a/l" } }), {
 			small: "a/s",
 			middle: undefined,
 			large: "a/l",
 		});
 	});
+});
+
+describe("the models setting of a request", () => {
+	const TYPESAFE = {
+		host: "api.typesafe.ai",
+		reply: { levels: { tier: 1, work: 1 } },
+	} satisfies Step;
+	const OPENAI = {
+		host: "api.openai.com",
+		reply: { body: JSON.parse(OPENAI_REPLY) },
+	} satisfies Step;
+	const NAMES = "{typesafe:jev-preview, openai:gpt-7-sol}";
+
+	// The model name the scoring call carried.
+	async function sentModel(request: object, step: Step) {
+		const { response, scoring } = run({ ...REQUEST, ...request }, [step]);
+		assert.equal((await response).outcome, "route");
+		const [body] = scoring.bodies as { model: string }[];
+		return body?.model;
+	}
+
+	it("sends the model of the provider in force, whichever it switched from", async () => {
+		const typesafe = { provider: "typesafe", models: NAMES };
+		const openai = {
+			provider: "openai",
+			models: NAMES,
+			keys: { openai: "openai-key" },
+		};
+		assert.equal(await sentModel(typesafe, TYPESAFE), "jev-preview");
+		assert.equal(await sentModel(openai, OPENAI), "gpt-7-sol");
+		assert.equal(await sentModel(typesafe, TYPESAFE), "jev-preview");
+	});
+
+	for (const [name, models] of [
+		["blank", ""],
+		["spaces", "   "],
+		["null", null],
+		["missing", undefined],
+	] as const)
+		it(`a models value that is ${name} sends the default model`, async () => {
+			assert.equal(await sentModel({ models }, TYPESAFE), "jev-latest");
+		});
+
+	for (const [name, models] of [
+		["a dict", { typesafe: "jev-preview" }],
+		["a text", "{typesafe:jev-preview}"],
+	] as const)
+		it(`${name} that names the provider's model sends it`, async () => {
+			assert.equal(await sentModel({ models }, TYPESAFE), "jev-preview");
+		});
+
+	// The second column is the first line of the config tool's models lines: it names the failing part.
+	const NOT_VALID: readonly [string, unknown, string][] = [
+		[
+			"an unknown provider",
+			"{claude:x}",
+			"models: {claude:x} (not valid: claude:x)",
+		],
+		[
+			"an empty model",
+			"{typesafe:}",
+			"models: {typesafe:} (not valid: typesafe:)",
+		],
+		[
+			"an entry with no colon",
+			"{typesafe}",
+			"models: {typesafe} (not valid: typesafe)",
+		],
+		[
+			"a provider named twice",
+			"{typesafe:a, typesafe:b}",
+			"models: {typesafe:a, typesafe:b} (not valid: typesafe:b)",
+		],
+		[
+			"a model with a slash",
+			"{typesafe:a/b}",
+			"models: {typesafe:a/b} (not valid: typesafe:a/b)",
+		],
+		[
+			"a JSON value that is not a string",
+			'{"typesafe": 3}',
+			'models: {"typesafe": 3} (not valid: typesafe)',
+		],
+		[
+			"a text of neither form",
+			"{typesafe:a",
+			"models: {typesafe:a (not valid: {typesafe:a)",
+		],
+		["a value that is not text or an object", 7, "models: 7 (not valid: 7)"],
+	];
+
+	for (const [name, models, shown] of NOT_VALID)
+		it(`${name} skips with the setup line, and the report names the entry`, async () => {
+			const { response, scoring } = run({ ...REQUEST, models }, ONE);
+			assert.deepEqual(await response, {
+				outcome: "skip",
+				line: "model-router skipped, models not valid: run setup",
+			});
+			assert.deepEqual(scoring.hosts, []);
+			const report = modelsReport({ command: "modelsLines", models });
+			assert.equal(report.lines[0], shown);
+			assert.equal(report.valid, false);
+		});
+});
+
+describe("the models lines for the config tool", () => {
+	const DEFAULTS = [
+		"typesafe model: jev-latest (OpenRouter: jev-latest)",
+		"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
+		"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+	];
+
+	it("prints the models line and the model of each provider for a dict", () => {
+		assert.deepEqual(
+			modelsReport({
+				command: "modelsLines",
+				models: { typesafe: "jev-preview" },
+			}),
+			{
+				lines: [
+					'models: {"typesafe":"jev-preview"}',
+					"typesafe model: jev-preview (OpenRouter: jev-preview)",
+					DEFAULTS[1],
+					DEFAULTS[2],
+				],
+				valid: true,
+			},
+		);
+	});
+
+	for (const models of [undefined, null, "", "   "])
+		it(`prints unset and the default models for ${JSON.stringify(models)}`, () => {
+			assert.deepEqual(modelsReport({ command: "modelsLines", models }), {
+				lines: ["models: unset", ...DEFAULTS],
+				valid: true,
+			});
+		});
 });
 
 describe("the keys of a request", () => {
@@ -450,6 +599,32 @@ describe("the entry", () => {
 			result.stdout,
 			`${JSON.stringify({ outcome: "skip", line: "model-router skipped, key unset" })}\n`,
 		);
+	});
+
+	it("answers the models lines as one JSON line for a models command", () => {
+		const result = call(
+			JSON.stringify({
+				command: "modelsLines",
+				models: "{typesafe:jev-preview}",
+			}),
+		);
+		assert.equal(result.status, 0);
+		assert.deepEqual(JSON.parse(result.stdout), {
+			lines: [
+				"models: {typesafe:jev-preview}",
+				"typesafe model: jev-preview (OpenRouter: jev-preview)",
+				"openai model: gpt-6-luna (OpenRouter: openai/gpt-6-luna-decisions)",
+				"google model: gemini-decision-1 (OpenRouter: google/gemini-decision-1)",
+			],
+			valid: true,
+		});
+	});
+
+	it("answers the verdict false for a models value that is not valid", () => {
+		const result = call(
+			JSON.stringify({ command: "modelsLines", models: "{typesafe:a/b}" }),
+		);
+		assert.equal(JSON.parse(result.stdout).valid, false);
 	});
 
 	for (const input of ["", "not json", "[1"])

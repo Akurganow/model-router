@@ -111,6 +111,11 @@ export const BUNDLES: readonly {
 		out: OPENCLAW_OUTPUTS.bundle,
 	},
 	{
+		harness: "openclaw",
+		entry: "src/adapters/openclaw/setup.ts",
+		out: OPENCLAW_OUTPUTS.setup,
+	},
+	{
 		harness: "hermes",
 		entry: "src/adapters/hermes/index.ts",
 		out: HERMES_OUTPUTS.bundle,

@@ -9,7 +9,7 @@ An [Oh My Pi](https://github.com/can1357/oh-my-pi) (omp) plugin that picks a mod
 - The [`scope` setting](#scope) picks the agents. Under `core`, the default, only omp's bundled `task` agent is routed. Under `extended`, every agent whose model you did not set is routed.
 - It never overrides a model you set. It keeps the item's own `effort` and a thinking level on the role it picks. Without a set role, it keeps a thinking level on the spawn's model patterns. [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the rules, and [Effort](#effort) names the exception: a level that an agent sets gives way to the ladder. It never changes the tool input.
 - The routed effort replaces the level of a bundled agent: `auto` for `task`, where omp picks the effort for each prompt, and `medium` for `sonic`.
-- The plugin changes a setting only when you pick a value in its dialog or give it a command. [Change the options](#change-the-options) lists both.
+- The plugin changes a setting only when you pick a value in its dialog, give it a command, or ask the agent to write `models`. [Change the options](#change-the-options) lists the three.
 - An item is eligible when its `task` text is not empty. Under `core`, its `agent` must also be absent or `task`.
 
 ## Install
@@ -85,6 +85,18 @@ omp merges a project's override file, `<project>/.omp/plugin-overrides.json`, in
 
 Earlier versions let a project narrow with `provider`. A project's `provider: typesafe` kept OpenRouter out. It narrows nothing now, and the plugin prints no line about it. State it as `gateway: direct`. Check every project that has an override file.
 
+### The scoring model of each provider
+
+The `models` setting names the scoring model of each provider. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists its forms, its defaults, the OpenRouter names, when a value is not valid and the lines of the config tool.
+
+The plugin reads `models` from your global settings only. A project's value never applies.
+
+The config tool takes a `models` string and writes the global setting at once, at your request. A text that is not valid is refused with `models unchanged: not valid: <entry>`. You can also set it in `/settings` → Plugins.
+
+A `models` value that is not valid stops routing, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says. An item the scope covers skips with `models not valid: run setup`, unless an earlier gate of [the gate list](#gate-reasons) skips it first.
+
+The plugin writes no setting when it loads. The setup skill writes the migrated shape when you agree.
+
 ## Scope
 
 The `scope` plugin setting picks which agents the plugin routes:
@@ -123,12 +135,13 @@ Three commands show or change an option:
 
 omp keys the plugin's settings by the name in the installed `package.json`. When the plugin cannot read that name, a change prints `<setting> unchanged: settings unreadable` and writes nothing, while showing a value still works.
 
-The `model_router_config` tool takes one optional input, `setting`: `provider`, `gateway` or `scope`. The tool loads as essential and omp treats it as a write tool.
+The `model_router_config` tool takes two optional inputs: `setting`, which is `provider`, `gateway` or `scope`, and `models`. The tool loads as essential and omp treats it as a write tool.
 
-- **No setting:** the tool returns the `provider` line, the `gateway` line, the `scope` line and the key lines. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) shows a sample output. It also says what the key lines show and what the tool prints while a setting is not valid.
+- **No input:** the tool returns the `provider` line, the `gateway` line, the `scope` line, the `models` lines and the key lines. [The config tool](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-config-tool) shows a sample output. It also says what the key lines show and what the tool prints while a setting is not valid.
 - **`provider`, `gateway` or `scope`:** the plugin asks you in its own dialog. The current value comes first while it is valid, and each choice carries a one-line consequence. The plugin writes only the value you pick.
+- **`models`, a string:** the plugin writes the text to the global setting at once, with no dialog, at your request. It checks the text first.
 
-The tool asks the person. It never takes a value from the model. Nothing is written when:
+For `provider`, `gateway` and `scope`, the tool asks the person. It never takes a value from the model for them. Nothing is written when:
 
 - the dialog is dismissed or you answer with free text;
 - your global setting already holds the value;

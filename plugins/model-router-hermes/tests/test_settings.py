@@ -46,6 +46,20 @@ class SettingTextTest(unittest.TestCase):
         submodule("settings").read_texts(Ctx(), CONSTANTS)
         self.assertEqual(seen, [("provider", None), ("gateway", None)])
 
+    def test_the_models_value_is_read_once_with_no_default_and_left_as_stored(self):
+        seen = []
+
+        class Ctx:
+            def get_config(self, key, default=None):
+                seen.append((key, default))
+                return stored
+
+        for stored in ({"typesafe": "jev-preview"}, "{typesafe:jev-preview}", "  ", 7, None):
+            with self.subTest(stored):
+                seen.clear()
+                self.assertIs(submodule("settings").read_models(Ctx(), CONSTANTS), stored)
+                self.assertEqual(seen, [("models", None)])
+
     def test_a_byte_order_mark_alone_reads_as_the_default(self):
         texts = stored_texts({"gateway": "\ufeff"})
         self.assertEqual(

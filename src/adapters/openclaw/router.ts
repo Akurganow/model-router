@@ -132,7 +132,7 @@ async function routeGated(
 	if ("skipped" in decided) return void log(skippedLine(decided.skipped));
 	const { model, effort, line } = outcomeOf(
 		decided,
-		state.settings.models,
+		state.settings.slots,
 		gate.effort.kind === "keep" ? gate.effort.label : undefined,
 	);
 	log(line);

@@ -1,4 +1,5 @@
 import { SLOT_SETTINGS, type SlotSetting } from "#core/decision/slots.ts";
+import { SETTINGS_VERSION } from "#core/options/migrate.ts";
 import { SCOPE_VALUES } from "#core/options/scope.ts";
 import {
 	COMMAND_DESCRIPTIONS,
@@ -22,6 +23,7 @@ export {
 	KEY_FIELDS,
 	KEY_HOLDERS,
 	type KeyHolder,
+	SETTINGS_VERSION,
 	SLOT_SETTINGS,
 	type SlotSetting,
 	TOOL_NAME,

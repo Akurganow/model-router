@@ -1,6 +1,6 @@
 ---
 name: model-router-setup
-description: Use to set up model-router in Hermes Agent, to find why routing is off, to change the provider, the gateway or a model, or to check routing. It states what must be true and the facts to reach it.
+description: Use to set up model-router in Hermes Agent, to find why routing is off, to change the provider, the gateway, the scoring models or a model, or to check routing. It states what must be true and the facts to reach it.
 ---
 
 # model-router setup for Hermes Agent
@@ -18,6 +18,7 @@ The person's optional choices:
 
 - `provider`: whose model scores tasks. It takes `typesafe`, `openai` or `google`.
 - `gateway`: how OpenRouter is used to reach the provider.
+- `models`: the scoring model of each provider. A provider with no entry uses its default model.
 - `small_model`, `middle_model` and `large_model`: the model for each of the three levels. A level with no model keeps the model Hermes gives it. It still gets the effort for a task the plugin scores.
 
 ## Your job
@@ -35,16 +36,32 @@ When the person wants to choose the provider, follow these steps in order:
 5. Name the key the choice needs, and say where it comes from and what it changes in Hermes, as the keys facts say.
 6. Call `model_router_config` again, and confirm the lines.
 
+When the `models` line ends with `(not valid: <entry>)`, repair it. Follow these steps in order:
+
+1. Call `model_router_config` with no input, and read the `models` line.
+2. Name the entry to the person, and ask for a corrected text.
+3. On the person's word, run `hermes config set plugins.entries.model-router-hermes.settings.models '<corrected text>'`, with the text in the short form and the entries in the order the line shows them. When a kept name holds a comma, a quote or a brace, write the whole value as a JSON object.
+4. Call `model_router_config` again, and confirm the `models` line.
+
+When the person wants another scoring model for one provider, follow these steps in order:
+
+1. Call `model_router_config` with no input, and read the `models` line and the lines under it.
+2. Ask the person for the provider and the model name. Model names come from the provider's API documentation.
+3. Take the text the line shows, keep every other entry, and set or replace that provider's entry. Write the short form, with the entries in the order the line shows them. When a kept name holds a comma, a quote or a brace, write the whole value as a JSON object.
+4. On the person's word, run `hermes config set plugins.entries.model-router-hermes.settings.models '<whole text>'`.
+5. Call `model_router_config` again, and confirm the `models` line.
+
 ## Facts
 
 ### The tool
 
 - `model_router_config` only reads. It sits in the `model_router` toolset, which is on once the plugin is enabled.
-- With no input it returns the `provider` line, the `gateway` line, one line for each of the three models, then one key line for each path the `gateway` value allows. Hermes has no `scope` setting, so no scope line prints.
+- With no input it returns the `provider` line, the `gateway` line, the `models` lines, one line for each of the three slot models, then one key line for each path the `gateway` value allows. Hermes has no `scope` setting, so no scope line prints.
 - The provider line reads `provider: typesafe`, `provider: openai` or `provider: google`. The gateway line reads `gateway: <value> (<who the plugin asks>)`, such as `gateway: auto (typesafe, then openrouter)`.
 - A model line reads `<name>: <provider> <model>` or `<name>: unset`. The names are `small_model`, `middle_model` and `large_model`. Here `<provider>` is a Hermes provider id.
 - A key line reads `typesafe key: set`, `openai key: unset` or `openrouter key: unset`, after the key's holder. It never shows a key, its length or any part of it.
 - A setting that is not valid prints `<setting>: <stored text> (not valid: use one of <values>)`. Every valid setting then prints as `<setting>: <value>`, the gateway line names nobody, and no key line prints.
+- A `models` value that is not valid prints as `models: <text> (not valid: <entry>)`, and no provider model line prints.
 - A failure returns `error: <message>`.
 
 ### The backend
@@ -85,7 +102,7 @@ When the person wants to choose the provider, follow these steps in order:
   - stored `auto`: `gateway` `auto` and `provider` `typesafe`.
   - stored `openrouter-first`: `gateway` `openrouter-first` and `provider` `typesafe`.
   - stored `openrouter`: `gateway` `openrouter` and `provider` `typesafe`.
-- Hermes gives you no way to write a setting. The person types the commands.
+- Hermes gives you no way to write `provider` or `gateway`. The person types the commands.
 - The order is `gateway` first, then `provider`. In that order no task takes a path they did not choose.
 
 1. Read the stored values with `model_router_config`.
@@ -108,6 +125,14 @@ When the person wants to choose the provider, follow these steps in order:
 - No other credential of Hermes serves as a scoring key.
 - A key in the environment is visible to every process Hermes starts.
 - With no key for any path the `gateway` setting allows, every task without a `level` skips with `key unset`.
+
+### The scoring models
+
+- `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, a JSON object, or a native object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults, the OpenRouter names and when a value is not valid.
+- The person sets `models` in the settings form in Hermes Desktop, or with `hermes config set plugins.entries.model-router-hermes.settings.models '<text>'`. Run the command only on the person's word.
+- The Python passes the stored value to the Node step, which decides whether it is valid. A value that is not valid stops routing. A task with a level skips with `models not valid: run setup` after the `<setting> not valid` gate. A task without one meets that check in its Node step after every gate, so it can skip with an earlier reason, such as `key unset`. [The gates](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-hermes/README.md#the-gates) give the order.
+- A model name goes as written on the provider's own API, and that API's documentation lists the names. [The model name on each path](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-model-name-on-each-path) says what OpenRouter does with a name.
+- The plugin writes no setting when it loads.
 
 ### The models
 
@@ -139,12 +164,13 @@ When the person wants to choose the provider, follow these steps in order:
 
 ### The skip reasons
 
-- `<setting> not valid: run setup`: a stored `provider` or `gateway` holds text outside its values. The person sets valid values with the commands, as the provider and gateway facts say.
+- `<setting> not valid: run setup`: a stored `provider` or `gateway` holds text outside its values, or `models` is not valid. The person sets valid values with the commands, as the provider and gateway facts say. For `models`, follow the steps above.
 - `key unset`: no path the `provider` and `gateway` settings allow has a key. A task with a `level` meets no key check. The person sets one, as the keys facts say.
 - `subagent model set`: the `delegation` section sets a model. The person decides whether to clear it.
 - `node not found`: Hermes has no Node of its own. The plugin runs scoring in that Node and never uses a Node on `PATH`. The person adds a Node for Hermes.
 - `timeout`: a first attempt got no answer in 5 s, or the routing limit of 10 s for a whole `delegate_task` call ran out.
 - `HTTP <status>`, `network error`, `bad reply` or `failed`: the attempt gave no score, or the plugin failed. After both attempts the reason names each.
+  - With `HTTP 400` the person can also check the model name in `models`: OpenRouter answers an unknown name with it.
   - With `HTTP 401` or `HTTP 403`, or `HTTP 400` from Google's own API, the person checks that holder's key first. Google's own API answers a bad key with `HTTP 400`, as [The provider and the gateway](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-provider-and-the-gateway) says.
   - For another status, `network error`, `bad reply` or `failed`, look at the company that failed and the network.
 - Check every reason that holds, not only the first.

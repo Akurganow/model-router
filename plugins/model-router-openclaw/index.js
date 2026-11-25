@@ -736,6 +736,13 @@ function firstText(from, field) {
   }
   return void 0;
 }
+function firstModels(from) {
+  for (const settings of from) {
+    const { models } = settings;
+    if (!isSilentModels(models)) return models;
+  }
+  return void 0;
+}
 function readLive(api) {
   try {
     return api.runtime.config.current();
@@ -749,9 +756,10 @@ function readSettings(live, pluginConfig) {
     stored: {
       provider: firstText(from, "provider"),
       gateway: firstText(from, "gateway"),
-      scope: firstText(from, "scope")
+      scope: firstText(from, "scope"),
+      models: firstModels(from)
     },
-    models: slotRecord((slot) => nonEmpty(firstText(from, slotSetting(slot))))
+    slots: slotRecord((slot) => nonEmpty(firstText(from, slotSetting(slot))))
   };
 }
 function readKeys(live, pluginConfig, choice, env) {
@@ -782,12 +790,13 @@ var TOOL_DESCRIPTION = readOnlyToolDescription([
   "the provider",
   "the gateway",
   "the scope",
+  "the scoring models",
   "the three models"
 ]);
 function readAll({ settings, keys }) {
   return settingsReport(
     settings.stored,
-    SLOTS.map((slot) => slotLine(slotSetting(slot), settings.models[slot])),
+    SLOTS.map((slot) => slotLine(slotSetting(slot), settings.slots[slot])),
     keys
   );
 }
@@ -1594,7 +1603,7 @@ async function routeGated(spawn, state, gate, log) {
   if ("skipped" in decided) return void log(skippedLine(decided.skipped));
   const { model, effort, line } = outcomeOf(
     decided,
-    state.settings.models,
+    state.settings.slots,
     gate.effort.kind === "keep" ? gate.effort.label : void 0
   );
   log(line);
