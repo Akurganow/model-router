@@ -44,7 +44,7 @@ test("the manifest names the plugin, its version, its tool and its skills", () =
 });
 
 test("the manifest names the setup entry's migration and leaves requiresRuntime out", () => {
-	assert.deepEqual(manifest.setup, { configMigrations: ["settings-v0"] });
+	assert.deepEqual(manifest.setup, { configMigrations: ["settings-v1"] });
 });
 
 test("the config schema holds the twelve settings and refuses any other key", () => {

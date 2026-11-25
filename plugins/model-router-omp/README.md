@@ -99,7 +99,7 @@ The config tool takes a `models` string and writes the global setting at once, a
 
 A `models` value that is not valid stops routing, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says. An item the scope covers skips with `models not valid: run setup`, unless an earlier gate of [the gate list](#gate-reasons) skips it first.
 
-The plugin writes no setting when it loads. The setup skill writes the migrated shape when you agree.
+The plugin writes no setting when it loads. The setup skill checks the names of the stored fields and cleans them up when you agree.
 
 ## Scope
 

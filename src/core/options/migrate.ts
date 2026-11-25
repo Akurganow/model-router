@@ -2,7 +2,7 @@
 // current one reads.
 //
 // Adding a step:
-// - Append it to STEPS. SETTINGS_VERSION follows the length.
+// - Append it to STEPS, and raise SETTINGS_VERSION by one.
 // - Every harness passes the keys the step reads into `settingsOf`. Add each new key to that
 //   harness's list of stored keys: Claude Code's `storedOf` and `Options`, omp's `readSettings`,
 //   OpenClaw's `readSettings`, Hermes's request reader. A key missing there never reaches the step.
@@ -20,9 +20,10 @@ type Step = (
 // Oldest step first.
 const STEPS: readonly Step[] = [];
 
-// Names the newest step, for the changelog and OpenClaw's migration id. No version is stored:
-// each step recognises its input from the data.
-export const SETTINGS_VERSION = STEPS.length;
+// Names the newest step, for the changelog and OpenClaw's migration id. It never goes down, though a
+// step leaves the ladder, because OpenClaw records the id it ran. No version is stored: each step
+// recognises its input from the data.
+export const SETTINGS_VERSION = 1;
 
 /**
  * Returns the stored settings after every step of the ladder, and the text of each change made.

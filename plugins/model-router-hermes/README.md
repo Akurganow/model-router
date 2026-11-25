@@ -114,7 +114,7 @@ The plugin reads `models` at each task. The Python passes the stored value to th
 
 A `models` value that is not valid stops routing, as [the rule for a value that is not valid](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#a-setting-that-is-not-valid) says. [The gates](#the-gates) say where each task meets that check, so a task without a `level` can skip with an earlier reason, such as `key unset`.
 
-The plugin writes no setting when it loads. The setup skill writes a migrated shape when you agree.
+The plugin writes no setting when it loads. The setup skill checks the names of the stored fields and cleans them up when you agree.
 
 [Facts behind the settings](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#hermes-registration-and-settings)
 

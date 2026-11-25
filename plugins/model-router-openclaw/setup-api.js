@@ -1,6 +1,5 @@
 // src/core/options/migrate.ts
 var STEPS = [];
-var SETTINGS_VERSION = STEPS.length;
 function migrate(stored) {
   let current = stored;
   const changes = [];

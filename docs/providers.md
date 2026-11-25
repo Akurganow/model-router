@@ -183,10 +183,11 @@ A ladder of steps in the core migrates stored settings.
 It runs on every read of stored settings, in every harness.
 Each step recognises its input from the data.
 A step changes nothing on a second run, and no version is stored.
+Today the ladder holds no step.
 
 The plugin writes no setting when it loads.
 Where the harness lets the plugin migrate its own config, the plugin README says so.
-Elsewhere the setup skill writes the migrated shape when the person agrees.
+The setup skill cleans up stored fields: it compares their names with the declared ones and acts on the person's word.
 
 ## Keys
 
