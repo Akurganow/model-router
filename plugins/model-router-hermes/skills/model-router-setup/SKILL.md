@@ -122,7 +122,7 @@ When the person wants another scoring model, follow these steps in order:
 
 ### The scoring models
 
-- `models` takes the owner's form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, a JSON object, or a native object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults and the OpenRouter names.
+- `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, a JSON object, or a native object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults and the OpenRouter names.
 - A `models` value is not valid for an unknown provider, an empty model, an entry with no colon, a provider named twice, a model with a slash, a JSON value that is not a string, or text that is neither form.
 - The person sets `models` in the settings form in Hermes Desktop, or with `hermes config set plugins.entries.model-router-hermes.settings.models '<text>'`. Run the command only on the person's word.
 - The Python passes the stored value to the Node step, which decides whether it is valid. A value that is not valid skips every scored task with `models not valid: run setup`.

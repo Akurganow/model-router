@@ -51,7 +51,7 @@ test("an object stays an object", () => {
 	});
 });
 
-test("a JSON text takes the entry as the owner's form", () => {
+test("a JSON text takes the entry as the short form", () => {
 	const { models } = migrate({
 		model: "jev-preview",
 		models: '{"google": "gemini-decision-1"}',

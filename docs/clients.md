@@ -37,7 +37,6 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 - Claude Code saves non-sensitive values under `pluginConfigs` in `settings.json`.
   It saves `sensitive` values in the platform's secure credential store.
 - Claude Code keeps a stored `pluginConfigs` value under a key that the manifest does not declare, through load and update.
-  It drops a stored value only for a key that declares `options`, when the value is outside the list.
 - `/config` shows a row for each option, except `sensitive` options and `multiple` lists.
 - `commands` accepts an object map from a command name to `source` or `content`.
   Each value sets exactly one of the two, and `description` and `argumentHint` are optional.

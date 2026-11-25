@@ -106,7 +106,7 @@ It names the scoring model of each provider.
 
 It takes one of these forms:
 
-- The owner's form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`.
+- The short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`.
   The braces are optional.
   Commas split the entries, and each entry splits at its first colon.
   Spaces around a part and one trailing comma are allowed.

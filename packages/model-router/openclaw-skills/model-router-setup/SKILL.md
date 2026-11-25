@@ -111,7 +111,7 @@ openrouter key: unset
 
 ### Scoring models
 
-- `models` takes the owner's form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, a JSON object, or a native object in the config. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults and the OpenRouter names.
+- `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, a JSON object, or a native object in the config. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults and the OpenRouter names.
 - A `models` value is not valid for an unknown provider, an empty model, an entry with no colon, a provider named twice, a model with a slash, a JSON value that is not a string, or text that is neither form.
 - The person sets `models` on the plugin's page in the Control UI, or with `openclaw config set plugins.entries.model-router-openclaw.config.models '<text>'`. Run the command only on the person's word.
 - A change applies once OpenClaw replaces the plugin, after running work drains, up to 60 s. The tool can show the old value until then.

@@ -159,8 +159,9 @@ It does not read `GOOGLE_API_KEY`. It reads no other environment variable, and
 it runs no program.
 
 When you choose a value in the plugin's dialog or give a command, the plugin
-writes your global `provider`, `gateway` or `scope` plugin setting through omp. It
-writes no project setting.
+writes your global `provider`, `gateway` or `scope` plugin setting through omp.
+When the agent passes a `models` text to the config tool at your request, the
+plugin writes your global `models` setting. It writes no project setting.
 
 A key you set as an environment variable is visible to every process omp
 starts.
@@ -191,7 +192,8 @@ agent text of each routed agent, which the request carries as described above.
 
 The lines the plugin prints per batch go to your omp notifications, or to
 standard error when omp has no UI. The setup skill changes only what you
-choose in the plugin's dialogs: the global `provider`, `gateway` and `scope` settings.
+choose: the global `provider`, `gateway` and `scope` settings through the
+plugin's dialogs, and the global `models` setting through the config tool.
 
 ## Your choices
 

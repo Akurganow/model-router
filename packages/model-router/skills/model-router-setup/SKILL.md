@@ -137,7 +137,7 @@ To move a retired value, follow these steps in order:
 
 ### Scoring models
 
-- `models` takes the owner's form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, or a JSON object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults and the OpenRouter names.
+- `models` takes the short form, such as `{typesafe:jev-latest, openai:gpt-6-luna}`, or a JSON object. [The `models` setting](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-models-setting) lists the forms, the defaults and the OpenRouter names.
 - A `models` value is not valid for an unknown provider, an empty model, an entry with no colon, a provider named twice, a model with a slash, a JSON value that is not a string, or text that is neither form.
 - The tool then prints `models: <text> (not valid: <entry>)`, and every task skips with `models not valid: run setup`.
 - The plugin reads `models` from the global settings only. A project's value never applies.

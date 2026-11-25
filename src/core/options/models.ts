@@ -82,7 +82,7 @@ function parseJson(text: string): unknown {
 	}
 }
 
-// The owner's form: braces optional but paired, entries split at commas, each at its first colon.
+// The short form: braces optional but paired, entries split at commas, each at its first colon.
 function readOwnerForm(text: string): ModelsRead {
 	if (text.startsWith("{") !== text.endsWith("}")) return { invalid: text };
 	const inner = (text.startsWith("{") ? text.slice(1, -1) : text).trim();
@@ -104,7 +104,7 @@ function readOwnerForm(text: string): ModelsRead {
 
 /**
  * Returns the scoring model each maker names in a stored `models` value, or the failing part of
- * it. A silent value names none. A text is the owner's form `{typesafe:jev-preview, openai:gpt-6-luna}`
+ * it. A silent value names none. A text is the short form `{typesafe:jev-preview, openai:gpt-6-luna}`
  * with optional braces, or a JSON object; a native object is read the same way. Never throws.
  */
 export function readModels(stored: unknown): ModelsRead {
@@ -125,7 +125,7 @@ export function readModels(stored: unknown): ModelsRead {
 	return readOwnerForm(text);
 }
 
-/** Returns the owner's form of the names, in `MAKERS` order: `{typesafe:jev-preview, openai:gpt-6-luna}`. */
+/** Returns the short form of the names, in `MAKERS` order: `{typesafe:jev-preview, openai:gpt-6-luna}`. */
 export const formatModels = (names: ModelNames): string =>
 	`{${MAKERS.flatMap((maker) => {
 		const name = names[maker];
