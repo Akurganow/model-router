@@ -15,7 +15,7 @@ export const ompSettings = (source: Source): JsonObject => ({
 			},
 		]),
 	),
-	models: { type: "string", description: source.models.descriptions.omp },
+	models: { type: "string", description: source.models.description },
 });
 
 const manifest = (source: Source): JsonObject => ({

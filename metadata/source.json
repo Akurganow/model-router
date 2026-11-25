@@ -72,12 +72,7 @@
 	},
 	"models": {
 		"title": "Scoring models",
-		"descriptions": {
-			"claude": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.",
-			"omp": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.",
-			"openclaw": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model.",
-			"hermes": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model."
-		}
+		"description": "The scoring model of each provider as provider:model entries, such as {typesafe:jev-latest, openai:gpt-6-luna}; a provider without an entry uses its default model."
 	},
 	"claude": {
 		"skills": ["."],

@@ -41,7 +41,7 @@ const userConfig = (source: Source): JsonObject => ({
 	models: {
 		type: source.claude.userConfig.optionType,
 		title: source.models.title,
-		description: source.models.descriptions.claude,
+		description: source.models.description,
 		default: "",
 	},
 	// No default and no options: a default would give every install an entry, and a list would refuse an erase to an empty string.

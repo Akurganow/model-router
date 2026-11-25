@@ -41,10 +41,7 @@ const INSTALL: Install = {
 	source: { publisher: "p", title: "t", url: "u" },
 	ciSystems: ["s"],
 };
-const MODELS: Source["models"] = {
-	title: "t",
-	descriptions: { claude: "c", omp: "o", openclaw: "w", hermes: "h" },
-};
+const MODELS: Source["models"] = { title: "t", description: "d" };
 const TEXTS = { manifest: "m", catalogue: "c" };
 
 // tsc rejects a key this literal lacks or adds, so the type, the schema and the source change together.

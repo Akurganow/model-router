@@ -328,22 +328,12 @@
 		},
 		"modelsOption": {
 			"type": "object",
-			"description": "The setting that holds the scoring model per provider. Every harness stores it, and each has its own text, so a later change can word one differently.",
+			"description": "The setting that holds the scoring model per provider. Every harness stores it and shows one text.",
 			"additionalProperties": false,
-			"required": ["title", "descriptions"],
+			"required": ["title", "description"],
 			"properties": {
 				"title": { "$ref": "#/$defs/text" },
-				"descriptions": {
-					"type": "object",
-					"additionalProperties": false,
-					"required": ["claude", "omp", "openclaw", "hermes"],
-					"properties": {
-						"claude": { "$ref": "#/$defs/text" },
-						"omp": { "$ref": "#/$defs/text" },
-						"openclaw": { "$ref": "#/$defs/text" },
-						"hermes": { "$ref": "#/$defs/text" }
-					}
-				}
+				"description": { "$ref": "#/$defs/text" }
 			}
 		},
 		"removedOption": {

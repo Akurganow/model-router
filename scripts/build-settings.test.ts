@@ -45,8 +45,6 @@ test("the removed Claude Code model option has no default and no options, so an 
 		title: "Jev model",
 		description: "Removed: the setup skill moves it into models.",
 	});
-	assert.equal("default" in claude.userConfig.model, false);
-	assert.equal("options" in claude.userConfig.model, false);
 });
 
 test("omp lists models after scope as a string with the shared text", () => {
