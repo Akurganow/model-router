@@ -182,7 +182,7 @@ export async function main(
 		return EXIT_USAGE;
 	}
 	const attempts = plan(choice, { [holder]: key }).map((a) =>
-		model === undefined ? a : { ...a, model },
+		model === undefined ? a : { ...a, storedModel: model },
 	);
 	const cases: Case[] = readFileSync(
 		new URL("../calibration.jsonl", import.meta.url),

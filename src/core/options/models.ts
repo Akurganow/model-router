@@ -3,6 +3,8 @@ import {
 	type Maker,
 	type ModelNames,
 } from "#core/providers/provider.ts";
+import { isPlainObject } from "#utils/guards.ts";
+import { textOf } from "#utils/text.ts";
 
 type ModelsRead =
 	| { readonly models: ModelNames }
@@ -12,24 +14,6 @@ type ModelsRead =
 const QUOTED_KEY = /"(?:[^"\\]|\\.)*"(?=\s*:)/g;
 // The short form cannot hold these in a name: they belong to the JSON form.
 const JSON_CHARS = /["{}]/;
-
-export const isPlainObject = (
-	value: unknown,
-): value is Record<string, unknown> => {
-	if (typeof value !== "object" || value === null) return false;
-	const proto = Object.getPrototypeOf(value);
-	return proto === Object.prototype || proto === null;
-};
-
-/** Returns a stored value as the person would read it: a text as written, anything else as JSON. */
-export const textOf = (value: unknown): string => {
-	if (typeof value === "string") return value;
-	try {
-		return JSON.stringify(value) ?? String(value);
-	} catch {
-		return String(value);
-	}
-};
 
 const makerOf = (name: string): Maker | undefined =>
 	MAKERS.find((maker) => maker === name);
@@ -114,6 +98,16 @@ export const isSilentModels = (stored: unknown): boolean =>
  * Returns the scoring model each maker names in a stored `models` value, or the failing part of
  * it. A silent value names none. A text is the owner's form `{typesafe:jev-preview, openai:gpt-6-luna}`
  * with optional braces, or a JSON object; a native object is read the same way. Never throws.
+ *
+ * The failing part names:
+ * - `provider:model` (trimmed) for an entry of a known form that fails: a provider that is not a
+ *   maker, an empty model, a model with a slash, a provider named twice, or a short-form model that
+ *   holds a quote or a brace;
+ * - the entry as written for an entry with no colon, or that holds a quote or a brace after it;
+ * - the provider alone for a JSON or object value that is not text, and for a JSON key that
+ *   repeats;
+ * - the whole text for a text with an unpaired brace, an empty entry between two commas, or a
+ *   value that is neither a text nor an object, shown as JSON.
  */
 export function readModels(stored: unknown): ModelsRead {
 	if (isSilentModels(stored)) return { models: {} };

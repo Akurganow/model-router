@@ -13,9 +13,9 @@ import {
 } from "#core/providers/provider.ts";
 import { modelOf } from "#core/scoring/maker-registry.ts";
 import { errorText } from "#utils/error.ts";
-import { nonEmpty } from "#utils/text.ts";
+import { nonEmpty, textOf } from "#utils/text.ts";
 import { migrate, type StoredRecord } from "./migrate.ts";
-import { isSilentModels, readModels, textOf } from "./models.ts";
+import { isSilentModels, readModels } from "./models.ts";
 import { DEFAULT_SCOPE, SCOPE_VALUES, type Scope } from "./scope.ts";
 
 export const VALUE_SETTINGS = ["provider", "gateway", "scope"] as const;

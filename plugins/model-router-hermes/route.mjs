@@ -24,6 +24,14 @@ var nonEmpty = (value) => {
   const text = typeof value === "string" ? value.trim() : "";
   return text === "" ? void 0 : text;
 };
+var textOf = (value) => {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+};
 
 // src/core/brief/brief.ts
 var BUDGET_CHARS = 12e3;
@@ -383,6 +391,11 @@ function fallsBack(failure) {
 
 // src/utils/guards.ts
 var isRecord = (v) => typeof v === "object" && v !== null;
+var isPlainObject = (value) => {
+  if (typeof value !== "object" || value === null) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+};
 var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
 
 // src/core/scoring/formats/shared.ts
@@ -585,7 +598,7 @@ function endpointOf(attempt) {
   if (!Object.hasOwn(paths, attempt.path)) return void 0;
   return {
     ...paths[attempt.path],
-    model: modelOf(attempt.maker, attempt.path, attempt.model)
+    model: modelOf(attempt.maker, attempt.path, attempt.storedModel)
   };
 }
 
@@ -925,8 +938,8 @@ var GATEWAY_PATHS = {
   openrouter: ["openrouter"]
 };
 var modelOfChoice = (choice) => {
-  const model = choice.models?.[choice.provider];
-  return typeof model === "string" ? { model } : {};
+  const storedModel = choice.models?.[choice.provider];
+  return typeof storedModel === "string" ? { storedModel } : {};
 };
 var holderOf = (maker, path) => path === "direct" ? maker : path;
 var steps = (choice) => GATEWAY_PATHS[choice.gateway].map((path) => ({
@@ -948,19 +961,6 @@ function plan(choice, keys) {
 // src/core/options/models.ts
 var QUOTED_KEY = /"(?:[^"\\]|\\.)*"(?=\s*:)/g;
 var JSON_CHARS = /["{}]/;
-var isPlainObject = (value) => {
-  if (typeof value !== "object" || value === null) return false;
-  const proto = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
-};
-var textOf = (value) => {
-  if (typeof value === "string") return value;
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    return String(value);
-  }
-};
 var makerOf = (name) => MAKERS.find((maker) => maker === name);
 function accept(named, provider, model) {
   const maker = makerOf(provider.trim());

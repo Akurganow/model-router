@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isPositiveNumber, isRecord, isSet } from "#utils/guards.ts";
+import {
+	isPlainObject,
+	isPositiveNumber,
+	isRecord,
+	isSet,
+} from "#utils/guards.ts";
 
 test("isSet counts text only when it is not blank", () => {
 	for (const value of ["", "  ", "\t\n"]) assert.equal(isSet(value), false);
@@ -30,4 +35,14 @@ test("isPositiveNumber rejects every other value", () => {
 		assert.equal(isPositiveNumber(value), false);
 	for (const value of ["1", null, undefined, true, {}, [], new Number(1)])
 		assert.equal(isPositiveNumber(value), false);
+});
+
+test("isPlainObject accepts a literal and an object with no prototype", () => {
+	for (const value of [{}, { a: 1 }, Object.create(null)])
+		assert.equal(isPlainObject(value), true);
+});
+
+test("isPlainObject rejects an array, a class instance, null and a primitive", () => {
+	for (const value of [[], new Date(), new Map(), null, undefined, "x", 0])
+		assert.equal(isPlainObject(value), false);
 });

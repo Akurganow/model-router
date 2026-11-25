@@ -72,7 +72,7 @@ test("modelOf takes an inherited name for a name outside the table", () => {
 test("endpointOf carries the model that the attempt's stored name translates to", () => {
 	const attempt = {
 		...attemptOf("openai", "openrouter"),
-		model: "gpt-7-sol",
+		storedModel: "gpt-7-sol",
 	} as Attempt;
 	assert.equal(endpointOf(attempt)?.model, "openai/gpt-7-sol");
 	assert.equal(endpointOf(attemptOf("openai", "direct"))?.model, "gpt-6-luna");

@@ -11,9 +11,22 @@ var nonEmpty = (value) => {
   const text = typeof value === "string" ? value.trim() : "";
   return text === "" ? void 0 : text;
 };
+var textOf = (value) => {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+};
 
 // src/utils/guards.ts
 var isRecord = (v) => typeof v === "object" && v !== null;
+var isPlainObject = (value) => {
+  if (typeof value !== "object" || value === null) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+};
 var isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
 var isSet = (v) => typeof v === "string" ? nonEmpty(v) !== void 0 : v !== void 0 && v !== null;
 
@@ -321,8 +334,8 @@ var GATEWAY_PATHS = {
 };
 var narrowsGateway = (narrowed, wider) => GATEWAY_PATHS[narrowed].length < GATEWAY_PATHS[wider].length && GATEWAY_PATHS[narrowed].every((path) => GATEWAY_PATHS[wider].includes(path));
 var modelOfChoice = (choice) => {
-  const model = choice.models?.[choice.provider];
-  return typeof model === "string" ? { model } : {};
+  const storedModel = choice.models?.[choice.provider];
+  return typeof storedModel === "string" ? { storedModel } : {};
 };
 var holderOf = (maker, path) => path === "direct" ? maker : path;
 var steps = (choice) => GATEWAY_PATHS[choice.gateway].map((path) => ({
@@ -608,7 +621,7 @@ function endpointOf(attempt2) {
   if (!Object.hasOwn(paths, attempt2.path)) return void 0;
   return {
     ...paths[attempt2.path],
-    model: modelOf(attempt2.maker, attempt2.path, attempt2.model)
+    model: modelOf(attempt2.maker, attempt2.path, attempt2.storedModel)
   };
 }
 
@@ -618,19 +631,6 @@ var errorText = (err) => err instanceof Error ? err.message : String(err);
 // src/core/options/models.ts
 var QUOTED_KEY = /"(?:[^"\\]|\\.)*"(?=\s*:)/g;
 var JSON_CHARS = /["{}]/;
-var isPlainObject = (value) => {
-  if (typeof value !== "object" || value === null) return false;
-  const proto = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
-};
-var textOf = (value) => {
-  if (typeof value === "string") return value;
-  try {
-    return JSON.stringify(value) ?? String(value);
-  } catch {
-    return String(value);
-  }
-};
 var makerOf = (name) => MAKERS.find((maker) => maker === name);
 function accept(named, provider, model) {
   const maker = makerOf(provider.trim());

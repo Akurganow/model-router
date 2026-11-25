@@ -73,16 +73,16 @@ export type Attempt = {
 	readonly key: string;
 	// The name the user stored for the maker, as written; the registry translates it for the path.
 	// Unset when the user named none.
-	readonly model?: string;
+	readonly storedModel?: string;
 	readonly timeout?: number;
 	readonly retries?: number;
 };
 
 type Step = Pick<Attempt, "maker" | "path" | "holder">;
 
-const modelOfChoice = (choice: Choice): { readonly model?: string } => {
-	const model = choice.models?.[choice.provider];
-	return typeof model === "string" ? { model } : {};
+const modelOfChoice = (choice: Choice): { readonly storedModel?: string } => {
+	const storedModel = choice.models?.[choice.provider];
+	return typeof storedModel === "string" ? { storedModel } : {};
 };
 
 // A maker holds the key of its own API. Any other path is named after the holder of its key,
