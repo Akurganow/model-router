@@ -29,9 +29,16 @@ var textOf = (value) => {
   try {
     return JSON.stringify(value) ?? String(value);
   } catch {
-    return String(value);
+    return plainText(value);
   }
 };
+function plainText(value) {
+  try {
+    return String(value);
+  } catch {
+    return Object.prototype.toString.call(value);
+  }
+}
 
 // src/core/brief/brief.ts
 var BUDGET_CHARS = 12e3;
