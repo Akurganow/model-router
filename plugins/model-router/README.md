@@ -53,14 +53,14 @@ asks six questions. The answers for this mod:
   written. It sets `effort` on the subagent's own requests only
   when the call names none and `CLAUDE_CODE_EFFORT_LEVEL` is unset, or, under
   the [rules of the extended scope](#which-calls-are-routed), replaces the one the agent's
-  definition sets. A model without effort gets none. It registers one tool the model can call,
-  `mcp__model-router__config`. The tool reads the settings and opens the
-  mod's own dialog. It writes the `provider`, `gateway` and `scope` options
+  definition sets. A model without effort gets none. It adds [a short text](#the-brief-text) to the
+  description of the `Agent` tool. It registers one tool the model can call,
+  `mcp__model-router__config`. The
+  tool reads the settings and opens the mod's own dialog. It writes the `provider`, `gateway` and `scope` options
   only after you pick a value there. The three commands write the same options, and only from your own prompt. The
   model passes a value for `models` alone, and only at your request. It then
   writes `models` at once.
-  [The commands and the tool](#change-the-options) have the details. The mod
-  also adds a short text to the description of the `Agent` tool.
+  [The commands and the tool](#change-the-options) have the details.
 - **Acts without asking you?** No. It approves nothing, and it denies only its
   own tool when your permission rules deny that tool. Your permission rules
   and prompts decide every call. Every setting change waits for your choice in
@@ -525,6 +525,15 @@ for agents whose model or effort you chose on purpose.
 Under each scope, agents that a workflow script starts, teammates, resumed
 agents, and agents that another plugin starts with its own `$.agent.spawn`
 pass through. The mod routes only a spawn that the Agent tool makes.
+
+## The brief text
+
+The mod adds one fixed text on how to write a subagent brief to the end of the
+description of the `Agent` tool, after a blank line. Claude Code gives a mod
+the description of a tool through the `tool.describe` hook, and the model reads
+that description with the tool. You do nothing. [What the text says and
+why](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-brief-text)
+is written in one place for all four plugins.
 
 ## The log line
 

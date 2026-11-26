@@ -206,8 +206,10 @@ npm run check
   bundles from `src/` and writes the npm tree and the Hermes plugin's
   `plugin.yaml` and `constants.json`. The Claude Code bundle is
   `plugins/model-router/hooks/register.js`, and its shape is checked. The omp
-  bundle is `plugins/model-router-omp/extension/index.js`, the only file omp
-  loads. The OpenClaw bundle is `plugins/model-router-openclaw/index.js`, next
+  bundle is `plugins/model-router-omp/extension/index.js`, the only code omp
+  loads. omp also loads the rule file
+  `plugins/model-router-omp/rules/model-router-briefs.md`, which the builder
+  writes. The OpenClaw bundle is `plugins/model-router-openclaw/index.js`, next
   to the generated manifest `openclaw.plugin.json` and to the setup entry
   `setup-api.js`, which registers the config migration. The Hermes bundle is the
   Node program `plugins/model-router-hermes/route.mjs`. Build before you

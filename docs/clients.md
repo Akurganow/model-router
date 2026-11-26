@@ -116,6 +116,9 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 - In print mode, a turn that ends in a sign-in error exits with status 1, and it has loaded the hooks module and run its `session.start` hook.
 - Claude Code caches an installed plugin by version.
   An edit reaches the installed copy only after the version rises and the user installs again.
+- A `tool.describe` hook with a `{ tool: "<name>" }` matcher gets `{ tool, description, isDeferred?, provider }` and answers `{ description, isDeferred? }`.
+  The engine refuses a hook that passes on a changed `tool` or `provider`.
+  It caches the answer by tool name until `$.ui.invalidate`.
 
 ### Subagent events
 
@@ -207,6 +210,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
   `omp plugin config validate` reports it with `Must be one of: <values>` and exits 1.
 - omp's extension-package discovery also reads a package's sibling folders `skills/`, `hooks/pre|post/`, `tools/`, `commands/`, `rules/`, `prompts/` and `.mcp.json`.
   So the npm package keeps OpenClaw's skills in `openclaw-skills/`.
+- A rule file with `alwaysApply: true` needs no `description`, and its text goes into the system prompt.
+  `agents: main` limits the rule to the top-level session.
 - Extension modules load when a session starts.
   After an install, `/reload-plugins` refreshes agents, skills and commands, and a restart loads new extension modules.
 
@@ -550,6 +555,12 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
 ### OpenClaw hook and spawn
 
 Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenClaw#openclaw-hook-and-spawn)
+
+- `before_prompt_build` receives a context with `sessionKey` and may return `appendSystemContext`.
+  OpenClaw refuses the registration of a non-bundled plugin, with a warning, unless `plugins.entries.<id>.hooks.allowConversationAccess` is `true`.
+  It also refuses it when the prompt-change key is `false`. That key is `allowPromptModification`, and `allowPromptInjection` in older releases.
+  A throw in a `before_prompt_build` handler is logged and skipped.
+- A spawned child's session key reads `agent:<id>:subagent:<uuid>`, and an ACP child's reads `agent:<id>:acp:<uuid>`.
 
 - `before_tool_call` receives `event.toolName` and `event.params`, and `ctx.agentId`, `ctx.sessionKey` and an optional `ctx.abortSignal`.
   It can return `params`, `block` or `requireApproval`.

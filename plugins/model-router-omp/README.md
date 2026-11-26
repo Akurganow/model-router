@@ -318,6 +318,10 @@ omp plugin upgrade @akurganow/model-router
 
 Then restart omp.
 
+## The brief text
+
+The plugin ships the rule file `rules/model-router-briefs.md`. It sets `alwaysApply: true` and `agents: main`, so omp puts its text in the system prompt of the main session and not in that of a `task` subagent. omp builds the description of the `task` tool into its own code, and only a rewrite of each request could change it, while the rule file of a package needs no code. You do nothing. [What the text says and why](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-brief-text) is written in one place for all four plugins.
+
 ## Turn it off
 
 To turn routing off, run this line in a shell for the git catalogue route:

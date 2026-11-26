@@ -45,7 +45,7 @@ The builder bundles all the code a plugin needs into its one file, so each plugi
 **The npm tree.**
 OpenClaw and omp both install the npm package `@akurganow/model-router`, so one folder serves both: `packages/model-router/`.
 The builder writes its `package.json` and `README.md` from the source.
-It copies every other file byte for byte from a plugin folder: the licence, both bundles, the OpenClaw manifest and the skills.
+It copies every other file byte for byte from a plugin folder: the licence, both bundles, the omp rule file, the OpenClaw manifest and the skills.
 Nobody edits the tree by hand, and the `check` job fails when it differs from the builder's output.
 OpenClaw's skills sit in `openclaw-skills/`, apart from `skills/`, because omp reads `skills/` of any package it installs ([omp manifest and settings](clients.md#omp-manifest-and-settings)).
 Each client then finds only the skills written for it ([OpenClaw package files](clients.md#openclaw-package-files)).
