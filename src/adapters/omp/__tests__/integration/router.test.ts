@@ -122,6 +122,29 @@ test("an unnamed item has an empty description, and the batch context follows th
 	assert.equal(body.state.task, buildPrompt("a", "Shared notes"));
 });
 
+test("an item's solutionSpace text follows its task text, and a blank or non-text one is left out", async () => {
+	install();
+	await world.toolCall("c", {
+		tasks: [
+			{ task: "level0 a", solutionSpace: " cause open " },
+			{ task: "level0 b", solutionSpace: "" },
+			{ task: "level0 c", solutionSpace: "   " },
+			{ task: "level0 d", solutionSpace: null },
+			{ task: "level0 e", solutionSpace: 7 },
+		],
+	});
+	const tasks = world.sent.map(
+		(s) => (s.body as { state: { task: string } }).state.task,
+	);
+	assert.deepEqual(tasks.sort(), [
+		"level0 a\n\nSolution space:\ncause open",
+		"level0 b",
+		"level0 c",
+		"level0 d",
+		"level0 e",
+	]);
+});
+
 test("the environment cannot move the request", async () => {
 	setEnv("TYPESAFE_BASE_URL", "https://example.invalid/v1");
 	try {

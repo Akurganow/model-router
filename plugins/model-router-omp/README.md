@@ -359,7 +359,7 @@ For each routed item, the plugin sends an HTTPS POST to the first path of the `g
 
 The request body holds:
 
-- The item's task text and the batch `context`. Together they stay within 12,000 characters, and the context takes at most 3,000 of them.
+- The item's task text, its `solutionSpace` when that is text, and the batch `context`. The solution space follows the task text and is masked with it. Together they stay within 12,000 characters, and the context takes at most 3,000 of them.
 - The item's name, masked like the task text and sent as the description.
 - The agent text: the bundled `task` agent sends one fixed text, and every other agent sends its description, masked and cut to 500 characters. [The privacy policy](PRIVACY.md) has the details, and [the role of the default agent](https://github.com/Akurganow/model-router/blob/main/plugins/model-router/docs/model-choice.md#the-role-of-the-default-agent) says why.
 - The model of the endpoint and two fixed questions: one about judgment and one about work.

@@ -7,6 +7,7 @@ import type { KeyHolder } from "#core/providers/provider.ts";
 import { limitSignal } from "#core/scoring/limit.ts";
 import type { RouteInput, Skipped } from "#core/scoring/route.ts";
 import { realClock } from "#utils/clock.ts";
+import { nonEmpty } from "#utils/text.ts";
 import { lineFor, planEffort, type Routed } from "./effort.ts";
 import type { Batch } from "./gates.ts";
 import { type Facts, itemCheck, roleOf } from "./items.ts";
@@ -18,6 +19,8 @@ export type TaskItem = {
 	readonly agent?: string;
 	readonly model?: unknown;
 	readonly effort?: unknown;
+	// omp asks the agent to say here how open the child's problem is, which the tier question reads.
+	readonly solutionSpace?: unknown;
 };
 // The agent is the item's own, or the default task agent.
 export type Pending = {
@@ -28,6 +31,7 @@ export type Pending = {
 type Scored = Pending & { readonly stored: StoredItem };
 
 const MAX_PARALLEL = 4;
+const SOLUTION_SPACE_LABEL = "\n\nSolution space:\n";
 
 // One deadline covers the batch. Aborting also ends the retry wait, so no request follows a skip.
 // A key holder passed over once is dropped for items that start later, and only within this batch.
@@ -75,7 +79,7 @@ function scoreItem(
 		state: routingState({
 			role,
 			description: item.name,
-			task: item.task,
+			task: withSolutionSpace(item),
 			context,
 		}),
 		...routing,
@@ -83,6 +87,14 @@ function scoreItem(
 		clock: realClock,
 		signal,
 	});
+}
+
+// The joined text is masked and cut as one, so the field shares the task text's budget.
+function withSolutionSpace(item: TaskItem): string {
+	const space = nonEmpty(item.solutionSpace);
+	return space === undefined
+		? item.task
+		: `${item.task}${SOLUTION_SPACE_LABEL}${space}`;
 }
 
 const skipped = (reason: string): StoredItem => ({ line: skippedLine(reason) });
