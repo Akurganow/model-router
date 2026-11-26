@@ -320,7 +320,7 @@ Then restart omp.
 
 ## The brief text
 
-The plugin ships the rule file `rules/model-router-briefs.md`. It sets `alwaysApply: true` and `agents: main`, so omp puts its text in the system prompt of the main session and not in that of a `task` subagent. omp builds the description of the `task` tool into its own code, and only a rewrite of each request could change it, while the rule file of a package needs no code. You do nothing. [What the text says and why](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-brief-text) is written in one place for all four plugins.
+The plugin ships the rule file `rules/model-router-briefs.md`. It sets `alwaysApply: true` and `agents: main`, so omp puts its text in the system prompt of the main session and not in that of a `task` subagent. The text goes in a rule file because omp builds the description of the `task` tool into its own code. You do nothing. [What the text says and why](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-brief-text) is written in one place for all four plugins.
 
 ## Turn it off
 
@@ -363,7 +363,7 @@ For each routed item, the plugin sends an HTTPS POST to the first path of the `g
 
 The request body holds:
 
-- The item's task text, its `solutionSpace` when that is text, and the batch `context`. The solution space follows the task text and is masked with it. Together they stay within 12,000 characters, and the context takes at most 3,000 of them.
+- The item's task text, its `solutionSpace` when it is text that is not blank, and the batch `context`. The solution space follows the task text and is masked with it. Together they stay within 12,000 characters, and the context takes at most 3,000 of them.
 - The item's name, masked like the task text and sent as the description.
 - The agent text: the bundled `task` agent sends one fixed text, and every other agent sends its description, masked and cut to 500 characters. [The privacy policy](PRIVACY.md) has the details, and [the role of the default agent](https://github.com/Akurganow/model-router/blob/main/plugins/model-router/docs/model-choice.md#the-role-of-the-default-agent) says why.
 - The model of the endpoint and two fixed questions: one about judgment and one about work.

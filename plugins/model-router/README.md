@@ -531,7 +531,8 @@ pass through. The mod routes only a spawn that the Agent tool makes.
 The mod adds one fixed text on how to write a subagent brief to the end of the
 description of the `Agent` tool, after a blank line. Claude Code gives a mod
 the description of a tool through the `tool.describe` hook, and the model reads
-that description with the tool. You do nothing. [What the text says and
+that description with the tool, in the main session and in a subagent that
+has the `Agent` tool. You do nothing. [What the text says and
 why](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-brief-text)
 is written in one place for all four plugins.
 
