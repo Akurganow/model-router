@@ -191,7 +191,10 @@ export async function main(
 		console.error(USAGE);
 		return EXIT_USAGE;
 	}
-	// Fail before the paid requests, not after them.
+	// Both checks fail before the paid requests, not after them. The cases come
+	// first, so a wrong --cases path leaves an old record alone.
+	const cases = readCases(casesFlag.value);
+	if (!cases) return EXIT_USAGE;
 	if (record) {
 		try {
 			writeFileSync(record, "");
@@ -200,8 +203,6 @@ export async function main(
 			return EXIT_USAGE;
 		}
 	}
-	const cases = readCases(casesFlag.value);
-	if (!cases) return EXIT_USAGE;
 	const { holder, choice } = asked;
 	const key = await readKey(stdin, holder, endpointFor(holder, choice).url);
 	if (!key) {

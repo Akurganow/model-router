@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
@@ -175,6 +175,7 @@ for (const args of [
 	["TypeSafe"],
 	["openrouter", "jev-latest", "extra"],
 	["typesafe", "--record"],
+	["typesafe", "--cases"],
 ])
 	test(`main with arguments ${JSON.stringify(args)} prints the usage and exits 2 before the key`, async () => {
 		const out = recorded();
@@ -222,6 +223,27 @@ test("main --record exits 2 before the key when the file cannot be written", asy
 	assert.equal(await main(["typesafe", "--record", file], stdin, replying), 2);
 	assert.match(out.join("\n"), /cannot write/);
 	assert.equal(stdin.readableEnded, false, "the key stays unread");
+});
+
+test("main exits 2 before the key and keeps an old --record file when --cases cannot be read", async () => {
+	const out = recorded();
+	const stdin = piped("test-key\n");
+	const dir = mkdtempSync(join(tmpdir(), "calibrate-"));
+	const record = join(dir, "record.jsonl");
+	writeFileSync(record, "old record\n");
+	const cases = join(dir, "missing", "cases.jsonl");
+	assert.equal(
+		await main(
+			["typesafe", "--record", record, "--cases", cases],
+			stdin,
+			replying,
+		),
+		2,
+	);
+	assert.match(out.join("\n"), /cannot read/);
+	assert.equal(readFileSync(record, "utf8"), "old record\n");
+	assert.equal(stdin.readableEnded, false, "the key stays unread");
+	rmSync(dir, { recursive: true });
 });
 
 test("main --record writes each case's labels and probabilities as JSONL", async () => {
