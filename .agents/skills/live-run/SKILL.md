@@ -37,6 +37,7 @@ The bans of [Live runs](../../../AGENTS.md#live-runs) in `AGENTS.md` hold at eve
 No live run starts without the maintainer's word, paid or free, the evals workflow included.
 A request that already names the harness and its version, the model, the cap and the question is that word.
 The word covers the run and its entry on the wiki.
+For a Claude Code model turn, the word also names the real configuration folder, as the Claude Code recipe below says.
 [Paid runs](../../../CONTRIBUTING.md#paid-runs) says what needs no clearance.
 
 18. Ask the maintainer, and state the harness and its version, the model, the cap and the question the run answers.
@@ -49,7 +50,7 @@ Never restore a settings file whole; when a run changed one by mistake, revert o
 
 20. Use the installed harness, and note its version for the entry.
 21. Ask the maintainer when the harness is absent or the question needs another version.
-22. Point the harness at a copy of its configuration folder or a fresh home, as its recipe below says; give Claude Code a copy, because an empty home starts a login.
+22. Point the harness at a copy of its configuration folder or a fresh home, as its recipe below says.
 23. Stop at a login prompt, and hand the run to the maintainer.
 24. When isolation cannot serve the run, stop and ask the maintainer.
 
@@ -69,11 +70,19 @@ Never print or log a key, and never put one into a brief, a commit or a wiki ent
 ### Claude Code
 
 - Load: `--plugin-dir plugins/model-router`, as the [Subagent events](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-Code#subagent-events) run loaded it.
-- Isolate: `CLAUDE_CONFIG_DIR=<copy>`, as [Claude Code project skills and configuration](../../../docs/clients.md#claude-code-project-skills-and-configuration) says.
+- Isolate a check with no model turn: `CLAUDE_CONFIG_DIR=<copy>`, as [Claude Code project skills and configuration](../../../docs/clients.md#claude-code-project-skills-and-configuration) says.
+  A model turn under a copy ends in a sign-in error, as the same section says.
+- Isolate a check with a model turn: keep the real configuration folder, and add `--setting-sources project --strict-mcp-config`.
+  With these flags the run reads no user settings and no MCP server of the user, and it is signed in, as the same section says.
+  The plugin's stored options stay out with the user settings, so each option takes its default, as [Manifest](../../../docs/clients.md#manifest) says.
+  A check of an option other than its default is outside this form: ask the maintainer.
+  Start `claude` from an empty folder, so that no project settings load, and give `--plugin-dir` an absolute path.
+  Ask the maintainer's word for this form, and say that the run reads the real folder and writes its session history there.
+  Change no file in that folder.
 - Run: `claude -p "<prompt>" --model haiku --max-turns <n> --output-format stream-json --verbose --debug-file <log>`, as the [Subagent events](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-Code#subagent-events) run ran it without the cap and the log.
   A sign-in error that ends a turn is not the login prompt of the step "Stop at a login prompt": the turn has ended, and nothing waits for input.
   After such an error read the debug log anyway, because the turn has loaded the hooks module and run `session.start`, as [Hooks module](../../../docs/clients.md#hooks-module) says.
-  Stop and hand the run to the maintainer when the check needs more than that load and that hook.
+  When the check needs more than that load and that hook, run it again isolated for a model turn.
 - Read the line: the debug log at `<log>` holds the routing line, as the [Subagent events](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-Code#subagent-events) run and [`--debug-file`](../../../docs/clients.md#claude-code-project-skills-and-configuration) show.
 
 ### omp

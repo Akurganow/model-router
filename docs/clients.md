@@ -36,6 +36,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
   Claude Code before v2.1.271 cannot load a plugin that declares `options`.
 - Claude Code saves non-sensitive values under `pluginConfigs` in `settings.json`.
   It saves `sensitive` values in the platform's secure credential store.
+- Claude Code reads stored plugin options from the user settings, a `--settings` file and the managed settings, not from the project settings.
+  An option found in none of them takes its manifest default.
 - Claude Code keeps a stored `pluginConfigs` value under a key that the manifest does not declare, through load and update.
 - A stored `pluginConfigs` value under a key that the manifest does not declare reaches the `options` argument of `register`, when the manifest declares at least one option.
 - No settings surface lists such a key: not `/config`, not `/plugin configure`, not the desktop app's plugin settings.
@@ -170,6 +172,10 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 
 - Claude Code loads project skills from `.claude/skills/` in the folder it starts in and in each parent up to the repository root.
 - `CLAUDE_CONFIG_DIR` replaces the configuration folder `~/.claude`, which holds the settings, the session history and the plugins.
+- A model turn under `CLAUDE_CONFIG_DIR` set to a copy of the configuration folder ends in a sign-in error.
+- `--setting-sources` loads only the setting sources it names, so `--setting-sources project` leaves the user settings out.
+  A model turn under the real configuration folder with that flag is signed in.
+- `--strict-mcp-config` skips the MCP servers that `.mcp.json`, `~/.claude.json` or a plugin configures, and loads only those passed with `--mcp-config`.
 - `--debug-file <path>` writes the debug log to that path and turns debug mode on.
   Without it the debug log is `~/.claude/debug/<session-id>.txt`.
 
