@@ -229,6 +229,7 @@ test("the prompt check passes on the text in a system message and stops omp", as
 test("the prompt check fails on the text in a user message, on another text and on no request", async () => {
 	const first = async (bodies: string[]) => (await prompted(bodies))[0] ?? "";
 	assert.match(await first([request("user")]), /sent 1 request.*brief text/);
+	assert.match(await first([request("function")]), /sent 1 request/);
 	assert.match(await first([request("system", "other")]), /sent 1 request/);
 	assert.match(await first([]), /sent no request/);
 });

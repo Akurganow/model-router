@@ -32,9 +32,8 @@ const PROMPT_TEXT = "Reply with ok.";
 const TIMEOUT_MS = 60_000;
 const POLL_MS = 50;
 const STUB_STATUS = 500;
-// A message with another role carries the system prompt: omp sends it as
-// system or, for a reasoning model, developer.
-const CONVERSATION_ROLES = ["user", "assistant", "tool"];
+// omp sends its system prompt as a system message or, for a reasoning model, a developer one.
+const SYSTEM_ROLES = ["system", "developer"];
 
 // An object read for the named fields, each of which may be absent or of any type.
 type Fields<K extends string> = Partial<Record<K, unknown>>;
@@ -121,8 +120,8 @@ export function startStub(): Promise<Stub> {
 
 /**
  * Lists what the requests omp sent to the stub get wrong: none arrived, or
- * none holds the brief text in a message that is not the user's, the model's
- * or a tool's. An empty list means omp put the text in its system prompt.
+ * none holds the brief text in a system or developer message. An empty list
+ * means omp put the text in its system prompt.
  */
 export function promptProblems(bodies: readonly string[]): string[] {
 	if (bodies.length === 0) return ["omp sent no request to the stub"];
@@ -134,7 +133,7 @@ export function promptProblems(bodies: readonly string[]): string[] {
 				const { role, content } = fieldsOf<"role" | "content">(message) ?? {};
 				return (
 					typeof role === "string" &&
-					!CONVERSATION_ROLES.includes(role) &&
+					SYSTEM_ROLES.includes(role) &&
 					typeof content === "string" &&
 					content.includes(BRIEF_GUIDANCE)
 				);
@@ -249,10 +248,13 @@ export function askPrompt(
 			timeoutMs,
 		);
 		child.on("error", (error) => done([`omp did not start: ${error.message}`]));
-		child.on("close", (code) => {
-			check();
-			done([`omp exited with code ${code} before it sent the brief text`]);
-		});
+		child.on("close", (code) =>
+			done(
+				promptProblems(bodies).length === 0
+					? []
+					: [`omp exited with code ${code} before it sent the brief text`],
+			),
+		);
 		// An omp that exits before it reads the prompt fails the write with EPIPE.
 		child.stdin.on("error", () => {});
 		child.stdin.write(
