@@ -1,3 +1,4 @@
+import { BRIEF_GUIDANCE } from "#core/brief/guidance.ts";
 import {
 	configCall,
 	configCommand,
@@ -21,6 +22,13 @@ export function register(on: On, options: Options): void {
 		return next(e);
 	}).catch(passOn);
 	on("tool.call", { tool: "Agent" }, noteCallerEffort).catch(passOn);
+	on("tool.describe", { tool: "Agent" }, async (_, e, next) => {
+		const described = await next(e);
+		return {
+			...described,
+			description: `${described.description}\n\n${BRIEF_GUIDANCE}`,
+		};
+	}).catch(passOn);
 	on("agent.spawn", ($, e, next) => routeSpawn($, e, next, options)).catch(
 		passOn,
 	);

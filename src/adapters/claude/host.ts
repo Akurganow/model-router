@@ -102,6 +102,12 @@ export type AgentCall = ReservedKeys & {
 	model?: string;
 	effort?: string;
 };
+// What a tool.describe hook gets and answers. The answer keeps isDeferred, the placement of the tool.
+export type ToolDescribe = { tool: string; description: string };
+export type Described = {
+	readonly description: string;
+	readonly isDeferred?: boolean;
+};
 export type On = {
 	(
 		event: "session.start",
@@ -129,6 +135,11 @@ export type On = {
 		event: "tool.call",
 		matcher: { tool: `mcp__${string}` },
 		hook: Hook<ConfigCall, ToolAnswer>,
+	): { catch(handler: Hook<unknown>): unknown };
+	(
+		event: "tool.describe",
+		matcher: { tool: "Agent" },
+		hook: Hook<ToolDescribe, Described>,
 	): { catch(handler: Hook<unknown>): unknown };
 	(
 		event: "command.run",

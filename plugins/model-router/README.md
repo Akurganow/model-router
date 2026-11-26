@@ -59,7 +59,8 @@ asks six questions. The answers for this mod:
   only after you pick a value there. The three commands write the same options, and only from your own prompt. The
   model passes a value for `models` alone, and only at your request. It then
   writes `models` at once.
-  [The commands and the tool](#change-the-options) have the details.
+  [The commands and the tool](#change-the-options) have the details. The mod
+  also adds a short text to the description of the `Agent` tool.
 - **Acts without asking you?** No. It approves nothing, and it denies only its
   own tool when your permission rules deny that tool. Your permission rules
   and prompts decide every call. Every setting change waits for your choice in
@@ -83,6 +84,7 @@ This is the whole surface:
 | hook | `agent.spawn` | Scores the brief and sets the subagent's `model` before it starts. |
 | hook | `tool.call{tool=Agent}` | Passes the Agent call on unchanged and notes whether the caller set an `effort`. |
 | hook | `tool.call{tool=mcp__model-router__config}` | Answers the `config` tool: the settings and the dialogs. |
+| hook | `tool.describe{tool=Agent}` | Adds a short text on how to write a brief to the description of the Agent tool. |
 | hook | `turn.step` | Sets the routed `effort` on the subagent's requests. |
 | hook | `turn.complete` | Forgets that a finished subagent's first request already waited for the spawns in flight. |
 | call | `$.clock.after` | The 10 s limit and the request's timers run on it, for example the retry wait. |

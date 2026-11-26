@@ -8,6 +8,7 @@
 		"session.start",
 		"tool.call{tool=Agent}",
 		"tool.call{tool=mcp__model-router__config}",
+		"tool.describe{tool=Agent}",
 		"turn.complete",
 		"turn.step"
 	],
