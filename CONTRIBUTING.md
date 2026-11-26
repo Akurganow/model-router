@@ -283,7 +283,8 @@ reads that holder's key from a masked prompt or from stdin. The prompt names
 the URL that gets the key, for example
 `openrouter API key for https://openrouter.ai/api/v1/systemone:`. The script sends
 the labelled cases of `calibration.jsonl` to the endpoint that the
-plugins use for that holder. Its optional second argument names the Jev
+plugins use for that holder. Add `--cases <file>` to send the cases of
+another JSONL file of the same shape instead. Its optional second argument names the Jev
 model and defaults to `jev-latest`. It exits 1 when tier or work
 agreement falls below 85%. This script, `scripts/compare-rules.ts` and
 `scripts/evals.ts` warn on stderr when Jev answers as another model than
