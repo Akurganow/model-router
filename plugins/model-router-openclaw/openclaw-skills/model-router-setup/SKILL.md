@@ -21,6 +21,7 @@ The person may also choose these, and each has a default:
 - `scope`: which spawns the plugin routes. The default is `core`.
 - `models`: the scoring model of each provider. A provider with no entry uses its default model.
 - A model for each of the three levels: `small_model` for lookup work, `middle_model` for bounded judgment, `large_model` for open judgment. A level with no model keeps OpenClaw's model and still gets the effort for a task the plugin scores.
+- The brief text: a short text on how to brief a subagent, added to the system context of a main session. It is off until the person sets the conversation-access grant.
 
 ## Your job
 
@@ -68,6 +69,17 @@ When the person wants another scoring model for one provider, follow these steps
 3. Take the text the line shows, keep every other entry, and set or replace that provider's entry. Write the short form, with the entries in the order the line shows them. When a kept name holds a comma, a quote or a brace, write the whole value as a JSON object.
 4. On the person's word, run `openclaw config set plugins.entries.model-router-openclaw.config.models '<whole text>'`.
 5. After OpenClaw replaces the plugin, call `model_router_config` again, and confirm the `models` line.
+
+When the person wants the brief text, or asks why it is off, follow these steps in order:
+
+1. Read `allowConversationAccess`, `allowPromptModification` and `allowPromptInjection` under `plugins.entries.model-router-openclaw.hooks` in OpenClaw's configuration.
+2. When the grant is `true` and neither prompt-change key is `false`, say the brief text is on, and stop.
+3. When a prompt-change key is `false`, say that this key is why the text is off, and stop. This skill never changes that key.
+4. Say what the text does. Point to [What the plugin stores](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/PRIVACY.md#what-the-plugin-stores) for what the grant opens.
+5. Ask whether to set the grant.
+6. On the person's word, run `openclaw config set plugins.entries.model-router-openclaw.hooks.allowConversationAccess true`.
+7. On the person's word, run `openclaw gateway restart`.
+8. Read the three settings again.
 
 ## Facts
 

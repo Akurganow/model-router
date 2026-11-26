@@ -875,6 +875,14 @@ function registerConfigCommands(api, env) {
     });
 }
 
+// src/core/brief/guidance.ts
+var BRIEF_GUIDANCE = "When model-router routes a subagent, it picks the model from this brief. State what is already decided and what you leave open for the subagent. Name the files and the check that proves the work done. Give the size: steps, files and edge cases.";
+
+// src/adapters/openclaw/guidance.ts
+var PROMPT_HOOK = "before_prompt_build";
+var SUBAGENT_KEY = /(^|:)subagent:/;
+var briefGuidance = async (_, ctx) => SUBAGENT_KEY.test(ctx?.sessionKey ?? "") ? void 0 : { appendSystemContext: BRIEF_GUIDANCE };
+
 // src/core/brief/brief.ts
 var BUDGET_CHARS = 12e3;
 var ROLE_CAP = 500;
@@ -1679,12 +1687,28 @@ function registerRouting(api, deps) {
     timeoutMs: HOOK_TIMEOUT_MS
   });
 }
+function registerGuidance(api) {
+  const hooks = pluginEntry(api.config)?.hooks;
+  if (hooks?.allowConversationAccess !== true || hooks.allowPromptModification === false || hooks.allowPromptInjection === false)
+    return;
+  try {
+    api.on(PROMPT_HOOK, briefGuidance);
+  } catch {
+    warn(
+      api,
+      `the ${PROMPT_HOOK} hook did not register, so the brief text is off; routing is unchanged.`
+    );
+  }
+}
 function register(api, deps) {
   try {
     const mode = api.registrationMode;
     if (TOOL_MODES.includes(mode)) registerConfigTool(api, deps.env);
     if (COMMAND_MODES.includes(mode)) registerConfigCommands(api, deps.env);
-    if (HOOK_MODES.includes(mode)) registerRouting(api, deps);
+    if (HOOK_MODES.includes(mode)) {
+      registerRouting(api, deps);
+      registerGuidance(api);
+    }
   } catch {
     warn(api, "registration failed; the plugin is inert.");
   }

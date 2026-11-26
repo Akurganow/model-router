@@ -2,7 +2,7 @@
 
 model-router for OpenClaw is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-21.
+2026-11-26.
 
 ## Where requests go
 
@@ -166,6 +166,15 @@ and, under `extended`, the target agent, `description`, `model`,
 [The agent roster](README.md#the-agent-roster) says. It sets the model you
 named in the slot. Nothing from these reads leaves your machine, except the
 role text the request carries as described above.
+
+The grant `plugins.entries.model-router-openclaw.hooks.allowConversationAccess`
+lets a plugin register hooks whose events carry the conversation. This plugin
+registers one, `before_prompt_build`, and only when the grant is `true` and
+neither `allowPromptModification` nor `allowPromptInjection` is `false`. It reads
+nothing from the hook's event. It reads the session key from the hook's context,
+to tell a main session from a spawned child. It sends nothing from the hook
+anywhere. The fixed text it adds goes to the session's model with the rest of the
+system prompt. Without the grant the plugin registers no such hook.
 
 The plugin reads no credential of a model's provider except the keys that
 [Keys](README.md#keys) lists. It says there which of them OpenClaw's own

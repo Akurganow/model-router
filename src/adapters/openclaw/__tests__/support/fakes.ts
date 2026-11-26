@@ -7,6 +7,7 @@ import type {
 	OpenClawApi,
 	OpenClawConfig,
 	PluginRuntime,
+	PromptBuildHandler,
 	RegistrationMode,
 	ToolDefinition,
 } from "#adapters/openclaw/types.ts";
@@ -76,7 +77,7 @@ type FakeRuntime = ReturnType<typeof createFakeRuntime>;
 
 type RecordedHook = {
 	event: string;
-	handler: BeforeToolCallHandler;
+	handler: BeforeToolCallHandler | PromptBuildHandler;
 	options?: HookOptions;
 };
 type LogLine = { level: keyof Logger; message: string };
@@ -161,8 +162,12 @@ export function createFakeApi(overrides: FakeApiOverrides = {}) {
 				throw new Error(
 					"createFakeApi: no before_tool_call handler registered",
 				);
-			return hook.handler;
+			return hook.handler as BeforeToolCallHandler;
 		},
+		/** Returns the `before_prompt_build` handler, the last one registered. */
+		promptBuild: () =>
+			hooks.findLast((h) => h.event === "before_prompt_build")
+				?.handler as PromptBuildHandler,
 	};
 }
 
