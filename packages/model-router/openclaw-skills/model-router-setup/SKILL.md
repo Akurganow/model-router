@@ -73,7 +73,7 @@ When the person wants another scoring model for one provider, follow these steps
 When the person wants the brief text, or asks why it is off, follow these steps in order:
 
 1. Read `allowConversationAccess`, `allowPromptModification` and `allowPromptInjection` under `plugins.entries.model-router-openclaw.hooks` in OpenClaw's configuration.
-2. When the grant is `true` and neither prompt-change key is `false`, say the brief text is on, and stop.
+2. With the grant `true` and no prompt-change key `false`, say the settings turn the text on and a Gateway restart applies them; stop.
 3. When a prompt-change key is `false`, say that this key is why the text is off, and stop. This skill never changes that key.
 4. Say what the text does. Point to [What the plugin stores](https://github.com/Akurganow/model-router/blob/main/plugins/model-router-openclaw/PRIVACY.md#what-the-plugin-stores) for what the grant opens.
 5. Ask whether to set the grant.
