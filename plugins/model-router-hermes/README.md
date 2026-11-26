@@ -183,7 +183,7 @@ A routed model gets the fallback chain in `delegation.fallback_providers`, and n
 
 ### Parameters of `delegate_task`
 
-The plugin adds three parameters to each task of `delegate_task`. Hermes shows them to the delegating model with their descriptions, and adds one line to the tool's description. That line asks for a description on every task, and names the escalation skill.
+The plugin adds three parameters to each task of `delegate_task`. Hermes shows them to the delegating model with their descriptions, and adds one line to the tool's description. That line starts with [the brief text](#the-brief-text), then asks for a description on every task and names the escalation skill.
 
 | Parameter | Values | What the plugin does with it |
 | --- | --- | --- |
@@ -204,6 +204,10 @@ The delegating model should leave `reasoning_effort` and `level` unset on a firs
 The parameters are part of the session's tool list. After an install or an update, they apply from the next session, or at once after `/delegation model-router --now`. The parameters' schema, with the `level` text, is part of Hermes's cached prompt. An update that changes it makes the prompt cache miss once.
 
 [Facts behind the parameters](https://github.com/Akurganow/model-router/blob/main/docs/clients.md#hermes-task-parameters)
+
+### The brief text
+
+The line the plugin adds to the `delegate_task` description starts with one fixed text on how to write a subagent brief. The description is the place Hermes gives a delegation provider, so the text goes there. An orchestrator child that has `delegate_task` sees it too. You do nothing. [What the text says and why](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-brief-text) is written in one place for all four plugins.
 
 ### Node
 

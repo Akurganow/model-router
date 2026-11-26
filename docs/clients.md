@@ -116,6 +116,10 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-Claude-
 - In print mode, a turn that ends in a sign-in error exits with status 1, and it has loaded the hooks module and run its `session.start` hook.
 - Claude Code caches an installed plugin by version.
   An edit reaches the installed copy only after the version rises and the user installs again.
+- A `tool.describe` hook with a `{ tool: "<name>" }` matcher gets `{ tool, description, isDeferred?, provider }` and answers `{ description, isDeferred? }`.
+  The engine refuses a hook that passes on a changed `tool` or `provider`.
+  It caches the answer by tool name until `$.ui.invalidate`.
+- The model sees the answer of a `tool.describe` hook as the tool's description, in the main session and in a subagent that has the tool.
 
 ### Subagent events
 
@@ -207,6 +211,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
   `omp plugin config validate` reports it with `Must be one of: <values>` and exits 1.
 - omp's extension-package discovery also reads a package's sibling folders `skills/`, `hooks/pre|post/`, `tools/`, `commands/`, `rules/`, `prompts/` and `.mcp.json`.
   So the npm package keeps OpenClaw's skills in `openclaw-skills/`.
+- A rule file with `alwaysApply: true` needs no `description`, and its text goes into the system prompt.
+  `agents: main` limits the rule to the top-level session.
 - Extension modules load when a session starts.
   After an install, `/reload-plugins` refreshes agents, skills and commands, and a restart loads new extension modules.
 
@@ -283,6 +289,8 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-omp#omp
   Yet the task tool passes it on as the request model for any agent, and the request model outranks the agent's own model.
 - From omp 18.18.4 the `task` tool advertises the item `model` only when `task.perCallModel` is `on` or the bundled seance is spawnable.
 - The plugin skips every item that sets `model`, so these differences do not change what it routes.
+- The item schema of the `task` tool declares `solutionSpace` as a string.
+  The tool description asks the agent to put there how open-ended the child's problem is: whether the fix or design is given, or which causes or designs remain open.
 
 ### omp tool_call cost and timeout
 
@@ -470,6 +478,7 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
   A manifest whose `uiHints` mark such a key `sensitive` loads.
 - `package.json` carries `openclaw.extensions`, `openclaw.compat.pluginApi` and `openclaw.install.minHostVersion`.
   OpenClaw enforces the last two when it installs a non-bundled plugin.
+- A folder whose `package.json` names `openclaw.extensions` loads as a native package from those entry files, and OpenClaw reads no `rules` folder of it.
 
 ### OpenClaw entry and registration
 
@@ -550,6 +559,15 @@ Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenCla
 ### OpenClaw hook and spawn
 
 Evidence: [wiki](https://github.com/Akurganow/model-router/wiki/Evidence-OpenClaw#openclaw-hook-and-spawn)
+
+- `before_prompt_build` receives a context with `sessionKey` and may return `appendSystemContext`.
+  OpenClaw refuses the registration of a non-bundled plugin, with a warning, unless `plugins.entries.<id>.hooks.allowConversationAccess` is `true`.
+  It also refuses it when the prompt-change key is `false`. That key is `allowPromptModification`, and `allowPromptInjection` in older releases.
+  A throw in a `before_prompt_build` handler is logged and skipped.
+- The text a `before_prompt_build` handler returns in `appendSystemContext` goes once into the system prompt of each request of that session, in a block headed "OpenClaw plugin-injected system context. This block is not workspace file content."
+- A session is a spawned child when its key, lower-cased, starts with `subagent:`, either at the start of the key or after `agent:<id>:`.
+  A session is an ACP session when its key, lower-cased, starts with `acp:` in the same two places.
+  A spawned child's key reads `agent:<id>:subagent:<uuid>`, and an ACP session's reads `agent:<id>:acp:<uuid>`.
 
 - `before_tool_call` receives `event.toolName` and `event.params`, and `ctx.agentId`, `ctx.sessionKey` and an optional `ctx.abortSignal`.
   It can return `params`, `block` or `requireApproval`.
@@ -687,6 +705,7 @@ The two pages disagree.
 The hook runs only when a tool call runs.
 Five paths start an agent session without that tool. [Paths the hook never sees](../plugins/model-router-openclaw/README.md#paths-the-hook-never-sees) lists them.
 Other such paths may exist.
+Whether `before_prompt_build` runs for an ACP session is not known.
 The meeting bot's realtime consult also runs an agent under a sub-agent session key without that tool.
 The workspace `.env` list in the source leaves out the variables that an installed provider plugin adds.
 OpenClaw may drop `TYPESAFE_API_KEY` when such a plugin declares it.

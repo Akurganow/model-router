@@ -349,6 +349,26 @@ Where one such name or flag follows another, as in `--askpass --password s3cret`
 The agent's description and the call's one-line description pass through the same masking.
 A text over 12,000 characters keeps its start and its end.
 
+## The brief text
+
+Each plugin gives the main agent one fixed text on how to write a subagent brief:
+
+```text
+When model-router routes a subagent, it picks the model from this brief. Say what is already decided. If nothing is left to decide, say that nothing is; otherwise name what you leave to the subagent.
+```
+
+The scoring model reads from the brief how much is left to decide, and that picks the tier.
+The text asks the main agent to say it.
+This wording was measured on the Jev judge before the release, and [the record of the scoring-host runs](https://github.com/Akurganow/model-router/wiki/Runs-scoring-hosts) holds that measurement.
+The text is the same in every harness, and only its place differs:
+
+| Harness | Where the text sits | What you do |
+| --- | --- | --- |
+| Claude Code | the description of the `Agent` tool, [Claude Code: the brief text](../plugins/model-router/README.md#the-brief-text) | nothing |
+| Oh My Pi | the system prompt of the main session, [Oh My Pi: the brief text](../plugins/model-router-omp/README.md#the-brief-text) | nothing |
+| OpenClaw | the system context of a main session, [OpenClaw: the brief text](../plugins/model-router-openclaw/README.md#the-brief-text) | set the conversation-access grant |
+| Hermes Agent | the line the plugin adds to the `delegate_task` description, [Hermes Agent: the brief text](../plugins/model-router-hermes/README.md#the-brief-text) | nothing |
+
 ## Retries and the second attempt
 
 One task makes at most two attempts, one for each path its `gateway` value allows.

@@ -39,7 +39,8 @@ function endpointFor(holder: KeyHolder, choice: Choice) {
 	if (!endpoint) throw new Error(`no endpoint for ${holder}`);
 	return endpoint;
 }
-const USAGE = `usage: node scripts/calibrate.ts <${ASKED.map(({ holder }) => holder).join("|")}> [model] [--record <file>]  (the cases go to: ${ASKED.map(({ holder, choice }) => `${holder} ${endpointFor(holder, choice).url}`).join(", ")}; enter that provider's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL)`;
+const USAGE = `usage: node scripts/calibrate.ts <${ASKED.map(({ holder }) => holder).join("|")}> [model] [--record <file>] [--cases <file>]  (the cases go to: ${ASKED.map(({ holder, choice }) => `${holder} ${endpointFor(holder, choice).url}`).join(", ")}; enter that provider's API key at the prompt, or pipe it on stdin; model defaults to jev-latest; --record writes each case's labels and probabilities to <file> as JSONL; --cases reads the cases from <file> in place of calibration.jsonl)`;
+const DEFAULT_CASES = new URL("../calibration.jsonl", import.meta.url);
 
 export type Case = {
 	role: string;
@@ -131,6 +132,35 @@ export async function readKey(
 	return text.trim();
 }
 
+const FLAGS = ["--record", "--cases"];
+
+// Takes `<name> <value>` out of the arguments; `missing` marks the flag given with no value or with another flag as its value.
+function takeFlag(args: readonly string[], name: string) {
+	const at = args.indexOf(name);
+	if (at === -1) return { rest: args, missing: false };
+	const value = args[at + 1];
+	return {
+		value,
+		rest: args.toSpliced(at, 2),
+		missing: !value || FLAGS.includes(value),
+	};
+}
+
+function readCases(file: string | undefined): Case[] | undefined {
+	const source = file ?? DEFAULT_CASES;
+	let text: string;
+	try {
+		text = readFileSync(source, "utf8");
+	} catch (error) {
+		console.error(`cannot read ${source}: ${(error as Error).message}`);
+		return undefined;
+	}
+	return text
+		.split("\n")
+		.filter((line) => line.trim() !== "")
+		.map((line) => JSON.parse(line));
+}
+
 function hit(
 	name: string,
 	part: Decision["parts"][string] | undefined,
@@ -147,26 +177,30 @@ function hit(
 
 /**
  * Runs the calibration and returns the process exit code. Returns EXIT_USAGE
- * for bad arguments, an unwritable record file or a missing key. Returns 0 when
- * tier and work agreement both meet the bar, and 1 otherwise. Expects the
- * key holder first, then an optional model and an optional --record file. Throws
- * when calibration.jsonl is unreadable or holds invalid JSON.
+ * for bad arguments, an unwritable record file, an unreadable cases file or a
+ * missing key. Returns 0 when tier and work agreement both meet the bar, and 1
+ * otherwise. Expects the key holder first, then an optional model, an optional
+ * --record file and an optional --cases file. Throws when the cases file holds
+ * invalid JSON.
  */
 export async function main(
 	args: readonly string[],
 	stdin: NodeJS.ReadStream,
 	fetchFn: Fetch,
 ): Promise<number> {
-	const at = args.indexOf("--record");
-	const record = at === -1 ? undefined : args[at + 1];
-	const positional = at === -1 ? args : args.toSpliced(at, 2);
-	const [name, model, ...surplus] = positional;
+	const recordFlag = takeFlag(args, "--record");
+	const casesFlag = takeFlag(recordFlag.rest, "--cases");
+	const record = recordFlag.value;
+	const [name, model, ...surplus] = casesFlag.rest;
 	const asked = ASKED.find(({ holder }) => holder === name);
-	if (!asked || surplus.length > 0 || (at !== -1 && !record)) {
+	if (!asked || surplus.length > 0 || recordFlag.missing || casesFlag.missing) {
 		console.error(USAGE);
 		return EXIT_USAGE;
 	}
-	// Fail before the paid requests, not after them.
+	// Both checks fail before the paid requests, not after them. The cases come
+	// first, so a wrong --cases path leaves an old record alone.
+	const cases = readCases(casesFlag.value);
+	if (!cases) return EXIT_USAGE;
 	if (record) {
 		try {
 			writeFileSync(record, "");
@@ -184,14 +218,6 @@ export async function main(
 	const attempts = plan(choice, { [holder]: key }).map((a) =>
 		model === undefined ? a : { ...a, storedModel: model },
 	);
-	const cases: Case[] = readFileSync(
-		new URL("../calibration.jsonl", import.meta.url),
-		"utf8",
-	)
-		.split("\n")
-		.filter((line) => line.trim() !== "")
-		.map((line) => JSON.parse(line));
-
 	// The alias resolves on the server, so the run records which model answered.
 	const answeredBy = new Set<string>();
 	let tierHits = 0;

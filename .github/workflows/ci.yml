@@ -157,8 +157,10 @@ jobs:
           omp plugin install model-router@model-router
           omp plugin list | grep -F model-router
 
-      # omp starts in rpc mode, sends no prompt and lists its commands. The
-      # plugin's commands come back only when omp loaded its extension.
+      # omp starts in rpc mode and lists its commands, which come back only when
+      # omp loaded its extension. A second start sends one prompt to a stub
+      # server on the runner and checks that the request holds the brief text in
+      # a system message, so omp loaded the plugin's rule file too.
       - name: Check that omp loads the plugin
         run: node scripts/check-omp-load.ts
 

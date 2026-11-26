@@ -8,6 +8,7 @@ import plugin, { createPlugin } from "#adapters/openclaw/index.ts";
 import { SPAWN_TOOL } from "#adapters/openclaw/router.ts";
 import { PLUGIN_ID } from "#adapters/openclaw/settings.ts";
 import type { OpenClawApi, OpenClawConfig } from "#adapters/openclaw/types.ts";
+import { BRIEF_GUIDANCE } from "#core/brief/guidance.ts";
 import { keyLine } from "#core/options/settings.ts";
 import { deadlineFor } from "#core/scoring/handler-deadline.ts";
 import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
@@ -160,6 +161,48 @@ describe("registration", () => {
 			throw new Error("logger");
 		};
 		assert.doesNotThrow(() => createPlugin().register(fake.api));
+	});
+});
+
+describe("the brief text", () => {
+	const grant = { allowConversationAccess: true };
+	const events = (hooks: object) =>
+		install(hooksOf(hooks)).hooks.map((h) => h.event);
+
+	it("goes to a main session and to one with no key, not to a spawned child or an ACP session", async () => {
+		const handler = install(hooksOf(grant)).promptBuild();
+		const text = { appendSystemContext: BRIEF_GUIDANCE };
+		for (const key of ["agent:main:main", "agent:subagent:main", undefined])
+			assert.deepEqual(await handler({}, key ? { sessionKey: key } : {}), text);
+		for (const key of [
+			"agent:main:subagent:1234",
+			"agent:main:Subagent:1",
+			"agent:main:acp:1234",
+			"subagent:1234",
+		])
+			assert.equal(await handler({}, { sessionKey: key }), undefined);
+	});
+
+	it("registers only with the grant and no prompt-change key set to false", () => {
+		const off = ["before_tool_call"];
+		assert.deepEqual(events(grant), [...off, "before_prompt_build"]);
+		assert.deepEqual(events({}), off);
+		assert.deepEqual(events({ allowConversationAccess: "true" }), off);
+		assert.deepEqual(events({ ...grant, allowPromptModification: false }), off);
+		assert.deepEqual(events({ ...grant, allowPromptInjection: false }), off);
+	});
+
+	it("warns once, naming the hook, when it cannot register, and routing stays on", () => {
+		const fake = createFakeApi({ config: hooksOf(grant) });
+		const on = fake.api.on;
+		fake.api.on = (event, handler, options) => {
+			if (event === "before_prompt_build") throw new Error("refused");
+			return on(event, handler, options);
+		};
+		createPlugin().register(fake.api);
+		assert.equal(fake.logs.length, 1);
+		assert.match(fake.logs[0]?.message ?? "", /before_prompt_build/);
+		assert.equal(fake.hooks[0]?.event, "before_tool_call");
 	});
 });
 

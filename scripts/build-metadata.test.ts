@@ -19,6 +19,7 @@ const GENERATED = [
 	".claude-plugin/marketplace.json",
 	"plugins/model-router-omp/package.json",
 	".omp-plugin/marketplace.json",
+	"plugins/model-router-omp/rules/model-router-briefs.md",
 	"plugins/model-router-openclaw/openclaw.plugin.json",
 	"plugins/model-router-hermes/plugin.yaml",
 	"plugins/model-router-hermes/constants.json",

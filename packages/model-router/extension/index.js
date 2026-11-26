@@ -1657,6 +1657,7 @@ var realClock = {
 
 // src/adapters/omp/score.ts
 var MAX_PARALLEL = 4;
+var SOLUTION_SPACE_LABEL = "\n\nSolution space:\n";
 async function scoreItems(items, context, { attempts, facts }, deadline) {
   const limit = limitSignal(deadline, realClock);
   const passedOver = /* @__PURE__ */ new Set();
@@ -1687,7 +1688,7 @@ function scoreItem(item, context, role, routing, signal) {
     state: routingState({
       role,
       description: item.name,
-      task: item.task,
+      task: withSolutionSpace(item),
       context
     }),
     ...routing,
@@ -1695,6 +1696,10 @@ function scoreItem(item, context, role, routing, signal) {
     clock: realClock,
     signal
   });
+}
+function withSolutionSpace(item) {
+  const space = nonEmpty(item.solutionSpace);
+  return space === void 0 ? item.task : `${item.task}${SOLUTION_SPACE_LABEL}${space}`;
 }
 var skipped = (reason) => ({ line: skippedLine(reason) });
 function toStored(decided, item, facts) {

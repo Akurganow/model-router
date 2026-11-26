@@ -12,6 +12,7 @@ import {
 } from "#adapters/claude/__tests__/support/fakes.ts";
 import { EFFORTS_MAX } from "#adapters/claude/host.ts";
 import { DEFAULT_ROLE, NO_DESCRIPTION, roleText } from "#core/brief/brief.ts";
+import { BRIEF_GUIDANCE } from "#core/brief/guidance.ts";
 import { skippedLine } from "#core/output/line.ts";
 import { KEY_UNSET } from "#core/output/reasons.ts";
 
@@ -121,7 +122,23 @@ test("the Agent call's one-line description is masked like the task text", async
 	assert.deepEqual(descriptions, ["Deploy with ***"]);
 });
 
-test("register hooks the offers, the spawn, the steps, the turn ends, the session start, the config tool and the three commands by literal matcher", () => {
+test("the Agent tool's description gets the brief text after a blank line and keeps the other fields", async () => {
+	const next = Object.assign(
+		async () => ({ description: "Launch an agent.", isDeferred: true }),
+		nextHook(),
+	);
+	const hook = registered()['tool.describe {"tool":"Agent"}'];
+	assert.deepEqual(
+		await hook?.(
+			{} as never,
+			{ tool: "Agent", description: "Launch an agent." },
+			next,
+		),
+		{ description: `Launch an agent.\n\n${BRIEF_GUIDANCE}`, isDeferred: true },
+	);
+});
+
+test("register hooks the offers, the spawn, the steps, the turn ends, the session start, the config tool, the Agent description and the three commands by literal matcher", () => {
 	assert.deepEqual(Object.keys(registered()).sort(), [
 		"agent.offer",
 		"agent.spawn",
@@ -131,6 +148,7 @@ test("register hooks the offers, the spawn, the steps, the turn ends, the sessio
 		"session.start",
 		'tool.call {"tool":"Agent"}',
 		'tool.call {"tool":"mcp__model-router__config"}',
+		'tool.describe {"tool":"Agent"}',
 		"turn.complete",
 		"turn.step",
 	]);

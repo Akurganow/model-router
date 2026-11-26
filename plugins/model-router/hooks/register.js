@@ -1,3 +1,6 @@
+// src/core/brief/guidance.ts
+var BRIEF_GUIDANCE = "When model-router routes a subagent, it picks the model from this brief. Say what is already decided. If nothing is left to decide, say that nothing is; otherwise name what you leave to the subagent.";
+
 // src/core/output/reasons.ts
 var CALLER_EFFORT = "caller effort";
 var KEY_UNSET = "key unset";
@@ -1598,6 +1601,15 @@ function register(on, options) {
     return next(e);
   }).catch(passOn);
   on("tool.call", { tool: "Agent" }, noteCallerEffort).catch(passOn);
+  on("tool.describe", { tool: "Agent" }, async (_, e, next) => {
+    const described = await next(e);
+    return {
+      ...described,
+      description: `${described.description}
+
+${BRIEF_GUIDANCE}`
+    };
+  }).catch(passOn);
   on("agent.spawn", ($, e, next) => routeSpawn($, e, next, options)).catch(
     passOn
   );

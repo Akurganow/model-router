@@ -32,6 +32,7 @@
 	},
 	"files": [
 		"extension",
+		"rules",
 		"index.js",
 		"setup-api.js",
 		"openclaw.plugin.json",

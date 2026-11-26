@@ -32,10 +32,15 @@ type AgentEntry = {
 	subagents?: SubagentSettings;
 };
 
-// docs/plugins/hooks/reference.md: `plugins.entries.<id>.hooks`, in ms.
-type HookTimeoutSettings = {
+// docs/plugins/hooks/reference.md: `plugins.entries.<id>.hooks`. The timeouts are in ms. The three
+// `allow` keys gate the registration of a hook that reads the conversation or changes the prompt
+// (src/plugins/hook-policy-decisions.ts); `allowPromptInjection` is the older name of `allowPromptModification`.
+type HookSettings = {
 	timeoutMs?: unknown;
 	timeouts?: { before_tool_call?: unknown };
+	allowConversationAccess?: unknown;
+	allowPromptModification?: unknown;
+	allowPromptInjection?: unknown;
 };
 
 // src/config/types.openclaw.ts: the config paths the adapter reads.
@@ -49,7 +54,7 @@ export type OpenClawConfig = {
 	plugins?: {
 		entries?: Record<
 			string,
-			{ hooks?: HookTimeoutSettings; config?: Record<string, unknown> }
+			{ hooks?: HookSettings; config?: Record<string, unknown> }
 		>;
 	};
 };
@@ -111,6 +116,25 @@ export type BeforeToolCallHandler = (
 	ctx: ToolContext,
 ) => Promise<BeforeToolCallResult | undefined>;
 
+// src/plugins/hook-agent-context.types.ts: `PluginHookAgentContext`, reduced to the session key.
+export type PromptBuildContext = { sessionKey?: string };
+
+// src/plugins/hook-before-agent-start.types.ts: `PluginHookBeforePromptBuildResult`, reduced to the
+// text appended to the system prompt.
+export type PromptBuildResult = { appendSystemContext?: string };
+
+// src/plugins/hook-types.ts: the handler type for `before_prompt_build`. The event carries the
+// conversation, so it is `unknown` and the adapter never reads it.
+export type PromptBuildHandler = (
+	event: unknown,
+	ctx: PromptBuildContext,
+) => Promise<PromptBuildResult | undefined>;
+
+type HookHandlers = {
+	before_tool_call: BeforeToolCallHandler;
+	before_prompt_build: PromptBuildHandler;
+};
+
 // src/plugins/hook-types.ts: `PluginHookRegistrationOptions` with the tool matcher.
 export type HookOptions = {
 	matcher?: readonly [string, ...string[]];
@@ -169,9 +193,9 @@ export type OpenClawApi = {
 	pluginConfig?: Record<string, unknown>;
 	logger: Logger;
 	runtime: PluginRuntime;
-	on: (
-		hookName: "before_tool_call",
-		handler: BeforeToolCallHandler,
+	on: <K extends keyof HookHandlers>(
+		hookName: K,
+		handler: HookHandlers[K],
 		options?: HookOptions,
 	) => void;
 	registerTool: (tool: ToolDefinition) => void;

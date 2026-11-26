@@ -11,6 +11,7 @@ An [OpenClaw](https://github.com/openclaw/openclaw) plugin that picks a model an
 - It never overrides a model you chose, nor an effort the spawn or the global config sets. [The rules of the routed spawns](#which-spawns-are-routed) list the model rules, and [Efforts the plugin keeps](#efforts-the-plugin-keeps) lists the effort rules.
   Under `extended`, [rule 4](#efforts-the-plugin-keeps) replaces the requester's `subagents.thinking`, which OpenClaw applies to a cross-agent spawn.
 - Under the default `core` scope, it routes only [the spawn of the requesting agent itself](#the-spawn-of-the-requesting-agent-itself). [Scope](#scope) defines the term.
+- With your grant, it adds a short text on how to brief a subagent to the system context of a main session. [The brief text](#the-brief-text) says how.
 - It fails open. [Fails open](PRIVACY.md#fails-open) says what that means and what OpenClaw can still do.
 - The plugin changes a setting only when the owner types one of its three commands. It never writes `models`. [Change the options](#change-the-options) lists the commands.
 
@@ -213,6 +214,26 @@ The first rule that matches decides. The later rules are not checked.
 Under `extended` with both a global value and a per-agent value, rule 2 decides. The plugin sets no `thinking`, and OpenClaw's own precedence applies the per-agent value.
 
 With an unset slot and a kept effort, there is nothing to set. The plugin returns nothing and still logs the line.
+
+## The brief text
+
+The plugin adds a short text on how to brief a subagent to the system context of each main session. A spawned child and an ACP session get nothing. [The brief text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-brief-text) says what it holds.
+
+OpenClaw builds the `sessions_spawn` description itself and no hook changes it, so the text goes into the system context.
+
+The text is off until you grant the plugin conversation access, because OpenClaw registers the prompt hook of a plugin that does not ship with it only then. [What the plugin stores](PRIVACY.md#what-the-plugin-stores) says what the grant opens. To turn the text on, run this line in a shell:
+
+```sh
+openclaw config set plugins.entries.model-router-openclaw.hooks.allowConversationAccess true
+```
+
+Then restart the Gateway:
+
+```sh
+openclaw gateway restart
+```
+
+To turn the text off, set that grant to `false` and restart the Gateway. The text also stays off while `plugins.entries.model-router-openclaw.hooks.allowPromptModification` is `false`. Older OpenClaw releases name this key `allowPromptInjection`.
 
 ## Which spawns are routed
 

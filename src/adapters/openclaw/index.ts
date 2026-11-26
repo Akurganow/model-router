@@ -9,6 +9,7 @@ import { ROUTING_LIMIT_MS } from "#core/scoring/limit.ts";
 import { realClock } from "#utils/clock.ts";
 import { isRecord } from "#utils/guards.ts";
 import { registerConfigCommands, registerConfigTool } from "./config.ts";
+import { briefGuidance, PROMPT_HOOK } from "./guidance.ts";
 import {
 	createBeforeToolCall,
 	HOOK,
@@ -93,12 +94,36 @@ function registerRouting(api: OpenClawApi, deps: RouterDeps): void {
 }
 
 /**
+ * Registers the before_prompt_build hook that adds the brief text, only when the
+ * operator granted conversation access and set neither prompt-change key to false.
+ * OpenClaw would refuse the registration otherwise, with a warning of its own, so
+ * the plugin stays silent. A throw logs one warning and leaves routing on.
+ */
+function registerGuidance(api: OpenClawApi): void {
+	const hooks = pluginEntry(api.config)?.hooks;
+	const granted = hooks?.allowConversationAccess === true;
+	// allowPromptInjection is the older name of allowPromptModification.
+	const promptChangeRefused =
+		hooks?.allowPromptModification === false ||
+		hooks?.allowPromptInjection === false;
+	if (!granted || promptChangeRefused) return;
+	try {
+		api.on(PROMPT_HOOK, briefGuidance);
+	} catch {
+		warn(
+			api,
+			`the ${PROMPT_HOOK} hook did not register, so the brief text is off; routing is unchanged.`,
+		);
+	}
+}
+
+/**
  * Registers what the registration mode keeps. The config tool goes into the full,
  * discovery and tool-discovery passes, and the setting commands and the
- * before_tool_call hook into the full and discovery passes, so no registry holds a
- * name twice. The timeout warning belongs to the full pass alone. The setup and CLI
- * modes register nothing. Never throws: a failure logs a warning and leaves the
- * plugin inert.
+ * before_tool_call and before_prompt_build hooks into the full and discovery
+ * passes, so no registry holds a name twice. The timeout warning belongs to the
+ * full pass alone. The setup and CLI modes register nothing. Never throws: a
+ * failure logs a warning and leaves the plugin inert.
  */
 function register(api: OpenClawApi, deps: RouterDeps): void {
 	try {
@@ -106,7 +131,10 @@ function register(api: OpenClawApi, deps: RouterDeps): void {
 		// The config tool and the commands register before the hook, so a throw leaves routing off.
 		if (TOOL_MODES.includes(mode)) registerConfigTool(api, deps.env);
 		if (COMMAND_MODES.includes(mode)) registerConfigCommands(api, deps.env);
-		if (HOOK_MODES.includes(mode)) registerRouting(api, deps);
+		if (HOOK_MODES.includes(mode)) {
+			registerRouting(api, deps);
+			registerGuidance(api);
+		}
 	} catch {
 		warn(api, "registration failed; the plugin is inert.");
 	}

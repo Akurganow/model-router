@@ -219,6 +219,7 @@ test("the npm block and the openclaw block validate against the schema", () => {
 const box = useTempRoot("build-npm-", (put) => {
 	put(`${OPENCLAW_DIR}/LICENSE`, "licence\n");
 	put(OMP_OUTPUTS.bundle, "omp bundle\n");
+	put(OMP_OUTPUTS.rule, "omp rule\n");
 	put(OPENCLAW_OUTPUTS.manifest, "{}\n");
 	put(OPENCLAW_OUTPUTS.bundle, "claw bundle\n");
 	put(OPENCLAW_OUTPUTS.setup, "claw setup\n");

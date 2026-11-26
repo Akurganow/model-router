@@ -1,3 +1,4 @@
+import { BRIEF_GUIDANCE } from "#core/brief/guidance.ts";
 import { EFFORTS } from "#core/decision/ladder.ts";
 import type { Stored } from "#core/options/settings.ts";
 import {
@@ -71,6 +72,6 @@ export function taskParameterTexts(pluginName: string) {
 				description: `${ONLY_TO_ESCALATE} 0 runs the child on the user's small model, 1 on the user's middle model, 2 on the large model, and model-router asks the scoring model nothing. A level whose model is not set runs on the model Hermes gives it. A routed task's label shows its level as L0, L1 or L2. A model in the user's delegation config wins.`,
 			},
 		},
-		delegationAddendum: `model-router picks each task's model and effort. Give every task a description. Leave reasoning_effort and level unset unless you re-dispatch a failed task; the ${pluginName}:${ESCALATION_SKILL} skill says how.`,
+		delegationAddendum: `${BRIEF_GUIDANCE} Give every task a description. Leave reasoning_effort and level unset unless you re-dispatch a failed task; the ${pluginName}:${ESCALATION_SKILL} skill says how.`,
 	};
 }

@@ -45,7 +45,7 @@ The builder bundles all the code a plugin needs into its one file, so each plugi
 **The npm tree.**
 OpenClaw and omp both install the npm package `@akurganow/model-router`, so one folder serves both: `packages/model-router/`.
 The builder writes its `package.json` and `README.md` from the source.
-It copies every other file byte for byte from a plugin folder: the licence, both bundles, the OpenClaw manifest and the skills.
+It copies every other file byte for byte from a plugin folder: the licence, both bundles, the omp rule file, the OpenClaw manifest and the skills.
 Nobody edits the tree by hand, and the `check` job fails when it differs from the builder's output.
 OpenClaw's skills sit in `openclaw-skills/`, apart from `skills/`, because omp reads `skills/` of any package it installs ([omp manifest and settings](clients.md#omp-manifest-and-settings)).
 Each client then finds only the skills written for it ([OpenClaw package files](clients.md#openclaw-package-files)).
@@ -95,8 +95,10 @@ omp runs `omp plugin marketplace add "$PWD"` and `omp plugin install model-route
 Those commands install from the checkout with no account signed in.
 The job runs once per omp pin: the minimum omp the README names, and the latest omp release.
 The README promises the minimum, and a user who installs omp today gets the latest.
-After the omp install, `scripts/check-omp-load.ts` starts omp in rpc mode with a stub model, sends no prompt and asks for the commands.
+After the omp install, `scripts/check-omp-load.ts` starts omp in rpc mode with a stub model and asks for the commands.
 The plugin's commands come back only when omp loaded its extension, so the check proves the load and not only the install.
+The check then starts omp again and sends one prompt to a stub server on the runner.
+It passes when the request holds the brief text in a system message, so omp loaded the plugin's rule file too.
 The evals workflow keeps its secrets for the step that runs cases ([Claude Code](clients.md#install-and-update), [omp](clients.md#omp-install-and-update)).
 Before the installs, the job runs `claude plugin validate --strict` on the plugin and on the Claude catalogue.
 Both an unknown field and a missing catalogue description raise warnings, and `--strict` fails on warnings ([Claude Code](clients.md#catalogue), [validate](clients.md#validate-and-test)).

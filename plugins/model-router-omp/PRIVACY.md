@@ -2,7 +2,7 @@
 
 model-router for Oh My Pi is a plugin published by Akurganow. This policy says
 what the plugin sends, where it goes, and what the plugin keeps. Effective
-2026-11-21.
+2026-11-26.
 
 ## Where requests go
 
@@ -74,9 +74,11 @@ names for each request. The JSON body holds:
 - the item's task text, prepared as
   [The task text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-task-text)
   says
+- the item's `solutionSpace`, when it is text that is not blank, placed after
+  the task text under the label `Solution space:` and prepared with it
 - a capped part of the batch `context`, at most 3000 characters, prepared the
-  same way and placed after the task text. Task text and context together stay
-  within 12,000 characters
+  same way and placed after the task text. Task text, solution space and
+  context together stay within 12,000 characters
 - the agent text, the request's `role` field:
   - for the bundled `task` agent, one fixed text that ships with the plugin
   - for every other routed agent, its description as omp discovers it, a
@@ -95,7 +97,7 @@ names for each request. The JSON body holds:
   lists them
 
 [The request](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-request)
-lists the headers the plugin sets. The task text and the
+lists the headers the plugin sets. The task text, the solution space and the
 context hold whatever the caller put in them, which can include code. The
 request is sent before omp asks for approval of the `task` call. A call you
 later refuse was already sent. That list is the whole request, and
