@@ -3,6 +3,33 @@ All notable changes to this project will be documented in this file. See [conven
 
 - - -
 
+## v0.29.0 - 2026-11-26
+#### Features
+- (**claude**) add the brief text to the Agent tool's description (e2a41fb)
+- (**omp**) send a task item's solutionSpace to the scoring model (3c26f2f)
+- (**openclaw**) add the brief text to a main session's system context (75c91a7)
+- ship the measured wording of the brief text (4f51a5c)
+- give the main agent a text on how to brief a subagent (30c9ca5)
+#### Bug Fixes
+- (**openclaw**) say what the settings do, not that the brief text is on (3f84132)
+- (**openclaw**) follow OpenClaw's rule for child session keys (10e5c6a)
+#### Documentation
+- (**openclaw**) state only what is known about the restart and child keys (3a04dab)
+- record the harness facts behind the brief text (af11247)
+- say where the brief text sits in each harness and why (25c5cb4)
+#### Tests
+- check that docs/providers.md shows the brief text as shipped (1438a6b)
+#### Continuous Integration
+- (**omp**) accept the brief text only in a system or developer message (47a597b)
+- (**omp**) check that omp puts the brief text in its system prompt (44b4182)
+#### Miscellaneous Chores
+- (**calibrate**) refuse a flag given as the value of another flag (ffc7d02)
+- (**calibrate**) read the cases before emptying the record file (3475883)
+- (**calibrate**) take a cases file with --cases (e681304)
+
+- - -
+
+
 ## v0.28.0 - 2026-11-25
 #### Features
 - (**setup**) name Perplexity in every text, and check stored fields (dddbc52)
