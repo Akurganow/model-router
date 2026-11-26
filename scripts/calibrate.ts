@@ -132,12 +132,18 @@ export async function readKey(
 	return text.trim();
 }
 
-// Takes `<name> <value>` out of the arguments; `missing` marks the flag given with no value.
+const FLAGS = ["--record", "--cases"];
+
+// Takes `<name> <value>` out of the arguments; `missing` marks the flag given with no value or with another flag as its value.
 function takeFlag(args: readonly string[], name: string) {
 	const at = args.indexOf(name);
 	if (at === -1) return { rest: args, missing: false };
 	const value = args[at + 1];
-	return { value, rest: args.toSpliced(at, 2), missing: !value };
+	return {
+		value,
+		rest: args.toSpliced(at, 2),
+		missing: !value || FLAGS.includes(value),
+	};
 }
 
 function readCases(file: string | undefined): Case[] | undefined {

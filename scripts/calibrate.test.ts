@@ -176,6 +176,7 @@ for (const args of [
 	["openrouter", "jev-latest", "extra"],
 	["typesafe", "--record"],
 	["typesafe", "--cases"],
+	["typesafe", "--record", "--cases", "x.jsonl"],
 ])
 	test(`main with arguments ${JSON.stringify(args)} prints the usage and exits 2 before the key`, async () => {
 		const out = recorded();
