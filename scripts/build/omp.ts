@@ -1,3 +1,4 @@
+import { BRIEF_GUIDANCE } from "#core/brief/guidance.ts";
 import { type JsonObject, oneLine, type Rendered, serialize } from "./json.ts";
 import { OMP_OUTPUTS } from "./outputs.ts";
 import type { Source } from "./source.ts";
@@ -48,7 +49,16 @@ const catalogue = (source: Source): JsonObject => ({
 	],
 });
 
+// alwaysApply puts the rule in every system prompt, and agents: main keeps it from subagents.
+const rule = `---
+alwaysApply: true
+agents: main
+---
+${BRIEF_GUIDANCE}
+`;
+
 export const renderOmp = (source: Source): Rendered[] => [
 	{ path: OMP_OUTPUTS.manifest, text: serialize(manifest(source)) },
 	{ path: OMP_OUTPUTS.catalogue, text: serialize(catalogue(source)) },
+	{ path: OMP_OUTPUTS.rule, text: rule },
 ];

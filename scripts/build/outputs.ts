@@ -17,6 +17,8 @@ export const OMP_OUTPUTS = {
 	manifest: "plugins/model-router-omp/package.json",
 	catalogue: ".omp-plugin/marketplace.json",
 	bundle: "plugins/model-router-omp/extension/index.js",
+	// omp loads a package's rules/ folder; this rule carries the brief text to the main session.
+	rule: "plugins/model-router-omp/rules/model-router-briefs.md",
 } as const;
 
 export const OPENCLAW_OUTPUTS = {
@@ -55,6 +57,7 @@ export const NPM_FILE_COPIES: readonly Copy[] = [
 		to: `${NPM_ROOT}/LICENSE`,
 	},
 	{ from: OMP_OUTPUTS.bundle, to: `${NPM_ROOT}/extension/index.js` },
+	{ from: OMP_OUTPUTS.rule, to: `${NPM_ROOT}/rules/model-router-briefs.md` },
 	{ from: OPENCLAW_OUTPUTS.bundle, to: `${NPM_ROOT}/index.js` },
 	{ from: OPENCLAW_OUTPUTS.setup, to: `${NPM_ROOT}/setup-api.js` },
 	{
