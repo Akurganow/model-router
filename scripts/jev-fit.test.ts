@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { BRIEF_GUIDANCE } from "#core/brief/guidance.ts";
 import { FITTED_ON, fitWarning, fitWarnings } from "./jev-fit.ts";
 import { OTHER_JEV } from "./jev-fit-fakes.ts";
 
@@ -14,6 +15,14 @@ test("the fitted version is the one model-choice.md names in the fit sentence", 
 			doc,
 		);
 	assert.equal(fit?.groups?.["version"], FITTED_ON);
+});
+
+test("providers.md holds the brief text word for word", () => {
+	const doc = readFileSync(
+		new URL("../docs/providers.md", import.meta.url),
+		"utf8",
+	);
+	assert.ok(doc.includes(BRIEF_GUIDANCE));
 });
 
 test("the warning names the fitted version, the answering model and the refit", () => {
