@@ -5,7 +5,8 @@ export const PROMPT_HOOK = "before_prompt_build";
 
 // OpenClaw's isSubagentSessionKey and isAcpSessionKey in
 // src/sessions/session-key-utils.ts lower-case the key and test its start, or the
-// start of the part after agent:<id>:. A subagent or ACP session is a child.
+// start of the part after agent:<id>:. Neither a subagent nor an ACP session gets
+// the text.
 const CHILD_KEY = /^(?:agent:[^:]*:)?(?:subagent|acp):/i;
 
 /**

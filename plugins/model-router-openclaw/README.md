@@ -227,7 +227,7 @@ The text is off until you grant the plugin conversation access, because OpenClaw
 openclaw config set plugins.entries.model-router-openclaw.hooks.allowConversationAccess true
 ```
 
-The Gateway must be restarted before the grant applies:
+Then restart the Gateway:
 
 ```sh
 openclaw gateway restart
