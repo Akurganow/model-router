@@ -74,6 +74,8 @@ Never print or log a key, and never put one into a brief, a commit or a wiki ent
   A model turn under a copy ends in a sign-in error, as the same section says.
 - Isolate a check with a model turn: keep the real configuration folder, and add `--setting-sources project --strict-mcp-config`.
   With these flags the run reads no user settings and no MCP server of the user, and it is signed in, as the same section says.
+  The plugin's stored options stay out with the user settings, so each option takes its default, as [Manifest](../../../docs/clients.md#manifest) says.
+  A check of an option other than its default is outside this form: ask the maintainer.
   Start `claude` from an empty folder, so that no project settings load, and give `--plugin-dir` an absolute path.
   Ask the maintainer's word for this form, and say that the run reads the real folder and writes its session history there.
   Change no file in that folder.
