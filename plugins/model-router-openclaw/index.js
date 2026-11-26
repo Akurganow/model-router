@@ -880,8 +880,8 @@ var BRIEF_GUIDANCE = "When model-router routes a subagent, it picks the model fr
 
 // src/adapters/openclaw/guidance.ts
 var PROMPT_HOOK = "before_prompt_build";
-var SUBAGENT_KEY = /(^|:)subagent:/;
-var briefGuidance = async (_, ctx) => SUBAGENT_KEY.test(ctx?.sessionKey ?? "") ? void 0 : { appendSystemContext: BRIEF_GUIDANCE };
+var CHILD_KEY = /^(?:agent:[^:]*:)?(?:subagent|acp):/i;
+var briefGuidance = async (_, ctx) => CHILD_KEY.test(ctx?.sessionKey ?? "") ? void 0 : { appendSystemContext: BRIEF_GUIDANCE };
 
 // src/core/brief/brief.ts
 var BUDGET_CHARS = 12e3;
@@ -1689,8 +1689,9 @@ function registerRouting(api, deps) {
 }
 function registerGuidance(api) {
   const hooks = pluginEntry(api.config)?.hooks;
-  if (hooks?.allowConversationAccess !== true || hooks.allowPromptModification === false || hooks.allowPromptInjection === false)
-    return;
+  const granted = hooks?.allowConversationAccess === true;
+  const promptChangeRefused = hooks?.allowPromptModification === false || hooks?.allowPromptInjection === false;
+  if (!granted || promptChangeRefused) return;
   try {
     api.on(PROMPT_HOOK, briefGuidance);
   } catch {

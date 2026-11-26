@@ -3,15 +3,17 @@ import type { PromptBuildHandler } from "./types.ts";
 
 export const PROMPT_HOOK = "before_prompt_build";
 
-// A spawned child's session key reads agent:<id>:subagent:<uuid>.
-const SUBAGENT_KEY = /(^|:)subagent:/;
+// OpenClaw's isSubagentSessionKey and isAcpSessionKey in
+// src/sessions/session-key-utils.ts lower-case the key and test its start, or the
+// start of the part after agent:<id>:. A subagent or ACP session is a child.
+const CHILD_KEY = /^(?:agent:[^:]*:)?(?:subagent|acp):/i;
 
 /**
- * Appends the brief text to the system context of a main session and leaves a
- * spawned child alone. A session with no key gets the text. It reads nothing from the
- * event, which carries the conversation.
+ * Appends the brief text to the system context of a main session. A spawned
+ * subagent or an ACP session gets nothing. A session with no key gets the text.
+ * It reads nothing from the event, which carries the conversation.
  */
 export const briefGuidance: PromptBuildHandler = async (_, ctx) =>
-	SUBAGENT_KEY.test(ctx?.sessionKey ?? "")
+	CHILD_KEY.test(ctx?.sessionKey ?? "")
 		? undefined
 		: { appendSystemContext: BRIEF_GUIDANCE };

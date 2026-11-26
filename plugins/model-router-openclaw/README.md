@@ -217,23 +217,23 @@ With an unset slot and a kept effort, there is nothing to set. The plugin return
 
 ## The brief text
 
-The plugin adds a short text on how to brief a subagent to the system context of each main session. A spawned child gets nothing. [The brief text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-brief-text) says what it holds.
+The plugin adds a short text on how to brief a subagent to the system context of each main session. A spawned child and an ACP session get nothing. [The brief text](https://github.com/Akurganow/model-router/blob/main/docs/providers.md#the-brief-text) says what it holds.
 
 OpenClaw builds the `sessions_spawn` description itself and no hook changes it, so the text goes into the system context.
 
-The text is off until you grant the plugin conversation access, because OpenClaw registers the prompt hook of a plugin like this one only then. [What the plugin stores](PRIVACY.md#what-the-plugin-stores) says what the grant opens. To turn the text on, run this line in a shell:
+The text is off until you grant the plugin conversation access, because OpenClaw registers the prompt hook of a plugin that does not ship with it only then. [What the plugin stores](PRIVACY.md#what-the-plugin-stores) says what the grant opens. To turn the text on, run this line in a shell:
 
 ```sh
 openclaw config set plugins.entries.model-router-openclaw.hooks.allowConversationAccess true
 ```
 
-In its default reload mode, OpenClaw applies the change on its own. A restart applies it in full:
+The Gateway must be restarted before the grant applies:
 
 ```sh
 openclaw gateway restart
 ```
 
-To turn the text off, set that grant to `false`, or set `plugins.entries.model-router-openclaw.hooks.allowPromptModification` to `false`. Older OpenClaw releases name this key `allowPromptInjection`. Then restart the Gateway.
+To turn the text off, set that grant to `false` and restart the Gateway. The text also stays off while `plugins.entries.model-router-openclaw.hooks.allowPromptModification` is `false`. Older OpenClaw releases name this key `allowPromptInjection`.
 
 ## Which spawns are routed
 

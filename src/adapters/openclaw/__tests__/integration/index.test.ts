@@ -169,13 +169,18 @@ describe("the brief text", () => {
 	const events = (hooks: object) =>
 		install(hooksOf(hooks)).hooks.map((h) => h.event);
 
-	it("goes to a main session and to one with no key, not to a spawned child", async () => {
+	it("goes to a main session and to one with no key, not to a spawned child or an ACP session", async () => {
 		const handler = install(hooksOf(grant)).promptBuild();
 		const text = { appendSystemContext: BRIEF_GUIDANCE };
-		for (const key of ["agent:main:main", "agent:mysubagent:main", undefined])
+		for (const key of ["agent:main:main", "agent:subagent:main", undefined])
 			assert.deepEqual(await handler({}, key ? { sessionKey: key } : {}), text);
-		const child = { sessionKey: "agent:main:subagent:1234" };
-		assert.equal(await handler({}, child), undefined);
+		for (const key of [
+			"agent:main:subagent:1234",
+			"agent:main:Subagent:1",
+			"agent:main:acp:1234",
+			"subagent:1234",
+		])
+			assert.equal(await handler({}, { sessionKey: key }), undefined);
 	});
 
 	it("registers only with the grant and no prompt-change key set to false", () => {

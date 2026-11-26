@@ -101,12 +101,12 @@ function registerRouting(api: OpenClawApi, deps: RouterDeps): void {
  */
 function registerGuidance(api: OpenClawApi): void {
 	const hooks = pluginEntry(api.config)?.hooks;
-	if (
-		hooks?.allowConversationAccess !== true ||
-		hooks.allowPromptModification === false ||
-		hooks.allowPromptInjection === false
-	)
-		return;
+	const granted = hooks?.allowConversationAccess === true;
+	// allowPromptInjection is the older name of allowPromptModification.
+	const promptChangeRefused =
+		hooks?.allowPromptModification === false ||
+		hooks?.allowPromptInjection === false;
+	if (!granted || promptChangeRefused) return;
 	try {
 		api.on(PROMPT_HOOK, briefGuidance);
 	} catch {
