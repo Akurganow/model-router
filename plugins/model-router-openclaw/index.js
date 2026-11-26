@@ -876,7 +876,7 @@ function registerConfigCommands(api, env) {
 }
 
 // src/core/brief/guidance.ts
-var BRIEF_GUIDANCE = "When model-router routes a subagent, it picks the model from this brief. State what is already decided and what you leave open for the subagent. Name the files and the check that proves the work done. Give the size: steps, files and edge cases.";
+var BRIEF_GUIDANCE = "When model-router routes a subagent, it picks the model from this brief. Say what is already decided. If nothing is left to decide, say that nothing is; otherwise name what you leave to the subagent.";
 
 // src/adapters/openclaw/guidance.ts
 var PROMPT_HOOK = "before_prompt_build";
